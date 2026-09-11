@@ -74,16 +74,21 @@ export const PLAFOND = Object.freeze({
   //    `deno lint` kent geen complexiteitsregels — en het is de map die elk uur
   //    met `service_role` tegen productie draait.
   //
-  //    📏 Zes functies erboven, de langste op 280 regels (`draaiRollover`).
-  //    Vandaar een ratel en geen lintregel, om precies dezelfde reden als in
-  //    `app/` en `scripts/`. De nesting is er wél hard aan gegaan: van
-  //    tweeëntwintig overtredingen naar nul, zonder één functie op te splitsen.
+  //    📏 Bij het aanzetten zes functies erboven, de langste op 280 regels
+  //    (`draaiRollover`). Vandaar een ratel en geen lintregel, om precies
+  //    dezelfde reden als in `app/` en `scripts/`.
   //
   // ⚠️ **Tel met `skipBlankLines` en `skipComments`, zoals de lintregel doet.**
   //    📏 Zonder die twee telt dezelfde map er tien boven de vijftig met een
   //    langste van 710 in plaats van zes met een langste van 280. Een plafond in
   //    een andere eenheid dan de meting is een plafond dat niemand terugvindt.
-  'supabase/functions/': 6,
+  //
+  // ⚠️⚠️ **Zes werden er vier op 11-09-2026** (QS8-424). `draaiRollover` (282)
+  //    en `draaiNotificaties` (203) zijn opgesplitst; wat er nog boven zit is
+  //    `stuur()` in de notificatiejob (61, bestond al) en drie functies in
+  //    `doelcoach/`. Die vier vielen buiten dat issue en staan hier als het
+  //    getal dat verder omlaag hoort.
+  'supabase/functions/': 4,
 });
 
 /** De lagen die deze ratel telt, in de volgorde waarin ze gemeld worden. */

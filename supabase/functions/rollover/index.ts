@@ -162,16 +162,170 @@ Deno.serve(metCors(async (req: Request) => {
  */
 const PROFIELEN_PER_PAGINA = 200;
 
-async function draaiRollover(auth: string): Promise<Response> {
-
-
-  const db = createClient(
+/**
+ * De systeemclient, met het type dat de aanroep zélf oplevert.
+ *
+ * ⚠️ **Een functie en geen `ReturnType<typeof createClient>`** — QS8-424, en dat
+ *    is dezelfde val die `deno check` in `doelcoach/index.ts` al een keer
+ *    gevonden heeft. Die vorm instantieert de generieken met hun **defaults**
+ *    (`unknown` en `never`); de echte aanroep leidt ze uit de argumenten af, en
+ *    die twee zijn niet toewijsbaar. Deze vorm leidt het type af uit de
+ *    aanroep, dus hij blijft kloppen als `supabase-js` zijn typeparameters
+ *    verandert.
+ */
+function maakClient(auth: string) {
+  return createClient(
     Deno.env.get('SUPABASE_URL') ?? '',
     Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? auth.replace(/^Bearer\s+/i, ''),
     { auth: { persistSession: false } },
   );
+}
+
+type Db = ReturnType<typeof maakClient>;
+
+async function draaiRollover(auth: string): Promise<Response> {
+  const db = maakClient(auth);
 
   const nu = new Date();
+  const { telling, profielFout } = await verwerkAlleProfielen(db, nu);
+  const {
+    gemist,
+    vrijgesteld,
+    risicoBijgewerkt,
+    ingeschoven,
+    verschuldigd,
+    gered,
+    overgeslagen,
+    profielenGezien,
+  } = telling;
+
+  // ⚠️ **Pas hier, en niet in `haalProfielen`.** Een 500 midden in de lus zou de
+  //    profielen die al afgehandeld zijn onvermeld laten; nu is het werk gedaan
+  //    en meldt de job dat hij niet compleet was.
+  if (profielFout !== null) {
+    const fout = profielFout as { message: string; code?: string };
+
+    // ⚠️ **Hier stond dat `scrubMessage()` de melding schoonmaakt vóór verzending,
+    //    en dat was maar de halve waarheid — QS8-315.** Hij haalt geciteerde
+    //    waarden en de `Key (col)=(val)`-vorm eruit, maar níét een
+    //    `%`-interpolatie, en dat is precies de vorm die onze eigen wachters
+    //    gooien: `Europe/Bogus is geen bekende tijdzone` komt er onveranderd uit.
+    //    Gemeten met de échte functie, niet beredeneerd.
+    //
+    //    Dus dezelfde splitsing als in het recap-pad hieronder en in de kop van
+    //    0158: de volledige tekst gaat naar het functielog — een ander systeem,
+    //    met een andere bewaartermijn, dat de database niet verlaat — en Sentry
+    //    krijgt een vaste zin plus de foutcode.
+    console.error(`profielen ophalen mislukte: ${fout.message}`);
+    await meld(new Error('profielen ophalen mislukte'), 'rollover.profielen', {
+      code: 'profielen_ophalen_mislukt',
+      // ⚠️ De SQLSTATE is wat er ván de fout overblijft, en dat is genoeg om hem
+      //    te plaatsen: `42501` is een recht, `PGRST202` een verdwenen route,
+      //    `23514` een constraint. Geen van drieën draagt gebruikerstekst.
+      sqlstate: fout.code,
+    });
+    // ⚠️ **Een slug en niet de melding — en dat is een gemeten reparatie, geen
+    //    voorzorg (security-review op QS8-315).** Hier stond `fout.message`, met
+    //    als verdediging dat de body "Supabase niet verlaat". Dat is onwaar: de
+    //    aanroeper is `.github/workflows/rollover.yml`, en die doet op regel 67
+    //    `cat /tmp/rollover.json` — vóór de statuscontrole, en `curl` geeft
+    //    exitcode 0 op een 500. De melding landt dus in het GitHub
+    //    Actions-runlog: een derde systeem, met een eigen bewaartermijn.
+    //
+    //    📏 En de repository staat op `visibility: public`, nagekeken via de
+    //    GitHub-API. Dat runlog is wereldleesbaar.
+    //
+    //    Dezelfde vorm als de vangnettak bovenaan dit bestand, die dit al goed
+    //    deed. De volledige tekst staat in de `console.error` hierboven.
+    return new Response(JSON.stringify({ error: 'profielen_ophalen_mislukt' }), { status: 500 });
+  }
+
+  const geslapen = await slaapStilleGroepen(db);
+
+  const seizoensrecaps = await maakSeizoensrecaps(db);
+
+  const alsnogGoedgekeurd = await handelVastgelopenGoedkeuringenAf(db);
+
+  const bijlagen = await ruimVerlopenBijlagenOp(db);
+
+  return new Response(
+    JSON.stringify({
+      ok: true,
+      gemist,
+      gered,
+      overgeslagen,
+      vrijgesteld,
+      verschuldigd,
+      // ⚠️ **Dit was `(profielen ?? []).length` en dus de lengte van de láátste
+      //    pagina.** Sinds QS8-206 leest deze job in pagina's, en dan is dat
+      //    getal geen totaal meer maar een restant — precies het soort stille
+      //    onwaarheid waar dit veld voor bedoeld is om hem te voorkomen.
+      profielen: profielenGezien,
+      geslapen,
+      risicoBijgewerkt,
+      // ⚠️ Om dezelfde reden als `recaps` en `alsnogGoedgekeurd`: een job zonder
+      //    scherm heeft alleen zijn uitvoer. Dit getal is bovendien het enige
+      //    bewijs dat het inschuiven draait — er gaat geen melding uit en er
+      //    breekt niets als het stilvalt. Precies de vorm van QS8-140.
+      ingeschoven,
+      // ⚠️ In de uitvoer, want zonder dit is de enige manier om te zien dát er
+      //    een recap uit is gegaan, de groepschat zelf. De rollover is een job
+      //    zonder scherm; wat hij niet teruggeeft, is niet gebeurd voor wie het
+      //    log leest.
+      recaps: seizoensrecaps.recaps,
+      // ⚠️ **Hoort nul te zijn.** Staat hij hoger, dan hebben zoveel groepen dit
+      //    seizoen geen recap gekregen en is de oorzaak per groep terug te
+      //    vinden in het Postgres-log — QS8-171, migratie 0158. Zonder dit getal
+      //    in de uitvoer is een deels mislukte job niet van een geslaagde te
+      //    onderscheiden.
+      recapsOvergeslagen: seizoensrecaps.overgeslagen,
+      // ⚠️ Om dezelfde reden als `recaps` hierboven: een job zonder scherm heeft
+      //    alleen zijn uitvoer. Wat hij niet teruggeeft, is niet gebeurd voor wie
+      //    het log leest — en dít getal hoort nul te zijn zolang er niets vastloopt.
+      alsnogGoedgekeurd: (alsnogGoedgekeurd as number | null) ?? 0,
+      // ⚠️ Om dezelfde reden als `recaps`: een job zonder scherm heeft alleen zijn
+      //    uitvoer, en de bewaartermijn is een belofte aan de gebruiker. Blijft dit
+      //    getal op nul staan terwijl er wél bijlagen ouder dan 21 dagen zijn, dan
+      //    draait de pas niet — en dat is niet te zien aan de app.
+      //
+      // ⚠️ **Eén getal over beide emmers sinds QS8-408, en dat is een keuze met
+      //    een prijs:** een pas die alleen op `chatdocs` vastloopt, is aan dit
+      //    getal niet te zien. Wat dat wél laat zien is `bijlagenMislukt` plus de
+      //    meldingen eronder, en díé gaan sinds de securityronde **per emmer** —
+      //    de eerste vorm beweerde dat hier en deed het niet.
+      bijlagenOpgeruimd: bijlagen.opgeruimd,
+      // ⚠️ **Hoort nul te zijn.** Staat hij hoger, dan zijn er paden die de
+      //    Storage-API niet kwijt wil en blijft er dus meer bewaard dan beloofd.
+      bijlagenMislukt: bijlagen.mislukt,
+    }),
+    { headers: { 'Content-Type': 'application/json' } },
+  );
+}
+
+/** Wat één ronde over alle profielen aan de uitslag bijdraagt. */
+interface Profieltelling {
+  gemist: number;
+  vrijgesteld: number;
+  risicoBijgewerkt: number;
+  ingeschoven: number;
+  verschuldigd: number;
+  gered: number;
+  overgeslagen: number;
+  profielenGezien: number;
+}
+
+/**
+ * Loopt alle profielen af en sluit per profiel af wat afgesloten kan worden.
+ *
+ * ⚠️ **Uit `draaiRollover` getild in QS8-424.** De `profielFout` gaat mee als
+ *    teruggave en niet als worp: de aanroeper meldt hem **ná** de lus, zodat de
+ *    profielen die al afgehandeld zijn niet onvermeld blijven. Dat was al de
+ *    reden dat die controle onderaan stond, en die reden geldt hier onverkort.
+ */
+async function verwerkAlleProfielen(
+  db: Db,
+  nu: Date,
+): Promise<{ telling: Profieltelling; profielFout: { message: string } | null }> {
   let gemist = 0;
   let vrijgesteld = 0;
   let risicoBijgewerkt = 0;
@@ -244,334 +398,41 @@ async function draaiRollover(auth: string): Promise<Response> {
   for await (const profiel of rijen(haalProfielen, PROFIELEN_PER_PAGINA)) {
     profielenGezien += 1;
 
-    // ⚠️ De cyclus die deze gebruiker nog mág afsluiten. Binnen de
-    //    coulanceperiode is dat nog de vórige week, en dan is er dus níéts te
-    //    rollen — anders kost een late log alsnog een minpunt (QS8-51).
-    //
-    // ⚠️ In een try, en dat is geen overdreven voorzichtigheid. `profiles.tz` is
-    //    vrije tekst zonder controle en de eigenaar mag hem zelf zetten;
-    //    `Intl.DateTimeFormat` gooit een RangeError op een onbekende zone. Zonder
-    //    deze try valt de hele handler om op één profiel — elk uur opnieuw, op
-    //    hetzelfde profiel — en sluit er voor niemand meer een week af. Eén
-    //    gebruiker met een typefout legt dan de job voor alle anderen stil.
-    //    Gevonden door de security-review op QS8-81; de echte reparatie is een
-    //    CHECK op `profiles.tz`, zoals 0019 die voor `groups.tz` al zette.
-    let afsluitbaar;
-    try {
-      afsluitbaar = closableUserCycle(
-        { weekStartDay: profiel.week_start_day as Weekday, tz: profiel.tz },
-        nu,
-      );
-    } catch (fout) {
-      console.error(
-        `cyclus bepalen mislukte voor een profiel (tz=${profiel.tz}): ${
-          fout instanceof Error ? fout.message : String(fout)
-        }`,
-      );
-      // ⚠️ Een console-regel in de Supabase-logs leest niemand uit zichzelf.
-      //    `profiel.tz` gaat niet mee: een tijdzone is dicht genoeg bij een
-      //    woonplaats om hem niet in een foutdashboard te willen hebben.
-      await meld(fout, 'rollover.cyclus', { code: 'cyclus_onbepaalbaar' });
+    const afsluitbaar = await afsluitbareCyclus(profiel, nu);
+    if (afsluitbaar === null) {
       overgeslagen += 1;
       continue;
     }
 
-    // -----------------------------------------------------------------------
-    // Straffen die verschuldigd worden — QS8-84, migratie 0057
-    // -----------------------------------------------------------------------
-    //
-    // ⚠️ **Hier, en niet in SQL, omdat de datum van de gebruiker is.** Een straf
-    //    treedt in werking zodra zijn streefdatum verstreken is, en "verstreken"
-    //    is een uitspraak in de tijdzone van de eigenaar (domeinregel 2). De
-    //    functie in de database vergelijkt alleen; de datum komt uit
-    //    `shared/time` (correctheidsregel 7). Zou `maak_straffen_verschuldigd()`
-    //    zelf `current_date` gebruiken, dan gaat de straf voor iemand in Auckland
-    //    een dag te vroeg af — en te vroeg is precies het enige dat hier niet mag.
-    //
-    // ⚠️ **Staat vóór het weekdoelenwerk en is er volledig los van.** Domeinregel
-    //    11 en QS8-84 criterium 2: geen enkele gemiste week zet een straf in
-    //    werking. Deze aanroep kijkt niet naar `weekly_goals` en hoort daarom ook
-    //    niet in de lus die de gemiste weken afhandelt.
-    //
-    // ⚠️ **Na de tz-controle hierboven.** Faalt `closableUserCycle`, dan is de
-    //    tijdzone onbruikbaar en slaan we het profiel over — een straf op een
-    //    gegokte datum is erger dan een straf die een uur later komt.
-    //
-    // ⚠️ Idempotent: de functie raakt alleen commitments met status `set`, dus een
-    //    tweede run op hetzelfde uur vindt niets meer.
-    const { data: straffen, error: strafFout } = await db.rpc('maak_straffen_verschuldigd', {
-      p_owner_id: profiel.id,
-      p_vandaag: localDateIn(profiel.tz, nu),
-    });
+    verschuldigd += await wikkelStraffenAf(db, profiel, nu);
 
-    if (strafFout) {
-      // Zacht, zoals de andere afgeleide stappen: de rest van de rollover moet
-      // door. Wel zichtbaar — een straf die niet afgaat, ondermijnt het hele
-      // commitment device (domeinregel 5).
-      console.error(`straffen afwikkelen mislukte voor een profiel: ${strafFout.message}`);
-    } else {
-      verschuldigd += typeof straffen === 'number' ? straffen : 0;
-    }
+    const afgesloten = await sluitVerstrekenWekenAf(db, profiel, afsluitbaar.startDate);
+    if (afgesloten === null) continue;
 
-    // ⚠️ `order` staat er om de uitkomst reproduceerbaar te maken. Zonder
-    //    sorteervolgorde bepaalt het queryplan welke gemiste week een weekpas
-    //    krijgt als er meer gemiste weken zijn dan passen — en dan geeft
-    //    dezelfde data twee keer een ander antwoord. Oudste eerst, zodat een
-    //    ingehaalde achterstand chronologisch wordt afgewikkeld.
-    const { data: open, error: openFout } = await db
-      .from('weekly_goals')
-      .select('id, goal_id, cycle_start_date, points_miss, goals!inner(owner_id)')
-      .eq('goals.owner_id', profiel.id)
-      // ⚠️ `cancelled` hoort hier net zo goed bij als `todo` — A40, migratie
-      //    0045. Een afgesloten weekdoel is een week die je bewust hebt
-      //    opgegeven, en die telt bij het verstrijken van de cyclus als gemist:
-      //    mét minpunt, en een weekpas kan hem redden zoals elke andere.
-      //    Precies daarom hoeft `herbereken_reeks()` niets van `cancelled` te
-      //    weten: in de lopende cyclus is hij neutraal zoals `todo`, en daarna
-      //    is hij gewoon `missed`.
-      .in('status', ['todo', 'cancelled'])
-      .lt('cycle_start_date', afsluitbaar.startDate)
-      .order('cycle_start_date', { ascending: true });
+    gemist += afgesloten.telling.gemist;
+    vrijgesteld += afgesloten.telling.vrijgesteld;
+    gered += afgesloten.telling.gered;
 
-    if (openFout) {
-      console.error(`weekdoelen ophalen mislukte voor een profiel: ${openFout.message}`);
-      continue;
-    }
-
-    for (const weekdoel of (open ?? []) as unknown as OpenWeekdoel[]) {
-      // Loopt er een adempauze over deze cyclus? Dan telt de week niet mee —
-      // niet positief en niet negatief (domeinregel 10, adempauze = 0).
-      const { data: pauze } = await db
-        .from('breathers')
-        .select('id')
-        .eq('user_id', profiel.id)
-        .eq('goal_id', weekdoel.goal_id)
-        .lte('starts_cycle', weekdoel.cycle_start_date)
-        .gte('ends_cycle', weekdoel.cycle_start_date)
-        .maybeSingle();
-
-      // ⚠️ **Twee guards naast elkaar en niet een `if` in een `if`** — QS8-422.
-      //    De schrijfactie staat achter dezelfde voorwaarde als hiervoor: zonder
-      //    adempauze gebeurt er niets en blijft `vrijstelFout` null. Wat weg is,
-      //    is de laag nesting, niet de volgorde — en dat is de vorm waar
-      //    coderegel 15 om vraagt.
-      const vrijstelFout = pauze
-        ? (await db.from('weekly_goals').update({ status: 'excused' }).eq('id', weekdoel.id))
-            .error
-        : null;
-
-      // ⚠️⚠️ **`vrijstelFout` niet-null impliceert dat `pauze` waar was**, want
-      //    zonder adempauze draait de update niet. Deze poort leest als een
-      //    algemene foutpoort en is het niet — en twintig regels verderop wordt
-      //    het minpunt geboekt. Zet hier niets tussen zonder die invariant na te
-      //    lopen: wie de verkeerde tak raakt, schrijft punten af die niemand
-      //    verdiend heeft, en er is geen runtime die dat rood maakt. Aangewezen
-      //    door de security-review op QS8-422.
-      if (vrijstelFout) {
-        console.error(`vrijstellen mislukte voor ${weekdoel.id}: ${vrijstelFout.message}`);
-        continue;
-      }
-
-      if (pauze) {
-        vrijgesteld += 1;
-        continue;
-      }
-
-      // ⚠️ Deze drie schrijfacties controleerden hun fout niet, en dat is geen
-      //    theorie: faalt de statuswijziging en gaat de rest wél door, dan is
-      //    het minpunt geboekt terwijl `verbruik_weekpas()` daarna netjes
-      //    weigert — er is immers geen `missed`-rij. Uitkomst: punt kwijt,
-      //    bescherming niet ingezet, geen enkel signaal. Coderegel 14.
-      const { error: gemistFout } = await db
-        .from('weekly_goals')
-        .update({ status: 'missed' })
-        .eq('id', weekdoel.id);
-
-      if (gemistFout) {
-        console.error(`afschrijven mislukte voor ${weekdoel.id}: ${gemistFout.message}`);
-        continue;
-      }
-
-      // Het minpunt. De unieke index maakt dit veilig bij een tweede run.
-      const { error: puntFout } = await db.from('points_ledger').insert({
-        user_id: profiel.id,
-        goal_id: weekdoel.goal_id,
-        delta: weekdoel.points_miss,
-        reason: 'cycle_missed',
-        ref_type: 'weekly_goal',
-        ref_id: weekdoel.id,
-      });
-
-      if (puntFout) {
-        console.error(`minpunt boeken mislukte voor ${weekdoel.id}: ${puntFout.message}`);
-      }
-
-      gemist += 1;
-
-      // De weekpas — QS8-81.
-      //
-      // ⚠️ Staat ná het minpunt, en dat is de hele regel: een weekpas beschermt
-      //    de reeks, niet het punt (domeinregel 10). Zou hij ook het punt
-      //    terugdraaien, dan is missen gratis en zegt de score niets meer.
-      //
-      // ⚠️ Staat ná de statuswijziging omdat `verbruik_weekpas()` zelf
-      //    controleert dat de cyclus écht gemist is. Die volgorde is dus geen
-      //    smaak: andersom weigert de functie en verdwijnt de bescherming
-      //    zonder dat er iets stukgaat.
-      //
-      // ⚠️ Geen rekenwerk hier. De functie krijgt de cyclusdatum die al in de
-      //    rij staat; er wordt geen week afgeleid (correctheidsregel 7).
-      const { data: geredeWeek, error: pasFout } = await db.rpc('verbruik_weekpas', {
-        p_user_id: profiel.id,
-        p_goal_id: weekdoel.goal_id,
-        p_cycle_start_date: weekdoel.cycle_start_date,
-      });
-
-      if (pasFout) {
-        // Zichtbaar maar zacht. Een pas die niet ingezet kon worden kost een
-        // reeks en hoort niet stil te gebeuren, maar de rollover mag er niet op
-        // stuklopen: de andere profielen moeten nog.
-        console.error(
-          `weekpas verbruiken mislukte voor doel ${weekdoel.goal_id}: ${pasFout.message}`,
-        );
-      } else if (geredeWeek === true) {
-        gered += 1;
-      }
-    }
-
-    // -----------------------------------------------------------------------
-    // Het weekplan inschuiven — QS8-203, migratie 0137
-    // -----------------------------------------------------------------------
-    //
-    // ⚠️ **De cyclus is `userCycle` en niet `afsluitbaar`.** Dat is het hele
-    //    verschil tussen de twee helften van deze job. Afschrijven gaat over de
-    //    week die vóórbij is en mag pas na de coulanceperiode; inschuiven gaat
-    //    over de week waar de gebruiker nú in zit. Zou dit `afsluitbaar` nemen,
-    //    dan komt het nieuwe weekdoel binnen de coulanceperiode in de vórige
-    //    week terecht — en die is al verstreken, dus de eerstvolgende ronde
-    //    schrijft hem meteen als gemist af. Een minpunt op een weekdoel dat de
-    //    app zelf net heeft aangemaakt.
-    //
-    // ⚠️ **Staat ná het afschrijven en dat is opzet.** Andersom zou het verse
-    //    weekdoel in dezelfde ronde langs de `missed`-lus komen. Dat gaat vandaag
-    //    goed omdat die lus op `cycle_start_date < afsluitbaar.startDate` filtert,
-    //    maar dat is een eigenschap van een andere query — precies het soort
-    //    verband dat stilvalt zodra iemand die filter aanpast.
-    //
-    // ⚠️ **Eén vraag per gebruiker en niet twee per doel** (onwrikbare regel 12).
-    //    `weekplan_kandidaten()` geeft de actieve doelen mét openstaande stap en
-    //    de vroegste cyclus van dat doel in één keer terug; het omrekenen naar
-    //    een cyclusnummer gebeurt hier, met `shared/time`.
-    //
-    // ⚠️ Idempotent, en de grendel is een unieke index en geen afspraak:
-    //    `weekly_plan_steps_een_per_cyclus`. Een tweede ronde in hetzelfde uur
-    //    krijgt `al_geactiveerd` terug en maakt niets.
-    const huidige = userCycle(
-      { weekStartDay: profiel.week_start_day as Weekday, tz: profiel.tz },
-      nu,
-    );
-
-    const { data: kandidaten, error: kandidaatFout } = await db.rpc('weekplan_kandidaten', {
-      p_owner_id: profiel.id,
-    });
-
-    if (kandidaatFout) {
-      // Zacht: het afschrijven is het echte werk van deze job. Wel zichtbaar —
-      // een plan dat niet inschuift, is een week waarin de gebruiker niets te
-      // doen heeft zonder dat iemand dat besloten heeft.
-      console.error(`weekplan-kandidaten ophalen mislukte voor een profiel: ${kandidaatFout.message}`);
-    } else {
-      for (const kandidaat of (kandidaten ?? []) as Kandidaat[]) {
-        const { data: uitkomst, error: stapFout } = await db.rpc('activeer_weekplanstap', {
-          p_goal_id: kandidaat.goal_id,
-          p_cycle_start_date: huidige.startDate,
-        });
-
-        if (stapFout) {
-          console.error(
-            `weekplanstap activeren mislukte voor ${kandidaat.goal_id}: ${stapFout.message}`,
-          );
-          continue;
-        }
-
-        // ⚠️ `al_geactiveerd` en `geen_stap` zijn de normale uitkomsten van een
-        //    tweede ronde en van een leeg plan. Die tellen niet mee en horen
-        //    niet in het log — anders staat er elk uur een regel per doel.
-        if ((uitkomst as { ok?: boolean } | null)?.ok === true) ingeschoven += 1;
-      }
-    }
-
-    // Reeksen herberekenen voor de doelen die geraakt zijn. Herberekenen en
-    // niet ophogen: user_streaks is cache, geen waarheid.
-    const geraakteDoelen = new Set((open ?? []).map((w) => (w as unknown as OpenWeekdoel).goal_id));
-    for (const goalId of geraakteDoelen) {
-      await db.rpc('herbereken_reeks', { p_user_id: profiel.id, p_goal_id: goalId });
-
-      // De Risico-radar — QS8-93, migratie 0051.
-      //
-      // ⚠️ Hier én in de trigger op `completion_approvals`, en dat zijn samen
-      //    precies de twee momenten waarop de uitkomst kan veranderen: een week
-      //    die verstrijkt en een week die goedgekeurd wordt. Niet bij elke
-      //    schermweergave — dat is acceptatiecriterium 2, en op een gratis tier
-      //    is het ook gewoon zonde.
-      //
-      // ⚠️ De fout wordt gemeld en niet gegooid. Een mislukte risicoberekening
-      //    mag de rollover niet stoppen: het minpunt en de reeks zijn het echte
-      //    werk, het risico is een afgeleide. Zelfde afweging als bij de
-      //    trigger.
-      const { error: risicoFout } = await db.rpc('herbereken_risico', {
-        p_goal_id: goalId,
-      });
-
-      if (risicoFout) {
-        console.error(`risico niet herberekend voor ${goalId}: ${risicoFout.message}`);
-      } else {
-        risicoBijgewerkt += 1;
-      }
-    }
+    ingeschoven += await schuifWeekplanIn(db, profiel, nu);
+    risicoBijgewerkt += await herberekenReeksEnRisico(db, profiel, afgesloten.geraakteDoelen);
   }
 
-  // ⚠️ **Pas hier, en niet in `haalProfielen`.** Een 500 midden in de lus zou de
-  //    profielen die al afgehandeld zijn onvermeld laten; nu is het werk gedaan
-  //    en meldt de job dat hij niet compleet was.
-  if (profielFout !== null) {
-    const fout = profielFout as { message: string; code?: string };
+  const telling: Profieltelling = {
+    gemist, vrijgesteld, risicoBijgewerkt, ingeschoven,
+    verschuldigd, gered, overgeslagen, profielenGezien,
+  };
 
-    // ⚠️ **Hier stond dat `scrubMessage()` de melding schoonmaakt vóór verzending,
-    //    en dat was maar de halve waarheid — QS8-315.** Hij haalt geciteerde
-    //    waarden en de `Key (col)=(val)`-vorm eruit, maar níét een
-    //    `%`-interpolatie, en dat is precies de vorm die onze eigen wachters
-    //    gooien: `Europe/Bogus is geen bekende tijdzone` komt er onveranderd uit.
-    //    Gemeten met de échte functie, niet beredeneerd.
-    //
-    //    Dus dezelfde splitsing als in het recap-pad hieronder en in de kop van
-    //    0158: de volledige tekst gaat naar het functielog — een ander systeem,
-    //    met een andere bewaartermijn, dat de database niet verlaat — en Sentry
-    //    krijgt een vaste zin plus de foutcode.
-    console.error(`profielen ophalen mislukte: ${fout.message}`);
-    await meld(new Error('profielen ophalen mislukte'), 'rollover.profielen', {
-      code: 'profielen_ophalen_mislukt',
-      // ⚠️ De SQLSTATE is wat er ván de fout overblijft, en dat is genoeg om hem
-      //    te plaatsen: `42501` is een recht, `PGRST202` een verdwenen route,
-      //    `23514` een constraint. Geen van drieën draagt gebruikerstekst.
-      sqlstate: fout.code,
-    });
-    // ⚠️ **Een slug en niet de melding — en dat is een gemeten reparatie, geen
-    //    voorzorg (security-review op QS8-315).** Hier stond `fout.message`, met
-    //    als verdediging dat de body "Supabase niet verlaat". Dat is onwaar: de
-    //    aanroeper is `.github/workflows/rollover.yml`, en die doet op regel 67
-    //    `cat /tmp/rollover.json` — vóór de statuscontrole, en `curl` geeft
-    //    exitcode 0 op een 500. De melding landt dus in het GitHub
-    //    Actions-runlog: een derde systeem, met een eigen bewaartermijn.
-    //
-    //    📏 En de repository staat op `visibility: public`, nagekeken via de
-    //    GitHub-API. Dat runlog is wereldleesbaar.
-    //
-    //    Dezelfde vorm als de vangnettak bovenaan dit bestand, die dit al goed
-    //    deed. De volledige tekst staat in de `console.error` hierboven.
-    return new Response(JSON.stringify({ error: 'profielen_ophalen_mislukt' }), { status: 500 });
-  }
+  return { telling, profielFout };
+}
 
+/**
+ * Zet groepen die lang stil zijn op slapend, en geeft terug hoeveel dat er
+ * waren.
+ *
+ * ⚠️ Uit `draaiRollover` getild in QS8-424; de termijn van dertig dagen en de
+ *    zachte foutafhandeling zijn ongewijzigd.
+ */
+async function slaapStilleGroepen(db: Db): Promise<number> {
   // Slapende groepen — QS8-60.
   //
   // ⚠️ Hangt hier en niet in een eigen job, om één reden: dit is de enige
@@ -589,6 +450,18 @@ async function draaiRollover(auth: string): Promise<Response> {
     console.error(`slapende groepen bijwerken mislukte: ${slaapFout.message}`);
   }
 
+  return geslapen ?? 0;
+}
+
+/**
+ * Maakt de seizoensrecaps en meldt wat er misging.
+ *
+ * ⚠️ Uit `draaiRollover` getild in QS8-424. De drie meldpaden — de RPC die
+ *    faalt, groepen die overgeslagen zijn, en een weigering — zijn
+ *    ongewijzigd; alleen de twee getallen die het runrapport noemt komen nu
+ *    als teruggave terug in plaats van uit een `let` erboven.
+ */
+async function maakSeizoensrecaps(db: Db): Promise<{ recaps: number; overgeslagen: number }> {
   // ⚠️ **De seizoensrecap hangt aan dezelfde uurlijkse job, en dat is opzet** —
   //    QS8-79. `maak_seizoensrecaps()` doet zelf de twee toetsen die ertoe doen:
   //    is het de eerste dag van het nieuwe seizoen, en is het 08:00 in de
@@ -652,6 +525,20 @@ async function draaiRollover(auth: string): Promise<Response> {
     });
   }
 
+  return {
+    recaps: (recaps as { recaps?: number } | null)?.recaps ?? 0,
+    overgeslagen: recapMislukt,
+  };
+}
+
+/**
+ * Handelt de vastgelopen goedkeuringen af en geeft terug hoeveel er alsnog
+ * goedgekeurd zijn.
+ *
+ * ⚠️ Uit `draaiRollover` getild in QS8-424; de termijn en de foutafhandeling
+ *    zijn ongewijzigd.
+ */
+async function handelVastgelopenGoedkeuringenAf(db: Db): Promise<number> {
   // ⚠️ **De goedkeuringstermijn — QS8-178, migratie 0135.** Een voltooiing die op
   //    goedkeuring wacht terwijl de beoordelaars zijn weggevallen, bleef eeuwig
   //    `pending`: geen minpunt, maar ook nooit punten.
@@ -702,8 +589,22 @@ async function draaiRollover(auth: string): Promise<Response> {
       'rollover.goedkeuringstermijn',
       { code: 'goedkeuringstermijn_mislukt', sqlstate: termijnFout.code },
     );
-  }
+}
 
+  return (alsnogGoedgekeurd as number | null) ?? 0;
+}
+
+/**
+ * Ruimt de verlopen chatbijlagen op en geeft terug hoeveel er weg zijn en
+ * hoeveel er niet weg konden.
+ *
+ * ⚠️ **Uit `draaiRollover` getild in QS8-424.** Dit is de stap die QS8-422
+ *    aanwees als *beslissende* logica — aftoppen dat zichzelf meldt,
+ *    blokgewijs wissen, doortellen bij een fout — en daarmee de reden dat die
+ *    map onder coderegel 15 moest. Hij hoort dus zeker niet in een functie van
+ *    tweehonderd regels te wonen.
+ */
+async function ruimVerlopenBijlagenOp(db: Db): Promise<{ opgeruimd: number; mislukt: number }> {
   // ---------------------------------------------------------------------------
   // De bijlagen opruimen — QS8-396 (0235) en QS8-408 (0250)
   // ---------------------------------------------------------------------------
@@ -756,8 +657,8 @@ async function draaiRollover(auth: string): Promise<Response> {
 
   const emmers = ['chatfotos', 'chatdocs'] as const;
 
-  let bijlagenOpgeruimd = 0;
-  let bijlagenMislukt = 0;
+  let opgeruimd = 0;
+  let mislukt = 0;
   const misluktPerEmmer: Record<(typeof emmers)[number], number> = {
     chatfotos: 0,
     chatdocs: 0,
@@ -792,30 +693,10 @@ async function draaiRollover(auth: string): Promise<Response> {
       });
     }
 
-    // ⚠️ **In blokken van honderd, en dat is geen netheid.** `remove()` zet elk
-    //    pad in de body van één verzoek; vijfhonderd paden van bijna honderd
-    //    tekens is een aanvraag die de gateway mag afkappen, en dan is het
-    //    verschil tussen "deels gelukt" en "mislukt" niet te zien.
-    for (let i = 0; i < paden.length; i += 100) {
-      const blok = paden.slice(i, i + 100);
-      const { data: weg, error: wisFout } = await db.storage.from(emmer).remove(blok);
-
-      if (wisFout) {
-        // ⚠️ **Doortellen en niet afbreken.** Eén onwisbaar pad mag de rest van
-        //    de bewaartermijn niet ophouden; wat blijft staan komt volgende
-        //    ronde gewoon weer boven. Dezelfde vorm als 0158 bij de recaps.
-        bijlagenMislukt += blok.length;
-        misluktPerEmmer[emmer] += blok.length;
-        console.error(`${emmer} wissen mislukte (${blok.length} paden): ${wisFout.message}`);
-        continue;
-      }
-
-      // ⚠️ De teruggave van `remove()` en niet `blok.length`: de Storage-API
-      //    geeft de objecten terug die hij daadwerkelijk weghaalde, en een pad
-      //    dat er niet meer was telt dan niet mee. Zonder dit verschil is een
-      //    pas die niets doet niet van een geslaagde te onderscheiden.
-      bijlagenOpgeruimd += (weg ?? []).length;
-    }
+    const uitkomst = await wisBlokgewijs(db, emmer, paden);
+    opgeruimd += uitkomst.opgeruimd;
+    mislukt += uitkomst.mislukt;
+    misluktPerEmmer[emmer] += uitkomst.mislukt;
   }
 
   // ⚠️⚠️ **Per emmer melden en niet één keer met een totaal.** 📏 De eerste vorm
@@ -834,56 +715,466 @@ async function draaiRollover(auth: string): Promise<Response> {
     });
   }
 
-  return new Response(
-    JSON.stringify({
-      ok: true,
-      gemist,
-      gered,
-      overgeslagen,
-      vrijgesteld,
-      verschuldigd,
-      // ⚠️ **Dit was `(profielen ?? []).length` en dus de lengte van de láátste
-      //    pagina.** Sinds QS8-206 leest deze job in pagina's, en dan is dat
-      //    getal geen totaal meer maar een restant — precies het soort stille
-      //    onwaarheid waar dit veld voor bedoeld is om hem te voorkomen.
-      profielen: profielenGezien,
-      geslapen: geslapen ?? 0,
-      risicoBijgewerkt,
-      // ⚠️ Om dezelfde reden als `recaps` en `alsnogGoedgekeurd`: een job zonder
-      //    scherm heeft alleen zijn uitvoer. Dit getal is bovendien het enige
-      //    bewijs dat het inschuiven draait — er gaat geen melding uit en er
-      //    breekt niets als het stilvalt. Precies de vorm van QS8-140.
-      ingeschoven,
-      // ⚠️ In de uitvoer, want zonder dit is de enige manier om te zien dát er
-      //    een recap uit is gegaan, de groepschat zelf. De rollover is een job
-      //    zonder scherm; wat hij niet teruggeeft, is niet gebeurd voor wie het
-      //    log leest.
-      recaps: (recaps as { recaps?: number } | null)?.recaps ?? 0,
-      // ⚠️ **Hoort nul te zijn.** Staat hij hoger, dan hebben zoveel groepen dit
-      //    seizoen geen recap gekregen en is de oorzaak per groep terug te
-      //    vinden in het Postgres-log — QS8-171, migratie 0158. Zonder dit getal
-      //    in de uitvoer is een deels mislukte job niet van een geslaagde te
-      //    onderscheiden.
-      recapsOvergeslagen: recapMislukt,
-      // ⚠️ Om dezelfde reden als `recaps` hierboven: een job zonder scherm heeft
-      //    alleen zijn uitvoer. Wat hij niet teruggeeft, is niet gebeurd voor wie
-      //    het log leest — en dít getal hoort nul te zijn zolang er niets vastloopt.
-      alsnogGoedgekeurd: (alsnogGoedgekeurd as number | null) ?? 0,
-      // ⚠️ Om dezelfde reden als `recaps`: een job zonder scherm heeft alleen zijn
-      //    uitvoer, en de bewaartermijn is een belofte aan de gebruiker. Blijft dit
-      //    getal op nul staan terwijl er wél bijlagen ouder dan 21 dagen zijn, dan
-      //    draait de pas niet — en dat is niet te zien aan de app.
-      //
-      // ⚠️ **Eén getal over beide emmers sinds QS8-408, en dat is een keuze met
-      //    een prijs:** een pas die alleen op `chatdocs` vastloopt, is aan dit
-      //    getal niet te zien. Wat dat wél laat zien is `bijlagenMislukt` plus de
-      //    meldingen eronder, en díé gaan sinds de securityronde **per emmer** —
-      //    de eerste vorm beweerde dat hier en deed het niet.
-      bijlagenOpgeruimd,
-      // ⚠️ **Hoort nul te zijn.** Staat hij hoger, dan zijn er paden die de
-      //    Storage-API niet kwijt wil en blijft er dus meer bewaard dan beloofd.
-      bijlagenMislukt,
-    }),
-    { headers: { 'Content-Type': 'application/json' } },
+    return { opgeruimd, mislukt };
+}
+
+/**
+ * Wist de gegeven paden blokgewijs uit één emmer.
+ *
+ * ⚠️ **Honderd tegelijk, en dat is de reden dat deze lus bestaat.** De
+ *    Storage-API neemt een lijst aan; één verzoek per pad zou een opruimpas
+ *    van duizend bijlagen duizend ronden kosten.
+ *
+ * ⚠️ **Doortellen bij een fout en niet stoppen.** Een blok dat niet weg kan,
+ *    mag de rest niet tegenhouden — het getal `mislukt` is precies wat er dan
+ *    blijft staan, en dat hoort nul te zijn.
+ */
+async function wisBlokgewijs(
+  db: Db,
+  emmer: 'chatfotos' | 'chatdocs',
+  paden: readonly string[],
+): Promise<{ opgeruimd: number; mislukt: number }> {
+  let opgeruimd = 0;
+  let mislukt = 0;
+
+  // ⚠️ **In blokken van honderd, en dat is geen netheid.** `remove()` zet elk
+  //    pad in de body van één verzoek; vijfhonderd paden van bijna honderd
+  //    tekens is een aanvraag die de gateway mag afkappen, en dan is het
+  //    verschil tussen "deels gelukt" en "mislukt" niet te zien.
+  for (let i = 0; i < paden.length; i += 100) {
+    const blok = paden.slice(i, i + 100);
+    const { data: weg, error: wisFout } = await db.storage.from(emmer).remove(blok);
+    if (wisFout) {
+      // ⚠️ **Doortellen en niet afbreken.** Eén onwisbaar pad mag de rest van
+      //    de bewaartermijn niet ophouden; wat blijft staan komt volgende
+      //    ronde gewoon weer boven. Dezelfde vorm als 0158 bij de recaps.
+      mislukt += blok.length;
+      console.error(`${emmer} wissen mislukte (${blok.length} paden): ${wisFout.message}`);
+      continue;
+    }
+    // ⚠️ De teruggave van `remove()` en niet `blok.length`: de Storage-API
+    //    geeft de objecten terug die hij daadwerkelijk weghaalde, en een pad
+    //    dat er niet meer was telt dan niet mee. Zonder dit verschil is een
+    //    pas die niets doet niet van een geslaagde te onderscheiden.
+    opgeruimd += (weg ?? []).length;
+  }
+
+  return { opgeruimd, mislukt };
+}
+
+/**
+ * De cyclus die dit profiel nog mág afsluiten, of `null` als zijn tijdzone
+ * onbruikbaar is.
+ *
+ * ⚠️ **Uit `draaiRollover` getild in QS8-424.** De `try` blijft hier en
+ *    verhuist niet naar de aanroeper: `profiles.tz` is vrije tekst zonder
+ *    CHECK, en zonder deze vangst legt één profiel met een typefout de job
+ *    voor iedereen stil. De aanroeper telt de `null` als `overgeslagen`, net
+ *    als hiervoor.
+ */
+async function afsluitbareCyclus(profiel: Profiel, nu: Date) {
+  // ⚠️ De cyclus die deze gebruiker nog mág afsluiten. Binnen de
+  //    coulanceperiode is dat nog de vórige week, en dan is er dus níéts te
+  //    rollen — anders kost een late log alsnog een minpunt (QS8-51).
+  //
+  // ⚠️ In een try, en dat is geen overdreven voorzichtigheid. `profiles.tz` is
+  //    vrije tekst zonder controle en de eigenaar mag hem zelf zetten;
+  //    `Intl.DateTimeFormat` gooit een RangeError op een onbekende zone. Zonder
+  //    deze try valt de hele handler om op één profiel — elk uur opnieuw, op
+  //    hetzelfde profiel — en sluit er voor niemand meer een week af. Eén
+  //    gebruiker met een typefout legt dan de job voor alle anderen stil.
+  //    Gevonden door de security-review op QS8-81; de echte reparatie is een
+  //    CHECK op `profiles.tz`, zoals 0019 die voor `groups.tz` al zette.
+  try {
+    return closableUserCycle(
+      { weekStartDay: profiel.week_start_day as Weekday, tz: profiel.tz },
+      nu,
+    );
+  } catch (fout) {
+    console.error(
+      `cyclus bepalen mislukte voor een profiel (tz=${profiel.tz}): ${
+        fout instanceof Error ? fout.message : String(fout)
+      }`,
+    );
+    // ⚠️ Een console-regel in de Supabase-logs leest niemand uit zichzelf.
+    //    `profiel.tz` gaat niet mee: een tijdzone is dicht genoeg bij een
+    //    woonplaats om hem niet in een foutdashboard te willen hebben.
+    await meld(fout, 'rollover.cyclus', { code: 'cyclus_onbepaalbaar' });
+    return null;
+  }
+}
+
+/**
+ * Wikkelt de straffen af die voor dit profiel verschuldigd geworden zijn, en
+ * geeft terug hoeveel dat er waren.
+ *
+ * ⚠️ **Uit `draaiRollover` getild in QS8-424.** De plek in de volgorde is
+ *    ongewijzigd — ná de tijdzonecontrole en vóór het weekdoelenwerk — en dát
+ *    is geen stijl maar domeinregel 11: geen enkele gemiste week zet een straf
+ *    in werking, dus deze stap hoort niet in de lus die de gemiste weken
+ *    afhandelt.
+ *
+ * ⚠️ Een mislukte aanroep telt nul en stopt de ronde niet, zoals hiervoor.
+ */
+async function wikkelStraffenAf(db: Db, profiel: Profiel, nu: Date): Promise<number> {
+  // -----------------------------------------------------------------------
+  // Straffen die verschuldigd worden — QS8-84, migratie 0057
+  // -----------------------------------------------------------------------
+  //
+  // ⚠️ **Hier, en niet in SQL, omdat de datum van de gebruiker is.** Een straf
+  //    treedt in werking zodra zijn streefdatum verstreken is, en "verstreken"
+  //    is een uitspraak in de tijdzone van de eigenaar (domeinregel 2). De
+  //    functie in de database vergelijkt alleen; de datum komt uit
+  //    `shared/time` (correctheidsregel 7). Zou `maak_straffen_verschuldigd()`
+  //    zelf `current_date` gebruiken, dan gaat de straf voor iemand in Auckland
+  //    een dag te vroeg af — en te vroeg is precies het enige dat hier niet mag.
+  //
+  // ⚠️ **Staat vóór het weekdoelenwerk en is er volledig los van.** Domeinregel
+  //    11 en QS8-84 criterium 2: geen enkele gemiste week zet een straf in
+  //    werking. Deze aanroep kijkt niet naar `weekly_goals` en hoort daarom ook
+  //    niet in de lus die de gemiste weken afhandelt.
+  //
+  // ⚠️ **Na de tz-controle hierboven.** Faalt `closableUserCycle`, dan is de
+  //    tijdzone onbruikbaar en slaan we het profiel over — een straf op een
+  //    gegokte datum is erger dan een straf die een uur later komt.
+  //
+  // ⚠️ Idempotent: de functie raakt alleen commitments met status `set`, dus een
+  //    tweede run op hetzelfde uur vindt niets meer.
+  const { data: straffen, error: strafFout } = await db.rpc('maak_straffen_verschuldigd', {
+    p_owner_id: profiel.id,
+    p_vandaag: localDateIn(profiel.tz, nu),
+  });
+
+  if (strafFout) {
+    // Zacht, zoals de andere afgeleide stappen: de rest van de rollover moet
+    // door. Wel zichtbaar — een straf die niet afgaat, ondermijnt het hele
+    // commitment device (domeinregel 5).
+    console.error(`straffen afwikkelen mislukte voor een profiel: ${strafFout.message}`);
+  } else {
+    return typeof straffen === 'number' ? straffen : 0;
+  }
+
+  return 0;
+}
+
+/**
+ * Sluit elke verstreken week van dit profiel af.
+ *
+ * Geeft `null` terug als de weekdoelen niet op te halen waren — dat was in de
+ * oude vorm een `continue` op de profiellus, en het slaat dus óók het
+ * inschuiven en het herberekenen over. ⚠️ **Dat is de enige `continue` in deze
+ * refactor die een heel profiel oversloeg**, en daarom is hij hier een `null`
+ * geworden en geen lege telling: de aanroeper moet de rest van dit profiel
+ * overslaan, en een telling van nul zou dat verschil wegpoetsen.
+ *
+ * `geraakteDoelen` komt uit de volledige lijst en niet uit de gemiste weken —
+ * ook een vrijgestelde week verandert de reeks.
+ */
+async function sluitVerstrekenWekenAf(
+  db: Db,
+  profiel: Profiel,
+  grens: string,
+): Promise<{ telling: Weekuitkomst; geraakteDoelen: ReadonlySet<string> } | null> {
+  const telling: Weekuitkomst = { gemist: 0, vrijgesteld: 0, gered: 0 };
+
+  // ⚠️ `order` staat er om de uitkomst reproduceerbaar te maken. Zonder
+  //    sorteervolgorde bepaalt het queryplan welke gemiste week een weekpas
+  //    krijgt als er meer gemiste weken zijn dan passen — en dan geeft
+  //    dezelfde data twee keer een ander antwoord. Oudste eerst, zodat een
+  //    ingehaalde achterstand chronologisch wordt afgewikkeld.
+  const { data: open, error: openFout } = await db
+    .from('weekly_goals')
+    .select('id, goal_id, cycle_start_date, points_miss, goals!inner(owner_id)')
+    .eq('goals.owner_id', profiel.id)
+    // ⚠️ `cancelled` hoort hier net zo goed bij als `todo` — A40, migratie
+    //    0045. Een afgesloten weekdoel is een week die je bewust hebt
+    //    opgegeven, en die telt bij het verstrijken van de cyclus als gemist:
+    //    mét minpunt, en een weekpas kan hem redden zoals elke andere.
+    //    Precies daarom hoeft `herbereken_reeks()` niets van `cancelled` te
+    //    weten: in de lopende cyclus is hij neutraal zoals `todo`, en daarna
+    //    is hij gewoon `missed`.
+    .in('status', ['todo', 'cancelled'])
+    .lt('cycle_start_date', grens)
+    .order('cycle_start_date', { ascending: true });
+
+  if (openFout) {
+    console.error(`weekdoelen ophalen mislukte voor een profiel: ${openFout.message}`);
+    return null;
+  }
+
+  for (const weekdoel of (open ?? []) as unknown as OpenWeekdoel[]) {
+    const uitkomst = await verwerkVerstrekenWeek(db, profiel, weekdoel);
+    telling.gemist += uitkomst.gemist;
+    telling.vrijgesteld += uitkomst.vrijgesteld;
+    telling.gered += uitkomst.gered;
+  }
+
+  const geraakteDoelen = new Set((open ?? []).map((w) => (w as unknown as OpenWeekdoel).goal_id));
+  return { telling, geraakteDoelen };
+}
+
+/** Wat één verstreken week aan de telling van de ronde toevoegt. */
+interface Weekuitkomst {
+  gemist: number;
+  vrijgesteld: number;
+  gered: number;
+}
+
+const GEEN_TELLING: Weekuitkomst = { gemist: 0, vrijgesteld: 0, gered: 0 };
+
+/**
+ * Wikkelt één verstreken week af: vrijstellen bij een adempauze, anders
+ * afschrijven met een minpunt en zo nodig een weekpas.
+ *
+ * ⚠️⚠️ **Uit `draaiRollover` getild in QS8-424, en de `continue`s van de oude
+ *    lus zijn hier `return GEEN_TELLING` geworden.** Dat is precies dezelfde
+ *    sprong — ze sloegen het rést van dít weekdoel over en niet het profiel —
+ *    maar het is de plek waar deze refactor mis kón gaan, dus hij staat hier
+ *    opgeschreven. Een `continue` die per ongeluk een profiel oversloeg, zou
+ *    een hele gebruiker zijn minpunt schelen.
+ *
+ * ⚠️ De volgorde is ongewijzigd en dát is domeinregel 10: het minpunt wordt
+ *    geboekt vóór de weekpas, want een pas beschermt de reeks en niet het punt.
+ */
+async function verwerkVerstrekenWeek(
+  db: Db,
+  profiel: Profiel,
+  weekdoel: OpenWeekdoel,
+): Promise<Weekuitkomst> {
+  // Loopt er een adempauze over deze cyclus? Dan telt de week niet mee —
+  // niet positief en niet negatief (domeinregel 10, adempauze = 0).
+  const { data: pauze } = await db
+    .from('breathers')
+    .select('id')
+    .eq('user_id', profiel.id)
+    .eq('goal_id', weekdoel.goal_id)
+    .lte('starts_cycle', weekdoel.cycle_start_date)
+    .gte('ends_cycle', weekdoel.cycle_start_date)
+    .maybeSingle();
+
+  // ⚠️⚠️ **Hier stond tot QS8-424 een ternair met twee guards erachter**, en die
+  //    vorm bestond alleen omdat dit blok toen ín twee lussen zat: `max-depth`
+  //    liet er geen `if` in een `if` toe. De security-review op QS8-422 wees
+  //    hem aan als de plek die daardoor fragiel werd — `vrijstelFout` niet-null
+  //    ímpliceerde dat `pauze` waar was, en dat stond nergens behalve in een
+  //    comment, twintig regels boven de plek waar het minpunt geboekt wordt.
+  //
+  //    In een eigen functie is die nestingruimte er weer, dus de gewone vorm kan
+  //    terug. **Dat is de winst die deze refactor eigenlijk oplevert**: niet
+  //    kortere functies maar code die niet meer om een lintregel heen hoeft te
+  //    buigen.
+  if (pauze) {
+    const { error: vrijstelFout } = await db
+      .from('weekly_goals')
+      .update({ status: 'excused' })
+      .eq('id', weekdoel.id);
+
+    if (vrijstelFout) {
+      console.error(`vrijstellen mislukte voor ${weekdoel.id}: ${vrijstelFout.message}`);
+      return GEEN_TELLING;
+    }
+
+    return { gemist: 0, vrijgesteld: 1, gered: 0 };
+  }
+
+  return await schrijfWeekAf(db, profiel, weekdoel);
+}
+
+/**
+ * Schrijft één verstreken week af: status `missed`, het minpunt, en daarna de
+ * weekpas.
+ *
+ * ⚠️⚠️ **De volgorde is domeinregel 10 en geen stijl.** Het minpunt wordt
+ *    geboekt vóór de weekpas, want een pas beschermt de reeks en niet het
+ *    punt; andersom is missen gratis en zegt de score niets. En de weekpas
+ *    staat ná de statuswijziging omdat `verbruik_weekpas()` zelf toetst dat de
+ *    cyclus écht gemist is — andersom weigert hij en verdwijnt de bescherming
+ *    zonder dat er iets stukgaat.
+ */
+async function schrijfWeekAf(
+  db: Db,
+  profiel: Profiel,
+  weekdoel: OpenWeekdoel,
+): Promise<Weekuitkomst> {
+  // ⚠️ Deze drie schrijfacties controleerden hun fout niet, en dat is geen
+  //    theorie: faalt de statuswijziging en gaat de rest wél door, dan is
+  //    het minpunt geboekt terwijl `verbruik_weekpas()` daarna netjes
+  //    weigert — er is immers geen `missed`-rij. Uitkomst: punt kwijt,
+  //    bescherming niet ingezet, geen enkel signaal. Coderegel 14.
+  const { error: gemistFout } = await db
+    .from('weekly_goals')
+    .update({ status: 'missed' })
+    .eq('id', weekdoel.id);
+
+  if (gemistFout) {
+    console.error(`afschrijven mislukte voor ${weekdoel.id}: ${gemistFout.message}`);
+    return GEEN_TELLING;
+  }
+
+  // Het minpunt. De unieke index maakt dit veilig bij een tweede run.
+  const { error: puntFout } = await db.from('points_ledger').insert({
+    user_id: profiel.id,
+    goal_id: weekdoel.goal_id,
+    delta: weekdoel.points_miss,
+    reason: 'cycle_missed',
+    ref_type: 'weekly_goal',
+    ref_id: weekdoel.id,
+  });
+
+  if (puntFout) {
+    console.error(`minpunt boeken mislukte voor ${weekdoel.id}: ${puntFout.message}`);
+  }
+
+  let gered = 0;
+
+  // De weekpas — QS8-81.
+  //
+  // ⚠️ Staat ná het minpunt, en dat is de hele regel: een weekpas beschermt
+  //    de reeks, niet het punt (domeinregel 10). Zou hij ook het punt
+  //    terugdraaien, dan is missen gratis en zegt de score niets meer.
+  //
+  // ⚠️ Staat ná de statuswijziging omdat `verbruik_weekpas()` zelf
+  //    controleert dat de cyclus écht gemist is. Die volgorde is dus geen
+  //    smaak: andersom weigert de functie en verdwijnt de bescherming
+  //    zonder dat er iets stukgaat.
+  //
+  // ⚠️ Geen rekenwerk hier. De functie krijgt de cyclusdatum die al in de
+  //    rij staat; er wordt geen week afgeleid (correctheidsregel 7).
+  const { data: geredeWeek, error: pasFout } = await db.rpc('verbruik_weekpas', {
+    p_user_id: profiel.id,
+    p_goal_id: weekdoel.goal_id,
+    p_cycle_start_date: weekdoel.cycle_start_date,
+  });
+
+  if (pasFout) {
+    // Zichtbaar maar zacht. Een pas die niet ingezet kon worden kost een
+    // reeks en hoort niet stil te gebeuren, maar de rollover mag er niet op
+    // stuklopen: de andere profielen moeten nog.
+    console.error(
+      `weekpas verbruiken mislukte voor doel ${weekdoel.goal_id}: ${pasFout.message}`,
+    );
+  } else if (geredeWeek === true) {
+    gered = 1;
+  }
+
+  return { gemist: 1, vrijgesteld: 0, gered };
+}
+
+/**
+ * Schuift het weekplan van dit profiel in en geeft terug hoeveel stappen dat
+ * opleverde.
+ *
+ * ⚠️ **Uit `draaiRollover` getild in QS8-424**, met de kop en de volgorde
+ *    ongewijzigd. De aanroeper telt de teruggave op bij `ingeschoven`; dat is
+ *    woordelijk dezelfde telling als de `+= 1` die hier stond.
+ */
+async function schuifWeekplanIn(db: Db, profiel: Profiel, nu: Date): Promise<number> {
+  let ingeschoven = 0;
+
+  // -----------------------------------------------------------------------
+  // Het weekplan inschuiven — QS8-203, migratie 0137
+  // -----------------------------------------------------------------------
+  //
+  // ⚠️ **De cyclus is `userCycle` en niet `afsluitbaar`.** Dat is het hele
+  //    verschil tussen de twee helften van deze job. Afschrijven gaat over de
+  //    week die vóórbij is en mag pas na de coulanceperiode; inschuiven gaat
+  //    over de week waar de gebruiker nú in zit. Zou dit `afsluitbaar` nemen,
+  //    dan komt het nieuwe weekdoel binnen de coulanceperiode in de vórige
+  //    week terecht — en die is al verstreken, dus de eerstvolgende ronde
+  //    schrijft hem meteen als gemist af. Een minpunt op een weekdoel dat de
+  //    app zelf net heeft aangemaakt.
+  //
+  // ⚠️ **Staat ná het afschrijven en dat is opzet.** Andersom zou het verse
+  //    weekdoel in dezelfde ronde langs de `missed`-lus komen. Dat gaat vandaag
+  //    goed omdat die lus op `cycle_start_date < afsluitbaar.startDate` filtert,
+  //    maar dat is een eigenschap van een andere query — precies het soort
+  //    verband dat stilvalt zodra iemand die filter aanpast.
+  //
+  // ⚠️ **Eén vraag per gebruiker en niet twee per doel** (onwrikbare regel 12).
+  //    `weekplan_kandidaten()` geeft de actieve doelen mét openstaande stap en
+  //    de vroegste cyclus van dat doel in één keer terug; het omrekenen naar
+  //    een cyclusnummer gebeurt hier, met `shared/time`.
+  //
+  // ⚠️ Idempotent, en de grendel is een unieke index en geen afspraak:
+  //    `weekly_plan_steps_een_per_cyclus`. Een tweede ronde in hetzelfde uur
+  //    krijgt `al_geactiveerd` terug en maakt niets.
+  const huidige = userCycle(
+    { weekStartDay: profiel.week_start_day as Weekday, tz: profiel.tz },
+    nu,
   );
+
+  const { data: kandidaten, error: kandidaatFout } = await db.rpc('weekplan_kandidaten', {
+    p_owner_id: profiel.id,
+  });
+
+  if (kandidaatFout) {
+    // Zacht: het afschrijven is het echte werk van deze job. Wel zichtbaar —
+    // een plan dat niet inschuift, is een week waarin de gebruiker niets te
+    // doen heeft zonder dat iemand dat besloten heeft.
+    console.error(`weekplan-kandidaten ophalen mislukte voor een profiel: ${kandidaatFout.message}`);
+  } else {
+    for (const kandidaat of (kandidaten ?? []) as Kandidaat[]) {
+      const { data: uitkomst, error: stapFout } = await db.rpc('activeer_weekplanstap', {
+        p_goal_id: kandidaat.goal_id,
+        p_cycle_start_date: huidige.startDate,
+      });
+
+      if (stapFout) {
+        console.error(
+          `weekplanstap activeren mislukte voor ${kandidaat.goal_id}: ${stapFout.message}`,
+        );
+        continue;
+      }
+
+      // ⚠️ `al_geactiveerd` en `geen_stap` zijn de normale uitkomsten van een
+      //    tweede ronde en van een leeg plan. Die tellen niet mee en horen
+      //    niet in het log — anders staat er elk uur een regel per doel.
+      if ((uitkomst as { ok?: boolean } | null)?.ok === true) ingeschoven += 1;
+    }
+  }
+
+  return ingeschoven;
+}
+
+/**
+ * Herberekent de reeks en het risico van elk doel dat deze ronde geraakt is.
+ *
+ * ⚠️ **Uit `draaiRollover` getild in QS8-424.** De telling is woordelijk
+ *    dezelfde: één op elke geslaagde `herbereken_risico`, en de aanroeper telt
+ *    de teruggave op bij `risicoBijgewerkt`.
+ */
+async function herberekenReeksEnRisico(
+  db: Db,
+  profiel: Profiel,
+  geraakteDoelen: ReadonlySet<string>,
+): Promise<number> {
+  let bijgewerkt = 0;
+
+  for (const goalId of geraakteDoelen) {
+    await db.rpc('herbereken_reeks', { p_user_id: profiel.id, p_goal_id: goalId });
+
+    // De Risico-radar — QS8-93, migratie 0051.
+    //
+    // ⚠️ Hier én in de trigger op `completion_approvals`, en dat zijn samen
+    //    precies de twee momenten waarop de uitkomst kan veranderen: een week
+    //    die verstrijkt en een week die goedgekeurd wordt. Niet bij elke
+    //    schermweergave — dat is acceptatiecriterium 2, en op een gratis tier
+    //    is het ook gewoon zonde.
+    //
+    // ⚠️ De fout wordt gemeld en niet gegooid. Een mislukte risicoberekening
+    //    mag de rollover niet stoppen: het minpunt en de reeks zijn het echte
+    //    werk, het risico is een afgeleide. Zelfde afweging als bij de
+    //    trigger.
+    const { error: risicoFout } = await db.rpc('herbereken_risico', {
+      p_goal_id: goalId,
+    });
+
+    if (risicoFout) {
+      console.error(`risico niet herberekend voor ${goalId}: ${risicoFout.message}`);
+    } else {
+      bijgewerkt += 1;
+    }
+  }
+
+  return bijgewerkt;
 }
