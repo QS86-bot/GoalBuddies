@@ -74,6 +74,81 @@ react-native mee en is te overleven omdat de RLS-tests hem mocken (`vi.mock` in
 `doorloop.test.ts`). Een `expo-*`-import dekt geen enkele mock. `index.ts` blijft daarom
 vrij van het platform; `react.ts` is waar het wél mag.
 
+## 4a. De grendel is geijkt, en de eerste vorm was stil dood
+
+De regel uit de tabel hierboven is niet één lintregel maar twee, en dat is een uitkomst van
+de ijking en geen ontwerp vooraf. Vier vormen waarin je hier een import kunt schrijven, elk
+los aangeboden aan `src/shared/kiezers/kiesFoto.ts`:
+
+| vorm | `no-restricted-imports` | `import/no-restricted-paths` |
+|---|---|---|
+| `import … from '../../modules/goals/schemas'` | rood | rood |
+| `import … from '@/modules/goals/schemas'` | rood | rood |
+| `await import('../../modules/goals/schemas')` | **groen** | rood |
+| `await import('@/modules/goals/schemas')` | **groen** | rood |
+
+📏 `no-restricted-imports` hangt aan `ImportDeclaration`; een dynamische import is een
+`ImportExpression` en glipt er onderdoor. Dat is hier geen theoretisch gat:
+`src/modules/ai/plan-toepassen.ts` gebruikt `await import('../goals')` op **twee** plekken
+in productiecode om een cykel te breken, en er staan er veertien in de repo. Het is dus een
+idioom dat dit project kent en dat binnen handbereik van de volgende schrijver ligt.
+`import/no-restricted-paths` kijkt naar het opgelóste pad en dekt alle vier; de eerste
+regel blijft staan als tweede net, omdat zijn melding QS8-423 op de importregel zelf noemt.
+Er is een tweede zone voor `src/lib/supabase.ts` — de datalaag één deur verder, waar een
+`shared`-bestand dezelfde knoop legt zonder ooit langs `modules/` te komen. Met opzet dat
+bestand en niet de map: `lib/observability` en `lib/env` zijn dwarsdoorsnijdend.
+
+⚠️ **Vier vormen is niet alle vormen.** Beide regels lezen de bronstring, dus
+`const p = '…/modules/…'; await import(p)` ontsnapt — 📏 gemeten, groen bij allebei. En
+testbestanden staan in `ignores`, wat vandaag niet leeg is: `src/shared/ui/tips.test.ts` en
+`src/shared/ui/categoriemerk.test.ts` lenen allebei `CATEGORIEEN` uit `modules/goals`. De
+grens is dus *"shared kent de datalaag niet búíten tests"*, en dat is een keuze — een test
+die een moduleconstante leent om shared-gedrag te toetsen, dupliceren is erger. Allebei de
+grenzen staan als eigen geval in de test hieronder, zodat ze opvallen als ze verschuiven.
+
+⚠️⚠️ **De eerste poging was `no-restricted-syntax` met een `ImportExpression`-selector, en
+die was stil dood.** Het tijdblok verderop in `eslint.config.js` zet diezelfde regelnaam,
+staat láter, en dekt `src/**` — en flat config **vervangt** de opties van een regel in
+plaats van ze samen te voegen. 📏 `eslint --print-config src/shared/kiezers/kiesFoto.ts`
+gaf alleen de drie tijdselectors terug; de mutatie bleef groen. Dat is precies de klasse
+die CLAUDE.md beschrijft bij *"een grendel die alleen in een comment staat"*: de regel
+stond er, las goed, en deed niets.
+
+Nagelopen of het elders in dat bestand ook gebeurt — drie regelnamen worden in meer dan één
+blok gezet (`no-empty`, `max-lines-per-function`,
+`@typescript-eslint/no-restricted-imports`), en 📏 `--print-config` op vier bestanden laat
+zien dat geen van die paren elkaar in `files` overlapt. Geen tweede slachtoffer.
+
+### De ijking staat in een test, en niet alleen hier
+
+`tests/scripts/laaggrenzen.test.ts` voert beide grenzen langs `ESLint.lintText()` — elke
+vorm die rood moet worden én elke vorm die met rust gelaten moet worden — plus een blok dat
+via `calculateConfigForFile()` toetst dat de regel de opgeloste config overléeft. Dat laatste
+blok is er precies om de stille dood hierboven: een gemiste vorm en een opgegeten regel zijn
+twee verschillende fouten, en de gevallen vinden de tweede alleen bij toeval.
+
+📏 Vier mutaties, elk apart, en elke keer is gekeken wélke tests omvielen:
+
+| mutatie | `npm run lint` | rood in de suite |
+|---|---|---|
+| `import/no-restricted-paths` volledig weg | groen | 12 van 24 |
+| alleen de `lib/supabase`-zone weg | groen | **precies de 2** lib-gevallen |
+| regelnaam terug naar `no-restricted-syntax` (de stille dood) | **groen** | 12 van 24 |
+| het QS8-207-patroon ontkracht | groen | **precies de 2** QS8-207-gevallen |
+
+⚠️ De derde rij is de reden dat deze test bestaat: `eslint.config.js` laadt, `npm run lint`
+geeft **exitcode 0**, en er is geen grendel meer. Niets anders in dit project ziet dat.
+
+⚠️ De eerste poging tot die derde mutatie was een misser die het vermelden waard is: de
+splice liet een syntactisch kapotte config achter, en toen vielen alle 24 om — mét
+`LINT EXIT=2`. Dat is *"er werd iets rood"*, niet *"mijn grendel werd rood"*. Pas met een
+geldige config die alleen de regelnáám hergebruikt, meet de mutatie wat ze belooft.
+
+⚠️ **De QS8-207-regel de andere kant op heeft het gat wél nog**, en dat is met dezelfde
+twee mutaties gemeten op `src/modules/buddies/api.ts`: statisch rood, `await
+import('../../shared/ui')` groen. Dat is geen bevinding van deze verhuizing en het gaat
+niet in deze branch mee — het staat als eigen issue, met deze meting erin.
+
 ## 5. Waarom de vier diepe imports van `metGetekendeAvatars` blijven
 
 `buddies/weekafsluiting.ts`, `buddies/api.ts`, `buddies/chat.ts` en
@@ -145,3 +220,6 @@ er tussendoor een stand is waarin allebei de lintregels rood staan.
   plus ijking is en geen verhuizing.
 - **Geen oplossing voor `Resultaat<T>`** dat in drie bestanden uit `../goals` geleend wordt
   in plaats van uit `shared/api`. Aparte drift, aparte rij.
+- **Geen reparatie van het dynamische gat in de QS8-207-regel** (§4a, laatste alinea). Die
+  regel is van een ander issue en dekt de andere richting; hem hier meenemen is de branch
+  verbreden. De meting ligt er, dus het vervolgissue hoeft niet opnieuw te meten.

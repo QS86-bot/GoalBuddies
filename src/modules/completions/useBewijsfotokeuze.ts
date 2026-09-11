@@ -2,7 +2,7 @@ import { useState } from 'react';
 
 import { t } from '../../shared/i18n';
 
-import { kiesFoto } from '../../shared/kiezers';
+import { kiesFoto } from '../../shared/kiezers/kiesFoto';
 
 /**
  * De fotokeuze bij het afronden van een weekdoel — QS8-391.
@@ -17,12 +17,22 @@ import { kiesFoto } from '../../shared/kiezers';
  *    — en dat is de enige vorm waarin ze los te toetsen zijn. Zelfde reden en
  *    zelfde vorm als `useAvatarKeuze.ts`.
  *
- * ⚠️⚠️ **Hij staat in `shared/ui` en niet in `modules/completions`, en dat is
- *    geen plaatsingsvoorkeur maar een laagregel.** `eslint.config.js` verbiedt
- *    de datalaag élke import uit `shared/ui`, ook een type (QS8-207), en deze
- *    hook leunt op `kiesFoto()`. Hij hóórt daar ook: dit is schermtoestand — een
- *    gekozen bestand en een melding — en geen module-communicatie. De datalaag
- *    krijgt straks alleen de bytes.
+ * ⚠️⚠️ **Hij staat sinds 11-09-2026 in `modules/completions`** (QS8-423), en
+ *    daarvóór in `shared/ui`. De oude reden was een laagregel en klopte: de
+ *    datalaag mag níets uit `shared/ui` importeren, ook geen type (QS8-207), en
+ *    deze hook leunt op `kiesFoto()` — die stond toen in `shared/ui`.
+ *
+ *    Wat er mis was, is de plek van `kiesFoto()` en niet die van deze hook. Een
+ *    kiezer rendert niets, draagt geen label en kent geen toon; hij is een
+ *    platformvermogen en staat nu in `shared/kiezers`. Daarmee valt de klem weg
+ *    en mag deze hook wonen waar hij hoort: bij zijn domein.
+ *
+ *    ⚠️ Dit blijft schermtoestand — een gekozen bestand en een melding — en
+ *    geen module-communicatie. Hij hoort dáárom in `react.ts` en niet in
+ *    `index.ts`: de barrel blijft vrij van `expo-*`, want daar leunen de
+ *    RLS-tests op. De datalaag krijgt alleen de bytes.
+ *
+ *    Uitleg in `docs/decisions/2026-09-11-een-kiezer-is-geen-ui.md`.
  */
 export interface Bewijsfotokeuze {
   readonly foto: { readonly data: Uint8Array; readonly mime: string } | null;

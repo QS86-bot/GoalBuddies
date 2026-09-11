@@ -1,6 +1,13 @@
 const expoConfig = require('eslint-config-expo/flat');
 const tseslint = require('typescript-eslint');
 
+// Eén tekst voor twee grendels — zie het blok voor `src/shared/**` verderop.
+// Twee regels moeten dezelfde grens in twee vormen afdwingen (een statische en
+// een dynamische import); de uitleg die de lezer krijgt hoort dan niet per vorm
+// te verschillen, en al helemaal niet uit elkaar te groeien.
+const GEDEELDE_LAAG_GEEN_DATALAAG =
+  'De gedeelde laag importeert niets uit de datalaag. Een platformvermogen (een kiezer, een opener) hoort in shared/kiezers; een hook die zo\'n vermogen aan een domein knoopt hoort in modules/<naam>/react.ts. Zie QS8-423.';
+
 module.exports = [
   ...expoConfig,
   {
@@ -131,8 +138,60 @@ module.exports = [
           patterns: [
             {
               group: ['**/modules/**'],
-              message:
-                'De gedeelde laag importeert niets uit de datalaag. Een platformvermogen (een kiezer, een opener) hoort in shared/kiezers; een hook die zo\'n vermogen aan een domein knoopt hoort in modules/<naam>/react.ts. Zie QS8-423.',
+              message: GEDEELDE_LAAG_GEEN_DATALAAG,
+            },
+          ],
+        },
+      ],
+      // ⚠️ **`no-restricted-imports` ziet `await import()` niet**, en dat is
+      //    gemeten en niet aangenomen: die regel hangt aan `ImportDeclaration`,
+      //    en een dynamische import is een `ImportExpression`. Dat gat is hier
+      //    niet theoretisch — `src/modules/ai/plan-toepassen.ts` gebruikt die
+      //    vorm op twee plekken in productiecode om een cykel te breken, dus
+      //    het is een idioom dat dit project kent en dat de volgende schrijver
+      //    binnen handbereik heeft. Een grendel met een uitgang die de codebase
+      //    zelf al gebruikt, bewaakt die uitgang niet.
+      //
+      //    Deze regel dekt alle vier de vormen (relatief en via `@/`, statisch
+      //    en dynamisch): hij kijkt naar het opgelóste pad in plaats van naar
+      //    de letterlijke tekst. De regel hierboven blijft staan als tweede net
+      //    op de twee statische vormen — hij noemt QS8-423 op de importregel
+      //    zelf, wat korter uit te leggen is dan een opgelost pad.
+      //
+      // ⚠️⚠️ **Niet `no-restricted-syntax` gebruiken voor zoiets in dit
+      //    bestand.** Dat was de eerste vorm hiervan, met een
+      //    `ImportExpression`-selector, en hij was stil dood: het tijdblok
+      //    verderop zet `no-restricted-syntax` óók, staat láter, en dekt
+      //    `src/**` — en flat config **vervangt** de opties van een regel in
+      //    plaats van ze samen te voegen. 📏 `eslint --print-config` gaf alleen
+      //    de drie tijdselectors terug. Twee blokken die dezelfde regelnaam
+      //    zetten en elkaar in `files` overlappen, zijn niet allebei van
+      //    kracht; de laatste wint volledig. Kies dan een andere regelnaam, of
+      //    zet de selectors bij elkaar in één blok.
+      'import/no-restricted-paths': [
+        'error',
+        {
+          zones: [
+            {
+              target: './src/shared',
+              from: './src/modules',
+              message: GEDEELDE_LAAG_GEEN_DATALAAG,
+            },
+            {
+              // ⚠️ **`lib/supabase` is de datalaag één deur verder.** De zone
+              //    hierboven dekt `src/modules`, en een `shared`-bestand dat de
+              //    client rechtstreeks pakt legt dezelfde knoop zonder er ooit
+              //    langs te komen. 📏 Vandaag nul treffers in `src/shared` — dit
+              //    legt een eigenschap vast die waar is, en dat is goedkoper dan
+              //    hem terugdraaien.
+              //
+              //    Met opzet het bestand en niet de map: `lib/observability` en
+              //    `lib/env` zijn dwarsdoorsnijdend en geen datalaag, en die
+              //    hier meenemen zou een grens trekken die niemand besloten
+              //    heeft.
+              target: './src/shared',
+              from: './src/lib/supabase.ts',
+              message: GEDEELDE_LAAG_GEEN_DATALAAG,
             },
           ],
         },
