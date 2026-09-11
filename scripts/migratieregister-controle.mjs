@@ -37,12 +37,10 @@
  * alleen voor `service_role` open; `supabase_migrations` zelf zit niet in de API.
  */
 
-import { readdirSync } from 'node:fs';
-import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import { beoordeelOmgeving } from './migratieregister-omgeving.mjs';
-import { vergelijk } from './migratieregister-vergelijk.mjs';
+import { migratiesInMap, vergelijk } from './migratieregister-vergelijk.mjs';
 
 const WORTEL = fileURLToPath(new URL('..', import.meta.url));
 
@@ -72,18 +70,6 @@ if (oordeel === 'overslaan') {
   process.exit(0);
 }
 
-/** De migraties zoals ze in de repo staan: `0057_commitments_afwikkelen.sql`. */
-function uitDeRepo() {
-  return readdirSync(join(WORTEL, 'supabase', 'migrations'))
-    .filter((naam) => naam.endsWith('.sql'))
-    .map((naam) => {
-      const stam = naam.slice(0, -4);
-      const scheiding = stam.indexOf('_');
-      return { versie: stam.slice(0, scheiding), naam: stam.slice(scheiding + 1), bestand: naam };
-    })
-    .sort((a, b) => a.versie.localeCompare(b.versie));
-}
-
 async function uitHetProject() {
   const antwoord = await fetch(`${url}/rest/v1/rpc/migratieregister`, {
     method: 'POST',
@@ -107,7 +93,7 @@ async function uitHetProject() {
   return antwoord.json();
 }
 
-const repo = uitDeRepo();
+const repo = migratiesInMap(WORTEL);
 const project = await uitHetProject();
 
 const klachten = vergelijk(repo, project);
