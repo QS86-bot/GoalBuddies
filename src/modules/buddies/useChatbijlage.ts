@@ -4,7 +4,7 @@ import { t } from '../../shared/i18n';
 
 import { kiesDocument, kiesFoto, type Gekozenbijlage } from '../../shared/kiezers';
 
-import { keurChatdoc } from './chatdoc';
+import { CHATDOC_MAX_BYTES, keurChatdoc } from './chatdoc';
 import { keurChatfoto } from './chatfoto';
 
 /**
@@ -77,7 +77,11 @@ export function useChatbijlage(): Chatbijlagekeuze {
 
   async function kiesEenDocument() {
     setFout(null);
-    const keuze = await kiesDocument();
+    // ⚠️ **Dezelfde grens als `keurChatdoc()` hieronder, uit dezelfde constante.**
+    //    De kiezer weigert ermee vóór hij de bytes leest (QS8-431); de keuring
+    //    blijft erachter staan en is de grens die telt — zij ziet de échte
+    //    `byteLength` en niet wat het platform over het bestand beweert.
+    const keuze = await kiesDocument(CHATDOC_MAX_BYTES);
 
     if (keuze.soort === 'afgebroken') return;
     if (keuze.soort === 'fout') {

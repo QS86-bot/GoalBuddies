@@ -26,9 +26,21 @@ import * as DocumentPicker from 'expo-document-picker';
  *    bewaart is wat hij terugserveert, en dát is de waarde die bepaalt of een
  *    browser het bestand ooit als HTML behandelt.
  */
+/**
+ * ⚠️ Een unie en geen `string`, zelfde reden als bij `kiesFoto.ts`: een sleutel
+ *    die niet in de catalogus bestaat, is dan een typefout en geen lege melding.
+ *
+ * ⚠️⚠️ **`chatdoc.te_groot` staat er sinds QS8-431 bij, en dat is met opzet
+ *    dezelfde sleutel die `keurChatdoc()` al gaf.** Niet een tweede melding voor
+ *    dezelfde zaak: welke van de twee poorten het bestand tegenhoudt, de
+ *    gebruiker leest dezelfde zin. Daardoor hoefde de aanroeper geen enkele tak
+ *    erbij te krijgen — `setFout(t(keuze.sleutel))` stond er al.
+ */
+export type Documentfoutsleutel = 'chatdoc.kiezen_mislukt' | 'chatdoc.te_groot';
+
 export type Documentkeuze =
   | { readonly soort: 'afgebroken' }
-  | { readonly soort: 'fout'; readonly sleutel: 'chatdoc.kiezen_mislukt' }
+  | { readonly soort: 'fout'; readonly sleutel: Documentfoutsleutel }
   | {
       readonly soort: 'gekozen';
       readonly data: Uint8Array;
@@ -36,7 +48,36 @@ export type Documentkeuze =
       readonly naam: string;
     };
 
-export async function kiesDocument(): Promise<Documentkeuze> {
+/**
+ * @param maxBytes De grens waarboven het bestand niet eens gelezen wordt.
+ *
+ * ⚠️⚠️ **Een parameter en geen constante, en dat is de laag en niet de smaak.**
+ *    `CHATDOC_MAX_BYTES` woont in `modules/buddies/chatdoc.ts`, en
+ *    `shared/kiezers` mag `modules/**` niet importeren — dat is sinds QS8-423
+ *    een lintregel (`import/no-restricted-paths`) en geen gewoonte. Een eigen
+ *    constante hier zou een tweede bron voor dezelfde grens zijn, en die twee
+ *    lopen uit elkaar. Zelfde vorm als de foutsleutel van `kiesFoto()`: wat het
+ *    domein weet, komt van de aanroeper.
+ *
+ * ⚠️⚠️ **Eén gemeten gedragsverschil, en het staat hier omdat een afwijking die
+ *    je vergeet op te schrijven duurder is dan een die opvalt.** `keurChatdoc()`
+ *    toetst type vóór omvang; deze poort toetst alleen omvang en staat ervóór.
+ *    Een bestand dat én te groot is én een verkeerd type heeft, meldde daardoor
+ *    tot QS8-431 `chatdoc.type_niet_toegestaan` en meldt nu `chatdoc.te_groot`.
+ *    Allebei waar; de tweede kost geen 500 MB om vast te stellen.
+ *
+ *    **Bewust niet opgelost door de typetoets hier te herhalen.** Dan staat
+ *    dezelfde regel op twee plekken, en dát is de naad die dit project keer op
+ *    keer geld kost — erger dan een andere melding in een randgeval dat de
+ *    `type`-filter van de kiezer toch al zeldzaam maakt.
+ *
+ * ⚠️ De naad staat onder test in
+ *    `tests/beloftes/een-te-groot-document-wordt-niet-gelezen.test.ts`: die telt
+ *    hoe vaak er gelezen is, want een poort die ná de kosten staat is geen
+ *    poort. Afweging in
+ *    `docs/decisions/2026-09-12-een-poort-die-na-de-kosten-staat-is-geen-poort.md`.
+ */
+export async function kiesDocument(maxBytes: number): Promise<Documentkeuze> {
   const keuze = await DocumentPicker.getDocumentAsync({
     // ⚠️ Een filter en geen grendel: op sommige platformen is hij te omzeilen.
     //    De grendels zijn `allowed_mime_types` op de bucket (0240), de
@@ -48,6 +89,12 @@ export async function kiesDocument(): Promise<Documentkeuze> {
 
   const gekozen = keuze.canceled ? null : (keuze.assets[0] ?? null);
   if (gekozen === null) return { soort: 'afgebroken' };
+
+  // ⚠️ De poort die dit issue oplevert: weigeren vóór `leesBestand()`, want die
+  //    trekt het hele bestand in JS-geheugen. Een gekozen bestand van 500 MB
+  //    werd eerst volledig geladen om daarna "te groot" te zeggen — op een
+  //    telefoon het verschil tussen een melding en een gedode app.
+  if (teGroot(gekozen.size, maxBytes)) return { soort: 'fout', sleutel: 'chatdoc.te_groot' };
 
   const bytes = await leesBestand(gekozen.uri);
   if (bytes === null) return { soort: 'fout', sleutel: 'chatdoc.kiezen_mislukt' };
@@ -61,6 +108,27 @@ export async function kiesDocument(): Promise<Documentkeuze> {
     //    zodat er één plek is waar die vorm bepaald wordt.
     naam: gekozen.name,
   };
+}
+
+/**
+ * Of dit bestand te groot is om te lezen — QS8-431.
+ *
+ * ⚠️⚠️ **`size` is optioneel bij `expo-document-picker`** (`size?: number`,
+ *    nagemeten in `node_modules/expo-document-picker/build/types.d.ts`).
+ *    Ontbreekt hij, dan is het antwoord `false` en blijft de oude weg volledig
+ *    over: lezen en daarna `keurChatdoc()`. **Dit is een extra poort en geen
+ *    vervanging** — die keuring is en blijft de grens die telt, want zij ziet de
+ *    échte `byteLength` en niet wat het platform beweert.
+ *
+ * ⚠️ **Strikt groter dan, net als `keurChatdoc()`.** Een bestand van precies
+ *    `maxBytes` mag door. Zouden de twee poorten hier verschillen, dan is er een
+ *    bestand dat de ene weigert en de andere doorlaat — en dat is precies het
+ *    soort naad waar regel 18 over gaat.
+ *
+ * ⚠️ Geëxporteerd omdat een controle die je niet kunt voeden, niet te ijken is.
+ */
+export function teGroot(size: number | undefined, maxBytes: number): boolean {
+  return size !== undefined && size > maxBytes;
 }
 
 /**
