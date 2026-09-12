@@ -1,8 +1,6 @@
 import { Tabs } from 'expo-router';
 
 import { t } from '@/shared/i18n';
-import { useTheme } from '@/shared/theme';
-import { BovenrandAlVerrekend } from '@/shared/ui';
 
 /**
  * De vijf kernschermen.
@@ -53,13 +51,22 @@ import { BovenrandAlVerrekend } from '@/shared/ui';
  *    aan de kant waar de inhoud begint. Boven met een lijn aan de bovenkant is
  *    een streep tegen de statusbalk aan.
  *
- * ⚠️ **`BovenrandAlVerrekend` eromheen, en dat is de naad van deze wijziging.**
- *    De balk neemt `insets.top` zélf (gemeten in `BottomTabBar.js`:
- *    `paddingTop: tabBarPosition === 'top' ? insets.top : 0`). `Screen` deed dat
- *    óók, en twee keer een notch aan ruimte is precies de fout die op een
- *    simulator zonder notch onzichtbaar blijft. De context zet dat voor élk
- *    scherm onder deze map tegelijk goed, ook voor een tabblad dat er later bij
- *    komt.
+ * ⚠️⚠️ **En sinds QS8-437 tekent deze navigator zijn balk niet meer.** De balk
+ *    hoorde bij de navigator, en daarmee bestond hij alleen binnen deze map:
+ *    📏 24 van de 29 schermen lagen erbuiten en hadden er geen. Hij wordt nu
+ *    getekend door `Screen`, en dat is het ene ding dat élk scherm rendert —
+ *    gemeten, alle 27 routes precies één keer.
+ *
+ *    Wat hier stond over `BovenrandAlVerrekend` is dáármee vervallen en niet
+ *    vergeten: die context bestond om twee tellers van de bovenrand uit elkaar
+ *    te houden (deze balk en `Screen`). Er is er nog één, dus er valt niets meer
+ *    te verzoenen. Afweging in
+ *    `docs/decisions/2026-09-12-een-balk-hoort-bij-het-scherm-en-niet-bij-de-navigator.md`.
+ *
+ * ⚠️ **De navigator blíjft staan, en dat is de prijs die niet betaald hoefde te
+ *    worden.** Geen enkele route verhuist; de vijf tabbladen houden hun plek,
+ *    hun URL en hun laadgedrag. Regel 18 noemt een verhuizing de gevaarlijkste
+ *    beweging die er is, en dit besluit doet er geen.
  *
  * ⚠️ **Boven op web én op native, en dat is een keuze met een prijs.** Het issue
  *    biedt de splitsing aan — boven op web, onder op native — met het argument
@@ -70,35 +77,27 @@ import { BovenrandAlVerrekend } from '@/shared/ui';
  *    testronde te knellen, dan is dit de plek en is het één regel.
  */
 export default function TabsLayout() {
-  const theme = useTheme();
-
   return (
-    <BovenrandAlVerrekend>
-      <Tabs
-        screenOptions={{
-          headerShown: false,
-          tabBarPosition: 'top',
-          tabBarActiveTintColor: theme.colors.accent,
-          tabBarInactiveTintColor: theme.colors.grey,
-          tabBarStyle: {
-            backgroundColor: theme.colors.panel,
-            borderBottomColor: theme.colors.border,
-          },
-          tabBarLabelStyle: { fontSize: 12, fontWeight: '600' },
-          sceneStyle: { backgroundColor: theme.colors.bg },
-        }}
-      >
-        <Tabs.Screen name="index" options={{ title: t('tab.vandaag') }} />
-        <Tabs.Screen name="doelen" options={{ title: t('tab.doelen') }} />
-        <Tabs.Screen name="groep" options={{ title: t('tab.groep') }} />
-        {/*
-          ⚠️ Vóór "Profiel" en niet erna: de eerste vier zijn de lus die de app
-             draait, en Profiel is de instellingenhoek. De Lijst hoort bij het
-             doen en niet bij het instellen.
-        */}
-        <Tabs.Screen name="lijst" options={{ title: t('tab.lijst') }} />
-        <Tabs.Screen name="profiel" options={{ title: t('tab.profiel') }} />
-      </Tabs>
-    </BovenrandAlVerrekend>
+    <Tabs
+      // ⚠️ **De navigator tekent niets** — QS8-437. `Screen` doet dat, op élk
+      //    scherm. Twee balken zouden twee componenten zijn die er hetzelfde uit
+      //    moeten zien en twee antwoorden op "waar ben ik"; dat is precies het
+      //    bezwaar dat het issue tegen deze vorm opwierp, en één balk haalt het
+      //    weg. De titels blijven staan: ze zijn de naam van de route voor de
+      //    router en de schermlezer.
+      tabBar={() => null}
+      screenOptions={{ headerShown: false }}
+    >
+      <Tabs.Screen name="index" options={{ title: t('tab.vandaag') }} />
+      <Tabs.Screen name="doelen" options={{ title: t('tab.doelen') }} />
+      <Tabs.Screen name="groep" options={{ title: t('tab.groep') }} />
+      {/*
+        ⚠️ Vóór "Profiel" en niet erna: de eerste vier zijn de lus die de app
+           draait, en Profiel is de instellingenhoek. De Lijst hoort bij het
+           doen en niet bij het instellen.
+      */}
+      <Tabs.Screen name="lijst" options={{ title: t('tab.lijst') }} />
+      <Tabs.Screen name="profiel" options={{ title: t('tab.profiel') }} />
+    </Tabs>
   );
 }
