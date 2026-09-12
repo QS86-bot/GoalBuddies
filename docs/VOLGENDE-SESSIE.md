@@ -3,7 +3,9 @@
 > Kopieer alles onder de streep in een nieuwe chat. Werk dit bestand bij aan het
 > eind van elke sessie — het is de overdracht, niet een archief.
 >
-> **Laatst bijgewerkt:** 11-09-2026, tijdens QS8-424 (PR #417). Daarvóór
+> **Laatst bijgewerkt:** 12-09-2026, na QS8-437 (PR #431, `f2645fc`). Diezelfde
+> dag uit deze sessie QS8-435 (PR #428) en QS8-434 (PR #429), en uit de parallelle
+> QS8-416, QS8-431 (PR #427) en QS8-438 (PR #430). Daarvóór QS8-424 (PR #417) en
 > diezelfde dag QS8-425 (PR #414, `1830785`), QS8-262 ronde 9 (`c8fa5e6`),
 > QS8-423 (PR #411, `c9e99a6`), QS8-421 (PR #412), QS8-422 (PR #410), QS8-419 en
 > QS8-420, en op 10-09 QS8-414 (`72741e9`) — QS8-418.
@@ -261,6 +263,42 @@
 > (*"wordt zwaarder als de uitkomst van een persoon gaat afhangen"*) die op de dag
 > van schrijven al vervuld was. `review:controle` ziet dat niet — die toetst
 > alleen dát er een voorwaarde staat.
+>
+> **12-09, punt T: een mutatie die de grendel niet raakt, meet de grendel niet —
+> en dat is iets anders dan een grendel die niet werkt.** 📏 Bij QS8-437 zette de
+> eerste ijking alleen een `import` van `useSafeAreaInsets` erbij en er werd
+> niets rood. Even leek de grendel kapot; hij zoekt op `useSafeAreaInsets(` mét
+> haakje, en een import ís geen tweede teller. Met een echte aanroep viel hij
+> meteen om. **Vraag je bij een groene ijking dus eerst af of je mutatie de
+> belofte werkelijk breekt**, vóór je concludeert dat de grendel niets doet.
+> Dit is punt B van 10-09 een slag dieper: die zegt *controleer dát je mutatie in
+> het bestand staat*, deze zegt *controleer dat hij het júiste kapot maakt*.
+>
+> ⚠️⚠️ **12-09, punt U: een grendel kan een tautologie zijn, en dan is hij altijd
+> groen.** Ook QS8-437, en dit was mijn eigen test. Hij filterde de routes op
+> `!toontTaakbalk(pad)` en toetste daarna of elk van die routes in het register
+> `ZONDER_TAAKBALK` stond — maar `toontTaakbalk()` **léést** dat register, dus die
+> twee kunnen het per constructie niet oneens zijn. Regel 18 vraag 3 in zuivere
+> vorm: hij kon groen blijven terwijl de belofte brak, want hij kon de belofte
+> niet raken.
+>
+> **De vorm om op te letten:** een test die zijn verwachting *afleidt* uit
+> dezelfde functie die hij toetst. Vraag bij elke nieuwe grendel: *waar komt de
+> verwachte waarde vandaan, en is dat een andere bron dan het ding dat ik meet?*
+> Gevonden doordat een mutatie op een **andere** test landde dan bedoeld — en dat
+> is precies waarom punt G ("kijk wélke test omvalt") loont.
+>
+> **12-09, punt V: een bronbewaking vind je op zijn verbod, niet op zijn
+> onderwerp.** QS8-434 stelde dat een grendel niet bestond, op grond van
+> `grep -rln "TaakRegel\|taakTekst" tests/` — nul treffers. De grendel bestond
+> wél (`tests/beloftes/tekstinvoer.test.ts`) en was zelfs ouder dan het document
+> dat hem verkeerd noemde. Hij noemt die namen nergens: hij grept op wat hij
+> **verbiedt** (`TextInput`) en op de weg die hij voorschrijft (`Field`).
+> ⚠️ Dat volgt uit regel 18 vraag 2 en is dus structureel: **hoe zuiverder een
+> test de belofte toetst in plaats van het onderdeel, hoe slechter hij te vinden
+> is op zijn onderwerp.** Zoek op het verbod, en kijk eerst in de bron die de
+> belofte doet — `app/(tabs)/lijst.tsx` had het antwoord twee keer, bij de juiste
+> naam.
 >
 > ⚠️⚠️ **11-09, punt P: een lintregel kan code laten buigen, en dan verplaats je
 > het probleem naar de lezer.** QS8-422 moest in de rollover een `if` in een `if`
