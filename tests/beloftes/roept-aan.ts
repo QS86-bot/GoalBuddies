@@ -21,15 +21,31 @@
  *    het ijken bleven twee van de drie gevallen groen terwijl de aanroep eruit
  *    was. **Precies de fout die deze test moet vangen, in de test zelf.**
  */
-export function roeptAan(bron: string, naam: string): boolean {
-  const zonderCommentaar = bron
-    // Eerst blokken: /* … */ dekt zowel JSDoc als de JSX-vorm {/* … */}.
+/**
+ * De bron zonder commentaar.
+ *
+ * ⚠️⚠️ **Losgetrokken en geëxporteerd bij QS8-443, en dat is geen netheid.**
+ *    CLAUDE.md noemt deze knip met zoveel woorden een grendel op zichzelf: bij
+ *    QS8-412 stond dezelfde knip in twee testbestanden en was hij in allebei
+ *    blind voor `https://` — de regelvorm hieronder is juist de vorm die dát
+ *    overleeft, want hij kijkt of de **regel** met `//` begint en knipt niet
+ *    midden in een URL. Een derde kopie zou die eigenschap opnieuw op het spel
+ *    zetten.
+ *
+ * ⚠️ Blokken eerst: `/* … *\/` dekt zowel JSDoc als de JSX-vorm `{/* … *\/}`.
+ */
+export function zonderCommentaar(bron: string): string {
+  return bron
     .replace(/\/\*[\s\S]*?\*\//g, ' ')
     .split('\n')
     .filter((regel) => !regel.trimStart().startsWith('//'))
     .join('\n');
+}
+
+export function roeptAan(bron: string, naam: string): boolean {
+  const schoon = zonderCommentaar(bron);
 
   // ⚠️ De haakjes horen erbij: een `import { wijzigDoel }` is geen knop. En de
   //    negatieve vooruitblik houdt `wijzigDoelStatus` buiten de deur.
-  return new RegExp(`(?<![a-zA-Z0-9_])${naam}\\s*\\(`).test(zonderCommentaar);
+  return new RegExp(`(?<![a-zA-Z0-9_])${naam}\\s*\\(`).test(schoon);
 }
