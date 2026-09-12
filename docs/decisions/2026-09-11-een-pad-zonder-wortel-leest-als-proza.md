@@ -140,12 +140,29 @@ noemt een grendel die er niet is:
 > `tests/beloftes/lijstveld.test.ts` wordt rood zodra dit scherm zijn eigen
 > `TextInput` bouwt.
 
-Dat bestand bestaat niet, onder geen enkele naam: `TaakRegel` en `taakTekst`
-komen in de hele testboom niet voor. De belofte — het scherm gebruikt het
-gedeelde `Field`, zodat QS8-250 de microfoon eraan kan hangen — is onbewaakt.
-Dit is woordelijk de vorm waar QS8-412 voor gebouwd is, en hij stond in de ene
-map die de controle niet leest. **QS8-434**; hier niet meegenomen, want dat zou
-de branch verbreden.
+Dat bestand bestaat niet. **QS8-434**; hier niet meegenomen, want dat zou de
+branch verbreden.
+
+⚠️⚠️ **Nagemeten op 12-09-2026 bij QS8-434, en de helft hierboven klopte niet.**
+Hier stond erbij: *"onder geen enkele naam: `TaakRegel` en `taakTekst` komen in de
+hele testboom niet voor"*, en daarmee dat de belofte onbewaakt was. 📏 De grendel
+bestaat wél en bestond al: `tests/beloftes/tekstinvoer.test.ts`, meegekomen met
+QS8-380 op 09-09-2026 — één dag vóór het document dat hem verkeerd noemt.
+`app/(tabs)/lijst.tsx` noemt hem op allebei zijn velden bij de juiste naam.
+Alleen de naam in het beslisdocument was fout, en die is nu gecorrigeerd.
+
+⚠️ **Waarom die grep niets vond, en dat is de les die blijft.** Er is gegrepd op
+`TaakRegel` en `taakTekst` — de namen van wat de grendel bescherm**t**. Maar een
+bronbewaking noemt die namen nergens: hij grept op wat hij ver**biedt**
+(`TextInput`) en op de gedeelde weg die hij voorschrijft (`Field`). **Zoek je een
+bronbewaking op het onderwerp dat hij dekt, dan vind je hem per constructie
+niet.** Zoek op het verbod. Uitgewerkt in
+`docs/decisions/2026-09-12-een-grendel-vind-je-op-zijn-verbod.md`.
+
+⚠️ Wat er *wél* stond en overeind blijft: dit is woordelijk de vorm waar QS8-412
+voor gebouwd is, en hij stond in de ene map die de controle niet leest. Een
+verkeerde naam is daar even onvindbaar als een ontbrekend bestand — en duurder,
+want hij leest als een grendel die er is.
 
 ## 6. IJking
 

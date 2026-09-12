@@ -27,6 +27,23 @@ const LIJST = join(WORTEL, 'app', '(tabs)', 'lijst.tsx');
  *    in `src/` of `app/` `TextInput`. Een grendel op nul is gratis; dezelfde
  *    grendel over een half jaar kost eerst een opruimronde.
  *
+ * ⚠️⚠️ **Dit bestand is de grendel die QS8-386 bedoelt, en hij heeft daar bijna
+ *    twee dagen onder een verzonnen naam gestaan.**
+ *    `docs/decisions/2026-09-10-een-typefout-hoort-geen-verwijderknop-te-vragen.md`
+ *    schreef `tests/beloftes/lijstveld.test.ts`, en dat bestand heeft nooit
+ *    bestaan. 📏 Een issue (QS8-434) concludeerde daaruit dat de belofte
+ *    onbewaakt was — gezocht was op `TaakRegel` en `taakTekst`, de namen van wat
+ *    deze grendel bescherm**t**. Die staan hier per constructie niet in: een
+ *    bronbewaking noemt wat hij ver**biedt** (`TextInput`) en de weg die hij
+ *    voorschrijft (`Field`), niet zijn onderwerp.
+ *
+ *    **Zoek je een bronbewaking op het onderwerp dat hij dekt, dan vind je hem
+ *    niet.** En hoe zuiverder de test de belófte toetst in plaats van het
+ *    onderdeel (regel 18, vraag 2), hoe harder dat geldt. Vandaar deze alinea:
+ *    wie op *lijstveld*, op QS8-386 of op *De Lijst* zoekt, hoort hier uit te
+ *    komen. Uitleg in
+ *    `docs/decisions/2026-09-12-een-grendel-vind-je-op-zijn-verbod.md`.
+ *
  * IJKING — met de hand gedraaid op 09-09-2026, één mutatie per grendel:
  *
  *   A  een kale `<TextInput />` in `app/(tabs)/lijst.tsx` zetten
@@ -38,6 +55,13 @@ const LIJST = join(WORTEL, 'app', '(tabs)', 'lijst.tsx');
  *      -> 1 rood: 'telt gebruikerstekst in codepunten en niet in UTF-16'
  *   D  de datum weer uit de tijdstempel snijden (`done_at.slice(0, 10)`)
  *      -> 1 rood: 'kapt de tekst van een taak nergens af'
+ *
+ * ⚠️ **A en B zijn op 12-09-2026 opnieuw gedraaid, en niet overgenomen**
+ *    (QS8-434). Dat is de hele reden dat dat issue bestond: er stond een grendel
+ *    in proza beschreven die er niet bleek te zijn, en een ijking overnemen die
+ *    je niet zelf gezien hebt is diezelfde fout een niveau hoger. 📏 Vooraf 5
+ *    groen, per mutatie 1 rood en 4 groen, en bij allebei viel precies de
+ *    grendel om die de mutatie noemt — niet een buurtest, de eis uit QS8-412.
  */
 
 /**

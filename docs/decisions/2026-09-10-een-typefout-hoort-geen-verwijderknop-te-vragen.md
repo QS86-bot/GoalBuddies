@@ -56,8 +56,16 @@ de grendel die er nu op staat er niet.
 
 3. **Het veld is het gedeelde `Field`.** QS8-250 hangt de microfoon daaraan, dus
    een taak wordt straks inspreekbaar zonder dat hier iets verandert.
-   `tests/beloftes/lijstveld.test.ts` wordt rood zodra dit scherm zijn eigen
+   `tests/beloftes/tekstinvoer.test.ts` wordt rood zodra dit scherm zijn eigen
    `TextInput` bouwt.
+
+   ⚠️ **Hier stond `tests/beloftes/lijstveld.test.ts`, en dat bestand heeft nooit
+   bestaan** — gecorrigeerd 12-09-2026 (QS8-434). De grendel zélf bestond wel en
+   bestond al: hij kwam op 09-09-2026 met QS8-380 mee, één dag vóór dit document,
+   onder de naam hierboven. `app/(tabs)/lijst.tsx` noemt hem op allebei zijn
+   velden bij de juiste naam; alleen dit document niet. 📏 Beide grendels zijn op
+   12-09-2026 opnieuw met de hand geijkt — welke test omviel staat in de
+   IJKING-kop van dat testbestand.
 
 ## Waarom het scherm er twee componenten bij kreeg
 
