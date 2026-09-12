@@ -34,6 +34,7 @@
     "hoofdrun:controle": "node scripts/hoofdrun-controle.mjs",
     "exports:controle": "node scripts/dode-exports-controle.mjs",
     "streepje:controle": "node scripts/streepje-controle.mjs",
+    "storage-eigendom:controle": "node scripts/storage-eigendom-controle.mjs",
     "review:controle": "node scripts/review-controle.mjs",
     "meldtekst:controle": "node scripts/meldtekst-controle.mjs",
     "foutsleutel:controle": "node scripts/foutsleutel-controle.mjs",

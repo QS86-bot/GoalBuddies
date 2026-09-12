@@ -118,6 +118,29 @@ create trigger bewijsfotos_aantal_begrensd_verhuisd
   when (new.bucket_id = 'bewijsfotos' and old.bucket_id is distinct from new.bucket_id)
   execute function public.bewaak_bewijsfoto_aantal();
 
-create index if not exists objects_bewijsfotos_uploader_dag_idx
-  on storage.objects (((storage.foldername(name))[2]), created_at)
-  where bucket_id = 'bewijsfotos';
+-- ⚠️⚠️ **Voorwaardelijk, en dat is geen slordigheid maar QS8-439.**
+--    `storage.objects` is eigendom van `supabase_storage_admin`. Alles wat dit
+--    project heeft — de Supabase-MCP, `psql` met de projectcredentials én de
+--    SQL-editor in het dashboard — draait als `postgres`, en die is géén lid van
+--    die rol. `grant supabase_storage_admin to postgres` antwoordt bovendien met
+--    *"role memberships are reserved, only superusers can grant them"*.
+--
+-- 📏 **Per handeling apart gemeten op 12-09-2026**, elk in een eigen
+--    terugrollende transactie: `create policy` gaat, `create trigger` gaat,
+--    `create index` geeft `42501: must be owner of table objects`. Eén kale
+--    `create index` stopt daarmee de hele migratiereeks — zo stond productie
+--    vanaf `0222` drie dagen stil.
+--
+-- ⚠️ **Lokaal bezitten we de tabel wél**, dus daar wordt de index gewoon
+--    aangelegd en houden `schema-opbouwen.sh` en de RLS-suite het volledige
+--    schema. Op Supabase slaat hij hem hóórbaar over. Dit is de enige vorm
+--    waarin dat verschil in de migratie zelf staat in plaats van in een
+--    overgeslagen stap. Afweging in `docs/decisions/2026-09-12-een-index-op-een-tabel-die-niet-van-ons-is.md`.
+do $$
+begin
+  create index if not exists objects_bewijsfotos_uploader_dag_idx
+    on storage.objects (((storage.foldername(name))[2]), created_at)
+    where bucket_id = 'bewijsfotos';
+exception when insufficient_privilege then
+  raise notice 'QS8-439: objects_bewijsfotos_uploader_dag_idx overgeslagen (42501) — geen eigenaar van storage.objects.';
+end $$;
