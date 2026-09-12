@@ -130,6 +130,59 @@ export function beoordeelStand({ inhoud, bestanden }) {
 }
 
 /**
+ * Een rij in de gattabel: het migratiebestand dat hij noemt.
+ *
+ * ⚠️ **Het anker is `^|` plus backticks plus een migratienaam**, en die vorm is
+ *    gemeten en niet gekozen. 📏 Op 12-09-2026 staan er in `WERKVOORRAAD.md`
+ *    **33** regels die eraan voldoen, en alle 33 staan in het gatblok — nul
+ *    daarbuiten. Een documentbrede zeef heeft hier dus geen valse treffers en
+ *    hoeft niet te weten waar de tabel begint of eindigt, wat hem bestand maakt
+ *    tegen een kop die verplaatst.
+ */
+const GATRIJ = /^\| `(\d{4}[a-z]?_[a-z0-9_]+\.sql)`/gm;
+
+/**
+ * D — de gattabel tegen de map — QS8-445.
+ *
+ * ⚠️⚠️ **Waarom dit naast `beoordeelStand()` staat en er niet in.** Die telt de
+ *    twee **proza**-beweringen na: "de map telt er N" en "het gat is N
+ *    bestanden". 📏 Precies dáárdoor bleef hij groen terwijl de tabel eronder
+ *    `0255` miste: het getal boven de tabel klopte (34 = 34), alleen de rijen
+ *    niet. Een controle die het makkelijke deel van een belofte bewaakt, geeft
+ *    toestemming om te stoppen met kijken — zelfde klasse als QS8-415.
+ *
+ * ⚠️ **De ratel slaat twee kanten op.** Een bestand zonder rij is rood, en een
+ *    rij zonder bestand ook: dat tweede is een migratie die hernummerd of
+ *    ingetrokken is, en zo'n rij stuurt de lezer naar een bestand dat er niet
+ *    meer is. Zelfde vorm als `ZONDER_BESTAND` in `padverwijzing:controle`.
+ *
+ * ⚠️ Staat er geen productienummer in het document, dan is er geen gat te
+ *    berekenen en zwijgt hij — net als `beoordeelStand()`. Zwijgen mag alleen
+ *    als er niets beweerd is.
+ *
+ * @param {{ inhoud: string, bestanden: string[] }} invoer
+ * @returns {string[]} de gevonden tegenspraken, leeg als alles klopt
+ */
+export function gattabelKlachten({ inhoud, bestanden }) {
+  const productie = Number(inhoud.match(PRODUCTIESTAND)?.[1]);
+  if (Number.isNaN(productie)) return [];
+
+  const inTabel = new Set([...inhoud.matchAll(GATRIJ)].map((m) => m[1]));
+  if (inTabel.size === 0) return [];
+
+  const inGat = new Set(bestanden.filter((n) => (nummerVan(n) ?? 0) > productie));
+  const fouten = [];
+
+  for (const bestand of inGat) {
+    if (!inTabel.has(bestand)) fouten.push(`de gattabel mist een rij voor \`${bestand}\`.`);
+  }
+  for (const rij of inTabel) {
+    if (!inGat.has(rij)) fouten.push(`de gattabel noemt \`${rij}\`, maar dat staat niet in het gat.`);
+  }
+  return fouten;
+}
+
+/**
  * Welk document bezit welk feit, en waaraan herken je dat feit.
  *
  * ⚠️ De eigenaar is niet willekeurig gekozen: `CLAUDE.md` bezit de regels en
@@ -204,9 +257,12 @@ function controleerMigratiebereik() {
   }
 }
 
-/** C — de proza-stand in het document dat hem bezit, tegen de map. */
+/** C en D — de proza-stand én de gattabel, in het document dat de stand bezit. */
 function controleerStand() {
   const pad = DOCUMENTEN[EIGENAAR_VAN_DE_STAND];
+  for (const fout of gattabelKlachten({ inhoud: lees(EIGENAAR_VAN_DE_STAND), bestanden: migratiebestanden() })) {
+    fouten.push(`${pad} ${fout}`);
+  }
   for (const fout of beoordeelStand({
     inhoud: lees(EIGENAAR_VAN_DE_STAND),
     bestanden: migratiebestanden(),
