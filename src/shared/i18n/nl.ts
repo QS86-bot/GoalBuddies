@@ -584,6 +584,7 @@ export const nl = {
   'onboarding.voorbeeld_plafond': 'Drie keer, minstens vijf kilometer',
   'onboarding.aan_de_slag': 'Aan de slag',
   'onboarding.verder': 'Verder',
+  'onboarding.vorige': 'Terug',
   'onboarding.overslaan': 'Overslaan',
 
   // Navigatie — QS8-211. Deze staan bewust apart van elk scherm: de terugknop en
