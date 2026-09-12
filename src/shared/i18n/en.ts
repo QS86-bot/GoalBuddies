@@ -412,6 +412,7 @@ export const en: Record<Sleutel, string> = {
   'onboarding.voorbeeld_plafond': 'Three times, at least five kilometres',
   'onboarding.aan_de_slag': 'Get started',
   'onboarding.verder': 'Next',
+  'onboarding.vorige': 'Back',
   'onboarding.overslaan': 'Skip',
 
   // Navigation — QS8-211. Deliberately separate from any one screen.
