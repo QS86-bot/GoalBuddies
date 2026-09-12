@@ -7,6 +7,7 @@ import { fileURLToPath } from 'node:url';
 import {
   GATGROOTTE,
   beoordeelStand,
+  gattabelKlachten,
   nummerVan,
   telWoord,
 } from '../../scripts/docs-controle.mjs';
@@ -185,5 +186,101 @@ describe('beoordeelStand — de vormen die hij met rúst moet laten', () => {
   it('telt een letterversie mee in de maptelling', () => {
     const bestanden = [...map(3), '0039a_iets.sql'];
     expect(beoordeelStand({ inhoud: 'De map telt er **4**.', bestanden })).toEqual([]);
+  });
+});
+
+// ---------------------------------------------------------------------------
+
+/**
+ * ⚠️⚠️ **De gattabel — QS8-445.** `beoordeelStand()` hierboven telt de twee
+ *    **proza**-beweringen na. 📏 Precies daardoor bleef hij groen terwijl de
+ *    tabel eronder `0255` miste: het getal klopte (34 = 34), de rijen niet.
+ *
+ * 📏 **De ijking — twee tegen het echte document, vier tegen de zeef, alle zes
+ *    met de hand gedraaid op 12-09-2026 met vooraf gemeten 26 groen.**
+ *
+ *    Tegen `docs/WERKVOORRAAD.md`, via `npm run docs:controle`:
+ *
+ *    | Mutatie | Wat de controle zei |
+ *    |---|---|
+ *    | de `0255`-rij weghalen — **de oorspronkelijke fout** | "de gattabel mist een rij voor `0255_…`" |
+ *    | een rij naar een niet-bestaand bestand erbij | "de gattabel noemt `0299_…`, maar dat staat niet in het gat" |
+ *
+ *    Tegen de zeef zelf, één mutatie per grendel:
+ *
+ *    | Mutatie | Wat er rood werd |
+ *    |---|---|
+ *    | het `^\|`-anker uit `GATRIJ` | 1 — "laat een migratienaam in lopende tekst met rust" |
+ *    | de "ontbrekende rij"-richting eruit | 1 — "meldt een migratie in het gat zonder rij" |
+ *    | de "overtollige rij"-richting eruit | 2 — de twee gevallen die een rij te veel melden |
+ *    | de productie-grendel eruit | 1 — "zwijgt zonder productienummer" |
+ *
+ *    ⚠️ De eerste van die vier is de belangrijkste: zonder het anker leest de
+ *       zeef élke migratienaam in lopende tekst als tabelrij, en
+ *       `WERKVOORRAAD.md` staat er vol mee. Dat hij dáár rood van wordt, is het
+ *       bewijs dat het anker draagt.
+ */
+const GAT = {
+  inhoud: [
+    'Productie staat op `0221`.',
+    '| `0222_een.sql` | QS8-1 | ja |',
+    '| `0223_twee.sql` | QS8-2 | nee |',
+  ].join('\n'),
+  bestanden: ['0220_oud.sql', '0221_grens.sql', '0222_een.sql', '0223_twee.sql'],
+};
+
+describe('gattabelKlachten — de vormen die hij moet vínden', () => {
+  it('meldt een migratie in het gat zonder rij in de tabel', () => {
+    const uit = gattabelKlachten({ ...GAT, bestanden: [...GAT.bestanden, '0224_drie.sql'] });
+    expect(uit).toEqual(['de gattabel mist een rij voor `0224_drie.sql`.']);
+  });
+
+  /**
+   * ⚠️ De ratel slaat twee kanten op: een rij zonder bestand stuurt de lezer
+   *    naar een migratie die hernummerd of ingetrokken is.
+   */
+  it('meldt een rij die naar een bestand wijst dat niet in het gat staat', () => {
+    const uit = gattabelKlachten({
+      ...GAT,
+      inhoud: `${GAT.inhoud}\n| \`0299_weg.sql\` | QS8-9 | nee |`,
+    });
+    expect(uit).toEqual(['de gattabel noemt `0299_weg.sql`, maar dat staat niet in het gat.']);
+  });
+
+  it('meldt een rij voor een migratie die al op productie staat', () => {
+    const uit = gattabelKlachten({
+      ...GAT,
+      inhoud: `${GAT.inhoud}\n| \`0220_oud.sql\` | QS8-8 | nee |`,
+    });
+    expect(uit).toEqual(['de gattabel noemt `0220_oud.sql`, maar dat staat niet in het gat.']);
+  });
+});
+
+describe('gattabelKlachten — de vormen die hij met rúst moet laten', () => {
+  it('zwijgt als elke migratie in het gat een rij heeft en omgekeerd', () => {
+    expect(gattabelKlachten(GAT)).toEqual([]);
+  });
+
+  /**
+   * ⚠️⚠️ **De belangrijkste helft.** Een migratienaam in een gewone zin is geen
+   *    tabelrij. Zou de zeef die pakken, dan meldt hij elke alinea die een
+   *    migratie noemt — en `WERKVOORRAAD.md` staat er vol mee.
+   */
+  it('laat een migratienaam in lopende tekst met rust', () => {
+    const uit = gattabelKlachten({
+      ...GAT,
+      inhoud: `${GAT.inhoud}\n\nZie \`0299_weg.sql\` voor de reden, en ook \`0300_nog.sql\`.`,
+    });
+    expect(uit).toEqual([]);
+  });
+
+  it('zwijgt zonder productienummer — er valt dan geen gat te berekenen', () => {
+    expect(gattabelKlachten({ ...GAT, inhoud: GAT.inhoud.replace(/Productie staat op .*/, '') }))
+      .toEqual([]);
+  });
+
+  it('zwijgt in een document zonder gattabel', () => {
+    expect(gattabelKlachten({ ...GAT, inhoud: 'Productie staat op `0221`. Verder niets.' }))
+      .toEqual([]);
   });
 });
