@@ -885,6 +885,24 @@ kunnen beginnen — maar noemt hij hoe oud het beeld is. **Het verschil tussen "
 net" en "van eergisteren" ís het risico**; één tekst voor beide gevallen leest als
 een disclaimer, en die leer je overslaan.
 
+⚠️⚠️ **En dat geldt sinds 12-09-2026 ook voor de controlerende kant — een
+branchmelding is pas een bevinding ná een verse `git fetch --all`** (QS8-435).
+`migraties:controle` fetcht niet en blijft dat niet doen, maar hij noemt vanaf nu
+bij elke **branch**bevinding hoe oud zijn beeld is: vers, ouder dan vijf minuten,
+of nooit gefetcht sinds de kloon — drie gevallen, drie teksten. Voor een gat of
+een duplicaat in je eigen map zegt hij er niets over, want die leest hij van
+schijf.
+
+📏 De aanleiding is dat de vaste zin die er stond — *dit beeld is zo oud als je
+laatste `git fetch`* — precies niets deed: hij stond er ook bij een ref van tien
+seconden oud. Op 11-09-2026 belandde een branchbevinding daardoor op het issue van
+iemand anders terwijl hij al een uur onwaar was; de branch was om 15:03 UTC
+hernummerd en de melding is om 16:13 UTC geschreven, met alleen
+`git fetch origin main` gedraaid. **Voor je eigen nummer maakt een oud beeld niet
+uit — dat sluit aan op je eigen map — maar voor wat je over het werk van een ander
+beweert wel.** Uitleg in
+`docs/decisions/2026-09-12-de-waarschuwing-die-er-altijd-stond.md`.
+
 ⚠️⚠️ **En dragen twee PR's toch hetzelfde nummer: wie als tweede merget,
 hernummert.** Dat is sinds QS8-318 een regel en geen gewoonte. Het venster tussen
 de laatste groene CI en de merge is er per definitie — het nummer wás vrij toen

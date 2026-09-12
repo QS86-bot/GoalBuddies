@@ -494,3 +494,76 @@ export function versheidsmelding({ vers, sinds, nu = new Date(), fout = null }) 
     '  Controleer zelf of er elders hoger genummerd is voordat je dit nummer gebruikt.',
   ];
 }
+
+/**
+ * Hoe vers een beeld moet zijn om zonder voorbehoud een bevinding te mogen
+ * heten — QS8-435.
+ *
+ * ⚠️ Grof met opzet, en aan de ruime kant. De vraag is niet "is dit beeld
+ *    perfect" maar "kan er in deze tijd een hernummering langsgekomen zijn die
+ *    ik niet zie". Vijf minuten is kort genoeg dat het antwoord in de praktijk
+ *    nee is, en lang genoeg dat een poort die vlak na een claim draait er niet
+ *    elke keer een waarschuwing bij krijgt.
+ */
+export const VERS_DREMPEL_MS = 5 * 60_000;
+
+/**
+ * De regels die een **controlerend** script afdrukt over de versheid van zijn
+ * beeld — QS8-435.
+ *
+ * ⚠️ **Waarom dit naast `versheidsmelding()` staat en die niet hergebruikt.**
+ *    Die hoort bij een script dat zélf fetcht: zijn vraag is *is het gelukt*, en
+ *    de leeftijd komt er alleen bij als het antwoord nee is. Een controle fetcht
+ *    niet (zie de grens hierboven), dus daar is de vraag altijd *hoe oud is dit
+ *    beeld* en is er geen `vers`-tak om in te vallen. Ze samenvoegen zou één
+ *    functie opleveren met twee betekenissen voor `vers`.
+ *
+ * ⚠️ **Waarom dit bestaat.** `migraties:controle` zette onderaan zijn
+ *    foutmelding één vaste zin: *dit beeld is zo oud als je laatste `git
+ *    fetch`*. Die was waar, stond op de goede plek, en hielp niet — want hij
+ *    stond er ook als je ref van tien seconden oud was. 📏 Op 11-09-2026 is een
+ *    branchbevinding daardoor als bevinding op het issue van iemand anders
+ *    beland terwijl hij op dat moment al een uur onwaar was: de branch was
+ *    hernummerd om 15:03 UTC, de melding is om 16:13 UTC geschreven, en er was
+ *    alleen `git fetch origin main` gedraaid. Dat is woordelijk de vorm die
+ *    CLAUDE.md bij QS8-247 al afkeurde: *één tekst voor beide gevallen leest als
+ *    een disclaimer, en die leer je overslaan.*
+ *
+ * ⚠️ **Drie gevallen, drie teksten, en dat is de hele reparatie.** Zouden twee
+ *    van de drie dezelfde zin krijgen, dan is de disclaimer terug op de plek
+ *    waar hij het meest kost.
+ *
+ * ⚠️ **Wat deze functie níet weet.** Zonder `FETCH_HEAD` is er geen tijdstip:
+ *    git schrijft dat bestand bij elke fetch, maar niet bij een kloon. In CI en
+ *    in een verse checkout is het beeld dan van de kloon zelf en dus van net; in
+ *    een werkkopie die al een week open staat en nooit gefetcht heeft, is het
+ *    beeld een week oud en ziet deze functie exact hetzelfde. Die grens staat
+ *    daarom in de melding zelf en wordt niet weggeschreven — een instrument dat
+ *    zijn eigen grens overschreeuwt, is erger dan een instrument dat hem noemt.
+ *
+ * @param {{sinds: Date | null, nu?: Date, drempel?: number}} beeld
+ * @returns {string[]}
+ */
+export function beeldmelding({ sinds, nu = new Date(), drempel = VERS_DREMPEL_MS }) {
+  if (!(sinds instanceof Date) || Number.isNaN(sinds.getTime())) {
+    return [
+      '  · Er is in deze werkkopie nooit gefetcht (geen FETCH_HEAD). In CI en in een',
+      '    verse checkout is dit beeld daarmee van de kloon zelf; staat deze werkkopie',
+      '    al langer open, dan is het beeld even oud als die kloon.',
+    ];
+  }
+
+  const ms = nu.getTime() - sinds.getTime();
+  const tijd = `${sinds.toISOString().slice(0, 16).replace('T', ' ')} UTC`;
+
+  if (ms < drempel) {
+    return [`  · Deze branchrefs zijn van ${tijd} (${ouderdomInWoorden(ms)}).`];
+  }
+
+  return [
+    `  ⚠ Deze branchrefs zijn van ${tijd} (${ouderdomInWoorden(ms)}) — draai`,
+    '    `git fetch --all` voordat je hier iets over zegt. Een branchmelding uit deze',
+    '    controle is pas een bevinding ná een verse fetch; voor je eigen nummer maakt',
+    '    het niet uit, voor wat je over het werk van een ander beweert wel.',
+  ];
+}

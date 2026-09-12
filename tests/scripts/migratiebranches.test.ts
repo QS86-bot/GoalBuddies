@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import {
   alsNummer,
+  beeldmelding,
   botsendPerBranch,
   namenPerSleutel,
   nummersUit,
@@ -396,5 +397,108 @@ describe('versheidsmelding', () => {
 
   it('valt niet om zonder foutmelding', () => {
     expect(versheidsmelding({ vers: false, sinds: null }).join('\n')).toContain('onbekende fout');
+  });
+});
+
+/**
+ * De beeldmelding van een **controlerend** script — QS8-435.
+ *
+ * ⚠️ **De belofte is niet "er staat iets over versheid".** Die stond er al:
+ *    `migraties:controle` zette onderaan zijn foutmelding één vaste zin — *dit
+ *    beeld is zo oud als je laatste `git fetch`* — en 📏 op 11-09-2026 is er
+ *    tóch een branchbevinding op het issue van iemand anders beland die op dat
+ *    moment al een uur onwaar was. De zin stond letterlijk in die uitvoer.
+ *
+ *    De belofte is dat je aan de melding kunt **zien welk van de drie gevallen**
+ *    het is: vers, oud, of nooit gefetcht. Dus toetst elke test hieronder niet
+ *    alleen wat er staat, maar ook dat de drie teksten van elkaar verschillen —
+ *    dát is wat een disclaimer onderscheidt van een waarschuwing.
+ *
+ * ⚠️ Een testbestand dat alleen `toContain` doet, laat drie identieke teksten
+ *    door zolang ze het gezochte woord dragen. Vandaar de laatste test.
+ */
+describe('beeldmelding', () => {
+  const sinds = new Date('2026-09-11T15:03:00Z');
+
+  it('noemt een vers beeld met zijn tijd en zonder voorbehoud', () => {
+    const regels = beeldmelding({ sinds, nu: new Date('2026-09-11T15:05:30Z') });
+
+    expect(regels.join('\n')).toContain('2026-09-11 15:03 UTC');
+    // Geen ⚠ en geen opdracht: een bevinding op een vers beeld is een bevinding.
+    expect(regels.join('\n')).not.toContain('git fetch --all');
+    expect(regels.join('\n')).not.toContain('⚠');
+  });
+
+  /**
+   * ⚠️ **Dit is het geval van 11-09-2026, met de echte getallen erin.** De
+   *    branch was om 15:03 UTC hernummerd; de melding is om 16:13 UTC
+   *    geschreven.
+   */
+  it('noemt een oud beeld met zijn tijd, zijn leeftijd én de opdracht', () => {
+    const regels = beeldmelding({ sinds, nu: new Date('2026-09-11T16:13:00Z') });
+
+    expect(regels.join('\n')).toContain('2026-09-11 15:03 UTC');
+    expect(regels.join('\n')).toContain('1 uur oud');
+    expect(regels.join('\n')).toContain('git fetch --all');
+  });
+
+  /**
+   * ⚠️ De drempel is een grens en geen sfeer: precies erop telt als oud, want
+   *    dat is de kant waar een gemiste waarschuwing kost.
+   */
+  it('kantelt op de drempel', () => {
+    const net = beeldmelding({ sinds, nu: new Date(sinds.getTime() + 4 * 60_000) });
+    const net2 = beeldmelding({ sinds, nu: new Date(sinds.getTime() + 5 * 60_000) });
+
+    expect(net.join('\n')).not.toContain('git fetch --all');
+    expect(net2.join('\n')).toContain('git fetch --all');
+  });
+
+  /**
+   * ⚠️ Zonder `FETCH_HEAD` is er geen tijdstip, en dat is precies de toestand
+   *    van CI en van een verse checkout — waar het beeld juist van net is. Een
+   *    lege datum of de oude-beeldtekst zou hier allebei liegen.
+   */
+  it('zegt het met zoveel woorden als er nooit gefetcht is', () => {
+    const regels = beeldmelding({ sinds: null });
+
+    expect(regels.join('\n')).toContain('FETCH_HEAD');
+    expect(regels.join('\n')).toContain('verse checkout');
+    expect(regels.join('\n')).not.toContain('UTC');
+  });
+
+  it('valt terug op dezelfde tekst bij een onleesbare datum', () => {
+    expect(beeldmelding({ sinds: new Date('onzin') }).join('\n')).toContain('FETCH_HEAD');
+  });
+
+  /**
+   * ⚠️⚠️ **De grendel die dit issue eigenlijk vraagt.** Drie gevallen met
+   *    dezelfde tekst is exact de toestand van vóór QS8-435, en elke test
+   *    hierboven kan daar groen doorheen zolang die ene tekst het gezochte
+   *    woord draagt.
+   */
+  it('geeft drie verschillende teksten', () => {
+    /**
+     * ⚠️ **Op de vórm vergelijken en niet op de letter, en dat is een gemeten
+     *    correctie.** De eerste versie zette de drie uitvoeren zó in een `Set`,
+     *    en die telde altijd drie — want de tijd en de leeftijd staan erin, en
+     *    die verschillen sowieso. 📏 Met de oude-tak dichtgezet (ijking G) bleef
+     *    hij daardoor groen terwijl twee van de drie gevallen dezelfde melding
+     *    gaven: precies wat hij hoorde te vinden. Vandaar dat alles wat per
+     *    aanroep varieert er eerst uit gaat.
+     */
+    const vorm = (regels: string[]) =>
+      regels
+        .join('\n')
+        .replace(/van zojuist|\d+ (?:minuut|minuten|uur|dag|dagen) oud/g, 'LEEFTIJD')
+        .replace(/\d/g, '#');
+
+    const vormen = [
+      vorm(beeldmelding({ sinds, nu: new Date(sinds.getTime() + 1_000) })),
+      vorm(beeldmelding({ sinds, nu: new Date(sinds.getTime() + 86_400_000) })),
+      vorm(beeldmelding({ sinds: null })),
+    ];
+
+    expect(new Set(vormen).size).toBe(3);
   });
 });
