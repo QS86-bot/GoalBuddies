@@ -146,6 +146,18 @@ export const ZONDER_BESTAND = [
       'regel 18 vraagt.',
   },
   {
+    pad: 'tests/beloftes/lijstveld.test.ts',
+    in: 'tests/beloftes/tekstinvoer.test.ts',
+    reden:
+      'De naam die dit bestand bijna twee dagen droeg in het beslisdocument van ' +
+      'QS8-386, en die nooit bestaan heeft. De kop noemt hem met opzet: wie op ' +
+      'die naam zoekt — of op het issue dat hem verzon — hoort bij de grendel ' +
+      'zelf uit te komen. QS8-434. ' +
+      'Dit is de spiegel van de twee rijen hierboven: die noemen een plek waar ' +
+      'iets vandaan kwam, deze een naam waaronder iets gezocht werd. ' +
+      '⚠️ Geen backticks in deze reden: dit bestand scant zichzelf.',
+  },
+  {
     pad: 'scripts/js-bron.mjs',
     in: 'docs/ENGINEER-REVIEW.md',
     reden:
