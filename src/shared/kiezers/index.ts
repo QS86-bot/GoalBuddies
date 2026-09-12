@@ -33,6 +33,6 @@
  *    (bewijsfoto). Zie `docs/decisions/2026-09-11-een-kiezer-is-geen-ui.md`.
  */
 export { kiesFoto, type Fotokeuze, type Fotofoutsleutel } from './kiesFoto';
-export { kiesDocument, type Documentkeuze } from './kiesDocument';
+export { kiesDocument, teGroot, type Documentkeuze, type Documentfoutsleutel } from './kiesDocument';
 export type { Gekozenbijlage } from './verzendbijlage';
 export { naarVerzending } from './verzendbijlage';
