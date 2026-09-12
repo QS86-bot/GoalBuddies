@@ -100,11 +100,17 @@ schema als gisteren.
 
 ## ⚠️ Wat dit besluit níet is
 
-**Geen oplossing voor de prestatievraag.** Op productie ontbreken die twee
-indexen, en de tellingen die ze droegen worden daar een seq scan over
-`storage.objects`. Vandaag is dat gratis — die tabel is leeg — maar bij het
-schaaldoel van 100k gebruikers niet. Dat staat als eigen rij in
-`docs/ENGINEER-REVIEW.md`, met de voorwaarde erbij.
+**Geen oplossing voor wat er onder die indexen hing — en dat is meer dan
+prestatie.** 📏 `bewaak_avatar_aantal()` doet per upload `count(*) from
+storage.objects where bucket_id = 'avatars' and (storage.foldername(o.name))[1] =
+map` (gelezen uit `pg_get_functiondef()`). Zonder index is dat een seq scan over
+de **héle** objecttabel, dus óók over chatfoto's, bewijsfoto's en documenten:
+**wie veel bijlagen uploadt, maakt de quotacontrole van iedere ánder duurder**,
+en die controle is nu juist het ding dat misbruik moet tegenhouden. Dat is een
+grendel die slijt en geen prestatiedetail — de eerste versie van dit document
+noemde het "prestatie" en dat is na de security-review rechtgezet. De andere drie
+tellers zijn veilig: die gebruiken `tel_dagteller` in `public`. Vandaag gratis,
+want de tabel is leeg; eigen rij met voorwaarde in `docs/ENGINEER-REVIEW.md`.
 
 **Geen vrijbrief voor een tweede vorm.** De uitzondering geldt voor een index op
 een tabel die dit project niet bezit, en voor niets anders. Een policy of een
@@ -114,8 +120,9 @@ autorisatiegat.
 
 ## De grendel eronder
 
-**`npm run storage-eigendom:controle`** wordt rood zodra er een kale
-`create index` op `storage.objects` of `storage.buckets` in een migratie staat.
+**`npm run storage-eigendom:controle`** wordt rood zodra een index op
+`storage.objects` of `storage.buckets` **niet** wordt afgevangen — én zodra een
+policy, trigger of `enable row level security` daar juist wél wordt afgevangen.
 
 ⚠️ Dat is de helft die er het meest toe doet, want dit is **een fout die alleen
 op productie bestaat**: lokaal bezitten we de tabel, dus de migratie is daar
@@ -123,12 +130,58 @@ groen en niets meldt iets. Zonder deze controle kost de volgende opslagmigratie
 met een index opnieuw drie dagen, en dan groeit de reparatie terug onder een
 issue dat *opgelost* zegt — de vorm van QS8-417.
 
-📏 **Met de hand rood gemaakt**, per grendel apart: één index terug naar de kale
-vorm gezet → rood op het juiste bestand en de juiste regel; hersteld → groen.
-`tests/scripts/storage-eigendom-controle.test.ts` voedt hem daarnaast elke vorm
-los: wat hij moet vinden (unique, concurrently, `storage.buckets`, een kale index
-ná een afgesloten dollarblok) én wat hij met rust moet laten (de voorwaardelijke
-vorm, een index op `public`, een rollback-pad in commentaar, een `drop index`).
+### ⚠️⚠️ De eerste versie van deze grendel stelde de verkeerde vraag
+
+**Dit hoort hier te staan, want hij was met de hand rood gemaakt en hij bewaakte
+toch niets.** De eerste versie vroeg: *staat deze `create index` buiten een
+`$$`-blok?* De belofte is: *draait deze regel op productie?* Dat is niet
+hetzelfde, en 📏 de security-review voerde er acht vormen aan die er allemaal
+doorheen kwamen:
+
+| vorm | waarom hij erdoorheen kwam |
+|---|---|
+| `do $$ begin create index … end $$;` **zonder** `exception` | staat in een blok, dus "afgevangen" — maar vangt niets |
+| `exception when others then null` | vangt het én slikt elke echte fout |
+| `create index on storage.objects (…)` (naamloos) | de regex eiste een naam |
+| `create index "objects_f_idx" on …` | aanhalingstekens |
+| `on storage . objects` | spaties rond de punt |
+| `on only storage.objects` | `only` |
+| `create index x on objects` | schemaloos |
+| `alter table storage.objects add constraint u unique (…)` | legt óók een index aan |
+
+⚠️ **De eerste is de gevaarlijkste, en hij is geen kunstgreep.** Vier
+aangrenzende migraties doen nu een `do`-blok voor. De volgende schrijver kopieert
+die vorm, laat bij het knippen de `exception`-regel vallen, en dan is de controle
+groen, de migratie lokaal groen, en productie staat opnieuw stil — woordelijk de
+drie dagen waar dit issue over gaat.
+
+**De vraag is nu per statement wat er op productie gebeurt**, en dat is
+tweerichtingsverkeer:
+
+- een **index** móet in een blok met `when insufficient_privilege` staan;
+- een **policy, trigger of `enable row level security`** mag dat juist **niet** —
+  die gaan wél, dus afvangen verbergt alleen een echte fout.
+
+⚠️ **Die tweede richting is de belangrijkste en stond er eerst helemaal niet in.**
+Bij een policy valt een stille overslag dicht (geen policy, niemand erbij); bij
+een **trigger valt hij open**. Een migratie die `drop trigger if exists` doet en
+daarna een voorwaardelijke `create trigger`, laat `bewaak_chatfoto_aantal()`
+nergens meer aan hangen — en dan is er geen bovengrens meer op wat iemand
+uploadt, zonder dat één controle rood wordt. `storage:controle` maskeert het
+zelfs: die matcht `create policy … on storage.objects` in de **bestandstekst** en
+blijft dus groen bij een voorwaardelijke policy.
+
+📏 **Alle elf de vormen zijn nu gevonden en alle zes de goede met rust gelaten**,
+elk los gevoerd in `tests/scripts/storage-eigendom-controle.test.ts` (26 gevallen).
+`concurrently` krijgt een eigen melding: 📏 `25001: CREATE INDEX CONCURRENTLY
+cannot run inside a transaction block`, dus een blok is daar geen uitweg en de
+oude tekst stuurde de lezer een doodlopende weg in.
+
+⚠️ **De les is niet "beter reguleren".** Hij is dat *met de hand rood maken* niet
+genoeg is als je de **verkeerde eigenschap** rood maakt. Ik had één mutatie
+gedaan — een index terug naar de kale vorm — en die werd netjes rood. Dat
+bewees dat de controle iets ziet, niet dat hij ziet wat hij belooft. Regel 18
+vraag 2, op een grendel in plaats van op een test.
 
 ⚠️ **Wordt `create index` ooit wél toegestaan** — de tabel hierboven laat zien dat
 dat kan gebeuren — dan hoort deze controle wég en niet uitgezet, met de nieuwe

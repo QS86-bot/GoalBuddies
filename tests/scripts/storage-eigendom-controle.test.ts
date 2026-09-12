@@ -1,111 +1,157 @@
 /**
- * De controle op een kale index op een vreemde tabel — QS8-439.
+ * Wat er op `storage.*` wél en niet voorwaardelijk mag — QS8-439.
  *
- * ⚠️ **Twee helften, en de tweede is even belangrijk.** De vormen die hij moet
- *    vinden, én de vormen die hij met rust moet laten. Een controle die alles
- *    meldt, leer je uit te zetten — `CLAUDE.md`, regel 18.
+ * ⚠️ **Deze suite is herschreven ná de security-review, en dat is de les.** De
+ *    eerste versie voerde de controle netjes elke vorm los, en was groen —
+ *    terwijl de controle acht vormen miste, waaronder de waarschijnlijkste:
+ *    `do $$ begin create index … end $$;` **zonder** `exception`-regel. De
+ *    tests toetsten wat de functie deed, niet wat de belofte was. Regel 18,
+ *    vraag 2, en hij kostte hier een grendel die niets bewaakte.
  *
- * ⚠️ **Elke grendel apart gevoed.** `kaleIndexen()` heeft er drie achter elkaar:
- *    de tabelnaam moet vreemd zijn, de treffer mag niet in een dollarblok staan,
- *    en commentaar telt niet mee. Eén mutatie voor de hele controle zou
- *    betekenen dat een geval dat een éérdere grendel al afvangt, de latere niet
- *    toetst.
+ * ⚠️ **Twee richtingen en ze zijn elkaars spiegelbeeld.** Een index móet
+ *    afgevangen worden (anders stopt de reeks op productie); een policy of
+ *    trigger mag dat juist níet (die gaan wél, dus afvangen verbergt een echte
+ *    fout — en bij een trigger valt dat open).
  */
 import { describe, expect, it } from 'vitest';
 
 import {
-  binnenDollarBlok,
-  kaleIndexen,
+  bevindingen,
+  bevindingenIn,
+  blokken,
+  omhullendBlok,
   zonderCommentaar,
 } from '../../scripts/storage-eigendom-controle.mjs';
 
-const KAAL = `create index if not exists objects_iets_idx
-  on storage.objects (bucket_id, created_at)
-  where bucket_id = 'chatfotos';`;
+const soorten = (sql: string): string[] => bevindingenIn(sql).map((b) => b.soort);
 
-const VOORWAARDELIJK = `do $$
-begin
-  create index if not exists objects_iets_idx
-    on storage.objects (bucket_id, created_at)
-    where bucket_id = 'chatfotos';
-exception when insufficient_privilege then
-  raise notice 'overgeslagen';
-end $$;`;
+const AFGEVANGEN = (lichaam: string, label = ''): string =>
+  `do $${label}$\nbegin\n  ${lichaam}\nexception when insufficient_privilege then null;\nend $${label}$;`;
 
-describe('wat de controle moet vínden', () => {
-  it('een kale create index op storage.objects', () => {
-    const uit = kaleIndexen(KAAL);
-    expect(uit).toHaveLength(1);
-    expect(uit[0]).toMatchObject({ index: 'objects_iets_idx', tabel: 'storage.objects' });
+describe('een index moet afgevangen zijn — anders stopt de reeks op productie', () => {
+  /**
+   * ⚠️ Dit is het geval waar de eerste versie op stukliep: een blok zónder
+   *    vangregel. Het ontstaat door de huisstijl uit 0222 te kopiëren en bij het
+   *    knippen de `exception`-regel te laten vallen — en dat is precies de vorm
+   *    die vier aangrenzende bestanden nu voordoen.
+   */
+  it('een do-blok zonder exception-regel is even kaal als geen blok', () => {
+    expect(soorten('do $$\nbegin\n  create index x on storage.objects (name);\nend $$;')).toEqual(['kaal']);
   });
 
-  it('ook op storage.buckets — dezelfde eigenaar, dezelfde fout', () => {
-    expect(kaleIndexen('create index b_idx on storage.buckets (name);')).toHaveLength(1);
+  it.each([
+    ['zonder blok', 'create index x on storage.objects (name);'],
+    ['naamloos', 'create index on storage.objects (name);'],
+    ['met aanhalingstekens', 'create index "objects_f_idx" on storage.objects (name);'],
+    ['met spaties rond de punt', 'create index x on storage . objects (name);'],
+    ['met only', 'create index x on only storage.objects (name);'],
+    ['schemaloos', 'create index x on objects (name);'],
+    ['unique index', 'create unique index x on storage.objects (name);'],
+    ['op storage.buckets', 'create index x on storage.buckets (name);'],
+  ])('%s', (_naam, sql) => {
+    expect(soorten(sql)).toEqual(['kaal']);
   });
 
-  it('ook een unique index, en ook met concurrently', () => {
-    expect(kaleIndexen('create unique index u_idx on storage.objects (name);')).toHaveLength(1);
-    expect(
-      kaleIndexen('create index concurrently c_idx on storage.objects (name);'),
-    ).toHaveLength(1);
+  /** Een unieke constraint legt óók een index aan en vraagt dus hetzelfde recht. */
+  it('alter table … add constraint … unique telt mee', () => {
+    expect(soorten('alter table storage.objects add constraint u unique (bucket_id, name);')).toEqual(['kaal']);
+  });
+
+  it('when others vangt het wel, maar slikt ook echte fouten', () => {
+    const sql = 'do $$\nbegin\n  create index x on storage.objects (name);\nexception when others then null;\nend $$;';
+    expect(soorten(sql)).toEqual(['others']);
+  });
+
+  /** 📏 `25001: CREATE INDEX CONCURRENTLY cannot run inside a transaction block`. */
+  it('concurrently krijgt een eigen melding, want een blok is daar geen uitweg', () => {
+    expect(soorten('create index concurrently x on storage.objects (name);')).toEqual(['concurrently']);
+  });
+});
+
+describe('een grendel mag juist níet afgevangen zijn', () => {
+  it('een afgevangen policy', () => {
+    expect(soorten(AFGEVANGEN('create policy p on storage.objects for select using (true);'))).toEqual([
+      'grendel-afgevangen',
+    ]);
   });
 
   /**
-   * ⚠️ De gevaarlijke variant: een dollarblok élders in het bestand mag een
-   *    kale index verderop niet afdekken. Zonder de pariteitstelling zou de
-   *    treffer ten onrechte "binnen een blok" heten.
+   * ⚠️ De gevaarlijkste van de twee. Een policy die wegvalt sluit dicht; een
+   *    trigger die wegvalt opent — dan hangt de uploadtelling nergens meer aan.
    */
-  it('een kale index ná een afgesloten dollarblok', () => {
-    const sql = `do $$ begin perform 1; end $$;\n\n${KAAL}`;
-    expect(kaleIndexen(sql)).toHaveLength(1);
+  it('een afgevangen trigger', () => {
+    const sql = AFGEVANGEN('create trigger t before insert on storage.objects execute function f();');
+    expect(soorten(sql)).toEqual(['grendel-afgevangen']);
+  });
+
+  it('een afgevangen enable row level security', () => {
+    expect(soorten(AFGEVANGEN('alter table storage.objects enable row level security;'))).toEqual([
+      'grendel-afgevangen',
+    ]);
   });
 });
 
 describe('wat de controle met rúst moet laten', () => {
-  it('dezelfde index, maar voorwaardelijk', () => {
-    expect(kaleIndexen(VOORWAARDELIJK)).toEqual([]);
+  it('een index in de juiste vorm', () => {
+    expect(soorten(AFGEVANGEN('create index x on storage.objects (name);'))).toEqual([]);
   });
 
-  /**
-   * ⚠️ De belofte is smal met opzet: alleen tabellen die we niet bezitten.
-   *    Een index op `public` is geen bevinding, hoe kaal hij ook staat.
-   */
-  it('een kale index op een tabel die we wél bezitten', () => {
-    expect(kaleIndexen('create index g_idx on public.goals (owner_id);')).toEqual([]);
+  /** ⚠️ Deze repo gebruikt ook `$fn$`, `$rb$` en `$migratie$`. */
+  it('dezelfde vorm met een ander dollarlabel', () => {
+    expect(soorten(AFGEVANGEN('create index x on storage.objects (name);', 'migratie'))).toEqual([]);
   });
 
-  it('een rollback-pad in de kop, dat commentaar is en geen code', () => {
-    const sql = `-- ROLLBACK-PAD:\n--   create index objects_iets_idx on storage.objects (name);\n\nselect 1;`;
-    expect(kaleIndexen(sql)).toEqual([]);
+  it('een kale policy en een kale trigger — die horen zo', () => {
+    expect(soorten('create policy p on storage.objects for select using (true);')).toEqual([]);
+    expect(soorten('create trigger t before insert on storage.objects execute function f();')).toEqual([]);
+  });
+
+  it('een index op een tabel die we wél bezitten', () => {
+    expect(soorten('create index g on public.goals (owner_id);')).toEqual([]);
+  });
+
+  it('een rollback-pad in commentaar is geen code', () => {
+    expect(soorten('-- create index x on storage.objects (name);\nselect 1;')).toEqual([]);
   });
 
   it('een drop, want die vraagt geen eigendom als het object er niet is', () => {
-    expect(kaleIndexen('drop index if exists storage.objects_iets_idx;')).toEqual([]);
+    expect(soorten('drop index if exists storage.objects_iets_idx;')).toEqual([]);
   });
 });
 
-describe('de knip en de pariteit, elk los', () => {
+describe('de hulpstukken, elk los', () => {
   it('zonderCommentaar haalt een regelcommentaar weg en laat code staan', () => {
     expect(zonderCommentaar('select 1; -- weg\nselect 2;')).toBe('select 1; \nselect 2;');
   });
 
-  it('binnenDollarBlok telt de quotes ervoor', () => {
-    const sql = 'aaa $$ bbb $$ ccc';
-    expect(binnenDollarBlok(sql, sql.indexOf('bbb'))).toBe(true);
-    expect(binnenDollarBlok(sql, sql.indexOf('ccc'))).toBe(false);
-    expect(binnenDollarBlok(sql, sql.indexOf('aaa'))).toBe(false);
+  it('blokken paart per label en negeert een blok van een ander label', () => {
+    const sql = 'do $a$ een $a$; do $b$ twee $b$;';
+    expect(blokken(sql).map((b) => b.tekst.trim())).toEqual(['een', 'twee']);
+  });
+
+  it('omhullendBlok scheidt vangen van slikken', () => {
+    const vangend = blokken(AFGEVANGEN('select 1;'));
+    const slikkend = blokken('do $$ begin select 1; exception when others then null; end $$;');
+    const [eerste] = vangend;
+    const [tweede] = slikkend;
+    if (eerste === undefined || tweede === undefined) throw new Error('geen blok gevonden');
+
+    expect(omhullendBlok(vangend, eerste.van + 1)).toMatchObject({ vangt: true });
+    expect(omhullendBlok(slikkend, tweede.van + 1)).toMatchObject({ vangt: false, slikt: true });
+  });
+
+  it('buiten elk blok is er geen omhullend blok', () => {
+    expect(omhullendBlok(blokken('do $$ x $$; select 1;'), 20)).toBeNull();
   });
 });
 
 /**
- * ⚠️ **De belofte, en niet een eigenschap van een onderdeel.** De vorige drie
- *    blokken voeden losse tekst aan de functie. Dit blok toetst wat de controle
- *    werkelijk belooft: *in deze repo staat geen kale index op een vreemde
- *    tabel*. Die blijft kloppen als iemand een migratie verplaatst of toevoegt.
+ * ⚠️ **De belofte over de repo zelf, en niet over een stukje tekst.** Deze blijft
+ *    kloppen als iemand een migratie toevoegt of verplaatst — de blokken
+ *    hierboven niet.
  */
-describe('de belofte over de repo zelf', () => {
-  it('geen enkele migratie draagt een kale index op een vreemde tabel', async () => {
-    const { bevindingen } = await import('../../scripts/storage-eigendom-controle.mjs');
+describe('de belofte over de repo', () => {
+  it('elke index op storage.* wordt afgevangen, en geen enkele grendel', () => {
     expect(bevindingen()).toEqual([]);
   });
 });

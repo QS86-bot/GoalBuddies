@@ -194,8 +194,12 @@ en een gat is duurder dan wachten: de map bouwt het schema dan nergens meer op
 en een RLS-suite toetst een ánder schema dan productie. Zie
 `docs/decisions/2026-09-08-het-gat-is-erger-dan-de-botsing.md`.
 
-De storage-helft hoort dus van Quintens machine te komen — de SQL-editor in het
-dashboard of `psql` met de projectcredentials.
+⚠️ **Hier stond tot 12-09-2026: *"de storage-helft hoort dus van Quintens
+machine te komen — de SQL-editor in het dashboard of `psql` met de
+projectcredentials."*** Dat is onjuist en het is de zin die QS8-243 drie dagen
+heeft laten wachten: die twee routes draaien **óók als `postgres`** en kunnen
+dus precies evenveel als een bouwsessie. Zie de meettabel hierboven. Een index
+op `storage.*` hoort voorwaardelijk; er is geen mens die hem er anders op krijgt.
 
 ⚠️ **Hier stond tot 24-08-2026 dat stap 3 een UPDATE met de hand was**, met als
 geruststelling dat stap 4 het wel zou opmerken. Dat klopte, en het hielp niet:
