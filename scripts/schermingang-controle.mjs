@@ -39,18 +39,29 @@ export const ZONDER_PUSH = {
   //    Expo Router laat `index` uit het pad vallen, en `routesIn()` doet dat na.
   //    Een regel op de bestandsnaam dekt dus niets — 📏 dat was de eerste
   //    uitslag van dit script.
+  //
+  // ⚠️⚠️ **Hier stond tot 12-09-2026 `<Tabs.Screen name="…">` als reden, en dat
+  //    mechanisme bestaat niet meer** (QS8-441). 📏 Sinds QS8-437 draagt
+  //    `app/(tabs)/_layout.tsx` `tabBar={() => null}`: de navigator tékent geen
+  //    balk. Die `<Tabs.Screen>`-regels blijven staan als **routedefinitie**,
+  //    dus deze controle bleef groen terwijl zijn onderbouwing onwaar was.
+  //
+  //    De echte ingang is de `<Link>` in `src/shared/ui/Taakbalk.tsx`, gevoed
+  //    door `TABBLADEN` in `src/shared/ui/taakbalk.ts`. Dat register is dus de
+  //    grendel geworden, en `tests/beloftes/taakbalk-overal.test.ts` legt deze
+  //    vijf rijen daar één op één naast — beide richtingen.
   '/(tabs)':
-    '📏 Staat als `<Tabs.Screen name="index">` in `app/(tabs)/_layout.tsx`: de tabbalk is de ingang.',
+    '📏 Staat als `/` in `TABBLADEN` (`src/shared/ui/taakbalk.ts`): de taakbalk is de ingang.',
   '/(tabs)/doelen':
-    '📏 Staat als `<Tabs.Screen name="doelen">` in `app/(tabs)/_layout.tsx`: de tabbalk is de ingang.',
+    '📏 Staat als `/doelen` in `TABBLADEN` (`src/shared/ui/taakbalk.ts`): de taakbalk is de ingang.',
   '/(tabs)/groep':
-    '📏 Staat als `<Tabs.Screen name="groep">` in `app/(tabs)/_layout.tsx`: de tabbalk is de ingang.',
+    '📏 Staat als `/groep` in `TABBLADEN` (`src/shared/ui/taakbalk.ts`): de taakbalk is de ingang.',
   '/(tabs)/profiel':
-    '📏 Staat als `<Tabs.Screen name="profiel">` in `app/(tabs)/_layout.tsx`: de tabbalk is de ingang.',
+    '📏 Staat als `/profiel` in `TABBLADEN` (`src/shared/ui/taakbalk.ts`): de taakbalk is de ingang.',
   // ⚠️ Het vijfde tabblad, sinds QS8-380. Beslispunt 1 van QS8-378 draaide de
   //    regel "vier en niet vijf" om; de kop van `_layout.tsx` legt uit waarom.
   '/(tabs)/lijst':
-    '📏 Staat als `<Tabs.Screen name="lijst">` in `app/(tabs)/_layout.tsx`: de tabbalk is de ingang.',
+    '📏 Staat als `/lijst` in `TABBLADEN` (`src/shared/ui/taakbalk.ts`): de taakbalk is de ingang.',
 };
 
 /** Alle `.tsx`-bestanden onder een map, recursief. */

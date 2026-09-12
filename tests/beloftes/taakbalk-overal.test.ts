@@ -4,6 +4,7 @@ import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 
 import { actiefTabblad, TABBLADEN, toontTaakbalk, ZONDER_TAAKBALK } from '../../src/shared/ui/taakbalk';
+import { ZONDER_PUSH } from '../../scripts/schermingang-controle.mjs';
 
 /**
  * Elk scherm dat een taakbalk hoort te hebben, heeft er één — QS8-437.
@@ -174,5 +175,54 @@ describe('het actieve tabblad volgt de route', () => {
   it('trekt zich niets aan van een query of een slotstreep', () => {
     expect(actiefTabblad('/doelen/')).toBe('/doelen');
     expect(actiefTabblad('/doelen?filter=open')).toBe('/doelen');
+  });
+});
+
+// ---------------------------------------------------------------------------
+
+/**
+ * De naad tussen de twee registers — QS8-441.
+ *
+ * ⚠️⚠️ **`schermingang:controle` verontschuldigt vijf routes omdat "de taakbalk
+ *    de ingang is". Niets toetste of die balk ze ooit aanwijst.** 📏 Gemeten op
+ *    12-09-2026: `/lijst` had **nul** andere ingangen — geen `router.push`, geen
+ *    `href`, geen `terug={{naar}}` in heel `app/` en `src/`. Eén rij uit
+ *    `TABBLADEN` halen maakte het vijfde tabblad dus onbereikbaar, terwijl de
+ *    controle meldde dat alle 27 routes een ingang hebben.
+ *
+ * ⚠️ **Waarom dit geen tautologie is** — punt U uit QS8-440, dat precies over
+ *    dít bestand ging. De verwachting komt hier **niet** uit `TABBLADEN` maar
+ *    uit `ZONDER_PUSH`: een ander register, in een ander bestand, met een andere
+ *    padvorm (`/(tabs)/lijst` tegen `/lijst`), dat onafhankelijk onderhouden
+ *    wordt. De twee kunnen het dus wél oneens zijn, en dat is het hele punt.
+ *
+ * ⚠️ Expo Router laat de groep uit het pad vallen: `/(tabs)/doelen` is `/doelen`
+ *    en `/(tabs)` is `/`. Die vertaling staat hier één keer.
+ */
+function alsApppad(route: string): string {
+  return route === '/(tabs)' ? '/' : route.replace('/(tabs)', '');
+}
+
+describe('wat schermingang:controle verontschuldigt, wijst de taakbalk ook echt aan', () => {
+  const verontschuldigd = Object.keys(ZONDER_PUSH as Record<string, string>).map(alsApppad);
+  const inBalk = TABBLADEN.map((t) => t.pad as string);
+
+  it('elke route die op de taakbalk leunt, staat in TABBLADEN', () => {
+    expect(verontschuldigd.length).toBeGreaterThan(0);
+    for (const pad of verontschuldigd) {
+      expect(inBalk, `${pad} leunt op de taakbalk maar staat niet in TABBLADEN`).toContain(pad);
+    }
+  });
+
+  /**
+   * ⚠️ De andere kant op, want de ratel slaat twee kanten op: een tabblad dat
+   *    nérgens op leunt is geen fout, maar een tabblad dat uit `ZONDER_PUSH`
+   *    verdwijnt terwijl het in de balk blijft staan, betekent dat de twee
+   *    registers uit elkaar gelopen zijn — en dan klopt één van beide niet.
+   */
+  it('en elk tabblad wordt door die controle ook als zodanig verontschuldigd', () => {
+    for (const pad of inBalk) {
+      expect(verontschuldigd, `${pad} staat in de balk maar niet in ZONDER_PUSH`).toContain(pad);
+    }
   });
 });
