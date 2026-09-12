@@ -373,3 +373,211 @@ describe('QS8-365 — het nummer sluit aan op de eigen map', () => {
     expect(code, uit).toBe(1);
   });
 });
+
+// ---------------------------------------------------------------------------
+// QS8-435 — de leeftijd van het beeld staat in de branchbevinding zelf
+// ---------------------------------------------------------------------------
+
+/**
+ * ⚠️⚠️ **De toestand waarin een bevinding al onwaar was toen hij opgeschreven
+ *    werd.** 📏 Op 11-09-2026 meldde `migraties:controle` dat een zusterbranch
+ *    een botsend nummer droeg. Dat klopte op de ref die deze werkkopie had, en
+ *    die ref was van vóór het hernummeren: de branch was om 15:03 UTC
+ *    hernummerd, de melding is om 16:13 UTC op het issue van iemand anders
+ *    gezet, en er was alleen `git fetch origin main` gedraaid.
+ *
+ *    Het script wáárschuwde ervoor, onderaan zijn foutmelding: *dit beeld is zo
+ *    oud als je laatste `git fetch`*. Die zin stond letterlijk in die uitvoer.
+ *    Hij hielp niet, want hij stond er ook bij een ref van tien seconden oud —
+ *    dezelfde vorm die CLAUDE.md bij QS8-247 al afkeurde.
+ *
+ * ⚠️ **Waarom dit hier staat en niet alleen in `migratiebranches.test.ts`.** Die
+ *    voedt `beeldmelding()` zijn eigen datum en kan daarmee wel toetsen dat de
+ *    drie teksten verschillen, maar niet dat de controle de júiste datum leest
+ *    en hem op de juiste plek zet. `FETCH_HEAD` op schijf is het enige dat
+ *    "vers" van "oud" kan onderscheiden, en die staat hier echt.
+ *
+ * IJKING — met de hand gedraaid op 12-09-2026, 📏 één mutatie per grendel en
+ * niet één voor de hele controle. De tweede kolom is meegeteld omdat hij laat
+ * zien wélke laag een mutatie raakt: F t/m H zitten in `beeldmelding()` zelf,
+ * I t/m K in de controle eromheen.
+ *
+ *                                                              hier  migratiebranches
+ *   F  `beeldmelding()` altijd de nooit-gefetcht-tak              2         4
+ *   G  `beeldmelding()` altijd de verse tak                       1         3
+ *   H  de drempel op `Infinity` (alles telt als vers)             1         3
+ *   I  het `branchfouten.length > 0`-hek eruit (ook bij een gat)  1         0
+ *   J  `laatsteFetch()` vervangen door `new Date()`               2         0
+ *   K  een `git ls-remote` die op de uitslag doorwerkt            2         0
+ *
+ * ⚠️ **G kostte een test zijn scherpte, en dat is de reden dat deze kolommen er
+ *    staan.** *geeft drie verschillende teksten* in `migratiebranches.test.ts`
+ *    bleef bij G groen: de drie uitvoeren verschilden nog steeds, maar alleen
+ *    in de tijd die erin geïnterpoleerd staat. Hij vergelijkt sindsdien de vórm.
+ *    Kijk bij een ijking dus wélke test omvalt, niet dát er een omvalt.
+ *
+ * ⚠️ **K is de ijking van acceptatiecriterium 3**, en hij hoort bij de laatste
+ *    test hieronder: met een `ls-remote` erin gaat die rood, want dan hángt de
+ *    uitslag af van bereikbaarheid. De tweede rode is een buurtest die dezelfde
+ *    uitvoer leest — die telt mee als signaal en niet als grendel.
+ */
+describe('QS8-435 — een branchbevinding noemt de leeftijd van zijn beeld', () => {
+  let afstand2 = '';
+  let kloon2 = '';
+  let fetchHead2 = '';
+  let kloonGat = '';
+
+  /** `migraties-controle.mjs` in een gegeven wortel, met uitvoer én exitcode. */
+  function controleIn(wortel: string): { uit: string; code: number } {
+    try {
+      const uit = execFileSync('node', [join(wortel, 'scripts', 'migraties-controle.mjs')], {
+        cwd: wortel,
+        encoding: 'utf8',
+        stdio: ['ignore', 'pipe', 'pipe'],
+      });
+      return { uit, code: 0 };
+    } catch (fout) {
+      const e = fout as { stdout?: string; stderr?: string; status?: number };
+      return { uit: `${e.stdout ?? ''}${e.stderr ?? ''}`, code: e.status ?? 1 };
+    }
+  }
+
+  function uitrusten(wortel: string) {
+    mkdirSync(join(wortel, 'scripts'), { recursive: true });
+    for (const naam of HULPSCRIPTS) {
+      cpSync(join(process.cwd(), 'scripts', naam), join(wortel, 'scripts', naam));
+    }
+    // ⚠️ De échte `package.json`: `migraties:controle` toetst er de
+    //    CLI-tegenspraak op, en een verzonnen versie toetst zichzelf.
+    cpSync(join(process.cwd(), 'package.json'), join(wortel, 'package.json'));
+  }
+
+  beforeAll(() => {
+    // ⚠️ Een eigen remote en eigen klonen, los van de blokken hierboven. Die
+    //    laten de werkkopie met opzet achterlopen en pushen er gaandeweg bij;
+    //    een test die op FETCH_HEAD meet, mag daar niet aan hangen.
+    afstand2 = join(werkmap, 'afstand2.git');
+    git(werkmap, 'init', '--bare', '-b', 'main', afstand2);
+
+    const bron2 = join(werkmap, 'bron2');
+    mkdirSync(bron2);
+    git(bron2, 'init', '-b', 'main');
+    migratie(bron2, '0001_begin');
+    git(bron2, 'add', '-A');
+    git(bron2, 'commit', '-m', 'begin');
+    git(bron2, 'remote', 'add', 'origin', afstand2);
+    git(bron2, 'push', '-u', 'origin', 'main');
+
+    // Een zusterbranch die een nummer draagt dat hier ontbreekt — de
+    // branchbevinding waar dit issue over gaat.
+    git(bron2, 'checkout', '-b', 'zuster');
+    migratie(bron2, '0002_elders_geclaimd');
+    git(bron2, 'add', '-A');
+    git(bron2, 'commit', '-m', 'zuster');
+    git(bron2, 'push', '-u', 'origin', 'zuster');
+
+    kloon2 = join(werkmap, 'kloon2');
+    git(werkmap, 'clone', afstand2, kloon2);
+    uitrusten(kloon2);
+    fetchHead2 = join(kloon2, '.git', 'FETCH_HEAD');
+
+    // En een kloon zónder zusterbranch, voor de andere helft van de belofte.
+    kloonGat = join(werkmap, 'kloon-gat');
+    git(werkmap, 'clone', '--single-branch', '--branch', 'main', afstand2, kloonGat);
+    uitrusten(kloonGat);
+  });
+
+  /**
+   * ⚠️ **Dit is de toestand van CI en van een verse checkout**, en daar is het
+   *    beeld juist van net: `git clone` schrijft geen `FETCH_HEAD`. Een lege
+   *    datum of de oude-beeldtekst zou hier allebei liegen.
+   */
+  it('zegt dát er nooit gefetcht is als FETCH_HEAD ontbreekt', () => {
+    rmSync(fetchHead2, { force: true });
+    const { uit, code } = controleIn(kloon2);
+
+    expect(uit, uit).toContain('origin/zuster');
+    expect(uit, uit).toContain('FETCH_HEAD');
+    expect(uit, uit).toContain('verse checkout');
+    expect(uit, uit).not.toContain('git fetch --all');
+    expect(code, uit).toBe(1);
+  });
+
+  it('noemt een vers beeld met zijn echte tijd en zonder voorbehoud', () => {
+    git(kloon2, 'fetch', 'origin');
+    const { uit } = controleIn(kloon2);
+
+    expect(uit, uit).toContain('origin/zuster');
+    expect(uit, uit).toMatch(/Deze branchrefs zijn van \d{4}-\d{2}-\d{2} \d{2}:\d{2} UTC/);
+    expect(uit, uit).not.toContain('git fetch --all');
+  });
+
+  /**
+   * ⚠️ **Het geval van 11-09-2026.** De melding moet hier een ándere tekst
+   *    geven dan hierboven — dát verschil is de hele reparatie.
+   */
+  it('noemt een oud beeld met zijn tijd, zijn leeftijd én de opdracht', () => {
+    git(kloon2, 'fetch', 'origin');
+    const drieDagenTerug = Date.now() / 1000 - 3 * 86_400;
+    utimesSync(fetchHead2, drieDagenTerug, drieDagenTerug);
+
+    const { uit } = controleIn(kloon2);
+
+    expect(uit, uit).toContain('origin/zuster');
+    expect(uit, uit).toMatch(/Deze branchrefs zijn van \d{4}-\d{2}-\d{2} \d{2}:\d{2} UTC/);
+    expect(uit, uit).toContain('3 dagen oud');
+    expect(uit, uit).toContain('git fetch --all');
+  });
+
+  /**
+   * ⚠️ **De andere helft van de belofte, en zonder haar is de melding weer een
+   *    disclaimer.** Een gat of een duplicaat in de eigen map leest deze
+   *    controle van schijf; de leeftijd van de remote doet daar niet ter zake.
+   *    Zou de versheidsregel onder élke bevinding staan, dan staat hij er weer
+   *    altijd — precies de vorm die dit issue bestrijdt.
+   */
+  it('zwijgt over het beeld bij een bevinding die niet over een branch gaat', () => {
+    migratie(kloonGat, '0003_met_een_gat_ervoor');
+    const { uit, code } = controleIn(kloonGat);
+
+    expect(uit, uit).toContain('Gat in de nummering');
+    expect(uit, uit).not.toContain('branchrefs');
+    expect(uit, uit).not.toContain('FETCH_HEAD');
+    expect(code, uit).toBe(1);
+  });
+
+  /**
+   * ⚠️⚠️ **Acceptatiecriterium 3, en met opzet op de belófte gemeten en niet op
+   *    een subcommando.** De eis is niet "er staat nergens `git fetch` in de
+   *    bron" maar *de uitslag hangt niet af van bereikbaarheid* — daarom draait
+   *    deze controle in de poort en in CI. Een toets die `git fetch` in de bron
+   *    zoekt, laat `git ls-remote` erdoor; deze toets vergelijkt de hele uitvoer
+   *    met en zonder bereikbare remote, en die is bij élke netwerkaanroep die
+   *    ergens op doorwerkt anders.
+   *
+   * ⚠️ De remote wegtrekken en niet een netwerkfout nabootsen: dit is een bare
+   *    repo op schijf, dus `renameSync` is de goedkoopste onbereikbaarheid die
+   *    er is — en er komt geen netwerk aan te pas.
+   */
+  it('geeft dezelfde uitslag met een onbereikbare remote', () => {
+    git(kloon2, 'fetch', 'origin');
+    const drieDagenTerug = Date.now() / 1000 - 3 * 86_400;
+    utimesSync(fetchHead2, drieDagenTerug, drieDagenTerug);
+
+    const met = controleIn(kloon2);
+
+    const opzij = `${afstand2}.opzij`;
+    renameSync(afstand2, opzij);
+    let zonder: { uit: string; code: number };
+    try {
+      zonder = controleIn(kloon2);
+    } finally {
+      renameSync(opzij, afstand2);
+    }
+
+    expect(zonder.uit, zonder.uit).toBe(met.uit);
+    expect(zonder.code).toBe(met.code);
+    // ⚠️ En niet leeg: een test die twee lege uitvoeren vergelijkt, bewaakt niets.
+    expect(met.uit).toContain('origin/zuster');
+  });
+});
