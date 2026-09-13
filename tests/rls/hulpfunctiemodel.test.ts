@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { psql, stackBeschikbaarOfFaal } from './psql-stack';
+import { psql, psqlMetInvoer, stackBeschikbaarOfFaal } from './psql-stack';
 
 /**
  * Het model van de lidmaatschapshulpfuncties — QS8-146, migratie 0160.
@@ -302,4 +302,90 @@ describe.skipIf(!beschikbaar)('het model van de lidmaatschapshulpfuncties', () =
     expect(vormen.some((v) => v.streng), 'geen enkele functie is streng').toBe(true);
     expect(vormen.some((v) => v.mild), 'geen enkele functie is mild').toBe(true);
   });
+});
+
+// ---------------------------------------------------------------------------
+
+/**
+ * De belofte: **een leespolicy die groepsgenoten iets laat zien, routeert via de
+ * gedeelde toets** — QS8-459, migratie 0259.
+ *
+ * ⚠️⚠️ **Dit is de naad die de hele suite niet zag.** 📏 Gemeten op 13-09-2026:
+ *    alle vijf de voorwaarden in `shares_group_with_goal()` zijn los weggehaald
+ *    en de RLS-suite werd elke keer rood (3, 4, 4, 4 en 20 tests). Ook
+ *    `goal_events_select` op `using (true)` geeft een rode test.
+ *
+ *    Maar vervang je in die policy de aanroep `shares_group_with_goal(g.id)` door
+ *    een eigen `exists` over `goal_group_links` + `group_members` — dezelfde vorm,
+ *    maar zónder de eis dat de **eigenaar** nog lid is en zónder de archieftoets —
+ *    dan blijft de suite **volledig groen**: 1796 passed, 0 failed. Een
+ *    uitgetreden lid en een gearchiveerde groep kunnen er dan weer bij.
+ *
+ *    Dat is de verruiming die er in een diff uitziet als een refactor, en het is
+ *    precies de vorm waar regel 18 over gaat: elk onderdeel klopt, en de vraag
+ *    *"loopt deze policy nog langs de gedeelde toets"* was van niemand.
+ *
+ * ⚠️ **De route en niet de expressie.** Een letterlijke vergelijking op
+ *    `pg_get_expr()` is bros — commentaar, witruimte en een hernoemd alias
+ *    veranderen legitiem, en een controle die daarop rood wordt leer je uitzetten.
+ *    Wat wél hard te stellen is: wie de lidmaatschapstabellen noemt, doet dat via
+ *    een gedeelde toets en niet via een eigen kopie.
+ *
+ * ⚠️ Zelfde vorm als de derde tak van `archiefleesgat()` (0164), die dat voor
+ *    **schrijvende** policies doet. Deze dekt de leeskant — de helft die er niet
+ *    was.
+ */
+describe.skipIf(!beschikbaar)('een leespolicy routeert via de gedeelde groepstoets', () => {
+  it('meldt vandaag niets — geen enkele leespolicy schrijft de toets zelf uit', () => {
+    // ⚠️ 📏 Bij invoering nul. De enige policy in `public` die de
+    //    lidmaatschapstabellen rechtstreeks noemt is `goal_group_links_delete`,
+    //    en dat is een DELETE — buiten bereik, en al een benoemde uitzondering
+    //    in `archiefleesgat()`.
+    expect(psql('select coalesce(string_agg(naam, \', \' order by naam), \'\') from leesroute_bewaking()')).toBe(
+      '',
+    );
+  }, 30_000);
+
+  /**
+   * ⚠️⚠️ **Gevoed, want de grendel is met de bestaande data niet rood te krijgen.**
+   *    *"Een controle die je niet kunt voeden, kun je niet ijken."* Beide helften
+   *    staan hieronder: de vorm die hij moet melden én de vorm die hij met rust
+   *    moet laten. Zonder die tweede helft is een controle die álles meldt ook
+   *    groen te noemen, en die leer je negeren.
+   */
+  it('meldt een eigen kopie, en laat een policy die de gedeelde toets aanroept met rust', () => {
+    const uit = psqlMetInvoer(
+      [
+        'begin;',
+        'create table public.proef_leesroute_459 (id uuid primary key default gen_random_uuid(), goal_id uuid);',
+        'alter table public.proef_leesroute_459 enable row level security;',
+        // A — de eigen kopie: noemt de lidmaatschapstabellen zonder gedeelde toets.
+        'create policy proef_459_kopie on public.proef_leesroute_459 for select to authenticated',
+        '  using (exists (select 1 from goal_group_links l',
+        '                 join group_members m on m.group_id = l.group_id',
+        '                                     and m.user_id = (select auth.uid())',
+        '                 where l.goal_id = proef_leesroute_459.goal_id));',
+        // B — de must-allow: noemt group_members én roept de gedeelde toets aan.
+        'create policy proef_459_route on public.proef_leesroute_459 for select to authenticated',
+        '  using (shares_group_with_goal(goal_id)',
+        '         and exists (select 1 from group_members m where m.user_id = (select auth.uid())));',
+        "select 'GEMELD=' || coalesce(string_agg(naam, ',' order by naam), '') from leesroute_bewaking()",
+        "  where naam like '%proef_leesroute_459%';",
+        'rollback;',
+      ].join('\n'),
+    );
+
+    const gemeld = uit
+      .split('\n')
+      .map((r) => r.trim())
+      .find((r) => r.startsWith('GEMELD='))
+      ?.slice('GEMELD='.length);
+
+    expect(
+      gemeld,
+      'de kopie hoort gemeld te worden en de policy die de gedeelde toets aanroept niet — ' +
+        'meldt hij beide, dan is het een controle die je leert negeren; meldt hij geen ' +
+        'van beide, dan vangt hij de verruiming niet die de hele suite groen liet',
+    ).toBe('proef_leesroute_459.proef_459_kopie');
+  }, 30_000);
 });
