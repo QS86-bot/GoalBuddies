@@ -1331,4 +1331,246 @@ describe.skipIf(!rlsTestsConfigured)('een week die zijn beoordelaars kwijtraakt'
       TEST_TIMEOUT,
     );
   });
+  /**
+   * ⚠️⚠️ **De belofte: een automatische goedkeuring is achteraf te herkennen** —
+   *    QS8-453, migratie 0257. Dit is een uitzondering op een **autorisatiegrens**
+   *    (domeinregel 3: alleen een groepsgenoot mag goedkeuren), en zo'n
+   *    uitzondering die geen spoor nalaat is achteraf niet te reconstrueren — en
+   *    dus ook niet met een correctie-record recht te zetten (domeinregel 6).
+   *
+   * ⚠️ **Beide routes staan hieronder, en dat is het punt.** "Er staat `true` bij
+   *    de automatische route" is goedkoop te halen door de kolom altijd op `true`
+   *    te zetten. De belofte is *onderscheid*, en die is pas getoetst als de
+   *    normale peer-goedkeuring in dezelfde suite `false` oplevert.
+   *
+   * ⚠️ Punten zijn privé (domeinregel 10), dus het uitlezen gaat per definitie via
+   *    de beheerdersclient. Dat is opstelling, niet wat hier getoetst wordt.
+   */
+  describe('een automatische goedkeuring laat een spoor na (0257)', () => {
+    async function boekingen(
+      userId: string,
+    ): Promise<{ readonly reason: string; readonly zonder: boolean; readonly delta: number }[]> {
+      const { data, error } = await adminDb()
+        .from('points_ledger')
+        .select('reason, zonder_beoordelaar, delta')
+        .eq('user_id', userId);
+      if (error) throw new Error(`points_ledger: ${error.message}`);
+
+      return (data ?? []).map((r) => ({
+        reason: r.reason as string,
+        zonder: r.zonder_beoordelaar as boolean,
+        delta: r.delta as number,
+      }));
+    }
+
+    it(
+      'markeert de boeking van een week die de termijn goedkeurde',
+      async () => {
+        const o = await bouwOpstelling('spoor-automatisch');
+        await verouder(o.completionId, 20);
+
+        // Route 2: de eigenaar verliest zijn enige beoordelaar doordat die vertrekt.
+        const weg = await o.beoordelaar.db.rpc('verlaat_groep', {
+          p_group_id: o.groupId,
+          p_bevestigd: true,
+        });
+        if (weg.error) throw new Error(`verlaten: ${weg.error.message}`);
+
+        await draaiTermijn(7);
+        expect(await weekstatus(o.completionId)).toBe('approved');
+
+        const rijen = await boekingen(o.eigenaar.id);
+        expect(rijen, 'er hoort precies één boeking te staan').toHaveLength(1);
+        expect(
+          rijen[0]?.zonder,
+          'de automatische goedkeuring is niet te onderscheiden van een peer-goedkeuring — ' +
+            'dat is precies de uitzondering op domeinregel 3 die geen spoor nalaat',
+        ).toBe(true);
+
+        // ⚠️ De reden blíjft die van een gewone goedkeuring, en dat is het besluit
+        //    van dit issue: `reason` zit in `points_ledger_dedupe_idx`.
+        expect(rijen[0]?.reason).toMatch(/^completion_approved_(ceiling|floor)$/);
+      },
+      TEST_TIMEOUT,
+    );
+
+    it(
+      'en laat de boeking van een echte peer-goedkeuring ongemarkeerd',
+      async () => {
+        const o = await bouwOpstelling('spoor-peer');
+
+        const { error } = await o.beoordelaar.db.from('completion_approvals').insert({
+          completion_id: o.completionId,
+          approver_id: o.beoordelaar.id,
+          subject_id: o.eigenaar.id,
+          group_id: o.groupId,
+          status: 'approved',
+        });
+        expect(error).toBeNull();
+
+        const rijen = await boekingen(o.eigenaar.id);
+        expect(rijen, 'de peer-goedkeuring boekte niet').toHaveLength(1);
+        expect(
+          rijen[0]?.zonder,
+          'een gewone goedkeuring wordt gemarkeerd als automatisch — dan zegt de kolom niets',
+        ).toBe(false);
+      },
+      TEST_TIMEOUT,
+    );
+
+    /**
+     * ⚠️⚠️ **De naad die de eerste versie van 0257 miste** — gevonden door de
+     *    security-review en zelf nagemeten.
+     *
+     *    Het pad is een gewone volgorde: je buddy keurt je week goed, bedenkt
+     *    zich en trekt het in, en verlaat daarna de groep. `trek_goedkeuring_in()`
+     *    boekt een `correction` en zet de week terug op `pending`, maar laat de
+     *    oorspronkelijke `completion_approved_*`-rij staan — append-only,
+     *    domeinregel 6. Die rij bezet de dedupe-sleutel al.
+     *
+     *    De termijn keurt de week daarna alsnog goed, de insert botst, en
+     *    `on conflict do nothing` slikte hem — **inclusief het spoor**. Het
+     *    grootboek beweerde dan dat een groepsgenoot deze week goedkeurde,
+     *    terwijl de termijn dat deed zonder één geldige goedkeuring. Precies de
+     *    verwisseling waar dit issue voor bestaat.
+     *
+     * ⚠️ De drie gevallen hierboven bouwen elk een verse opstelling zónder eerdere
+     *    boeking, dus geen ervan raakte deze naad. Regel 18 vraag 3: de test kon
+     *    groen blijven terwijl de belofte brak.
+     *
+     * ⚠️⚠️ **`it.fails`, en dat is een besluit en geen omweg.** De reparatie die
+     *    voor de hand ligt — `on conflict … do update set zonder_beoordelaar =
+     *    true` — is onjuist: die rij ís een echte peer-goedkeuring, en hem als
+     *    automatisch stempelen maakt het grootboek onwaar in de andere richting.
+     *
+     *    Wat hier werkelijk stukzit is groter dan het spoor: de week staat op
+     *    `approved` terwijl de eigenaar er **netto nul punten** voor heeft (+2 van
+     *    de ingetrokken goedkeuring, −2 correctie, en de termijn boekt niets omdat
+     *    de dedupe-sleutel bezet is). Dat is een defect in het puntenmodel dat
+     *    ouder is dan dit issue, en het raakt domeinregel 10. Losgetrokken als
+     *    QS8-456, dat dit issue blokkeert.
+     *
+     *    Deze test staat daarom `it.fails`: hij legt de gemeten toestand vast en
+     *    **slaat om zodra iemand hem repareert** — dan faalt `it.fails` zelf en is
+     *    dat het sein om reviewrij 453 alsnog te sluiten. Zelfde vorm als in
+     *    `tests/rls/policies.test.ts`.
+     */
+    it.fails(
+      'markeert ook een week waarvan een eerdere goedkeuring was ingetrokken (QS8-456)',
+      async () => {
+        const o = await bouwOpstelling('spoor-ingetrokken');
+
+        const goedgekeurd = await o.beoordelaar.db
+          .from('completion_approvals')
+          .insert({
+            completion_id: o.completionId,
+            approver_id: o.beoordelaar.id,
+            subject_id: o.eigenaar.id,
+            group_id: o.groupId,
+            status: 'approved',
+          })
+          .select('id')
+          .single();
+        if (goedgekeurd.error) throw new Error(`goedkeuren: ${goedgekeurd.error.message}`);
+
+        const terug = await o.beoordelaar.db.rpc('trek_goedkeuring_in', {
+          p_approval_id: goedgekeurd.data.id as string,
+        });
+        if (terug.error) throw new Error(`intrekken: ${terug.error.message}`);
+
+        expect(await weekstatus(o.completionId), 'de intrekking zette de week niet terug').toBe(
+          'pending',
+        );
+
+        await verouder(o.completionId, 20);
+        const weg = await o.beoordelaar.db.rpc('verlaat_groep', {
+          p_group_id: o.groupId,
+          p_bevestigd: true,
+        });
+        if (weg.error) throw new Error(`verlaten: ${weg.error.message}`);
+
+        await draaiTermijn(7);
+        expect(await weekstatus(o.completionId)).toBe('approved');
+
+        const rijen = await boekingen(o.eigenaar.id);
+        expect(
+          rijen.some((r) => r.zonder && r.reason.startsWith('completion_approved_')),
+          'de termijn keurde deze week goed zonder één geldige goedkeuring, en het ' +
+            'grootboek zegt dat een groepsgenoot het deed — de dedupe-botsing slikte ' +
+            'het spoor',
+        ).toBe(true);
+      },
+      TEST_TIMEOUT,
+    );
+
+    /**
+     * ⚠️⚠️ **Dit is de grendel die de reviewrij zou hebben verzwakt.** Die stelde
+     *    een eigen `reason` voor — `completion_auto_approved_*`. 📏 Gemeten:
+     *    `points_ledger_dedupe_idx` is `UNIQUE (user_id, reason, ref_type, ref_id)`,
+     *    dus twee boekingen voor dezelfde week met verschillende `reason` passen er
+     *    allebei in. De automatische route deelt daarom zijn reden mét de
+     *    peer-route; het spoor zit in een kolom. De toets dat die reden uit de
+     *    gedeelde verzameling komt, staat hierboven in het eerste geval.
+     *
+     * ⚠️⚠️ **Wat deze index níet afdwingt, en dat is gemeten en niet aangenomen:**
+     *    dezelfde week kan een `completion_approved_floor` **én** een
+     *    `completion_approved_ceiling` dragen — 2 rijen, 3 punten voor een week met
+     *    een plafond van 2. Dat gat bestond vóór dit issue en staat er nog; het
+     *    hangt aan `reason` in de indexsleutel en niet aan de kolom die hier
+     *    bijkomt. Losgetrokken als QS8-454, want repareren raakt het puntenmodel
+     *    en niet deze feature.
+     *
+     *    Deze test belooft dus niet meer dan hij waarmaakt: **twee keer dezelfde
+     *    reden voor dezelfde week botst.** Dat is de grendel waar
+     *    `on conflict do nothing` in de functie op leunt.
+     */
+    it(
+      'weigert een tweede boeking met dezelfde reden voor dezelfde week',
+      async () => {
+        const o = await bouwOpstelling('spoor-dedupe');
+        await verouder(o.completionId, 20);
+
+        const weg = await o.beoordelaar.db.rpc('verlaat_groep', {
+          p_group_id: o.groupId,
+          p_bevestigd: true,
+        });
+        if (weg.error) throw new Error(`verlaten: ${weg.error.message}`);
+
+        await draaiTermijn(7);
+        const na = await boekingen(o.eigenaar.id);
+        expect(na, 'de automatische goedkeuring boekte niet').toHaveLength(1);
+
+        const week = await adminDb()
+          .from('completions')
+          .select('weekly_goal_id')
+          .eq('id', o.completionId)
+          .single();
+        if (week.error) throw new Error(`week: ${week.error.message}`);
+
+        const nogEens = await adminDb()
+          .from('points_ledger')
+          .insert({
+            user_id: o.eigenaar.id,
+            goal_id: o.goalId,
+            delta: na[0]?.delta ?? 2,
+            reason: na[0]?.reason ?? 'completion_approved_ceiling',
+            ref_type: 'weekly_goal',
+            ref_id: week.data.weekly_goal_id as string,
+            zonder_beoordelaar: true,
+          });
+
+        expect(
+          nogEens.error?.code,
+          'de dedupe-grendel liet een tweede boeking met dezelfde reden toe — dan ' +
+            'beschermt `on conflict do nothing` in de functie niets meer',
+        ).toBe('23505');
+
+        expect(
+          (await boekingen(o.eigenaar.id)).reduce((som, r) => som + r.delta, 0),
+          'het totaal veranderde door een geweigerde boeking',
+        ).toBe(na.reduce((som, r) => som + r.delta, 0));
+      },
+      TEST_TIMEOUT,
+    );
+  });
 });

@@ -1611,6 +1611,7 @@ export type Database = {
           ref_id: string | null
           ref_type: string | null
           user_id: string
+          zonder_beoordelaar: boolean
         }
         Insert: {
           created_at?: string
@@ -1623,6 +1624,7 @@ export type Database = {
           ref_id?: string | null
           ref_type?: string | null
           user_id: string
+          zonder_beoordelaar?: boolean
         }
         Update: {
           created_at?: string
@@ -1635,6 +1637,7 @@ export type Database = {
           ref_id?: string | null
           ref_type?: string | null
           user_id?: string
+          zonder_beoordelaar?: boolean
         }
         Relationships: [
           {
