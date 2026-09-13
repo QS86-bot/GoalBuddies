@@ -149,19 +149,40 @@ Een migratie toepassen gaat zo:
    te zijn — draai hem dan met `--streng` of met `REGISTER_CONTROLE_STRENG=1`.
    `npm run db:push` doet dat zelf.
 
-⚠️⚠️ **Een migratie die `storage.objects` aanraakt, kun je vanuit een
-bouwsessie niet toepassen — en dat is een grens en geen storing.** 📏 Gemeten op
-09-09-2026 bij `0222`:
+⚠️⚠️ **Op `storage.objects` kun je alles behalve een index — 📏 gemeten
+12-09-2026 (QS8-439).** Die tabel is eigendom van `supabase_storage_admin`, en
+**alles wat dit project heeft draait als `postgres`**: de Supabase-MCP, `psql`
+met de projectcredentials én de SQL-editor in het dashboard. `postgres` is geen
+lid van die rol, en lid wórden kan niet:
 
 ```
-ERROR: 42501: must be owner of table objects
+grant supabase_storage_admin to postgres;
+ERROR: 42501: "supabase_storage_admin" role memberships are reserved,
+              only superusers can grant them
 ```
 
-`storage.objects` is eigendom van `supabase_storage_admin`; de Supabase-MCP
-draait als `postgres`, en `postgres` is **geen lid** van die rol (nagemeten in
-`pg_auth_members`), dus `set role supabase_storage_admin` geeft *permission
-denied*. Een `create policy` of `create trigger` op die tabel vraagt eigendom,
-en daar is geen weg omheen die geen omweg is.
+Per handeling apart gemeten, elk in een eigen terugrollende transactie:
+
+| Op `storage.objects` als `postgres` | 09-09-2026 | 12-09-2026 |
+|---|---|---|
+| `create policy` | geweigerd | ✅ **gaat** |
+| `create trigger` | geweigerd | ✅ **gaat** |
+| `create index` | geweigerd | ❌ `42501: must be owner of table objects` |
+
+⚠️ **Hier stond tot 12-09 dat dit "de grens van de bouwsessie" was en dat een
+`create policy` of `create trigger` eigendom vraagt. Allebei onjuist**, en de
+tweede was op 09-09 nog wél waar — Supabase heeft de rechten daarna verruimd.
+Die meting stond hier als feit **zonder datum**, en dat heeft QS8-243 drie dagen
+laten wachten op een mens die precies dezelfde rechten heeft als een bouwsessie.
+**Schrijf een gemeten grens nooit zonder zijn meetdatum op**; hij verloopt, en
+wie hem overneemt neemt de conclusie over in plaats van de meting.
+
+⚠️ **Een index op die tabel hoort daarom voorwaardelijk**, in een
+`do $$ … exception when insufficient_privilege … end $$;` — dan legt hetzelfde
+bestand hem lokaal wél aan (daar bezitten we de tabel) en slaat hij hem op
+Supabase hoorbaar over. `npm run storage-eigendom:controle` wordt rood zodra er
+een kale bij komt. Vormen en afweging in
+`docs/decisions/2026-09-12-een-index-op-een-tabel-die-niet-van-ons-is.md`.
 
 **Wat wél gaat vanuit een bouwsessie:** alles in `public` — tabellen,
 constraints, functies, triggers, policies, indexen, grants. Dat is de reden dat
@@ -173,8 +194,12 @@ en een gat is duurder dan wachten: de map bouwt het schema dan nergens meer op
 en een RLS-suite toetst een ánder schema dan productie. Zie
 `docs/decisions/2026-09-08-het-gat-is-erger-dan-de-botsing.md`.
 
-De storage-helft hoort dus van Quintens machine te komen — de SQL-editor in het
-dashboard of `psql` met de projectcredentials.
+⚠️ **Hier stond tot 12-09-2026: *"de storage-helft hoort dus van Quintens
+machine te komen — de SQL-editor in het dashboard of `psql` met de
+projectcredentials."*** Dat is onjuist en het is de zin die QS8-243 drie dagen
+heeft laten wachten: die twee routes draaien **óók als `postgres`** en kunnen
+dus precies evenveel als een bouwsessie. Zie de meettabel hierboven. Een index
+op `storage.*` hoort voorwaardelijk; er is geen mens die hem er anders op krijgt.
 
 ⚠️ **Hier stond tot 24-08-2026 dat stap 3 een UPDATE met de hand was**, met als
 geruststelling dat stap 4 het wel zou opmerken. Dat klopte, en het hielp niet:
