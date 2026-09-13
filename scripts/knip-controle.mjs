@@ -79,6 +79,8 @@ export const DEFINITIE = /(?:export\s+)?function\s+(zonderCommentaar\w*)\s*\(/g;
 export const MET_REDEN = {
   'scripts/definers-controle.mjs:zonderCommentaar':
     'knipt SQL-commentaar (`--`), niet JS — een andere taal en dus een andere knip',
+  'scripts/storage-eigendom-controle.mjs:zonderCommentaar':
+    'knipt SQL-commentaar (`--`) uit een migratie; JS-commentaar komt er niet in voor',
   'scripts/pinuitzonderingen-controle.mjs:zonderCommentaar':
     'knipt SQL-commentaar (`--`) uit een functiedefinitie; JS-commentaar komt er niet in voor',
   'scripts/persoon-in-jsonb-controle.mjs:zonderCommentaar':
