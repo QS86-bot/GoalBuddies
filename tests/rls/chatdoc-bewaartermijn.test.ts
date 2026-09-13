@@ -71,6 +71,31 @@ describe.runIf(beschikbaar)('de bewaartermijn van een document (0250)', () => {
   const alice = randomUUID();
   let groep = '';
 
+  /**
+   * De tellersleutels van dít bestand — QS8-442.
+   *
+   * ⚠️⚠️ **`where domein = 'chatdocs'` was niet genoeg, en dat is gemeten.**
+   *    Meer bestanden schrijven in dat domein, dus een domeinbrede opruiming wist
+   *    de teller van de buren. Dat is dezelfde fout als een kale
+   *    `delete from dagtellers`, alleen met een kleinere straal.
+   *
+   * ⚠️ `tel_dagteller()` legt twee sleutels per groep aan — `<groep>` voor het
+   *    groepsplafond en `<groep>/<uploader>` voor het persoonlijke. Een `like` op
+   *    de groep dekt ze allebei en niets van iemand anders.
+   *
+   * ⚠️ Een functie en geen constante: de groepen krijgen hun id pas in
+   *    `beforeAll`, dus een `const` op modulehoogte zou een lege string invullen.
+   *
+   * `tellerbereik:controle` bewaakt dat deze vorm niet terugglijdt.
+   */
+  function mijnTellers(): string {
+    const groepen = [groep]
+      .map((g) => `sleutel like '${g}%'`)
+      .join(' or ');
+
+    return `domein = 'chatdocs' and (${groepen})`;
+  }
+
   const pad = (bestand: string) => `${groep}/${alice}/${bestand}`;
 
   /** Zet een object neer en maak de dagteller weer leeg — die telt hier niet mee. */
@@ -87,7 +112,7 @@ describe.runIf(beschikbaar)('de bewaartermijn van een document (0250)', () => {
     //    opzet. Deze suite gaat over de pas en niet over het plafond; laat je de
     //    tellerrijen staan, dan lopen de latere gevallen op 23514 in plaats van
     //    op de bewering die ze doen.
-    psql(`delete from dagtellers where domein = 'chatdocs'`);
+    psql(`delete from dagtellers where ${mijnTellers()}`);
   }
 
   function bericht(bestand: string) {
@@ -122,7 +147,7 @@ describe.runIf(beschikbaar)('de bewaartermijn van een document (0250)', () => {
 
   afterAll(() => {
     psql(`delete from storage.objects where bucket_id = 'chatdocs' and name like '${groep}/%'`);
-    psql(`delete from dagtellers where domein = 'chatdocs'`);
+    psql(`delete from dagtellers where ${mijnTellers()}`);
     psql(`delete from public.chat_messages where group_id = '${groep}'`);
     psql(`delete from public.group_members where group_id = '${groep}'`);
     psql(`delete from public.groups where id = '${groep}'`);

@@ -72,6 +72,31 @@ describe.runIf(beschikbaar)('de chatdoc-emmer (0240) en de twee remmen (0241)', 
    */
   let groepArchief = '';
 
+  /**
+   * De tellersleutels van dít bestand — QS8-442.
+   *
+   * ⚠️⚠️ **`where domein = 'chatdocs'` was niet genoeg, en dat is gemeten.**
+   *    Meer bestanden schrijven in dat domein, dus een domeinbrede opruiming wist
+   *    de teller van de buren. Dat is dezelfde fout als een kale
+   *    `delete from dagtellers`, alleen met een kleinere straal.
+   *
+   * ⚠️ `tel_dagteller()` legt twee sleutels per groep aan — `<groep>` voor het
+   *    groepsplafond en `<groep>/<uploader>` voor het persoonlijke. Een `like` op
+   *    de groep dekt ze allebei en niets van iemand anders.
+   *
+   * ⚠️ Een functie en geen constante: de groepen krijgen hun id pas in
+   *    `beforeAll`, dus een `const` op modulehoogte zou een lege string invullen.
+   *
+   * `tellerbereik:controle` bewaakt dat deze vorm niet terugglijdt.
+   */
+  function mijnTellers(): string {
+    const groepen = [groepA, groepB, groepArchief]
+      .map((g) => `sleutel like '${g}%'`)
+      .join(' or ');
+
+    return `domein = 'chatdocs' and (${groepen})`;
+  }
+
   const padA = () => `${groepA}/${alice}/document.pdf`;
 
   /**
@@ -156,7 +181,7 @@ describe.runIf(beschikbaar)('de chatdoc-emmer (0240) en de twee remmen (0241)', 
     for (const groep of [groepA, groepB, groepArchief]) {
       psql(`delete from storage.objects where bucket_id = 'chatdocs' and name like '${groep}/%'`);
     }
-    psql(`delete from dagtellers where domein = 'chatdocs'`);
+    psql(`delete from dagtellers where ${mijnTellers()}`);
     psql(
       `delete from public.chat_messages where group_id in ('${groepA}', '${groepB}', '${groepArchief}')`,
     );
@@ -262,7 +287,7 @@ describe.runIf(beschikbaar)('de chatdoc-emmer (0240) en de twee remmen (0241)', 
     //    dagplafond van groep A op, en viel het must-deny-geval verderop om met
     //    23514 in plaats van 42501 — groen noch rood om de eigen reden. Sinds
     //    0233 overleeft `dagtellers` een delete op `storage.objects` met opzet.
-    psql(`delete from dagtellers where domein = 'chatdocs'`);
+    psql(`delete from dagtellers where ${mijnTellers()}`);
     expect(gezien).toBe('0');
   });
 
@@ -280,7 +305,7 @@ describe.runIf(beschikbaar)('de chatdoc-emmer (0240) en de twee remmen (0241)', 
     );
     const gezien = als(alice, `select count(*) from storage.objects where name = '${wees}'`);
     psql(`delete from storage.objects where name = '${wees}'`);
-    psql(`delete from dagtellers where domein = 'chatdocs'`);
+    psql(`delete from dagtellers where ${mijnTellers()}`);
     expect(gezien).toBe('1');
   });
 
@@ -395,7 +420,7 @@ describe.runIf(beschikbaar)('de chatdoc-emmer (0240) en de twee remmen (0241)', 
     //    persoon lopen dáár tegenaan en dan staat dit geval groen op de verkeerde
     //    teller.
     psql(`delete from storage.objects where bucket_id = 'chatdocs' and name like '${groepB}/%'`);
-    psql(`delete from dagtellers where domein = 'chatdocs'`);
+    psql(`delete from dagtellers where ${mijnTellers()}`);
     for (let i = 0; i < 4; i += 1) {
       psql(
         `insert into storage.objects (bucket_id, name, owner)
@@ -417,7 +442,7 @@ describe.runIf(beschikbaar)('de chatdoc-emmer (0240) en de twee remmen (0241)', 
     // ⚠️ De must-allow naast de must-deny. Een plafond dat álles weigert, is
     //    groen op deze suite en stuk voor de gebruiker.
     psql(`delete from storage.objects where bucket_id = 'chatdocs' and name like '${groepB}/%'`);
-    psql(`delete from dagtellers where domein = 'chatdocs'`);
+    psql(`delete from dagtellers where ${mijnTellers()}`);
     for (let i = 0; i < 3; i += 1) {
       psql(
         `insert into storage.objects (bucket_id, name, owner)
@@ -440,7 +465,7 @@ describe.runIf(beschikbaar)('de chatdoc-emmer (0240) en de twee remmen (0241)', 
     //    overleeft een `delete` op `storage.objects` met opzet — wissen zette de
     //    rem anders terug. De objecten weghalen is dus niet meer genoeg.
     psql(`delete from storage.objects where bucket_id = 'chatdocs' and name like '${groepB}/%'`);
-    psql(`delete from dagtellers where domein = 'chatdocs'`);
+    psql(`delete from dagtellers where ${mijnTellers()}`);
     for (let i = 0; i < 2; i += 1) {
       psql(
         `insert into storage.objects (bucket_id, name, owner)
@@ -513,7 +538,7 @@ describe.runIf(beschikbaar)('de chatdoc-emmer (0240) en de twee remmen (0241)', 
        on conflict (bucket_id, name) do update set owner = excluded.owner`,
     );
     psql(`delete from storage.objects where name = '${pad}'`);
-    psql(`delete from dagtellers where domein = 'chatdocs'`);
+    psql(`delete from dagtellers where ${mijnTellers()}`);
     expect(tweede).toBe('42501');
   });
 
@@ -523,7 +548,7 @@ describe.runIf(beschikbaar)('de chatdoc-emmer (0240) en de twee remmen (0241)', 
     //    nergens mee — een gratis vijfde document.
     psql(`delete from storage.objects where bucket_id = 'chatdocs' and name like '${groepB}/%'`);
     psql(`delete from storage.objects where bucket_id = 'chatdocs' and name like '${groepA}/%'`);
-    psql(`delete from dagtellers where domein = 'chatdocs'`);
+    psql(`delete from dagtellers where ${mijnTellers()}`);
     for (let i = 0; i < 4; i += 1) {
       psql(
         `insert into storage.objects (bucket_id, name, owner)
