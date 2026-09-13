@@ -253,7 +253,22 @@ export function controleer(regels) {
   return klachten;
 }
 
-const UITLEG = {
+/**
+ * De uitleg per soort — **en tegelijk de volgorde waarin ze afgedrukt worden.**
+ *
+ * ⚠️ **Eén lijst en niet drie — QS8-462.** Hier stond een hardgecodeerde array
+ *    in `main()` naast dit object naast de `soort:`-literals in `controleer()`,
+ *    en niets legde ze naast elkaar. 📏 Op 07-09 telde `stale` daardoor mee in
+ *    de exitcode en verscheen hij niet in de uitvoer: *"1 bevinding(en)"* en
+ *    daarna niets. **Een controle die rood staat zonder te zeggen waarom, leer
+ *    je net zo hard negeren als een die alles meldt.**
+ *
+ *    De insertion order van dit object ís de afdrukvolgorde, dus een nieuwe
+ *    soort erbij zetten is genoeg — er is geen tweede plek meer die je vergeet.
+ *    `tests/scripts/review-controle.test.ts` legt de soorten die `controleer()`
+ *    daadwerkelijk oplevert hiernaast en wordt rood zodra er een mist.
+ */
+export const UITLEG = {
   'kolom-verschoven':
     'Deze rij draagt een niet-ontsnapte `|` in zijn celinhoud. GFM knipt daarop\n' +
     '  ook binnen backticks, de rij krijgt meer cellen dan de kop, en de\n' +
@@ -280,6 +295,39 @@ const UITLEG = {
     `Zet er "${MARKERING} …" bij: welke aanname houdt hem laag? Zodra die\n` +
     '  vervalt, is het geen Laag meer. Zie QS8-123 en onwrikbare regel 19.',
 };
+
+/**
+ * De bevindingen als tekst — geen `console`, geen `process.exit`.
+ *
+ * ⚠️ **Dit was de reden dat de naad onzichtbaar bleef.** De rendering stond
+ *    binnen `main()`, tussen twee `process.exit`-takken, en was dus niet te
+ *    voeden. In dit project is dat de regel omgekeerd: *een controle die je niet
+ *    kunt voeden, kun je niet ijken.*
+ *
+ * ⚠️⚠️ **De onbekende soort wordt afgedrukt en niet overgeslagen.** De oude lus
+ *    liep over een vaste lijst, dus een soort die daar niet in stond viel stil
+ *    weg terwijl hij wél meetelde in het getal erboven. Faalt dit open, dan is
+ *    de melding lelijk; faalt het dicht, dan is ze onwaar. De grendel in de
+ *    testsuite hoort dit geval te voorkomen — deze tak is wat er gebeurt als
+ *    dat toch misgaat.
+ */
+export function rapport(klachten) {
+  const regels = [`review-controle: ${klachten.length} bevinding(en).\n`];
+  const bekend = Object.keys(UITLEG);
+  const soorten = [...bekend, ...new Set(klachten.map((k) => k.soort).filter((s) => !bekend.includes(s)))];
+
+  for (const soort of soorten) {
+    const groep = klachten.filter((k) => k.soort === soort);
+    if (groep.length === 0) continue;
+
+    regels.push(`  ${soort}:`);
+    for (const k of groep) regels.push(`    - [${k.risico}] ${k.titel}`);
+    regels.push(
+      `  ${UITLEG[soort] ?? `(geen uitleg geregistreerd voor "${soort}" — zet er een in UITLEG in scripts/review-controle.mjs)`}\n`,
+    );
+  }
+  return regels.join('\n');
+}
 
 function main() {
   const regels = readFileSync(PAD, 'utf8').split('\n');
@@ -313,24 +361,7 @@ function main() {
     process.exit(0);
   }
 
-  console.error(`review-controle: ${klachten.length} bevinding(en).\n`);
-
-  for (const soort of [
-    'kolom-verschoven',
-    'onbekend-niveau',
-    'stale',
-    'geen-agendapunt',
-    'geen-voorwaarde',
-    'dubbele-rij',
-  ]) {
-    const groep = klachten.filter((k) => k.soort === soort);
-    if (groep.length === 0) continue;
-
-    console.error(`  ${soort}:`);
-    for (const k of groep) console.error(`    - [${k.risico}] ${k.titel}`);
-    console.error(`  ${UITLEG[soort]}\n`);
-  }
-
+  console.error(rapport(klachten));
   process.exit(1);
 }
 
