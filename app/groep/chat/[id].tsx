@@ -570,10 +570,27 @@ function Bijlageknoppen({ keuze }: { readonly keuze: Chatbijlagekeuze }) {
   if (gekozen === null) {
     return (
       <>
-        <Button variant="stil" block onPress={() => void keuze.kiesEenFoto()}>
+        {/*
+          ⚠️ **De laadstand wijst één knop aan en niet allebei** — QS8-444. Tussen
+             de tik en de bytes zit het systeemvenster plús het lezen, en dat
+             laatste mag tot dertig seconden duren bij een bestand dat nog uit
+             iCloud of Drive moet komen. Zonder deze `busy` gebeurt er in die tijd
+             niets zichtbaars en tikt de gebruiker nog eens.
+        */}
+        <Button
+          variant="stil"
+          block
+          busy={keuze.bezig === 'foto'}
+          onPress={() => void keuze.kiesEenFoto()}
+        >
           {t('chatfoto.knop')}
         </Button>
-        <Button variant="stil" block onPress={() => void keuze.kiesEenDocument()}>
+        <Button
+          variant="stil"
+          block
+          busy={keuze.bezig === 'doc'}
+          onPress={() => void keuze.kiesEenDocument()}
+        >
           {t('chatdoc.knop')}
         </Button>
       </>
