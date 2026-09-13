@@ -70,6 +70,10 @@ export const ZONDER_CI = {
   'bundel:controle':
     'Vraagt het npm-register naar de gepubliceerde bundelgroottes. Een ' +
     'netwerkaanroep maakt de uitslag afhankelijk van bereikbaarheid.',
+  'realtime-identiteit:controle':
+    'Leest `realtime_bewaking()` van het échte project om te zien of een ' +
+    'realtime-tabel REPLICA IDENTITY FULL draagt. Vraagt de productiesleutel, ' +
+    'en meet iets dat per definitie over productie gaat.',
   'pgversie:controle':
     'Legt de Postgres-major van productie naast die van de opstelling. De ' +
     'runner draait een andere major dan productie, dus hier meet hij niets.',
