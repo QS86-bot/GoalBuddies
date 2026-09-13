@@ -66,10 +66,9 @@
 -- ---------------------------------------------------------------------------
 
 -- ⚠️ `not null default false` en geen `boolean` die `null` mag zijn: "we weten
---    het niet" is hier geen bestaande toestand. Elke rij van vóór deze migratie
---    is via de normale route geboekt — de automatische route bestaat pas sinds
---    0135 en heeft op productie (stand `0221`) nog nooit gedraaid met een
---    onderscheidend kenmerk, dus `false` is voor het bestaande bestand juist.
+--    het niet" is hier geen bestaande toestand. Elke bestaande rij is óf via de
+--    peer-route geboekt, óf via de automatische — en die twee zijn uit elkaar te
+--    houden, zie de backfill hieronder.
 --
 -- ⚠️ **`authenticated` heeft een tabelbrede SELECT op `points_ledger`**, dus deze
 --    kolom is meteen leesbaar voor wie de rij mag zien. Dat is hier goed en het is
@@ -79,6 +78,28 @@
 --    er komt geen groepsoppervlak bij, dus domeinregel 7 is niet in het geding.
 alter table public.points_ledger
   add column if not exists zonder_beoordelaar boolean not null default false;
+
+-- ⚠️⚠️ **En een backfill, want `false` voor alles is aantoonbaar onjuist.** 📏 De
+--    automatische route bestaat sinds 0135, productie staat op `0221`, en
+--    `.github/workflows/rollover.yml` draait `cron: '0 * * * *'` en roept
+--    `keur_vastgelopen_goedkeuringen_goed(7)` onvoorwaardelijk aan. Er staan dus
+--    al automatisch goedgekeurde weken in het grootboek, en die zouden zonder
+--    deze regel als peer-goedgekeurd gelabeld worden.
+--
+-- ⚠️ **Het onderscheid stond al in de kop van dit bestand en werd niet gebruikt.**
+--    Nagemeten: `completion_approvals.group_id` is `not null` en
+--    `award_points_on_approval()` boekt altijd `new.group_id`, dus een
+--    peer-goedkeuring heeft per definitie een groep. De automatische route boekt
+--    `null`. Met drie historische rijen naast elkaar selecteert dit predicaat er
+--    exact één: de automatische, niet de peer-rij en niet `cycle_missed` (die
+--    heeft een andere `reason`).
+--
+-- ⚠️ Idempotent: een tweede run zet dezelfde rijen nog een keer op `true`.
+update public.points_ledger
+   set zonder_beoordelaar = true
+ where reason in ('completion_approved_ceiling', 'completion_approved_floor')
+   and group_id is null
+   and zonder_beoordelaar is distinct from true;
 
 comment on column public.points_ledger.zonder_beoordelaar is
   'True als deze punten zijn toegekend doordat de goedkeuringstermijn verliep en '

@@ -1419,6 +1419,91 @@ describe.skipIf(!rlsTestsConfigured)('een week die zijn beoordelaars kwijtraakt'
     );
 
     /**
+     * ⚠️⚠️ **De naad die de eerste versie van 0257 miste** — gevonden door de
+     *    security-review en zelf nagemeten.
+     *
+     *    Het pad is een gewone volgorde: je buddy keurt je week goed, bedenkt
+     *    zich en trekt het in, en verlaat daarna de groep. `trek_goedkeuring_in()`
+     *    boekt een `correction` en zet de week terug op `pending`, maar laat de
+     *    oorspronkelijke `completion_approved_*`-rij staan — append-only,
+     *    domeinregel 6. Die rij bezet de dedupe-sleutel al.
+     *
+     *    De termijn keurt de week daarna alsnog goed, de insert botst, en
+     *    `on conflict do nothing` slikte hem — **inclusief het spoor**. Het
+     *    grootboek beweerde dan dat een groepsgenoot deze week goedkeurde,
+     *    terwijl de termijn dat deed zonder één geldige goedkeuring. Precies de
+     *    verwisseling waar dit issue voor bestaat.
+     *
+     * ⚠️ De drie gevallen hierboven bouwen elk een verse opstelling zónder eerdere
+     *    boeking, dus geen ervan raakte deze naad. Regel 18 vraag 3: de test kon
+     *    groen blijven terwijl de belofte brak.
+     *
+     * ⚠️⚠️ **`it.fails`, en dat is een besluit en geen omweg.** De reparatie die
+     *    voor de hand ligt — `on conflict … do update set zonder_beoordelaar =
+     *    true` — is onjuist: die rij ís een echte peer-goedkeuring, en hem als
+     *    automatisch stempelen maakt het grootboek onwaar in de andere richting.
+     *
+     *    Wat hier werkelijk stukzit is groter dan het spoor: de week staat op
+     *    `approved` terwijl de eigenaar er **netto nul punten** voor heeft (+2 van
+     *    de ingetrokken goedkeuring, −2 correctie, en de termijn boekt niets omdat
+     *    de dedupe-sleutel bezet is). Dat is een defect in het puntenmodel dat
+     *    ouder is dan dit issue, en het raakt domeinregel 10. Losgetrokken als
+     *    QS8-456, dat dit issue blokkeert.
+     *
+     *    Deze test staat daarom `it.fails`: hij legt de gemeten toestand vast en
+     *    **slaat om zodra iemand hem repareert** — dan faalt `it.fails` zelf en is
+     *    dat het sein om reviewrij 453 alsnog te sluiten. Zelfde vorm als in
+     *    `tests/rls/policies.test.ts`.
+     */
+    it.fails(
+      'markeert ook een week waarvan een eerdere goedkeuring was ingetrokken (QS8-456)',
+      async () => {
+        const o = await bouwOpstelling('spoor-ingetrokken');
+
+        const goedgekeurd = await o.beoordelaar.db
+          .from('completion_approvals')
+          .insert({
+            completion_id: o.completionId,
+            approver_id: o.beoordelaar.id,
+            subject_id: o.eigenaar.id,
+            group_id: o.groupId,
+            status: 'approved',
+          })
+          .select('id')
+          .single();
+        if (goedgekeurd.error) throw new Error(`goedkeuren: ${goedgekeurd.error.message}`);
+
+        const terug = await o.beoordelaar.db.rpc('trek_goedkeuring_in', {
+          p_approval_id: goedgekeurd.data.id as string,
+        });
+        if (terug.error) throw new Error(`intrekken: ${terug.error.message}`);
+
+        expect(await weekstatus(o.completionId), 'de intrekking zette de week niet terug').toBe(
+          'pending',
+        );
+
+        await verouder(o.completionId, 20);
+        const weg = await o.beoordelaar.db.rpc('verlaat_groep', {
+          p_group_id: o.groupId,
+          p_bevestigd: true,
+        });
+        if (weg.error) throw new Error(`verlaten: ${weg.error.message}`);
+
+        await draaiTermijn(7);
+        expect(await weekstatus(o.completionId)).toBe('approved');
+
+        const rijen = await boekingen(o.eigenaar.id);
+        expect(
+          rijen.some((r) => r.zonder && r.reason.startsWith('completion_approved_')),
+          'de termijn keurde deze week goed zonder één geldige goedkeuring, en het ' +
+            'grootboek zegt dat een groepsgenoot het deed — de dedupe-botsing slikte ' +
+            'het spoor',
+        ).toBe(true);
+      },
+      TEST_TIMEOUT,
+    );
+
+    /**
      * ⚠️⚠️ **Dit is de grendel die de reviewrij zou hebben verzwakt.** Die stelde
      *    een eigen `reason` voor — `completion_auto_approved_*`. 📏 Gemeten:
      *    `points_ledger_dedupe_idx` is `UNIQUE (user_id, reason, ref_type, ref_id)`,

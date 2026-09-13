@@ -105,11 +105,55 @@ domeinregel 10 (het puntentotaal is privé) blijft staan.
 plafond van 2. Gemeten op een verse opbouw, **zonder** de kolom uit dit issue: het
 gat bestond hiervoor al en hangt aan `reason` in de indexsleutel.
 
-Langs de normale weg is dat niet te bereiken — beide routes zetten
-`weekly_goals.status = 'approved'` en slaan over wat niet meer `pending` is — maar
-dat betekent dat de grendel niet de index is maar een statuscontrole twee lagen
-hoger. Losgetrokken als **QS8-454**; repareren raakt het puntenmodel en niet deze
-feature.
+⚠️⚠️ **Hier stond dat het langs de normale weg niet te bereiken is, en dat is
+gemeten onjuist.** Het argument was dat beide routes `weekly_goals.status` op
+`'approved'` zetten en overslaan wat niet meer `pending` is. Maar
+`trek_goedkeuring_in()` zet die status terug op `pending` — dus die deur staat
+weer open. De security-review vond het, en de reproductie staat in QS8-456.
+
+Wat er dus werkelijk staat: de grendel is niet de index maar een statuscontrole
+twee lagen hoger, én die controle is omkeerbaar. Losgetrokken als **QS8-454**;
+repareren raakt het puntenmodel en niet deze feature.
+
+⚠️ **Dit is precies waar CLAUDE.md voor waarschuwt.** *"Een afwijking die je
+onderbouwt is duurder dan een die je vergeet"* — een uitgeschreven argument leest
+de volgende persoon als een reden om er niet aan te twijfelen. Dit argument stond
+hier met zoveel woorden, en het was onwaar.
+
+## 5b. De naad die deze feature níet dichtzet
+
+📏 Gemeten, end-to-end gereproduceerd: buddy keurt goed → buddy trekt in → buddy
+verlaat de groep → de termijn draait.
+
+```
+weekstatus                  -> approved
+  completion_approved_ceiling | +2 | zonder_beoordelaar = f
+  correction                  | -2 | zonder_beoordelaar = f
+totaal punten               -> 0
+```
+
+De week is goedgekeurd, de eigenaar heeft er netto **nul** punten voor, en er is
+geen spoor dat de termijn het deed. De +2-rij uit de ingetrokken goedkeuring bezet
+de dedupe-sleutel, dus `on conflict do nothing` slikt de boeking van de termijn.
+
+⚠️⚠️ **De voor de hand liggende reparatie is fout.** `on conflict … do update set
+zonder_beoordelaar = true` lost het spoor op en de punten niet — en het stempelt
+een rij die écht een peer-goedkeuring was als automatisch. Dat is een tweede
+onwaarheid, geen reparatie.
+
+⚠️ En het spoor kan niet naar `weekly_goals`: die tabel is groepszichtbaar bij een
+gekoppeld doel (`weekly_goals_select`) én zit in de realtime-publicatie. Dat zou
+een nieuw groepszichtbaar oppervlak zijn, en dan is beschermd het antwoord tot
+iemand het tegendeel besluit.
+
+Wat hier onder ligt is een productvraag — *wat hoort zo'n week op te leveren?* —
+en die raakt het puntenmodel. Losgetrokken als **QS8-456**, dat dit issue
+blokkeert. De toets staat als `it.fails` in `tests/rls/vastgelopen.test.ts` en
+slaat om zodra iemand het repareert; dát is het sein om reviewrij 453 te sluiten.
+
+⚠️ **Reviewrij 453 blijft daarom open.** Hem nu op *opgelost* zetten zou de fout
+van QS8-448 herhalen: een vinkje dat het agendapunt wegneemt terwijl het gat nog
+werkt.
 
 ## 6. Een ijking die groen bleef
 
