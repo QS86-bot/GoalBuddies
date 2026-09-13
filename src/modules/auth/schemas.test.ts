@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import { en } from '../../shared/i18n/en';
+import { telTekens } from '../../shared/tekst';
 import { nl } from '../../shared/i18n/nl';
 
 import {
@@ -191,5 +192,72 @@ describe('profielpatch', () => {
   it('weigert een onbekende toon', () => {
     expect(profielPatchSchema.safeParse({ reminder_tone: 'streng' }).success).toBe(false);
     expect(profielPatchSchema.safeParse({ reminder_tone: 'firm' }).success).toBe(true);
+  });
+});
+
+/**
+ * ⚠️⚠️ **De bovenkant van de naadtest van QS8-448.** De onderkant — of SQL en
+ *    TypeScript hetzelfde oordelen — staat in `tests/rls/naamnormalisatie.test.ts`,
+ *    want die heeft een database nodig. Wat híér te toetsen is, is het gedrág dat
+ *    de gebruiker merkt: loopt hij vast op een veld dat hij niet aanraakte?
+ */
+describe('de weergavenaam telt zoals de database telt', () => {
+  /**
+   * 📏 Het gemeten geval uit `docs/ENGINEER-REVIEW.md` regel 480: de trigger doet
+   *    `left(…, 80)` (codepunten) en maakt dus een naam van 80 emoji aan.
+   *    `app/onboarding/profiel.tsx` vult het veld met die waarde en stuurt hem
+   *    onveranderd terug. Met `.max(80)` — dat UTF-16-eenheden telt en er 160
+   *    ziet — weigerde het schema hem, en kon de gebruiker zijn onboarding niet
+   *    afronden op een veld dat hij nooit had aangeraakt.
+   */
+  it('accepteert een naam van 80 emoji-codepunten, zoals de trigger hem aanmaakt', () => {
+    const naam = '👩'.repeat(80);
+
+    expect(telTekens(naam), 'de invoer is niet 80 codepunten').toBe(80);
+    expect(naam.length, 'de invoer is niet 160 UTF-16-eenheden — dan meet dit geval niets').toBe(
+      160,
+    );
+    expect(profielPatchSchema.safeParse({ display_name: naam }).success).toBe(true);
+  });
+
+  it('en weigert er 81, want dat is wat de CHECK weigert', () => {
+    expect(profielPatchSchema.safeParse({ display_name: '👩'.repeat(81) }).success).toBe(false);
+  });
+
+  /**
+   * ⚠️ De vier vormen die vóór QS8-448 langs de trigger kwamen. Drie ervan
+   *    weigerde dit schema al (JS' `.trim()` strijkt ze); U+200B niet — en dat
+   *    was het enige geval waar beide poorten open stonden.
+   */
+  it.each([
+    ['twee newlines', '\n\n'],
+    ['twee tabs', '\t\t'],
+    ['een no-break space', ' '],
+    ['een zero-width space', '​'],
+    ['een byte order mark', '﻿'],
+  ])('weigert een naam die alleen uit %s bestaat', (_wat, waarde) => {
+    expect(profielPatchSchema.safeParse({ display_name: waarde }).success).toBe(false);
+  });
+
+  it('maar laat een naam met onzichtbare randen door, zonder die randen', () => {
+    const uit = profielPatchSchema.safeParse({ display_name: '​ Jan ​' });
+
+    expect(uit.success).toBe(true);
+    expect(
+      uit.success ? uit.data.display_name : null,
+      'de onzichtbare randen gaan mee de database in',
+    ).toBe('Jan');
+  });
+
+  /**
+   * ⚠️⚠️ **De reparatie die het erger had gemaakt.** U+200D is de lijm in
+   *    `👨‍👩‍👧‍👦`; wie hem overal wegknipt in plaats van alleen aan de rand,
+   *    houdt vier losse mensen over.
+   */
+  it('en laat een gezinsemoji heel', () => {
+    const uit = profielPatchSchema.safeParse({ display_name: ' 👨‍👩‍👧‍👦 ' });
+
+    expect(uit.success).toBe(true);
+    expect(uit.success ? telTekens(uit.data.display_name ?? '') : 0).toBe(7);
   });
 });
