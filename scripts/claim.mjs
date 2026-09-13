@@ -57,6 +57,12 @@
  *    push vóór het lezen kwam. Dus: **niet pushen, melden, en `--vervolg` als
  *    expliciete uitweg** die in de claim-commit belandt.
  *
+ * ⚠️ **Waar hij blind is:** een *rebase-merge* laat geen merge-commit en geen
+ *    `(#N)` achter, en is dan niet als landing te herkennen. Dit project mergt
+ *    met een merge-commit (CLAUDE.md), maar dat is één dashboardinstelling ver
+ *    weg. 📏 De elf gelande regels zonder issuenummer zijn alle elf `docs/`-PR's
+ *    zonder issue — een grens, geen gat.
+ *
  * Uitleg in `docs/decisions/2026-09-13-een-opgeruimde-branch-is-geen-vrij-issue.md`.
  */
 import { execFileSync } from 'node:child_process';

@@ -162,6 +162,24 @@ drie mutaties één rode test per stuk opgeschreven; het zijn er drie, want
 `--vervolg` verliest zijn aantekening in de claim-commit zodra `gelande` leeg
 blijft. De tabel in de testkop draagt de meting, niet de verwachting.
 
+## ⚠️ Waar deze grendel blind is, en dat staat hier met opzet
+
+**Een rebase-merge laat geen spoor.** GitHub's *Rebase and merge* zet de
+oorspronkelijke commits op `main` zonder merge-commit en zonder `(#N)`, en dan is
+er niets meer waaraan de landing te herkennen is. Dat komt in dit project niet
+voor — CLAUDE.md schrijft een merge-commit voor — maar het is één
+dashboardinstelling ver weg, en dan zwijgt deze grendel zonder rood te worden.
+
+📏 **Elf gelande onderwerpregels dragen geen issuenummer**, en die zijn met de
+hand nagelopen: het zijn alle elf PR's op `docs/` — overdracht, productiestand,
+een startprompt. Er hoort geen issue bij, dus er valt niets toe te wijzen. Dat is
+een grens en geen gat.
+
+⚠️ **Wat de grendel principieel níet kan, is werk zien dat nog niet geland is.**
+Een branch mét PR die nog openstaat, wordt door de eerste bron gevonden zolang
+hij er staat. Een branch die lokaal op iemands machine ligt, door geen van
+beide. Dat blijft precies wat een claim is: een afspraak.
+
 ## ⚠️ Wat dit besluit níet is
 
 **Geen vervanging van QS8-411.** De claim weet nu dát er iets geland is, niet
