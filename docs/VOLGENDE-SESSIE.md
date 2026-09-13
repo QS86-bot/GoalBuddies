@@ -3,9 +3,21 @@
 > Kopieer alles onder de streep in een nieuwe chat. Werk dit bestand bij aan het
 > eind van elke sessie — het is de overdracht, niet een archief.
 >
-> **Laatst bijgewerkt:** 12-09-2026, na QS8-437 (PR #431, `f2645fc`). Diezelfde
-> dag uit deze sessie QS8-435 (PR #428) en QS8-434 (PR #429), en uit de parallelle
-> QS8-416, QS8-431 (PR #427) en QS8-438 (PR #430). Daarvóór QS8-424 (PR #417) en
+> **Laatst bijgewerkt:** 13-09-2026, na QS8-446 (PR #439, `0846646`). Diezelfde
+> dag uit deze sessie QS8-445, QS8-443, QS8-441 (PR #436), QS8-444 (PR #437) en
+> QS8-442 (PR #438), en uit de parallelle QS8-439, QS8-440 en de
+> storage-eigendomcontrole. 📏 Bij het
+> bijwerken stond dit bestand **9 merges** achter met **acht** gelande
+> issue-nummers die er niet in voorkwamen (QS8-439 t/m QS8-446) — dezelfde klasse
+> als QS8-410 (23 merges) en QS8-418 (10), en opnieuw zonder dat er iets rood van
+> werd.
+>
+> ⚠️ **Twee issues zijn op 13-09 dichtgezet zonder dat er iets aan gebouwd is:**
+> QS8-322 en QS8-333 waren af én gemerged terwijl Linear ze nog op In Progress en
+> In Review had staan. Zie punt Y.
+>
+> Daarvóór, op 12-09, QS8-437 (PR #431, `f2645fc`), QS8-435 (PR #428), QS8-434
+> (PR #429), QS8-416, QS8-431 (PR #427), QS8-438 (PR #430). Daarvóór QS8-424 (PR #417) en
 > diezelfde dag QS8-425 (PR #414, `1830785`), QS8-262 ronde 9 (`c8fa5e6`),
 > QS8-423 (PR #411, `c9e99a6`), QS8-421 (PR #412), QS8-422 (PR #410), QS8-419 en
 > QS8-420, en op 10-09 QS8-414 (`72741e9`) — QS8-418.
@@ -299,6 +311,68 @@
 > is op zijn onderwerp.** Zoek op het verbod, en kijk eerst in de bron die de
 > belofte doet — `app/(tabs)/lijst.tsx` had het antwoord twee keer, bij de juiste
 > naam.
+>
+> **13-09, punt W: een lege uitslag bij een ijking is geen uitslag.** Bij QS8-446
+> gaf mijn ijkhulpje op mutatie D géén enkele regel terug. Dat leest als *"de
+> grendel vuurt niet"*, en ik had hem bijna zo opgeschreven. Met de hand
+> overgedaan — mutatie erin, `grep` erop, script apart gedraaid — bleek hij
+> gewoon te werken: exitcode 1 en de verweesde rij bij naam. Het hulpje had de
+> uitvoer opgegeten.
+> ⚠️ Dit is de tegenhanger van punt T. Punt T zegt: een mutatie die de grendel
+> niet raakt, meet de grendel niet. Punt W zegt: **een mutatie waarvan je de
+> uitslag niet ziet, meet hem ook niet** — en die twee zien er in je notities
+> identiek uit, want in allebei de gevallen staat er "groen" of niets.
+> **Draai bij een stille of groene ijking het geval één keer kaal na**, buiten je
+> hulpje om, met de exitcode in beeld.
+>
+> ⚠️ Hetzelfde issue leverde de derde vorm: bij QS8-442 bleef mutatie C gróén
+> omdat `const GROEP = 'g'` het defect niet nabootste — `GROEP` zat óók in het
+> opruimfilter, dus de rij werd keurig weggehaald. De historische vorm was `g` in
+> de **paden** en niet in het filter. Drie manieren om een ijking te laten liegen,
+> alle drie op één dag.
+>
+> **13-09, punt X: een telling die uit een script over regexvórmen komt, is geen
+> meting.** 📏 Bij QS8-446 telde ik "hoeveel knippen zijn blind voor `://`" drie
+> keer en kreeg drie antwoorden: **14**, toen **2**, toen **1**. Alleen met de
+> hand lezen gaf het goede getal. Wat mijn zeef misleest:
+>
+>     tests/beloftes/uitkomsttypen.ts          /(^|[^:])\/\/.*$/   ← de [^:] is de wacht
+>     scripts/gedeelde-identiteit-controle.mjs /^\s*\/\/.*$/gm     ← verankerd aan regelbegin
+>
+> ⚠️ Het gaat hier niet om een slordige regex maar om de klasse: **een zeef over
+> code zoekt een vórm, en een vorm die veilig ís kan er onveilig uitzien.** Bij
+> een telling die een besluit draagt, lees je de treffers. Dat is punt I met een
+> scherpere rand: meet opnieuw, en meet de laatste stap met je ogen.
+>
+> ⚠️ Het issue dat hieruit kwam, corrigeerde bovendien zijn eigen aanleiding: de
+> wekelijkse audit noemde er **vijf**, en dat getal was nooit nagemeten.
+>
+> **13-09, punt Y: Linear kan achterlopen op gemergede code, en dan ziet de
+> volgende sessie af werk als vrij werk.** 📏 Twee keer op één dag: QS8-322 stond
+> op In Progress en QS8-333 op In Review, terwijl allebei af en gemerged waren
+> (migratie 0238 en 0244).
+> ⚠️⚠️ **Bij QS8-333 was dat gevaarlijk en niet alleen rommelig.** Dat issue is
+> grens 1, en het besluit dat het vrijgaf staat **in de kop van de migratie**:
+> *"besluit van Quinten 08-09-2026"*. De enige Linear-reactie is een voorstel dat
+> eindigt op *"dit is exact het punt waarop het besluit van jou is en niet van
+> mij"*. Wie alleen Linear leest, concludeert dat er nog niets besloten is — en
+> bouwt een grens-1-besluit na dat al genomen is.
+> ⚠️ **Kijk bij een issue zonder branch dus eerst of het werk er al staat**, vóór
+> je gaat bouwen: `grep -rln "QS8-xxx" supabase/migrations/ tests/ docs/decisions/`
+> kost tien seconden en zegt meer dan de status. Dezelfde klasse als QS8-125,
+> één laag hoger: daar liepen twee documenten uiteen, hier de code en Linear.
+>
+> **13-09, punt Z: dezelfde commit groen op de push-run en rood op de PR-run is
+> geen flake — het is het venster van QS8-390.** De PR-run toetst je branch
+> **gemerged met `main`**, de push-run je branch alleen. Landt er tussendoor iets
+> op `main` dat met jouw wijziging botst, dan zie je precies dat verschil.
+> 📏 Op 13-09 ging `knip:controle` (net gebouwd, QS8-446) rood op
+> `scripts/storage-eigendom-controle.mjs`, dat in dat venster geland was.
+> ⚠️ **Dat was geen valse melding maar de eerste vangst**, binnen een uur, op code
+> uit de parallelle sessie. De afhandeling is `main` mergen en het geval
+> beoordelen — hier: een SQL-knip, dus een registerrij en géén herschrijving.
+> **Lees bij zo'n verschil dus eerst welke van de twee runs wat toetste**, vóór je
+> aan een flake denkt.
 >
 > ⚠️⚠️ **11-09, punt P: een lintregel kan code laten buigen, en dan verplaats je
 > het probleem naar de lezer.** QS8-422 moest in de rollover een `if` in een `if`
