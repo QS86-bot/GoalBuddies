@@ -65,9 +65,14 @@
 --
 -- ---------------------------------------------------------------------------
 
--- ⚠️ `security definer`: hij leest `pg_policies`, en dat geeft voor een gewone
---    rol alleen de policies terug waar die rol zelf in voorkomt. Zonder definer
---    meet hij dus minder dan hij belooft. Zelfde reden als `archiefleesgat()`.
+-- ⚠️ `security definer`, om dezelfde reden als `archiefleesgat()` en
+--    `alleenlezen_bewaking()`: deze bewakingsfuncties draaien allemaal als
+--    eigenaar, zodat de suite ze op één manier kan aanroepen.
+--
+--    ⚠️ **Niet omdat `pg_policies` rolgefilterd zou zijn** — dat stond hier eerst
+--       en het is nagemeten onwaar: `postgres` ziet er 95 en `authenticated` ook
+--       95. Een uitgeschreven reden die niet klopt, reist mee naar de volgende
+--       functie; de `revoke` hieronder is wat de toegang regelt.
 create or replace function public.leesroute_bewaking()
 returns table (naam text, bezwaar text)
 language sql
@@ -75,32 +80,69 @@ stable
 security definer
 set search_path to 'public', 'pg_temp'
 as $function$
+  -- ⚠️⚠️ **Twee takken, en dat is een correctie die een security-review afdwong.**
+  --    De eerste versie had één platte lijst gesanctioneerde toetsen, met
+  --    `mag_groep_lezen` erop. 📏 Gemeten: die toetst alleen de **kijker** en doet
+  --    **geen** archieftoets, dus
+  --
+  --      using (exists (select 1 from goal_group_links l
+  --                     where l.goal_id = g.id and mag_groep_lezen(l.group_id)))
+  --
+  --    noemt netjes een gesanctioneerde naam en laat precies de verruiming door
+  --    waar deze grendel voor bestaat. Met echte rijen, als `authenticated`:
+  --
+  --      gearchiveerde groep -> shares_group_with_goal = false, deze route = true
+  --
+  --    Een gearchiveerde groep die weer meeleest, ziet ook `missed`-weekdoelen —
+  --    het schaamtemoment waar domeinregel 7 voor bestaat.
+  --
+  -- ⚠️ De splitsing volgt het register in `tests/rls/hulpfunctiemodel.test.ts`:
+  --    alleen `shares_group_with_goal` en `deelt_open_groep_met_doel` dragen
+  --    `nietInactief: 2` én `archief: true`. Dat zijn de enige twee die een
+  --    **doel** mogen ontsluiten. `mag_groep_lezen` is met opzet zwakker (0153):
+  --    een groepslezing mag een archief overleven, een doellezing niet.
+
+  -- Tak 1 — de policy ontsluit een **doel**: alleen de twee sterke routes tellen.
   select (p.tablename || '.' || p.policyname)::text,
-         'leespolicy schrijft de lidmaatschapstoets zelf uit in plaats van de '
+         'leespolicy ontsluit een doel maar routeert niet via shares_group_with_goal() '
+           || 'of deelt_open_groep_met_doel() — een zwakkere route laat een archief of '
+           || 'een uitgetreden eigenaar door (QS8-459)'
+  from pg_policies p
+  where p.schemaname in ('public', 'storage')
+    and p.cmd in ('SELECT', 'ALL')
+    and coalesce(p.qual, '') like '%goal_group_links%'
+    and coalesce(p.qual, '') not like '%shares_group_with_goal%'
+    and coalesce(p.qual, '') not like '%deelt_open_groep_met_doel%'
+    and coalesce(p.qual, '') <> 'false'
+
+  union all
+
+  -- Tak 2 — de policy ontsluit **groepslidmaatschap** zonder doel: de bredere
+  -- lijst mag, want hier speelt de eigenaar van een doel geen rol.
+  select (p.tablename || '.' || p.policyname)::text,
+         'leespolicy schrijft de lidmaatschapstoets zelf uit in plaats van een '
            || 'gedeelde toets aan te roepen — een kopie mist stilzwijgend een '
            || 'voorwaarde (QS8-459)'
   from pg_policies p
-  where p.schemaname = 'public'
+  where p.schemaname in ('public', 'storage')
     and p.cmd in ('SELECT', 'ALL')
-    and (coalesce(p.qual, '') like '%goal_group_links%'
-      or coalesce(p.qual, '') like '%group_members%')
-    -- De gesanctioneerde routes. Noemt een policy er één, dan loopt hij langs een
-    -- gedeelde definitie en is het geen eigen kopie.
+    and coalesce(p.qual, '') like '%group_members%'
+    and coalesce(p.qual, '') not like '%goal_group_links%'
     and coalesce(p.qual, '') not like '%shares_group_with_goal%'
+    and coalesce(p.qual, '') not like '%deelt_open_groep_met_doel%'
     and coalesce(p.qual, '') not like '%shares_group_with_user%'
     and coalesce(p.qual, '') not like '%is_group_member%'
     and coalesce(p.qual, '') not like '%is_group_admin%'
-    and coalesce(p.qual, '') not like '%deelt_open_groep_met_doel%'
     and coalesce(p.qual, '') not like '%lid_van_open_groep%'
     and coalesce(p.qual, '') not like '%mag_groep_lezen%'
-    -- Een policy die niets doorlaat, laat ook niets te ruim door.
     and coalesce(p.qual, '') <> 'false'
+
   order by 1;
 $function$;
 
 comment on function public.leesroute_bewaking() is
-  'Leespolicies die de lidmaatschapstabellen zelf uitschrijven in plaats van de '
-  'gedeelde groepstoets aan te roepen — QS8-459. Nul rijen is de bedoeling.';
+  'Leespolicies die de lidmaatschapstabellen zelf uitschrijven of via een te zwakke '
+  'route ontsluiten — QS8-459. Nul rijen is de bedoeling.';
 
 -- ⚠️ **`from public, anon, authenticated` en niet `from public`** — in Supabase
 --    deelt `alter default privileges` élke nieuwe functie uit aan alle drie

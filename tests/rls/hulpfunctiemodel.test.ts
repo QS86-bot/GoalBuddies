@@ -369,6 +369,14 @@ describe.skipIf(!beschikbaar)('een leespolicy routeert via de gedeelde groepstoe
         'create policy proef_459_route on public.proef_leesroute_459 for select to authenticated',
         '  using (shares_group_with_goal(goal_id)',
         '         and exists (select 1 from group_members m where m.user_id = (select auth.uid())));',
+        // C — de zwakke route: noemt een gesanctioneerde naam, maar `mag_groep_lezen()`
+        //     toetst alleen de kijker en doet géén archieftoets. 📏 Gemeten met echte
+        //     rijen: bij een gearchiveerde groep geeft `shares_group_with_goal()` false
+        //     en deze route true. Dit geval kwam er in de eerste versie doorheen.
+        'create policy proef_459_zwak on public.proef_leesroute_459 for select to authenticated',
+        '  using (exists (select 1 from goal_group_links l',
+        '                 where l.goal_id = proef_leesroute_459.goal_id',
+        '                   and mag_groep_lezen(l.group_id)));',
         "select 'GEMELD=' || coalesce(string_agg(naam, ',' order by naam), '') from leesroute_bewaking()",
         "  where naam like '%proef_leesroute_459%';",
         'rollback;',
@@ -383,9 +391,10 @@ describe.skipIf(!beschikbaar)('een leespolicy routeert via de gedeelde groepstoe
 
     expect(
       gemeld,
-      'de kopie hoort gemeld te worden en de policy die de gedeelde toets aanroept niet — ' +
+      'de eigen kopie én de zwakke route horen gemeld te worden, en de policy die de ' +
+        'sterke gedeelde toets aanroept niet — ' +
         'meldt hij beide, dan is het een controle die je leert negeren; meldt hij geen ' +
         'van beide, dan vangt hij de verruiming niet die de hele suite groen liet',
-    ).toBe('proef_leesroute_459.proef_459_kopie');
+    ).toBe('proef_leesroute_459.proef_459_kopie,proef_leesroute_459.proef_459_zwak');
   }, 30_000);
 });

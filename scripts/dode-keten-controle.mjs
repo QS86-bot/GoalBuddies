@@ -238,6 +238,13 @@ export const BEWAAKT_BUITEN_DE_APP = {
     'paden hetzelfde géven, en dat blijft waar als iemand de dure join naar de ' +
     'barrière-view terugzet. Gemeten: die terugzetting maakt nul van de elf ' +
     'andere tests rood.',
+  leesroute_bewaking:
+    'Leespolicies die de lidmaatschapstoets zelf uitschrijven of via een te ' +
+    'zwakke route ontsluiten (0259). Hoort leeg te zijn. Aanroeper is ' +
+    '`tests/rls/hulpfunctiemodel.test.ts`. ⚠️ 📏 De aanleiding: de gedeelde ' +
+    'toets vervangen door een eigen join zonder eigenaar- en archieftoets liet ' +
+    'de hele RLS-suite groen (1796 passed, 0 failed) terwijl een uitgetreden ' +
+    'lid en een gearchiveerde groep er weer bij konden.',
   alleenlezen_bewaking:
     'Welke policyhelften letterlijk `false` zijn terwijl `authenticated` het ' +
     'recht wél heeft (0148). Aanroeper is `tests/rls/alleenlezen.test.ts`, dat ' +
