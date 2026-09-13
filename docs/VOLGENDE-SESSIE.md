@@ -660,6 +660,30 @@
 > ⚠️ **Het issue op In Progress zetten is géén claim gebleken** — dat is
 > geprobeerd en het hielp niet. Doe het wel, maar vertrouw er niet op.
 >
+> ⚠️⚠️ **13-09 (QS8-449): de claim leest nu twéé bronnen, en een lege
+> branchlijst is géén bewijs dat een issue nog niet gebouwd is.** De branchlijst
+> antwoordt op *"zit hier iemand"*; ze werd gelezen als antwoord op *"is dit al
+> gebouwd"*. 📏 Van QS8-437 en QS8-438 was de branch na de merge opgeruimd, en
+> toen gaf de claim allebei vrij — twee issues die de dag ervoor af en gemerged
+> waren. **Hoe netter er opgeruimd wordt, hoe vaker dat gebeurde.**
+>
+> Er komt nu een tweede melding uit, en die is een ándere dan "bezet":
+>
+> ```
+> ✗ claim: er is al werk voor QS8-nnn op main geland.
+>     Merge pull request #nnn — <titel> (QS8-nnn)
+> ```
+>
+> **Er is dan nog niets gepusht** — dat is het hele punt, want een claim-commit
+> krijg je vanuit een cloudsessie niet meer weg (QS8-240). Lees het issue én zijn
+> reacties: staat daar "af en gemerged", dan is het klaar en zet je het op Done.
+> Is er een echt vervolg — dat bestaat, zie QS8-216, QS8-243 en QS8-433 — dan
+> claim je met `--vervolg`, en dat belandt in de claim-commit.
+>
+> ⚠️ De rem tegen "bezet" (een branch die er staat) weigert nog steeds hard. Het
+> verschil in gewicht is het besluit; het staat in
+> `docs/decisions/2026-09-13-een-opgeruimde-branch-is-geen-vrij-issue.md`.
+>
 > **06-09, punt I: ik heb drie keer een issue gebouwd dat de andere sessie al
 > gebouwd hád** (QS8-287, QS8-286, QS8-214), **en bij de laatste wezen alle
 > signalen die ik had het aan voordat ik begon.** QS8-287 stond op *In
