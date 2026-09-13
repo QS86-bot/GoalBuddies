@@ -14,10 +14,10 @@ productie in twee rondes)
 ⚠️ **Productie staat op `0221`.** 📏 Hermeten op 09-09 om 16:10 UTC met
 `migratieregister()` tegen `wehgocadxehottiiyvsc`: **224 registerrijen**, `0001`
 t/m `0221` aaneengesloten, inclusief de drie letterversies. De map telt er
-**258**.
+**259**.
 
-**Het gat is daarmee vierendertig bestanden** — `0222` t/m `0255`, van 09-09
-tot en met 11-09 en uit eenentwintig verschillende issues:
+**Het gat is daarmee vijfendertig bestanden** — `0222` t/m `0256`, van 09-09
+tot en met 13-09 en uit vierentwintig verschillende issues:
 
 | | | DDL op `storage.objects` |
 | -- | -- | -- |
@@ -55,6 +55,7 @@ tot en met 11-09 en uit eenentwintig verschillende issues:
 | `0253_functiegrants_kennen_de_handtekening_en_ook_anon.sql` | QS8-428 | nee |
 | `0254_geen_immutable_functie_zonder_argumenten.sql` | QS8-433 | nee |
 | `0255_elke_fotoemmer_pint_de_extensie_in_zijn_insertpolicy.sql` | QS8-416 | ja |
+| `0256_de_naam_uit_een_aanmelding_wordt_schoon_of_naamloos.sql` | QS8-448 | nee |
 
 ⚠️ **Hier stond een uur eerder `0219` met twee bestanden gat, en dat klopte
 toen.** `0220` en `0221` zijn erna toegepast en `0222` t/m `0226` landden
@@ -304,7 +305,7 @@ schemaname = 'public'` gaf `41|41`. Vraag het aan de database en niet aan deze
 regel — net als bij het aantal migraties in §0.
 
 <!-- STAND:BEGIN — gegenereerd door `npm run stand` -->
-Migraties `0001` t/m `0255` staan in de map: **258 bestanden**,
+Migraties `0001` t/m `0256` staan in de map: **259 bestanden**,
 waarvan 3 met een letter-achtervoegsel (`0039a`, `0041a`, `0052a`).
 De nummering is aaneengesloten.
 <!-- STAND:EINDE -->

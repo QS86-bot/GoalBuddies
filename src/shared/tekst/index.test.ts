@@ -177,4 +177,30 @@ describe('initiaalVan', () => {
     expect(initiaalVan('')).toBe('?');
     expect(initiaalVan('   ')).toBe('?');
   });
+
+  /**
+   * ⚠️ **Dezelfde opvatting van witruimte als de database** — QS8-448. Hier stond
+   *    `naam.trim()`, tien regels onder `schoneNaam()` die er juist één van moest
+   *    maken. `.trim()` strijkt de JS-WhiteSpace-klasse en laat U+200B, de hangul
+   *    filler en de soft hyphen staan, dus die kwamen als avatarletter naast de
+   *    naam van een groepsgenoot te staan: een leeg vak.
+   *
+   *    De CHECK uit 0256 weigert zo'n naam nu bij het schrijven, maar
+   *    `initiaalVan()` krijgt ook namen te zien die van vóór die CHECK zijn — en
+   *    een presentatiehelper hoort niet te leunen op een grens die ergens anders
+   *    staat.
+   */
+  it.each([
+    { naam: 'zero-width space', rand: String.fromCodePoint(0x200b) },
+    { naam: 'hangul filler', rand: String.fromCodePoint(0x3164) },
+    { naam: 'soft hyphen', rand: String.fromCodePoint(0x00ad) },
+    { naam: 'no-break space', rand: String.fromCodePoint(0x00a0) },
+  ])('slaat een onzichtbare voorrand over ($naam)', ({ rand }) => {
+    expect(initiaalVan(`${rand}bram`)).toBe('B');
+  });
+
+  it('geeft een vraagteken bij een naam die alleen onzichtbaar is', () => {
+    expect(initiaalVan(String.fromCodePoint(0x200b))).toBe('?');
+    expect(initiaalVan(String.fromCodePoint(0x3164))).toBe('?');
+  });
 });
