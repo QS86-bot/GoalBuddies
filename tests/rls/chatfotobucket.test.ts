@@ -59,6 +59,7 @@ import { randomUUID } from 'node:crypto';
 
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
+import { proefCode } from './proefid';
 import { psql as psqlKaal, stackBeschikbaarOfFaal } from './psql-stack';
 
 const psql = (sql: string) => psqlKaal(sql, { verbose: true });
@@ -113,6 +114,31 @@ describe.runIf(beschikbaar)('de chatfoto-bucket (0222) en de kolomgrens (0223)',
    *    een reden die niets met de policies te maken had.
    */
   let groepArchief = '';
+
+  /**
+   * De tellersleutels van dít bestand — QS8-442.
+   *
+   * ⚠️⚠️ **`where domein = 'chatfotos'` was niet genoeg, en dat is gemeten.**
+   *    Meer bestanden schrijven in dat domein, dus een domeinbrede opruiming wist
+   *    de teller van de buren. Dat is dezelfde fout als een kale
+   *    `delete from dagtellers`, alleen met een kleinere straal.
+   *
+   * ⚠️ `tel_dagteller()` legt twee sleutels per groep aan — `<groep>` voor het
+   *    groepsplafond en `<groep>/<uploader>` voor het persoonlijke. Een `like` op
+   *    de groep dekt ze allebei en niets van iemand anders.
+   *
+   * ⚠️ Een functie en geen constante: de groepen krijgen hun id pas in
+   *    `beforeAll`, dus een `const` op modulehoogte zou een lege string invullen.
+   *
+   * `tellerbereik:controle` bewaakt dat deze vorm niet terugglijdt.
+   */
+  function mijnTellers(): string {
+    const groepen = [groepA, groepB, groepArchief]
+      .map((g) => `sleutel like '${g}%'`)
+      .join(' or ');
+
+    return `domein = 'chatfotos' and (${groepen})`;
+  }
 
   const padA = () => `${groepA}/${alice}/foto.jpg`;
 
@@ -447,7 +473,7 @@ describe.runIf(beschikbaar)('de chatfoto-bucket (0222) en de kolomgrens (0223)',
     );
     psql(`delete from public.chat_messages where attachment_url = '${pad}'`);
     psql(`delete from storage.objects where name = '${pad}'`);
-    psql(`delete from public.dagtellers where domein = 'chatfotos'`);
+    psql(`delete from public.dagtellers where ${mijnTellers()}`);
 
     // ⚠️ De must-allow zit ernaast: de eerste, gewone upload moet gewoon slagen.
     //    Een policy die álles weigert, staat groen op de must-deny alleen.
@@ -473,7 +499,7 @@ describe.runIf(beschikbaar)('de chatfoto-bucket (0222) en de kolomgrens (0223)',
        ) select count(*) from bij`,
     );
     psql(`delete from storage.objects where bucket_id = 'chatfotos' and name like '${groepA}/${bob}/hernoem%'`);
-    psql(`delete from public.dagtellers where domein = 'chatfotos'`);
+    psql(`delete from public.dagtellers where ${mijnTellers()}`);
     expect(uit).toBe('0');
   });
 
@@ -488,13 +514,24 @@ describe.runIf(beschikbaar)('de chatfoto-bucket (0222) en de kolomgrens (0223)',
     //    Onbereikbaar voor `authenticated` — `chatfotos_insert` pint beide
     //    segmenten — maar niet voor de Storage-browser in Studio of een script
     //    als `service_role`, en dat zijn precies de rollen die RLS passeren.
+    //
+    // ⚠️⚠️ **`proefCode()` en niet het vaste `mijnmap`** — QS8-442. Het segment
+    //    moet géén uuid zijn, want daar gáát dit geval over; het moet wél per
+    //    run verschillen. Met `mijnmap` liet dit geval twee tellerrijen achter
+    //    (`groep/mijnmap` en `uploader/mijnmap/submap`) die geen enkele
+    //    opruiming raakte, en het groepsplafond is 20: 📏 na een stuk of tien
+    //    runs op dezelfde stack wordt déze insert geweigerd en valt de
+    //    `not.toThrow()` hierboven om — zonder dat er een regel veranderd is.
+    const map = `${proefCode('map', 1)}/submap`;
+
     expect(() =>
       psql(
         `insert into storage.objects (bucket_id, name)
-         values ('chatfotos', 'mijnmap/submap/x.jpg') on conflict do nothing`,
+         values ('chatfotos', '${map}/x.jpg') on conflict do nothing`,
       ),
     ).not.toThrow();
-    psql(`delete from storage.objects where name = 'mijnmap/submap/x.jpg'`);
+    psql(`delete from storage.objects where name = '${map}/x.jpg'`);
+    psql(`delete from public.dagtellers where sleutel like '${proefCode('map', 1)}%'`);
   });
 
   // -------------------------------------------------------------------------
@@ -516,7 +553,7 @@ describe.runIf(beschikbaar)('de chatfoto-bucket (0222) en de kolomgrens (0223)',
    *    teller wissen laat objecten staan die de leestests verstoren.
    */
   function zetTellerTerug(groep: string) {
-    psql(`delete from public.dagtellers where domein = 'chatfotos'`);
+    psql(`delete from public.dagtellers where ${mijnTellers()}`);
     psql(`delete from storage.objects where bucket_id = 'chatfotos' and name like '${groep}/%'`);
   }
 
@@ -675,7 +712,7 @@ describe.runIf(beschikbaar)('de chatfoto-bucket (0222) en de kolomgrens (0223)',
     //    verstreken is. Een etmaal terugzetten is dus precies "morgen".
     psql(
       `update public.dagtellers set venster_start = now() - interval '25 hours'
-       where domein = 'chatfotos'`,
+       where ${mijnTellers()}`,
     );
 
     const uit = alsMetFout(

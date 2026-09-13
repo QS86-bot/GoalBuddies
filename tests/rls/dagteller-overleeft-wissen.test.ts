@@ -57,8 +57,38 @@ const beschikbaar = stackBeschikbaarOfFaal(
 
 const EMMERS = ['bewijsfotos', 'chatfotos', 'avatars'] as const;
 
+/**
+ * De groep waarin dit bestand zijn paden legt — QS8-442.
+ *
+ * ⚠️⚠️ **Hier stond de letterlijke `g`, en dat was een gedeelde sleutel.**
+ *    `bewaak_chatfoto_aantal()` telt op twee niveaus: per uploader
+ *    (`groep||'/'||uploader`, plafond 8) én **per groep** (`groep`, plafond 20).
+ *    De uploader was al een `proefId` en werd dus netjes opgeruimd; de groep was
+ *    een letter, dus de rij `groep / g` viel buiten élke opruiming. 📏 Na een
+ *    volle suite-run stond hij er als enige vaste sleutel tussen twintig
+ *    per-run-uuids: `groep | g = 8`.
+ *
+ * ⚠️ **`gedeelde-identiteit:controle` vindt dit niet en dat blijft zo** — die
+ *    zoekt uuid-literals, en `g` is er geen. De afweging om hem daar níet voor
+ *    te verbreden staat in
+ *    `docs/decisions/2026-09-13-de-waarschuwing-stond-bij-het-verkeerde-werkwoord.md` §4.
+ */
+const GROEP = proefId(0);
+
 /** Elke uuid die dit bestand zelf schrijft — en dus als enige mag opruimen. */
-const ALLE_PROEF_IDS = [proefId(1), proefId(2), proefId(3), proefId(10)];
+const ALLE_PROEF_IDS = [GROEP, proefId(1), proefId(2), proefId(3), proefId(10)];
+
+/**
+ * De `where` waarmee dit bestand zijn eigen sleutels aanwijst — en niets anders.
+ *
+ * ⚠️⚠️ **Één expressie voor élke schrijfactie op `dagtellers` in dit bestand,
+ *    en dat is de naad die QS8-442 opleverde.** Hier stonden er twee: `leeg()`
+ *    filterde netjes, en het geval "een etmaal later" deed er vier regels
+ *    verderop een `update` overheen **zonder `where`**. Twee plekken die
+ *    hetzelfde moeten bedoelen, lopen uit elkaar — en dat is in dit project de
+ *    duurste vorm die er is.
+ */
+const MIJN_BEREIK = `sleutel similar to '%(${ALLE_PROEF_IDS.join('|')})%'`;
 
 /** Wist de drie emmers en de tellers, zodat elk geval op nul begint. */
 function leeg(): void {
@@ -67,8 +97,11 @@ function leeg(): void {
   //    (QS8-336). Een kale `delete from dagtellers` wist dan de teller van
   //    een ándere suite — en uitgerekend de grendel die hier de belofte draagt
   //    ("wissen komt er niet langs") wordt groen als iemand anders de teller
-  //    leeggemaakt heeft. `gedeelde-identiteit:controle` ziet dit niet: het is
-  //    geen uuid-literal maar een ongefilterde delete.
+  //    leeggemaakt heeft.
+  //
+  // ⚠️ Deze uitleg stond er al vóór QS8-442 en hij klopte. Wat er vier regels
+  //    verderop stond was dezelfde fout met een ander werkwoord — zie
+  //    `MIJN_BEREIK` hierboven. `tellerbereik:controle` bewaakt de klasse nu.
   const mijne = ALLE_PROEF_IDS.join('|');
 
   psql(
@@ -76,7 +109,7 @@ function leeg(): void {
       where bucket_id in ('bewijsfotos','chatfotos','avatars')
         and name similar to '%(${mijne})%';
      delete from dagtellers
-      where sleutel similar to '%(${mijne})%';`,
+      where ${MIJN_BEREIK};`,
   );
 }
 
@@ -111,8 +144,8 @@ function verhuis(pad: string, naar: string): 'OK' | 'GEWEIGERD' {
 
 /** Het pad dat de teller van deze emmer leest, met zijn plafond. */
 const VORM = {
-  bewijsfotos: { pad: (u: string, i: number) => `g/${u}/f${i}.jpg`, plafond: 10 },
-  chatfotos: { pad: (u: string, i: number) => `g/${u}/c${i}.jpg`, plafond: 8 },
+  bewijsfotos: { pad: (u: string, i: number) => `${GROEP}/${u}/f${i}.jpg`, plafond: 10 },
+  chatfotos: { pad: (u: string, i: number) => `${GROEP}/${u}/c${i}.jpg`, plafond: 8 },
   avatars: { pad: (u: string, i: number) => `${u}/a${i}.jpg`, plafond: 10 },
 } as const;
 
@@ -170,7 +203,18 @@ describe.runIf(beschikbaar)('wissen zet de dagteller niet terug', () => {
       for (let i = 1; i <= plafond; i += 1) plaats(emmer, pad(u, i));
 
       psql(`delete from storage.objects where bucket_id = '${emmer}';`);
-      psql(`update dagtellers set venster_start = now() - interval '25 hours';`);
+      // ⚠️⚠️ **`MIJN_BEREIK` en geen kale update** — QS8-442. Hier stond
+      //    `update dagtellers set venster_start = …;` zónder `where`, en dat
+      //    zette het venster van **elke** teller in de database een etmaal
+      //    terug. 📏 Gemeten met een vreemde rij ernaast: het aantal bleef 5 staan
+      //    en de start ging van 05:11 vandaag naar 04:11 gisteren — dus de
+      //    eerstvolgende `tel_dagteller()` van die andere suite begon op 1 en
+      //    haar plafond vuurde niet. Dat is de faalsignatuur "expected
+      //    GEWEIGERD, got OK" waar dit issue mee begon.
+      psql(
+        `update dagtellers set venster_start = now() - interval '25 hours'
+          where ${MIJN_BEREIK};`,
+      );
 
       expect(plaats(emmer, pad(u, plafond + 3))).toBe('OK');
     });
@@ -189,7 +233,8 @@ describe.runIf(beschikbaar)('wissen zet de dagteller niet terug', () => {
     const u = proefId(10);
     for (let i = 1; i <= plafond; i += 1) plaats(emmer, vorm.pad(u, i));
 
-    const geparkeerd = emmer === 'avatars' ? `${u}/verhuisd.jpg` : `g/${u}/verhuisd.jpg`;
+    const geparkeerd =
+      emmer === 'avatars' ? `${u}/verhuisd.jpg` : `${GROEP}/${u}/verhuisd.jpg`;
     plaats('bewijsfotos', geparkeerd);
 
     expect(verhuis(geparkeerd, emmer)).toBe('GEWEIGERD');

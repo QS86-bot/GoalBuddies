@@ -46,6 +46,7 @@
     "edge:gedeployd": "node scripts/edge-gedeployd.mjs",
     "edge:gedeployd:controle": "node scripts/edge-gedeployd.mjs",
     "tekst:controle": "node scripts/tekst-controle.mjs",
+    "tellerbereik:controle": "node scripts/tellerbereik-controle.mjs",
     "tijdzones:controle": "node scripts/tijdzones-controle.mjs",
     "uitgang:controle": "node scripts/uitgang-controle.mjs",
     "idlijst:controle": "node scripts/idlijst-controle.mjs",

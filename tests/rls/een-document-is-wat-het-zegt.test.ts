@@ -53,6 +53,31 @@ describe.runIf(beschikbaar)('een bijlage is wat zijn soort zegt (0242)', () => {
   const alice = randomUUID();
   let groep = '';
 
+  /**
+   * De tellersleutels van dít bestand — QS8-442.
+   *
+   * ⚠️⚠️ **`where domein = 'chatdocs'` was niet genoeg, en dat is gemeten.**
+   *    Meer bestanden schrijven in dat domein, dus een domeinbrede opruiming wist
+   *    de teller van de buren. Dat is dezelfde fout als een kale
+   *    `delete from dagtellers`, alleen met een kleinere straal.
+   *
+   * ⚠️ `tel_dagteller()` legt twee sleutels per groep aan — `<groep>` voor het
+   *    groepsplafond en `<groep>/<uploader>` voor het persoonlijke. Een `like` op
+   *    de groep dekt ze allebei en niets van iemand anders.
+   *
+   * ⚠️ Een functie en geen constante: de groepen krijgen hun id pas in
+   *    `beforeAll`, dus een `const` op modulehoogte zou een lege string invullen.
+   *
+   * `tellerbereik:controle` bewaakt dat deze vorm niet terugglijdt.
+   */
+  function mijnTellers(): string {
+    const groepen = [groep]
+      .map((g) => `sleutel like '${g}%'`)
+      .join(' or ');
+
+    return `domein = 'chatdocs' and (${groepen})`;
+  }
+
   const pad = (bestand: string) => `${groep}/${alice}/${bestand}`;
 
   /**
@@ -354,7 +379,7 @@ describe.runIf(beschikbaar)('een bijlage is wat zijn soort zegt (0242)', () => {
 
     psql(`delete from public.chat_messages where id = '${berichtId}'`);
     psql(`delete from storage.objects where name = '${doelpad}'`);
-    psql(`delete from dagtellers where domein = 'chatdocs'`);
+    psql(`delete from dagtellers where ${mijnTellers()}`);
     psql(`delete from auth.users where id = '${vertrekker}'`);
   });
 });
