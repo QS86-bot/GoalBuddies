@@ -4,6 +4,7 @@ import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 
 import { roeptAan } from './roept-aan';
+import { zonderCommentaar } from '../../scripts/zonder-commentaar.mjs';
 
 const WORTEL = join(__dirname, '..', '..');
 
@@ -56,14 +57,6 @@ function bestandenIn(map: string): readonly string[] {
     const pad = join(map, naam);
     return statSync(pad).isDirectory() ? bestandenIn(pad) : [pad];
   });
-}
-
-function zonderCommentaar(bron: string): string {
-  return bron
-    .replace(/\/\*[\s\S]*?\*\//g, ' ')
-    .split('\n')
-    .filter((regel) => !regel.trimStart().startsWith('//'))
-    .join('\n');
 }
 
 /** Elk bestand in `app/` en `src/` dat daadwerkelijk koppelt. */

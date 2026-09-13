@@ -53,16 +53,16 @@ import { describe, expect, it } from 'vitest';
 
 import { bestemmingVoor } from '../../src/modules/auth/routewacht';
 
-const WORTEL = fileURLToPath(new URL('../..', import.meta.url));
+/**
+ * ⚠️ De knip staat sinds QS8-446 in `scripts/zonder-commentaar.mjs` en wordt
+ *    hier alleen doorgegeven, zodat de bestaande importeurs blijven werken.
+ *    Eén knip, één ijking — zie de kop van dat bestand.
+ */
+import { zonderCommentaar } from '../../scripts/zonder-commentaar.mjs';
 
-/** Commentaar eruit: een uitleg óver een terugknop is geen terugknop. */
-export function zonderCommentaar(bron: string): string {
-  return bron
-    .replace(/\/\*[\s\S]*?\*\//g, ' ')
-    .split('\n')
-    .filter((regel) => !regel.trimStart().startsWith('//'))
-    .join('\n');
-}
+export { zonderCommentaar };
+
+const WORTEL = fileURLToPath(new URL('../..', import.meta.url));
 
 interface Stapstate {
   readonly naam: string;

@@ -4,6 +4,7 @@ import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 
 import { roeptAan } from './roept-aan';
+import { zonderCommentaar } from '../../scripts/zonder-commentaar.mjs';
 
 const WORTEL = join(__dirname, '..', '..');
 
@@ -74,15 +75,6 @@ function schermenDieEenDoelMaken(): readonly { readonly pad: string; readonly br
     .filter((p) => p.endsWith('.tsx') && !p.includes('.test.'))
     .map((pad) => ({ pad: pad.slice(WORTEL.length + 1), bron: readFileSync(pad, 'utf8') }))
     .filter(({ bron }) => MAAKT_EEN_DOEL.some((naam) => roeptAan(bron, naam)));
-}
-
-/** Commentaar telt niet als bestemming — zelfde reden als in `roeptAan()`. */
-function zonderCommentaar(bron: string): string {
-  return bron
-    .replace(/\/\*[\s\S]*?\*\//g, ' ')
-    .split('\n')
-    .filter((regel) => !regel.trimStart().startsWith('//'))
-    .join('\n');
 }
 
 describe('elke manier om een doel te maken eindigt bij de vraag wie meedoet', () => {
