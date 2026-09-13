@@ -71,6 +71,7 @@
     "rpc:controle": "node scripts/rpc-argumenten-controle.mjs",
     "markeringen:controle": "node scripts/conflictmarkeringen-controle.mjs",
     "storage:controle": "node scripts/storage-controle.mjs",
+    "realtime-identiteit:controle": "node scripts/realtime-identiteit-controle.mjs",
     "avatar:controle": "node scripts/avatar-controle.mjs",
     "audit:controle": "node scripts/audit-controle.mjs",
     "bundel:controle": "node scripts/bundel-controle.mjs",
