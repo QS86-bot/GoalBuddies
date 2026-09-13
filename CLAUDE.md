@@ -68,6 +68,26 @@ het afsluiten van een issue of Linear en de documenten hetzelfde zeggen.
   is dat er **op één dag drie keer hetzelfde issue gebouwd is** — QS8-287,
   QS8-286 en QS8-214, elke keer allebei helemaal af.
 
+  ⚠️⚠️ **Hij leest twee bronnen sinds 13-09-2026 (QS8-449), en ze wegen
+  verschillend.** Een branch op de remote betekent *hier zit iemand nu* en
+  weigert hard. Een **gelande PR op `main`** betekent *hier is werk geweest* en
+  weigert deze keer **zonder te pushen** — met `--vervolg` als expliciete uitweg,
+  want er zijn issues die terecht openstaan nadat er werk voor geland is
+  (QS8-216, QS8-243, QS8-433).
+
+  De aanleiding is dat de branchlijst een **neveneffect** is en geen eigenschap:
+  ze antwoordt op *"zit hier iemand"*, en werd gelezen als antwoord op *"is dit
+  al gebouwd"*. 📏 Van QS8-437 en QS8-438 was de branch na de merge opgeruimd, en
+  toen gaf de claim allebei vrij — twee keer een claim-commit op een issue dat af
+  was. **Hoe netter er opgeruimd wordt, hoe vaker dat gebeurt.** Dat is het
+  spiegelbeeld van QS8-240, waar een branch die niet weg kán juist bezetting
+  voorwendt die er niet is.
+
+  ⚠️ **En de reden dat het een rem werd en geen melding:** QS8-411 vond de fout
+  allebei de keren, maar die controle komt ná de push die de schade maakt — en
+  een cloudsessie krijgt een claim-commit niet meer weg. Uitleg in
+  `docs/decisions/2026-09-13-een-opgeruimde-branch-is-geen-vrij-issue.md`.
+
   ⚠️ **Het issue op In Progress zetten is géén claim gebleken.** Bij QS8-214 is
   dat gedáán, vóór de eerste regel code, en de andere sessie begon daarna
   alsnog. Wat wél gelezen wordt is de remote branchlijst, want daar leunen
