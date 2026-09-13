@@ -42,6 +42,7 @@ import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest';
 
 import { CHATDOC_MAX_BYTES, keurChatdoc } from '../../src/modules/buddies/chatdoc';
 import { t } from '../../src/shared/i18n';
+import { zonderCommentaar } from '../../scripts/zonder-commentaar.mjs';
 
 /**
  * ⚠️ De kiezer is per test te sturen, en dat moet via `vi.hoisted()`: `vi.mock`
@@ -208,15 +209,6 @@ function bronbestanden(map: string): string[] {
   };
   loop(map);
   return uit;
-}
-
-/** Zonder commentaar, zodat een uitleg over de aanroep niet als aanroep telt. */
-function zonderCommentaar(bron: string): string {
-  return bron
-    .replace(/\/\*[\s\S]*?\*\//g, ' ')
-    .split('\n')
-    .filter((regel) => !regel.trimStart().startsWith('//'))
-    .join('\n');
 }
 
 describe('niemand verzint zijn eigen grens', () => {

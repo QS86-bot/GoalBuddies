@@ -24,23 +24,20 @@
 /**
  * De bron zonder commentaar.
  *
- * ⚠️⚠️ **Losgetrokken en geëxporteerd bij QS8-443, en dat is geen netheid.**
- *    CLAUDE.md noemt deze knip met zoveel woorden een grendel op zichzelf: bij
- *    QS8-412 stond dezelfde knip in twee testbestanden en was hij in allebei
- *    blind voor `https://` — de regelvorm hieronder is juist de vorm die dát
- *    overleeft, want hij kijkt of de **regel** met `//` begint en knipt niet
- *    midden in een URL. Een derde kopie zou die eigenschap opnieuw op het spel
- *    zetten.
+ * ⚠️⚠️ **Sinds QS8-446 staat hij in `scripts/zonder-commentaar.mjs` en wordt hij
+ *    hier alleen doorgegeven.** De reden dat hij bij QS8-443 hiernaartoe kwam
+ *    staat nog overeind — CLAUDE.md noemt deze knip een grendel op zichzelf, en
+ *    bij QS8-412 was dezelfde knip in twee bestanden blind voor `https://` —
+ *    maar het antwoord was te klein. 📏 Er stonden er zeventien verschillende,
+ *    verdeeld over `scripts/` en `tests/`, en deze boom kon de andere niet
+ *    bereiken. Een `.mjs` kan dat wél in beide richtingen.
  *
- * ⚠️ Blokken eerst: `/* … *\/` dekt zowel JSDoc als de JSX-vorm `{/* … *\/}`.
+ * ⚠️ De importeurs van dít bestand blijven werken; die hoefden niet mee te
+ *    verhuizen.
  */
-export function zonderCommentaar(bron: string): string {
-  return bron
-    .replace(/\/\*[\s\S]*?\*\//g, ' ')
-    .split('\n')
-    .filter((regel) => !regel.trimStart().startsWith('//'))
-    .join('\n');
-}
+import { zonderCommentaar } from '../../scripts/zonder-commentaar.mjs';
+
+export { zonderCommentaar };
 
 export function roeptAan(bron: string, naam: string): boolean {
   const schoon = zonderCommentaar(bron);

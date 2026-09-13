@@ -66,6 +66,8 @@ import { readdirSync, readFileSync } from 'node:fs';
 import { join, relative } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 
+import { zonderCommentaar } from './zonder-commentaar.mjs';
+
 const WORTEL = fileURLToPath(new URL('..', import.meta.url));
 const MAP = 'tests/rls';
 
@@ -82,19 +84,11 @@ export const SCHRIJFACTIE = /\b(delete\s+from|update)\s+(?:public\.)?dagtellers\
 export const ZONDER_BEREIK = {};
 
 /**
- * De bron zonder commentaar.
- *
- * ⚠️ **Per regel en niet met één regex over `//`**, want die vorm is in dit
- *    project al een keer blind gebleken voor `https://` (QS8-412). Blokken gaan
- *    er als blok af.
+ * ⚠️ De knip komt sinds QS8-446 uit één bron. Hij stond hier als eigen kopie —
+ *    in de veilige regelvorm, maar wél als kopie, en dat is precies wat QS8-446
+ *    opleverde.
  */
-export function zonderCommentaar(bron) {
-  return bron
-    .replace(/\/\*[\s\S]*?\*\//g, ' ')
-    .split('\n')
-    .filter((regel) => !regel.trimStart().startsWith('//'))
-    .join('\n');
-}
+export { zonderCommentaar };
 
 /**
  * Elke schrijfactie op `dagtellers` in deze bron, als losse statement.

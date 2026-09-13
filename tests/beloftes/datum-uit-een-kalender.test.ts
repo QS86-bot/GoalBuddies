@@ -2,6 +2,7 @@ import { readFileSync, readdirSync, statSync } from 'node:fs';
 import { join, relative } from 'node:path';
 
 import { describe, expect, it } from 'vitest';
+import { zonderCommentaar } from '../../scripts/zonder-commentaar.mjs';
 
 const WORTEL = join(__dirname, '..', '..');
 
@@ -35,10 +36,6 @@ function schermen(map: string): string[] {
   }
 
   return uit;
-}
-
-function zonderCommentaar(bron: string): string {
-  return bron.replace(/\{\/\*[\s\S]*?\*\/\}/g, '').replace(/\/\/[^\n]*/g, '');
 }
 
 /**
