@@ -118,6 +118,13 @@ export const GEEN_OPPERVLAK = new Map([
       'doel? Ook mechanisme en geen oppervlak.',
   ],
   [
+    'functie:leesroute_bewaking',
+    'De routetoets van 0259. Noemt `deelt_open_groep_met_doel` en ' +
+      '`lid_van_open_groep` alleen als naam in een allowlist van gesanctioneerde ' +
+      'routes — hij leest geen enkele rij van een lid en geeft alleen policynamen ' +
+      'terug. Zelfde reden als `archiefleesgat` hieronder.',
+  ],
+  [
     'functie:archiefleesgat',
     'De teller van de lees/schrijf-splitsing van 0153. Noemt ' +
       '`deelt_open_groep_met_doel` alleen als één van de vier functies die een ' +
