@@ -1,5 +1,3 @@
-import { execFileSync } from 'node:child_process';
-
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import { groepsperiodeVan } from '../../src/modules/buddies/periods';
@@ -18,7 +16,7 @@ import {
   type TestUser,
 } from './harness';
 import { proefId } from './proefid';
-import { PSQL_OMGEVING, psqlBasisArgumenten } from './psql-stack';
+import { psqlMetInvoer, stackBeschikbaarOfFaal } from './psql-stack';
 
 /**
  * Wat de client alleen mag lézen, blijft alleen te lezen — QS8-262, migratie 0148.
@@ -698,8 +696,8 @@ describe.skipIf(!rlsTestsConfigured)('wat de client alleen mag lezen, blijft all
 // ---------------------------------------------------------------------------
 
 /**
- * De belofte: **`alleenlezen_bewaking()` meldt een dichte policyhelft alleen als
- * de policy de grendel is** — QS8-458, migratie 0258.
+ * De belofte: **`alleenlezen_bewaking()` meldt een dichte policyhelft precies dan
+ * als díe helft de grendel is** — QS8-458, migratie 0258.
  *
  * ⚠️⚠️ **Deze grendel is niet met de bestaande data te ijken, en dat is precies
  *    waarom hij een eigen fixture heeft.** 📏 Gemeten op 13-09-2026: er zijn vier
@@ -707,102 +705,107 @@ describe.skipIf(!rlsTestsConfigured)('wat de client alleen mag lezen, blijft all
  *    reproductie uit reviewrij 428 geeft vóór én na een `revoke` nul rijen. Een
  *    toets die daarop leunt, toetst niets.
  *
- *    *"Een controle die je niet kunt voeden, kun je niet ijken."* Dus voeren we
- *    hem: een eigen tabel met een `ALL`-policy op `using (false) with check
- *    (false)`, één keer mét schrijfrecht en één keer zonder.
+ *    *"Een controle die je niet kunt voeden, kun je niet ijken."*
  *
- * ⚠️ **Beide kanten, en de tweede is de bevinding.** De functie bestaat om een
- *    dichte helft te melden wáár de policy de grendel is; staat het recht er niet,
- *    dan is de grant de grendel en hoort hij te zwijgen. De `ALL`-tak zei
- *    onvoorwaardelijk `true` en meldde hem dus ook dan — en een fixture die daarop
- *    leunt, krijgt zijn weigering uit de grant en is permanent groen met de policy
- *    wagenwijd open.
+ * ⚠️⚠️ **Per hélft, en dat is de correctie die deze toets zijn vorm gaf.** De
+ *    eerste versie vroeg "heeft de client schrijfrecht" en liet SELECT weg. Voor
+ *    een `for all` stuurt de `using`-helft óók SELECT aan, dus een tabel waarop de
+ *    client alleen mág lezen terwijl de policy dat blokkeert, viel weg uit de
+ *    uitslag — en daarmee uit de volledigheidstoets hierboven. Voor een bewaking
+ *    is dat de gevaarlijke kant: geen ruis erbij, maar een melding die wegvalt.
+ *
+ *    📏 Gemeten, alle rechten ingetrokken op `select` na:
+ *
+ *      policy dicht, leesrecht open -> de client leest 0 rijen
+ *      policy open,  leesrecht open -> de client leest 1 rij
+ *
+ *    Alleen de policy verschilt; de grants zijn tussen die twee metingen niet
+ *    aangeraakt. De policy ís daar dus de grendel.
+ *
+ * ⚠️ **Een verse tabel draagt de schrijfrechten al.** 📏 `create table public.x`
+ *    geeft direct `authenticated=arwdx/postgres` — `alter default privileges`
+ *    deelt in Supabase élke nieuwe tabel in `public` uit aan `anon`,
+ *    `authenticated` én `service_role` (beveiligingsregel 4). Een fixture die
+ *    alleen `grant select` doet en denkt dat de schrijfrechten weg zijn, meet
+ *    niets. Vandaar de `revoke all` vooraf in elke stand.
  *
  * ⚠️ Alles in één transactie die terugrolt: deze suite draait tegen dezelfde
  *    database als de rest, en een achtergebleven tabel met een open grant is
  *    precies het soort rest dat een volgende run laat liegen.
  *
- * ⚠️⚠️ **Een verse tabel heeft de schrijfrechten al, en dat maakt een naïeve
- *    fixture misleidend.** 📏 Gemeten: `create table public.x` geeft direct
- *    `authenticated=arwdx/postgres` — `alter default privileges` in Supabase
- *    deelt élke nieuwe tabel in `public` uit aan `anon`, `authenticated` én
- *    `service_role` (beveiligingsregel 4). Een fixture die alleen `grant select`
- *    doet en dan denkt dat de schrijfrechten wegzijn, meet niets: de tabel heeft
- *    ze nog uit de standaard. Vandaar de expliciete `revoke` hieronder.
- *
- *    📏 Met een `revoke` vooraf en daarna één recht tegelijk terug, meet deze
- *    tak als volgt — vier gevallen, en de eerste is de bevinding:
- *
- *      alleen SELECT   -> 0   de grant is de grendel, dus zwijgen
- *      SELECT+INSERT   -> 2   de policy is de grendel, dus melden
- *      SELECT+UPDATE   -> 2
- *      SELECT+DELETE   -> 2
- *
- *    Geen vals-negatief: elk van de drie schrijfrechten zet de melding aan, en
- *    dat is waarom er `or` staat en geen `and`.
+ * ⚠️ `stackBeschikbaarOfFaal()` en niet `rlsTestsConfigured`: dit blok praat
+ *    alleen met `psql` en heeft PostgREST niet nodig. Achter de PostgREST-vlag
+ *    zou het zichzelf stil overslaan bij een kale `npm test` — mét de database
+ *    ernaast, volledig meetbaar. Dat is het faalbeeld van QS8-270.
  */
-describe.skipIf(!rlsTestsConfigured)('alleenlezen_bewaking toetst het recht ook bij ALL', () => {
-  function meet(): { readonly metRecht: number; readonly zonderRecht: number } {
-    const sql = [
+const bewakingBeschikbaar = stackBeschikbaarOfFaal(
+  "select count(*) from pg_proc where proname = 'alleenlezen_bewaking'",
+  import.meta.url,
+);
+
+/**
+ * De helften die `alleenlezen_bewaking()` meldt voor een tabel met een
+ * `ALL`-policy die alles dichtzet, bij een gegeven set rechten.
+ */
+function helftenBij(rechten: string): string[] {
+  const uit = psqlMetInvoer(
+    [
       'begin;',
       'create table public.proef_alleenlezen_458 (id uuid primary key default gen_random_uuid());',
       'alter table public.proef_alleenlezen_458 enable row level security;',
       'create policy proef_458_all on public.proef_alleenlezen_458',
       '  as permissive for all to authenticated using (false) with check (false);',
-      // ⚠️ Eerst weg en dan bewust terug — zie de kop: een verse tabel draagt de
-      //    schrijfrechten al uit `alter default privileges`.
+      // ⚠️ Eerst alles weg — zie de kop: de standaardrechten staan er al op.
       'revoke all on public.proef_alleenlezen_458 from authenticated;',
-      'grant select, insert, update, delete on public.proef_alleenlezen_458 to authenticated;',
-      "select 'MET=' || count(*) from alleenlezen_bewaking() where tabel = 'proef_alleenlezen_458';",
-      'revoke insert, update, delete on public.proef_alleenlezen_458 from authenticated;',
-      "select 'ZONDER=' || count(*) from alleenlezen_bewaking() where tabel = 'proef_alleenlezen_458';",
+      rechten === ''
+        ? '-- geen rechten'
+        : `grant ${rechten} on public.proef_alleenlezen_458 to authenticated;`,
+      "select 'HELFT=' || helft from alleenlezen_bewaking()",
+      "  where tabel = 'proef_alleenlezen_458' order by helft;",
       'rollback;',
-    ].join('\n');
-
-    const uit = execFileSync('psql', psqlBasisArgumenten(), {
-      env: PSQL_OMGEVING,
-      encoding: 'utf8',
-      input: sql,
-    });
-
-    const lees = (sleutel: string): number => {
-      const regel = uit
-        .split('\n')
-        .map((r) => r.trim())
-        .find((r) => r.startsWith(`${sleutel}=`));
-      if (regel === undefined) throw new Error(`geen ${sleutel} in de uitvoer: ${uit}`);
-      return Number(regel.slice(sleutel.length + 1));
-    };
-
-    return { metRecht: lees('MET'), zonderRecht: lees('ZONDER') };
-  }
-
-  it(
-    'meldt een dichte ALL-helft zolang de client het schrijfrecht heeft',
-    () => {
-      // ⚠️ De must-report. Zonder deze helft is "hij meldt niets" ook een manier
-      //    om de andere assertie te halen.
-      expect(
-        meet().metRecht,
-        'een ALL-policy die alles dichtzet terwijl de grant openstaat, hoort ' +
-          'gemeld te worden — dat is waar deze functie voor bestaat',
-      ).toBe(2);
-    },
-    TEST_TIMEOUT,
+    ].join('\n'),
   );
 
-  it(
-    'en zwijgt zodra de grant de grendel is',
-    () => {
-      // ⚠️⚠️ Dit is de bevinding van reviewrij 428. 📏 Met `when 'ALL' then true`
-      //    gaf dit geval **2** in plaats van 0: de functie meldde een policy als
-      //    grendel terwijl het recht er niet eens was.
-      expect(
-        meet().zonderRecht,
-        'de ALL-tak neemt het schrijfrecht aan in plaats van het te toetsen — een ' +
-          'fixture hierop krijgt zijn 42501 uit de grant en niet uit de policy',
-      ).toBe(0);
+  return uit
+    .split('\n')
+    .map((r) => r.trim())
+    .filter((r) => r.startsWith('HELFT='))
+    .map((r) => r.slice('HELFT='.length))
+    .sort();
+}
+
+describe.runIf(bewakingBeschikbaar)('alleenlezen_bewaking toetst het recht per helft bij ALL', () => {
+  /**
+   * ⚠️ **Vier standen, en drie ervan had de eerste reparatie fout.** De tabel in
+   *    de kop van migratie 0258 is deze tabel.
+   */
+  it.each([
+    {
+      naam: 'alle rechten — beide helften dragen',
+      rechten: 'select, insert, update, delete',
+      verwacht: ['check', 'using'],
     },
-    TEST_TIMEOUT,
-  );
+    {
+      naam: 'alleen select — lezen komt langs de grant, de policy blokkeert het',
+      rechten: 'select',
+      verwacht: ['using'],
+    },
+    {
+      naam: 'alleen insert — de using-helft is onbereikbaar',
+      rechten: 'insert',
+      verwacht: ['check'],
+    },
+    {
+      naam: 'geen rechten — de grant is de grendel, dus zwijgen',
+      rechten: '',
+      verwacht: [],
+    },
+  ])('$naam', ({ rechten, verwacht }) => {
+    expect(
+      helftenBij(rechten),
+      'de ALL-tak meldt een helft die niet bereikbaar is, of laat er een weg die ' +
+        'de policy wél dichthoudt — een weggevallen melding haalt de tabel uit de ' +
+        'volledigheidstoets hierboven en niemand ziet dat',
+    ).toEqual(verwacht);
+  }, TEST_TIMEOUT);
 });

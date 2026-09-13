@@ -42,8 +42,21 @@
 --
 -- ⚠️ **Niet met de bestaande data te ijken**, en daarom staat de ijking in
 --    `tests/rls/alleenlezen.test.ts` met een eigen tabel: een `ALL`-policy op
---    `using (false) with check (false)`, één keer mét schrijfrecht en één keer
---    zonder. *"Een controle die je niet kunt voeden, kun je niet ijken."*
+--    `using (false) with check (false)`, in vier rechtenstanden.
+--    *"Een controle die je niet kunt voeden, kun je niet ijken."*
+--
+--    📏 De vier standen, en wat er hoort te komen:
+--
+--      alle rechten     -> using + check   beide helften dragen
+--      alleen select    -> using           alleen lezen komt langs de grant
+--      alleen insert    -> check           de using-helft is onbereikbaar
+--      geen rechten     -> <niets>         de grant is de grendel
+--
+-- ⚠️⚠️ **De eerste versie van deze migratie had er drie van de vier fout**, en
+--    de test legde dat vast als de bedoelde uitkomst — inclusief een uitgeschreven
+--    onderbouwing in deze kop. Dat is de vorm waar CLAUDE.md voor waarschuwt:
+--    *"een afwijking die je onderbouwt is duurder dan een die je vergeet"*. De
+--    security-review vond het; de meting hierboven is die van de reparatie.
 --
 -- ---------------------------------------------------------------------------
 
@@ -82,21 +95,40 @@ AS $function$
           --    grendel is en niet de grant; met `true` meldde deze tak hem ook
           --    als het recht er helemaal niet was.
           --
-          -- 📏 Gemeten met een gevoede fixture (een tabel met een ALL-policy op
-          --    `using (false) with check (false)`): mét schrijfrecht 2 rijen —
-          --    correct — en ná `revoke insert, update, delete` nog steeds 2,
-          --    waar 0 hoort. Met deze tak: 2 en 0.
+          -- ⚠️⚠️ **En de eerste reparatie draaide de fout om in plaats van hem
+          --    weg te nemen.** Die toetste DELETE, INSERT en UPDATE — en liet
+          --    SELECT weg. Voor een bewaking is dat de gevaarlijke kant op: niet
+          --    ruis erbij, maar een melding die wegvalt.
           --
-          -- ⚠️ `ALL` dekt alle commando's, dus het recht is er zodra één ervan
-          --    er is. `has_table_privilege` voor DELETE en
-          --    `has_any_column_privilege` voor INSERT/UPDATE — dezelfde
-          --    splitsing als de takken eromheen, en om dezelfde reden: DELETE is
-          --    in Postgres niet per kolom te geven.
-          when 'ALL' then (
-                 has_table_privilege('authenticated', r.rel, 'DELETE')
-              or has_any_column_privilege('authenticated', r.rel, 'INSERT')
-              or has_any_column_privilege('authenticated', r.rel, 'UPDATE')
-            )
+          --    📏 Gemeten met een tabel met `for all using (false) with check
+          --    (false)`, alle rechten ingetrokken op `select` na:
+          --
+          --      policy dicht, leesrecht open -> de client leest 0 rijen
+          --      policy open,  leesrecht open -> de client leest 1 rij
+          --
+          --    Alleen de policy verschilt tussen die twee metingen, dus de
+          --    **policy** is daar de grendel — en precies dan hoort deze functie
+          --    de `using`-helft te melden. De eerste reparatie gaf nul.
+          --
+          -- ⚠️ **De rechtentoets hoort per hélft te gaan, want dat is wat de rij
+          --    teruggeeft.** In Postgres stuurt de `using`-helft van een
+          --    `for all` SELECT, UPDATE (de oude rij) en DELETE aan; de
+          --    `check`-helft stuurt INSERT en UPDATE (de nieuwe rij) aan. Laat je
+          --    `with check` wég, dan gebruikt Postgres `using` óók als check, en
+          --    dan draagt die helft de INSERT er nog bij.
+          when 'ALL' then case h.helft
+              when 'using' then (
+                     has_any_column_privilege('authenticated', r.rel, 'SELECT')
+                  or has_any_column_privilege('authenticated', r.rel, 'UPDATE')
+                  or has_table_privilege('authenticated', r.rel, 'DELETE')
+                  or (p.with_check is null
+                      and has_any_column_privilege('authenticated', r.rel, 'INSERT'))
+                )
+              else (
+                     has_any_column_privilege('authenticated', r.rel, 'INSERT')
+                  or has_any_column_privilege('authenticated', r.rel, 'UPDATE')
+                )
+            end
           else has_any_column_privilege('authenticated', r.rel, p.cmd)
         end
   order by 1, 2, 3;
