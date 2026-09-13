@@ -171,6 +171,84 @@ describe.skipIf(!beschikbaar)('een aanmelding wordt een profiel', () => {
     TEST_TIMEOUT,
   );
 
+  /**
+   * ⚠️⚠️ **Deze vier gevallen kwamen langs de oude trigger als geldige naam** —
+   *    QS8-448, migratie 0256. `trim()` in Postgres strijkt alleen de spatie, dus
+   *    `nullif(trim(…), '')` zag een naam van twee newlines niet als leeg en de
+   *    terugval naar `Naamloos` sloeg over. 📏 Gemeten: `E'\n\n'` → 2 tekens,
+   *    `E'\t\t'` → 2, U+00A0 → 1, U+200B → 1.
+   *
+   * ⚠️ **`display_name` is groepszichtbaar**, dus de uitkomst was een lid in het
+   *    groepsoverzicht zonder leesbare naam — bereikbaar met één `signup` met de
+   *    anon-sleutel.
+   *
+   * ⚠️ U+200B is het geval dat ertoe doet: de drie andere werden nog door
+   *    `profielSchema` geweigerd (JS' `.trim()` strijkt ze wél), maar die ene
+   *    kwam langs **beide** poorten.
+   */
+  it.each([
+    ['twee newlines', '\\n\\n'],
+    ['twee tabs', '\\t\\t'],
+    ['een no-break space', '\\u00a0'],
+    ['een zero-width space', '\\u200b'],
+  ])('een naam die alleen uit %s bestaat, wordt niet de weergavenaam', (wat, ontsnapt) => {
+    const lokaal = `onzichtbaar${wat.length}`;
+    const uit = meldAan(ID(20 + wat.length), `${lokaal}@voorbeeld.test`, `{"full_name":"${ontsnapt}"}`);
+
+    expect(uit, 'de aanmelding is mislukt').not.toBeNull();
+    expect(
+      uit?.naam.trim(),
+      'de trigger nam de onzichtbare naam over — `display_name` is groepszichtbaar, ' +
+        'dus dat is een lid zonder leesbare naam in het groepsoverzicht',
+    ).not.toBe('');
+    expect(
+      uit?.naam,
+      'de onzichtbare naam telde als bruikbaar, dus de volgende sport van de ' +
+        'terugvalketen kwam niet aan de beurt',
+    ).toBe(lokaal);
+  }, TEST_TIMEOUT);
+
+  /**
+   * ⚠️⚠️ **De onderste sport, en die vraagt een aanmelding zónder e-mail.** 📏 De
+   *    eerste versie van de vier gevallen hierboven verwachtte `Naamloos` en
+   *    kreeg `onzichtbaar13` — het deel vóór de `@`. Dat was de terugvalketen die
+   *    gewoon zijn werk deed (`full_name` → `name` → e-mail → `Naamloos`), en
+   *    mijn verwachting die een sport oversloeg. De trigger had gelijk.
+   *
+   *    Het geval blijft de moeite waard, want alleen hier is te zien dat een
+   *    onzichtbare naam écht helemaal onderaan uitkomt en niet ergens
+   *    halverwege blijft hangen.
+   */
+  it(
+    'en zonder bruikbaar e-mailadres komt zo\'n naam uit op Naamloos',
+    () => {
+      // ⚠️ Een lege string en geen `null`: de trigger doet
+      //    `coalesce(new.email, '')` en daarna `split_part(…, '@', 1)`, dus
+      //    allebei komen op dezelfde sport uit. Zo hoeft `meldAan()` geen
+      //    nullable parameter te krijgen voor één geval.
+      const uit = meldAan(ID(26), '', '{"full_name":"\\u200b"}');
+
+      expect(uit, 'de aanmelding is mislukt').not.toBeNull();
+      expect(uit?.naam).toBe('Naamloos');
+    },
+    TEST_TIMEOUT,
+  );
+
+  /**
+   * ⚠️ De must-allow ernaast. "Alles valt terug" is goedkoop te halen; dit geval
+   *    eist dat een naam mét onzichtbare randen zijn zichtbare deel houdt.
+   */
+  it(
+    'maar een naam met onzichtbare randen houdt zijn zichtbare deel',
+    () => {
+      const uit = meldAan(ID(25), 'randen@voorbeeld.test', '{"full_name":"\\u200b Jan \\u200b"}');
+
+      expect(uit, 'de aanmelding is mislukt').not.toBeNull();
+      expect(uit?.naam).toBe('Jan');
+    },
+    TEST_TIMEOUT,
+  );
+
   it(
     'een naam die langer is dan de CHECK toestaat, kost geen aanmelding',
     () => {

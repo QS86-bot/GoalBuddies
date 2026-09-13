@@ -123,4 +123,85 @@ describe.skipIf(!rlsTestsConfigured)('Je eigen profiel opslaan', () => {
     },
     TEST_TIMEOUT,
   );
+  /**
+   * ⚠️⚠️ **De belofte: je kunt je eigen naam niet onzichtbaar maken** — QS8-448,
+   *    `profiles_display_name_zichtbaar` uit migratie 0256.
+   *
+   *    📏 Dit is de route die de eerste versie van dat issue **open liet**. Die
+   *    repareerde `handle_new_user()`, dus de aanmelding, en liet de schrijfkant
+   *    staan: één `PATCH /rest/v1/profiles?id=eq.<eigen id>` met een zero-width
+   *    space zette je als naamloos lid in het groepsoverzicht. `profiles_update`
+   *    toetst alleen `id = auth.uid()` en de enige inhoudelijke CHECK was
+   *    `profiles_display_name_len` — één zero-width space is één codepunt.
+   *
+   *    Dat is bovendien de **makkelijkere** deur: om groepszichtbaar te zijn heb
+   *    je toch al een account. `profielSchema` staat in de bundel en draait in de
+   *    browser van de aanvaller, dus die is geen grens.
+   *
+   * ⚠️ **Deze toets gaat door PostgREST en niet over psql.** Dat is met opzet:
+   *    hij moet de route nemen die een aanvaller neemt, niet de route waarop de
+   *    CHECK toevallig ook zit. Een test die `schone_naam()` aanroept, toetst de
+   *    functie; deze toetst de grens.
+   */
+  describe('een onzichtbare weergavenaam komt er niet in', () => {
+    const ONZICHTBAAR: readonly { readonly naam: string; readonly waarde: string }[] = [
+      { naam: 'zero-width space', waarde: String.fromCodePoint(0x200b) },
+      { naam: 'no-break space', waarde: String.fromCodePoint(0x00a0) },
+      { naam: 'hangul filler', waarde: String.fromCodePoint(0x3164) },
+      { naam: 'braille blank', waarde: String.fromCodePoint(0x2800) },
+      { naam: 'soft hyphen', waarde: String.fromCodePoint(0x00ad) },
+      { naam: 'language tag', waarde: String.fromCodePoint(0xe0001) },
+      { naam: 'alleen spaties', waarde: '   ' },
+      { naam: 'newline en tab', waarde: '\n\t' },
+    ];
+
+    it.each(ONZICHTBAAR)(
+      'weigert $naam',
+      async ({ waarde }) => {
+        const { error } = await alice.db
+          .from('profiles')
+          .update({ display_name: waarde })
+          .eq('id', alice.id)
+          .select('id')
+          .single();
+
+        // 23514 — check_violation. Slaagt dit, dan staat er een lid zonder
+        // leesbare naam in het groepsoverzicht van iedereen die een groep deelt.
+        expect(
+          error?.code,
+          'de database liet een onzichtbare weergavenaam toe — `display_name` is ' +
+            'groepszichtbaar via `profiles_select`',
+        ).toBe('23514');
+      },
+      TEST_TIMEOUT,
+    );
+
+    /**
+     * ⚠️ **De must-allow, en die is hier niet optioneel.** 📏 Gemeten: een CHECK
+     *    die `public.schone_naam()` aanroept zónder `grant execute` aan
+     *    `authenticated` laat **élke** profielschrijving omvallen op
+     *    `permission denied for function schone_naam` — ook een doodgewone naam.
+     *    Postgres toetst het uitvoerrecht op het moment van schrijven. Zonder dit
+     *    geval was dat een dichte deur die als een veilige deur leest.
+     */
+    it.each([
+      { naam: 'een gewone naam', waarde: 'Jan Jansen' },
+      { naam: 'een naam met een spatie erin', waarde: 'Jan  Jansen' },
+      { naam: 'een gezinsemoji', waarde: '👨‍👩‍👧‍👦' },
+      { naam: 'een naam met onzichtbare randen eromheen', waarde: ' Jan ' },
+    ])(
+      'laat $naam wel toe',
+      async ({ waarde }) => {
+        const { error } = await alice.db
+          .from('profiles')
+          .update({ display_name: waarde })
+          .eq('id', alice.id)
+          .select('id')
+          .single();
+
+        expect(error, 'de CHECK weigert een naam die hij hoort door te laten').toBeNull();
+      },
+      TEST_TIMEOUT,
+    );
+  });
 });
