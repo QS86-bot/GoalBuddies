@@ -132,15 +132,54 @@ export function teGroot(size: number | undefined, maxBytes: number): boolean {
 }
 
 /**
+ * De tijdgrens op het lezen — QS8-444.
+ *
+ * ⚠️⚠️ **Dertig seconden, en de keuze is niet „ruim genoeg” maar afgewogen.**
+ *
+ *    - **Waarom er überhaupt een grens is.** Een `file:`- of `content:`-URI hoeft
+ *      geen bestand op schijf te zijn: een iCloud-placeholder of een Drive-map via
+ *      SAF laat de lees**actie** de bytes eerst binnenhalen. Zonder grens wacht de
+ *      belofte dan oneindig — en een belofte die stilvalt is erger dan een die
+ *      dichtslaat, want er komt nooit een melding.
+ *    - **Waarom niet de vijftien van `src/lib/supabase.ts`.** Dat is een verzoek aan
+ *      een server die óf antwoordt óf niet. Dit is een leeséénheid die er een
+ *      download achter kan hebben zitten: 5 MiB (`CHATDOC_MAX_BYTES`) haalt op een
+ *      middelmatige mobiele verbinding — zo'n 2 Mbit/s — de twintig seconden. Met
+ *      vijftien breekt de app een keuze af die gewoon onderweg was.
+ *    - **Waarom niet meer.** `FUNCTIE_TIMEOUT_MS` is 35 seconden en dekt een
+ *      AI-call die gemeten twintig nodig heeft. Een bijlage kiezen hoort niet de
+ *      langste wachttijd in de app te zijn.
+ *
+ * ⚠️⚠️ **En deze waarde is alleen verdedigbaar omdat er een laadstand bij hoort.**
+ *    Dertig seconden mét een bezette knop is wachten; dertig seconden zonder is een
+ *    dode knop. Die twee helften komen uit hetzelfde issue en horen bij elkaar —
+ *    haalt iemand `bezig` uit `useChatbijlage()` weg, dan is dit getal te hoog
+ *    geworden. Afweging in
+ *    `docs/decisions/2026-09-13-een-belofte-die-stilvalt-is-erger-dan-een-die-dichtslaat.md`.
+ *
+ * ⚠️ **De omvangspoort van QS8-431 vervangt deze grens niet.** Die leunt op
+ *    `size`, en die is optioneel: ontbreekt hij, dan is dit het enige dat het lezen
+ *    nog beëindigt.
+ */
+const LEES_TIMEOUT_MS = 30_000;
+
+/**
  * Leest het gekozen bestand als bytes.
  *
  * ⚠️ Via `fetch` op de lokale `file:`-URI, want anders dan `expo-image-picker`
  *    geeft de documentkiezer geen base64 terug. Faalt hij, dan is dat een
  *    onbruikbare keuze en geen storing die de gebruiker kan verhelpen.
+ *
+ * ⚠️⚠️ **De afbreking krijgt met opzet géén eigen foutsleutel.** `AbortSignal.timeout()`
+ *    laat `fetch` afwijzen met een `TimeoutError`, die valt in de `catch` hieronder
+ *    en wordt `null` — wat de aanroeper al vertaalde naar `chatdoc.kiezen_mislukt`.
+ *    Dat is criterium 3 van QS8-431 en het geldt onverkort: welke van de redenen het
+ *    lezen ook deed mislukken, de gebruiker leest één zin. Een tweede melding voor
+ *    dezelfde zaak is wat dat criterium verbiedt.
  */
 async function leesBestand(uri: string): Promise<Uint8Array | null> {
   try {
-    const antwoord = await fetch(uri);
+    const antwoord = await fetch(uri, { signal: AbortSignal.timeout(LEES_TIMEOUT_MS) });
     const buffer = await antwoord.arrayBuffer();
     return buffer.byteLength === 0 ? null : new Uint8Array(buffer);
   } catch {
