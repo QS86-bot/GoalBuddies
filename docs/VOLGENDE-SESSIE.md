@@ -197,8 +197,11 @@
 > afgevangen".** Een rij die te zwaar staat kost geen incident, alleen aandacht
 > die ergens anders hoorde — en dáárom valt hij niet op.
 >
-> ⚠️⚠️ **11-09, punt O: meet je de map of meet je productie?** 📏 Productie staat
-> op `0221` en de migratiemap op **255** — 31 achter. Drie agenda-rijen gingen
+> ⚠️⚠️ **11-09, punt O: meet je de map of meet je productie?** 📏 Productie stond
+> die dag op `0221` en de migratiemap op **255** — 31 achter. (⚠️ Die twee zijn de
+> stand van 11-09 en niet van vandaag: op 14-09 is het `0224` tegen 264. De lijn
+> hoort in `docs/WERKVOORRAAD.md` §0 en nergens anders — lees hem daar, want dit
+> is een les en geen stand.) Drie agenda-rijen gingen
 > over vier opslagemmers; op productie bestaat er **één**. Dat maakte ze niet
 > onjuist maar wel iets anders, en de échte voorwaarde bleek *"een deploy die
 > deels landt"* — iets wat geen van de drie noemde. Een bevinding beschrijft
