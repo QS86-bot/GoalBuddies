@@ -690,8 +690,26 @@ export const GEDEELDE_WAARDEN = {
   //    heen komt met een sessiesleutel — maar `group` is niet langer een waarde
   //    die vooruitlopend bestaat. Hij is bereikbaar, en dus is deze rij geen
   //    uitstel meer.
+  // ⚠️ **De zes heldsleutels — QS8-471, migratie 0264.** Ze staan in de CHECK van
+  //    zowel `hero_profiles` als `hero_appearances`, en dat maakt de
+  //    schrijverstoets voor allebei blind: een treffer in de bron kan van de
+  //    andere tabel komen.
+  //
+  //    📏 Met de hand nagelopen per tabel, zoals de melding vraagt. **Vandaag
+  //    schrijft niets ze, in geen van beide tabellen** — grep op `hero_profiles`
+  //    en `hero_appearances` in `src/`, `app/` en `supabase/functions/` geeft nul
+  //    treffers. Dat is geen dode waarde maar een fundering vóór zijn afnemers:
+  //    QS8-474 schrijft `hero_profiles` vanuit de quiz, QS8-475 schrijft
+  //    `hero_appearances` vanuit de Edge Function onder `service_role`.
+  //
+  //    ⚠️ Kijk hier opnieuw zodra die twee geland zijn. Schrijft er dán nog
+  //       niets, dan is dát de bevinding en horen de waarden uit de CHECK.
+  forge: ['hero_appearances', 'hero_profiles'],
   group: ['daily_moves', 'todo_items'],
   huddle_day_changed: ['chat_messages', 'group_events'],
+  ignis: ['hero_appearances', 'hero_profiles'],
+  lucerna: ['hero_appearances', 'hero_profiles'],
+  meridian: ['hero_appearances', 'hero_profiles'],
   milestone_done: ['chat_messages', 'points_ledger'],
   mindfulness: ['goals', 'groups', 'profiles'],
   nl: ['groups', 'milestone_tips', 'profiles'],
@@ -708,9 +726,11 @@ export const GEDEELDE_WAARDEN = {
   //    migratie 0197).
   private: ['daily_moves', 'todo_items'],
   productivity: ['goals', 'groups', 'profiles'],
+  quip: ['hero_appearances', 'hero_profiles'],
   resolved: ['commitment_events', 'commitments'],
   self_care: ['goals', 'groups', 'profiles'],
   skills: ['goals', 'groups', 'profiles'],
+  strix: ['hero_appearances', 'hero_profiles'],
   study: ['goals', 'groups', 'profiles'],
   todo: ['milestones', 'weekly_goals'],
 };

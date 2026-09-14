@@ -1385,6 +1385,81 @@ export type Database = {
           },
         ]
       }
+      hero_appearances: {
+        Row: {
+          hero_key: string
+          id: string
+          shown_at: string
+          trigger: string
+          user_id: string
+        }
+        Insert: {
+          hero_key: string
+          id?: string
+          shown_at?: string
+          trigger: string
+          user_id: string
+        }
+        Update: {
+          hero_key?: string
+          id?: string
+          shown_at?: string
+          trigger?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "hero_appearances_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "mijn_profiel"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "hero_appearances_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      hero_profiles: {
+        Row: {
+          chosen_at: string
+          hero_key: string
+          source: string
+          user_id: string
+        }
+        Insert: {
+          chosen_at?: string
+          hero_key: string
+          source?: string
+          user_id: string
+        }
+        Update: {
+          chosen_at?: string
+          hero_key?: string
+          source?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "hero_profiles_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: true
+            referencedRelation: "mijn_profiel"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "hero_profiles_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: true
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       invite_events: {
         Row: {
           created_at: string

@@ -14,7 +14,7 @@ productie in twee rondes)
 ⚠️ **Productie staat op `0224`.** 📏 Hermeten op 14-09 om 05:02 UTC met
 `migratieregister()` tegen `wehgocadxehottiiyvsc`: **227 registerrijen**, `0001`
 t/m `0224` aaneengesloten, inclusief de drie letterversies. De map telt er
-**266**.
+**267**.
 
 ⚠️ **Hier stond tot 14-09 `0221`, en dat was op 09-09 om 16:10 UTC juist.**
 `0222`, `0223` en `0224` zijn er sindsdien op toegepast — alle drie uit QS8-71,
@@ -33,7 +33,7 @@ migratienummer aanziet, legt de lijn drie bestanden te hoog en verklaart
 `0222` t/m `0224` toegepast op een dag dat ze dat niet waren. Zelfde klasse als
 een teller in grafemen bij een grens in codepunten.
 
-**Het gat is daarmee 39 bestanden** — `0225` t/m `0263`, van 09-09
+**Het gat is daarmee 40 bestanden** — `0225` t/m `0264`, van 09-09
 tot en met 14-09 en uit eenendertig verschillende issues.
 
 ⚠️ **In cijfers en niet voluit, en dat is geen stijlkeuze.** 📏 Gemeten op
@@ -45,7 +45,7 @@ stond, was deze regel dus jarenlang ongemeten en niet groen; `zesendertig` op de
 plek van zevenendertig bleef er even hard groen op. In cijfers bindt de toets
 wél. Staat als QS8-482.
 
-De negenendertig bestanden:
+De veertig bestanden:
 
 | | | DDL op `storage.objects` |
 | -- | -- | -- |
@@ -88,6 +88,7 @@ De negenendertig bestanden:
 | `0261_anon_leest_niets_meer_van_wat_een_bezoeker_nooit_hoort_te_zien.sql` | QS8-467 | nee |
 | `0262_clausule_2_van_domeinregel_3_krijgt_een_slot_in_de_database.sql` | QS8-480 | nee |
 | `0263_anon_krijgt_niets_meer_van_een_nieuwe_tabel.sql` | QS8-485 | nee |
+| `0264_een_held_hoort_bij_een_gebruiker_en_zijn_verschijningen_zijn_append_only.sql` | QS8-471 | nee |
 
 ⚠️ **Hier stond een uur eerder `0219` met twee bestanden gat, en dat klopte
 toen.** `0220` en `0221` zijn erna toegepast en `0222` t/m `0226` landden
@@ -351,7 +352,7 @@ schemaname = 'public'` gaf `41|41`. Vraag het aan de database en niet aan deze
 regel — net als bij het aantal migraties in §0.
 
 <!-- STAND:BEGIN — gegenereerd door `npm run stand` -->
-Migraties `0001` t/m `0263` staan in de map: **266 bestanden**,
+Migraties `0001` t/m `0264` staan in de map: **267 bestanden**,
 waarvan 3 met een letter-achtervoegsel (`0039a`, `0041a`, `0052a`).
 De nummering is aaneengesloten.
 <!-- STAND:EINDE -->
@@ -1164,8 +1165,24 @@ de grens verschuift niet, dit epic staat er met naam naast. Quinten heeft op
 dát is de vrijgave.
 
 Zes superhelden-archetypes worden de stem van de app — Strix, Ignis, Meridian,
-Forge, Lucerna en Quip. Zes deelissues: QS8-469 en QS8-470 kunnen meteen en
+Forge, Lucerna en Quip. Zes deelissues: QS8-469 en QS8-470 konden meteen en
 tegelijk, QS8-471 daarna, en QS8-474, QS8-475 en QS8-477 weer parallel.
+
+| Issue | Wat | Stand |
+|---|---|---|
+| QS8-469 | het heldenrooster als data, elke quote op zijn bron | ✅ af — PR #462 |
+| QS8-470 | het heldenpalet als benoemde uitzondering op het navystelsel | ✅ af — PR #464 |
+| QS8-471 | datamodel: welke held is van wie, elke verschijning append-only | in review — PR #470, migratie `0264` |
+| QS8-474 | de vragenlijst van vier naar acht vragen, gelijkspel is de regel | open |
+| QS8-475 | de heldenstem in de meldingen die er al zijn | open |
+| QS8-477 | je held in een open groep, en nergens anders | open |
+
+⚠️ **QS8-477 is het enige issue van dit epic met een groepsoppervlak, en dat is
+met opzet zo gehouden.** 0264 bevat geen enkele groepstak: `hero_appearances`
+draagt `trigger`, en `misser` en `stilte` zijn tegenslagsignalen. Een vierde tak
+op de leespolicy geeft de hele rij weg, want RLS kan geen kolommen beperken —
+dus de vorm is een RPC met een expliciete kolomlijst, zoals
+`straffen_bij_uitstelverzoek()` (0218) en `getuigenissen()` (0169).
 
 De zeven besluiten die eraan vooraf gingen staan in
 `docs/decisions/2026-09-14-zes-helden-en-de-zeven-besluiten-eronder.md`; de
