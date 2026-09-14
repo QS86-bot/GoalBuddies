@@ -1130,9 +1130,10 @@ bundel geeft iedereen je volledige broncode. Zonder `SENTRY_AUTH_TOKEN` slaat de
 upload zichzelf over en gebeurt er niets ergs — de maps verdwijnen alsnog.
 
 **De hele Sentry-keten staat sinds 26/27-08** (QS8-24, PR #16 t/m #25): de app,
-de drie Edge Functions, de PII-schoonmaak en de source maps. ⚠️ **Wat er nog
-ontbreekt is de meting** — er is nooit een gebeurtenis uít de app aangekomen.
-Zie "Waar te beginnen", punt 1.
+de drie Edge Functions, de PII-schoonmaak en de source maps. 📏 **En sinds
+14-09-2026 is hij ook gemeten**: een geforceerde fout in de browser staat in
+Sentry met `server_name: app`, `runtime: web`, `globaal.fout`, `production` en
+`goalbuddies@0.1.0`. QS8-24 is daarmee Done.
 
 De rollover en de meldingenjob draaien elk uur tegen het echte project.
 
@@ -2877,21 +2878,36 @@ bovenliggende secties — en dat is precies hoe een openstaand punt stil sterft.
 ### En daarna: de metingen die er al lagen
 
 
-⚠️ **Twee dingen staan In Review en wachten alleen op een meting op jouw eigen
-machine.** Ze zijn allebei code-compleet en gemerged; wat ontbreekt is het bewijs
-dat het in het echt werkt. Dat is precies het soort openstaande punt dat stil
-maanden blijft liggen, dus het staat bovenaan.
+⚠️ **Hier stonden twee dingen die alleen op een meting op jouw eigen machine
+wachtten; sinds 14-09-2026 is het er nog één** (QS8-124, punt 2). Ze zijn
+code-compleet en gemerged; wat ontbreekt is het bewijs dat het in het echt werkt.
+Dat is precies het soort openstaande punt dat stil maanden blijft liggen, dus het
+staat bovenaan.
 
-1. **QS8-24 bewijzen — er is nog nooit een gebeurtenis uít de app in Sentry
-   aangekomen.** Uit een Edge Function wél (HTTP 200, gemeten op 26-08), en het is
-   dezelfde envelope-bouwer — maar dat is een afgeleide en geen meting. Draai
-   `npm run deploy`, forceer een fout op `goalbuddies.q-projects.tech`, en kijk of
-   hij in Sentry staat met `server_name: app` en `runtime: web`.
+📏 **Punt 1 hieronder heeft er negentien dagen gestaan**, en dat is de maat voor
+hoe lang zo'n punt blijft liggen als het niet bovenaan staat. Het kostte
+uiteindelijk twee minuten.
 
-   ⚠️ **De DSN hoeft níét meer in `.env`** — die staat sinds 30-08 als
-   `STANDAARD_SENTRY_DSN` in `src/lib/env.ts`, en dat was juist de reden dat er in
-   vier dagen nooit een fout aankwam. Zet je hem daar alsnog, dan overschrijf je
-   de goede waarde.
+1. ✅ **QS8-24 is bewezen — 14-09-2026, en daarmee Done.** Hier stond negentien
+   dagen lang dat er nooit een gebeurtenis uít de app in Sentry was aangekomen.
+   Quinten heeft de rooktest gedraaid en de gebeurtenis staat er, met alle vijf
+   de velden uit het stappenplan: `server_name: app`, tag `runtime: web`, tag
+   `waar`/`logger: globaal.fout`, `environment: production` en
+   `release: goalbuddies@0.1.0`.
+
+   📏 **`server_name: app` wás de hele meting.** Uit een Edge Function was al op
+   26-08 een envelope aangekomen, maar dat is dezelfde envelope-bouwer en dus een
+   afgeleide; alleen de app-kant bewees dat de sink in de gepubliceerde bundel
+   ook werkelijk gezet is. Dat was precies de bug van 26-08 — `setErrorSink()`
+   werd door niets in de productiecode aangeroepen — en die kan hiermee niet meer
+   stil terug zijn.
+
+   ⚠️ **Wat dit óók bewijst, zonder dat iemand het apart hoefde te meten:** de
+   deploy is gelopen mét de DSN in de bundel. `release: goalbuddies@0.1.0` en
+   `environment: production` komen uit de gepubliceerde build, en
+   `npm run deploy` breekt sinds 30-08 hard af als de DSN er niet in zit. De
+   `.env`-val hieronder is daarmee ook weerlegd in de praktijk: de DSN kwam uit
+   `STANDAARD_SENTRY_DSN` in `src/lib/env.ts`.
 
    📏 **De source maps zijn wél gemeten, op 10-09-2026.** `SENTRY_AUTH_TOKEN`,
    `SENTRY_ORG` en `SENTRY_PROJECT` staan op Quintens machine en `sentry-cli`
@@ -2929,7 +2945,7 @@ leest — vier issues stáán op In Progress, maar geen ervan wacht op code:
 
 | Issue | Wat er nog ontbreekt | Van wie |
 |---|---|---|
-| QS8-24 | een echte gebeurtenis uit de app in Sentry | jij, punt 1 |
+| ~~QS8-24~~ | ✅ **gedaan op 14-09-2026** — de gebeurtenis staat in Sentry met `server_name: app` | — |
 | QS8-124 | een rij in `push_tokens` met `p256dh` en `auth` | jij, punt 2 |
 | QS8-117 | één melding op een échte iPhone met de app op het beginscherm | jij — manifest, iconen, content-type en de iOS-uitleg staan er allemaal |
 | QS8-91 | ⚠️ **niets meer.** Het enige open criterium was "web push ontbreekt"; dat is sinds QS8-124 onwaar — `notificaties/index.ts` leest `p256dh`/`auth` en roept `verstuurWebPush()` aan | het bord loopt achter |
