@@ -188,6 +188,20 @@ describe('de grants inlezen', () => {
 
     expect(rechten.goals?.volledig).toBe(true);
   });
+
+  // ⚠️ **De vorm die twaalf valse meldingen gaf, en alleen op Windows.** psql
+  //    schrijft daar `\r\n`; een split op `\n` laat de `\r` aan de kolomlijst
+  //    plakken, dus de láátste kolom van elke tabel werd `avatar_url\r`. Dan
+  //    meldt de controle "geen leesrecht op `avatar_url`" voor élke select die
+  //    precies die kolom terugvraagt — op een schema waar niets aan mankeert.
+  //    Deze ijking breekt als iemand terugvalt op `split('\n')`.
+  it('laat geen \\r achter bij een Windows-regeleinde (\\r\\n)', () => {
+    const rechten = alsRechten(ontleedRechten('profiles|3|14|id,display_name,avatar_url\r\n'));
+
+    expect(rechten.profiles?.kolommen).toEqual(['id', 'display_name', 'avatar_url']);
+    // De naad: de laatste kolom mag geen leesrecht verliezen door een regeleinde.
+    expect(beoordeel(selectiesIn('p.ts', `.from('profiles').select('avatar_url')`), rechten)).toEqual([]);
+  });
 });
 
 // ---------------------------------------------------------------------------
