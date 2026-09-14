@@ -115,7 +115,10 @@ const GEPIND: readonly { kolom: string; nieuw: string; hoortTeBlijven: string }[
  *    één niveau dieper: twee sloten in één assertie. Nu moet de rij geraakt zijn
  *    én de waarde ongewijzigd, en dat kan alleen de pin.
  */
-function naClientUpdate(kolom: string, nieuw: string): { geraakt: number; waarde: string } {
+function naClientUpdate(
+  kolom: string,
+  nieuw: string,
+): { uitslag: string; waarde: string; controle: number } {
   const uit = psql(`
     begin;
     create temp table t as select '${EIGENAAR}'::uuid eig, gen_random_uuid() grp;
@@ -132,17 +135,32 @@ function naClientUpdate(kolom: string, nieuw: string): { geraakt: number; waarde
     -- Het recht dat hij vandaag niet heeft. Zonder deze regel toetst de test de
     -- grant en niet de pin.
     grant update (${kolom}) on groups to authenticated;
+    -- De controlekolom: eentje die hij wél mag zetten, met hetzelfde slot
+    -- eromheen. Zie de kop van deze functie.
+    grant update (name) on groups to authenticated;
 
     select set_config('request.jwt.claims',
       json_build_object('sub', eig, 'role', 'authenticated')::text, true) from t;
-    set local role authenticated;
-    with u as (
-      update groups set ${kolom} = ${nieuw} where id = (select grp from t) returning 1
-    )
-    select set_config('pin.geraakt', (select count(*)::text from u), true);
-    reset role;
 
-    select current_setting('pin.geraakt') || '|' || coalesce(${kolom}::text, 'NULL')
+    do $pin$
+    declare v_grp uuid := (select grp from t); n int;
+    begin
+      set local role authenticated;
+      begin
+        update groups set ${kolom} = ${nieuw} where id = v_grp;
+        perform set_config('pin.uitslag', 'GELUKT', true);
+      exception when others then
+        perform set_config('pin.uitslag', 'GEWEIGERD ' || sqlstate, true);
+      end;
+      with u as (update groups set name = 'Controle' where id = v_grp returning 1)
+      select count(*) into n from u;
+      perform set_config('pin.controle', n::text, true);
+      reset role;
+    end
+    $pin$;
+
+    select current_setting('pin.uitslag') || '|' || coalesce(${kolom}::text, 'NULL')
+        || '|' || current_setting('pin.controle')
       from groups where id = (select grp from t);
     rollback;
   `)
@@ -150,32 +168,63 @@ function naClientUpdate(kolom: string, nieuw: string): { geraakt: number; waarde
     .filter((r) => r.trim() !== '')
     .at(-1) as string;
 
-  const [geraakt, waarde] = uit.split('|');
-  return { geraakt: Number(geraakt), waarde: waarde as string };
+  const [uitslag, waarde, controle] = uit.split('|');
+  return { uitslag: uitslag as string, waarde: waarde as string, controle: Number(controle) };
 }
 
+/**
+ * ⚠️⚠️ **Sinds 0265 (QS8-488) is de belofte van dit bestand veranderd, en de
+ *    oude toetsvorm kón niet meeverhuizen.** Tot dan zette `guard_group_update()`
+ *    de kolom stilzwijgend terug, en deze suite bewees dat met *"de UPDATE raakte
+ *    één rij én de waarde is onveranderd"*. Die rijteller bestaat niet meer: een
+ *    trigger die wérpt, raakt geen rijen.
+ *
+ *    De vervanger is een **controlekolom**. Elke opstelling geeft `authenticated`
+ *    óók `update (name)` en doet daar dezelfde UPDATE mee; raakt díé geen rij,
+ *    dan filterde `groups_update` en bewijst de test niets over de pin. Dat is
+ *    dezelfde bewaking als de rijteller, op een kolom die nog wél mag landen.
+ *
+ * IJKING — met de hand, 14-09-2026, op de draaiende database:
+ *
+ *   C  `guard_group_update()` terug naar `new.status := old.status`
+ *      -> 1 rood hier: "status is niet door een client te wijzigen"
+ */
 describe.skipIf(!beschikbaar)('de pin op groups houdt een client tegen', () => {
   for (const { kolom, nieuw, hoortTeBlijven } of GEPIND) {
     it(
       `${kolom} is niet door een client te wijzigen, ook niet mét het kolomrecht`,
       () => {
-        const { geraakt, waarde } = naClientUpdate(kolom, nieuw);
+        const { uitslag, waarde, controle } = naClientUpdate(kolom, nieuw);
 
-        // ⚠️ Eerst: raakte de UPDATE überhaupt een rij? Zonder deze regel kan
-        //    `groups_update` de test groen houden terwijl de pin kapot is.
+        // ⚠️ Eerst de controlemeting: mocht deze gebruiker überhaupt iets
+        //    wijzigen? Zonder deze regel kan `groups_update` de test groen
+        //    houden terwijl de pin kapot is — dat is wat de rijteller hier
+        //    vroeger deed, en die kan niet meer bestaan nu de pin wérpt.
         expect(
-          geraakt,
-          `${kolom}: de UPDATE raakte geen enkele rij, dus deze test bewijst ` +
-            'niets over de pin — hij bewijst dat `groups_update` filterde',
+          controle,
+          `${kolom}: de UPDATE op de controlekolom raakte geen enkele rij, dus ` +
+            'deze test bewijst niets over de pin — hij bewijst dat ' +
+            '`groups_update` filterde',
         ).toBe(1);
+
+        // ⚠️⚠️ **Sinds 0265 is de belofte hoorbaar, en dat is de hele reparatie.**
+        //    Tot dan zette de trigger de kolom stilzwijgend terug en kreeg de
+        //    aanroeper `200 OK` met de oude waarde — geweigerd, en dat niet
+        //    gezegd. Deze assertie eist de fout; de volgende eist dat de waarde
+        //    ook echt niet verschoven is. Allebei, want een trigger die werpt
+        //    nádat hij geschreven heeft, haalt de eerste moeiteloos.
+        expect(
+          uitslag,
+          `${kolom}: de client kreeg succes te horen. Dat is de stille ` +
+            'terugzetting van QS8-314/QS8-326, hier op `groups` — zie 0265.',
+        ).toBe('GEWEIGERD 23514');
 
         // ⚠️ `startsWith` en niet `toBe`, want `last_activity_at` komt terug als
         //    volledige tijdstempel terwijl alleen de dátum ertoe doet. Voor de
         //    andere zes is de verwachte waarde de hele waarde.
         expect(
           waarde.startsWith(hoortTeBlijven),
-          `${kolom}: de trigger hoort dit terug te draaien — met alleen de ` +
-            `kolomgrant als slot is dit één grendel en geen twee. Kreeg: ${waarde}`,
+          `${kolom}: geweigerd, maar de waarde veranderde alsnog. Kreeg: ${waarde}`,
         ).toBe(true);
       },
       30_000,
@@ -216,6 +265,120 @@ describe.skipIf(!beschikbaar)('de pin op groups houdt een client tegen', () => {
         .at(-1) as string;
 
       expect(uit, 'archiveer_groep() hoort de status wél te mogen zetten').toBe('archived');
+    },
+    30_000,
+  );
+});
+
+/**
+ * QS8-488 / 0265 — de drie kolommen die vóór de rolfilter staan.
+ *
+ * ⚠️⚠️ **Dit is de énige echt níeuwe grens van 0265, en hij had geen test.**
+ *    `id`, `created_at` en `created_by` stonden tot 0208 ná de vroege uitgang
+ *    `current_user not in ('authenticated','anon')` en waren dus alleen voor een
+ *    client gepind. Sinds 0265 staan ze ervóór en gelden ze voor **elke** rol —
+ *    `service_role`, `postgres`, elke definer-functie.
+ *
+ *    De suite hierboven toetst alleen `authenticated`, en 📏 geen enkel bestand
+ *    in `tests/rls/` combineerde `service_role` met `groups`. Een grendel die
+ *    nooit rood is geweest, bewaakt niets.
+ *
+ * ⚠️ **`created_by` draagt een andere vorm dan de andere twee, en met reden.**
+ *    Hij mag wél op `null` gezet worden zodra het profiel verdwenen is — dat is
+ *    de referentiële actie van `groups_created_by_fkey` (`on delete set null`),
+ *    en die moet erlangs. De bestaanstoets van `bewaak_begunstigde()` maakt dat
+ *    verschil zonder aan een rolnaam te hangen: 📏 als de oprichter nog bestaat
+ *    geeft het leegtrekken `23514`, en ná `delete from profiles` wordt de kolom
+ *    gewoon `NULL`.
+ */
+describe.skipIf(!beschikbaar)('0265 — id, created_at en created_by gelden voor elke rol', () => {
+  /** Doet `sql` als tabeleigenaar — dus langs de vroege uitgang heen. */
+  function alsEigenaar(sql: string): string {
+    return psql(`
+      begin;
+      create temp table e as select gen_random_uuid() eig, gen_random_uuid() grp;
+      insert into auth.users (id, email) select eig, 'rol264@x.nl' from e;
+      insert into profiles (id, display_name) select eig, 'Oprichter' from e
+        on conflict (id) do nothing;
+      insert into groups (id, name, created_by, status, invite_code, tz)
+        select grp, 'Rol264', eig, 'active', 'ROL26400', 'Europe/Amsterdam' from e;
+
+      do $rol$
+      declare g uuid := (select grp from e); u uuid := (select eig from e);
+      begin
+        ${sql}
+      end
+      $rol$;
+
+      select current_setting('rol.uitslag');
+      rollback;
+    `)
+      .split('\n')
+      .map((r) => r.trim())
+      .filter((r) => r !== '')
+      .at(-1) as string;
+  }
+
+  // ⚠️⚠️ **`created_at` krijgt een vaste datum en niet `now()`, en dat is een
+  //    gemeten les.** De eerste versie gebruikte `now()`; binnen één transactie
+  //    is dat exact de waarde die de `insert` er drie regels hoger in zette, dus
+  //    `is distinct from` was onwaar en de UPDATE werd **toegelaten** — een
+  //    groene mutatie die niets muteerde. Zelfde klasse als de ijkingen die in
+  //    QS8-480 en QS8-485 hun eigen indicator niet lazen.
+  it.each([
+    ['created_at', "update groups set created_at = timestamptz '2001-01-01' where id = g;"],
+    ['id', 'update groups set id = gen_random_uuid() where id = g;'],
+  ])('%s ligt vast, ook voor de rol die geen client is', (_kolom, mutatie) => {
+    const uit = alsEigenaar(`
+      begin
+        ${mutatie}
+        perform set_config('rol.uitslag', 'TOEGELATEN', true);
+      exception when others then
+        perform set_config('rol.uitslag', 'GEWEIGERD ' || sqlstate, true);
+      end;
+    `);
+
+    expect(
+      uit,
+      'Deze toets staat vóór `current_user not in (...)` en hoort dus ook voor ' +
+        'een definer-functie te gelden — de vorm van QS8-314.',
+    ).toBe('GEWEIGERD 23514');
+  }, 30_000);
+
+  it(
+    'de oprichter is niet leeg te trekken zolang hij bestaat, ook niet als eigenaar',
+    () => {
+      const uit = alsEigenaar(`
+        begin
+          update groups set created_by = null where id = g;
+          perform set_config('rol.uitslag', 'TOEGELATEN', true);
+        exception when others then
+          perform set_config('rol.uitslag', 'GEWEIGERD ' || sqlstate, true);
+        end;
+      `);
+
+      expect(uit).toBe('GEWEIGERD 23514');
+    },
+    30_000,
+  );
+
+  it(
+    'MUST-ALLOW: de referentiële actie zet hem wél op null zodra het profiel weg is',
+    () => {
+      // ⚠️ Zonder deze helft is de toets hierboven een grendel die het wisrecht
+      //    breekt — precies wat de eerste versie van 0265 deed toen de toets nog
+      //    kaal was. 📏 Geijkt: twee rode tests in `opruiming.test.ts`.
+      const uit = alsEigenaar(`
+        begin
+          delete from profiles where id = u;
+          perform set_config('rol.uitslag',
+            coalesce((select created_by::text from groups where id = g), 'NULL'), true);
+        exception when others then
+          perform set_config('rol.uitslag', 'STUK ' || sqlstate, true);
+        end;
+      `);
+
+      expect(uit, 'de on delete set null moet erlangs komen').toBe('NULL');
     },
     30_000,
   );
