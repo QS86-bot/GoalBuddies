@@ -207,6 +207,26 @@ export async function fetchWeekafsluitingReacties(
  * ⚠️ Leeg is leeg: een veld dat je niet invult wordt `null` en niet een lege
  *    string. Anders staat er op de kaart een kopje met niets eronder, en dat leest
  *    als een storing.
+ *
+ * ⚠️⚠️ **Deze functie is de tweede route naar een lege weekafsluiting, en de
+ *    reacties blijven hier wél staan** — QS8-487. `week_reviews_iets_ingevuld`
+ *    eist alleen dat één van de drie velden niet blanco is, dus een bewerking
+ *    tot één teken komt hier gewoon langs. 📏 Gemeten:
+ *
+ *    ```
+ *    terugnemen  afsluitingen 1 -> 0   reacties 1 -> 0   schakels 1 -> 1
+ *    bewerken    afsluitingen 1 -> 1   reacties 1 -> 1   schakels 1 -> 1
+ *    ```
+ *
+ *    **Lees de kop van `verwijderWeekafsluiting()` hieronder dus niet als een
+ *    systeemeigenschap.** Daar staat dat een reactie op een antwoord dat niet
+ *    meer bestaat een halve zin is over iets dat niemand kan nalezen — dat geldt
+ *    voor die route, niet voor deze. Het verschil is besloten en geen omissie:
+ *    reacties wissen bij een bewérking betekent dat het herstellen van een
+ *    typefout de aanmoediging van je buddies opruimt. Beide routes staan naast
+ *    elkaar onder test in `tests/rls/weekafsluiting-twee-routes.test.ts`; de
+ *    afweging met de prijs van elk alternatief staat in
+ *    `docs/decisions/2026-09-14-twee-routes-naar-een-lege-weekafsluiting.md`.
  */
 export async function bewaarWeekafsluiting(
   userId: string,

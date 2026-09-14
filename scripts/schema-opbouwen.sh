@@ -92,16 +92,41 @@ for bestand in "$WORTEL"/supabase/migrations/*.sql; do
   naam="$(basename "$bestand")"
   versie="${naam%%_*}"
 
-  # ⚠️ Elke migratie in zijn eigen transactie, precies zoals Supabase hem heeft
-  #    toegepast. Alles in één transactie zou een fout in migratie 60 laten
-  #    lijken op een fout in migratie 1.
+  # ⚠️⚠️ **`--single-transaction` per migratie, en dat stond hier tot QS8-466
+  #    alleen in deze comment.** Zonder die vlag is elke **statement** zijn
+  #    eigen transactie en niet elk bestand: valt een migratie halverwege om,
+  #    dan blijft de eerste helft staan. 📏 Gemeten met precies de vlaggen die
+  #    hier stonden, op een bestand `create table t1 (...); select 1/0;` —
+  #    zonder de vlag bleef `t1` bestaan, ermee niet.
+  #
+  #    Dat is geen schoonheidsfoutje: `supabase db push` en de MCP
+  #    `apply_migration` draaien élke migratie wél in een transactie, dus een
+  #    half toegepaste migratie is op productie onmogelijk. Lokaal kon je zo een
+  #    schema bereiken dat nergens bestaat — en dan meet alles wat erop draait
+  #    iets anders dan het beweert. Bij 0260 ging het precies daarover: laat een
+  #    omgevallen `validate constraint` de `not valid` ervoor staan? Lokaal was
+  #    het antwoord ja en op productie nee.
+  #
+  #    Wat er níet verandert is dat elke migratie zijn **eigen** transactie
+  #    houdt: alles in één transactie zou een fout in migratie 60 laten lijken
+  #    op een fout in migratie 1.
+  #
+  #    ⚠️ Er staat vandaag geen enkele migratie in de map die niet in een
+  #    transactie kán — geen `create index concurrently`, geen `vacuum`, geen
+  #    `alter type … add value`. 📏 Gemeten door de volledige map met deze vlag
+  #    op te bouwen. Komt die er ooit, dan valt de opbouw luid om op dát
+  #    bestand, en dan hoort hij met reden in een register en niet in een
+  #    naamloze uitzondering.
+  #
+  #    Uitleg in `docs/decisions/2026-09-14-de-comment-beloofde-een-transactie.md`;
+  #    de grendel staat in `tests/scripts/schema-opbouwen-atomair.test.ts`.
   # ⚠️ Bij `--dubbel` staat het bestand er twee keer, in **één** psql-sessie.
   #    Twee losse aanroepen zouden 255 extra processen kosten voor precies
   #    dezelfde uitslag.
   BESTANDEN=(-f "$bestand")
   if [[ "$DUBBEL" == "1" ]]; then BESTANDEN+=(-f "$bestand"); fi
 
-  if ! "${PSQL[@]}" -d "$DB" "${BESTANDEN[@]}" >/dev/null; then
+  if ! "${PSQL[@]}" --single-transaction -d "$DB" "${BESTANDEN[@]}" >/dev/null; then
     if [[ "$DUBBEL" == "1" ]]; then
       echo "✗ ${naam} viel om — draai hem los om te zien of het de eerste of de" >&2
       echo "  tweede ronde was:  psql -v ON_ERROR_STOP=1 -f ${bestand}" >&2

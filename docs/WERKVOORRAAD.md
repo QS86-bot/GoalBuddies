@@ -36,14 +36,15 @@ een teller in grafemen bij een grens in codepunten.
 **Het gat is daarmee 44 bestanden** — `0225` t/m `0268`, van 09-09
 tot en met 14-09 en uit vijfendertig verschillende issues.
 
-⚠️ **In cijfers en niet voluit, en dat is geen stijlkeuze.** 📏 Gemeten op
-14-09 bij het ijken van `docs:controle`: `NUMMERWOORDEN` in
-`scripts/docs-controle.mjs` loopt tot `twintig`, en `telWoord()` geeft daarboven
-`undefined` — waarna `beoordeelStand()` de gatbewering **overslaat** in plaats
-van er iets over te zeggen. Met `veertig` eroverheen, zoals het hier tot vandaag
-stond, was deze regel dus jarenlang ongemeten en niet groen; `zesendertig` op de
-plek van zevenendertig bleef er even hard groen op. In cijfers bindt de toets
-wél. Staat als QS8-482.
+⚠️ **In cijfers en niet voluit, en dat is sinds 14-09-2026 een controle.**
+📏 `NUMMERWOORDEN` in `scripts/docs-controle.mjs` loopt tot `twintig`; daarboven
+gaf `telWoord()` `undefined` en sloeg `beoordeelStand()` de gatbewering **over**
+in plaats van er iets over te zeggen. Met `veertig` eroverheen, zoals het hier
+tot 14-09 stond, was deze regel dus ongemeten en niet groen — en `zesendertig`
+op de plek van zevenendertig bleef er even hard groen op. QS8-482 maakte van die
+stilte een klacht: staat er een bewering en is haar getal niet te lezen, dan is
+dát de fout, en de melding zegt erbij dat er boven de twintig een cijfer hoort.
+Uitleg in `docs/decisions/2026-09-14-een-bewering-die-niet-te-lezen-is.md`.
 
 De drieenveertig bestanden:
 
