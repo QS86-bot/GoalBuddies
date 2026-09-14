@@ -98,8 +98,13 @@ export const BEKEND = [
       'is vandaag kort — het hele bestand draait solo in 2,9 s — maar een tweede ' +
       'run die op datzelfde moment in `completion_approvals` schrijft, wacht erop. ' +
       '📏 Dat is één keer gezien: `dagplafond-batch-tien.test.ts` liep bij twee ' +
-      'gelijktijdige runs op 14-09-2026 in zijn timeout van 240 s, en was bij drie ' +
-      'latere gelijktijdige runs niet te herhalen. Staat als QS8-492.',
+      'gelijktijdige runs op 14-09-2026 in zijn timeout van 240 s. ' +
+      '⚠️ Afgehandeld in QS8-492, en niet door het slot weg te nemen: dat kan hier ' +
+      'niet zonder de opstelling op te geven die de grendel eronder toetst. Wat er ' +
+      'wél staat is een `lock_timeout` van 3 s op de PostgREST-verbindingen, zodat ' +
+      'een botsing een fout van seconden wordt die zichzelf uitlegt in plaats van ' +
+      'een timeout van 240 s op een onschuldig bestand. Bewaakt door ' +
+      '`tests/rls/lock-timeout.test.ts`.',
   },
   {
     pad: 'tests/rls/opruiming.test.ts',
