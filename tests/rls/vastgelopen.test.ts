@@ -1438,24 +1438,23 @@ describe.skipIf(!rlsTestsConfigured)('een week die zijn beoordelaars kwijtraakt'
      *    boeking, dus geen ervan raakte deze naad. Regel 18 vraag 3: de test kon
      *    groen blijven terwijl de belofte brak.
      *
-     * ⚠️⚠️ **`it.fails`, en dat is een besluit en geen omweg.** De reparatie die
-     *    voor de hand ligt — `on conflict … do update set zonder_beoordelaar =
-     *    true` — is onjuist: die rij ís een echte peer-goedkeuring, en hem als
-     *    automatisch stempelen maakt het grootboek onwaar in de andere richting.
+     * ⚠️⚠️ **Stond `it.fails` tot 14-09-2026 en is nu een gewone toets** — QS8-456,
+     *    migratie 0266. De reparatie die voor de hand lag — `on conflict … do
+     *    update set zonder_beoordelaar = true` — was onjuist: die rij ís een echte
+     *    peer-goedkeuring, en hem als automatisch stempelen maakt het grootboek
+     *    onwaar in de andere richting.
      *
-     *    Wat hier werkelijk stukzit is groter dan het spoor: de week staat op
-     *    `approved` terwijl de eigenaar er **netto nul punten** voor heeft (+2 van
-     *    de ingetrokken goedkeuring, −2 correctie, en de termijn boekt niets omdat
-     *    de dedupe-sleutel bezet is). Dat is een defect in het puntenmodel dat
-     *    ouder is dan dit issue, en het raakt domeinregel 10. Losgetrokken als
-     *    QS8-456, dat dit issue blokkeert.
+     *    Wat hier werkelijk stukzat was groter dan het spoor: de week stond op
+     *    `approved` terwijl de eigenaar er **netto nul punten** voor had (+2 van de
+     *    ingetrokken goedkeuring, −2 correctie, en de termijn boekte niets omdat de
+     *    dedupe-sleutel bezet was). Domeinregel 10: de score moet iets zeggen.
      *
-     *    Deze test staat daarom `it.fails`: hij legt de gemeten toestand vast en
-     *    **slaat om zodra iemand hem repareert** — dan faalt `it.fails` zelf en is
-     *    dat het sein om reviewrij 453 alsnog te sluiten. Zelfde vorm als in
-     *    `tests/rls/policies.test.ts`.
+     *    `points_ledger.ronde` lost dat op: de termijn boekt in de volgende ronde,
+     *    en binnen één ronde blijft dubbel boeken onmogelijk. Deze toets eist nu
+     *    **allebei** de helften — het spoor én de punten — want alleen het spoor
+     *    toetsen laat de netto-nul-week groen door.
      */
-    it.fails(
+    it(
       'markeert ook een week waarvan een eerdere goedkeuring was ingetrokken (QS8-456)',
       async () => {
         const o = await bouwOpstelling('spoor-ingetrokken');
@@ -1493,12 +1492,25 @@ describe.skipIf(!rlsTestsConfigured)('een week die zijn beoordelaars kwijtraakt'
         expect(await weekstatus(o.completionId)).toBe('approved');
 
         const rijen = await boekingen(o.eigenaar.id);
+
+        // Helft 1 — het spoor. Zonder deze rij beweert het grootboek dat een
+        // groepsgenoot deze week goedkeurde, terwijl de termijn dat deed zonder
+        // één geldige goedkeuring.
         expect(
           rijen.some((r) => r.zonder && r.reason.startsWith('completion_approved_')),
-          'de termijn keurde deze week goed zonder één geldige goedkeuring, en het ' +
-            'grootboek zegt dat een groepsgenoot het deed — de dedupe-botsing slikte ' +
-            'het spoor',
+          'de termijn boekte geen rij met `zonder_beoordelaar` — de dedupe-botsing ' +
+            'slikte het spoor',
         ).toBe(true);
+
+        // ⚠️⚠️ Helft 2 — de punten, en dít is wat QS8-456 werkelijk was. Toets je
+        //    alleen het spoor, dan blijft een week die `approved` heet en netto
+        //    nul oplevert gewoon groen: precies de vorm van regel 18 vraag 3.
+        //    📏 Vóór 0266: +2, −2, en de boeking van de termijn geslikt = 0.
+        const netto = rijen.reduce((n, r) => n + r.delta, 0);
+        expect(
+          netto,
+          'de week staat op `approved` maar levert de eigenaar netto niets op',
+        ).toBeGreaterThan(0);
       },
       TEST_TIMEOUT,
     );
