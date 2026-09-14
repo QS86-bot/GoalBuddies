@@ -1325,7 +1325,7 @@ beslisbevoegdheid in `CLAUDE.md`.
 |---|---|---|
 | QS8-98 | RLS-testsuite met echte JWT's | ✅ af, plus zeven gaten gedicht |
 | QS8-23 | CI: typecheck, lint, test op elke push | ✅ af — branch protection nog zetten |
-| QS8-24 | Sentry | ✅ alle vier de criteria gebouwd en gemerged; `SENTRY_DSN` staat sinds 09-09 op het project en de source-maps-upload is op 10-09 voor het eerst gelopen — open: er is nooit een echte gebeurtenis uít de app aangekomen |
+| QS8-24 | Sentry | ✅ **af sinds 14-09-2026.** Alle vier de criteria gebouwd en gemerged, en de laatste openstaande meting is gedaan: Quinten forceerde een fout in de browser op `goalbuddies.q-projects.tech` en de gebeurtenis staat in Sentry met `server_name: app`, tag `runtime: web`, `waar/logger: globaal.fout`, `environment: production` en `release: goalbuddies@0.1.0`. Dát was de hele meting — uit een Edge Function was al eerder een envelope aangekomen, maar dat is een afgeleide |
 | QS8-22 | Migratie-workflow | ✅ af sinds QS8-119 — dumpscript, docs én een lokale stack. Zie de correctie hieronder |
 
 ⚠️ **Achterhaald sinds QS8-119 (24-08-2026), en dat stond hier tot 27-08 nog
