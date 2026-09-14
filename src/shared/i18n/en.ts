@@ -2299,4 +2299,57 @@ export const en: Record<Sleutel, string> = {
     'Habit is habit, and not to be flung out of the window by any man, but coaxed downstairs a step at a time.',
   'held.quip.quote3.bron':
     'Mark Twain · Pudd’nhead Wilson’s Calendar, in Following the Equator, 1897',
+
+  // The four hero questions — QS8-474, epic QS8-468. See nl.ts for why the
+  // option order lives in `HELDVRAAGOPTIES` and not here.
+
+  'heldvraag.aantrekking.vraag': 'What draws you in most about a new goal?',
+  'heldvraag.aantrekking.toelichting': 'One answer. Go with your first thought.',
+  'heldvraag.aantrekking.optie.meridian': 'Taking the first leap',
+  'heldvraag.aantrekking.optie.forge': 'Mapping out a plan',
+  'heldvraag.aantrekking.optie.strix': 'Keeping the end in clear view',
+  'heldvraag.aantrekking.optie.ignis': 'Just going for it, win or lose',
+  'heldvraag.aantrekking.optie.lucerna': 'Bringing someone along',
+  'heldvraag.aantrekking.optie.quip': 'Keeping it enjoyable above all',
+
+  'heldvraag.tegenslag.vraag': 'A setback: what is your first reaction?',
+  'heldvraag.tegenslag.toelichting': 'Not what you should do, but what you actually do.',
+  'heldvraag.tegenslag.optie.ignis': 'Push through, teeth clenched',
+  'heldvraag.tegenslag.optie.quip': 'Pause a moment and take the edge off with humour',
+  'heldvraag.tegenslag.optie.forge': 'Go back to basics and revise the plan',
+  'heldvraag.tegenslag.optie.lucerna': 'Take a break and go easy on myself',
+  'heldvraag.tegenslag.optie.strix': 'Think about what this teaches me',
+  'heldvraag.tegenslag.optie.meridian': 'Work out a different route',
+
+  'heldvraag.motivatie.vraag': 'What keeps you going the most?',
+  'heldvraag.motivatie.toelichting': 'What you still do it for on an average day.',
+  'heldvraag.motivatie.optie.ignis': 'Proving it can be done',
+  'heldvraag.motivatie.optie.meridian': 'Curiosity about what else is possible',
+  'heldvraag.motivatie.optie.forge': 'The feeling of building something good',
+  'heldvraag.motivatie.optie.strix': 'Inner calm and a clear overview',
+  'heldvraag.motivatie.optie.lucerna': 'Support from and for other people',
+  'heldvraag.motivatie.optie.quip': 'That it simply has to stay fun',
+
+  'heldvraag.viering.vraag': 'How do you most like to celebrate a win?',
+  'heldvraag.viering.toelichting': 'Last question. After this you see everything at a glance.',
+  'heldvraag.viering.optie.quip': 'With a joke or a party',
+  'heldvraag.viering.optie.strix': 'Quietly reflecting on what you learned',
+  'heldvraag.viering.optie.meridian': 'Moving straight on to the next goal',
+  'heldvraag.viering.optie.lucerna': 'Sharing it with the people who backed you',
+  'heldvraag.viering.optie.ignis': 'Being proud that you won the fight',
+  'heldvraag.viering.optie.forge': 'Looking at how to improve the system further',
+
+  'vragenlijst.held.vraag': 'Your hero',
+  'vragenlijst.held.kop': 'Who walks with you',
+  'vragenlijst.held.een':
+    'Your answers point to one hero. That is the voice you will hear at your check-ins.',
+  'vragenlijst.held.gelijk':
+    'Your answers point equally to {aantal} heroes. Pick the one you want walking with you.',
+  'vragenlijst.held.geen':
+    'You skipped the hero questions. That is fine: you get no fixed hero, and the rest of the app works as usual.',
+  'vragenlijst.held.gekozen': 'This is your hero. Tap another one to switch.',
+  'vragenlijst.held.blijft':
+    'This is your hero right now. Answer the four hero questions again to switch.',
+  'vragenlijst.held.kies_een': 'Pick one',
+  'vragenlijst.held.opslaan_mislukt': 'Your hero could not be saved. Please try again in a moment.',
 };

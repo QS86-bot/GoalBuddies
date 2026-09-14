@@ -1,6 +1,12 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
-import { HELDSLEUTELS, TRIGGERS } from '../../src/modules/helden';
+// ⚠️ **Rechtstreeks uit `helden.ts` en niet uit `index.ts`.** Sinds QS8-474
+//    exporteert die index ook `heldprofiel.ts`, en dat bestand trekt via
+//    `lib/supabase` de Supabase-client mee — die kan de testomgeving niet
+//    parsen (`react-native`, Flow). 📏 Dit bestand meldde daardoor `0 test` en
+//    de suite werd rood; luid, niet stil, want een suite die zwijgt is de fout
+//    van QS8-270. Zelfde import als `quiz.test.ts` doet.
+import { HELDBRONNEN, HELDSLEUTELS, TRIGGERS } from '../../src/modules/helden/helden';
 
 import {
   adminDb,
@@ -229,6 +235,26 @@ describe.skipIf(!rlsTestsConfigured)('De heldentabellen', () => {
               .insert({ user_id: eigenaar.id, hero_key: sleutel, trigger });
             expect(error, `${sleutel}/${trigger}`).toBeNull();
           }
+        }
+      },
+      TEST_TIMEOUT,
+    );
+
+    it(
+      'accepteert elke bron uit HELDBRONNEN',
+      async () => {
+        // ⚠️ **Deze kant ontbrak tot QS8-474, en de kop hierboven belóófde hem
+        //    wel.** Voor `hero_key` en `trigger` stonden beide richtingen er;
+        //    voor `source` alleen de weigering. Een CHECK die per ongeluk
+        //    `keuze` buitensluit, zou dan pas opvallen als een gebruiker bij
+        //    gelijkspel zelf koos — en `bewaarHeld()` meldt dat als "je held kon
+        //    niet bewaard worden", zonder dat iemand ziet waaróm.
+        for (const bron of HELDBRONNEN) {
+          const { error } = await eigenaar.db
+            .from('hero_profiles')
+            .update({ source: bron })
+            .eq('user_id', eigenaar.id);
+          expect(error, bron).toBeNull();
         }
       },
       TEST_TIMEOUT,

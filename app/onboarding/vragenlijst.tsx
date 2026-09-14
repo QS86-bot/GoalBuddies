@@ -4,6 +4,21 @@ import { StyleSheet, View } from 'react-native';
 
 import { updateProfiel, useProfiel, useSession } from '@/modules/auth';
 import {
+  bewaarHeld,
+  heldkeuze,
+  heldoptieTekstSleutel,
+  heldTekstSleutel,
+  HELDVRAAGOPTIES,
+  HELDVRAGEN,
+  heldvraagTekstSleutel,
+  heldprofiel,
+  teBewarenHeld,
+  type Heldantwoorden,
+  type Heldkeuze,
+  type Heldsleutel,
+  type Heldvraag,
+} from '@/modules/helden';
+import {
   CATEGORIE_GROEPEN,
   categorieLabels,
   MAX_FOCUSGEBIEDEN,
@@ -34,6 +49,7 @@ import {
   Choice,
   Screen,
   Subheading,
+  useAsync,
 } from '@/shared/ui';
 
 /**
@@ -55,12 +71,30 @@ import {
  *    maakt het plan van de gebruiker in plaats van van de app, en het is de
  *    goedkoopste vertrouwenswinst in de hele flow. Wij sprongen tot nu toe van
  *    invullen meteen naar het resultaat.
+ *
+ * ⚠️⚠️ **Sinds QS8-474 zijn het acht vragen met één samenvatting, en die ene
+ *    samenvatting is de reden dat besluit A56 overeind blijft.** QS8-257 ging er
+ *    expliciet over dat het samenvattingsscherm het punt was en niet de vier
+ *    vragen; acht vragen met twéé samenvattingen zou dat besluit stil omdraaien.
+ *    Besluit 6 van QS8-468: één vragenlijst, geen tweede quiz ernaast. Uitleg in
+ *    `docs/decisions/2026-09-14-acht-vragen-en-een-samenvatting.md`.
+ *
+ * ⚠️ **De vier heldenantwoorden worden nergens bewaard — alleen de uitslag.**
+ *    Dat is geen omissie: `hero_profiles` draagt de gekozen held, niet de weg
+ *    ernaartoe. Gevolg is wel dat dit scherm bij een tweede bezoek de
+ *    heldenvragen leeg toont terwijl de andere vier ingevuld staan. Dat is de
+ *    goede kant op: wie ze dan opnieuw overslaat, houdt de held die hij had —
+ *    `teBewarenHeld()` geeft `null` en er wordt niets geschreven. Overslaan wist
+ *    ook hier niets.
  */
 
-type Stap = 0 | 1 | 2 | 3 | 4;
+type Stap = 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8;
+
+/** De vier heldenvragen beginnen na de vier vragen van A56. */
+const EERSTE_HELDVRAAG = 4;
 
 /** De laatste stap is de samenvatting en geen vraag. */
-const SAMENVATTING: Stap = 4;
+const SAMENVATTING: Stap = 8;
 
 /**
  * Wacht tot het profiel bekend is, en laat het formulier daarna pas monteren.
@@ -107,6 +141,29 @@ function VragenlijstFormulier() {
   const [bezig, setBezig] = useState(false);
   const [fout, setFout] = useState<string | null>(null);
 
+  // ⚠️ De heldenantwoorden staan naast `invoer` en niet erin: `invoer` is wat er
+  //    naar `profiles` gaat, en deze vier gaan daar nooit heen. Alleen de
+  //    uitslag landt, en die landt in `hero_profiles`.
+  const [heldantwoorden, setHeldantwoorden] = useState<Heldantwoorden>({});
+  const [gekozenHeld, setGekozenHeld] = useState<Heldsleutel | null>(null);
+
+  // ⚠️ **De held die er al is, en dat is geen luxe.** Dit scherm is een tweede
+  //    keer te openen, en de heldenantwoorden worden nergens bewaard — alleen de
+  //    uitslag. Zonder deze regel leest iemand die zijn vragenlijst komt
+  //    bijstellen dat hij "de heldenvragen overgeslagen" heeft, terwijl hij
+  //    gewoon een held hééft. Dat is de app die iets onwaars tegen hem zegt.
+  //
+  // ⚠️ **`useAsync` en geen eigen hook in `modules/helden`.** Die stond er eerst,
+  //    met een `let levend = true` erin, en werd op twee manieren rood: de ratel
+  //    van `levend:controle` (22 vlaggen, dit was de drieëntwintigste) en de
+  //    laagregel van QS8-207 — de datalaag importeert niets uit `shared/ui`, ook
+  //    geen `useAsync`. Die twee wijzen dezelfde kant op: de laadbeurt hoort in
+  //    de schermlaag, en de module levert de functie.
+  const { data: bestaandeHeld } = useAsync(
+    userId ? () => heldprofiel(userId) : null,
+    [userId],
+  );
+
   // ⚠️ Wat er al op het profiel staat is het startpunt, niet een lege lijst.
   //    Wie dit scherm opnieuw opent, ziet zijn eigen antwoorden terug.
   const [invoer, setInvoer] = useState<VragenlijstInvoer>({
@@ -142,6 +199,17 @@ function VragenlijstFormulier() {
     });
   }
 
+  function kiesHeldantwoord(vraag: Heldvraag, held: Heldsleutel) {
+    setHeldantwoorden((oud) => ({ ...oud, [vraag]: held }));
+  }
+
+  // ⚠️ De keuze wordt hier bij élke render opnieuw afgeleid en niet in state
+  //    gehouden. `heldkeuze()` laat een eerdere gelijkspelkeuze vallen zodra de
+  //    antwoorden hem geen koploper meer maken; zou de uitslag in state staan,
+  //    dan overleeft een achterhaalde keuze precies de wijziging die hem
+  //    ongeldig maakte.
+  const keuze = heldkeuze(heldantwoorden, gekozenHeld);
+
   async function bewaar() {
     if (!userId) return;
     setBezig(true);
@@ -153,6 +221,19 @@ function VragenlijstFormulier() {
       setFout(uitkomst.melding);
       setBezig(false);
       return;
+    }
+
+    // ⚠️ **`null` betekent hier "niets te bewaren" en niet "wis de held".** Wie
+    //    de heldenvragen overslaat of een gelijkspel onbeslist laat, houdt de
+    //    held die hij al had. Overslaan wist niets, ook hier niet.
+    const teBewaren = teBewarenHeld(keuze);
+    if (teBewaren !== null) {
+      const held = await bewaarHeld(userId, teBewaren.held, teBewaren.bron);
+      if (!held.ok) {
+        setFout(held.melding);
+        setBezig(false);
+        return;
+      }
     }
 
     herlaad();
@@ -195,8 +276,32 @@ function VragenlijstFormulier() {
         />
       ) : null}
 
+      {/*
+        ⚠️ De vier heldenvragen komen uit `HELDVRAGEN` en staan hier niet als
+           vier blokken. Niet uit netheid: `app/` staat precies op het plafond
+           van regel 15, en vier handgeschreven vragen duwen deze functie er
+           overheen. De vorm van de vraag is bovendien elke keer dezelfde, en het
+           enige wat verschilt is data die de module al bezit.
+      */}
+      {HELDVRAGEN.map((vraag, i) =>
+        stap === EERSTE_HELDVRAAG + i ? (
+          <HeldVraag
+            key={vraag}
+            vraag={vraag}
+            waarde={heldantwoorden[vraag] ?? null}
+            onKies={(held) => kiesHeldantwoord(vraag, held)}
+          />
+        ) : null,
+      )}
+
       {stap === SAMENVATTING ? (
-        <Samenvatting invoer={invoer} onWijzig={(naar) => setStap(naar)} />
+        <Samenvatting
+          invoer={invoer}
+          keuze={keuze}
+          huidigeHeld={bestaandeHeld?.held ?? null}
+          onKiesHeld={setGekozenHeld}
+          onWijzig={(naar) => setStap(naar)}
+        />
       ) : null}
 
       {fout === null ? null : <Caption danger>{fout}</Caption>}
@@ -299,6 +404,167 @@ function TijdVraag({
   );
 }
 
+/**
+ * Eén heldenvraag: zes knoppen, één antwoord.
+ *
+ * ⚠️ **Dit component is de vier vragen samen en niet één ervan.** Welke vraag
+ *    het is en in welke volgorde de opties staan, bezit `modules/helden`; hier
+ *    staat alleen hoe een vraag eruitziet. Zou elke vraag zijn eigen component
+ *    krijgen, dan staan de zes helden vier keer in de schermlaag en loopt die
+ *    lijst uit elkaar met het register zonder dat iets rood wordt.
+ *
+ * ⚠️ Geen letters A t/m F op het scherm. Het brondocument nummert de opties zo,
+ *    maar dat is een scoringshulp: de gebruiker kiest een antwoord, geen letter.
+ */
+function HeldVraag({
+  vraag,
+  waarde,
+  onKies,
+}: {
+  readonly vraag: Heldvraag;
+  readonly waarde: Heldsleutel | null;
+  readonly onKies: (held: Heldsleutel) => void;
+}) {
+  return (
+    <Card>
+      <Subheading>{t(heldvraagTekstSleutel(vraag, 'vraag'))}</Subheading>
+      <Caption>{t(heldvraagTekstSleutel(vraag, 'toelichting'))}</Caption>
+
+      {HELDVRAAGOPTIES[vraag].map((held) => (
+        <Button
+          key={held}
+          variant={waarde === held ? 'secundair' : 'stil'}
+          block
+          onPress={() => onKies(held)}
+        >
+          {t(heldoptieTekstSleutel(vraag, held))}
+        </Button>
+      ))}
+    </Card>
+  );
+}
+
+/**
+ * De uitslag van de vier heldenvragen, op de samenvatting.
+ *
+ * ⚠️⚠️ **Bij gelijkspel staan hier álle gedeelde koplopers en niet de top 2.**
+ *    Vier vragen over zes helden geeft maximaal 4 punten, en 1-1-1-1 over vier
+ *    verschillende helden is een normale uitslag — "de top 2" is dan niet
+ *    gedefinieerd. Besluit 7 van QS8-468. Het aantal kaarten komt daarom uit
+ *    `keuze.koplopers` en er staat nergens een getal dat er twee afsnijdt.
+ *
+ * ⚠️ **De lege staat is een gewoon antwoord en geen fout.** Wie alle vier de
+ *    vragen overslaat leest hier dat hij geen held krijgt en dat de rest van de
+ *    app gewoon werkt. Geen waarschuwing, geen rode tekst.
+ */
+function HeldUitslag({
+  keuze,
+  huidigeHeld,
+  onKies,
+}: {
+  readonly keuze: Heldkeuze;
+  readonly huidigeHeld: Heldsleutel | null;
+  readonly onKies: (held: Heldsleutel) => void;
+}) {
+  return (
+    <View style={styles.held}>
+      <Caption>{t('vragenlijst.held.kop')}</Caption>
+
+      {keuze.soort === 'geen' ? <HeldGeen huidigeHeld={huidigeHeld} /> : null}
+      {keuze.soort === 'quiz' ? <HeldEen held={keuze.held} /> : null}
+      {keuze.soort === 'gelijkspel' ? <HeldGelijkspel keuze={keuze} onKies={onKies} /> : null}
+    </View>
+  );
+}
+
+/**
+ * Geen uitslag uit de vier vragen.
+ *
+ * ⚠️ **Twee heel verschillende situaties, en het verschil is de hele reden dat
+ *    `huidigeHeld` hier binnenkomt.** Wie nooit een held koos, leest dat hij er
+ *    geen krijgt en dat de rest gewoon werkt. Wie er al een heeft en de vragen
+ *    deze keer oversloeg, houdt die held — en dan is "je hebt de heldenvragen
+ *    overgeslagen" een ware zin met een onware strekking.
+ */
+function HeldGeen({ huidigeHeld }: { readonly huidigeHeld: Heldsleutel | null }) {
+  if (huidigeHeld === null) return <Body muted>{t('vragenlijst.held.geen')}</Body>;
+
+  return (
+    <>
+      <Body>{t(heldTekstSleutel(huidigeHeld, 'naam'))}</Body>
+      <Caption>{t(heldTekstSleutel(huidigeHeld, 'ondertitel'))}</Caption>
+      <Body muted>{t('vragenlijst.held.blijft')}</Body>
+    </>
+  );
+}
+
+function HeldEen({ held }: { readonly held: Heldsleutel }) {
+  return (
+    <>
+      <Body>{t(heldTekstSleutel(held, 'naam'))}</Body>
+      <Caption>{t(heldTekstSleutel(held, 'ondertitel'))}</Caption>
+      <Body muted>{t('vragenlijst.held.een')}</Body>
+    </>
+  );
+}
+
+/**
+ * ⚠️⚠️ **Hier staan álle gedeelde koplopers en niet de top 2.** Vier vragen over
+ *    zes helden geeft maximaal 4 punten, en 1-1-1-1 over vier verschillende
+ *    helden is een normale uitslag — "de top 2" is dan niet gedefinieerd.
+ *    Besluit 7 van QS8-468. Het aantal kaarten komt uit `keuze.koplopers`, en er
+ *    staat nergens een getal dat er twee afsnijdt;
+ *    `tests/beloftes/alle-gedeelde-koplopers.test.ts` wordt rood zodra dat wel
+ *    gebeurt.
+ */
+function HeldGelijkspel({
+  keuze,
+  onKies,
+}: {
+  readonly keuze: Extract<Heldkeuze, { soort: 'gelijkspel' }>;
+  readonly onKies: (held: Heldsleutel) => void;
+}) {
+  return (
+    <>
+      <Body muted>{t('vragenlijst.held.gelijk', { aantal: keuze.koplopers.length })}</Body>
+
+      {keuze.koplopers.map((held) => (
+        <HeldKaart
+          key={held}
+          held={held}
+          gekozen={keuze.gekozen === held}
+          onKies={() => onKies(held)}
+        />
+      ))}
+
+      <Caption>
+        {keuze.gekozen === null
+          ? t('vragenlijst.held.kies_een')
+          : t('vragenlijst.held.gekozen')}
+      </Caption>
+    </>
+  );
+}
+
+function HeldKaart({
+  held,
+  gekozen,
+  onKies,
+}: {
+  readonly held: Heldsleutel;
+  readonly gekozen: boolean;
+  readonly onKies: () => void;
+}) {
+  return (
+    <View style={styles.heldkaart}>
+      <Button variant={gekozen ? 'secundair' : 'stil'} block onPress={onKies}>
+        {`${t(heldTekstSleutel(held, 'naam'))} · ${t(heldTekstSleutel(held, 'ondertitel'))}`}
+      </Button>
+      <Body muted>{t(heldTekstSleutel(held, 'persoonlijkheid'))}</Body>
+    </View>
+  );
+}
+
 function MomentVraag({
   waarde,
   onKies,
@@ -371,9 +637,15 @@ function ValkuilVraag({
  */
 function Samenvatting({
   invoer,
+  keuze,
+  huidigeHeld,
+  onKiesHeld,
   onWijzig,
 }: {
   readonly invoer: VragenlijstInvoer;
+  readonly keuze: Heldkeuze;
+  readonly huidigeHeld: Heldsleutel | null;
+  readonly onKiesHeld: (held: Heldsleutel) => void;
   readonly onWijzig: (naar: Stap) => void;
 }) {
   const gebieden = (invoer.focus_areas ?? []) as Categorie[];
@@ -382,8 +654,15 @@ function Samenvatting({
   const moment = (invoer.when_i_do_it ?? null) as Moment | null;
 
   const niets = t('vragenlijst.samenvatting.niets');
+  // ⚠️ Ook de heldenvragen tellen mee voor "je hebt niets ingevuld". Zonder dat
+  //    leest iemand die alleen de heldenvragen beantwoordde dat hij niets
+  //    verteld heeft, terwijl er onder deze zin een held staat.
   const alles =
-    gebieden.length === 0 && valkuilen.length === 0 && minuten === null && moment === null;
+    gebieden.length === 0 &&
+    valkuilen.length === 0 &&
+    minuten === null &&
+    moment === null &&
+    keuze.soort === 'geen';
 
   return (
     <Card>
@@ -431,6 +710,22 @@ function Samenvatting({
         onWijzig={() => onWijzig(3)}
       />
 
+      <Regel
+        vraag={t('vragenlijst.held.vraag')}
+        antwoord={
+          keuze.soort === 'geen'
+            ? huidigeHeld === null
+              ? niets
+              : t(heldTekstSleutel(huidigeHeld, 'naam'))
+            : keuze.soort === 'quiz'
+              ? t(heldTekstSleutel(keuze.held, 'naam'))
+              : t('vragenlijst.held.kies_een')
+        }
+        onWijzig={() => onWijzig(EERSTE_HELDVRAAG as Stap)}
+      />
+
+      <HeldUitslag keuze={keuze} huidigeHeld={huidigeHeld} onKies={onKiesHeld} />
+
       {valkuilen.length === 0 ? null : (
         <View style={styles.helpt}>
           <Caption>{t('vragenlijst.samenvatting.dit_helpt')}</Caption>
@@ -468,6 +763,8 @@ const styles = StyleSheet.create({
   knoppen: { gap: space.blokGap - 4 },
   gebieden: { flexDirection: 'row', flexWrap: 'wrap', gap: space.blokGap - 5 },
   valkuil: { gap: 4 },
+  held: { gap: 4 },
+  heldkaart: { gap: 2 },
   regel: { gap: 2 },
   helpt: { gap: 4 },
 });
