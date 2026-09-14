@@ -142,6 +142,17 @@ export const GEEN_OPPERVLAK = new Map([
       'melden dan te weinig, zie de kop) maar het is wél de reden dat deze rij een ' +
       'uitleg draagt in plaats van een streepje.',
   ],
+  [
+    'functie:archief_blijft_archief',
+    '⚠️ **Dezelfde valse positief als `sleutelzetters` hierboven, en om precies ' +
+      'dezelfde reden.** Deze trigger gaat over het archief en niet over ' +
+      'zichtbaarheid; hij komt hier terecht doordat zijn foutmelding sinds 0264 ' +
+      'de naam `heropen_groep()` noemt, en daar zit `open_groep` letterlijk in. ' +
+      'Die naam staat er met opzet in: een weigering die de juiste weg noemt is ' +
+      'de helft van de reparatie van QS8-488. De melding herschrijven om deze ' +
+      'controle te ontwijken zou de gebruiker slechter bedienen om een script ' +
+      'stil te krijgen.',
+  ],
   ['functie:zet_groepszichtbaarheid', 'De setter (0076). Zet de stand, leest niets van een lid.'],
   [
     'functie:zet_huddledag',

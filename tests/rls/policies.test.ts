@@ -3308,7 +3308,25 @@ describe.skipIf(!rlsTestsConfigured)('RLS-policies met echte JWTs', () => {
    *    oordeel hier: één regel, met de reden, en een rode test zodra er een
    *    tweede bij komt.
    */
-  const KAAL_MET_REDEN: readonly string[] = ['groups.created_by (guard_group_update)'];
+  /**
+   * ⚠️⚠️ **Leeg sinds 0264 (QS8-488), en dat is winst die daar niet gezocht werd.**
+   *    `groups.created_by` stond hier omdat `guard_group_update()` hem met een
+   *    kále toewijzing terugzette — onschadelijk dankzij de vroege uitstap, maar
+   *    geen grendel. Die migratie verving élke stille terugzetting op `groups`
+   *    door een `raise`, en daarmee is deze kolom géén uitzondering meer: de
+   *    teller ziet er nu een echte grendel.
+   *
+   *    📏 Nagemeten: `onveranderlijkheid_bewaking()` geeft nul kale kolommen, en
+   *    `verwijder_mijn_account()` loopt nog steeds door — de RI-actie van
+   *    `on delete set null` draait als `postgres` en neemt de vroege uitstap, dus
+   *    de `raise` bereikt haar niet. Dat is de reden dat `created_by` in 0264
+   *    ná die uitstap staat en niet ervóór.
+   *
+   * ⚠️ **Blijft een register en wordt geen lege array zonder kop.** Komt er ooit
+   *    weer een kale toewijzing bij, dan hoort daar een naam én een reden te
+   *    staan — niet een stilzwijgend uitgebreide lijst.
+   */
+  const KAAL_MET_REDEN: readonly string[] = [];
 
   describe('onveranderlijkheid tegenover on delete set null', () => {
     it(
@@ -3336,11 +3354,13 @@ describe.skipIf(!rlsTestsConfigured)('RLS-policies met echte JWTs', () => {
     );
 
     /**
-     * ⚠️ **De uitzondering hierboven leunt op één zin in `guard_group_update()`,
-     *    en dit is de test die daar bovenop staat.** Zonder de vroege uitstap
+     * ⚠️ **Deze test leunt op één zin in `guard_group_update()`, en sinds 0264
+     *    draagt die zin iets zwaarders dan eerst.** Zonder de vroege uitstap
      *    voor niet-clientrollen loopt de RI-actie van `on delete set null` wél
-     *    door de trigger heen, en dan zet de kale toewijzing hem terug — met een
-     *    foreign key die niet meer klopt.
+     *    door de trigger heen — en waar dat vóór 0264 een kale toewijzing was
+     *    die de foreign key stilzwijgend terugzette, is het nu een `raise`.
+     *    📏 Gemeten: dan kan niemand die ooit een groep heeft opgericht zijn
+     *    account nog verwijderen. Dezelfde klasse als QS8-371 en QS8-480.
      *
      * ⚠️ **Leest de gestripte bron**, om dezelfde reden als 0221 zelf: een vroege
      *    uitstap die alleen in commentaar staat, stapt nergens uit.
