@@ -37,6 +37,7 @@ import { huidigInstallatieadvies } from '@/shared/pwa';
 import { opmaaktaal, t, taal, zetTaal, type Taal,
   type Sleutel,
 } from '@/shared/i18n';
+import { telTekens } from '@/shared/tekst';
 import { space, useThemePreference, type ThemePreference } from '@/shared/theme';
 import { apparaatTijdzone, toonTijd, verschovenUur, type Weekday } from '@/shared/time';
 import {
@@ -140,6 +141,8 @@ export default function Profiel() {
               <Caption>{t('profiel.reeks_uitleg')}</Caption>
             </Card>
 
+            <Naamkaart naam={p.display_name} userId={p.id} onOpgeslagen={zetProfiel} />
+
             <Avatarkaart profiel={p} onGewijzigd={zetProfiel} />
 
             <BuddyBijdrage userId={p.id} />
@@ -224,6 +227,110 @@ function Uitloggen() {
       <Button busy={bezig} onPress={() => void uitloggen()}>
         {t('profiel.uitloggen_knop')}
       </Button>
+    </Card>
+  );
+}
+
+/**
+ * Je weergavenaam wijzigen — QS8-473.
+ *
+ * ⚠️ **Dit was een leeskant zonder schrijfpad**, dezelfde vorm als de profielfoto
+ *    in QS8-196 en de taalkeuze in QS8-115: `profielSchema` kende `display_name`
+ *    al, `updateProfiel()` nam hem al mee, `schoneNaam()` en de CHECK
+ *    `profiles_display_name_zichtbaar` uit 0256 stonden er — en het enige
+ *    invoerveld stond in de onboarding, een scherm dat je één keer ziet.
+ *    Onwrikbare regel 18, vraag 5: elk schakeltje af en de keten nergens
+ *    verbonden.
+ *
+ * ⚠️ **Geen eigen validatie.** De regels staan in `profielSchema` en de grens
+ *    staat in de database; wat hier gebeurt is dat `updateProfiel()` zijn melding
+ *    teruggeeft en dit scherm hem toont. Een tweede regelset hier zou de derde
+ *    plek zijn die uit de pas kan lopen — precies wat de kop van `profielSchema`
+ *    over `.trim()` en `.max()` uitlegt.
+ *
+ * ⚠️ **`telTekens()` en niet `.length`.** De teller moet in dezelfde eenheid
+ *    staan als de grens: `char_length` telt codepunten, `.length` telt
+ *    UTF-16-eenheden, en een naam van tachtig emoji is er honderdzestig. Een
+ *    teller in de verkeerde eenheid is een nieuwe fout en geen reparatie
+ *    (QS8-118).
+ */
+function useNaamOpslaan(
+  naam: string,
+  userId: string,
+  onOpgeslagen: (profiel: ProfielRij) => void,
+) {
+  const [wil, zetWil] = useState(naam);
+  const [bezig, setBezig] = useState(false);
+  const [fout, setFout] = useState<string | null>(null);
+  const [bewaard, setBewaard] = useState(false);
+
+  async function bewaar() {
+    setBezig(true);
+    setFout(null);
+    setBewaard(false);
+
+    // ⚠️ De uitkomst wordt gelezen en niet weggegooid — `void updateProfiel(...)`
+    //    is de vorm die QS8-245 een stille mislukking opleverde, en
+    //    `tests/beloftes/uitkomst-niet-weggooien.test.ts` bewaakt die klasse.
+    const uitkomst = await updateProfiel(userId, { display_name: wil });
+
+    if (uitkomst.ok) {
+      onOpgeslagen(uitkomst.profiel);
+      // ⚠️ Terugzetten uit het opgeslagen profiel en niet uit `wil`:
+      //    `schoneNaam()` kan hebben geknipt of genormaliseerd, en dan staat er
+      //    in het veld iets anders dan in de database. Het veld hoort te tonen
+      //    wat er écht staat.
+      zetWil(uitkomst.profiel.display_name);
+      setBewaard(true);
+    } else {
+      setFout(uitkomst.melding);
+    }
+
+    setBezig(false);
+  }
+
+  function typ(waarde: string) {
+    zetWil(waarde);
+    setBewaard(false);
+  }
+
+  return { wil, bezig, fout, bewaard, bewaar, typ };
+}
+
+function Naamkaart({
+  naam,
+  userId,
+  onOpgeslagen,
+}: {
+  readonly naam: string;
+  readonly userId: string;
+  readonly onOpgeslagen: (profiel: ProfielRij) => void;
+}) {
+  const { wil, bezig, fout, bewaard, bewaar, typ } = useNaamOpslaan(naam, userId, onOpgeslagen);
+
+  return (
+    <Card>
+      <Subheading>{t('profiel.naam_titel')}</Subheading>
+      <Body muted>{t('profiel.naam_uitleg')}</Body>
+
+      <Field
+        label={t('profiel.naam_label')}
+        hint={t('profiel.naam_hint')}
+        value={wil}
+        onChangeText={typ}
+        autoCapitalize="words"
+        autoComplete="name"
+        placeholder={t('onboarding.naam_plaatshouder')}
+        editable={!bezig}
+      />
+      <Caption>{`${telTekens(wil)}/80`}</Caption>
+
+      <Button busy={bezig} onPress={() => void bewaar()}>
+        {t('profiel.naam_bewaren')}
+      </Button>
+
+      {bewaard ? <Caption muted={false}>{t('profiel.naam_bewaard')}</Caption> : null}
+      {fout === null ? null : <Caption danger>{fout}</Caption>}
     </Card>
   );
 }
