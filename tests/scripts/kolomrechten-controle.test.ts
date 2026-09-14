@@ -684,6 +684,73 @@ describe('beoordeelSchrijven', () => {
     expect(uit.onleesbaar).toHaveLength(1);
   });
 
+  /**
+   * ⚠️⚠️ **De vondst van QS8-483, en hij zit ín het geval hierboven.** De tak
+   *    `!g.volledig` hield niet alleen de dode-houtmelding in — hij zweeg over
+   *    **álle** kolommen van dat paar, ook over de kolommen die geen enkel
+   *    leesbaar pad schrijft. Hierboven is dat `title`: de grant geeft
+   *    `owner_id, title`, het leesbare pad zet alleen `owner_id`, en of de
+   *    blinde `insert(patch)` `title` zet weet niemand.
+   *
+   * ⚠️ **Daarom een eigen lijst en niet `ongeschreven`.** Die zou beweren dat
+   *    niets de kolom schrijft, en dat is precies wat hier níet gemeten is.
+   */
+  it('legt de kolommen apart die geen léésbaar pad zet, als één pad blind is', () => {
+    const bron = [
+      `.from('goals').insert({ owner_id: u })`,
+      `const patch = f(x);`,
+      `supabase().from('goals').insert(patch)`,
+    ].join('\n');
+    const uit = beoordeelSchrijven({ acties: schrijfIn('a.ts', bron), rechten: RECHTEN_SCHRIJF });
+
+    expect(uit.onbeoordeeld).toHaveLength(1);
+    expect(uit.onbeoordeeld[0]?.tabel).toBe('goals');
+    expect(uit.onbeoordeeld[0]?.soort).toBe('INSERT');
+    expect(uit.onbeoordeeld[0]?.kolommen).toEqual(['title']);
+    expect(uit.onbeoordeeld[0]?.paden[0]?.pad).toBe('a.ts');
+  });
+
+  /**
+   * ⚠️ **De must-allow, en hij is niet theoretisch — hij is de stand van
+   *    vandaag.** 📏 Op 14-09-2026 zijn `goals|UPDATE` en `milestones|INSERT` de
+   *    enige twee paren met een blind pad, en bij allebei dekken de leesbare
+   *    paden élke gegunde kolom. Zou deze tak ook dán melden, dan begint hij
+   *    zijn leven met twee valse bevindingen en leer je hem wegklikken.
+   */
+  it('zwijgt als de leesbare paden élke gegunde kolom al dekken', () => {
+    const bron = [
+      `.from('goals').insert({ owner_id: u, title: t })`,
+      `const patch = f(x);`,
+      `supabase().from('goals').insert(patch)`,
+    ].join('\n');
+    const uit = beoordeelSchrijven({ acties: schrijfIn('a.ts', bron), rechten: RECHTEN_SCHRIJF });
+
+    expect(uit.onleesbaar).toHaveLength(1);
+    expect(uit.onbeoordeeld).toEqual([]);
+  });
+
+  /**
+   * ⚠️ **`ongemeten` blijft, en dat is geen detail maar de val van PR #140.**
+   *    `verlopenRegels()` leest deze sleutel: zonder hem leest hij "wordt
+   *    geschreven — haal de uitzondering weg" en geeft hij de opdracht om een
+   *    grendel te slopen. Nu de tak óók een bevinding oplevert, is de verleiding
+   *    om `ongemeten` te laten vallen het grootst — vandaar deze test.
+   */
+  it('houdt het paar in `ongemeten` ook nu de tak een bevinding geeft', () => {
+    const bron = [
+      `.from('goals').insert({ owner_id: u })`,
+      `const patch = f(x);`,
+      `supabase().from('goals').insert(patch)`,
+    ].join('\n');
+    const uit = beoordeelSchrijven({ acties: schrijfIn('a.ts', bron), rechten: RECHTEN_SCHRIJF });
+
+    // ⚠️ Zelfde vorm als bij `zodSchemas` hierboven: de module is `.mjs`, dus de
+    //    sleutels van dit object zijn voor TypeScript niet bekend.
+    const ongemeten = uit.ongemeten as Record<string, string | undefined>;
+
+    expect(ongemeten['goals|INSERT']).toContain('niet te lezen');
+  });
+
   it('zwijgt als alles geschreven wordt', () => {
     const acties = schrijfIn('a.ts', `.from('goals').insert({ owner_id: u, title: t })`);
     const uit = beoordeelSchrijven({ acties, rechten: RECHTEN_SCHRIJF });
@@ -779,6 +846,72 @@ describe('meldingen', () => {
 
     expect(uit).toEqual([]);
   });
+
+  /**
+   * ⚠️⚠️ **De toon is hier de belofte en niet de vondst — QS8-483.** Een kolom
+   *    achter een blind pad is **niet beoordeeld**, en dat is iets anders dan
+   *    dood. Beweert deze melding "die grant gebruikt niets", dan trekt de
+   *    volgende lezer een grant in die het blinde pad wél nodig heeft — dezelfde
+   *    klasse als de melding die bij PR #140 opdracht gaf een grendel te slopen.
+   */
+  it('meldt een onbeoordeelde kolom zonder te beweren dat hij dood is', () => {
+    const uit = meldingen(
+      {
+        ...leeg,
+        onbeoordeeld: [
+          {
+            tabel: 'goals',
+            soort: 'INSERT',
+            kolommen: ['title'],
+            paden: [{ pad: 'src/a.ts', reden: 'geen objectliteraal' }],
+          },
+        ],
+      },
+      lijsten,
+    );
+
+    expect(uit).toHaveLength(1);
+    expect(uit[0]).toContain('onbeoordeeld is niet groen');
+    expect(uit[0]).toContain('`title`');
+    // ⚠️ Het pad én zijn reden, want de lezer moet naar het pád en niet naar de grant.
+    expect(uit[0]).toContain('src/a.ts');
+    expect(uit[0]).toContain('geen objectliteraal');
+    // ⚠️ **En nadrukkelijk níet de taal van een dode grant.** Deze tegentoets is
+    //    de helft die de belofte draagt; zonder haar zou elke formulering slagen.
+    expect(uit[0]).not.toContain('niets gebruikt');
+  });
+
+  /** ⚠️ Eén regel per paar, niet één per kolom — drie regels over hetzelfde blinde pad leer je overslaan. */
+  it('bundelt twee onbeoordeelde kolommen van één paar in één melding', () => {
+    const uit = meldingen(
+      {
+        ...leeg,
+        onbeoordeeld: [
+          {
+            tabel: 'goals',
+            soort: 'INSERT',
+            kolommen: ['een', 'twee'],
+            paden: [{ pad: 'src/a.ts', reden: 'x' }],
+          },
+        ],
+      },
+      lijsten,
+    );
+
+    expect(uit).toHaveLength(1);
+    expect(uit[0]).toContain('`een`');
+    expect(uit[0]).toContain('`twee`');
+  });
+
+  /**
+   * ⚠️ **Een ijking die deze sleutel weglaat, mag niet omvallen.** De andere
+   *    tests in dit blok geven `leeg` mee zonder `onbeoordeeld`; zou de standaard
+   *    ontbreken, dan zijn ze rood om iets dat niets met hun onderwerp te maken
+   *    heeft — en is de goedkoopste reparatie de sleutel overal invullen.
+   */
+  it('valt niet om als de aanroeper geen onbeoordeelde lijst meegeeft', () => {
+    expect(meldingen(leeg, lijsten)).toEqual([]);
+  });
 });
 
 describe('verlopenRegels', () => {
@@ -865,6 +998,34 @@ describe('verlopenRegels', () => {
     );
 
     expect(uit).toEqual([]);
+  });
+
+  /**
+   * ⚠️⚠️ **De naad, en niet de twee kanten ervan — QS8-483, regel 18 vraag 1.**
+   *    De test hierboven voedt `ongemeten` met de hand; die hieronder voedt
+   *    `verlopenRegels()` met wat `beoordeelSchrijven()` er écht uit geeft. Dat
+   *    verschil is de hele bewaking: wordt `ongemeten[sleutel]` ooit uit de tak
+   *    `!g.volledig` gehaald — de verleiding nu diezelfde tak óók een bevinding
+   *    oplevert — dan blijft de handgevoede test groen en valt deze om.
+   */
+  it('noemt een uitzondering achter een blind pad ongemeten, door de hele keten heen', () => {
+    const bron = [
+      `.from('goals').insert({ owner_id: u })`,
+      `const patch = f(x);`,
+      `supabase().from('goals').insert(patch)`,
+    ].join('\n');
+    const oordeel = beoordeelSchrijven({ acties: schrijfIn('a.ts', bron), rechten: RECHTEN_SCHRIJF });
+
+    const uit = verlopenRegels(oordeel, {
+      geenSchrijfpad: [{ tabel: 'goals', soort: 'INSERT', kolom: 'title', reden: 'x' }],
+      nietTeLezen: [],
+      geenAanroeper: [],
+    });
+
+    expect(uit).toHaveLength(1);
+    expect(uit[0]).toContain('ongemeten');
+    // ⚠️ De gevaarlijke uitkomst is de tegenovergestelde opdracht.
+    expect(uit[0]).not.toContain('haal hem weg');
   });
 });
 

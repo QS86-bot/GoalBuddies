@@ -697,10 +697,28 @@ export function ontleedSchrijfrechten(uitvoer) {
 function boekActie(geschreven, a) {
   for (const recht of a.rechten) {
     const sleutel = `${a.tabel}|${recht}`;
-    geschreven[sleutel] ??= { kolommen: new Set(), volledig: true };
-    if (a.kolommen === null) geschreven[sleutel].volledig = false;
-    else for (const k of a.kolommen) geschreven[sleutel].kolommen.add(k);
+    geschreven[sleutel] ??= { kolommen: new Set(), volledig: true, blinde: [] };
+    if (a.kolommen === null) {
+      geschreven[sleutel].volledig = false;
+      // ⚠️ **Wélk pad onleesbaar is, hoort hier bewaard te worden — QS8-483.**
+      //    Zonder deze regel weet de tak verderop alleen *dát* er een blind pad
+      //    is en kan hij zijn melding niet onderbouwen. Een melding die zegt
+      //    "deze kolom is niet beoordeeld" zonder te zeggen waardoor, stuurt de
+      //    lezer naar de grant in plaats van naar het pad.
+      geschreven[sleutel].blinde.push({ pad: a.pad, reden: a.reden });
+    } else for (const k of a.kolommen) geschreven[sleutel].kolommen.add(k);
   }
+}
+
+/**
+ * Boekt de kolommen van één paar die geen léésbaar schrijfpad zetten — QS8-483.
+ *
+ * ⚠️ Staat los om dezelfde reden als `boekActie()`: de `if` erin zou de lus in
+ *    `beoordeelSchrijven()` op vier niveaus brengen (coderegel 15, `max-depth`).
+ */
+function boekOnbeoordeeld(onbeoordeeld, { tabel, soort, r, g }) {
+  const kolommen = r.kolommen.filter((k) => !g.kolommen.has(k));
+  if (kolommen.length > 0) onbeoordeeld.push({ tabel, soort, kolommen, paden: g.blinde });
 }
 
 /**
@@ -773,6 +791,18 @@ export function beoordeelSchrijven({ acties, rechten }) {
   const ongemeten = {};
   const zonderAanroeper = [];
 
+  /**
+   * Kolommen met een grant die géén leesbaar schrijfpad zet, op een paar waar
+   * één pad onleesbaar is — QS8-483.
+   *
+   * ⚠️ **Dit is nadrukkelijk iets anders dan `ongeschreven`.** Daar is gemeten
+   *    dat niets de kolom schrijft; hier is gemeten dat niets wat te lézen is
+   *    hem schrijft. Het blinde pad kan hem wél zetten. "Dood hout" beweren
+   *    over een kolom die je niet gemeten hebt, is de fout waar QS8-349 al eens
+   *    op viel — vandaar een eigen lijst met een eigen, gedempte melding.
+   */
+  const onbeoordeeld = [];
+
   for (const [tabel, per] of Object.entries(rechten)) {
     for (const [soort, r] of Object.entries(per)) {
       const sleutel = `${tabel}|${soort}`;
@@ -826,7 +856,12 @@ export function beoordeelSchrijven({ acties, rechten }) {
         continue;
       }
       if (!g.volledig) {
+        // ⚠️ `ongemeten` blijft staan, en dat is geen restant — QS8-483.
+        //    `verlopenRegels()` leest hem: een uitzondering op een paar met een
+        //    blind pad is **niet verlopen** maar ongemeten, en de opdracht
+        //    blijft "herzie hem". Dat is de reparatie van de review op PR #140.
         ongemeten[sleutel] = 'één schrijfpad naar deze tabel is niet te lezen';
+        boekOnbeoordeeld(onbeoordeeld, { tabel, soort, r, g });
         continue;
       }
 
@@ -835,7 +870,7 @@ export function beoordeelSchrijven({ acties, rechten }) {
     }
   }
 
-  return { ontbrekend, ongeschreven, onleesbaar, ongemeten, zonderAanroeper };
+  return { ontbrekend, ongeschreven, onleesbaar, ongemeten, zonderAanroeper, onbeoordeeld };
 }
 
 // ---------------------------------------------------------------------------
@@ -1140,8 +1175,13 @@ export const NIET_TE_LEZEN = [
       'enig pad ze schreef, en een client kon een mijlpaal aanmaken die al `done` ' +
       'was met een teruggedateerde datum. 0195 heeft die drie ingetrokken. ' +
       '⚠️ Wat blijft staan is de echte beperking: zolang dit pad onleesbaar is, ' +
-      'valt `milestones|INSERT` in de tak `!g.volledig` en zwijgt de controle over ' +
-      'álle kolommen van dat paar — de derde blinde tak, die QS8-349 niet dichtte.',
+      'valt `milestones|INSERT` in de tak `!g.volledig`. ⚠️ **Die tak zweeg tot ' +
+      '14-09-2026 over álle kolommen van dat paar; sinds QS8-483 doet hij dat ' +
+      'niet meer** — hij meldt de kolommen die géén leesbaar pad zet, gedempt en ' +
+      'met dit pad erbij. Wat er van de beperking overblijft is precies dat: of ' +
+      'dít pad zo\'n kolom schrijft, blijft onbekend. 📏 Vandaag dekken de ' +
+      'leesbare paden élke gegunde kolom van dit paar, dus de tak is stil omdat ' +
+      'er niets te melden is en niet omdat hij niet kijkt.',
   },
   {
     pad: 'src/modules/goals/interview.ts',
@@ -1281,7 +1321,13 @@ function zonderAanroeperMeldingen(zonderAanroeper, register) {
 }
 
 export function meldingen(
-  { ontbrekend, ongeschreven, onleesbaar, zonderAanroeper = GEEN_ZONDER_AANROEPER },
+  {
+    ontbrekend,
+    ongeschreven,
+    onleesbaar,
+    zonderAanroeper = GEEN_ZONDER_AANROEPER,
+    onbeoordeeld = GEEN_ONBEOORDEELD,
+  },
   lijsten = LIJSTEN,
 ) {
   const uit = [];
@@ -1317,7 +1363,43 @@ export function meldingen(
     );
   }
 
+  uit.push(...onbeoordeeldeMeldingen(onbeoordeeld));
+
   return uit;
+}
+
+/** Lege standaard, zodat een ijking die deze sleutel weglaat niet omvalt. */
+const GEEN_ONBEOORDEELD = [];
+
+/**
+ * De gedempte melding voor een kolom die geen léésbaar schrijfpad heeft.
+ *
+ * ⚠️⚠️ **De toon is het punt, niet de vondst — QS8-483.** `ongeschreven` mag
+ *    zeggen "die grant gebruikt niets"; hier mag dat niet, want het blinde pad
+ *    kan de kolom wél zetten. Deze melding beweert daarom precies één ding: dit
+ *    is **niet beoordeeld**. En ze noemt het pad dat dat veroorzaakt, zodat de
+ *    lezer naar het pad loopt en niet naar de grant.
+ *
+ * ⚠️ **Er staat met opzet geen register tegenover.** Een rij die zegt "dit is
+ *    beoordeeld en het mag" zou hier een bewering zijn over iets dat per
+ *    definitie ongemeten is — dezelfde leugen-in-een-grendel als een verlopen
+ *    uitzondering. De weg eruit is het pad leesbaar maken of de grant intrekken;
+ *    allebei maken de melding wáár in plaats van stil.
+ *
+ * ⚠️ Per `tabel|soort` één regel met de kolommen erin, om dezelfde reden als bij
+ *    `zonderAanroeperMeldingen()`: vijf losse regels over hetzelfde blinde pad
+ *    leer je overslaan.
+ */
+function onbeoordeeldeMeldingen(onbeoordeeld) {
+  return onbeoordeeld.map((o) => {
+    const kolommen = o.kolommen.map((k) => `\`${k}\``).join(', ');
+    const paden = o.paden.map((b) => `${b.pad} (${b.reden})`).join(', ');
+    return (
+      `\`${o.tabel}\` ${o.soort}: ${kolommen} heeft een grant die geen enkel ` +
+      `léésbaar schrijfpad zet, en ${paden} is niet te lezen — dus onbeoordeeld, ` +
+      'en onbeoordeeld is niet groen; maak dat pad leesbaar of trek de grant in'
+    );
+  });
 }
 
 /**
