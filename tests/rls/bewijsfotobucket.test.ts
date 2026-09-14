@@ -11,6 +11,7 @@ import { randomUUID } from 'node:crypto';
 
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
+import { proefCode } from './proefid';
 import { psql as psqlKaal, stackBeschikbaarOfFaal } from './psql-stack';
 
 const psql = (sql: string) => psqlKaal(sql, { verbose: true });
@@ -275,6 +276,8 @@ describe.runIf(beschikbaar)('de bewijsfoto-bucket (0227) en de kolomgrens (0229)
         `insert into public.weekly_goals (goal_id, title, cycle_start_date)
          values ('${eigenDoel}', 'Verhuisweek', current_date) returning id`,
       );
+      const emmer = proefCode('verhuisstop', 1);
+      const geparkeerd = `${proefCode('geparkeerd', 1)}.jpg`;
 
       // Het plafond vol maken, en er daarna eentje omheen proberen te schuiven.
       for (let i = 0; i < 10; i += 1) {
@@ -283,13 +286,24 @@ describe.runIf(beschikbaar)('de bewijsfoto-bucket (0227) en de kolomgrens (0229)
            values ('bewijsfotos', '${eigenWeek}/${eigen}/vol${i}.jpg', '${eigen}')`,
         );
       }
+      // ⚠️⚠️ **Emmer én objectnaam per run uniek — QS8-481.** Hier stonden de
+      //    vaste namen `verhuisstop` en `geparkeerd.jpg`, en
+      //    `objects_bucket_id_name_key` is uniek over de héle tabel. 📏 Bij twee
+      //    gelijktijdige suite-runs gaf dat deterministisch:
+      //
+      //      ERROR: 23505: duplicate key value violates unique constraint
+      //             "objects_bucket_id_name_key"
+      //      DETAIL: Key (bucket_id, name)=(verhuisstop, geparkeerd.jpg)
+      //
+      //    Dezelfde vorm als de `groups_invite_code_key`-botsing van QS8-348,
+      //    op een andere tabel. `proefCode()` bestaat precies hiervoor.
       psql(
-        `insert into storage.buckets (id, name, public) values ('verhuisstop', 'verhuisstop', false)
-         on conflict (id) do nothing`,
+        `insert into storage.buckets (id, name, public)
+         values ('${emmer}', '${emmer}', false) on conflict (id) do nothing`,
       );
       psql(
         `insert into storage.objects (bucket_id, name, owner)
-         values ('verhuisstop', 'geparkeerd.jpg', '${eigen}')`,
+         values ('${emmer}', '${geparkeerd}', '${eigen}')`,
       );
 
       let verhuizing = 'OK';
@@ -297,7 +311,7 @@ describe.runIf(beschikbaar)('de bewijsfoto-bucket (0227) en de kolomgrens (0229)
         psql(
           `update storage.objects
               set bucket_id = 'bewijsfotos', name = '${eigenWeek}/${eigen}/verhuisd.jpg'
-            where bucket_id = 'verhuisstop' and name = 'geparkeerd.jpg'`,
+            where bucket_id = '${emmer}' and name = '${geparkeerd}'`,
         );
       } catch (fout) {
         const tekst = fout instanceof Error ? fout.message : String(fout);
@@ -316,8 +330,8 @@ describe.runIf(beschikbaar)('de bewijsfoto-bucket (0227) en de kolomgrens (0229)
         binnen = 'GEWEIGERD';
       }
 
-      psql(`delete from storage.objects where name like '${eigenWeek}/%' or bucket_id = 'verhuisstop'`);
-      psql(`delete from storage.buckets where id = 'verhuisstop'`);
+      psql(`delete from storage.objects where name like '${eigenWeek}/%' or bucket_id = '${emmer}'`);
+      psql(`delete from storage.buckets where id = '${emmer}'`);
       psql(`delete from public.goals where id = '${eigenDoel}'`);
       psql(`delete from auth.users where id = '${eigen}'`);
 

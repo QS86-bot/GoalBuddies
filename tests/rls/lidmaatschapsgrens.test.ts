@@ -257,23 +257,55 @@ describe.skipIf(!rlsTestsConfigured)('group_members_update — wie raakt welke r
       //    het tweede standhoudt als het eerste ooit lekt. Zonder de trigger uit
       //    te zetten is er geen wereld waarin deze helft iets doet — en een test
       //    die zo'n wereld niet kan bouwen, bewaakt niets.
-      psql('alter table public.group_members disable trigger group_members_guard;');
+      // ⚠️⚠️ **Binnen één transactie, en dat is de reparatie van QS8-481.**
+      //    Hier stond de `disable` als losse `psql()` met een `enable` in een
+      //    `finally`. Die commit, dus de trigger stond in dat venster voor de
+      //    **héle database** uit — ook voor een tweede suite-run, die op datzelfde
+      //    moment van `group_members_guard` verwacht dat hij werpt. 📏 Gemeten:
+      //    `rechten-zonder-aanroeper.test.ts` werd er twee keer rood van.
+      //
+      // ⚠️ **De poging moet daarom mee de transactie in**, en dus via `psql()` en
+      //    niet via PostgREST: dat is een andere verbinding en zou de uitgezette
+      //    trigger niet zien. De policy doet in `psql` precies hetzelfde werk —
+      //    `set local role authenticated` plus de jwt-claims geven dezelfde
+      //    `auth.uid()` en dezelfde RLS.
+      //
+      // ⚠️ **Wat het kost, en dat is bewust:** `alter table … disable trigger`
+      //    neemt binnen de transactie een ACCESS EXCLUSIVE-lock op
+      //    `group_members`. Een gelijktijdige run die die tabel aanraakt, wácht
+      //    nu even in plaats van ongegrendeld te schrijven. Milliseconden
+      //    wachten is de goede kant van die ruil.
+      const uitkomst = psql(`
+        begin;
+        create temp table r (code text);
+        grant select, insert, update on r to authenticated;
+        insert into r values ('geen fout');
+        alter table public.group_members disable trigger group_members_guard;
+        select set_config('request.jwt.claims',
+          json_build_object('sub', '${w.bob.id}', 'role', 'authenticated')::text, true);
+        set local role authenticated;
+        do $$
+        begin
+          update group_members set user_id = '${w.alice.id}'
+           where group_id = '${w.groupId}' and user_id = '${w.bob.id}';
+        exception
+          when others then update r set code = sqlstate;
+        end $$;
+        reset role;
+        select 'CODE=' || code from r;
+        rollback;
+      `);
 
-      try {
-        const poging = await w.bob.db
-          .from('group_members')
-          .update({ user_id: w.alice.id })
-          .eq('group_id', w.groupId)
-          .eq('user_id', w.bob.id)
-          .select('user_id');
+      const code = uitkomst
+        .split('\n')
+        .map((regel) => regel.trim())
+        .filter((regel) => regel.startsWith('CODE='))
+        .at(-1);
 
-        expect(
-          poging.error?.code,
-          'de nieuwe rij hoort de check niet te passeren: hij zou van alice zijn',
-        ).toBe('42501');
-      } finally {
-        psql('alter table public.group_members enable trigger group_members_guard;');
-      }
+      expect(
+        code,
+        'de nieuwe rij hoort de check niet te passeren: hij zou van alice zijn',
+      ).toBe('CODE=42501');
 
       // En de rij staat er nog zoals hij stond.
       const na = await adminDb()
