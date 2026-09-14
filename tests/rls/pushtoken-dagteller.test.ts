@@ -46,7 +46,7 @@
  */
 import { afterAll, beforeEach, describe, expect, it } from 'vitest';
 
-import { proefId } from './proefid';
+import { proefCode, proefId } from './proefid';
 import { psql, stackBeschikbaarOfFaal } from './psql-stack';
 
 const beschikbaar = stackBeschikbaarOfFaal(
@@ -57,9 +57,23 @@ const beschikbaar = stackBeschikbaarOfFaal(
 const GEBRUIKER = proefId(1);
 const PLAFOND = 20;
 
-/** Een geldig Expo-token; de vorm staat onder `push_tokens_native_vorm`. */
+/**
+ * Een geldig Expo-token; de vorm staat onder `push_tokens_native_vorm`.
+ *
+ * ⚠️⚠️ **Per run uniek, en dat is geen netheid — QS8-481.** Hier stond
+ *    `ExponentPushToken[${String(n).padStart(20, 'a')}]`: een vaste string die
+ *    alleen van `n` afhangt. 📏 Bij twee gelijktijdige suite-runs registreerde
+ *    de ándere run dezelfde twintig tokens, en `registreer_push_token()` doet
+ *    `on conflict … do update set user_id = excluded.user_id` — de kop van 0211
+ *    zegt met zoveel woorden dat die rij dan **verhuist**. Deze test telde
+ *    daarna `1` waar er `20` hoorden.
+ *
+ * ⚠️ **Gevaarlijker dan een botsing die wérpt.** De unieke sleutel weigert hier
+ *    niets; de rij wordt stil naar de andere gebruiker geschreven. Een 23505
+ *    wijst je naar de oorzaak, dit niet.
+ */
 function token(n: number): string {
-  return `ExponentPushToken[${String(n).padStart(20, 'a')}]`;
+  return `ExponentPushToken[${proefCode('pt', n)}]`;
 }
 
 /** Roept de RPC aan als deze gebruiker en geeft het antwoord terug. */
