@@ -377,6 +377,22 @@
 > **Lees bij zo'n verschil dus eerst welke van de twee runs wat toetste**, vóór je
 > aan een flake denkt.
 >
+> **14-09, punt AA: de frasering waarmee een agendarij naar zijn vervolgissue
+> wijst, is geen afspraak — selecteer er dus niet blind op.** QS8-479 pakte de
+> open Hoog/Middel-rijen die *"Staat als QS8-NNN"* schrijven, en die keuze was
+> goed: een brede sweep op "noemt een Done-issue" gaat één op twee onterecht af,
+> want geland is niet uitgerold (QS8-460). 📏 Maar gemeten over de 65 open rijen
+> schrijven er **drie** *"Staat als"*, **één** *"nu QS8-NNN"*, en noemen er 54
+> alleen het issue waarin ze gevónden zijn — dat laatste zegt terecht niets over
+> de stand. Die ene was de AVG-rij over `chat_messages.body`, al drie dagen dicht
+> én uitgerold én getoetst, en hij bleef open staan (QS8-484).
+>
+> ⚠️ **De kost was precies één rij, en dat is juist het punt.** De smalle filter
+> was bijna volledig, dus hij voelde als een mechanisme terwijl hij aan een
+> zinswending hing die niemand ergens heeft vastgelegd. **Grep bij zo'n ronde op
+> de vórm die je zoekt én op een paar varianten ernaast**, en schrijf op hoeveel
+> er in elke vorm staan — dan weet je of je filter smal of toevallig is.
+>
 > ⚠️⚠️ **11-09, punt P: een lintregel kan code laten buigen, en dan verplaats je
 > het probleem naar de lezer.** QS8-422 moest in de rollover een `if` in een `if`
 > vervangen door een ternair met twee guards, puur omdat dat blok toen ín twee
