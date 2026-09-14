@@ -541,16 +541,13 @@ async function stuurNudge(ronde: Meldronde): Promise<void> {
     //
     // ⚠️ Geen activiteitsdatum betekent een nieuwe gebruiker die nog nooit iets
     //    deed. Die is niet "stil geworden" en krijgt Ignis, niet Lucerna.
-    const laatste = await laatsteActiviteitDatum(db, profiel.id, profiel.tz);
-    const trigger: Trigger =
-      laatste === null ? 'misser' : tegenslagtrigger(laatste as never, lokaleDatum as never);
+    const bericht = async () => {
+      const laatste = await laatsteActiviteitDatum(db, profiel.id, profiel.tz);
+      const trigger: Trigger =
+        laatste === null ? 'misser' : tegenslagtrigger(laatste as never, lokaleDatum as never);
 
-    const bericht = await metHeldenstem(
-      ronde,
-      'nudge',
-      nudgeBericht(toon, taalVan(profiel)),
-      trigger,
-    );
+      return metHeldenstem(ronde, 'nudge', nudgeBericht(toon, taalVan(profiel)), trigger);
+    };
 
     const stand = await stuur(db, {
       userId: profiel.id,
@@ -639,12 +636,13 @@ async function stuurGoedkeuringsverzoeken(ronde: Meldronde): Promise<void> {
       inStilte,
       nu,
       soort: 'approval_request',
-      bericht: await metHeldenstem(
-        ronde,
-        'approval_request',
-        berichtVoor('approval_request', { naam: rij.naam }, taalVan(profiel)),
-        null,
-      ),
+      bericht: () =>
+        metHeldenstem(
+          ronde,
+          'approval_request',
+          berichtVoor('approval_request', { naam: rij.naam }, taalVan(profiel)),
+          null,
+        ),
       lokaleDatum,
       refId: rij.completionId,
     });
@@ -678,12 +676,13 @@ async function stuurOntvangenGoedkeuringen(ronde: Meldronde): Promise<void> {
       inStilte,
       nu,
       soort: 'approval_received',
-      bericht: await metHeldenstem(
-        ronde,
-        'approval_received',
-        berichtVoor('approval_received', { naam: rij.naam }, taalVan(profiel)),
-        null,
-      ),
+      bericht: () =>
+        metHeldenstem(
+          ronde,
+          'approval_received',
+          berichtVoor('approval_received', { naam: rij.naam }, taalVan(profiel)),
+          null,
+        ),
       lokaleDatum,
       refId: rij.approvalId,
     });
@@ -810,12 +809,13 @@ async function stuurCyclusoverzicht(ronde: Meldronde): Promise<void> {
         //    hier `null` staan, dan spreekt de hoofdheld en valt de melding
         //    onder de gewone dagregel, en dan is er geen moment meer waarop die
         //    uitzondering ooit optreedt.
-        bericht: await metHeldenstem(
-          ronde,
-          'cycle_summary',
-          berichtVoor('cycle_summary', { weekpasGered }, taalVan(profiel)),
-          'mijlpaal',
-        ),
+        bericht: () =>
+          metHeldenstem(
+            ronde,
+            'cycle_summary',
+            berichtVoor('cycle_summary', { weekpasGered }, taalVan(profiel)),
+            'mijlpaal',
+          ),
         lokaleDatum,
         refId: null,
       });
@@ -873,12 +873,13 @@ async function stuurGetuigenissen(ronde: Meldronde): Promise<void> {
       inStilte,
       nu,
       soort: 'commitment_witness',
-      bericht: await metHeldenstem(
-        ronde,
-        'commitment_witness',
-        berichtVoor('commitment_witness', { naam: rij.naam }, taalVan(profiel)),
-        null,
-      ),
+      bericht: () =>
+        metHeldenstem(
+          ronde,
+          'commitment_witness',
+          berichtVoor('commitment_witness', { naam: rij.naam }, taalVan(profiel)),
+          null,
+        ),
       lokaleDatum,
       refId: rij.commitmentId,
     });
@@ -989,7 +990,22 @@ async function noteerVerschijning(
     .from('hero_appearances')
     .insert({ user_id: userId, hero_key: held, trigger });
 
-  if (error) void meld(error, 'notificaties.heldverschijning', { user_id: userId });
+  // ⚠️ **`await` en geen `void`.** Supabase kan de isolate bevriezen zodra het
+  //    antwoord verstuurd is; een niet-afgewachte melding komt dan nooit aan.
+  //    De kop van dit bestand waarschuwt daarvoor, en dit was de enige van de
+  //    achttien `meld()`-aanroepen in deze map die hem negeerde.
+  //
+  //    Het gevolg is scherper dan het lijkt: dit is de énige schrijfactie die
+  //    mág mislukken zonder de melding tegen te houden, en dus ook de enige
+  //    waarvan niemand het merkt. Raakt `hero_appearances` onbeschrijfbaar, dan
+  //    wordt de dagregel blind en spreken er twee helden op één dag — zonder
+  //    één signaal. Gevonden in de security-review op QS8-475.
+  if (error) {
+    await meld(error, 'notificaties.heldverschijning', {
+      code: 'heldverschijning_mislukt',
+      userId,
+    });
+  }
 }
 
 /**
@@ -1419,7 +1435,22 @@ async function stuur(
     userId: string;
     apparaten: readonly Token[];
     soort: Melding;
-    bericht: Bericht;
+    /**
+     * De tekst, of een functie die hem maakt.
+     *
+     * ⚠️⚠️ **Een functie, want de heldenstem heeft een bijwerking** — QS8-475.
+     *    `metHeldenstem()` schrijft een rij in `hero_appearances`, en als
+     *    argument van deze functie draait dat vóór de poort hieronder. Gevolg:
+     *    iemand die de soort uitzette of in zijn stille uren zit, krijgt geen
+     *    melding maar kríjgt wel een verschijning — de quote staat de volgende
+     *    ochtend op zijn scherm, en de dagregel is opgebruikt door een bericht
+     *    dat nooit kwam.
+     *
+     *    Dat is woordelijk de fout waar de kop hieronder al voor waarschuwde,
+     *    maar dan op een tweede tabel. Gevonden in de security-review op
+     *    QS8-475.
+     */
+    bericht: Bericht | (() => Promise<Bericht>);
     lokaleDatum: string;
     refId: string | null;
     nu: Date;
@@ -1440,6 +1471,11 @@ async function stuur(
   //    geen stapel oude meldingen.
   const reden = meldingPoortReden(opdracht.soort, opdracht.voorkeuren, opdracht.inStilte);
   if (reden !== null) return 'onderdrukt';
+
+  // ⚠️ **Pas hier de tekst maken.** Zie de toelichting bij `bericht` hierboven:
+  //    alles met een bijwerking hoort ná de poort, niet ervoor.
+  const bericht =
+    typeof opdracht.bericht === 'function' ? await opdracht.bericht() : opdracht.bericht;
 
   const { data: logRij, error: logFout } = await db
     .from('notifications_sent')
@@ -1468,7 +1504,7 @@ async function stuur(
   let bezorgd = 0;
 
   if (native.length > 0) {
-    bezorgd += await stuurExpo(opdracht.userId, native, opdracht.soort, opdracht.bericht);
+    bezorgd += await stuurExpo(opdracht.userId, native, opdracht.soort, bericht);
   }
 
   if (web.length > 0) {
@@ -1476,7 +1512,7 @@ async function stuur(
     if (sleutels === null) {
       console.error('VAPID-sleutels ontbreken; web-abonnementen overgeslagen');
     } else {
-      bezorgd += await stuurWeb(db, web, opdracht.bericht, opdracht.soort, sleutels, opdracht.nu);
+      bezorgd += await stuurWeb(db, web, bericht, opdracht.soort, sleutels, opdracht.nu);
     }
   }
 

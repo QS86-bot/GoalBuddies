@@ -37,6 +37,12 @@ import { zonderCommentaar } from './roept-aan';
  *   N  de áánroep van `noteerVerschijning(` weghalen, de definitie laten staan
  *      → "schrijft elke verschijning weg"
  *
+ *   O  `bericht: () => metHeldenstem(...)` terug naar `bericht: await metHeldenstem(...)`
+ *      → "geeft de tekst als functie door en niet als afgewachte waarde" én
+ *        "roept metHeldenstem alleen vanuit een functie aan"
+ *   P  het uitpakken in `stuur()` vóór `meldingPoortReden()` zetten
+ *      → "laat stuur() de tekst pas na de poort maken"
+ *
  * ⚠️⚠️ **Twee van deze vier bleven bij de eerste poging groen, en dat is de
  *    reden dat dit blok er staat.** K greep naar `from('hero_profiles')` en
  *    miste daarmee de embedding in een select — precies de vorm die de mutatie
@@ -111,6 +117,64 @@ describe('de job zoekt de held op één plek op, en pas als hij nodig is', () =>
     // ⚠️ Correctheidsregel 7, en het is hier makkelijk mis te gaan: `shown_at` is
     //    een timestamptz en de dag is die van de gebruiker.
     expect(JOB, 'de job gebruikt localDateOf').toMatch(/localDateOf\(/);
+  });
+});
+
+describe('de verschijning wordt pas genoteerd als de melding de poort haalt', () => {
+  /**
+   * ⚠️⚠️ **Dit is de naad die deze suite eerst níet dekte, en het kostte een
+   *    echte fout.** De vorige versie telde wáár de heldopzoeking staat en niet
+   *    wannéér hij draait. `metHeldenstem()` stond als **argument** van
+   *    `stuur()`, en JavaScript evalueert argumenten vóór de aanroep — dus de
+   *    insert in `hero_appearances` gebeurde vóór `meldingPoortReden()`.
+   *
+   *    Gevolg: wie een meldingsoort uitzette of in zijn stille uren zat, kreeg
+   *    geen melding maar wél een verschijning. De quote stond de volgende
+   *    ochtend op zijn Vandaag-scherm, en de dagregel was opgebruikt door een
+   *    bericht dat nooit kwam — dus de melding die hij wél kreeg, kreeg de kale
+   *    tekst. De feature viel stil uit bij precies de mensen die hun
+   *    instellingen hadden aangepast.
+   *
+   *    ⚠️ En de codebase wáárschuwde ervoor: bij dezelfde poort staat al
+   *       "Vóór de insert en niet erna, en dat verschil is dataverlies" — over
+   *       `notifications_sent`. Dezelfde fout, een tabel verderop.
+   *
+   * ⚠️ **De grendel is dat `metHeldenstem` nergens `await`-ed als argument
+   *    staat.** Dat is de vorm die de fout wás; een thunk (`() => metHeldenstem`)
+   *    laat `stuur()` beslissen wanneer hij draait.
+   */
+  it('geeft de tekst als functie door en niet als afgewachte waarde', () => {
+    expect(
+      /bericht:\s*await\s+metHeldenstem/.test(JOB),
+      '`bericht: await metHeldenstem(...)` draait vóór de poort in stuur()',
+    ).toBe(false);
+
+    expect(
+      /const\s+bericht\s*=\s*await\s+metHeldenstem/.test(JOB),
+      'ook een losse `const bericht = await metHeldenstem(...)` draait te vroeg',
+    ).toBe(false);
+  });
+
+  it('roept metHeldenstem alleen vanuit een functie aan', () => {
+    // ⚠️ Vijf meldingsoorten, dus vijf thunks — plus de definitie. Elke aanroep
+    //    die niet in een `() =>` zit, staat weer vóór de poort.
+    const aanroepen = JOB.match(/metHeldenstem\(/g) ?? [];
+    const luie = JOB.match(/=>\s*\n?\s*metHeldenstem\(|=>\s*\{[\s\S]{0,400}?metHeldenstem\(/g) ?? [];
+
+    expect(aanroepen.length, 'gedefinieerd plus vijf soorten').toBe(6);
+    expect(luie.length, 'elke aanroep zit in een thunk').toBe(5);
+  });
+
+  it('laat stuur() de tekst pas na de poort maken', () => {
+    // ⚠️ De andere helft: `stuur()` moet de functie ook echt uitvoeren, en pas
+    //    ná `meldingPoortReden()`. Zou hij hem vóór de poort uitpakken, dan is
+    //    de thunk decoratie.
+    const poort = JOB.indexOf('meldingPoortReden(opdracht.soort');
+    const uitpakken = JOB.indexOf("typeof opdracht.bericht === 'function'");
+
+    expect(poort, 'de poort staat in stuur()').toBeGreaterThan(-1);
+    expect(uitpakken, 'stuur() pakt de functie uit').toBeGreaterThan(-1);
+    expect(uitpakken, 'het uitpakken staat ná de poort').toBeGreaterThan(poort);
   });
 });
 
