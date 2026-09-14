@@ -804,11 +804,20 @@ async function stuurCyclusoverzicht(ronde: Meldronde): Promise<void> {
         //    `tests/beloftes/weekpas-bereikt-je.test.ts`.
         soort: 'cycle_summary',
         // ⚠️ **`mijlpaal` en niet `null`, en dat is de uitzondering op de
-        //    dagregel.** Een afgesloten week is het moment waarop het
-        //    brondocument een tweede stem toestaat — hoofdheld plus Strix. Zou
-        //    hier `null` staan, dan spreekt de hoofdheld en valt de melding
-        //    onder de gewone dagregel, en dan is er geen moment meer waarop die
-        //    uitzondering ooit optreedt.
+        //    dagregel.** Een afgesloten week is het enige moment waarop een
+        //    tweede stem op één dag mag. Zou hier `null` staan, dan valt de
+        //    melding onder de gewone dagregel en treedt die uitzondering nooit
+        //    op.
+        //
+        // ⚠️⚠️ **Wat hier eerst stond klopte niet: "hoofdheld plus Strix".** Het
+        //    brondocument formuleert de uitzondering zo, maar in deze code
+        //    spreekt bij `cycle_summary` altijd Strix — `kiesStem('mijlpaal', X)`
+        //    geeft Strix, wie `X` ook is, want een specifieke trigger wint van de
+        //    hoofdheld. De hoofdheld komt alleen aan het woord bij
+        //    `approval_request`, `approval_received` en `commitment_witness`.
+        //    Gecorrigeerd na de security-review op QS8-475; een kop die iets
+        //    anders beweert dan de code doet, is precies waar de volgende lezer
+        //    op afgaat.
         bericht: () =>
           metHeldenstem(
             ronde,

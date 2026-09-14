@@ -172,7 +172,20 @@ export interface Verschijning {
  *
  * ⚠️ **Werpt bij een fout, net als `heldprofiel()`.** Een `null` zou "er is nog
  *    nooit een held geweest" betekenen, en dat is iets anders dan "ik kon het
- *    niet ophalen". Het scherm heeft dat verschil nodig voor zijn foutstaat.
+ *    niet ophalen", en `reportError()` hoort het te melden.
+ *
+ * ⚠️⚠️ **Maar de énige aanroeper doet er niets mee, en dat is hier juist.** Het
+ *    `HeldBlok` op het Vandaag-scherm tekent bij een fout niets — precies wat
+ *    het ook doet als er geen verschijning is. Dat is geen gemiste foutstaat
+ *    maar de goede: dit blok is de quote ónder een melding die al aangekomen is,
+ *    en "je quote kon niet geladen worden" is een storingsmelding over iets wat
+ *    niemand gevraagd heeft. De fout gaat naar Sentry en de kaart blijft weg.
+ *
+ *    Hier stond eerst *"het scherm heeft dat verschil nodig voor zijn
+ *    foutstaat"*, en dat was onwaar zodra je keek — gevonden in de
+ *    security-review op QS8-475. ⚠️ Komt er ooit een tweede aanroeper die de
+ *    fout wél moet tonen, dan is het werpen er al; dan is dit comment de
+ *    plek die meeverandert.
  */
 export async function laatsteVerschijning(userId: string): Promise<Verschijning | null> {
   const { data, error } = await supabase()
