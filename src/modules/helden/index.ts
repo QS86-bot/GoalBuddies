@@ -22,14 +22,17 @@ export {
   AFGEKEURDE_QUOTES,
   alleQuoteSleutels,
   quoteSleutels,
+  quoteVoorVerschijning,
   type Quotesleutels,
 } from './quotes';
 
 export {
   bewaarHeld,
   heldprofiel,
+  laatsteVerschijning,
   type Heldprofiel,
   type HeldUitkomst,
+  type Verschijning,
 } from './heldprofiel';
 
 export {

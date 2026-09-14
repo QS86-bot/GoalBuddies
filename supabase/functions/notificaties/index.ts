@@ -960,8 +960,10 @@ async function heldenVandaag(
     .eq('user_id', userId)
     .gte('shown_at', grens);
 
-  const rijen = (data ?? []) as { shown_at: string }[];
-  return rijen.filter((r) => localDateOf(r.shown_at, tz as never) === lokaleDatum).length;
+  // ⚠️ `verschijningen` en niet `rijen`: die naam is hierboven geïmporteerd uit
+  //    `bladeren` en schaduwen is hier een lintfout.
+  const verschijningen = (data ?? []) as { shown_at: string }[];
+  return verschijningen.filter((r) => localDateOf(r.shown_at, tz as never) === lokaleDatum).length;
 }
 
 /**
