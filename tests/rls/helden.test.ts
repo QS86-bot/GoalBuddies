@@ -69,7 +69,10 @@ describe.skipIf(!rlsTestsConfigured)('De heldentabellen', () => {
       .from('hero_profiles')
       .insert({ user_id: eigenaar.id, hero_key: 'strix', source: 'quiz' });
 
-    await eigenaar.db
+    // ⚠️ Via `adminDb()` en niet via de eigenaar: sinds de security-review op dit
+    //    issue schrijft géén client deze tabel. Dat is precies wat de test
+    //    hieronder vastlegt; hier is het alleen de opstelling.
+    await adminDb()
       .from('hero_appearances')
       .insert({ user_id: eigenaar.id, hero_key: 'ignis', trigger: 'misser' });
   }, TEST_TIMEOUT);
@@ -122,6 +125,13 @@ describe.skipIf(!rlsTestsConfigured)('De heldentabellen', () => {
           .from('hero_appearances')
           .insert({ user_id: eigenaar.id, hero_key: 'quip', trigger: 'tussendoor' });
         expect(verschijning.error).not.toBeNull();
+
+        // ⚠️ En ook niet op eigen naam. Dat is het verschil met `hero_profiles`:
+        //    je held kies je zelf, je verschijningen overkomen je.
+        const eigen = await ander.db
+          .from('hero_appearances')
+          .insert({ user_id: ander.id, hero_key: 'quip', trigger: 'tussendoor' });
+        expect(eigen.error, 'een client hoort hier niet te kunnen schrijven').not.toBeNull();
       },
       TEST_TIMEOUT,
     );
@@ -214,7 +224,7 @@ describe.skipIf(!rlsTestsConfigured)('De heldentabellen', () => {
       async () => {
         for (const sleutel of HELDSLEUTELS) {
           for (const trigger of TRIGGERS) {
-            const { error } = await eigenaar.db
+            const { error } = await adminDb()
               .from('hero_appearances')
               .insert({ user_id: eigenaar.id, hero_key: sleutel, trigger });
             expect(error, `${sleutel}/${trigger}`).toBeNull();
@@ -227,12 +237,12 @@ describe.skipIf(!rlsTestsConfigured)('De heldentabellen', () => {
     it(
       'weigert een sleutel die de module niet kent',
       async () => {
-        const held = await eigenaar.db
+        const held = await adminDb()
           .from('hero_appearances')
           .insert({ user_id: eigenaar.id, hero_key: 'rune', trigger: 'misser' });
         expect(held.error?.code, JSON.stringify(held.error)).toBe('23514');
 
-        const trigger = await eigenaar.db
+        const trigger = await adminDb()
           .from('hero_appearances')
           .insert({ user_id: eigenaar.id, hero_key: 'strix', trigger: 'weekafsluiting' });
         expect(trigger.error?.code, JSON.stringify(trigger.error)).toBe('23514');
@@ -328,7 +338,7 @@ describe.skipIf(!rlsTestsConfigured)('De heldentabellen', () => {
       await vertrekker.db
         .from('hero_profiles')
         .insert({ user_id: vertrekker.id, hero_key: 'meridian', source: 'quiz' });
-      await vertrekker.db
+      await adminDb()
         .from('hero_appearances')
         .insert({ user_id: vertrekker.id, hero_key: 'meridian', trigger: 'nieuw_doel' });
 

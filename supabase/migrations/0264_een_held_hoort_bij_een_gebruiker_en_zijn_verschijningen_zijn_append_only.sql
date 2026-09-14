@@ -142,12 +142,17 @@ create trigger hero_profiles_tijd
 --    De policies voor UPDATE en DELETE staan er mét `using (false)` — niet omdat
 --    een policy zonder rijen iets toevoegt bovenop een ontbrekende grant, maar
 --    omdat een ontbrekende policy geen dichte deur is maar een ongestelde vraag
---    (onwrikbare regel 1). Het échte slot is dat `grant update` en
---    `grant delete` hier niet staan.
+--    (onwrikbare regel 1). Het échte slot is dat er voor `authenticated` géén
+--    `grant insert`, `grant update` of `grant delete` op deze tabel staat.
 --
 --    Zelfde keuze als bij `daily_moves` sinds 0197 en bij streaks: corrigeren
 --    gebeurt met een nieuw record, niet door geschiedenis te overschrijven
 --    (domeinregel 6).
+--
+--    ⚠️ Sinds de security-review van 14-09-2026 schrijft de client hier
+--       helemaal niet meer — zie de noot bij `hero_appearances_insert`. Voor een
+--       client is deze tabel dus niet append-only maar read-only; append-only
+--       beschrijft wat `service_role` ermee mag.
 create table if not exists public.hero_appearances (
   id       uuid        primary key default gen_random_uuid(),
   user_id  uuid        not null references public.profiles (id) on delete cascade,
@@ -180,10 +185,21 @@ create policy hero_appearances_select on public.hero_appearances
   for select to authenticated
   using (user_id = (select auth.uid()));
 
+-- ⚠️⚠️ **Geen client schrijft hier, ook de eigenaar niet.** Een verschijning is
+--    een systeemuitspraak over het gedrag van de gebruiker en geen invoer van de
+--    gebruiker — zelfde soort rij als `badges`, `points_ledger`, `goal_events` en
+--    `notifications_sent`, die `authenticated` alle vier alléén SELECT geven.
+--    Schrijven gebeurt door de Edge Function onder `service_role`, die RLS
+--    passeert.
+--
+--    Dat is niet alleen consistentie. Zodra QS8-477 verschijningen aan een open
+--    groep toont, is een zelfgeschreven rij een reputatiesignaal dat de
+--    gebruiker zelf verzint: `trigger = 'mijlpaal'` zonder mijlpaal. Besloten op
+--    14-09-2026 na de security-review op dit issue.
 drop policy if exists hero_appearances_insert on public.hero_appearances;
 create policy hero_appearances_insert on public.hero_appearances
   for insert to authenticated
-  with check (user_id = (select auth.uid()));
+  with check (false);
 
 drop policy if exists hero_appearances_update on public.hero_appearances;
 create policy hero_appearances_update on public.hero_appearances
@@ -196,7 +212,9 @@ create policy hero_appearances_delete on public.hero_appearances
   using (false);
 
 revoke all on table public.hero_appearances from public, anon, authenticated;
-grant select                              on table public.hero_appearances to authenticated;
-grant insert (user_id, hero_key, trigger) on table public.hero_appearances to authenticated;
--- ⚠️ Geen `grant update` en geen `grant delete`. Dat is het slot; de twee
---    policies hierboven zijn de uitgeschreven vraag erbij.
+grant select on table public.hero_appearances to authenticated;
+-- ⚠️ **Alleen SELECT, en dat is het hele slot.** Geen `grant insert`, geen
+--    `grant update`, geen `grant delete`. De drie policies hierboven staan er
+--    omdat een ontbrekende policy geen dichte deur is maar een ongestelde vraag
+--    (onwrikbare regel 1) — maar wat een client tegenhoudt, is de grant die er
+--    niet is.
