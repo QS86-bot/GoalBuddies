@@ -46,7 +46,13 @@ import { metCors } from '../_shared/cors.ts';
  *    `cancelled` — allebei "nog niets gebeurd", en allebei een gemiste week
  *    zodra de cyclus verstrijkt (A40) — en
  *    de unieke index op `points_ledger` weigert een tweede boeking voor dezelfde
- *    reden en referentie. Twee keer draaien verandert dus niets, en een
+ *    reden, referentie **en ronde** — en `schrijfWeekAf()` boekt altijd op de
+ *    standaardronde 1, dus voor deze functie komt dat op hetzelfde neer.
+ *    ⚠️ Sinds 0266 (QS8-456) is "dezelfde reden en referentie" géén garantie
+ *    meer als algemene uitspraak: `ronde` staat in de sleutel, zodat een week
+ *    na een ingetrokken goedkeuring opnieuw geboekt kán worden. Wie hier ooit
+ *    een eigen ronde gaat zetten, verliest deze idempotentie.
+ *    Twee keer draaien verandert dus niets, en een
  *    overgeslagen dag wordt vanzelf ingehaald: alles wat te oud is, wordt bij de
  *    volgende run alsnog gepakt.
  *

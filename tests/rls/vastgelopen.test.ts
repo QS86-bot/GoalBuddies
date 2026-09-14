@@ -1438,24 +1438,23 @@ describe.skipIf(!rlsTestsConfigured)('een week die zijn beoordelaars kwijtraakt'
      *    boeking, dus geen ervan raakte deze naad. Regel 18 vraag 3: de test kon
      *    groen blijven terwijl de belofte brak.
      *
-     * ⚠️⚠️ **`it.fails`, en dat is een besluit en geen omweg.** De reparatie die
-     *    voor de hand ligt — `on conflict … do update set zonder_beoordelaar =
-     *    true` — is onjuist: die rij ís een echte peer-goedkeuring, en hem als
-     *    automatisch stempelen maakt het grootboek onwaar in de andere richting.
+     * ⚠️⚠️ **Stond `it.fails` tot 14-09-2026 en is nu een gewone toets** — QS8-456,
+     *    migratie 0266. De reparatie die voor de hand lag — `on conflict … do
+     *    update set zonder_beoordelaar = true` — was onjuist: die rij ís een echte
+     *    peer-goedkeuring, en hem als automatisch stempelen maakt het grootboek
+     *    onwaar in de andere richting.
      *
-     *    Wat hier werkelijk stukzit is groter dan het spoor: de week staat op
-     *    `approved` terwijl de eigenaar er **netto nul punten** voor heeft (+2 van
-     *    de ingetrokken goedkeuring, −2 correctie, en de termijn boekt niets omdat
-     *    de dedupe-sleutel bezet is). Dat is een defect in het puntenmodel dat
-     *    ouder is dan dit issue, en het raakt domeinregel 10. Losgetrokken als
-     *    QS8-456, dat dit issue blokkeert.
+     *    Wat hier werkelijk stukzat was groter dan het spoor: de week stond op
+     *    `approved` terwijl de eigenaar er **netto nul punten** voor had (+2 van de
+     *    ingetrokken goedkeuring, −2 correctie, en de termijn boekte niets omdat de
+     *    dedupe-sleutel bezet was). Domeinregel 10: de score moet iets zeggen.
      *
-     *    Deze test staat daarom `it.fails`: hij legt de gemeten toestand vast en
-     *    **slaat om zodra iemand hem repareert** — dan faalt `it.fails` zelf en is
-     *    dat het sein om reviewrij 453 alsnog te sluiten. Zelfde vorm als in
-     *    `tests/rls/policies.test.ts`.
+     *    `points_ledger.ronde` lost dat op: de termijn boekt in de volgende ronde,
+     *    en binnen één ronde blijft dubbel boeken onmogelijk. Deze toets eist nu
+     *    **allebei** de helften — het spoor én de punten — want alleen het spoor
+     *    toetsen laat de netto-nul-week groen door.
      */
-    it.fails(
+    it(
       'markeert ook een week waarvan een eerdere goedkeuring was ingetrokken (QS8-456)',
       async () => {
         const o = await bouwOpstelling('spoor-ingetrokken');
@@ -1493,12 +1492,25 @@ describe.skipIf(!rlsTestsConfigured)('een week die zijn beoordelaars kwijtraakt'
         expect(await weekstatus(o.completionId)).toBe('approved');
 
         const rijen = await boekingen(o.eigenaar.id);
+
+        // Helft 1 — het spoor. Zonder deze rij beweert het grootboek dat een
+        // groepsgenoot deze week goedkeurde, terwijl de termijn dat deed zonder
+        // één geldige goedkeuring.
         expect(
           rijen.some((r) => r.zonder && r.reason.startsWith('completion_approved_')),
-          'de termijn keurde deze week goed zonder één geldige goedkeuring, en het ' +
-            'grootboek zegt dat een groepsgenoot het deed — de dedupe-botsing slikte ' +
-            'het spoor',
+          'de termijn boekte geen rij met `zonder_beoordelaar` — de dedupe-botsing ' +
+            'slikte het spoor',
         ).toBe(true);
+
+        // ⚠️⚠️ Helft 2 — de punten, en dít is wat QS8-456 werkelijk was. Toets je
+        //    alleen het spoor, dan blijft een week die `approved` heet en netto
+        //    nul oplevert gewoon groen: precies de vorm van regel 18 vraag 3.
+        //    📏 Vóór 0266: +2, −2, en de boeking van de termijn geslikt = 0.
+        const netto = rijen.reduce((n, r) => n + r.delta, 0);
+        expect(
+          netto,
+          'de week staat op `approved` maar levert de eigenaar netto niets op',
+        ).toBeGreaterThan(0);
       },
       TEST_TIMEOUT,
     );
@@ -1569,6 +1581,147 @@ describe.skipIf(!rlsTestsConfigured)('een week die zijn beoordelaars kwijtraakt'
           (await boekingen(o.eigenaar.id)).reduce((som, r) => som + r.delta, 0),
           'het totaal veranderde door een geweigerde boeking',
         ).toBe(na.reduce((som, r) => som + r.delta, 0));
+      },
+      TEST_TIMEOUT,
+    );
+  });
+
+  /**
+   * QS8-456, de tweede route — gevonden in de security-ronde op migratie 0266.
+   *
+   * ⚠️⚠️ **De eerste versie van 0266 repareerde alleen de termijn, en dit is de
+   *    waarschijnlijkste vorm van dezelfde bug.** Hier hoeft niemand de groep te
+   *    verlaten en hoeft er geen week te verstrijken: drie handelingen binnen een
+   *    kwartier, en een gewoon tweede groepslid dat alsnog goedkeurt.
+   *
+   *    📏 Gemeten vóór de reparatie: week `approved`, punten eigenaar **0**.
+   *    `award_points_on_approval()` boekte impliciet ronde 1 en botste op de rij
+   *    van de ingetrokken goedkeuring.
+   *
+   * ⚠️ Géén enkele bestaande toets raakte deze naad — `vastgelopen.test.ts` toetste
+   *    alleen de termijnroute, en `goedkeuringsdrempel.test.ts` trekt wel in maar
+   *    keurt daarna niet opnieuw goed en telt geen punten. Regel 18 vraag 5: elk
+   *    schakeltje af, de keten onderbroken.
+   */
+  describe('een tweede beoordelaar keurt goed nadat de eerste introk (QS8-456)', () => {
+    it(
+      'levert de eigenaar alsnog zijn punten op',
+      async () => {
+        const o = await bouwOpstelling('tweede-beoordelaar');
+
+        const admin = adminDb();
+        const groep = await admin
+          .from('groups')
+          .select('invite_code')
+          .eq('id', o.groupId)
+          .single();
+        if (groep.error || !groep.data) throw new Error(`uitnodigingscode: ${groep.error?.message}`);
+
+        const tweede = await createTestUser('tweede-beoordelaar-a2');
+        const mee = await tweede.db.rpc('join_group_with_code', {
+          code: groep.data.invite_code as string,
+        });
+        const meeData = (mee.data ?? {}) as { ok?: boolean; reason?: string };
+        if (meeData.ok !== true) throw new Error(`a2 werd geen lid: ${meeData.reason ?? '?'}`);
+
+        // 1. a1 keurt goed
+        const eerste = await o.beoordelaar.db
+          .from('completion_approvals')
+          .insert({
+            completion_id: o.completionId,
+            approver_id: o.beoordelaar.id,
+            subject_id: o.eigenaar.id,
+            group_id: o.groupId,
+            status: 'approved',
+          })
+          .select('id')
+          .single();
+        if (eerste.error) throw new Error(`a1 goedkeuren: ${eerste.error.message}`);
+        expect(await weekstatus(o.completionId)).toBe('approved');
+
+        // 2. a1 trekt in — binnen het kwartier, dus een misklik
+        const terug = await o.beoordelaar.db.rpc('trek_goedkeuring_in', {
+          p_approval_id: eerste.data.id as string,
+        });
+        if (terug.error) throw new Error(`intrekken: ${terug.error.message}`);
+        expect(await weekstatus(o.completionId), 'de intrekking zette de week niet terug').toBe(
+          'pending',
+        );
+
+        // 3. a2 keurt alsnog goed — een échte peer-goedkeuring
+        const tweedeKeur = await tweede.db
+          .from('completion_approvals')
+          .insert({
+            completion_id: o.completionId,
+            approver_id: tweede.id,
+            subject_id: o.eigenaar.id,
+            group_id: o.groupId,
+            status: 'approved',
+          })
+          .select('id')
+          .single();
+        if (tweedeKeur.error) throw new Error(`a2 goedkeuren: ${tweedeKeur.error.message}`);
+
+        expect(await weekstatus(o.completionId)).toBe('approved');
+
+        // ⚠️ Dít is de belofte. Vóór de reparatie stond hier 0.
+        const netto = await punten(o.goalId);
+        expect(
+          netto,
+          'de week staat op `approved` maar levert de eigenaar netto niets op — ' +
+            'award_points_on_approval() botste op de rij van de ingetrokken goedkeuring',
+        ).toBeGreaterThan(0);
+      },
+      TEST_TIMEOUT,
+    );
+
+    it(
+      'laat die tweede beoordelaar zijn goedkeuring ook weer intrekken',
+      async () => {
+        // ⚠️ 📏 Vóór de reparatie wierp deze tweede intrekking `23505` op
+        //    `points_ledger_dedupe_idx`: de correctie van a2 botste op die van a1.
+        //    Een databasefout op een ongedaan-maken-knop.
+        const o = await bouwOpstelling('tweede-intrekking');
+
+        const admin = adminDb();
+        const groep = await admin
+          .from('groups')
+          .select('invite_code')
+          .eq('id', o.groupId)
+          .single();
+        if (groep.error || !groep.data) throw new Error(`uitnodigingscode: ${groep.error?.message}`);
+
+        const tweede = await createTestUser('tweede-intrekking-a2');
+        const mee = await tweede.db.rpc('join_group_with_code', {
+          code: groep.data.invite_code as string,
+        });
+        if ((mee.data as { ok?: boolean })?.ok !== true) throw new Error('a2 werd geen lid');
+
+        const keur = async (u: typeof tweede) => {
+          const r = await u.db
+            .from('completion_approvals')
+            .insert({
+              completion_id: o.completionId,
+              approver_id: u.id,
+              subject_id: o.eigenaar.id,
+              group_id: o.groupId,
+              status: 'approved',
+            })
+            .select('id')
+            .single();
+          if (r.error) throw new Error(`goedkeuren: ${r.error.message}`);
+          return r.data.id as string;
+        };
+
+        const id1 = await keur(o.beoordelaar);
+        const in1 = await o.beoordelaar.db.rpc('trek_goedkeuring_in', { p_approval_id: id1 });
+        if (in1.error) throw new Error(`eerste intrekking: ${in1.error.message}`);
+
+        const id2 = await keur(tweede);
+        const in2 = await tweede.db.rpc('trek_goedkeuring_in', { p_approval_id: id2 });
+
+        expect(in2.error, `tweede intrekking wierp: ${in2.error?.message ?? ''}`).toBeNull();
+        expect((in2.data as { ok?: boolean })?.ok).toBe(true);
       },
       TEST_TIMEOUT,
     );

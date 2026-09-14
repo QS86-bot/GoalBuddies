@@ -14,7 +14,7 @@ productie in twee rondes)
 ⚠️ **Productie staat op `0224`.** 📏 Hermeten op 14-09 om 05:02 UTC met
 `migratieregister()` tegen `wehgocadxehottiiyvsc`: **227 registerrijen**, `0001`
 t/m `0224` aaneengesloten, inclusief de drie letterversies. De map telt er
-**268**.
+**269**.
 
 ⚠️ **Hier stond tot 14-09 `0221`, en dat was op 09-09 om 16:10 UTC juist.**
 `0222`, `0223` en `0224` zijn er sindsdien op toegepast — alle drie uit QS8-71,
@@ -33,8 +33,8 @@ migratienummer aanziet, legt de lijn drie bestanden te hoog en verklaart
 `0222` t/m `0224` toegepast op een dag dat ze dat niet waren. Zelfde klasse als
 een teller in grafemen bij een grens in codepunten.
 
-**Het gat is daarmee 41 bestanden** — `0225` t/m `0265`, van 09-09
-tot en met 14-09 en uit drieendertig verschillende issues.
+**Het gat is daarmee 42 bestanden** — `0225` t/m `0266`, van 09-09
+tot en met 14-09 en uit vierendertig verschillende issues.
 
 ⚠️ **In cijfers en niet voluit, en dat is geen stijlkeuze.** 📏 Gemeten op
 14-09 bij het ijken van `docs:controle`: `NUMMERWOORDEN` in
@@ -45,7 +45,7 @@ stond, was deze regel dus jarenlang ongemeten en niet groen; `zesendertig` op de
 plek van zevenendertig bleef er even hard groen op. In cijfers bindt de toets
 wél. Staat als QS8-482.
 
-De eenenveertig bestanden:
+De tweeenveertig bestanden:
 
 | | | DDL op `storage.objects` |
 | -- | -- | -- |
@@ -90,6 +90,7 @@ De eenenveertig bestanden:
 | `0263_anon_krijgt_niets_meer_van_een_nieuwe_tabel.sql` | QS8-485 | nee |
 | `0264_een_held_hoort_bij_een_gebruiker_en_zijn_verschijningen_zijn_append_only.sql` | QS8-471 | nee |
 | `0265_een_geweigerde_groepswijziging_zegt_dat_hij_geweigerd_is.sql` | QS8-488 | nee |
+| `0266_een_teruggedraaide_weekboeking_mag_opnieuw_geboekt_worden.sql` | QS8-456 | nee |
 
 ⚠️ **Hier stond een uur eerder `0219` met twee bestanden gat, en dat klopte
 toen.** `0220` en `0221` zijn erna toegepast en `0222` t/m `0226` landden
@@ -268,8 +269,8 @@ staat er iets bij dat uitleg nodig heeft, dan hoort die uitleg in §2, §3b of �
    **Meet ze dus, tel ze niet op:** bij het samengaan met `main` is het antwoord
    `npm run poort` of `npm run tellers`, nooit het hoogste van twee getallen.
 <!-- POORTSTAND:BEGIN — gegenereerd door `npm run poortstand` -->
-Typecheck, lint en alle 59 controlescripts groen;
-`npm run poort` meldt 63 stappen.
+Typecheck, lint en alle 61 controlescripts groen;
+`npm run poort` meldt 65 stappen.
 <!-- POORTSTAND:EINDE -->
    ⚠️ **Vier ervan meten niets zonder de credentials van het échte project**
    (`adviseur`, `functies`, `register`, `wachtwoord`), en de poort noemt dat
@@ -353,7 +354,7 @@ schemaname = 'public'` gaf `41|41`. Vraag het aan de database en niet aan deze
 regel — net als bij het aantal migraties in §0.
 
 <!-- STAND:BEGIN — gegenereerd door `npm run stand` -->
-Migraties `0001` t/m `0265` staan in de map: **268 bestanden**,
+Migraties `0001` t/m `0266` staan in de map: **269 bestanden**,
 waarvan 3 met een letter-achtervoegsel (`0039a`, `0041a`, `0052a`).
 De nummering is aaneengesloten.
 <!-- STAND:EINDE -->
