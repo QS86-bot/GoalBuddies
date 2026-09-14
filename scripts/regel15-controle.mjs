@@ -62,7 +62,10 @@ export const GRENS = 50;
  */
 export const PLAFOND = Object.freeze({
   'app/': 65,
-  'src/shared/ui/': 8,
+  // 8 → 7 op 14-09-2026 (QS8-472): `TijdzoneKeuze.tsx` is verwijderd toen de
+  // tijdzone uit het apparaat ging komen. De ratel zakt mee, anders staat er
+  // ruimte open voor een lange functie die niemand ziet terugkomen.
+  'src/shared/ui/': 7,
   // ⚠️ **`scripts/` telt mee sinds 06-09-2026** (QS8-291). Die map viel
   //    structureel buiten de linter — 57 bestanden, 14.170 regels — en de
   //    vijftig kan er om dezelfde reden als in `app/` geen lintregel zijn:

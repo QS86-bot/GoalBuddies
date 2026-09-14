@@ -57,7 +57,22 @@ const WORTEL = join(dirname(fileURLToPath(import.meta.url)), '..');
  * ⚠️ Alleen verlagen. Wie dit getal verhoogt om een build groen te krijgen,
  *    heeft de ratel omgedraaid in plaats van gebruikt.
  */
-export const PLAFOND = 21;
+/**
+ * ⚠️ **21 → 22 op 14-09-2026 (QS8-472), en dat is de verkeerde kant op.** Het
+ *    gesprek dat de kop hierboven eist, staat hier.
+ *
+ *    De vlag erbij is die in `src/modules/auth/useTijdzoneSync.ts`. `useAsync()`
+ *    past er niet op: dat is de vorm voor een lading die een scherm rendert, en
+ *    dit is een schrijfactie zonder uitkomst op het scherm — er is niets om een
+ *    loading- of foutstaat voor te tonen.
+ *
+ *    En de vlag is dáár load-bearing. Logt iemand uit terwijl de schrijfactie
+ *    onderweg is, dan zou `zetProfiel()` het profiel van de vórige gebruiker in
+ *    de context duwen — precies het doorlekken waar `ProfielProvider` in zijn
+ *    eigen kop voor waarschuwt. Zonder vlag is dit geen stijlkwestie maar een
+ *    gegevenslek tussen twee accounts op één toestel.
+ */
+export const PLAFOND = 22;
 
 /** Waar de vlag telt. `useAsync` zelf en zijn test horen er niet bij. */
 export const UITGEZONDERD = ['src/shared/ui/useAsync.ts', 'src/shared/ui/useAsync.test.ts'];

@@ -10,6 +10,7 @@ import {
   isOnboarded,
   ProfielProvider,
   SessionProvider,
+  useTijdzoneSync,
   useProfiel,
   useSession,
 } from '@/modules/auth';
@@ -71,6 +72,7 @@ function Shell() {
       <Routewacht />
       <Uitnodigingswacht />
       <Pushwacht />
+      <Tijdzonewacht />
       <Stack
         screenOptions={{
           headerShown: false,
@@ -79,6 +81,23 @@ function Shell() {
       />
     </View>
   );
+}
+
+/**
+ * Houdt de tijdzone van het profiel gelijk aan die van het apparaat — QS8-472.
+ *
+ * ⚠️ **Een wacht en geen scherm**, om dezelfde reden als `Pushwacht`: dit moet
+ *    bij elke start gebeuren en niet pas als iemand toevallig zijn profiel
+ *    opent. Het handmatige veld dat hier de tegenhanger van was, is met dit
+ *    issue verdwenen; staat deze wacht er niet, dan is er géén pad meer waarlangs
+ *    een tijdzone ooit nog verandert.
+ *
+ * ⚠️ Binnen `ProfielProvider`, want de hook leest het geladen profiel. Staat hij
+ *    erbuiten, dan is `profiel` altijd `null` en doet hij stilletjes niets.
+ */
+function Tijdzonewacht() {
+  useTijdzoneSync();
+  return null;
 }
 
 /**

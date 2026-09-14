@@ -599,7 +599,6 @@ export const nl = {
   'onboarding.naam_plaatshouder': 'Quinten',
   'onboarding.geen_avatar': 'Geen foto? Dan tonen we je initialen. Je kunt er hier een kiezen, of later bij Profiel.',
   'onboarding.tijdzone_van_telefoon': 'Tijdzone: {zone}, van je telefoon.',
-  'onboarding.tijdzone_klopt_niet': 'Klopt niet',
   'onboarding.waarvoor': 'Waarvoor kom je?',
   'onboarding.waarvoor_hint': 'Kwam je binnen om een vriend te helpen? Dan hoef je zelf geen doel. Je kunt er altijd later een maken.',
   'onboarding.zelf_doel': 'Ik wil zelf een doel',
@@ -2257,16 +2256,9 @@ export const nl = {
   // De tijdzone met de hand zetten — QS8-27, criterium 1
   // ---------------------------------------------------------------------------
   'tijdzone.label': 'Tijdzone',
-  'tijdzone.hint':
-    'Hierin worden "vandaag" en "deze week" berekend. Standaard die van je telefoon; zoek op een plaatsnaam om hem te wijzigen.',
-  'tijdzone.zoek_voorbeeld': 'Amsterdam',
   'tijdzone.nu': 'Nu ingesteld: {zone}',
-  'tijdzone.gebruik_getypt': 'Gebruik {zone}',
-  'tijdzone.van_apparaat': 'De tijdzone van dit apparaat ({zone})',
-  'tijdzone.niets_gevonden': 'Geen tijdzone gevonden. Zoek op een grote stad in de buurt.',
-  'tijdzone.uitleg':
-    'Wijzigen laat je punten en je reeks met rust: die staan vast op de weken die er al zijn. Wat verandert is wanneer de volgende week omslaat.',
-  'tijdzone.opgeslagen': 'Tijdzone opgeslagen.',
+  'tijdzone.van_het_apparaat':
+    'Deze komt uit je apparaat en wordt automatisch bijgewerkt als je verhuist of reist.',
 
 
   // ---------------------------------------------------------------------------
@@ -2752,6 +2744,130 @@ export const nl = {
   'validatie.dagen_bereik': 'Een week heeft zeven dagen.',
   'validatie.vloer_boven_plafond': 'Je vloer kan niet boven je plafond liggen.',
   'validatie.vloer_zonder_plafond': 'Een vloer in dagen vraagt ook een plafond.',
+
+  // ---------------------------------------------------------------------------
+  // De zes helden — QS8-469, epic QS8-468
+  // ---------------------------------------------------------------------------
+  //
+  // ⚠️ De naam is eigen IP; de historische figuur staat alleen onder de quote.
+  //    Besluit 1 en 3 van 14-09-2026, zie
+  //    docs/decisions/2026-09-14-zes-helden-en-de-zeven-besluiten-eronder.md
+  //
+  // ⚠️ De namen zijn in élke taal gelijk — Strix blijft Strix. Alleen de
+  //    ondertitel, de persoonlijkheid en de quotetekst vertalen mee. Dat is geen
+  //    vergeten vertaling: een personagenaam vertalen maakt er zes andere
+  //    personages van.
+  //
+  //
+  // ⚠️ **De interpunctie van de citaten is aangepast en de tekst niet.** QS8-218
+  //    verbiedt het lange gedachtestreepje in app-tekst; waar een origineel er
+  //    een had, staat hier een puntkomma of een komma. Dat is een bewuste keuze
+  //    van 14-09-2026 en geen slordige overname: de woorden, de volgorde en de
+  //    bron kloppen, de streepjes zijn vervangen. Wie een citaat naast zijn bron
+  //    legt en verschil ziet, ziet dít verschil.
+  // ⚠️ Welke sleutels hier horen te staan, bepaalt `modules/helden`. Een quote
+  //    erbij is daar een regel in het rooster, niet hier een sleutel erbij —
+  //    `src/modules/helden/quotes.test.ts` wordt rood als die twee uit elkaar
+  //    lopen, in beide richtingen.
+
+  'held.strix.naam': 'Strix',
+  'held.strix.ondertitel': 'De Wijze',
+  'held.strix.persoonlijkheid':
+    'Kalm, droog en scherp. Zegt weinig, maar wat hij zegt zet je aan het denken. Geen schouderklopjes. Wel het soort zin waar je een week later nog aan terugdenkt.',
+  'held.strix.quote1':
+    'Als iets buiten uzelf u pijn doet, is het niet het ding zelf dat u kwelt; het is uw eigen oordeel erover.',
+  'held.strix.quote1.bron': 'Marcus Aurelius · Meditations, boek 8.47 · vert. George Long, 1862',
+  'held.strix.quote2': 'Beperk uzelf tot het huidige moment.',
+  'held.strix.quote2.bron': 'Marcus Aurelius · Meditations, boek 8.36 · vert. George Long, 1862',
+  'held.strix.quote3': 'Praat niet langer over hoe een goed mens zou moeten zijn; wees er een.',
+  'held.strix.quote3.bron': 'Marcus Aurelius · Meditations, boek 10.16 · vert. George Long, 1862',
+  'held.strix.quote4':
+    'Begin de ochtend met tegen uzelf te zeggen: ik zal vandaag mensen tegenkomen die zich onwetend gedragen; laat dat mij niet uit balans brengen.',
+  'held.strix.quote4.bron': 'Marcus Aurelius · Meditations, vrij naar boek 2.1',
+
+  'held.ignis.naam': 'Ignis',
+  'held.ignis.ondertitel': 'De Strijder',
+  'held.ignis.persoonlijkheid':
+    'Kort, hard, warm vanbinnen. Praat tegen je zoals een coach die in je gelooft ook als je net verloren hebt. Geen medelijden. Wel vuur.',
+  'held.ignis.quote1':
+    'Ik haatte elke minuut van het trainen, maar ik zei: geef niet op. Lijd nu, en leef de rest van je leven als een kampioen.',
+  'held.ignis.quote1.bron': 'Muhammad Ali · Muhammad Ali Center, geverifieerde uitspraken',
+  'held.ignis.quote2':
+    'Het gevecht wordt gewonnen of verloren ver weg van het publiek, achter de schermen, in de sportschool, op de weg, lang voordat ik onder die lichten dans.',
+  'held.ignis.quote2.bron': 'Muhammad Ali · Muhammad Ali Center, geverifieerde uitspraken',
+  'held.ignis.quote3':
+    'Als mijn geest het kan bedenken en mijn hart het kan geloven, dan kan ik het bereiken.',
+  'held.ignis.quote3.bron': 'Muhammad Ali · Muhammad Ali Center, geverifieerde uitspraken',
+  'held.ignis.quote4':
+    'Alleen wie weet hoe het is om verslagen te worden, kan diep in zijn ziel graven naar die laatste hoeveelheid kracht die nodig is om te winnen wanneer de strijd gelijk opgaat.',
+  'held.ignis.quote4.bron': 'Muhammad Ali · Muhammad Ali Center, geverifieerde uitspraken',
+
+  'held.meridian.naam': 'Meridian',
+  'held.meridian.ondertitel': 'De Ontdekkingsreiziger',
+  'held.meridian.persoonlijkheid':
+    'Energiek en ongeduldig in de goede zin. Duwt je net over de rand van je comfortzone en staat al te wapperen vanaf de andere kant.',
+  'held.meridian.quote1':
+    'Voorbereiding is, zoals ik vaak zeg, terecht tweederde van elk avontuur.',
+  'held.meridian.quote1.bron': 'Amelia Earhart · Last Flight, 1937, p. 51',
+  'held.meridian.quote2': 'Hoe meer je doet, ziet en voelt, hoe meer je in staat bent te doen.',
+  'held.meridian.quote2.bron': 'Amelia Earhart · Soaring Wings, 1939, p. 83',
+  'held.meridian.quote3':
+    'Bij solovluchten, net als bij andere dingen, is het veel makkelijker om ergens aan te beginnen dan het af te maken.',
+  'held.meridian.quote3.bron': 'Amelia Earhart · 20 Hrs., 40 Min., 1928, p. 16',
+  'held.meridian.quote4':
+    'Vrouwen moeten proberen dingen te doen zoals mannen het geprobeerd hebben. Als ze falen, moet hun falen slechts een uitdaging zijn voor anderen.',
+  'held.meridian.quote4.bron': 'Amelia Earhart · Last Flight, 1937',
+
+  'held.forge.naam': 'Forge',
+  'held.forge.ondertitel': 'De Bouwer',
+  'held.forge.persoonlijkheid':
+    'Nuchter en precies. Geen pep talk. Wel de vraag die je nodig had: wat is hier het echte probleem, en hoe bouwen we eromheen?',
+  'held.forge.quote1':
+    'Zoals ijzer roest van onbruik en stilstaand water verrot, of water bevriest tot ijs, zo verkwijnt ons verstand als het niet gebruikt wordt.',
+  'held.forge.quote1.bron':
+    'Leonardo da Vinci · Codex Atlanticus 289v, in Richter & Wells, Notebooks',
+  'held.forge.quote2':
+    'Wie de praktijk liefheeft zonder de theorie, is als een zeeman die aan boord gaat zonder roer of kompas en niet weet waarheen hij reist.',
+  'held.forge.quote2.bron':
+    'Leonardo da Vinci · The Literary Works of Leonardo da Vinci, 1883',
+  'held.forge.quote3': 'Arm is de leerling die zijn meester niet overtreft.',
+  'held.forge.quote3.bron':
+    'Leonardo da Vinci · Aphorisms, Notebooks · vert. E. MacCurdy, 1938',
+
+  'held.lucerna.naam': 'Lucerna',
+  'held.lucerna.ondertitel': 'De Verzorger',
+  'held.lucerna.persoonlijkheid':
+    'Zacht op de persoon, streng op de excuses. Geeft je rust om op adem te komen én een duidelijke reden om morgen weer te beginnen.',
+  'held.lucerna.quote1':
+    'Ik dank mijn succes hieraan: ik heb nooit een excuus gegeven of aanvaard.',
+  'held.lucerna.quote1.bron':
+    'Florence Nightingale · brief aan Miss H. Bonham Carter, 1861',
+  'held.lucerna.quote2': 'Wanneer een ramp gebeurt, handel ik; zij verzinnen excuses.',
+  'held.lucerna.quote2.bron':
+    'Florence Nightingale · brief aan Miss H. Bonham Carter, 1861',
+  'held.lucerna.quote3':
+    'Gevoelens verspillen zich in woorden; ze zouden allemaal vertaald moeten worden in daden; daden die resultaat opleveren.',
+  'held.lucerna.quote3.bron': 'Florence Nightingale · brief aan Mary Clarke, 1844',
+  'held.lucerna.quote4':
+    'Verplegen is een kunst: en als het een kunst moet zijn, vergt het een even exclusieve toewijding als het werk van een schilder of beeldhouwer.',
+  'held.lucerna.quote4.bron': 'Florence Nightingale · Good Words, 1868',
+
+  'held.quip.naam': 'Quip',
+  'held.quip.ondertitel': 'De Nar',
+  'held.quip.persoonlijkheid':
+    'Droge humor, een scheve grijns, altijd een tegendraadse opmerking klaar. Haalt de druk eraf zonder het doel belachelijk te maken.',
+  'held.quip.quote1':
+    'Moed is weerstand tegen angst, beheersing van angst; niet de afwezigheid van angst.',
+  'held.quip.quote1.bron':
+    'Mark Twain · Pudd’nhead Wilson’s Calendar, in Following the Equator, 1897',
+  'held.quip.quote2':
+    'Wanneer je jezelf aan de kant van de meerderheid vindt, is het tijd om stil te staan en na te denken.',
+  'held.quip.quote2.bron':
+    'Mark Twain · Pudd’nhead Wilson’s Calendar, in Following the Equator, 1897',
+  'held.quip.quote3':
+    'Gewoonte is gewoonte, en die gooi je niet zomaar het raam uit bij een mens; je lokt haar stap voor stap de trap af.',
+  'held.quip.quote3.bron':
+    'Mark Twain · Pudd’nhead Wilson’s Calendar, in Following the Equator, 1897',
 } as const;
 
 export type Sleutel = keyof typeof nl;
