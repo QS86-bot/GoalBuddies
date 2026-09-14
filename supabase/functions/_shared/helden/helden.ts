@@ -1,3 +1,9 @@
+// ⚠️ GEGENEREERD BESTAND — niet met de hand bewerken.
+//
+// Kopie van src/modules/helden, gemaakt door `npm run edge:sync`.
+// Bewerk het origineel en draai het script opnieuw; een wijziging hier gaat
+// verloren en, erger, laat de app en de jobs met verschillende regels werken.
+
 /**
  * De zes helden — QS8-469, epic QS8-468.
  *

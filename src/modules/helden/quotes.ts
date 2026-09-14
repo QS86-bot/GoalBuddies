@@ -60,17 +60,146 @@ export interface Quotesleutels {
 }
 
 /**
+ * De sleutels van elke quote, voluit.
+ *
+ * ⚠️⚠️ **Voluit en niet samengesteld, om dezelfde twee redenen als bij
+ *    `heldTekstSleutel()` en de quizsleutels (QS8-474).** Hier stond
+ *    `` `held.${held}.quote${nummer}` as Sleutel ``, en die cast is precies zo
+ *    sterk als de belofte dat de sleutel bestaat — `t()` valt bij een onbekende
+ *    sleutel terug op de sleutel zelf, dus een typefout werd een scherm met
+ *    `held.quip.quote4` erop, en Quip heeft er maar drie.
+ *
+ *    De tweede reden is dat `npm run catalogus:controle` een
+ *    template-literal alleen herkent als hij **direct in `t()`** staat. Zolang
+ *    deze helper er een samenstelde, bleven de vierenveertig quotesleutels
+ *    onzichtbaar voor die controle — óók nadat QS8-475 ze op het scherm zette,
+ *    en dan zou de reden "heldenquote zonder melding" stil onwaar zijn geworden
+ *    bij vierenveertig rijen tegelijk.
+ *
+ * ⚠️ **Het aantal per held staat nog steeds in `HELDEN` en niet hier.** Deze
+ *    tabel is de sleutellijst; het rooster blijft de bron van hoeveel er zijn.
+ *    `quotes.test.ts` legt de twee naast elkaar, in beide richtingen — een
+ *    sleutel hier zonder plek in het rooster en een plek zonder sleutel worden
+ *    allebei rood.
+ */
+const QUOTESLEUTELS: Readonly<Record<Heldsleutel, readonly Quotesleutels[]>> = {
+  strix: [
+    {
+      tekst: 'held.strix.quote1',
+      bron: 'held.strix.quote1.bron',
+    },
+    {
+      tekst: 'held.strix.quote2',
+      bron: 'held.strix.quote2.bron',
+    },
+    {
+      tekst: 'held.strix.quote3',
+      bron: 'held.strix.quote3.bron',
+    },
+    {
+      tekst: 'held.strix.quote4',
+      bron: 'held.strix.quote4.bron',
+    },
+  ],
+  ignis: [
+    {
+      tekst: 'held.ignis.quote1',
+      bron: 'held.ignis.quote1.bron',
+    },
+    {
+      tekst: 'held.ignis.quote2',
+      bron: 'held.ignis.quote2.bron',
+    },
+    {
+      tekst: 'held.ignis.quote3',
+      bron: 'held.ignis.quote3.bron',
+    },
+    {
+      tekst: 'held.ignis.quote4',
+      bron: 'held.ignis.quote4.bron',
+    },
+  ],
+  meridian: [
+    {
+      tekst: 'held.meridian.quote1',
+      bron: 'held.meridian.quote1.bron',
+    },
+    {
+      tekst: 'held.meridian.quote2',
+      bron: 'held.meridian.quote2.bron',
+    },
+    {
+      tekst: 'held.meridian.quote3',
+      bron: 'held.meridian.quote3.bron',
+    },
+    {
+      tekst: 'held.meridian.quote4',
+      bron: 'held.meridian.quote4.bron',
+    },
+  ],
+  forge: [
+    {
+      tekst: 'held.forge.quote1',
+      bron: 'held.forge.quote1.bron',
+    },
+    {
+      tekst: 'held.forge.quote2',
+      bron: 'held.forge.quote2.bron',
+    },
+    {
+      tekst: 'held.forge.quote3',
+      bron: 'held.forge.quote3.bron',
+    },
+  ],
+  lucerna: [
+    {
+      tekst: 'held.lucerna.quote1',
+      bron: 'held.lucerna.quote1.bron',
+    },
+    {
+      tekst: 'held.lucerna.quote2',
+      bron: 'held.lucerna.quote2.bron',
+    },
+    {
+      tekst: 'held.lucerna.quote3',
+      bron: 'held.lucerna.quote3.bron',
+    },
+    {
+      tekst: 'held.lucerna.quote4',
+      bron: 'held.lucerna.quote4.bron',
+    },
+  ],
+  quip: [
+    {
+      tekst: 'held.quip.quote1',
+      bron: 'held.quip.quote1.bron',
+    },
+    {
+      tekst: 'held.quip.quote2',
+      bron: 'held.quip.quote2.bron',
+    },
+    {
+      tekst: 'held.quip.quote3',
+      bron: 'held.quip.quote3.bron',
+    },
+  ],
+};
+
+/**
  * De twee sleutels van één quote: zijn tekst en zijn bron.
  *
  * ⚠️ **Ze komen samen uit één functie omdat ze nooit los horen.** Een quote
  *    zonder bron is besluit 3 van QS8-468 gebroken, en een oproeper die twee
  *    aparte helpers heeft, kan de tweede vergeten zonder dat iets rood wordt.
+ *
+ * ⚠️ `nummer` is eenbasig, zoals de sleutels in de catalogus. Een nummer buiten
+ *    bereik werpt in plaats van een sleutel te verzinnen die niet bestaat —
+ *    faalt dicht, zoals `heldVoorTrigger()`.
  */
 export function quoteSleutels(held: Heldsleutel, nummer: number): Quotesleutels {
-  return {
-    tekst: `held.${held}.quote${nummer}` as Sleutel,
-    bron: `held.${held}.quote${nummer}.bron` as Sleutel,
-  };
+  const gevonden = QUOTESLEUTELS[held][nummer - 1];
+  if (!gevonden) throw new Error(`held ${held} heeft geen quote ${nummer}`);
+  return gevonden;
 }
 
 /**
@@ -85,4 +214,35 @@ export function alleQuoteSleutels(): readonly Quotesleutels[] {
   return HELDEN.flatMap((h) =>
     Array.from({ length: h.aantalQuotes }, (_, i) => quoteSleutels(h.sleutel, i + 1)),
   );
+}
+
+/**
+ * Welke quote deze held bij deze verschijning zegt.
+ *
+ * ⚠️⚠️ **Deterministisch uit het tijdstip, en met opzet géén `Math.random()`.**
+ *    QS8-475 waarschuwt daar bij Quip voor: willekeur in een pad dat je wilt
+ *    toetsen, is een test die soms faalt — en "flake" is in dit project geen
+ *    root cause. Hier is het bovendien gratis op te lossen, want er ís een
+ *    natuurlijke bron: het moment waarop de held sprak ligt al vast in
+ *    `hero_appearances.shown_at`.
+ *
+ * ⚠️ **En het is niet alleen een testvoordeel.** Een willekeurige keuze bij elke
+ *    render laat de quote onder je neus verspringen zodra het scherm opnieuw
+ *    tekent. Dezelfde verschijning hoort dezelfde zin te geven, elke keer dat je
+ *    ernaar kijkt.
+ *
+ * ⚠️ Valt terug op de eerste quote bij een tijdstempel die niet te lezen is.
+ *    Een held zónder quote tonen zou de kaart halverwege laten ophouden.
+ */
+export function quoteVoorVerschijning(held: Heldsleutel, wanneer: string): Quotesleutels {
+  const aantal = QUOTESLEUTELS[held].length;
+  const moment = Date.parse(wanneer);
+
+  if (!Number.isFinite(moment)) return quoteSleutels(held, 1);
+
+  // ⚠️ Op hele minuten, niet op milliseconden. Twee verschijningen binnen
+  //    dezelfde minuut horen niet per ongeluk een andere quote te krijgen als
+  //    de tijdstempel ergens onderweg wordt afgerond.
+  const minuten = Math.floor(moment / 60_000);
+  return quoteSleutels(held, (((minuten % aantal) + aantal) % aantal) + 1);
 }
