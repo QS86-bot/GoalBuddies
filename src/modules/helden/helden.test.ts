@@ -2,6 +2,11 @@ import { describe, expect, it } from 'vitest';
 
 import { en } from '../../shared/i18n/en';
 import { nl } from '../../shared/i18n/nl';
+import {
+  heldkleurenNavy,
+  heldkleurenNavyLight,
+  HELDPALETSLEUTELS,
+} from '../../shared/theme/tokens';
 
 import {
   held,
@@ -109,6 +114,36 @@ describe('elke afgeleide sleutel bestaat in beide catalogi', () => {
     for (const sleutel of HELDSLEUTELS) {
       const s = heldTekstSleutel(sleutel, 'ondertitel');
       expect(en[s], s).not.toBe(nl[s]);
+    }
+  });
+});
+
+/**
+ * ⚠️⚠️ **De naad tussen dit register en het kleurenpalet — QS8-469 en QS8-470.**
+ *    `src/shared/theme/tokens.ts` sleutelt `heldkleurenNavy` op zijn eigen
+ *    `HELDPALETSLEUTELS`, want `shared/` mag niet naar `modules/` importeren:
+ *    die richting is omgekeerd, net zoals `shared/categorieen` bestaat omdat twee
+ *    modules dezelfde woordenschat nodig hadden.
+ *
+ *    Twee lijsten die uit elkaar lopen zonder dat iets rood wordt is de fout van
+ *    0032/0034. Deze toets staat hier en niet in `shared/theme`, omdat dit de
+ *    enige laag is die béide kanten mag importeren. Hij is aangekondigd in de kop
+ *    bij `HELDPALETSLEUTELS` en in PR #464 als "landt met het issue dat als
+ *    tweede merget" — dit is dat moment.
+ *
+ *    ⚠️ Een held zonder kleurenpaar krijgt geen badge; een kleurenpaar zonder
+ *       held is een kleur die niemand ooit ziet. Allebei breken ze stil, en
+ *       daarom toetst dit in béide richtingen.
+ */
+describe('het register en het kleurenpalet dekken elkaar', () => {
+  it('kent dezelfde zes sleutels, in dezelfde volgorde', () => {
+    expect([...HELDPALETSLEUTELS]).toEqual([...HELDSLEUTELS]);
+  });
+
+  it('heeft voor elke held een kleurenpaar in beide thema’s', () => {
+    for (const sleutel of HELDSLEUTELS) {
+      expect(heldkleurenNavy[sleutel], `navy:${sleutel}`).toBeTruthy();
+      expect(heldkleurenNavyLight[sleutel], `navy-licht:${sleutel}`).toBeTruthy();
     }
   });
 });
