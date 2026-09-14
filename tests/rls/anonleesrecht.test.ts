@@ -54,6 +54,22 @@ import { psql, stackBeschikbaarOfFaal } from './psql-stack';
  *   A1 `grant select on public.goals to anon` (tabelgrant)   → 1 rood hier
  *   A2 `grant select (title) on public.goals to anon` (kolom)  → 1 rood hier
  *   B  `revoke select on public.goals from authenticated`    → 1 rood hier
+ *   A3 `grant select (identity_statement) on public.mijn_doelvelden to anon`
+ *      — de **view**dimensie, het gat dat QS8-478 sloot       → 1 rood hier
+ *   A3b `grant select on public.goal_dashboard to anon` (tabelgrant op een view)
+ *                                                             → 1 rood hier
+ *
+ * 📏 **A3 laat het gat in getallen zien.** Met die kolomgrant op de view vindt
+ *    de oude vorm (`relkind = 'r'`) er **0** en blijft groen; de nieuwe vorm
+ *    vindt er **1** en wordt rood.
+ *
+ * ⚠️ **En de eerste poging tot A3 toetste niets.** Ik gebruikte `owner_id`, een
+ *    kolom die `mijn_doelvelden` niet heeft; de `grant` faalde met een ERROR en
+ *    de suite bleef groen — wat er precies uitziet als "de grendel zwijgt
+ *    terecht". Lees bij een ijking dus altijd óf de mutatie zelf geslaagd is,
+ *    en niet alleen de testteller. Zelfde klasse als de les bij mutatie B
+ *    hieronder: de meting is pas een meting als je weet dat er iets veranderd
+ *    is.
  *   C  een naam uit GEEN_CLIENTLEZER halen                   → 1 rood hier
  *
  * ⚠️⚠️ **Zet een grant-ijking terug met een verse opbouw en niet met de hand.**
@@ -105,7 +121,27 @@ const beschikbaar = stackBeschikbaarOfFaal(
   import.meta.url,
 );
 
-/** Elke tabel in `public`, met wat `anon` en `authenticated` erop mogen lezen. */
+/**
+ * Elk leesbaar object in `public` — tabel, view én materialized view — met wat
+ * `anon` en `authenticated` erop mogen lezen.
+ *
+ * ⚠️ **`relkind in ('r','v','m')` en niet alleen `'r'` — QS8-478.** De eerste
+ *    versie keek alleen naar tabellen, en dan valt een view buiten élke
+ *    bewaking: `viewrechten_bewaking()` dekt INSERT/UPDATE/DELETE/REFERENCES
+ *    maar geen SELECT, en er is geen derde plek.
+ *
+ * ⚠️⚠️ **Een view weegt hier zwaarder dan een tabel.** 📏 Drie van de vier
+ *    bestaande views draaien `security_invoker = false` en lezen dus met de
+ *    rechten van de eigenaar: krijgt `anon` er leesrecht op, dan is de
+ *    policylaag niet eens in het spel — er is geen `using`-clausule die hem nog
+ *    tegenhoudt. `mijn_doelvelden` is daarvan de scherpste, want die filtert
+ *    niet op de kijker.
+ *
+ *    📏 Alle vier staan vandaag op `anon = false`, maar dat komt doordat 0005,
+ *    0019, 0089, 0143 en 0236 het stuk voor stuk **met de hand** hebben
+ *    dichtgezet. Discipline, geen grendel — en een verse
+ *    `create or replace view` krijgt de `anon`-grant gewoon weer.
+ */
 function leesrechten(): { naam: string; anon: boolean; ingelogd: boolean }[] {
   const uit = psql(`
     select c.relname
@@ -113,7 +149,7 @@ function leesrechten(): { naam: string; anon: boolean; ingelogd: boolean }[] {
          || '|' || has_any_column_privilege('authenticated', c.oid, 'SELECT')::text
       from pg_class c
       join pg_namespace n on n.oid = c.relnamespace
-     where n.nspname = 'public' and c.relkind = 'r'
+     where n.nspname = 'public' and c.relkind in ('r', 'v', 'm')
      order by 1
   `);
 
@@ -151,8 +187,9 @@ describe.skipIf(!beschikbaar)('geen tabel geeft anon een leesrecht zonder reden'
    *    kolomnaam die verschuift — laat hem stilzwijgend slagen. 📏 Op
    *    14-09-2026 telde `public` 42 tabellen.
    */
-  it('en de meting vindt werkelijk tabellen — anders is groen niets waard', () => {
-    expect(leesrechten().length).toBeGreaterThanOrEqual(40);
+  it('en de meting vindt werkelijk objecten — anders is groen niets waard', () => {
+    // 📏 Op 14-09-2026: 42 tabellen + 4 views = 46.
+    expect(leesrechten().length).toBeGreaterThanOrEqual(44);
   });
 
   /**
