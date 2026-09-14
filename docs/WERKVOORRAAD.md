@@ -1116,6 +1116,32 @@ november, als er een echte tweede lezer is.
 Er zijn vier milestones in Linear. Deze volgorde is geen suggestie — de
 afhankelijkheden zitten er echt in.
 
+### Nieuw sinds 14-09-2026: de zes helden (QS8-468)
+
+Milestone **Fase 2**, label `phase:v2` — besloten door Quinten op 14-09-2026.
+Die milestone stond op 100%; dit epic zet hem weer open.
+
+⚠️ **Vrijgegeven om nu te bouwen, terwijl Fase 1 zijn exit-criterium nog niet
+haalt.** Zelfde vorm als de drie issues die op 27-08 met naam vrijgegeven zijn:
+de grens verschuift niet, dit epic staat er met naam naast. Quinten heeft op
+14-09 gezegd de voorbereidende PR te mergen en er daarna sessies op te starten;
+dát is de vrijgave.
+
+Zes superhelden-archetypes worden de stem van de app — Strix, Ignis, Meridian,
+Forge, Lucerna en Quip. Zes deelissues: QS8-469 en QS8-470 kunnen meteen en
+tegelijk, QS8-471 daarna, en QS8-474, QS8-475 en QS8-477 weer parallel.
+
+De zeven besluiten die eraan vooraf gingen staan in
+`docs/decisions/2026-09-14-zes-helden-en-de-zeven-besluiten-eronder.md`; de
+brondocumenten zijn `docs/superhelden-archetypes.md` en `docs/helden-codex.html`.
+**Wil je er met meerdere sessies tegelijk aan werken, lees dan eerst
+`docs/helden-parallelprompt.md`** — daar staat wat er bij dít epic botst als er
+twee sessies naast elkaar lopen.
+
+⚠️ Twee van de zeven besluiten kosten een bestaande regel: de kleurregel in
+CLAUDE.md wordt herschreven (QS8-470) en besluit A56 wordt deels heropend
+(QS8-474). Allebei staan ze in het beslisdocument uitgeschreven.
+
 ### Milestone: Fase 1 — MVP
 
 Werk de epics in deze volgorde af. Binnen een epic: op prioriteit, hoog eerst.
