@@ -1674,7 +1674,7 @@ export const en: Record<Sleutel, string> = {
   'zichtbaarheid.beschermd_uitleg':
     'The group sees what works out: finished weeks, milestones, encouragement. A missed week stays yours unless you share it yourself.',
   'zichtbaarheid.open_uitleg':
-    'The group also sees what does not work out: each other’s missed and carried weeks, each other’s best streak, who took part in which week, and each other’s point totals in this group. Only pick this if everyone wants it.',
+    'The group also sees what does not work out: each other’s missed and carried weeks, each other’s best streak, who took part in which week, each other’s point totals in this group, and which hero last visited whom in the past week. That includes the hero who turns up after a missed week. Only pick this if everyone wants it.',
   'zichtbaarheid.niet_bevestigd': 'Confirm first: this changes what the group sees about other people.',
   'bevestiging.huddledag_verzetten.titel': 'Move the huddle day?',
   'bevestiging.huddledag_verzetten.uitleg':
@@ -1683,11 +1683,11 @@ export const en: Record<Sleutel, string> = {
 
   'bevestiging.groep_openzetten.titel': 'Open up this group?',
   'bevestiging.groep_openzetten.uitleg':
-    'From now on everyone in this group also sees each other’s missed and carried weeks, each other’s best streak ever, who took part in each week, and a leaderboard of each other’s point totals in this group, including the weeks already there. So this is not only about you. Everyone gets a message in the group chat, so anyone who would rather not can unlink their goal. You can switch back at any time, immediately.',
+    'From now on everyone in this group also sees each other’s missed and carried weeks, each other’s best streak ever, who took part in each week, a leaderboard of each other’s point totals in this group, and which hero last visited whom in the past week. That includes the hero who turns up after a missed week, and it covers the weeks already there too. So this is not only about you. Everyone gets a message in the group chat, so anyone who would rather not can unlink their goal. You can switch back at any time, immediately.',
   'bevestiging.groep_openzetten.knop': 'Yes, open it up',
   'bevestiging.groep_beschermen.titel': 'Protect this group again?',
   'bevestiging.groep_beschermen.uitleg':
-    'From now on the group only sees what works out. Missed weeks become private again, retroactively too, and the leaderboard disappears. Everyone gets a message about it.',
+    'From now on the group only sees what works out. Missed weeks become private again, retroactively too, and the leaderboard and the hero list disappear. Everyone gets a message about it.',
   'bevestiging.groep_beschermen.knop': 'Yes, protect it',
   'bevestiging.groep_ontdekbaar_maken.titel': 'Make this group discoverable?',
   'bevestiging.groep_ontdekbaar_maken.uitleg':

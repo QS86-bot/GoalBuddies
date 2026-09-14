@@ -14,7 +14,7 @@ productie in twee rondes)
 ⚠️ **Productie staat op `0224`.** 📏 Hermeten op 14-09 om 05:02 UTC met
 `migratieregister()` tegen `wehgocadxehottiiyvsc`: **227 registerrijen**, `0001`
 t/m `0224` aaneengesloten, inclusief de drie letterversies. De map telt er
-**270**.
+**271**.
 
 ⚠️ **Hier stond tot 14-09 `0221`, en dat was op 09-09 om 16:10 UTC juist.**
 `0222`, `0223` en `0224` zijn er sindsdien op toegepast — alle drie uit QS8-71,
@@ -33,7 +33,7 @@ migratienummer aanziet, legt de lijn drie bestanden te hoog en verklaart
 `0222` t/m `0224` toegepast op een dag dat ze dat niet waren. Zelfde klasse als
 een teller in grafemen bij een grens in codepunten.
 
-**Het gat is daarmee 43 bestanden** — `0225` t/m `0267`, van 09-09
+**Het gat is daarmee 44 bestanden** — `0225` t/m `0268`, van 09-09
 tot en met 14-09 en uit vijfendertig verschillende issues.
 
 ⚠️ **In cijfers en niet voluit, en dat is geen stijlkeuze.** 📏 Gemeten op
@@ -92,6 +92,7 @@ De drieenveertig bestanden:
 | `0265_een_geweigerde_groepswijziging_zegt_dat_hij_geweigerd_is.sql` | QS8-488 | nee |
 | `0266_een_teruggedraaide_weekboeking_mag_opnieuw_geboekt_worden.sql` | QS8-456 | nee |
 | `0267_een_week_draagt_hoogstens_een_goedkeuringsboeking_per_ronde.sql` | QS8-454 | nee |
+| `0268_een_held_in_een_open_groep_is_zichtbaar_voor_die_groep.sql` | QS8-477 | nee |
 
 ⚠️ **Hier stond een uur eerder `0219` met twee bestanden gat, en dat klopte
 toen.** `0220` en `0221` zijn erna toegepast en `0222` t/m `0226` landden
@@ -355,7 +356,7 @@ schemaname = 'public'` gaf `41|41`. Vraag het aan de database en niet aan deze
 regel — net als bij het aantal migraties in §0.
 
 <!-- STAND:BEGIN — gegenereerd door `npm run stand` -->
-Migraties `0001` t/m `0267` staan in de map: **270 bestanden**,
+Migraties `0001` t/m `0268` staan in de map: **271 bestanden**,
 waarvan 3 met een letter-achtervoegsel (`0039a`, `0041a`, `0052a`).
 De nummering is aaneengesloten.
 <!-- STAND:EINDE -->

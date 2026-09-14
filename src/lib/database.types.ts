@@ -2722,6 +2722,16 @@ export type Database = {
         }[]
       }
       eigenaarsdatum: { Args: { uid: string }; Returns: string }
+      groep_helden: {
+        Args: { p_group_id: string; p_limit?: number; p_offset?: number }
+        Returns: {
+          display_name: string
+          hero_key: string
+          totaal: number
+          trigger: string
+          user_id: string
+        }[]
+      }
       groep_klassement: {
         Args: { p_group_id: string; p_limit?: number; p_offset?: number }
         Returns: {
