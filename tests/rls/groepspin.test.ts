@@ -173,7 +173,7 @@ function naClientUpdate(
 }
 
 /**
- * ⚠️⚠️ **Sinds 0264 (QS8-488) is de belofte van dit bestand veranderd, en de
+ * ⚠️⚠️ **Sinds 0265 (QS8-488) is de belofte van dit bestand veranderd, en de
  *    oude toetsvorm kón niet meeverhuizen.** Tot dan zette `guard_group_update()`
  *    de kolom stilzwijgend terug, en deze suite bewees dat met *"de UPDATE raakte
  *    één rij én de waarde is onveranderd"*. Die rijteller bestaat niet meer: een
@@ -207,7 +207,7 @@ describe.skipIf(!beschikbaar)('de pin op groups houdt een client tegen', () => {
             '`groups_update` filterde',
         ).toBe(1);
 
-        // ⚠️⚠️ **Sinds 0264 is de belofte hoorbaar, en dat is de hele reparatie.**
+        // ⚠️⚠️ **Sinds 0265 is de belofte hoorbaar, en dat is de hele reparatie.**
         //    Tot dan zette de trigger de kolom stilzwijgend terug en kreeg de
         //    aanroeper `200 OK` met de oude waarde — geweigerd, en dat niet
         //    gezegd. Deze assertie eist de fout; de volgende eist dat de waarde
@@ -216,7 +216,7 @@ describe.skipIf(!beschikbaar)('de pin op groups houdt een client tegen', () => {
         expect(
           uitslag,
           `${kolom}: de client kreeg succes te horen. Dat is de stille ` +
-            'terugzetting van QS8-314/QS8-326, hier op `groups` — zie 0264.',
+            'terugzetting van QS8-314/QS8-326, hier op `groups` — zie 0265.',
         ).toBe('GEWEIGERD 23514');
 
         // ⚠️ `startsWith` en niet `toBe`, want `last_activity_at` komt terug als
@@ -271,12 +271,12 @@ describe.skipIf(!beschikbaar)('de pin op groups houdt een client tegen', () => {
 });
 
 /**
- * QS8-488 / 0264 — de drie kolommen die vóór de rolfilter staan.
+ * QS8-488 / 0265 — de drie kolommen die vóór de rolfilter staan.
  *
- * ⚠️⚠️ **Dit is de énige echt níeuwe grens van 0264, en hij had geen test.**
+ * ⚠️⚠️ **Dit is de énige echt níeuwe grens van 0265, en hij had geen test.**
  *    `id`, `created_at` en `created_by` stonden tot 0208 ná de vroege uitgang
  *    `current_user not in ('authenticated','anon')` en waren dus alleen voor een
- *    client gepind. Sinds 0264 staan ze ervóór en gelden ze voor **elke** rol —
+ *    client gepind. Sinds 0265 staan ze ervóór en gelden ze voor **elke** rol —
  *    `service_role`, `postgres`, elke definer-functie.
  *
  *    De suite hierboven toetst alleen `authenticated`, en 📏 geen enkel bestand
@@ -291,7 +291,7 @@ describe.skipIf(!beschikbaar)('de pin op groups houdt een client tegen', () => {
  *    geeft het leegtrekken `23514`, en ná `delete from profiles` wordt de kolom
  *    gewoon `NULL`.
  */
-describe.skipIf(!beschikbaar)('0264 — id, created_at en created_by gelden voor elke rol', () => {
+describe.skipIf(!beschikbaar)('0265 — id, created_at en created_by gelden voor elke rol', () => {
   /** Doet `sql` als tabeleigenaar — dus langs de vroege uitgang heen. */
   function alsEigenaar(sql: string): string {
     return psql(`
@@ -366,7 +366,7 @@ describe.skipIf(!beschikbaar)('0264 — id, created_at en created_by gelden voor
     'MUST-ALLOW: de referentiële actie zet hem wél op null zodra het profiel weg is',
     () => {
       // ⚠️ Zonder deze helft is de toets hierboven een grendel die het wisrecht
-      //    breekt — precies wat de eerste versie van 0264 deed toen de toets nog
+      //    breekt — precies wat de eerste versie van 0265 deed toen de toets nog
       //    kaal was. 📏 Geijkt: twee rode tests in `opruiming.test.ts`.
       const uit = alsEigenaar(`
         begin

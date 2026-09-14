@@ -1,4 +1,4 @@
--- 0264_een_geweigerde_groepswijziging_zegt_dat_hij_geweigerd_is.sql — twee
+-- 0265_een_geweigerde_groepswijziging_zegt_dat_hij_geweigerd_is.sql — twee
 -- triggers op `groups` zetten stil terug; voortaan weigeren ze hoorbaar.
 --
 -- ROLLBACK-PAD:
@@ -173,7 +173,7 @@ begin
     return new;
   end if;
 
-  -- ⚠️⚠️ **`status <> 'archived'` is nieuw in 0264 en verandert geen gedrag.**
+  -- ⚠️⚠️ **`status <> 'archived'` is nieuw in 0265 en verandert geen gedrag.**
   --    Een gearchiveerde groep werd hier al niet wakker: `archief_blijft_archief()`
   --    draaide de ontarchivering stilzwijgend terug. Die stilte verdwijnt in
   --    stap 2, en zonder deze regel zou het wekken daar dan op klappen.
@@ -233,7 +233,7 @@ $$;
 
 comment on function public.archief_blijft_archief() is
   'Een gearchiveerde groep blijft gearchiveerd tenzij heropen_groep() zich '
-  'meldt via app.heropent_groep. Werpt sinds 0264 in plaats van stilzwijgend '
+  'meldt via app.heropent_groep. Werpt sinds 0265 in plaats van stilzwijgend '
   'terug te zetten — QS8-488.';
 
 -- ---------------------------------------------------------------------------
@@ -383,7 +383,7 @@ end;
 $$;
 
 comment on function public.guard_group_update() is
-  'De elf kolommen van groups die een client niet zelf verzet. Werpt sinds 0264 '
+  'De elf kolommen van groups die een client niet zelf verzet. Werpt sinds 0265 '
   'in plaats van stilzwijgend terug te zetten; id en created_at gelden voor elke '
   'rol, de rest alleen voor authenticated en anon omdat definer-functies ze '
   'legitiem bijwerken. created_by geldt ook voor elke rol, met de bestaanstoets '
@@ -403,7 +403,7 @@ comment on function public.guard_group_update() is
 --    null`-kolom vasthoudt, waardoor niemand zijn account nog kan verwijderen.
 --    Zijn `where` eist de vorm `new.<kolom> := old.<kolom>` — de toewijzing.
 --
---    📏 Gemeten ná de eerste versie van 0264:
+--    📏 Gemeten ná de eerste versie van 0265:
 --
 --      select count(*) from onveranderlijkheid_bewaking() where tabel='groups'
 --        -> 0
@@ -454,7 +454,7 @@ as $$
          -- … of de werpvorm met een bestaanstoets op de óude waarde. Tijdens een
          --    `on delete set null` is de ouderrij al weg, dus de RI-actie komt
          --    erlangs zonder dat de grendel aan een rolnaam hangt. De vorm van
-         --    `bewaak_begunstigde()` (0169) en sinds 0264 ook van
+         --    `bewaak_begunstigde()` (0169) en sinds 0265 ook van
          --    `guard_group_update()`.
          or b.bron ~* ('exists\s*\([\s\S]{0,200}old\.' || s.kolom)
          -- … of de vorm die de RI-actie aan zijn **gedaante** herkent en
@@ -471,7 +471,7 @@ as $$
   where b.bron ~* ('new\.' || s.kolom || '\s*:=\s*old\.' || s.kolom)
      -- ⚠️ De werpvorm erbij: een tak die de kolom noemt en werpt. Zonder deze
      --    regel verdwijnt elke trigger die van `:=` naar `raise` gaat uit beeld,
-     --    en dat is precies wat 0264 met `groups` deed.
+     --    en dat is precies wat 0265 met `groups` deed.
      or b.bron ~* ('new\.' || s.kolom || '\s+is\s+distinct\s+from\s+old\.' || s.kolom)
      or b.bron ~* ('old\.' || s.kolom || '\s+is\s+not\s+null[\s\S]{0,80}new\.' || s.kolom || '\s+is\s+null')
   order by b.tabel, s.kolom;
@@ -479,7 +479,7 @@ $$;
 
 comment on function public.onveranderlijkheid_bewaking() is
   'Elke on delete set null-kolom met een BEFORE-UPDATE-trigger erop, en of die '
-  'trigger een grendel draagt die de RI-actie doorlaat. Ziet sinds 0264 zowel '
+  'trigger een grendel draagt die de RI-actie doorlaat. Ziet sinds 0265 zowel '
   'de toewijzingsvorm (new.x := old.x) als de werpvorm — anders verdwijnt een '
   'trigger uit beeld zodra hij van := naar raise gaat, en dat is geen winst maar '
   'blindheid. QS8-488.';

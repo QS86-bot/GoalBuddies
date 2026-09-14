@@ -3309,7 +3309,7 @@ describe.skipIf(!rlsTestsConfigured)('RLS-policies met echte JWTs', () => {
    *    tweede bij komt.
    */
   /**
-   * ⚠️⚠️ **Leeg sinds 0264 (QS8-488) — maar niet om de reden die hier eerst
+   * ⚠️⚠️ **Leeg sinds 0265 (QS8-488) — maar niet om de reden die hier eerst
    *    stond, en dat verschil is de hele les.**
    *
    *    De eerste versie van deze toelichting zei dat de teller *"er nu een echte
@@ -3319,7 +3319,7 @@ describe.skipIf(!rlsTestsConfigured)('RLS-policies met echte JWTs', () => {
    *        -> 0
    *
    *    Niet bewaakt maar **weg**. `onveranderlijkheid_bewaking()` (0221) eiste in
-   *    zijn `where` de vorm `new.<kolom> := old.<kolom>`; 0264 verving die door
+   *    zijn `where` de vorm `new.<kolom> := old.<kolom>`; 0265 verving die door
    *    een `raise`, en daarmee viel de rij uit de resultaatset. De lijst werd
    *    leeg doordat de teller niet meer keek — en er stond een uitleg onder die
    *    dat als winst presenteerde. **Precies de vorm die CLAUDE.md het duurst
@@ -3329,7 +3329,7 @@ describe.skipIf(!rlsTestsConfigured)('RLS-policies met echte JWTs', () => {
    *    En het was niet lokaal: de huisstijl schuift van `:=` naar `raise`, dus
    *    élke trigger die meegaat verdwijnt uit deze teller. `groups` was de eerste.
    *
-   * ✅ **0264 repareert nu de teller zelf.** Hij leest allebei de vormen en kent
+   * ✅ **0265 repareert nu de teller zelf.** Hij leest allebei de vormen en kent
    *    drie grendelvormen: de null-tolerante tak van 0060, de bestaanstoets van
    *    `bewaak_begunstigde()` (0169), en de vorm die de RI-actie aan zijn gedaante
    *    herkent uit `fill_approval_subject()` (0262). 📏 Van vijf rijen naar
@@ -3386,10 +3386,10 @@ describe.skipIf(!rlsTestsConfigured)('RLS-policies met echte JWTs', () => {
     );
 
     /**
-     * ⚠️ **Deze test leunt op één zin in `guard_group_update()`, en sinds 0264
+     * ⚠️ **Deze test leunt op één zin in `guard_group_update()`, en sinds 0265
      *    draagt die zin iets zwaarders dan eerst.** Zonder de vroege uitstap
      *    voor niet-clientrollen loopt de RI-actie van `on delete set null` wél
-     *    door de trigger heen — en waar dat vóór 0264 een kale toewijzing was
+     *    door de trigger heen — en waar dat vóór 0265 een kale toewijzing was
      *    die de foreign key stilzwijgend terugzette, is het nu een `raise`.
      *    📏 Gemeten: dan kan niemand die ooit een groep heeft opgericht zijn
      *    account nog verwijderen. Dezelfde klasse als QS8-371 en QS8-480.

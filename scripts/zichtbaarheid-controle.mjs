@@ -146,7 +146,7 @@ export const GEEN_OPPERVLAK = new Map([
     'functie:archief_blijft_archief',
     '⚠️ **Dezelfde valse positief als `sleutelzetters` hierboven, en om precies ' +
       'dezelfde reden.** Deze trigger gaat over het archief en niet over ' +
-      'zichtbaarheid; hij komt hier terecht doordat zijn foutmelding sinds 0264 ' +
+      'zichtbaarheid; hij komt hier terecht doordat zijn foutmelding sinds 0265 ' +
       'de naam `heropen_groep()` noemt, en daar zit `open_groep` letterlijk in. ' +
       'Die naam staat er met opzet in: een weigering die de juiste weg noemt is ' +
       'de helft van de reparatie van QS8-488. De melding herschrijven om deze ' +

@@ -331,7 +331,7 @@ describe.skipIf(!rlsTestsConfigured)('0092 — archiveren in plaats van wissen',
 });
 
 /**
- * QS8-488 / migratie 0264 — het archief weigert hoorbaar, en niemand leunt meer
+ * QS8-488 / migratie 0265 — het archief weigert hoorbaar, en niemand leunt meer
  * op de stilte.
  *
  * ⚠️ **De belofte is niet "de trigger werpt".** Die is een eigenschap van een
@@ -341,19 +341,19 @@ describe.skipIf(!rlsTestsConfigured)('0092 — archiveren in plaats van wissen',
  *      succes — en het wekken van een groep loopt er niet op stuk.
  *
  *    Die twee horen in één blok, want ze zijn elkaars prijs: `archief_blijft_
- *    archief()` kón vóór 0264 niet werpen zónder `wek_groep()` te breken.
+ *    archief()` kón vóór 0265 niet werpen zónder `wek_groep()` te breken.
  *
  * ⚠️⚠️ **De naad, en die stond niet in de dossierrij.** `wek_groep()` hangt
  *    onder `chat_messages`, `chain_links` en `week_reviews` en deed
  *    onvoorwaardelijk `set status = 'active'`. Op een gearchiveerde groep is dat
  *    een ontarchivering, en die werd stilzwijgend teruggedraaid. 📏 Gemeten vóór
- *    0264, in een teruggedraaide transactie:
+ *    0265, in een teruggedraaide transactie:
  *
  *      als `authenticated`  -> insert in chat_messages GEWEIGERD, 42501 (RLS)
  *      als tabeleigenaar    -> insert GELUKT, wek_groep vuurt,
  *                              status ná afloop nog steeds `archived`
  *
- *    De clientkant was dus al dicht; de definer-kant leunde op de stilte. 0264
+ *    De clientkant was dus al dicht; de definer-kant leunde op de stilte. 0265
  *    haalt dat leunen weg (`and status <> 'archived'`) en laat de trigger dán
  *    pas werpen.
  *
@@ -372,7 +372,7 @@ describe.skipIf(!rlsTestsConfigured)('0092 — archiveren in plaats van wissen',
  *      -> 1 rood: "een bericht in een gearchiveerde groep loopt niet stuk"
  *         en dat is precies de naad: zonder A zou B nooit opvallen
  */
-describe.skipIf(!rlsTestsConfigured)('0264 — het archief weigert hoorbaar', () => {
+describe.skipIf(!rlsTestsConfigured)('0265 — het archief weigert hoorbaar', () => {
   /** Zet een gearchiveerde groep neer en geeft terug wat `sql` oplevert. */
   function opEenArchief(sql: string): string {
     return psql(`
