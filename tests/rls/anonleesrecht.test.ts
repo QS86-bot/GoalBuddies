@@ -20,6 +20,29 @@ import { psql, stackBeschikbaarOfFaal } from './psql-stack';
  *    terwijl een niet-ingelogd verzoek `owner_id`, `title` en `description`
  *    teruggaf.
  *
+ * ⚠️⚠️ **`has_any_column_privilege` en niet `has_table_privilege` — en dat is
+ *    een blokkerende bevinding uit de security-review geweest.** De eerste
+ *    versie vroeg naar het **tabel**recht. 📏 Nagemeten met de hand:
+ *
+ *        grant select (owner_id, title, description) on public.goals to anon;
+ *        has_table_privilege('anon','goals','SELECT')      -> false
+ *        has_any_column_privilege('anon','goals','SELECT') -> true
+ *
+ *    en deze suite bleef **groen op 4** terwijl `anon` leesrecht had op precies
+ *    de drie kolommen waar de doorlichtingsrij mee begon. Met één policy zonder
+ *    `TO` erbij las een niet-ingelogde bezoeker de titel en de omschrijving.
+ *
+ * ⚠️ **En de ijking hieronder was medeplichtig.** Mutatie A voerde het geval
+ *    door de *tabel*grant — precies de dimensie die het oude predicaat wél zag.
+ *    CLAUDE.md waarschuwt daarvoor met zoveel woorden: een ijking die zijn geval
+ *    door een pad voert dat een éérdere grendel al afvangt, bewaakt niets van
+ *    wat hij belooft. De kolomdimensie was nooit geijkt, terwijl de kop van deze
+ *    suite bij mutatie B zélf beschrijft dat een tabelgrant iets anders is dan
+ *    een kolomgrant. 📏 De correctie kost niets: nul vals alarm op de schone
+ *    database. Deze repo had die les al betaald in
+ *    `scripts/kolomrechten-controle.mjs` (QS8-334): *het recht is de waarheid,
+ *    niet de boekhouding erover.*
+ *
  * ⚠️⚠️ **De tweede helft weegt hier het zwaarst: `authenticated` mag niets
  *    verliezen.** Dat is de enige manier waarop migratie 0261 iets kan breken —
  *    de hele app draait op die rol. Een revoke die te ver grijpt is erger dan de
@@ -28,7 +51,8 @@ import { psql, stackBeschikbaarOfFaal } from './psql-stack';
  *
  * IJKING — met de hand gedraaid op 14-09-2026, één mutatie per grendel:
  *
- *   A  `grant select on public.goals to anon`                → 1 rood hier
+ *   A1 `grant select on public.goals to anon` (tabelgrant)   → 1 rood hier
+ *   A2 `grant select (title) on public.goals to anon` (kolom)  → 1 rood hier
  *   B  `revoke select on public.goals from authenticated`    → 1 rood hier
  *   C  een naam uit GEEN_CLIENTLEZER halen                   → 1 rood hier
  *
@@ -85,7 +109,7 @@ const beschikbaar = stackBeschikbaarOfFaal(
 function leesrechten(): { naam: string; anon: boolean; ingelogd: boolean }[] {
   const uit = psql(`
     select c.relname
-         || '|' || has_table_privilege('anon', c.oid, 'SELECT')::text
+         || '|' || has_any_column_privilege('anon', c.oid, 'SELECT')::text
          || '|' || has_any_column_privilege('authenticated', c.oid, 'SELECT')::text
       from pg_class c
       join pg_namespace n on n.oid = c.relnamespace
