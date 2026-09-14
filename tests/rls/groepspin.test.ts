@@ -269,3 +269,117 @@ describe.skipIf(!beschikbaar)('de pin op groups houdt een client tegen', () => {
     30_000,
   );
 });
+
+/**
+ * QS8-488 / 0264 — de drie kolommen die vóór de rolfilter staan.
+ *
+ * ⚠️⚠️ **Dit is de énige echt níeuwe grens van 0264, en hij had geen test.**
+ *    `id`, `created_at` en `created_by` stonden tot 0208 ná de vroege uitgang
+ *    `current_user not in ('authenticated','anon')` en waren dus alleen voor een
+ *    client gepind. Sinds 0264 staan ze ervóór en gelden ze voor **elke** rol —
+ *    `service_role`, `postgres`, elke definer-functie.
+ *
+ *    De suite hierboven toetst alleen `authenticated`, en 📏 geen enkel bestand
+ *    in `tests/rls/` combineerde `service_role` met `groups`. Een grendel die
+ *    nooit rood is geweest, bewaakt niets.
+ *
+ * ⚠️ **`created_by` draagt een andere vorm dan de andere twee, en met reden.**
+ *    Hij mag wél op `null` gezet worden zodra het profiel verdwenen is — dat is
+ *    de referentiële actie van `groups_created_by_fkey` (`on delete set null`),
+ *    en die moet erlangs. De bestaanstoets van `bewaak_begunstigde()` maakt dat
+ *    verschil zonder aan een rolnaam te hangen: 📏 als de oprichter nog bestaat
+ *    geeft het leegtrekken `23514`, en ná `delete from profiles` wordt de kolom
+ *    gewoon `NULL`.
+ */
+describe.skipIf(!beschikbaar)('0264 — id, created_at en created_by gelden voor elke rol', () => {
+  /** Doet `sql` als tabeleigenaar — dus langs de vroege uitgang heen. */
+  function alsEigenaar(sql: string): string {
+    return psql(`
+      begin;
+      create temp table e as select gen_random_uuid() eig, gen_random_uuid() grp;
+      insert into auth.users (id, email) select eig, 'rol264@x.nl' from e;
+      insert into profiles (id, display_name) select eig, 'Oprichter' from e
+        on conflict (id) do nothing;
+      insert into groups (id, name, created_by, status, invite_code, tz)
+        select grp, 'Rol264', eig, 'active', 'ROL26400', 'Europe/Amsterdam' from e;
+
+      do $rol$
+      declare g uuid := (select grp from e); u uuid := (select eig from e);
+      begin
+        ${sql}
+      end
+      $rol$;
+
+      select current_setting('rol.uitslag');
+      rollback;
+    `)
+      .split('\n')
+      .map((r) => r.trim())
+      .filter((r) => r !== '')
+      .at(-1) as string;
+  }
+
+  // ⚠️⚠️ **`created_at` krijgt een vaste datum en niet `now()`, en dat is een
+  //    gemeten les.** De eerste versie gebruikte `now()`; binnen één transactie
+  //    is dat exact de waarde die de `insert` er drie regels hoger in zette, dus
+  //    `is distinct from` was onwaar en de UPDATE werd **toegelaten** — een
+  //    groene mutatie die niets muteerde. Zelfde klasse als de ijkingen die in
+  //    QS8-480 en QS8-485 hun eigen indicator niet lazen.
+  it.each([
+    ['created_at', "update groups set created_at = timestamptz '2001-01-01' where id = g;"],
+    ['id', 'update groups set id = gen_random_uuid() where id = g;'],
+  ])('%s ligt vast, ook voor de rol die geen client is', (_kolom, mutatie) => {
+    const uit = alsEigenaar(`
+      begin
+        ${mutatie}
+        perform set_config('rol.uitslag', 'TOEGELATEN', true);
+      exception when others then
+        perform set_config('rol.uitslag', 'GEWEIGERD ' || sqlstate, true);
+      end;
+    `);
+
+    expect(
+      uit,
+      'Deze toets staat vóór `current_user not in (...)` en hoort dus ook voor ' +
+        'een definer-functie te gelden — de vorm van QS8-314.',
+    ).toBe('GEWEIGERD 23514');
+  }, 30_000);
+
+  it(
+    'de oprichter is niet leeg te trekken zolang hij bestaat, ook niet als eigenaar',
+    () => {
+      const uit = alsEigenaar(`
+        begin
+          update groups set created_by = null where id = g;
+          perform set_config('rol.uitslag', 'TOEGELATEN', true);
+        exception when others then
+          perform set_config('rol.uitslag', 'GEWEIGERD ' || sqlstate, true);
+        end;
+      `);
+
+      expect(uit).toBe('GEWEIGERD 23514');
+    },
+    30_000,
+  );
+
+  it(
+    'MUST-ALLOW: de referentiële actie zet hem wél op null zodra het profiel weg is',
+    () => {
+      // ⚠️ Zonder deze helft is de toets hierboven een grendel die het wisrecht
+      //    breekt — precies wat de eerste versie van 0264 deed toen de toets nog
+      //    kaal was. 📏 Geijkt: twee rode tests in `opruiming.test.ts`.
+      const uit = alsEigenaar(`
+        begin
+          delete from profiles where id = u;
+          perform set_config('rol.uitslag',
+            coalesce((select created_by::text from groups where id = g), 'NULL'), true);
+        exception when others then
+          perform set_config('rol.uitslag', 'STUK ' || sqlstate, true);
+        end;
+      `);
+
+      expect(uit, 'de on delete set null moet erlangs komen').toBe('NULL');
+    },
+    30_000,
+  );
+});

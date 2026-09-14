@@ -3309,24 +3309,46 @@ describe.skipIf(!rlsTestsConfigured)('RLS-policies met echte JWTs', () => {
    *    tweede bij komt.
    */
   /**
-   * ⚠️⚠️ **Leeg sinds 0264 (QS8-488), en dat is winst die daar niet gezocht werd.**
-   *    `groups.created_by` stond hier omdat `guard_group_update()` hem met een
-   *    kále toewijzing terugzette — onschadelijk dankzij de vroege uitstap, maar
-   *    geen grendel. Die migratie verving élke stille terugzetting op `groups`
-   *    door een `raise`, en daarmee is deze kolom géén uitzondering meer: de
-   *    teller ziet er nu een echte grendel.
+   * ⚠️⚠️ **Leeg sinds 0264 (QS8-488) — maar niet om de reden die hier eerst
+   *    stond, en dat verschil is de hele les.**
    *
-   *    📏 Nagemeten: `onveranderlijkheid_bewaking()` geeft nul kale kolommen, en
-   *    `verwijder_mijn_account()` loopt nog steeds door — de RI-actie van
-   *    `on delete set null` draait als `postgres` en neemt de vroege uitstap, dus
-   *    de `raise` bereikt haar niet. Dat is de reden dat `created_by` in 0264
-   *    ná die uitstap staat en niet ervóór.
+   *    De eerste versie van deze toelichting zei dat de teller *"er nu een echte
+   *    grendel ziet"*. 📏 Dat was onjuist, en de security-ronde mat het na:
+   *
+   *      select count(*) from onveranderlijkheid_bewaking() where tabel='groups'
+   *        -> 0
+   *
+   *    Niet bewaakt maar **weg**. `onveranderlijkheid_bewaking()` (0221) eiste in
+   *    zijn `where` de vorm `new.<kolom> := old.<kolom>`; 0264 verving die door
+   *    een `raise`, en daarmee viel de rij uit de resultaatset. De lijst werd
+   *    leeg doordat de teller niet meer keek — en er stond een uitleg onder die
+   *    dat als winst presenteerde. **Precies de vorm die CLAUDE.md het duurst
+   *    noemt:** een omissie valt op, een uitgeschreven argument leest de
+   *    volgende persoon als een reden om niet te twijfelen.
+   *
+   *    En het was niet lokaal: de huisstijl schuift van `:=` naar `raise`, dus
+   *    élke trigger die meegaat verdwijnt uit deze teller. `groups` was de eerste.
+   *
+   * ✅ **0264 repareert nu de teller zelf.** Hij leest allebei de vormen en kent
+   *    drie grendelvormen: de null-tolerante tak van 0060, de bestaanstoets van
+   *    `bewaak_begunstigde()` (0169), en de vorm die de RI-actie aan zijn gedaante
+   *    herkent uit `fill_approval_subject()` (0262). 📏 Van vijf rijen naar
+   *    **negen**, alle negen met een grendel — dus deze lijst is leeg omdat er
+   *    niets kaals ís, en niet omdat er niet gekeken wordt.
    *
    * ⚠️ **Blijft een register en wordt geen lege array zonder kop.** Komt er ooit
    *    weer een kale toewijzing bij, dan hoort daar een naam én een reden te
    *    staan — niet een stilzwijgend uitgebreide lijst.
    */
   const KAAL_MET_REDEN: readonly string[] = [];
+
+  /**
+   * ⚠️⚠️ **Hoeveel rijen de teller vindt, is zelf een bewaking — QS8-488.**
+   *    Zonder dit getal is "niets kaals" ook waar zodra de detector versmalt, en
+   *    dat is precies hoe deze suite groen bleef toen `groups` eruit viel. 📏 Op
+   *    14-09-2026 zijn het er negen, over zes tabellen.
+   */
+  const MINSTENS_BEWAAKT = 9;
 
   describe('onveranderlijkheid tegenover on delete set null', () => {
     it(
@@ -3343,6 +3365,16 @@ describe.skipIf(!rlsTestsConfigured)('RLS-policies met echte JWTs', () => {
         //    dezelfde val als een controlescript dat nul meldt omdat het niets
         //    inleest.
         expect(rijen.length).toBeGreaterThan(0);
+
+        // ⚠️ Niet alleen "er is iets", maar "er is niet mínder dan er was".
+        //    Zie MINSTENS_BEWAAKT hierboven.
+        expect(
+          rijen.length,
+          'De teller vindt minder set-null-kolommen dan op 14-09-2026. Dat is ' +
+            'geen opruiming maar blindheid: een trigger die van `:=` naar ' +
+            '`raise` gaat, valt zonder deze regel stilzwijgend uit beeld — ' +
+            'QS8-488.',
+        ).toBeGreaterThanOrEqual(MINSTENS_BEWAAKT);
 
         const kaal = rijen
           .filter((r) => !r.heeft_grendel)

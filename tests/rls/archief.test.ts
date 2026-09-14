@@ -355,8 +355,13 @@ describe.skipIf(!rlsTestsConfigured)('0092 — archiveren in plaats van wissen',
  *
  *    De clientkant was dus al dicht; de definer-kant leunde op de stilte. 0264
  *    haalt dat leunen weg (`and status <> 'archived'`) en laat de trigger dán
- *    pas werpen. Het waarneembare gedrag verandert niet — de groep bleef al
- *    archived — maar de afhankelijkheid is weg.
+ *    pas werpen.
+ *
+ * ⚠️ **Eén waarneembaar gevolg, en dat stond hier eerst ten onrechte niet:**
+ *    `last_activity_at` liep vroeger nog op bij een bericht in een gearchiveerde
+ *    groep en doet dat nu niet meer. Inert — de enige lezer is
+ *    `slaap_stille_groepen()`, die op `status = 'active'` filtert — maar *"het
+ *    gedrag verandert niet"* was te stellig.
  *
  * IJKING — met de hand, 14-09-2026, per grendel één mutatie, en van elke mutatie
  * eerst op de database bevestigd dát hij erin zat:

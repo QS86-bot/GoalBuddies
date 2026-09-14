@@ -57,8 +57,17 @@
 --    De clientkant is dus dicht en de definer-kant leunt op de stilte. Daarom
 --    **eerst het leunen weghalen en dan pas werpen**: `wek_groep()` en
 --    `wek_groep_via_review()` wekken voortaan geen gearchiveerde groep meer.
---    Dat verandert het waarneembare gedrag niet — de groep bleef al archived —
---    maar het haalt de afhankelijkheid weg.
+--    Dat verandert het waarneembare gedrag op één punt **wél**, en dat hoort hier
+--    te staan: `last_activity_at` liep vroeger nog op bij een bericht in een
+--    gearchiveerde groep — de oude `archief_blijft_archief()` zette alléén
+--    `status` terug — en dat doet hij nu niet meer. 📏 Nagemeten: een
+--    gearchiveerde groep met een `last_activity_at` van 30 dagen oud houdt die
+--    datum na een `insert into chat_messages`.
+--
+--    Dat is inert: de enige lezer is `slaap_stille_groepen()` en die filtert op
+--    `status = 'active'`, `heropen_groep()` zet de kolom zelf op `now()`, en
+--    buiten `database.types.ts` leest geen enkel `.ts`-bestand hem. Maar *"het
+--    gedrag verandert niet"* was te stellig — gevonden in de security-ronde.
 --
 -- ⚠️ De andere schrijvers zijn nagelopen en hebben dit niet nodig:
 --    `join_group_with_code()` weigert een gearchiveerde groep zelf
@@ -91,9 +100,22 @@
 -- Wat dit niet is
 -- ---------------------------------------------------------------------------
 --
--- ⚠️ **Geen nieuwe grens.** Elke kolom die vandaag gepind is, blijft gepind; het
---    enige verschil is dat de weigering nu hoorbaar is. Geen enkele client kan
---    hierna méér dan hij kon.
+-- ⚠️⚠️ **Voor acht van de elf kolommen is dit geen nieuwe grens** — ze blijven
+--    gepind, alleen is de weigering nu hoorbaar. Geen enkele client kan hierna
+--    méér dan hij kon.
+--
+--    **Voor `id`, `created_at` en `created_by` is het dat wél, en dat stond hier
+--    eerst ten onrechte niet.** 0208 zette ze ná de vroege uitgang; hier staan
+--    ze ervóór en gelden ze voor élke rol — `service_role`, `postgres`, elke
+--    definer-functie. 📏 Nagemeten: `set local role service_role; update groups
+--    set created_at = …` geeft `23514` waar het eerst gewoon landde.
+--
+--    Die grens is verdedigbaar (📏 geen schrijver en geen referentiële actie op
+--    `id` en `created_at`; `created_by` heeft de bestaanstoets die de RI-actie
+--    doorlaat) en staat sinds deze migratie onder test in
+--    `tests/rls/groepspin.test.ts`. Maar hem als *"niets nieuws"* presenteren was
+--    precies de fout die CLAUDE.md het duurst noemt — gevonden in de
+--    security-ronde.
 --
 -- ⚠️ **Geen orakel.** Eén errcode, en de melding noemt de kolom die de aanvrager
 --    zélf heeft meegestuurd — dat verklapt niets wat hij niet al wist. De les van
@@ -242,6 +264,38 @@ begin
       using errcode = 'check_violation';
   end if;
 
+  -- ⚠️⚠️ **`created_by` hoort hier ook, en de vorm is die van
+  --    `bewaak_begunstigde()` op `commitments` — gevonden in de security-ronde.**
+  --
+  --    📏 `groups_created_by_fkey` is `on delete set null`. Een accountverwijdering
+  --    laat Postgres `update groups set created_by = null` doen, en die
+  --    referentiële actie draait met `current_user = postgres`. Een kále toets
+  --    boven de vroege uitgang breekt daarmee het wisrecht van iedereen die ooit
+  --    een groep oprichtte — 📏 geijkt: 2 rode tests in `opruiming.test.ts`.
+  --
+  --    De eerste versie van deze migratie loste dat op door de toets ónder de
+  --    uitgang te zetten. Dat werkt, maar het hangt de bescherming van de
+  --    oprichter aan een **rolnaam**, en `docs/ENGINEER-REVIEW.md` heeft daar een
+  --    open rij over: *"de deny-list op rolnaam faalt nu pas écht open"*.
+  --
+  --    De bestaanstoets haalt die afhankelijkheid weg. Tijdens een
+  --    `on delete set null` is het ouderprofiel **al verdwenen**, dus de
+  --    RI-actie komt er hoe dan ook langs — ongeacht wie hem uitvoert. Een
+  --    client die het oprichterschap leegtrekt terwijl de oprichter nog bestaat,
+  --    loopt er wél op stuk. Zelfde vorm en dezelfde reden als
+  --    `bewaak_begunstigde()`.
+  if old.created_by is not null and new.created_by is null
+     and exists (select 1 from profiles p where p.id = old.created_by) then
+    raise exception 'De oprichter van een groep is niet weg te halen zolang hij bestaat'
+      using errcode = 'check_violation';
+  end if;
+
+  if new.created_by is distinct from old.created_by
+     and new.created_by is not null then
+    raise exception 'De oprichter van een groep ligt vast'
+      using errcode = 'check_violation';
+  end if;
+
   if current_user not in ('authenticated', 'anon') then
     return new;
   end if;
@@ -324,22 +378,6 @@ begin
       using errcode = 'check_violation';
   end if;
 
-  -- ⚠️⚠️ **`created_by` staat hier en niet bovenaan, en dat is gemeten.**
-  --    📏 `groups_created_by_fkey` is `on delete set null`: een
-  --    accountverwijdering laat Postgres `update groups set created_by = null`
-  --    doen, en die referentiële actie draait met `current_user = postgres`.
-  --    Boven de vroege uitgang zou deze toets dus het wisrecht breken van
-  --    iedereen die ooit een groep heeft opgericht — dezelfde klasse als
-  --    QS8-371 en QS8-480, binnen één dag voor de derde keer.
-  --
-  --    De oude tak van 0060 (`if old.created_by is null or new.created_by is not
-  --    null`) is hier weg en komt niet terug: die liet een beheerder-client het
-  --    oprichterschap van zijn eigen groep leegtrekken.
-  if new.created_by is distinct from old.created_by then
-    raise exception 'De oprichter van een groep ligt vast'
-      using errcode = 'check_violation';
-  end if;
-
   return new;
 end;
 $$;
@@ -348,7 +386,105 @@ comment on function public.guard_group_update() is
   'De elf kolommen van groups die een client niet zelf verzet. Werpt sinds 0264 '
   'in plaats van stilzwijgend terug te zetten; id en created_at gelden voor elke '
   'rol, de rest alleen voor authenticated en anon omdat definer-functies ze '
-  'legitiem bijwerken. created_by staat bewust na de vroege uitgang: zijn '
-  'on delete set null draait als postgres. QS8-488.';
+  'legitiem bijwerken. created_by geldt ook voor elke rol, met de bestaanstoets '
+  'van bewaak_begunstigde(): tijdens een on delete set null is het profiel al '
+  'weg, dus de RI-actie komt erlangs zonder dat de grendel aan een rolnaam '
+  'hangt. QS8-488.';
+
+-- ---------------------------------------------------------------------------
+-- 4. De bewaking ziet de wérpvorm, niet alleen de toewijzing
+-- ---------------------------------------------------------------------------
+--
+-- ⚠️⚠️ **Dit is de zwaarste bevinding van de security-ronde, en zonder haar was
+--    deze migratie een slot dat zijn eigen rookmelder losschroeft.**
+--
+--    `onveranderlijkheid_bewaking()` (0221) bestaat omdat dit project vier keer
+--    dezelfde fout maakte: een BEFORE-UPDATE-trigger die een `on delete set
+--    null`-kolom vasthoudt, waardoor niemand zijn account nog kan verwijderen.
+--    Zijn `where` eist de vorm `new.<kolom> := old.<kolom>` — de toewijzing.
+--
+--    📏 Gemeten ná de eerste versie van 0264:
+--
+--      select count(*) from onveranderlijkheid_bewaking() where tabel='groups'
+--        -> 0
+--
+--    Niet "bewaakt", maar **weg**. De rij viel uit de resultaatset, en
+--    `KAAL_MET_REDEN` in `tests/rls/policies.test.ts` werd daardoor leeg — met
+--    een toelichting eronder die dat als winst uitlegde. Dat is exact de vorm
+--    die CLAUDE.md het duurst noemt: een uitgeschreven argument leest de
+--    volgende persoon als een reden om niet te twijfelen.
+--
+-- ⚠️ **En het is niet lokaal.** De huisstijl schuift van `:=` naar `raise`; elke
+--    trigger die meegaat, verdwijnt uit deze teller. `groups` was de eerste.
+--
+--    Daarom leest de bewaking vanaf nu **allebei** de vormen, en noemt hij een
+--    grendel ook als die de bestaanstoets van `bewaak_begunstigde()` gebruikt.
+
+create or replace function public.onveranderlijkheid_bewaking()
+returns table (tabel text, trigger_naam text, functie text, kolom text, heeft_grendel boolean)
+language sql
+stable
+security definer
+set search_path to 'public', 'pg_temp'
+as $$
+  with set_null as (
+    select c.conrelid::regclass::text as tabel, a.attname::text as kolom
+    from pg_constraint c
+    join unnest(c.conkey) as k(attnum) on true
+    join pg_attribute a on a.attrelid = c.conrelid and a.attnum = k.attnum
+    where c.contype = 'f'
+      and c.confdeltype = 'n'                    -- ON DELETE SET NULL
+      and c.connamespace = 'public'::regnamespace
+  ),
+  before_update as (
+    select t.tgrelid::regclass::text as tabel,
+           t.tgname::text            as trigger_naam,
+           p.proname::text           as functie,
+           regexp_replace(pg_get_functiondef(p.oid), '--[^\n]*', '', 'g') as bron
+    from pg_trigger t
+    join pg_proc p on p.oid = t.tgfoid
+    where not t.tgisinternal
+      and (t.tgtype & 2)  <> 0                   -- BEFORE
+      and (t.tgtype & 16) <> 0                   -- UPDATE
+  )
+  select b.tabel, b.trigger_naam, b.functie, s.kolom,
+         -- De toewijzingsvorm met zijn null-tolerante tak (0060/0221) …
+         b.bron ~* ('old\.' || s.kolom || '\s+is\s+null\s+or\s+new\.'
+                    || s.kolom || '\s+is\s+not\s+null')
+         -- … of de werpvorm met een bestaanstoets op de óude waarde. Tijdens een
+         --    `on delete set null` is de ouderrij al weg, dus de RI-actie komt
+         --    erlangs zonder dat de grendel aan een rolnaam hangt. De vorm van
+         --    `bewaak_begunstigde()` (0169) en sinds 0264 ook van
+         --    `guard_group_update()`.
+         or b.bron ~* ('exists\s*\([\s\S]{0,200}old\.' || s.kolom)
+         -- … of de vorm die de RI-actie aan zijn **gedaante** herkent en
+         --    overslaat: `new.x is null and old.x is not null`. Zo doet
+         --    `fill_approval_subject()` het sinds 0262 (QS8-480), en 📏 die
+         --    grendel is daar geijkt — hem weghalen geeft vier rode tests over
+         --    het wisrecht. Zonder deze derde tak meldt de bewaking hem als kaal
+         --    terwijl hij de strengste van de drie is: hij laat alléén de
+         --    referentiële vorm door en niets anders.
+         or b.bron ~* ('new\.' || s.kolom || '\s+is\s+null[\s\S]{0,80}old\.'
+                       || s.kolom || '\s+is\s+not\s+null')
+  from before_update b
+  join set_null s on s.tabel = b.tabel
+  where b.bron ~* ('new\.' || s.kolom || '\s*:=\s*old\.' || s.kolom)
+     -- ⚠️ De werpvorm erbij: een tak die de kolom noemt en werpt. Zonder deze
+     --    regel verdwijnt elke trigger die van `:=` naar `raise` gaat uit beeld,
+     --    en dat is precies wat 0264 met `groups` deed.
+     or b.bron ~* ('new\.' || s.kolom || '\s+is\s+distinct\s+from\s+old\.' || s.kolom)
+     or b.bron ~* ('old\.' || s.kolom || '\s+is\s+not\s+null[\s\S]{0,80}new\.' || s.kolom || '\s+is\s+null')
+  order by b.tabel, s.kolom;
+$$;
+
+comment on function public.onveranderlijkheid_bewaking() is
+  'Elke on delete set null-kolom met een BEFORE-UPDATE-trigger erop, en of die '
+  'trigger een grendel draagt die de RI-actie doorlaat. Ziet sinds 0264 zowel '
+  'de toewijzingsvorm (new.x := old.x) als de werpvorm — anders verdwijnt een '
+  'trigger uit beeld zodra hij van := naar raise gaat, en dat is geen winst maar '
+  'blindheid. QS8-488.';
+
+revoke all on function public.onveranderlijkheid_bewaking() from public, anon, authenticated;
+grant execute on function public.onveranderlijkheid_bewaking() to service_role;
 
 commit;
