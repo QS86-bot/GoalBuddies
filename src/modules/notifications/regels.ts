@@ -392,6 +392,26 @@ export function overzichtsuur(herinneringUur: number | null, graceUren = 12): nu
  *    security-review van 03-09; het slot klopte, de motivering wees naar het
  *    verkeerde.
  */
+/**
+ * Op wat voor moment spreekt een held bij deze melding? — QS8-475.
+ *
+ * ⚠️ **Deze afbeelding staat hier omdat dit bestand `Melding` bezit**, en de
+ *    drie momenten staan in `modules/helden` omdat die de stem bezit. Zou de
+ *    meldingenjob dit zelf uitrekenen, dan is er een tweede plek die kan gaan
+ *    afwijken — precies wat acceptatiecriterium 1 verbiedt.
+ *
+ * ⚠️ **`cycle_summary_weekpas` is `erkenning` en niet `aansporing`**, en dat is
+ *    geen detail. Een weekpas die je reeks redde is goed nieuws; de zin erover
+ *    noemt wel dat er een punt af ging, maar de melding bestaat om te zeggen dat
+ *    je reeks doorloopt. Een aansporende stem eronder maakt er een terechtwijzing
+ *    van, en domeinregel 7 gaat precies over dat verschil.
+ */
+export function stemmomentVoor(sleutel: Tekstsleutel | 'nudge'): 'aansporing' | 'erkenning' | 'gevraagd' {
+  if (sleutel === 'nudge') return 'aansporing';
+  if (sleutel === 'approval_request' || sleutel === 'commitment_witness') return 'gevraagd';
+  return 'erkenning';
+}
+
 export function tekstsleutelVoor(
   soort: Exclude<Melding, 'nudge'>,
   weekpasGered = false,

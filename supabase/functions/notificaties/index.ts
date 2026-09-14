@@ -4,7 +4,7 @@ import { createClient } from 'jsr:@supabase/supabase-js@2';
 //    index re-exporteert ook `clock.ts`, dat `process.env` leest om `freezeNow()`
 //    in productie te weigeren — op Deno is dat een valkuil die je pas merkt als
 //    de job stilvalt.
-import { partsIn } from '../_shared/time/zoned.ts';
+import { localDateOf, partsIn } from '../_shared/time/zoned.ts';
 import { previousCycle, userCycle } from '../_shared/time/cycle.ts';
 import { GRACE_HOURS, type Weekday } from '../_shared/time/types.ts';
 import { inStilteVenster, verschovenUur } from '../_shared/time/stilte.ts';
@@ -12,6 +12,16 @@ import { meld } from '../_shared/melden.ts';
 import { metCors } from '../_shared/cors.ts';
 import { rijen } from '../_shared/bladeren/index.ts';
 import { nudgeBesluit } from '../_shared/notificaties/nudge-besluit.ts';
+// ⚠️ De heldenstem — QS8-475. `kiesStem()` draagt de prioriteitsregel en
+//    `magVerschijnen()` de dagregel; geen van beide wordt hier overgedaan.
+import {
+  kiesStem,
+  magVerschijnen,
+  type Stem,
+  tegenslagtrigger,
+} from '../_shared/helden/stem.ts';
+import { heldregel } from '../_shared/helden/stemteksten.ts';
+import { isHeldsleutel, type Heldsleutel, type Trigger } from '../_shared/helden/helden.ts';
 import {
   berichtVoor,
   meldingPoortReden,
@@ -22,6 +32,7 @@ import {
   type Bericht,
   type Melding,
   type Meldingsvoorkeuren,
+  stemmomentVoor,
   type Toon,
 } from '../_shared/notificaties/regels.ts';
 import {
@@ -518,7 +529,29 @@ async function stuurNudge(ronde: Meldronde): Promise<void> {
   );
 
   if (besluit.mag) {
+    // ⚠️ **Pas hier, en dat is acceptatiecriterium 5.** `besluit.mag` is waar ná
+    //    de gratis poort én de zes dure vragen; alles daarvóór zou de held
+    //    opzoeken voor gebruikers die vandaag niets krijgen.
     const toon: Toon = profiel.reminder_tone === 'firm' ? 'firm' : 'gentle';
+    // ⚠️⚠️ **De nudge draagt `misser` of `stilte`, en dát is acceptatiecriterium
+    //    2.** Een nudge gaat per definitie over iets dat nog openstaat, dus hij
+    //    is een tegenslagsignaal — en welk van de twee het is, hangt af van hoe
+    //    lang deze gebruiker al niets deed. `tegenslagtrigger()` rekent dat uit
+    //    met `daysBetween()` uit `shared/time`.
+    //
+    // ⚠️ Geen activiteitsdatum betekent een nieuwe gebruiker die nog nooit iets
+    //    deed. Die is niet "stil geworden" en krijgt Ignis, niet Lucerna.
+    const laatste = await laatsteActiviteitDatum(db, profiel.id, profiel.tz);
+    const trigger: Trigger =
+      laatste === null ? 'misser' : tegenslagtrigger(laatste as never, lokaleDatum as never);
+
+    const bericht = await metHeldenstem(
+      ronde,
+      'nudge',
+      nudgeBericht(toon, taalVan(profiel)),
+      trigger,
+    );
+
     const stand = await stuur(db, {
       userId: profiel.id,
       apparaten,
@@ -526,12 +559,53 @@ async function stuurNudge(ronde: Meldronde): Promise<void> {
       inStilte,
       nu,
       soort: 'nudge',
-      bericht: nudgeBericht(toon, taalVan(profiel)),
+      bericht,
       lokaleDatum,
       refId: null,
     });
     tel(stand);
   }
+}
+
+/**
+ * Zet de stem van een held onder een bericht, of laat het bericht zoals het is.
+ *
+ * ⚠️⚠️ **Hier komen de twee toonmechanismen samen, en het is precies één `if`.**
+ *    Heeft de gebruiker een held, dan spreekt die; heeft hij er geen, dan blijft
+ *    de bestaande `gentle`/`firm`-tekst staan zoals hij was. Dat is het besluit
+ *    van 14-09-2026 op QS8-475: `reminder_tone` is een knop die de gebruiker
+ *    zelf gezet heeft, en die weghalen is een belofte breken.
+ *
+ *    ⚠️ De grens die dat leefbaar houdt is dat ze elkaar niet overlappen. De
+ *       toon is alléén bereikbaar als er geen held is. Komt daar ooit een tweede
+ *       tak bij, dan staan er twee toonmechanismen naast elkaar en is dát de
+ *       bevinding — niet deze functie.
+ *
+ * ⚠️ **De dagregel beslist over tónen, niet over noteren.** Mag deze held niet
+ *    verschijnen omdat er vandaag al een was, dan gaat het bericht gewoon weg in
+ *    zijn neutrale vorm — de melding zelf is door `nudgeBesluit()` en de
+ *    schakelaars al goedgekeurd, en die beslissing hoort een stem niet te
+ *    overrulen. Een heldenverschijning die een melding tegenhoudt zou een
+ *    regressie zijn en geen feature.
+ */
+async function metHeldenstem(
+  ronde: Meldronde,
+  soort: Melding,
+  bericht: Bericht,
+  trigger: Trigger | null,
+): Promise<Bericht> {
+  const { db, profiel, lokaleDatum } = ronde;
+
+  const stem: Stem = kiesStem(trigger, await hoofdheldVan(db, profiel.id));
+  if (stem.soort === 'geen') return bericht;
+
+  const alGeweest = await heldenVandaag(db, profiel.id, profiel.tz, lokaleDatum);
+  if (!magVerschijnen(stem, alGeweest)) return bericht;
+
+  await noteerVerschijning(db, profiel.id, stem.held, stem.trigger);
+
+  const regel = heldregel(stem.held, stemmomentVoor(soort), taalVan(profiel));
+  return { ...bericht, body: `${bericht.body} ${regel}` };
 }
 
 /**
@@ -565,7 +639,12 @@ async function stuurGoedkeuringsverzoeken(ronde: Meldronde): Promise<void> {
       inStilte,
       nu,
       soort: 'approval_request',
-      bericht: berichtVoor('approval_request', { naam: rij.naam }, taalVan(profiel)),
+      bericht: await metHeldenstem(
+        ronde,
+        'approval_request',
+        berichtVoor('approval_request', { naam: rij.naam }, taalVan(profiel)),
+        null,
+      ),
       lokaleDatum,
       refId: rij.completionId,
     });
@@ -599,7 +678,12 @@ async function stuurOntvangenGoedkeuringen(ronde: Meldronde): Promise<void> {
       inStilte,
       nu,
       soort: 'approval_received',
-      bericht: berichtVoor('approval_received', { naam: rij.naam }, taalVan(profiel)),
+      bericht: await metHeldenstem(
+        ronde,
+        'approval_received',
+        berichtVoor('approval_received', { naam: rij.naam }, taalVan(profiel)),
+        null,
+      ),
       lokaleDatum,
       refId: rij.approvalId,
     });
@@ -720,7 +804,18 @@ async function stuurCyclusoverzicht(ronde: Meldronde): Promise<void> {
         //    niets tegen. De grendel is de grep in
         //    `tests/beloftes/weekpas-bereikt-je.test.ts`.
         soort: 'cycle_summary',
-        bericht: berichtVoor('cycle_summary', { weekpasGered }, taalVan(profiel)),
+        // ⚠️ **`mijlpaal` en niet `null`, en dat is de uitzondering op de
+        //    dagregel.** Een afgesloten week is het moment waarop het
+        //    brondocument een tweede stem toestaat — hoofdheld plus Strix. Zou
+        //    hier `null` staan, dan spreekt de hoofdheld en valt de melding
+        //    onder de gewone dagregel, en dan is er geen moment meer waarop die
+        //    uitzondering ooit optreedt.
+        bericht: await metHeldenstem(
+          ronde,
+          'cycle_summary',
+          berichtVoor('cycle_summary', { weekpasGered }, taalVan(profiel)),
+          'mijlpaal',
+        ),
         lokaleDatum,
         refId: null,
       });
@@ -778,7 +873,12 @@ async function stuurGetuigenissen(ronde: Meldronde): Promise<void> {
       inStilte,
       nu,
       soort: 'commitment_witness',
-      bericht: berichtVoor('commitment_witness', { naam: rij.naam }, taalVan(profiel)),
+      bericht: await metHeldenstem(
+        ronde,
+        'commitment_witness',
+        berichtVoor('commitment_witness', { naam: rij.naam }, taalVan(profiel)),
+        null,
+      ),
       lokaleDatum,
       refId: rij.commitmentId,
     });
@@ -807,6 +907,141 @@ function maakClient(sleutel: string) {
 }
 
 type Db = ReturnType<typeof maakClient>;
+
+/**
+ * De hoofdheld van deze gebruiker, of `null` als hij de quiz oversloeg.
+ *
+ * ⚠️ **Deze vraag staat ná de gratis poort** — acceptatiecriterium 5, en het is
+ *    dezelfde reden waarom `nudge-besluit.ts` bestaat: voor de drieëntwintig van
+ *    de vierentwintig uren waarin deze gebruiker sowieso niets krijgt, is dit
+ *    weggegooid werk. Hem bij `Profiel` in de profielquery zetten leest
+ *    goedkoper dan hij is: die query draait voor élk profiel, elk uur.
+ *
+ * ⚠️ `maybeSingle()` en niet `single()`: geen rij is een geldig antwoord.
+ */
+async function hoofdheldVan(db: Db, userId: string): Promise<Heldsleutel | null> {
+  const { data } = await db
+    .from('hero_profiles')
+    .select('hero_key')
+    .eq('user_id', userId)
+    .maybeSingle();
+
+  const sleutel = (data as { hero_key?: unknown } | null)?.hero_key;
+  return isHeldsleutel(sleutel) ? sleutel : null;
+}
+
+/**
+ * Hoeveel helden er vandaag al gesproken hebben, in de dag van de gebruiker.
+ *
+ * ⚠️⚠️ **De dag is die van de gebruiker en niet UTC** — acceptatiecriterium 3.
+ *    `hero_appearances` draagt alleen `shown_at` (een timestamptz) en geen
+ *    lokale datum, dus de grens moet hier getrokken worden. Dat gebeurt met
+ *    `localDateOf()` uit `shared/time` en niet met een eigen aftrekking:
+ *    correctheidsregel 7 laat geen tweede plek toe waar een dag begint.
+ *
+ * ⚠️ **Het venster van 48 uur is een grens op de query en niet op de betekenis.**
+ *    Geen enkele tijdzone ligt meer dan een etmaal van UTC; twee etmalen ophalen
+ *    dekt de lokale dag dus met ruimte, en de dagregel zelf houdt het aantal
+ *    rijen op hoogstens twee per dag. Zonder die grens is dit een
+ *    ongepagineerde lijstquery over een tabel die per gebruiker blijft groeien,
+ *    en dat is onwrikbare regel 10.
+ */
+async function heldenVandaag(
+  db: Db,
+  userId: string,
+  tz: string,
+  lokaleDatum: string,
+): Promise<number> {
+  const grens = new Date(Date.now() - 48 * 60 * 60 * 1000).toISOString();
+
+  const { data } = await db
+    .from('hero_appearances')
+    .select('shown_at')
+    .eq('user_id', userId)
+    .gte('shown_at', grens);
+
+  const rijen = (data ?? []) as { shown_at: string }[];
+  return rijen.filter((r) => localDateOf(r.shown_at, tz as never) === lokaleDatum).length;
+}
+
+/**
+ * Schrijft weg dat deze held gesproken heeft.
+ *
+ * ⚠️ **Alleen de server schrijft deze tabel**, en dat is de hele opzet van 0264:
+ *    `authenticated` heeft er geen enkele INSERT-kolomgrant op. Deze job draait
+ *    onder `service_role` en is dus de enige schrijver die er is.
+ *
+ * ⚠️ **Een mislukte schrijfactie mag de melding niet tegenhouden.** De
+ *    verschijning is de administratie, het bericht is de belofte aan de
+ *    gebruiker. Valt de eerste om, dan wordt dat gemeld en gaat de tweede
+ *    gewoon door — andersom zou een volle dagteller of een trage database een
+ *    stille meldingsstop opleveren.
+ */
+async function noteerVerschijning(
+  db: Db,
+  userId: string,
+  held: Heldsleutel,
+  trigger: Trigger,
+): Promise<void> {
+  const { error } = await db
+    .from('hero_appearances')
+    .insert({ user_id: userId, hero_key: held, trigger });
+
+  if (error) void meld(error, 'notificaties.heldverschijning', { user_id: userId });
+}
+
+/**
+ * De laatste dag waarop deze gebruiker iets deed, in zijn eigen datum.
+ *
+ * ⚠️⚠️ **Twee bronnen en niet één, want "activiteit" is niet alleen de Dagzet.**
+ *    Wie elke week zijn weekdoel afrondt maar nooit een Dagzet schrijft, is niet
+ *    stil — en met alleen `daily_moves` zou Lucerna hem na drie dagen aanspreken
+ *    alsof hij verdwenen was. Dat is precies de vergissing waar de overgang van
+ *    Ignis naar Lucerna voor bestaat: niet bestraffend klinken bij een dip die er
+ *    niet is.
+ *
+ * ⚠️ `daily_moves.local_date` is al de lokale datum van de gebruiker en vraagt
+ *    geen omrekening. `completions.submitted_at` is een timestamptz en gaat
+ *    daarom door `localDateOf()` — correctheidsregel 7, en niet een tweede plek
+ *    waar een dag begint.
+ *
+ * ⚠️ Allebei `limit(1)` op een aflopende sortering: dit zijn tabellen die per
+ *    gebruiker blijven groeien, en onwrikbare regel 10 laat geen ongepagineerde
+ *    lijstquery toe.
+ */
+async function laatsteActiviteitDatum(db: Db, userId: string, tz: string): Promise<string | null> {
+  const [dagzet, afronding] = await Promise.all([
+    db
+      .from('daily_moves')
+      .select('local_date')
+      .eq('user_id', userId)
+      .order('local_date', { ascending: false })
+      .limit(1)
+      .maybeSingle(),
+    db
+      .from('completions')
+      .select('submitted_at')
+      .eq('user_id', userId)
+      .order('submitted_at', { ascending: false })
+      .limit(1)
+      .maybeSingle(),
+  ]);
+
+  const datums: string[] = [];
+
+  const laatsteDagzet = (dagzet.data as { local_date?: string } | null)?.local_date;
+  if (laatsteDagzet) datums.push(laatsteDagzet);
+
+  const laatsteAfronding = (afronding.data as { submitted_at?: string } | null)?.submitted_at;
+  if (laatsteAfronding) datums.push(localDateOf(laatsteAfronding, tz as never));
+
+  if (datums.length === 0) return null;
+
+  // ⚠️ Een gewone stringvergelijking mag hier: ISO-datums sorteren
+  //    lexicografisch gelijk aan chronologisch. Dat is geen tijdberekening maar
+  //    een eigenschap van het formaat.
+  return datums.sort().at(-1) ?? null;
+}
 
 async function heeftDagzetVandaag(db: Db, userId: string, datum: string): Promise<boolean> {
   const { count } = await db
