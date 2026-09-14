@@ -59,9 +59,18 @@ export function isGeldigeTijdzone(waarde: string): boolean {
  *    gebruiker in de praktijk kreeg was een storingsmelding bij het aanmaken van
  *    zijn eerste groep.
  *
- * ⚠️ Geeft een **voorstel** terug en geen vaststaand feit. Wie in Lissabon woont
- *    met zijn telefoon op Amsterdam moet dat kunnen rechtzetten, en wie reist
- *    wil niet dat zijn week verspringt omdat hij een week in Bangkok zat.
+ * ⚠️⚠️ **Dit was een voorstel en is sinds QS8-472 het antwoord.** De zin die
+ *    hier stond — *"wie in Lissabon woont met zijn telefoon op Amsterdam moet dat
+ *    kunnen rechtzetten, en wie reist wil niet dat zijn week verspringt omdat hij
+ *    een week in Bangkok zat"* — beschreef `TijdzoneKeuze`, en dat component
+ *    bestaat niet meer. `Tijdzonewacht` in `app/_layout.tsx` schrijft wat deze
+ *    functie teruggeeft naar `profiles.tz`, en er is geen tweede pad.
+ *
+ *    Allebei die gevallen zijn dus nog steeds waar en worden nu **niet** meer
+ *    opgevangen. Dat is Quintens besluit van 14-09-2026 en geen omissie; de
+ *    afweging staat in
+ *    `docs/decisions/2026-09-14-de-tijdzone-komt-uit-het-apparaat.md` en als rij
+ *    in `docs/ENGINEER-REVIEW.md`.
  */
 export function apparaatTijdzone(): TimeZone {
   try {

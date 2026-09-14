@@ -392,15 +392,27 @@ describe('de onboarding heeft geen schrijfpad buiten de datalaag om', () => {
 });
 
 /**
- * Grendel 5: de tijdzone is een regel tekst geworden, geen doodlopende weg.
+ * Grendel 5: de tijdzone in de onboarding komt uit het apparaat.
  *
- * ⚠️ Dit is de keten uit QS8-27 nog een keer. Daar bestond `tijdzoneSchema`,
- *    nam `updateProfiel()` `tz` al mee, stond `isGeldigeTijdzone()` klaar — en
- *    was er geen scherm. Wie de zone samenvouwt tot één regel en de knop ernaast
- *    weglaat, knipt dezelfde keten door: telefoon verkeerd, en geen weg terug.
+ * ⚠️⚠️ **Deze grendel bewaakte tot 14-09-2026 het tegenovergestelde, en dat is
+ *    geen slijtage maar een besluit.** Hij eiste dat het onboardingscherm naast
+ *    de regel tekst óók `<TijdzoneKeuze` en de knop `onboarding.tijdzone_klopt_niet`
+ *    droeg, met de redenering uit QS8-27: *"telefoon verkeerd, en geen weg
+ *    terug"*. Op QS8-472 heeft Quinten besloten dat die weg terug eruit gaat; de
+ *    afweging en de twee gevallen die daardoor niet meer opgevangen worden staan
+ *    in `docs/decisions/2026-09-14-de-tijdzone-komt-uit-het-apparaat.md` en als
+ *    rij in `docs/ENGINEER-REVIEW.md`.
+ *
+ * ⚠️ **De grendel is omgedraaid en niet weggehaald, en dat is het punt.** Een
+ *    belofte die vervalt laat een test achter die rood wordt; wie hem dan
+ *    verwijdert, laat niets achter dat de nieuwe belofte bewaakt. Wat hier nu
+ *    staat is de andere kant van dezelfde keten: de regel tekst moet er zijn (je
+ *    hoort te zien in welke zone je app rekent — domeinregel 2) en er mag geen
+ *    invoerpad meer naast staan, want twee schrijvers naast `Tijdzonewacht`
+ *    kunnen elkaar overschrijven.
  */
-describe('de tijdzone blijft corrigeerbaar in de onboarding', () => {
-  it('het onboardingscherm heeft de regel, de knop én het zoekveld', () => {
+describe('de tijdzone in de onboarding komt uit het apparaat', () => {
+  it('het onboardingscherm toont de zone en biedt geen invoerpad', () => {
     const schermen = ONBOARDINGBESTANDEN.filter((pad) =>
       readFileSync(join(WORTEL, pad), 'utf8').includes("t('onboarding.tijdzone_van_telefoon'"),
     );
@@ -412,22 +424,19 @@ describe('de tijdzone blijft corrigeerbaar in de onboarding', () => {
 
     for (const pad of schermen) {
       const bron = readFileSync(join(WORTEL, pad), 'utf8');
-      expect(
-        bron,
-        `${pad} toont de tijdzone maar rendert geen \`TijdzoneKeuze\`. Dan is een ` +
-          'verkeerde apparaatzone niet meer recht te zetten.',
-      ).toContain('<TijdzoneKeuze');
 
-      // ⚠️ **De component staat achter een vlag, dus zijn aanwezigheid is de
-      //    helft van het pad.** Haalt iemand de knop "Klopt niet" weg, dan staat
-      //    `<TijdzoneKeuze` er nog letterlijk terwijl niemand hem ooit te zien
-      //    krijgt — de keten van QS8-27 opnieuw doorgeknipt, en de vorige versie
-      //    van deze grendel bleef daarbij groen.
       expect(
         bron,
-        `${pad} toont de tijdzone zonder knop om hem open te klappen. De component ` +
-          'staat achter een vlag; zonder zetter is hij onbereikbaar.',
-      ).toContain("t('onboarding.tijdzone_klopt_niet')");
+        `${pad} rendert weer een \`TijdzoneKeuze\`. Sinds QS8-472 is \`Tijdzonewacht\` ` +
+          'de enige schrijver van `profiles.tz`; een tweede pad kan hem overschrijven.',
+      ).not.toContain('<TijdzoneKeuze');
+
+      // ⚠️ De knop was de vlag waarachter de component stond. Staat hij er weer,
+      //    dan is er een uitklappad — ook als de component zelf anders heet.
+      expect(
+        bron,
+        `${pad} heeft weer een knop om de tijdzone open te klappen.`,
+      ).not.toContain("t('onboarding.tijdzone_klopt_niet')");
     }
   });
 });

@@ -70,8 +70,6 @@ export {
   weektip,
   type TipSet,
 } from './tips';
-export { TijdzoneKeuze } from './TijdzoneKeuze';
-export { isBruikbareZone, VOORSTELLEN_MAX, zoekTijdzones } from './tijdzone';
 export { WeekStartKeuze } from './WeekStartKeuze';
 export { Body, Caption, Eyebrow, Heading, Subheading } from './Text';
 
