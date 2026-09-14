@@ -6,8 +6,10 @@ import { fileURLToPath } from 'node:url';
 
 import {
   GATGROOTTE,
+  MAPTELLING,
   beoordeelStand,
   gattabelKlachten,
+  leesBewering,
   nummerVan,
   telWoord,
 } from '../../scripts/docs-controle.mjs';
@@ -77,6 +79,84 @@ describe('nummerVan', () => {
   });
 });
 
+/**
+ * QS8-482 — de drie uitkomsten van één bewering.
+ *
+ * ⚠️⚠️ **De derde bestond niet.** Er staat niets, er staat iets leesbaars, of er
+ *    staat iets dat geen getal is — en die laatste viel vóór dit issue samen met
+ *    de eerste. 📏 `docs/WERKVOORRAAD.md` §0 zei *"Het gat is daarmee
+ *    **veertig** bestanden"* bij een werkelijk gat van 37, en `docs:controle`
+ *    was groen. Met de juiste waarde voluit óók groen — om dezelfde reden, niet
+ *    om de goede.
+ */
+describe('leesBewering', () => {
+  it('meldt dat er niets beweerd is als het patroon niet matcht', () => {
+    expect(leesBewering('Een gewone alinea.', MAPTELLING)).toEqual({ staatEr: false });
+  });
+
+  it('leest een getal in cijfers', () => {
+    expect(leesBewering('De map telt er **270**.', MAPTELLING)).toEqual({
+      staatEr: true,
+      waarde: 270,
+    });
+  });
+
+  it('leest een getal voluit, tot en met twintig', () => {
+    expect(leesBewering('Het gat is daarmee dertien bestanden', GATGROOTTE)).toEqual({
+      staatEr: true,
+      waarde: 13,
+    });
+  });
+
+  /** ⚠️ De vorm die het hele issue draagt: hij stáát er, en hij is niet te lezen. */
+  it('houdt een bewering die er staat maar niet te lezen is apart', () => {
+    expect(leesBewering('Het gat is daarmee drieënveertig bestanden', GATGROOTTE)).toEqual({
+      staatEr: true,
+      onleesbaar: 'drieënveertig',
+    });
+  });
+
+  /**
+   * ⚠️⚠️ **De val die deze grendel bijna opnieuw opende.** `String.match()` geeft
+   *    met de `g`-vlag de hele treffers terug zónder groepen, dus `gevonden[1]`
+   *    is bij één treffer `undefined`. Viel `onleesbaar` daarop terug op
+   *    `undefined`, dan toetste `beoordeelStand()` op *"is er een onleesbaar
+   *    veld"* en zweeg — precies het gedrag dat QS8-482 wegnam, teruggezet door
+   *    een vlag die iemand later toevoegt.
+   *
+   * 📏 Geijkt, vooraf gemeten op 38 groen: `gevonden[1] ?? gevonden[0]` terug
+   *    naar `gevonden[1]` maakt precies deze twee toetsen rood.
+   *
+   * ⚠️⚠️ **En de andere helft is met opzet níét apart te ijken — gemeten, niet
+   *    aangenomen.** `beoordeelStand()` toetst op `staatEr && waarde ===
+   *    undefined` en niet op `onleesbaar !== undefined`. 📏 Die helft alléén
+   *    terugzetten laat alle 38 groen, want zolang de `??` hierboven staat zijn
+   *    de twee vormen gelijkwaardig. Ze is dus een riem naast een bretel en de
+   *    suite kan haar niet zien. Ze blijft staan omdat ze de **belofte**
+   *    uitdrukt — *"er staat een bewering en ik kon hem niet lezen"* — waar de
+   *    andere vorm een eigenschap van de implementatie uitdrukt; regel 18,
+   *    vraag 2. Wie de `??` ooit weghaalt, houdt aan deze vorm een controle over
+   *    die nog steeds klopt.
+   */
+  it('houdt een bewering zonder leesbare groep apart, ook met de g-vlag', () => {
+    const metG = new RegExp(GATGROOTTE.source, 'gi');
+    const uit = leesBewering('Het gat is daarmee 43 bestanden', metG);
+    expect(uit.staatEr).toBe(true);
+    expect(uit.waarde).toBeUndefined();
+    expect(typeof uit.onleesbaar).toBe('string');
+  });
+
+  it('houdt ook een woord dat geen getal probeert te zijn apart', () => {
+    // ⚠️ `MAPTELLING` eist niets ná het getal, dus hier landt elk woord dat op
+    //    "de map telt er" volgt. Dat is een klacht en geen stilte: de bewering
+    //    staat er, alleen niet in een vorm die te toetsen is.
+    expect(leesBewering('De map telt er inmiddels 270.', MAPTELLING)).toEqual({
+      staatEr: true,
+      onleesbaar: 'inmiddels',
+    });
+  });
+});
+
 describe('beoordeelStand — de vormen die hij moet vínden', () => {
   it('ziet een maptelling die achterloopt', () => {
     const fouten = beoordeelStand({
@@ -120,6 +200,96 @@ describe('beoordeelStand — de vormen die hij moet vínden', () => {
     });
     expect(fouten).toHaveLength(1);
     expect(fouten[0]).toMatch(/229 bestanden telt/);
+  });
+});
+
+/**
+ * QS8-482 — een bewering die er staat maar niet te lezen is.
+ *
+ * ⚠️ Deze vier gevallen stonden vóór dit issue allemaal in de vórige groep
+ *    hierboven te ontbreken: ze waren geen "vorm die hij met rust laat" maar een
+ *    vorm die hij *had moeten vinden* en niet vond.
+ */
+describe('beoordeelStand — de beweringen die hij niet kan lézen', () => {
+  /**
+   * 📏 **De meting van QS8-482, woordelijk.** `veertig` bij een gat van 37: dit
+   *    wás groen. Niet omdat de bewering klopte maar omdat hij niet gelezen kon
+   *    worden.
+   */
+  it('meldt een gatbewering die hij niet kan lézen — QS8-482', () => {
+    const fouten = beoordeelStand({
+      inhoud: '**Productie staat op `0221`.**\n\n**Het gat is daarmee veertig bestanden**',
+      bestanden: map(258),
+    });
+    expect(fouten).toHaveLength(1);
+    expect(fouten[0]).toMatch(/`veertig` is voor deze controle geen getal/);
+    expect(fouten[0]).toMatch(/niet getoetst maar overgeslagen/);
+  });
+
+  /**
+   * ⚠️⚠️ **De scherpste vorm: de júíste waarde, voluit.** Hier is de bewering
+   *    waar en de controle tóch rood — want wat hij niet kan lezen, kan hij niet
+   *    nakijken, en morgen klopt hij niet meer. Dit geval is groen onder élke
+   *    reparatie die alleen `NUMMERWOORDEN` uitbreidt tot onder deze waarde.
+   */
+  it('meldt ook een gatbewering die toevallig klopt maar onleesbaar is', () => {
+    const fouten = beoordeelStand({
+      inhoud: '**Productie staat op `0221`.**\n\n**Het gat is daarmee drieënveertig bestanden**',
+      bestanden: map(264),
+    });
+    expect(fouten).toHaveLength(1);
+    expect(fouten[0]).toMatch(/`drieënveertig` is voor deze controle geen getal/);
+  });
+
+  it('meldt een maptelling die hij niet kan lézen', () => {
+    const fouten = beoordeelStand({
+      inhoud: 'De map telt er **tweehonderdzeventig**.',
+      bestanden: map(270),
+    });
+    expect(fouten).toHaveLength(1);
+    expect(fouten[0]).toMatch(/hoeveel bestanden de migratiemap telt/);
+    expect(fouten[0]).toMatch(/`tweehonderdzeventig`/);
+  });
+
+  /**
+   * ⚠️ De klacht zegt waar de grens ligt, want anders moet de schrijver hem per
+   *    keer kiezen — en dat ís hoe deze fout ontstond (acceptatiecriterium 4).
+   */
+  it('zegt in de klacht wat de schrijver moet doen', () => {
+    const fouten = beoordeelStand({
+      inhoud: 'De map telt er **tweehonderdzeventig**.',
+      bestanden: map(270),
+    });
+    expect(fouten[0]).toMatch(/Tot en met twintig mag voluit, daarboven hoort een cijfer\./);
+  });
+
+  /**
+   * ⚠️ Dezelfde val, maar dan waar hij telt: in `beoordeelStand()`. Een patroon
+   *    met de `g`-vlag mag geen stilte opleveren.
+   */
+  it('meldt een bewering waarvan hij de groep niet eens kan lezen', () => {
+    const fouten = beoordeelStand({
+      inhoud: 'De map telt er 270, en verderop nog eens: de map telt er 270.',
+      bestanden: map(270),
+    });
+    // Zonder `g` leest hij hier gewoon 270 en zwijgt terecht.
+    expect(fouten).toEqual([]);
+
+    // Mét een patroon zonder bruikbare groep is er een bewering die hij niet
+    // kan nakijken, en dan hoort hij dat te zeggen in plaats van te zwijgen.
+    expect(
+      leesBewering('De map telt er 270.', /de map telt er \d+/i),
+    ).toEqual({ staatEr: true, onleesbaar: 'De map telt er 270' });
+  });
+
+  it('meldt een onleesbare maptelling en een onleesbaar gat elk apart', () => {
+    const fouten = beoordeelStand({
+      inhoud:
+        '**Productie staat op `0221`.** De map telt er **tweehonderdzeventig**.\n\n' +
+        '**Het gat is daarmee drieënveertig bestanden**',
+      bestanden: map(264),
+    });
+    expect(fouten).toHaveLength(2);
   });
 });
 
