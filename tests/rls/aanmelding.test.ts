@@ -250,18 +250,18 @@ describe.skipIf(!beschikbaar)('een aanmelding wordt een profiel', () => {
   );
 
   /**
-   * De tweede schrijver van `display_name` — QS8-450, migratie 0268.
+   * De tweede schrijver van `display_name` — QS8-450, migratie 0269.
    *
    * ⚠️⚠️ **Dit geval staat hier omdat de CHECK het niet kan dekken.** De grens
    *    tegen een omkerende naam is `profiles_display_name_geen_bidi`, en die
    *    **weigert**. Op deze route mag niets weigeren: een provider levert de
    *    naam aan, de gebruiker heeft er geen invloed op, en een geweigerde
    *    aanmelding is erger dan een gepoetste naam. De trigger gaat daarom langs
-   *    `schone_naam()`, die sinds 0268 `zonder_bidi()` componeert — en dán haalt
+   *    `schone_naam()`, die sinds 0269 `zonder_bidi()` componeert — en dán haalt
    *    hij de CHECK.
    *
    *    📏 Zonder die compositie valt de aanmelding om op de nieuwe CHECK: dat is
-   *    exact het geval waar de rollback-kop van 0268 voor waarschuwt.
+   *    exact het geval waar de rollback-kop van 0269 voor waarschuwt.
    *
    * ⚠️ De les van 7a in
    *    `docs/decisions/2026-09-13-twee-poorten-die-elkaar-niet-kenden.md`: een
@@ -293,7 +293,7 @@ describe.skipIf(!beschikbaar)('een aanmelding wordt een profiel', () => {
     () => {
       const uit = meldAan(ID(28), 'bidi2@voorbeeld.test', '{"full_name":"a\\u202Eb\\u202Ec"}');
 
-      expect(uit, 'de aanmelding is mislukt — waarschijnlijk op de CHECK van 0268').not.toBeNull();
+      expect(uit, 'de aanmelding is mislukt — waarschijnlijk op de CHECK van 0269').not.toBeNull();
       expect(uit?.naam, 'er staat nog een override in de naam').toBe('abc');
     },
     TEST_TIMEOUT,

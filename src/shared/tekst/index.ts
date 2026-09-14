@@ -186,7 +186,7 @@ export function isOnzichtbaar(codepunt: number): boolean {
  *    de rand worden ze al gestreken. De voorwaarde waaronder dat besluit
  *    vervalt, staat in `docs/ENGINEER-REVIEW.md`.
  *
- * ⚠️ **Dezelfde lijst staat in SQL als `zonder_bidi()` (migratie 0268), en dat
+ * ⚠️ **Dezelfde lijst staat in SQL als `zonder_bidi()` (migratie 0269), en dat
  *    is een naad.** `tests/rls/naamnormalisatie.test.ts` loopt het hele
  *    codepuntbereik af mét een teken in het **midden** en legt beide oordelen
  *    naast elkaar. Haal je hier één teken weg, dan wordt die toets rood; dat is

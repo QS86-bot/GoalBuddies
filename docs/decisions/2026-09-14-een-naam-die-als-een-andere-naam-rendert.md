@@ -2,7 +2,7 @@
 
 **Datum:** 14-09-2026
 **Issue:** QS8-450
-**Migratie:** 0268
+**Migratie:** 0269
 **Raakt:** domeinregel 3 (peer-goedkeuring is een autorisatiegrens), domeinregel 7 (groepszichtbare oppervlakken)
 
 ## De vraag
@@ -138,8 +138,8 @@ en een tweede naad zijn in een issue dat over namen gaat.
 
 ## ⚠️⚠️ Wat de security-ronde vond: de belofte was breder dan de levering
 
-De kop van 0268 opende met *"een weergavenaam kan niet meer als een ándere naam
-renderen"*. 📏 Gemeten als `authenticated`, ná 0268, via de gewone weg:
+De kop van 0269 opende met *"een weergavenaam kan niet meer als een ándere naam
+renderen"*. 📏 Gemeten als `authenticated`, ná 0269, via de gewone weg:
 
 ```
 update public.profiles set display_name = U&'Ja\200Bn' where id = <eigen id>;

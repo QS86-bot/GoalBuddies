@@ -38,13 +38,25 @@ import { psqlArgumenten, verbindingsmelding } from './psql.mjs';
  * De oppervlakken die met opzet variëren op `groups.zichtbaarheid`, met wat de
  * gebruiker daarover leest.
  *
- * ⚠️ Zes rijen, maar **vijf feiten** — en dat onderscheid is de reden dat de zin
- *    voor de gebruiker niet meegroeit. `zichtbare_reeksen_van_groep` (0151) is
- *    een tweede pad naar hetzelfde feit als `group_visible_streaks`, niet een
- *    zesde ding dat opengaat. Komt er een rij bij die wél een nieuw feit
+ * ⚠️ Zeven rijen, maar **zes feiten** — en dat onderscheid is de reden dat de zin
+ *    voor de gebruiker niet bij elke rij meegroeit. `zichtbare_reeksen_van_groep`
+ *    (0151) is een tweede pad naar hetzelfde feit als `group_visible_streaks`,
+ *    niet een eigen ding dat opengaat. Komt er een rij bij die wél een nieuw feit
  *    opent, dan wordt deze controle rood — en dán is de vraag of
  *    `zichtbaarheid.open_uitleg` en `bevestiging.groep_openzetten.uitleg` nog
  *    kloppen, niet later.
+ *
+ * ⚠️ **Dat is op 14-09-2026 voor de tweede keer gebeurd** (QS8-477, migratie
+ *    0268). `groep_helden()` werd hier rood, en de twee zinnen noemden toen vier
+ *    van de vijf feiten die er waren. Ze noemen er nu zes.
+ *
+ *    ⚠️ En er kwam een derde zin bij die niemand had aangewezen:
+ *       `bevestiging.groep_beschermen.uitleg`, de tekst bij het terúgzetten. Die
+ *       somt op wat er dichtgaat, en liep net zo hard uit de pas — met de
+ *       gevaarlijke richting van de twee, want een groep die hoort dat iets weer
+ *       privé wordt terwijl het blijft staan, gelooft een belofte die niet klopt.
+ *       Deze controle vindt hem niet; `tests/scripts/zichtbaarheid-controle.test.ts`
+ *       legt hem sinds QS8-477 wél naast de andere twee.
  *
  * ⚠️ **De tweede-pad-rij is de uitzondering en hij hoort er een te blijven.** Het
  *    is verleidelijk om hem bij `GEEN_OPPERVLAK` te zetten — hij opent immers
@@ -100,6 +112,21 @@ export const OPPERVLAKKEN = new Map([
       'A42 in §6b als bewust dicht. Wat opengaat is het groepstotaal, niet het ' +
       'persoonlijke totaal en niet de deltas — en het kan niet dalen van een ' +
       'gemiste week, want `cycle_missed` draagt geen groep.',
+  ],
+  [
+    'functie:groep_helden',
+    'Welke held er bij elk lid het laatst langs is geweest, met de trigger erbij ' +
+      '(migratie 0268, QS8-477, besluit 5 van QS8-468). Het zesde oppervlak. ' +
+      '⚠️ **Dit is er een die tegenslag opent en niet een die hem verbergt:** ' +
+      '`trigger = \'misser\'` en `trigger = \'stilte\'` zeggen dat iemand iets ' +
+      'gemist heeft of drie dagen niets deed. Dat is precies wat A41 toestaat en ' +
+      'wat domeinregel 7 in een beschermde groep buiten de deur houdt. ' +
+      '⚠️ Een RPC en geen policytak, want RLS kan geen kolommen beperken: een ' +
+      'vierde tak op `hero_appearances_select` had `shown_at` meegegeven, en dat ' +
+      'is de dag waarop iemand iets miste. Zelfde vorm als `getuigenissen()` ' +
+      '(0169) en `straffen_bij_uitstelverzoek()` (0218). ' +
+      '⚠️ Alles ouder dan zeven dagen valt eruit — zonder venster is "Ignis is ' +
+      'langs geweest" een merkteken dat nooit vervalt.',
   ],
 ]);
 

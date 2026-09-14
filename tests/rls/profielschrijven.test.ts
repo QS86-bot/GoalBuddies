@@ -207,7 +207,7 @@ describe.skipIf(!rlsTestsConfigured)('Je eigen profiel opslaan', () => {
 
   /**
    * De belofte: **een weergavenaam kan niet als een ándere naam renderen** —
-   * QS8-450, migratie 0268.
+   * QS8-450, migratie 0269.
    *
    * ⚠️⚠️ **Dit is een andere klasse dan het blok hierboven, en de grens is een
    *    andere.** Daar ging het om een naam die als **niets** rendert, en die
@@ -274,7 +274,7 @@ describe.skipIf(!rlsTestsConfigured)('Je eigen profiel opslaan', () => {
      *    niets met bidi te maken heeft. Een dichte deur leest als een veilige
      *    deur.
      *
-     * ⚠️ De laatste twee zijn de besluiten uit migratie 0268: de RLM is een
+     * ⚠️ De laatste twee zijn de besluiten uit migratie 0269: de RLM is een
      *    *markering* en geen override, en homoglyphen worden hier niet opgelost.
      *    Ze staan hier zodat die twee besluiten zichtbaar zijn als besluit en
      *    niet als omissie — wie ze ooit omkeert, maakt deze toetsen rood en leest

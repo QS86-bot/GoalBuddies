@@ -1,4 +1,4 @@
--- 0268_een_weergavenaam_draagt_geen_bidi_stuurteken.sql — een weergavenaam
+-- 0269_een_weergavenaam_draagt_geen_bidi_stuurteken.sql — een weergavenaam
 -- draagt geen bidi-stuurteken meer, en kan de tekens eromheen dus niet meer
 -- omkeren (QS8-450).
 --
