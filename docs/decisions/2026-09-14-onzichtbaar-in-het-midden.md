@@ -2,7 +2,7 @@
 
 **Datum:** 14-09-2026
 **Issue:** QS8-495 (gevonden in de security-review op QS8-450)
-**Migratie:** 0270 — `zonder_onzichtbaar_middenin()` en een derde CHECK op `profiles`
+**Migratie:** 0271 — `zonder_onzichtbaar_middenin()` en een derde CHECK op `profiles`
 **Raakt:** domeinregel 3 (peer-goedkeuring is een autorisatiegrens), QS8-448,
 QS8-450, QS8-451
 
@@ -76,7 +76,7 @@ voor Khmer en Mongools.
 ## 4. Wat er níet gesloten is, en waarom dat een besluit is
 
 ⚠️⚠️ **`Ja<ZWNJ>n` komt er nog steeds door.** Van de vier gemeten gevallen
-sluit 0270 er **drie**; ZWNJ en ZWJ blijven, omdat ze weghalen het Perzisch en de
+sluit 0271 er **drie**; ZWNJ en ZWJ blijven, omdat ze weghalen het Perzisch en de
 gezinsemoji breekt. Acceptatiecriterium 2 van QS8-495 zegt met zoveel woorden dat
 de must-allow hier zwaarder weegt dan de weigering.
 
@@ -94,7 +94,7 @@ alsof het besloten is, is duurder dan geen assertie.
 ## 5. De functie aanpassen was niet de reparatie
 
 ⚠️⚠️ **Dit is de belangrijkste les van dit issue en hij kwam pas boven toen de
-belofte-toets draaide.** De eerste versie van 0270 herdefinieerde alleen
+belofte-toets draaide.** De eerste versie van 0271 herdefinieerde alleen
 `schone_naam()`. In `psql` deed die daarna exact wat ze moest doen, en de naadtest
 tussen SQL en TypeScript was groen op **225** codepunten.
 

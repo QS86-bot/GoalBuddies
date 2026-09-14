@@ -5,7 +5,7 @@ import { schoneNaam, telTekens } from '../../src/shared/tekst';
 import { adminDb, createTestUser, removeTestUsers, rlsTestsConfigured, type TestUser } from './harness';
 
 /**
- * Twee leden kunnen geen pixel-identieke naam dragen — QS8-495, migratie 0270.
+ * Twee leden kunnen geen pixel-identieke naam dragen — QS8-495, migratie 0271.
  *
  * ⚠️⚠️ **Dit is de belofte-toets en niet de naadtoets.**
  *    `naamnormalisatie.test.ts` legt SQL en TypeScript codepunt voor codepunt
@@ -88,12 +88,12 @@ describe.skipIf(!rlsTestsConfigured)('een naam die als een andere naam rendert',
       'weigert `Ja<ZWSP>n`, ingestuurd via PostgREST',
       async () => {
         /**
-         * 📏 **Woordelijk het geval uit het issue**, en vóór 0270 landde dit als
+         * 📏 **Woordelijk het geval uit het issue**, en vóór 0271 landde dit als
          *    een naam van vier codepunten die als `Jan` rendert en die béíde
          *    CHECKs haalde.
          *
          * 📏 IJKING A — de CHECK `profiles_display_name_geen_onzichtbaar_middenin`
-         *    uit 0270 weggehaald en het schema opnieuw opgebouwd: deze toets werd
+         *    uit 0271 weggehaald en het schema opnieuw opgebouwd: deze toets werd
          *    rood — de naam landde met vier codepunten.
          */
         await magNietLandenAlsNaam(mallory, `Ja${ZWSP}n`);
@@ -202,7 +202,7 @@ describe.skipIf(!rlsTestsConfigured)('een naam die als een andere naam rendert',
   describe('wat er open blijft, staat hier als toets en niet als vergeetpost', () => {
     /**
      * ⚠️⚠️ **`Ja<ZWNJ>n` komt er nog steeds door, en dat is een besluit.** Van
-     *    de vier gemeten gevallen sluit 0270 er drie. De vierde vraagt een
+     *    de vier gemeten gevallen sluit 0271 er drie. De vierde vraagt een
      *    contextregel ("weg tussen twee ASCII-letters") en niet een lijst van
      *    codepunten; acceptatiecriterium 2 zegt dat de must-allow zwaarder weegt
      *    dan de weigering, en het Perzisch heeft deze letter nodig.

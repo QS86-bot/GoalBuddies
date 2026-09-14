@@ -1,4 +1,4 @@
--- 0270_een_onzichtbaar_teken_midden_in_een_naam_telt_niet.sql — tekens die als
+-- 0271_een_onzichtbaar_teken_midden_in_een_naam_telt_niet.sql — tekens die als
 -- nul pixels renderen, gaan ook midden uit een weergavenaam. QS8-495.
 --
 -- ROLLBACK-PAD:

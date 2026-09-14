@@ -265,7 +265,7 @@ export function zonderBidi(ruw: string): string {
  *    maakt bij de volgende wijziging onduidelijk welke van de twee hem draagt.
  *
  * ⚠️ **Dezelfde bereiken staan in SQL als `zonder_onzichtbaar_middenin()`
- *    (migratie 0270), en dat is een naad.** `tests/rls/naamnormalisatie.test.ts`
+ *    (migratie 0271), en dat is een naad.** `tests/rls/naamnormalisatie.test.ts`
  *    loopt het hele codepuntbereik af mét een teken in het midden en legt beide
  *    oordelen naast elkaar. Haal je hier één teken weg, dan wordt die toets
  *    rood; dat is met de hand nagemeten, per richting.

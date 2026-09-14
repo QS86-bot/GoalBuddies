@@ -329,11 +329,11 @@ describe.runIf(beschikbaar)('de twee talen halen in het midden dezelfde tekens w
    *    dan is er van een naam niets over. Deze toets pint daarom beide kanten:
    *    wat eruit gaat én wat er met reden in blijft.
    *
-   * 📏 **Sinds QS8-495 (migratie 0270) is deze verzameling gegroeid van negen
+   * 📏 **Sinds QS8-495 (migratie 0271) is deze verzameling gegroeid van negen
    *    naar 225**, en dat is de reparatie van een gat dat híer als bedoeld
    *    gedrag stond vastgespijkerd. De negen zijn de bidi-stuurtekens
    *    (`zonder_bidi`, 0269); de rest komt uit `MIDDENIN_BEREIKEN`
-   *    (`zonder_onzichtbaar_middenin`, 0270) — de tekens die overal als **nul
+   *    (`zonder_onzichtbaar_middenin`, 0271) — de tekens die overal als **nul
    *    pixels** renderen.
    *
    * ⚠️⚠️ **De scheidslijn is "nul pixels" tegenover "witruimte", niet
