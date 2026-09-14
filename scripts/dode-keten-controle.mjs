@@ -197,7 +197,12 @@ export const BEWAAKT_BUITEN_DE_APP = {
     'Schrijfrechten voor `anon` of `authenticated` waar geen policy bij hoort ' +
     '(0101, generiek sinds 0118).',
   domeinregel3_bewaking:
-    'De drie sloten op peer-goedkeuring: policy, constraint en trigger (0093).',
+    'De zes sloten op peer-goedkeuring (0093, uitgebreid in 0262). Clausule 1 ' +
+    '"nooit jezelf": de RLS-clausule, de CHECK not_self, de trigger die ' +
+    '`subject_id` vult, en de foreign key van 0252. Clausule 2 "alleen een ' +
+    'groepsgenoot": het lidmaatschap en de koppeling doel-groep, allebei in het ' +
+    'lichaam van `fill_approval_subject()`. Aanroeper is ' +
+    '`tests/rls/domeinregel3.test.ts`.',
   // ⚠️ Deze twee zijn op 06-09-2026 boven water gekomen doordat
   //    `zonderDefinities()` een puntkomma binnen een `comment on`-tekst als einde
   //    van het statement las (QS8-296). De rest van die zin bleef in de romp
