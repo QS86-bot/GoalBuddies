@@ -2186,4 +2186,125 @@ export const en: Record<Sleutel, string> = {
   'validatie.dagen_bereik': 'A week has seven days.',
   'validatie.vloer_boven_plafond': "Your floor can't be above your ceiling.",
   'validatie.vloer_zonder_plafond': 'A floor in days needs a ceiling too.',
+
+  // ---------------------------------------------------------------------------
+  // The six heroes — QS8-469, epic QS8-468
+  // ---------------------------------------------------------------------------
+  //
+  // ⚠️ The names are identical in every language on purpose — see the note in
+  //    `nl.ts`. Only the subtitle, the personality line and the quote text
+  //    change.
+  //
+  //
+  // ⚠️ **Punctuation in the quotes was adjusted; the wording was not.** QS8-218
+  //    bans the em dash in app text, so where an original had one there is now a
+  //    semicolon or a comma. A deliberate call on 14-09-2026: the words, their
+  //    order and the source are intact, the dashes are not. Anyone comparing a
+  //    quote with its source sees that difference and no other.
+  // ⚠️ A quote is chosen, not translated. Ali, Earhart, Nightingale and Twain
+  //    wrote in English, so these are their originals. Aurelius wrote Greek and
+  //    Da Vinci Italian: those carry the public-domain translation the source
+  //    document names (George Long 1862; Richter/MacCurdy). Back-translating the
+  //    Dutch would add a fifth version of a sentence that already passed through
+  //    a translator.
+
+  'held.strix.naam': 'Strix',
+  'held.strix.ondertitel': 'The Sage',
+  'held.strix.persoonlijkheid':
+    'Calm, dry and sharp. Says little, but what he says stays with you. No pats on the back. Just the kind of sentence you are still turning over a week later.',
+  'held.strix.quote1':
+    'If thou art pained by any external thing, it is not this thing that disturbs thee, but thy own judgment about it.',
+  'held.strix.quote1.bron': 'Marcus Aurelius · Meditations, book 8.47 · trans. George Long, 1862',
+  'held.strix.quote2': 'Confine thyself to the present.',
+  'held.strix.quote2.bron': 'Marcus Aurelius · Meditations, book 8.36 · trans. George Long, 1862',
+  'held.strix.quote3':
+    'No longer talk at all about the kind of man that a good man ought to be, but be such.',
+  'held.strix.quote3.bron': 'Marcus Aurelius · Meditations, book 10.16 · trans. George Long, 1862',
+  'held.strix.quote4':
+    'Begin the morning by saying to thyself, I shall meet today with people who behave without knowing better; let that not throw me off balance.',
+  'held.strix.quote4.bron': 'Marcus Aurelius · Meditations, freely after book 2.1',
+
+  'held.ignis.naam': 'Ignis',
+  'held.ignis.ondertitel': 'The Fighter',
+  'held.ignis.persoonlijkheid':
+    'Short, hard, warm underneath. Talks to you like a coach who believes in you even right after you lost. No pity. Just fire.',
+  'held.ignis.quote1':
+    'I hated every minute of training, but I said: don’t quit. Suffer now and live the rest of your life as a champion.',
+  'held.ignis.quote1.bron': 'Muhammad Ali · Muhammad Ali Center, verified quotations',
+  'held.ignis.quote2':
+    'The fight is won or lost far away from witnesses, behind the lines, in the gym, out there on the road, long before I dance under those lights.',
+  'held.ignis.quote2.bron': 'Muhammad Ali · Muhammad Ali Center, verified quotations',
+  'held.ignis.quote3':
+    'If my mind can conceive it and my heart can believe it, then I can achieve it.',
+  'held.ignis.quote3.bron': 'Muhammad Ali · Muhammad Ali Center, verified quotations',
+  'held.ignis.quote4':
+    'Only a man who knows what it is like to be defeated can reach down to the bottom of his soul and come up with the extra ounce of power it takes to win when the match is even.',
+  'held.ignis.quote4.bron': 'Muhammad Ali · Muhammad Ali Center, verified quotations',
+
+  'held.meridian.naam': 'Meridian',
+  'held.meridian.ondertitel': 'The Explorer',
+  'held.meridian.persoonlijkheid':
+    'Energetic and impatient in the good way. Nudges you just past the edge of your comfort zone and is already waving from the other side.',
+  'held.meridian.quote1':
+    'Preparation, I have often said, is rightly two-thirds of any venture.',
+  'held.meridian.quote1.bron': 'Amelia Earhart · Last Flight, 1937, p. 51',
+  'held.meridian.quote2':
+    'The more one does and sees and feels, the more one is able to do.',
+  'held.meridian.quote2.bron': 'Amelia Earhart · Soaring Wings, 1939, p. 83',
+  'held.meridian.quote3':
+    'In soloing, as in other activities, it is far easier to start something than it is to finish it.',
+  'held.meridian.quote3.bron': 'Amelia Earhart · 20 Hrs., 40 Min., 1928, p. 16',
+  'held.meridian.quote4':
+    'Women must try to do things as men have tried. When they fail, their failure must be but a challenge to others.',
+  'held.meridian.quote4.bron': 'Amelia Earhart · Last Flight, 1937',
+
+  'held.forge.naam': 'Forge',
+  'held.forge.ondertitel': 'The Builder',
+  'held.forge.persoonlijkheid':
+    'Level-headed and precise. No pep talk. Just the question you needed: what is the real problem here, and how do we build around it?',
+  'held.forge.quote1':
+    'Just as iron rusts from disuse and stagnant water putrefies, or turns to ice in the cold, so our intellect wastes unless it is kept in use.',
+  'held.forge.quote1.bron':
+    'Leonardo da Vinci · Codex Atlanticus 289v, in Richter & Wells, Notebooks',
+  'held.forge.quote2':
+    'He who loves practice without theory is like the sailor who boards ship without a rudder and compass and never knows where he may cast.',
+  'held.forge.quote2.bron':
+    'Leonardo da Vinci · The Literary Works of Leonardo da Vinci, 1883',
+  'held.forge.quote3': 'Poor is the pupil who does not surpass his master.',
+  'held.forge.quote3.bron':
+    'Leonardo da Vinci · Aphorisms, Notebooks · trans. E. MacCurdy, 1938',
+
+  'held.lucerna.naam': 'Lucerna',
+  'held.lucerna.ondertitel': 'The Caregiver',
+  'held.lucerna.persoonlijkheid':
+    'Gentle on the person, strict on the excuses. Gives you room to catch your breath and a clear reason to start again tomorrow.',
+  'held.lucerna.quote1': 'I attribute my success to this: I never gave or took an excuse.',
+  'held.lucerna.quote1.bron':
+    'Florence Nightingale · letter to Miss H. Bonham Carter, 1861',
+  'held.lucerna.quote2': 'When a disaster happens, I act and they make excuses.',
+  'held.lucerna.quote2.bron':
+    'Florence Nightingale · letter to Miss H. Bonham Carter, 1861',
+  'held.lucerna.quote3':
+    'Feelings waste themselves in words; they ought all to be distilled into actions; actions which bring results.',
+  'held.lucerna.quote3.bron': 'Florence Nightingale · letter to Mary Clarke, 1844',
+  'held.lucerna.quote4':
+    'Nursing is an art: and if it is to be made an art, it requires an exclusive devotion as hard a preparation as any painter’s or sculptor’s work.',
+  'held.lucerna.quote4.bron': 'Florence Nightingale · Good Words, 1868',
+
+  'held.quip.naam': 'Quip',
+  'held.quip.ondertitel': 'The Jester',
+  'held.quip.persoonlijkheid':
+    'Dry humour, a crooked grin, always a contrary remark ready. Takes the pressure off without making your goal the joke.',
+  'held.quip.quote1':
+    'Courage is resistance to fear, mastery of fear; not absence of fear.',
+  'held.quip.quote1.bron':
+    'Mark Twain · Pudd’nhead Wilson’s Calendar, in Following the Equator, 1897',
+  'held.quip.quote2':
+    'Whenever you find yourself on the side of the majority, it is time to pause and reflect.',
+  'held.quip.quote2.bron':
+    'Mark Twain · Pudd’nhead Wilson’s Calendar, in Following the Equator, 1897',
+  'held.quip.quote3':
+    'Habit is habit, and not to be flung out of the window by any man, but coaxed downstairs a step at a time.',
+  'held.quip.quote3.bron':
+    'Mark Twain · Pudd’nhead Wilson’s Calendar, in Following the Equator, 1897',
 };
