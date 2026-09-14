@@ -77,7 +77,17 @@ interface Geval {
   /** Waar het recht op slaat, voor de testnaam. */
   wat: string;
   publiek: string;
-  aanAuthenticated: string;
+  /**
+   * De grant aan een **benoemde rol** — de oude helft, die groen moet blijven
+   * als iemand de bewaking per ongeluk alleen nog naar `PUBLIC` laat kijken.
+   *
+   * ⚠️ **Niet altijd `authenticated`.** Bij `standaardrechten_bewaking` is de
+   *    benoemde rol juist `anon`: `authenticated` hóórt daar standaardrechten
+   *    te hebben, en een bewaking die dát meldt, leer je negeren. Het veld heette
+   *    tot QS8-485 `aanAuthenticated`, en die naam gaf de vierde rij hierboven
+   *    een testnaam die niet klopte met wat er gebeurde.
+   */
+  aanEenRol: string;
 }
 
 const GEVALLEN: readonly Geval[] = [
@@ -85,25 +95,42 @@ const GEVALLEN: readonly Geval[] = [
     bewaking: 'tijdstempel_bewaking',
     wat: 'een servertijdstempel (`commitments.created_at`)',
     publiek: 'grant insert (created_at) on public.commitments to public;',
-    aanAuthenticated: 'grant insert (created_at) on public.commitments to authenticated;',
+    aanEenRol: 'grant insert (created_at) on public.commitments to authenticated;',
   },
   {
     bewaking: 'volgorde_bewaking',
     wat: 'de volgordesleutel van het auditspoor (`commitment_events.seq`)',
     publiek: 'grant update (seq) on public.commitment_events to public;',
-    aanAuthenticated: 'grant update (seq) on public.commitment_events to authenticated;',
+    aanEenRol: 'grant update (seq) on public.commitment_events to authenticated;',
   },
   {
     bewaking: 'viewrechten_bewaking',
     wat: 'een schrijfrecht op een view (`mijn_profiel`)',
     publiek: 'grant update on public.mijn_profiel to public;',
-    aanAuthenticated: 'grant update on public.mijn_profiel to authenticated;',
+    aanEenRol: 'grant update on public.mijn_profiel to authenticated;',
   },
   {
     bewaking: 'ddl_rechten_in_de_api',
     wat: 'TRUNCATE op de puntenboekhouding (`points_ledger`)',
     publiek: 'grant truncate on public.points_ledger to public;',
-    aanAuthenticated: 'grant truncate on public.points_ledger to authenticated;',
+    aanEenRol: 'grant truncate on public.points_ledger to authenticated;',
+  },
+  // ⚠️⚠️ **Deze rij is er gekomen doordat de klasse opnieuw faalde — QS8-485.**
+  //    De bewaking op de standaardrechten stond eerst als query in
+  //    `anonleesrecht.test.ts`, en daarmee buiten dit register. 📏 De
+  //    security-ronde zette het gat toen met `to public` opnieuw open: een verse
+  //    tabel gaf `anon` SELECT en die toets bleef groen. Een bewaking die niet
+  //    in dit bestand staat, valt buiten de belofte bovenaan — dat is geen
+  //    formaliteit maar precies de plek waar deze klasse zich verstopt.
+  //
+  // ⚠️ De benoemde rol is hier `anon` en niet `authenticated`: die laatste hóórt
+  //    standaardrechten te hebben, en `standaardrechten_bewaking()` meldt hem met
+  //    opzet niet.
+  {
+    bewaking: 'standaardrechten_bewaking',
+    wat: 'wat de volgende tabel in `public` uitdeelt',
+    publiek: 'alter default privileges in schema public grant select on tables to public;',
+    aanEenRol: 'alter default privileges in schema public grant select on tables to anon;',
   },
 ];
 
@@ -145,8 +172,8 @@ describe.skipIf(!stackErIs)('QS8-337 — een grant aan PUBLIC is niet onzichtbaa
   //    zou een omzetting die per ongeluk álleen nog naar PUBLIC kijkt, groen
   //    blijven — en dan is er een gat teruggekomen op de plek waar er net een
   //    weg was.
-  it.each(GEVALLEN.map((g) => [g.bewaking, g.wat, g.aanAuthenticated] as const))(
-    '%s ziet %s die aan authenticated is gegeven',
+  it.each(GEVALLEN.map((g) => [g.bewaking, g.wat, g.aanEenRol] as const))(
+    '%s ziet %s die aan een benoemde rol is gegeven',
     (bewaking, _wat, grant) => {
       expect(metGrant(grant, bewaking)).toBeGreaterThan(0);
     },
