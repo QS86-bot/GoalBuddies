@@ -7,23 +7,48 @@
 > Bijwerken is onderdeel van het werk. Sluit je een issue af, werk dan ook dit
 > bestand bij — anders begint de volgende sessie met verouderde informatie.
 
-**Laatst bijgewerkt:** 14-09-2026 (na QS8-467; daarvóór QS8-465, QS8-463, QS8-462 en QS8-460; daarvóór QS8-449; daarvóór QS8-448 uit de parallelle sessie; daarvóór QS8-447, QS8-446, QS8-439 en QS8-182; daarvóór QS8-441; daarvóór QS8-443; daarvóór QS8-445; daarvóór QS8-438; daarvóór QS8-434, QS8-435, QS8-431, QS8-416 en QS8-432; diezelfde dag QS8-419, QS8-420, QS8-423, QS8-425, QS8-426, QS8-427, QS8-428, QS8-430 en QS8-432 uit deze sessie en QS8-262 ronde 9, QS8-421 en QS8-422 uit de parallelle; daarvóór de hele novemberronde, alle tien — QS8-180, QS8-181, QS8-183, QS8-184, QS8-189 en QS8-194 uit deze sessie, QS8-179, QS8-182, QS8-187 en QS8-204 uit de parallelle; daarvóór QS8-24; daarvóór QS8-92; daarvóór QS8-392 en QS8-393; daarvóór QS8-396 en QS8-402; daarvóór QS8-404, QS8-399, QS8-400 en QS8-401; daarvóór QS8-403, QS8-140 en QS8-320; daarvóór QS8-243 en QS8-220; daarvóór QS8-314; daarvóór QS8-147, QS8-174, QS8-191, QS8-297, QS8-298, QS8-299, QS8-303 en QS8-304; daarvóór QS8-287, QS8-288, QS8-289 en QS8-291;
+**Laatst bijgewerkt:** 14-09-2026 (na QS8-479; daarvóór QS8-467; daarvóór QS8-465, QS8-463, QS8-462 en QS8-460; daarvóór QS8-449; daarvóór QS8-448 uit de parallelle sessie; daarvóór QS8-447, QS8-446, QS8-439 en QS8-182; daarvóór QS8-441; daarvóór QS8-443; daarvóór QS8-445; daarvóór QS8-438; daarvóór QS8-434, QS8-435, QS8-431, QS8-416 en QS8-432; diezelfde dag QS8-419, QS8-420, QS8-423, QS8-425, QS8-426, QS8-427, QS8-428, QS8-430 en QS8-432 uit deze sessie en QS8-262 ronde 9, QS8-421 en QS8-422 uit de parallelle; daarvóór de hele novemberronde, alle tien — QS8-180, QS8-181, QS8-183, QS8-184, QS8-189 en QS8-194 uit deze sessie, QS8-179, QS8-182, QS8-187 en QS8-204 uit de parallelle; daarvóór QS8-24; daarvóór QS8-92; daarvóór QS8-392 en QS8-393; daarvóór QS8-396 en QS8-402; daarvóór QS8-404, QS8-399, QS8-400 en QS8-401; daarvóór QS8-403, QS8-140 en QS8-320; daarvóór QS8-243 en QS8-220; daarvóór QS8-314; daarvóór QS8-147, QS8-174, QS8-191, QS8-297, QS8-298, QS8-299, QS8-303 en QS8-304; daarvóór QS8-287, QS8-288, QS8-289 en QS8-291;
 daarvóór QS8-266, QS8-202 en QS8-196, en het toepassen van `0139` t/m `0149` op
 productie in twee rondes)
 
-⚠️ **Productie staat op `0221`.** 📏 Hermeten op 09-09 om 16:10 UTC met
-`migratieregister()` tegen `wehgocadxehottiiyvsc`: **224 registerrijen**, `0001`
-t/m `0221` aaneengesloten, inclusief de drie letterversies. De map telt er
+⚠️ **Productie staat op `0224`.** 📏 Hermeten op 14-09 om 05:02 UTC met
+`migratieregister()` tegen `wehgocadxehottiiyvsc`: **227 registerrijen**, `0001`
+t/m `0224` aaneengesloten, inclusief de drie letterversies. De map telt er
 **264**.
 
-**Het gat is daarmee veertig bestanden** — `0222` t/m `0261`, van 09-09
-tot en met 13-09 en uit achtentwintig verschillende issues:
+⚠️ **Hier stond tot 14-09 `0221`, en dat was op 09-09 om 16:10 UTC juist.**
+`0222`, `0223` en `0224` zijn er sindsdien op toegepast — alle drie uit QS8-71,
+en `0222` is degene waarvan de alinea hieronder tot vandaag zei dat een
+bouwsessie hem niet kón toepassen. Dat klopte voor een bouwsessie en niet voor
+Quinten; de lijn beweegt dus ook zonder dat er in deze map iets verandert.
+**Lees hem daarom nooit als getal maar meet hem** — hij is op 09-09 twee keer op
+één dag verschoven en tussen 09-09 en 14-09 nog een keer.
+
+⚠️⚠️ **Meet hem bovendien met het instrument dat de eenheid deelt.** 📏 Op
+14-09 met twee instrumenten nagemeten: `list_migrations` eindigt op `0224` en
+`migratieregister()` telt **227** rijen. Dat is geen tegenspraak maar het
+verschil tussen een nummer en een telling — de drie letterversies (`0039a`,
+`0041a`, `0052a`) dragen geen eigen nummer. Wie de registertelling voor een
+migratienummer aanziet, legt de lijn drie bestanden te hoog en verklaart
+`0222` t/m `0224` toegepast op een dag dat ze dat niet waren. Zelfde klasse als
+een teller in grafemen bij een grens in codepunten.
+
+**Het gat is daarmee 37 bestanden** — `0225` t/m `0261`, van 09-09
+tot en met 13-09 en uit negenentwintig verschillende issues.
+
+⚠️ **In cijfers en niet voluit, en dat is geen stijlkeuze.** 📏 Gemeten op
+14-09 bij het ijken van `docs:controle`: `NUMMERWOORDEN` in
+`scripts/docs-controle.mjs` loopt tot `twintig`, en `telWoord()` geeft daarboven
+`undefined` — waarna `beoordeelStand()` de gatbewering **overslaat** in plaats
+van er iets over te zeggen. Met `veertig` eroverheen, zoals het hier tot vandaag
+stond, was deze regel dus jarenlang ongemeten en niet groen; `zesendertig` op de
+plek van zevenendertig bleef er even hard groen op. In cijfers bindt de toets
+wél. Staat als QS8-482.
+
+De zevenendertig bestanden:
 
 | | | DDL op `storage.objects` |
 | -- | -- | -- |
-| `0222_een_foto_hoort_bij_een_groep.sql` | QS8-71 (PR #352) | ja |
-| `0223_een_bijlage_wijst_naar_deze_groep.sql` | QS8-71 | nee |
-| `0224_een_chatfoto_overleeft_zijn_eigenaar_niet.sql` | QS8-71 | nee |
 | `0225_een_pad_heeft_een_canonieke_vorm.sql` | QS8-71 | ja |
 | `0226_een_plafond_per_lid_naast_dat_van_de_groep.sql` | QS8-71 | nee |
 | `0227_een_bewijsfoto_hoort_bij_een_weekdoel.sql` | QS8-391 | ja |
@@ -76,16 +101,25 @@ wordt rood zodra deze regel eroverheen loopt. Waarom de controle dit tot dan nie
 zag, staat in `docs/decisions/2026-09-09-een-generator-kan-niet-liegen.md`.
 
 ⚠️⚠️ **Dit gat is niet vanuit een bouwsessie te dichten, en dat is op 09-09
-gemeten in plaats van aangenomen.** `0222` valt om op
+gemeten in plaats van aangenomen.** `0222` viel toen om op
 `ERROR: 42501: must be owner of table objects`: `storage.objects` is eigendom van
 `supabase_storage_admin`, de MCP draait als `postgres`, en die is **geen lid** van
-die rol — `set role` geeft *permission denied*. Zeven van de negentien doen DDL op
-die tabel (`0222`, `0225`, `0227`, `0228`, `0233`, `0235` en `0239` — zie de kolom
-hierboven); de andere twaalf zouden op zichzelf wél gaan, ook `0224` en `0226`, die
-`storage.objects` alleen ín een functielichaam noemen en hem niet bezitten. Maar
-`0222` is de eerste van de reeks, **dus stopt hij daar**. Ze alsnog toepassen
-slaat een gat in het register, en dat is de duurdere kant
+die rol — `set role` geeft *permission denied*. 📏 Op 14-09 herteld: **tien van
+de zevenendertig** doen DDL op die tabel (`0225`, `0227`, `0228`, `0233`, `0235`,
+`0239`, `0240`, `0241`, `0250` en `0255` — zie de kolom hierboven); de andere
+zevenentwintig zouden op zichzelf wél gaan, ook `0226`, dat `storage.objects`
+alleen ín een functielichaam noemt en hem niet bezit. Maar de eerste van de reeks
+is nu `0225`, en die doet die DDL wél, **dus stopt hij nog steeds meteen**. De
+andere zevenentwintig alsnog toepassen slaat een gat in het register, en dat is
+de duurdere kant
 (`docs/decisions/2026-09-08-het-gat-is-erger-dan-de-botsing.md`).
+
+⚠️ **De blokkeerder is dus verschoven van `0222` naar `0225` zonder dat er iets
+aan opgelost is.** `0222` t/m `0224` staan er inmiddels op — door Quinten
+toegepast, niet vanuit een sessie — en daarmee schoof de kop van de reeks door
+naar het volgende bestand dat diezelfde DDL doet. Dat is de eigenschap om te
+onthouden: **deze rem zit op de kop van het gat en niet op een bestand**, dus hij
+gaat niet weg door de reeks van voren af te pellen.
 
 ⚠️ **Dat corrigeert een regel die sinds 02-09 in QS8-243 stond:** *"een
 bouwsessie kan de drift wel meten maar niet opheffen"* was toen weerlegd omdat de
