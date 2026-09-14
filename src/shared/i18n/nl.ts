@@ -2931,6 +2931,9 @@ export const nl = {
   'vragenlijst.held.gekozen': 'Dit is je held. Tik een andere aan om te wisselen.',
   'vragenlijst.held.blijft':
     'Dit is nu je held. Beantwoord de vier heldenvragen opnieuw om te wisselen.',
+  'vragenlijst.held.laadt': 'Even kijken welke held je nu hebt.',
+  'vragenlijst.held.fout':
+    'Je huidige held kon niet opgehaald worden. Beantwoord de vier vragen om er een te kiezen.',
   'vragenlijst.held.kies_een': 'Kies er een',
   'vragenlijst.held.opslaan_mislukt': 'Je held kon niet bewaard worden. Probeer het zo nog eens.',
 } as const;

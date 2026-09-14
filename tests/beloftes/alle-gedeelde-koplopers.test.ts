@@ -36,8 +36,18 @@ import { zonderCommentaar } from './roept-aan';
  *   D  `HELDVRAGEN.map(` vervangen door vier losse `<HeldVraag vraag="…" />`
  *      → grendel 4 rood
  *
+ * En na de security-review, voor de drie staten van regel 16:
+ *
+ *   E  `const { data: bestaand } = useAsync(…)` — alleen `data` afnemen, de
+ *      vorm die de bevinding wás
+ *      → "leidt die staten af uit useAsync en niet uit `data` alleen"
+ *   F  `heldprofiel()` weer `return null` laten doen bij een fout
+ *      → "laat een mislukte leesactie niet als geen held lezen"
+ *   G  de laadtak uit `HeldGeen` halen
+ *      → "onderscheidt laden, fout en geen held"
+ *
  * ⚠️ Bij elke mutatie is eerst nagekeken dat de vorm er écht in stond vóór de
- *    uitslag geloofd werd.
+ *    uitslag geloofd werd, en elke mutatie raakte precies één grendel.
  */
 
 const SCHERM = readFileSync(
@@ -115,6 +125,50 @@ describe('acht vragen en precies één samenvatting', () => {
     for (const sleutel of HELDSLEUTELS) {
       expect(SCHOON.includes(`'${sleutel}'`), `'${sleutel}' staat in het scherm`).toBe(false);
     }
+  });
+});
+
+describe('de heldenlaadbeurt heeft alle drie de staten van regel 16', () => {
+  /**
+   * ⚠️⚠️ **Gevonden in de security-review op dit issue, en het was geen
+   *    decoratiefout.** Het scherm nam alleen `data` van `useAsync()`, en
+   *    `heldprofiel()` maakte van élke fout een `null`. Samen: wie een held
+   *    hééft maar van wie de leesactie nog loopt of net mislukte, las "je hebt
+   *    de heldenvragen overgeslagen" — een ware zin met een onware strekking,
+   *    precies wat het comment drie regels erboven verbiedt.
+   *
+   * ⚠️ Onwrikbare regel 16 eist loading, error én lege staat, en zonder deze
+   *    toets is dat hier weer een zin. De drie takken zitten in `HeldGeen`,
+   *    gevoed door `bestaandeHeld()`.
+   */
+  it('onderscheidt laden, fout en geen held', () => {
+    for (const sleutel of ['vragenlijst.held.laadt', 'vragenlijst.held.fout', 'vragenlijst.held.geen']) {
+      expect(SCHOON, sleutel).toContain(sleutel);
+    }
+  });
+
+  it('leidt die staten af uit useAsync en niet uit `data` alleen', () => {
+    // ⚠️ De vorm die de bug wás: `const { data: x } = useAsync(…)`. Daar gaan
+    //    `loading` en `error` verloren op de plek waar ze gemaakt worden, en
+    //    geen enkele latere tak kan ze nog terugvinden.
+    expect(/useAsync\(/.test(SCHOON), 'het scherm laadt de bestaande held').toBe(true);
+    expect(
+      /const\s*\{\s*data:\s*\w+\s*\}\s*=\s*useAsync/.test(SCHOON),
+      'alleen `data` van useAsync afnemen gooit loading en error weg',
+    ).toBe(false);
+    expect(SCHOON, 'de drie staten worden afgeleid').toMatch(/function bestaandeHeld\(/);
+  });
+
+  it('laat een mislukte leesactie niet als "geen held" lezen', () => {
+    // ⚠️ De naad: `heldprofiel()` moet wérpen bij een fout, anders is er geen
+    //    `error` om af te leiden en valt alles alsnog in de lege staat.
+    const module = readFileSync(
+      fileURLToPath(new URL('../../src/modules/helden/heldprofiel.ts', import.meta.url)),
+      'utf8',
+    );
+    const schoon = zonderCommentaar(module);
+
+    expect(schoon, '`heldprofiel()` werpt bij een fout').toMatch(/throw error;/);
   });
 });
 

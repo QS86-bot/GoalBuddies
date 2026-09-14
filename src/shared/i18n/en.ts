@@ -2350,6 +2350,9 @@ export const en: Record<Sleutel, string> = {
   'vragenlijst.held.gekozen': 'This is your hero. Tap another one to switch.',
   'vragenlijst.held.blijft':
     'This is your hero right now. Answer the four hero questions again to switch.',
+  'vragenlijst.held.laadt': 'Checking which hero you have right now.',
+  'vragenlijst.held.fout':
+    'Your current hero could not be loaded. Answer the four questions to pick one.',
   'vragenlijst.held.kies_een': 'Pick one',
   'vragenlijst.held.opslaan_mislukt': 'Your hero could not be saved. Please try again in a moment.',
 };

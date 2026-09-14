@@ -159,10 +159,7 @@ function VragenlijstFormulier() {
   //    laagregel van QS8-207 — de datalaag importeert niets uit `shared/ui`, ook
   //    geen `useAsync`. Die twee wijzen dezelfde kant op: de laadbeurt hoort in
   //    de schermlaag, en de module levert de functie.
-  const { data: bestaandeHeld } = useAsync(
-    userId ? () => heldprofiel(userId) : null,
-    [userId],
-  );
+  const bestaand = useAsync(userId ? () => heldprofiel(userId) : null, [userId]);
 
   // ⚠️ Wat er al op het profiel staat is het startpunt, niet een lege lijst.
   //    Wie dit scherm opnieuw opent, ziet zijn eigen antwoorden terug.
@@ -298,7 +295,7 @@ function VragenlijstFormulier() {
         <Samenvatting
           invoer={invoer}
           keuze={keuze}
-          huidigeHeld={bestaandeHeld?.held ?? null}
+          bestaandeHeld={bestaandeHeld(bestaand)}
           onKiesHeld={setGekozenHeld}
           onWijzig={(naar) => setStap(naar)}
         />
@@ -457,20 +454,45 @@ function HeldVraag({
  *    vragen overslaat leest hier dat hij geen held krijgt en dat de rest van de
  *    app gewoon werkt. Geen waarschuwing, geen rode tekst.
  */
+/**
+ * De held die er al stond, met de drie staten die onwrikbare regel 16 eist.
+ *
+ * ⚠️ **`laadt` en `fout` zijn hier geen decoratie maar het verschil tussen twee
+ *    ware en twee onware zinnen.** Zonder ze rendert het scherm "je hebt geen
+ *    held" aan iemand van wie de leesactie nog onderweg is of net mislukt — en
+ *    dat is precies wat het comment bij de leesactie verbiedt.
+ */
+type BestaandeHeld =
+  | { readonly soort: 'laadt' }
+  | { readonly soort: 'fout' }
+  | { readonly soort: 'geen' }
+  | { readonly soort: 'held'; readonly held: Heldsleutel };
+
+function bestaandeHeld(uitkomst: {
+  readonly data: { readonly held: Heldsleutel } | null | undefined;
+  readonly loading: boolean;
+  readonly error: unknown;
+}): BestaandeHeld {
+  if (uitkomst.loading) return { soort: 'laadt' };
+  if (uitkomst.error !== null && uitkomst.error !== undefined) return { soort: 'fout' };
+  if (uitkomst.data === undefined || uitkomst.data === null) return { soort: 'geen' };
+  return { soort: 'held', held: uitkomst.data.held };
+}
+
 function HeldUitslag({
   keuze,
-  huidigeHeld,
+  bestaande,
   onKies,
 }: {
   readonly keuze: Heldkeuze;
-  readonly huidigeHeld: Heldsleutel | null;
+  readonly bestaande: BestaandeHeld;
   readonly onKies: (held: Heldsleutel) => void;
 }) {
   return (
     <View style={styles.held}>
       <Caption>{t('vragenlijst.held.kop')}</Caption>
 
-      {keuze.soort === 'geen' ? <HeldGeen huidigeHeld={huidigeHeld} /> : null}
+      {keuze.soort === 'geen' ? <HeldGeen bestaande={bestaande} /> : null}
       {keuze.soort === 'quiz' ? <HeldEen held={keuze.held} /> : null}
       {keuze.soort === 'gelijkspel' ? <HeldGelijkspel keuze={keuze} onKies={onKies} /> : null}
     </View>
@@ -486,13 +508,15 @@ function HeldUitslag({
  *    deze keer oversloeg, houdt die held — en dan is "je hebt de heldenvragen
  *    overgeslagen" een ware zin met een onware strekking.
  */
-function HeldGeen({ huidigeHeld }: { readonly huidigeHeld: Heldsleutel | null }) {
-  if (huidigeHeld === null) return <Body muted>{t('vragenlijst.held.geen')}</Body>;
+function HeldGeen({ bestaande }: { readonly bestaande: BestaandeHeld }) {
+  if (bestaande.soort === 'laadt') return <Body muted>{t('vragenlijst.held.laadt')}</Body>;
+  if (bestaande.soort === 'fout') return <Body muted>{t('vragenlijst.held.fout')}</Body>;
+  if (bestaande.soort === 'geen') return <Body muted>{t('vragenlijst.held.geen')}</Body>;
 
   return (
     <>
-      <Body>{t(heldTekstSleutel(huidigeHeld, 'naam'))}</Body>
-      <Caption>{t(heldTekstSleutel(huidigeHeld, 'ondertitel'))}</Caption>
+      <Body>{t(heldTekstSleutel(bestaande.held, 'naam'))}</Body>
+      <Caption>{t(heldTekstSleutel(bestaande.held, 'ondertitel'))}</Caption>
       <Body muted>{t('vragenlijst.held.blijft')}</Body>
     </>
   );
@@ -638,13 +662,13 @@ function ValkuilVraag({
 function Samenvatting({
   invoer,
   keuze,
-  huidigeHeld,
+  bestaandeHeld: bestaande,
   onKiesHeld,
   onWijzig,
 }: {
   readonly invoer: VragenlijstInvoer;
   readonly keuze: Heldkeuze;
-  readonly huidigeHeld: Heldsleutel | null;
+  readonly bestaandeHeld: BestaandeHeld;
   readonly onKiesHeld: (held: Heldsleutel) => void;
   readonly onWijzig: (naar: Stap) => void;
 }) {
@@ -662,7 +686,8 @@ function Samenvatting({
     valkuilen.length === 0 &&
     minuten === null &&
     moment === null &&
-    keuze.soort === 'geen';
+    keuze.soort === 'geen' &&
+    bestaande.soort !== 'held';
 
   return (
     <Card>
@@ -714,9 +739,9 @@ function Samenvatting({
         vraag={t('vragenlijst.held.vraag')}
         antwoord={
           keuze.soort === 'geen'
-            ? huidigeHeld === null
-              ? niets
-              : t(heldTekstSleutel(huidigeHeld, 'naam'))
+            ? bestaande.soort === 'held'
+              ? t(heldTekstSleutel(bestaande.held, 'naam'))
+              : niets
             : keuze.soort === 'quiz'
               ? t(heldTekstSleutel(keuze.held, 'naam'))
               : t('vragenlijst.held.kies_een')
@@ -724,7 +749,7 @@ function Samenvatting({
         onWijzig={() => onWijzig(EERSTE_HELDVRAAG as Stap)}
       />
 
-      <HeldUitslag keuze={keuze} huidigeHeld={huidigeHeld} onKies={onKiesHeld} />
+      <HeldUitslag keuze={keuze} bestaande={bestaande} onKies={onKiesHeld} />
 
       {valkuilen.length === 0 ? null : (
         <View style={styles.helpt}>

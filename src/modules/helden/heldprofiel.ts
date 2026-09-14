@@ -59,9 +59,18 @@ export async function heldprofiel(userId: string): Promise<Heldprofiel | null> {
     .eq('user_id', userId)
     .maybeSingle();
 
+  // ⚠️⚠️ **Werpt, en geeft géén `null` terug bij een fout.** Dat stond hier
+  //    eerst wel, en het maakte twee heel verschillende dingen ononderscheidbaar:
+  //    *je hebt geen held* en *ik kon het niet ophalen*. Het scherm tekent het
+  //    eerste als "je hebt de heldenvragen overgeslagen" — een ware zin met een
+  //    onware strekking tegen iemand die gewoon een held hééft.
+  //
+  //    Door te werpen zet `useAsync()` zijn `error`, en heeft de schermlaag de
+  //    drie staten die onwrikbare regel 16 eist. `null` blijft over voor wat het
+  //    hoort te betekenen: er is geen rij.
   if (error) {
     reportError(error, 'helden.heldprofiel', { user_id: userId });
-    return null;
+    throw error;
   }
 
   if (data === null || !isHeldsleutel(data.hero_key)) return null;
@@ -101,13 +110,41 @@ export async function bewaarHeld(
     return { ok: false, melding: t('vragenlijst.held.opslaan_mislukt') };
   }
 
+  // ⚠️⚠️ **`.select()` erbij, en dat is geen luxe maar de reparatie van een
+  //    stille succesmelding.** 📏 Gemeten tegen de lokale PostgREST: een PATCH
+  //    die nul rijen raakt geeft **204 met een lege body** en dus `error === null`.
+  //    Zonder deze regel gaf `bewaarHeld()` dan `{ ok: true }`, navigeerde het
+  //    scherm door naar `/doelen`, en geloofde de gebruiker dat zijn held bewaard
+  //    was terwijl er niets stond.
+  //
+  //    Het pad ernaartoe is smal maar echt: de insert botst op 23505 (de rij
+  //    bestond), en tussen die twee aanroepen verdwijnt de rij — een tweede
+  //    tabblad, of straks een knop om je held te wissen. De DELETE-grant en
+  //    -policy staan lévend op de tabel, dus dat is geen hypothese.
+  //
+  //    📏 Mét `Prefer: return=representation` — wat `.select()` stuurt — geeft
+  //    dezelfde PATCH **200 met `[]`**, en dát is wel te onderscheiden.
+  //
+  // ⚠️ `select('user_id')` en niet `select('*')`: meer kolommen vragen betekent
+  //    leesrecht op meer kolommen, en dat is precies hoe 0089 een schrijfactie op
+  //    `profiles` omver haalde met 42501.
   const bestaand = await supabase()
     .from('hero_profiles')
     .update({ hero_key: held, source: bron })
-    .eq('user_id', userId);
+    .eq('user_id', userId)
+    .select('user_id');
 
   if (bestaand.error) {
     reportError(bestaand.error, 'helden.bewaarHeld.update', { user_id: userId });
+    return { ok: false, melding: t('vragenlijst.held.opslaan_mislukt') };
+  }
+
+  if ((bestaand.data ?? []).length === 0) {
+    reportError(
+      new Error('hero_profiles: insert gaf 23505 en de update raakte nul rijen'),
+      'helden.bewaarHeld.verdwenen',
+      { user_id: userId },
+    );
     return { ok: false, melding: t('vragenlijst.held.opslaan_mislukt') };
   }
 
