@@ -196,6 +196,13 @@ export const BEWAAKT_BUITEN_DE_APP = {
   schrijfrechten_bewaking:
     'Schrijfrechten voor `anon` of `authenticated` waar geen policy bij hoort ' +
     '(0101, generiek sinds 0118).',
+  standaardrechten_bewaking:
+    'Wat de vólgende tabel in `public` aan een niet-ingelogde bezoeker zou geven ' +
+    '(0263). De tweede helft van 0261, dat alleen de tabellen opruimde die er ' +
+    'stónden. Ziet zowel een grant aan `anon` als een aan `PUBLIC` (0191), en ' +
+    'zowel een standaardregel voor `public` als een globale zonder `in schema`. ' +
+    'Aanroepers zijn `tests/rls/anonleesrecht.test.ts` en ' +
+    '`tests/rls/publieke-grant.test.ts`.',
   domeinregel3_bewaking:
     'De zes sloten op peer-goedkeuring (0093, uitgebreid in 0262). Clausule 1 ' +
     '"nooit jezelf": de RLS-clausule, de CHECK not_self, de trigger die ' +
