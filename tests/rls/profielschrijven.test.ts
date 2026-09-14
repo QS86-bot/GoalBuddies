@@ -252,6 +252,16 @@ describe.skipIf(!rlsTestsConfigured)('Je eigen profiel opslaan', () => {
           'de database liet een naam toe die omgekeerd rendert — die staat in de ' +
             'ledenlijst van iedereen die een groep met je deelt',
         ).toBe('23514');
+
+        // ⚠️ **De naam van de constraint erbij, en dat is geen sierlijkheid.**
+        //    `23514` zegt alleen "een CHECK weigerde dit". `profiles` draagt er
+        //    vijftien; een tweede die deze invoer toevallig ook weigert, houdt
+        //    deze toets groen terwijl `profiles_display_name_geen_bidi` weg is.
+        //    Dat is regel 18 vraag 3 — toets de belofte, niet het symptoom.
+        expect(
+          error?.message ?? '',
+          'een CHECK weigerde dit, maar niet degene die deze toets bewaakt',
+        ).toContain('profiles_display_name_geen_bidi');
       },
       TEST_TIMEOUT,
     );

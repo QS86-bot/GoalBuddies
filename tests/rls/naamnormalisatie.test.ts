@@ -340,7 +340,21 @@ describe.runIf(beschikbaar)('de twee talen halen in het midden dezelfde tekens w
     expect(database.has(0x202e), 'de RIGHT-TO-LEFT OVERRIDE hoort erin').toBe(true);
     expect(database.has(0x2067), 'de RIGHT-TO-LEFT ISOLATE hoort erin').toBe(true);
     expect(database.has(0x200d), 'de zero-width joiner hoort er juist NIET in').toBe(false);
-    expect(database.has(0x200b), 'een rand-teken hoort hier niet in het midden in').toBe(false);
+    // ⚠️⚠️ **Dit is een open gat en geen bedoeld gedrag, en dat staat hier omdat
+    //    deze assertie het anders dichtspijkert alsof het besloten is.** 📏
+    //    Gemeten in de security-ronde op QS8-450: `schone_naam(U&'Ja\200Bn')`
+    //    geeft een naam van vier tekens die als `Jan` rendert en die béíde
+    //    CHECKs haalt — dus twee leden in dezelfde groep kunnen een
+    //    pixel-identieke naam dragen, zonder bidi en zonder homoglyph.
+    //
+    //    Hij staat hier op `false` omdat dát is wat de code vandaag doet, niet
+    //    omdat het goed is. De reparatie is niet "pas `ONZICHTBARE_BEREIKEN`
+    //    met `g` toe" — dat knipt de lijm uit `👨‍👩‍👧‍👦` en U+200C uit het
+    //    Perzisch. Ze vraagt een eigen uitzonderingsanalyse, en staat mét deze
+    //    meting in `docs/ENGINEER-REVIEW.md`.
+    expect(database.has(0x200b), 'vandaag blijft een zero-width space in het midden staan').toBe(
+      false,
+    );
     expect(database.has(0x0020), 'een spatie in het midden blijft staan').toBe(false);
     expect(database.has(0x200f), 'de RLM is een markering en geen override').toBe(false);
   }, 60_000);

@@ -1,4 +1,4 @@
-# Een naam die als een ándere naam rendert
+# Een naam die de tekens eromheen omkeert
 
 **Datum:** 14-09-2026
 **Issue:** QS8-450
@@ -69,15 +69,30 @@ Dezelfde tweedeling als bij de lege naam in 0256, en met dezelfde reden.
 
 ### LRM, RLM en ALM
 
-`U+200E`, `U+200F` en `U+061C` zijn *markeringen*, geen overrides: ze zetten de
-richting van de **neutrale** tekens ernaast en kunnen een run met sterke tekens
-niet omkeren. Ze hebben legitiem gebruik in een naam die schriften mengt — een
-Arabische naam met een punt erin heeft er soms een nodig om die punt aan de
-goede kant te houden. Aan de rand worden ze al gestreken.
+`U+200E`, `U+200F` en `U+061C` kunnen geen **letters** omkeren: ze hebben geen
+`PDF`-tegenhanger en openen geen bereik. Ze hebben legitiem gebruik in een naam
+die schriften mengt — een Arabische naam met een punt erin heeft er soms een
+nodig om die punt aan de goede kant te houden. Aan de rand worden ze al
+gestreken.
 
-**Wordt zwaarder als** iemand aantoont dat een run van uitsluitend neutrale
-tekens (een naam als `a.b-c`) er genoeg door verschuift om als een andere naam
-te lezen. Die voorwaarde staat in `docs/ENGINEER-REVIEW.md`.
+⚠️⚠️ **Maar "markering, dus zwak" was te zacht gezegd, en de security-ronde
+heeft dat gemeten.** 📏 Uit de Unicode-database: `U+200F` heeft Bidi_Class **R**
+en `U+061C` heeft **AL** — allebei *sterke* tekens. Per UAX #9 regel N1 neemt een
+run neutrale tekens tussen twee sterke tekens van dezelfde richting die richting
+over, en wordt dus omgekeerd getoond. Gemeten precondition:
+`Q<RLM>🥇🥈🥉<RLM>x` bevat een run van drie `ON`-tekens ingesloten door twee
+`R`-tekens, en leestekens vallen er via W6 ook onder.
+
+`CLAUDE.md` legt vast dat gebruikers overal emoji mogen typen, dus `Anna 🥇🥈`
+tegenover `Anna 🥈🥇` is een echte, door een onzichtbaar teken gestuurde
+verandering. **Het besluit blijft staan** — letters kun je er niet mee omkeren,
+en weigeren zou legitieme namen raken — maar de onderbouwing is nu wat ze moet
+zijn: niet *"deze tekens doen weinig"* maar *"deze tekens kunnen de volgorde van
+neutrale tekens veranderen en niet die van letters"*.
+
+**Wordt zwaarder als** een oppervlak betekenis hecht aan de volgorde van
+leestekens of emoji in een naam. Die voorwaarde staat in
+`docs/ENGINEER-REVIEW.md`.
 
 ### Homoglyphen
 
@@ -121,6 +136,76 @@ scenario. Het staat als vervolgvraag in `docs/ENGINEER-REVIEW.md` met zijn
 voorwaarde, en niet in deze migratie: dat zou een tweede tabel, een tweede CHECK
 en een tweede naad zijn in een issue dat over namen gaat.
 
+## ⚠️⚠️ Wat de security-ronde vond: de belofte was breder dan de levering
+
+De kop van 0268 opende met *"een weergavenaam kan niet meer als een ándere naam
+renderen"*. 📏 Gemeten als `authenticated`, ná 0268, via de gewone weg:
+
+```
+update public.profiles set display_name = U&'Ja\200Bn' where id = <eigen id>;
+UPDATE 1
+
+ display_name | length
+--------------+--------
+ Ja​n          |      4
+```
+
+Dat rendert als `Jan`. Idem voor `U+FEFF` en `U+00AD`, en voor `U+200C`. Alle
+vier halen béíde CHECKs. Twee leden in dezelfde groep kunnen dus een
+pixel-identieke naam dragen — zonder bidi, zonder homoglyph, zonder één
+niet-ASCII-ogend teken.
+
+⚠️ **Structureel dezelfde bug als de bug die dit besluit repareert, één klasse
+verderop:** de tekens stáán in `ONZICHTBARE_BEREIKEN`, ze worden alleen aan de
+randen gestreken. Homoglyphen kregen hierboven een uitgeschreven uitzondering
+met een argument; dit geval stond in geen van beide documenten.
+
+⚠️⚠️ **En `tests/rls/naamnormalisatie.test.ts` pinde het dicht als bedoeld
+gedrag** met `expect(database.has(0x200b)).toBe(false)` — een assertie die leest
+als *"zo besloten"*. Dat is precies de vorm waar `CLAUDE.md` voor waarschuwt:
+een uitgeschreven afwijking is duurder dan een vergeten afwijking, want de
+volgende lezer neemt hem voor een reden.
+
+**Wat er daarom veranderd is:** de kop belooft nu wat de bestandsnaam al zei
+(*"draagt geen bidi-stuurteken"*), de assertie draagt haar reden, en het gat
+staat mét deze meting in `docs/ENGINEER-REVIEW.md` en als QS8-495.
+
+**Wat er níét veranderd is:** de reparatie zelf. `ONZICHTBARE_BEREIKEN` met `g`
+toepassen is de reparatie die het erger maakt — `U+200D` is de lijm in
+`👨‍👩‍👧‍👦` en `U+200C` is orthografisch verplicht in het Perzisch, Hindi en
+Bengaals (QS8-451). Dat vraagt een uitzonderingsanalyse per teken, en dus een
+eigen issue.
+
+## ⚠️ En het telblok stond op de verkeerde plek
+
+📏 Gemeten met een proeftabel die twee schendende rijen draagt, in exact de
+volgorde die hier eerst stond:
+
+```
+alter table zz_verify add constraint zz_c check (display_name = public.zonder_bidi(display_name));
+ERROR:  check constraint "zz_c" of relation "zz_verify" is violated by some row
+ERROR:  current transaction is aborted, commands ignored until end of transaction block
+```
+
+Het `do $$`-blok dat erna stond, draaide dus nooit — en de tekst erin beweerde
+bovendien dat Postgres bestaande rijen *"niet opnieuw toetst"*. 📏 Allebei de
+kanten op gemeten: zónder `not valid` toetst hij élke bestaande rij; mét
+`not valid` gaat hij door.
+
+Dat is erger dan een dode regel. Op productie (die echte profielen heeft) valt
+de migratie om met een melding die de rij niet noemt, terwijl het vangnet dat
+daarvoor geschreven was niet vuurt — en de volgende migratieschrijver leest in
+een kop van dit project dat oude rijen gegrandfatherd worden.
+
+Het blok staat nu vóór de `add constraint`. 📏 Geijkt tegen de echte
+`public.profiles` met één schendende rij:
+
+```
+NOTICE:  ⚠️ 1 profiel(en) dragen een bidi-stuurteken in display_name. De CHECK
+         hierna gaat daar op om, en deze migratie stopt.
+ERROR:   check constraint "profiles_display_name_geen_bidi" ... is violated by some row
+```
+
 ## 📏 De ijking — vijf grendels, vijf mutaties
 
 Vooraf gemeten: naamnormalisatie 11, profielschrijven 28, aanmelding 16.
@@ -132,6 +217,7 @@ Vooraf gemeten: naamnormalisatie 11, profielschrijven 28, aanmelding 16.
 | B3 | `schone_naam()` componeert `zonder_bidi()` niet meer | 4 — de twee sweeps, de gemeten spoofnaam en de aanmeldroute |
 | B4 | `grant execute on zonder_bidi to authenticated` eruit | de **ship-stopper**: ook *"slaat de taal en de tijdzone op"* en *"rondt de onboarding af"* |
 | B5 | `[0x2066, 0x2069]` uit `BIDI_BEREIKEN` | 2 — de naad in één richting, plus de lijsttoets |
+| B6 | de CHECK vervangen door een **anders genaamde** CHECK die dezelfde invoer weigert | 7 — alle PATCH-weigeringen, dankzij de constraintnaam-assertie die de security-ronde vroeg |
 
 ### ⚠️⚠️ B1 was groen, en dat is de scherpste uitkomst van deze ronde
 

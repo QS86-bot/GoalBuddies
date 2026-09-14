@@ -1,5 +1,17 @@
--- 0268_een_weergavenaam_draagt_geen_bidi_stuurteken.sql — een weergavenaam kan
--- niet meer als een ándere naam renderen (QS8-450).
+-- 0268_een_weergavenaam_draagt_geen_bidi_stuurteken.sql — een weergavenaam
+-- draagt geen bidi-stuurteken meer, en kan de tekens eromheen dus niet meer
+-- omkeren (QS8-450).
+--
+-- ⚠️⚠️ **De kop zei eerst "kan niet meer als een ándere naam renderen", en dat
+--    was breder dan wat hier geleverd wordt.** 📏 Gemeten in de security-ronde
+--    op deze branch: `schone_naam(U&'Ja\200Bn')` geeft een naam van **vier**
+--    tekens die als `Jan` rendert, en die haalt béíde CHECKs. Hetzelfde voor
+--    `U+FEFF` en `U+00AD`. Twee leden in dezelfde groep kunnen dus een
+--    pixel-identieke naam dragen zónder bidi en zónder homoglyph.
+--
+--    Dat gat blijft open en staat mét zijn meting in `docs/ENGINEER-REVIEW.md`.
+--    Een kop die meer belooft dan hij levert is in dit project duurder dan een
+--    ontbrekende grendel — die valt op.
 --
 -- ROLLBACK-PAD:
 --   In één transactie, met ON_ERROR_STOP aan:
@@ -19,7 +31,8 @@
 --      profielschrijving, want de CHECK van 0256 roept hém aan.
 --
 --   ⚠️ **Stap 0, verplicht en vóór stap 1.** Meet eerst of er namen staan die de
---      CHECK zou weigeren:
+--      CHECK zou weigeren — het `do $$`-blok onderin dit bestand doet dat bij het
+--      toepassen, maar bij een terugzet draait dat blok niet:
 --
 --        select count(*) from public.profiles
 --        where display_name <> public.zonder_bidi(display_name);
@@ -159,10 +172,26 @@ grant execute on function public.zonder_bidi(text) to authenticated;
 --
 --      de trigger  -> `schone_naam()` **strijkt** (een aanmelding mag niet
 --                     omvallen op een naam die de provider aanlevert)
---      de PATCH    -> de CHECK **weigert** (de gebruiker typt zelf en krijgt
---                     een nette melding terug)
+--      de PATCH    -> de CHECK **weigert**
 --
 --    Dezelfde tweedeling als bij de lege naam in 0256, en met dezelfde reden.
+--
+-- ⚠️⚠️ **Maar er zijn drie gedragingen op één waarde en niet twee, en dat is in
+--    de security-ronde rechtgezet.** Hier stond dat de gebruiker "een nette
+--    melding terug krijgt". 📏 Dat klopt niet: `profielSchema.display_name`
+--    doet `.transform(schoneNaam)`, en `schoneNaam()` componeert sinds deze
+--    wijziging `zonderBidi()` — de **client strijkt dus stilletjes** en er komt
+--    nooit een melding.
+--
+--    Dat is beter dan wat er beloofd werd (een Arabische gebruiker die zijn
+--    naam uit Word plakt loopt niet vast), maar het hoort opgeschreven te staan:
+--
+--      de trigger  -> strijkt
+--      de client   -> strijkt, zonder melding
+--      de database -> weigert, en dat is de énige grens
+--
+--    De CHECK raakt alleen wie de client overslaat en rechtstreeks met
+--    PostgREST praat — en dat is precies waarvoor hij bestaat.
 --
 -- ⚠️ **Eerst strippen, dán de randen.** `' \202E Jan '` wordt zo `'Jan'`. De
 --    andere volgorde geeft hetzelfde resultaat maar leest als toeval.
@@ -192,8 +221,17 @@ comment on function public.schone_naam(text) is
   'legt de twee oordelen naast elkaar, aan de rand én in het midden.';
 
 -- ⚠️ `schone_naam()` bestond al en had zijn grant al. `create or replace`
---    behoudt die, dus hier hoort geen tweede `grant` — maar hij staat wel in
---    `tests/rls/functiegrants.test.ts`, en dat register is de grendel.
+--    behoudt die, dus hier hoort geen tweede `grant`.
+--
+--    ⚠️⚠️ **En hóé `tests/rls/functiegrants.test.ts` dat dekt, staat er nu bij.**
+--       Hier stond eerst alleen dát hij het dekt. 📏 Gemeten in de
+--       security-ronde: `grep zonder_bidi\|schone_naam` op dat bestand geeft
+--       **nul** treffers — hij noemt geen enkele functie bij naam. Hij leest
+--       élk migratiebestand van schijf en zeeft er `grant execute on function
+--       … to …`-regels uit, en legt die naast de functies die `authenticated`
+--       daadwerkelijk mag uitvoeren. De dekking is dus echt, maar wie hem
+--       opzoekt op de naam van deze functie vindt niets — en concludeert dat de
+--       grendel er niet is. Zelfde klasse als QS8-412, één slag milder.
 
 -- ---------------------------------------------------------------------------
 -- De grens zelf
@@ -209,24 +247,31 @@ comment on function public.schone_naam(text) is
 alter table public.profiles
   drop constraint if exists profiles_display_name_geen_bidi;
 
-alter table public.profiles
-  add constraint profiles_display_name_geen_bidi
-  check (display_name = public.zonder_bidi(display_name));
-
-comment on constraint profiles_display_name_geen_bidi on public.profiles is
-  'Een weergavenaam draagt geen bidi-override of -isolaat — QS8-450. De naam is '
-  'groepszichtbaar via profiles_select, en een omgekeerde naam rendert als de '
-  'naam van iemand anders.';
-
 -- ---------------------------------------------------------------------------
--- Staat er al zo een?
+-- Staat er al zo een? — en dit blok staat vóór de CHECK, niet erna
 -- ---------------------------------------------------------------------------
 --
--- ⚠️ De `add constraint` hierboven valt vanzelf om op een bestaande rij die hem
---    schendt, maar dan met een melding die de rij niet noemt. Deze meting zegt
---    hoeveel het er zijn, vóór dat gebeurt — en wat ermee moet gebeuren is een
---    productbeslissing (de naam van een echte gebruiker herschrijven) en geen
---    migratiestap.
+-- ⚠️⚠️ **Dit stond eerst ná de `add constraint`, en dan draait het nooit.** 📏
+--    Gemeten in de security-ronde op deze branch, met een proeftabel die twee
+--    schendende rijen draagt en exact de volgorde die hier eerst stond:
+--
+--      ERROR:  check constraint "zz_c" of relation "zz_verify" is violated by some row
+--      ERROR:  current transaction is aborted, commands ignored until end of transaction block
+--
+--    De melding erna komt er dus niet, en op productie — waar écht profielen
+--    staan — valt de migratie om met een fout die de rij niet noemt, terwijl het
+--    vangnet dat daarvoor geschreven was niet vuurt.
+--
+-- ⚠️⚠️ **En de tekst die hier stond was feitelijk onjuist.** Er stond dat
+--    Postgres bestaande rijen "niet opnieuw toetst". 📏 Allebei de kanten op
+--    gemeten: een `add constraint` **zónder** `not valid` toetst élke bestaande
+--    rij en weigert; mét `not valid` gaat hij door. Dat is geen detail voor de
+--    volgende migratieschrijver: wie gelooft dat oude rijen gegrandfatherd
+--    worden, zet een CHECK op een gevulde tabel en krijgt een mislukte deploy.
+--
+-- ⚠️ Wat er met zo'n rij moet gebeuren is een productbeslissing — je herschrijft
+--    de naam van een echte gebruiker — en dus geen migratiestap. Dit blok meet
+--    en waarschuwt; het repareert niets.
 do $$
 declare
   v_aantal bigint;
@@ -238,9 +283,19 @@ begin
   if v_aantal > 0 then
     raise notice
       '⚠️ % profiel(en) dragen een bidi-stuurteken in display_name. De CHECK '
-      'hierboven is toegevoegd; bestaande rijen worden door Postgres niet '
-      'opnieuw getoetst. Bepaal wat ermee gebeurt vóór de volgende schrijving.',
+      'hierna gaat daar op om, en deze migratie stopt. Bepaal eerst wat er met '
+      'die namen gebeurt — dat is een productbeslissing, geen migratiestap.',
       v_aantal;
   end if;
 end;
 $$;
+
+alter table public.profiles
+  add constraint profiles_display_name_geen_bidi
+  check (display_name = public.zonder_bidi(display_name));
+
+comment on constraint profiles_display_name_geen_bidi on public.profiles is
+  'Een weergavenaam draagt geen bidi-override of -isolaat — QS8-450. De naam is '
+  'groepszichtbaar via profiles_select, en een omgekeerde naam rendert als de '
+  'naam van iemand anders.';
+
