@@ -7,16 +7,16 @@
 > Bijwerken is onderdeel van het werk. Sluit je een issue af, werk dan ook dit
 > bestand bij — anders begint de volgende sessie met verouderde informatie.
 
-**Laatst bijgewerkt:** 13-09-2026 (na QS8-449; daarvóór QS8-448 uit de parallelle sessie; daarvóór QS8-447, QS8-446, QS8-439 en QS8-182; daarvóór QS8-441; daarvóór QS8-443; daarvóór QS8-445; daarvóór QS8-438; daarvóór QS8-434, QS8-435, QS8-431, QS8-416 en QS8-432; diezelfde dag QS8-419, QS8-420, QS8-423, QS8-425, QS8-426, QS8-427, QS8-428, QS8-430 en QS8-432 uit deze sessie en QS8-262 ronde 9, QS8-421 en QS8-422 uit de parallelle; daarvóór de hele novemberronde, alle tien — QS8-180, QS8-181, QS8-183, QS8-184, QS8-189 en QS8-194 uit deze sessie, QS8-179, QS8-182, QS8-187 en QS8-204 uit de parallelle; daarvóór QS8-24; daarvóór QS8-92; daarvóór QS8-392 en QS8-393; daarvóór QS8-396 en QS8-402; daarvóór QS8-404, QS8-399, QS8-400 en QS8-401; daarvóór QS8-403, QS8-140 en QS8-320; daarvóór QS8-243 en QS8-220; daarvóór QS8-314; daarvóór QS8-147, QS8-174, QS8-191, QS8-297, QS8-298, QS8-299, QS8-303 en QS8-304; daarvóór QS8-287, QS8-288, QS8-289 en QS8-291;
+**Laatst bijgewerkt:** 14-09-2026 (na QS8-467; daarvóór QS8-465, QS8-463, QS8-462 en QS8-460; daarvóór QS8-449; daarvóór QS8-448 uit de parallelle sessie; daarvóór QS8-447, QS8-446, QS8-439 en QS8-182; daarvóór QS8-441; daarvóór QS8-443; daarvóór QS8-445; daarvóór QS8-438; daarvóór QS8-434, QS8-435, QS8-431, QS8-416 en QS8-432; diezelfde dag QS8-419, QS8-420, QS8-423, QS8-425, QS8-426, QS8-427, QS8-428, QS8-430 en QS8-432 uit deze sessie en QS8-262 ronde 9, QS8-421 en QS8-422 uit de parallelle; daarvóór de hele novemberronde, alle tien — QS8-180, QS8-181, QS8-183, QS8-184, QS8-189 en QS8-194 uit deze sessie, QS8-179, QS8-182, QS8-187 en QS8-204 uit de parallelle; daarvóór QS8-24; daarvóór QS8-92; daarvóór QS8-392 en QS8-393; daarvóór QS8-396 en QS8-402; daarvóór QS8-404, QS8-399, QS8-400 en QS8-401; daarvóór QS8-403, QS8-140 en QS8-320; daarvóór QS8-243 en QS8-220; daarvóór QS8-314; daarvóór QS8-147, QS8-174, QS8-191, QS8-297, QS8-298, QS8-299, QS8-303 en QS8-304; daarvóór QS8-287, QS8-288, QS8-289 en QS8-291;
 daarvóór QS8-266, QS8-202 en QS8-196, en het toepassen van `0139` t/m `0149` op
 productie in twee rondes)
 
 ⚠️ **Productie staat op `0221`.** 📏 Hermeten op 09-09 om 16:10 UTC met
 `migratieregister()` tegen `wehgocadxehottiiyvsc`: **224 registerrijen**, `0001`
 t/m `0221` aaneengesloten, inclusief de drie letterversies. De map telt er
-**263**.
+**264**.
 
-**Het gat is daarmee negenendertig bestanden** — `0222` t/m `0260`, van 09-09
+**Het gat is daarmee veertig bestanden** — `0222` t/m `0261`, van 09-09
 tot en met 13-09 en uit achtentwintig verschillende issues:
 
 | | | DDL op `storage.objects` |
@@ -60,6 +60,7 @@ tot en met 13-09 en uit achtentwintig verschillende issues:
 | `0258_de_all_tak_van_alleenlezen_bewaking_toetst_het_recht.sql` | QS8-458 | nee |
 | `0259_een_leespolicy_routeert_via_de_gedeelde_groepstoets.sql` | QS8-459 | nee |
 | `0260_goal_events_krijgt_een_grens_op_vorm_en_omvang.sql` | QS8-464 | nee |
+| `0261_anon_leest_niets_meer_van_wat_een_bezoeker_nooit_hoort_te_zien.sql` | QS8-467 | nee |
 
 ⚠️ **Hier stond een uur eerder `0219` met twee bestanden gat, en dat klopte
 toen.** `0220` en `0221` zijn erna toegepast en `0222` t/m `0226` landden
@@ -314,7 +315,7 @@ schemaname = 'public'` gaf `41|41`. Vraag het aan de database en niet aan deze
 regel — net als bij het aantal migraties in §0.
 
 <!-- STAND:BEGIN — gegenereerd door `npm run stand` -->
-Migraties `0001` t/m `0260` staan in de map: **263 bestanden**,
+Migraties `0001` t/m `0261` staan in de map: **264 bestanden**,
 waarvan 3 met een letter-achtervoegsel (`0039a`, `0041a`, `0052a`).
 De nummering is aaneengesloten.
 <!-- STAND:EINDE -->
