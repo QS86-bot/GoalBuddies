@@ -125,7 +125,8 @@ const beschikbaar = stackBeschikbaarOfFaal(
  * Elk leesbaar object in `public` — tabel, view én materialized view — met wat
  * `anon` en `authenticated` erop mogen lezen.
  *
- * ⚠️ **`relkind in ('r','v','m')` en niet alleen `'r'` — QS8-478.** De eerste
+ * ⚠️ **`relkind in ('r','v','p','m')` en niet alleen `'r'` — QS8-478, met de
+ *    `p` erbij sinds QS8-485.** De eerste
  *    versie keek alleen naar tabellen, en dan valt een view buiten élke
  *    bewaking: `viewrechten_bewaking()` dekt INSERT/UPDATE/DELETE/REFERENCES
  *    maar geen SELECT, en er is geen derde plek.
@@ -137,10 +138,17 @@ const beschikbaar = stackBeschikbaarOfFaal(
  *    tegenhoudt. `mijn_doelvelden` is daarvan de scherpste, want die filtert
  *    niet op de kijker.
  *
- *    📏 Alle vier staan vandaag op `anon = false`, maar dat komt doordat 0005,
- *    0019, 0089, 0143 en 0236 het stuk voor stuk **met de hand** hebben
- *    dichtgezet. Discipline, geen grendel — en een verse
- *    `create or replace view` krijgt de `anon`-grant gewoon weer.
+ *    📏 Alle vier staan vandaag op `anon = false`, en tot 0263 kwam dat doordat
+ *    0005, 0019, 0089, 0143 en 0236 het stuk voor stuk **met de hand** hadden
+ *    dichtgezet — discipline en geen grendel.
+ *
+ *    ⚠️ **Sinds 0263 is dat niet meer waar, en dat is winst die daar niet
+ *    geclaimd werd.** `alter default privileges … on tables` dekt views en
+ *    materialized views mee (0095 zegt dat ook), dus het revoke van `anon` geldt
+ *    ook voor ze. 📏 Nagemeten ná 0263: een verse `create view` geeft `anon`
+ *    SELECT = **false** en `authenticated` = true. De zin die hier stond —
+ *    *"een verse view krijgt de anon-grant gewoon weer"* — is door die migratie
+ *    stil onwaar geworden; gevonden in de security-ronde op QS8-485.
  */
 function leesrechten(): { naam: string; anon: boolean; ingelogd: boolean }[] {
   const uit = psql(`
@@ -149,7 +157,7 @@ function leesrechten(): { naam: string; anon: boolean; ingelogd: boolean }[] {
          || '|' || has_any_column_privilege('authenticated', c.oid, 'SELECT')::text
       from pg_class c
       join pg_namespace n on n.oid = c.relnamespace
-     where n.nspname = 'public' and c.relkind in ('r', 'v', 'm')
+     where n.nspname = 'public' and c.relkind in ('r', 'v', 'p', 'm')
      order by 1
   `);
 
@@ -218,4 +226,134 @@ describe.skipIf(!beschikbaar)('geen tabel geeft anon een leesrecht zonder reden'
 
     expect(verdwenen, 'Deze tabellen bestaan niet meer; haal ze uit REGISTER.').toEqual([]);
   });
+});
+
+/**
+ * De tweede helft: wat de **volgende** tabel krijgt. QS8-485.
+ *
+ * ⚠️⚠️ **De suite hierboven toetst de instanties, en dat is niet het
+ *    mechanisme.** Migratie 0261 trok de `anon`-rechten in op de 24 tabellen
+ *    die er stónden; de standaardrechten bleven staan. 📏 Gemeten op
+ *    14-09-2026, in een teruggedraaide transactie:
+ *
+ *        create table public.zzz_proef(id int);
+ *        -- anon: select=true insert=true update=true delete=true references=true
+ *
+ *    Vijf rechten, niet één — een revoke die alleen SELECT noemt, laat een
+ *    verse tabel beschrijfbaar achter voor een niet-ingelogde bezoeker.
+ *
+ *    CLAUDE.md schrijft die vorm bij de CI-rij van 27-08 uit: *een reparatie
+ *    die de instanties opruimt en het mechanisme laat staan, groeit terug — en
+ *    hij doet dat onder een rij die "opgelost" zegt.* 0261 was zo'n reparatie.
+ *
+ * ⚠️⚠️ **Waarom dit een dátabasefunctie is en geen query hier.** De eerste
+ *    versie stond wél hier, en dat plaatste hem buiten `GEVALLEN` in
+ *    `tests/rls/publieke-grant.test.ts` — het register dat de klassebelofte
+ *    *"elke bewaking ziet een recht dat via PUBLIC is uitgedeeld"* per bewaking
+ *    afdwingt. 📏 De security-ronde zette het gat daarna op twee manieren
+ *    opnieuw open en de toets bleef allebei de keren groen op 6:
+ *
+ *        alter default privileges in schema public grant select on tables to public;
+ *        alter default privileges grant select on tables to anon;   -- zónder schema
+ *
+ *    In allebei de gevallen gaf een verse tabel `anon` SELECT. Nu in de
+ *    database, in `GEVALLEN`, en 📏 nagemeten op alle vier de vormen —
+ *    PUBLIC en `anon`, met en zonder `in schema` — elk 1 bevinding, en
+ *    `authenticated` nul.
+ *
+ * ⚠️ **De oorzaak is de moeite waard.** De eerste versie was gemodelleerd op
+ *    `ddl_rechten_in_de_api()` **uit het migratiebestand 0073**, en migratie
+ *    0191 heeft die functie daarna vervangen juist omdat ze op een rolnáám
+ *    filterde. CLAUDE.md zegt bij regel 19 waarom dat misging:
+ *    `pg_get_functiondef()` is de waarheid, niet het bestand.
+ *
+ * ⚠️ **Deze klasse is niet zonder database te meten, en dat is een grens en
+ *    geen omissie.** Standaardrechten leven in de database; er is geen
+ *    statische vorm die ze kan zien. De poort houdt "ongemeten" en "groen" uit
+ *    elkaar en faalt op allebei — dat is hier het enige eerlijke antwoord.
+ *
+ * IJKING — met de hand gedraaid op 14-09-2026, één mutatie per grendel, en van
+ * elke mutatie eerst bevestigd dát hij erin zat. Basislijn: 0 bevindingen.
+ *
+ *   D1 `… in schema public grant select on tables to anon`    → 1 bevinding
+ *   D2 `… in schema public grant select on tables to public`  → 1 bevinding
+ *   D3 `alter default privileges grant select … to anon`      → 1 bevinding
+ *   D4 `alter default privileges grant select … to public`    → 1 bevinding
+ *   D5 `… grant truncate on tables to authenticated`          → 0 — die rol
+ *      hoort er juist te staan, en een bewaking die alles meldt leer je negeren
+ *   E  `… revoke all on tables from authenticated`
+ *      → 1 rood op de positieve toets, en **nul** bij de bewaking — precies
+ *        waarom die positieve toets bestaat: "anon staat er niet in" is ook
+ *        waar als er helemaal niets meer in staat
+ *
+ * ⚠️⚠️ **D5 stond eerst op `grant select`, en dat mat niets.** `authenticated`
+ *    hád SELECT al, dus de ACL veranderde niet en de nul die eruit kwam was de
+ *    nul van de basislijn. Nagemeten aan de ACL vóór en ná — het enige dat dit
+ *    zichtbaar maakt. Opnieuw gedaan met `truncate`, een recht dat die rol
+ *    **niet** had (0073 haalde het uit de standaard): de ACL gaat van
+ *    `DELETE,INSERT,REFERENCES,SELECT,UPDATE` naar diezelfde lijst **met
+ *    TRUNCATE erbij**, en de bewaking blijft terecht stil. *Een meting die op
+ *    "er werd niets rood" leunt, moet net zo goed weten dat er iets veranderd
+ *    is als een die op rood leunt* — CLAUDE.md bij regel 18.
+ */
+function standaardrechtenBevindingen(): string[] {
+  return psql('select bereik || \'|\' || eigenaar || \'|\' || rol || \'|\' || recht from standaardrechten_bewaking();')
+    .split('\n')
+    .map((r) => r.trim())
+    .filter((r) => r !== '');
+}
+
+/** Wat een rol volgens de standaardrechten op een nieuwe tabel in `public` krijgt. */
+function standaardrechtenVan(rol: string): string[] {
+  return psql(`
+    select a.privilege_type
+      from pg_default_acl d,
+           lateral aclexplode(d.defaclacl) a
+     where d.defaclnamespace in (0, 'public'::regnamespace)
+       and d.defaclobjtype = 'r'
+       and a.grantee::regrole::text = '${rol}'
+     order by 1
+  `)
+    .split('\n')
+    .map((r) => r.trim())
+    .filter((r) => r !== '');
+}
+
+describe.skipIf(!beschikbaar)('een nieuwe tabel geeft anon niets', () => {
+  it('geen standaardregel in public geeft anon of PUBLIC iets op tabellen', () => {
+    expect(
+      standaardrechtenBevindingen(),
+      'De standaardrechten delen een nieuwe tabel in `public` weer uit aan ' +
+        '`anon` — rechtstreeks of via `PUBLIC`. Dat is het mechanisme en niet ' +
+        'een instantie: elke tabel die er hierna bij komt draagt het recht ' +
+        'opnieuw. Trek het in met `alter default privileges in schema public ' +
+        'revoke all on tables from <rol>` (zie 0263), en revoke het ook van de ' +
+        'tabellen die er inmiddels staan — de suite hierboven vindt die.',
+    ).toEqual([]);
+  });
+
+  /**
+   * ⚠️ **Zonder deze toets is de regel hierboven ook waar als er niets meer
+   *    staat.** Dat is dezelfde vorm als `ddl_rechten_van_service_role()` in
+   *    0073: een suite van alleen negatieve toetsen wordt groen zodra de
+   *    database stukgaat. `authenticated` krijgt zijn rechten op een nieuwe
+   *    tabel juist via deze standaard; valt die weg, dan is elke tabel die
+   *    hierna ontstaat onbereikbaar voor de hele app.
+   *
+   * ⚠️ **`service_role` staat er sinds de security-ronde bij.** Dezelfde
+   *    ACL-rij draagt `service_role=arwdDxt`. Verdwijnt díé, dan is een nieuwe
+   *    tabel onbereikbaar voor de Edge Functions en voor dit testharnas — en
+   *    allebei de toetsen hierboven blijven er groen bij.
+   */
+  it.each([['authenticated'], ['service_role']])(
+    '%s houdt zijn standaardrechten — anders is de regel hierboven leeg',
+    (rol) => {
+      expect(
+        standaardrechtenVan(rol),
+        `De standaardrechten van \`${rol}\` op tabellen in \`public\` zijn weg of ` +
+          'uitgedund. Elke tabel die hierna ontstaat is dan onbereikbaar voor die ' +
+          'rol, en de toets hierboven blijft er groen bij.',
+      ).toEqual(expect.arrayContaining(['SELECT', 'INSERT', 'UPDATE', 'DELETE', 'REFERENCES']));
+    },
+  );
 });
