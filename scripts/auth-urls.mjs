@@ -118,7 +118,13 @@ if (!process.argv.includes('--zet')) {
   const klopt = huidig.site_url === app && huidig.uri_allow_list === REDIRECTS;
   console.log('');
   console.log(klopt ? 'Staat al goed. Niets te doen.' : 'Wijkt af. Draai opnieuw met --zet.');
-  process.exit(0);
+  // ⚠️ `return` en geen `process.exit(0)`: dit draait ná de GET-fetch, en `fetch`
+  //    (undici) houdt daarna keep-alive-sockets open. Op Windows gaf een
+  //    `process.exit()` daarop de libuv-assertie `!(handle->flags &
+  //    UV_HANDLE_CLOSING)` (`src\win\async.c`). Terugkeren laat de event loop
+  //    leeglopen en het proces schoon eindigen. Zelfde klasse als
+  //    docs/decisions/2026-09-10-hostinger-upload-api-verplaatst.md §2.
+  return;
 }
 
 await api('PATCH', { site_url: app, uri_allow_list: REDIRECTS });
@@ -135,7 +141,10 @@ console.log('');
 //    een veld dat hij niet kent zonder te klagen, en dan denk je dat het staat.
 if (!gelukt) {
   console.error('⚠️ De waarden na afloop komen niet overeen met wat er is gestuurd.');
-  process.exit(1);
+  // ⚠️ Exitcode zetten en terugkeren, niet `process.exit()` — draait ná de
+  //    PATCH/GET-fetches; zie de noot bij het toon-pad hierboven.
+  process.exitCode = 1;
+  return;
 }
 console.log('Goed gezet en teruggelezen.');
 }
@@ -157,5 +166,8 @@ try {
     console.error('⚠️ Controleer of SUPABASE_ACCESS_TOKEN een personal access token is');
     console.error('   (sbp_…) en niet de service-role-key, en of hij nog geldig is.');
   }
-  process.exit(1);
+  // ⚠️ Exitcode zetten en de loop laten leeglopen, niet `process.exit()`: de
+  //    fout komt meestal uit een fetch, dus er staan undici-sockets open — en
+  //    daarop crasht `process.exit()` op Windows (zie de noot in main()).
+  process.exitCode = 1;
 }
