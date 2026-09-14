@@ -53,10 +53,43 @@ Dus `name`, `icon` en `omschrijving`.
 met een vaste waardenlijst en kunnen per constructie geen stuurteken bevatten.
 Ze staan er met reden niet bij.
 
-⚠️ **Dit verruimt 0269 niet.** De zes andere groepszichtbare tekstkolommen —
-doeltitels, mijlpalen, chatberichten — blijven buiten, met het argument dat daar
-wél opgaat: dat is inhoud van de schrijver zelf, gelezen door mensen die hem al
-kennen.
+### ⚠️⚠️ En het argument waarmee ik de rest buiten hield, was onwaar
+
+Hier stond: *"de zes andere groepszichtbare tekstkolommen — doeltitels,
+mijlpalen, chatberichten — blijven buiten, want dat is inhoud van de schrijver
+zelf, gelezen door mensen die hem al kennen."*
+
+📏 **Gemeten in de security-ronde, en voor `goals.title` is dat aantoonbaar
+onjuist.** `invite_preview()` gaat verder dan `group_name` en `icon`:
+
+```
+'goal_title', case when ingelogd then ( select gg.title … ) else null end
+```
+
+Die tak hangt aan **`ingelogd`** en niet aan lidmaatschap. Een ingelogde
+**vreemde** met een uitnodigingslink krijgt dus de doeltitels van de leden
+terug, in hetzelfde antwoord als de groepsnaam — en
+`app/uitnodiging/[code].tsx` rendert ze op dezelfde kaart:
+
+```
+<Subheading>{u.group_name}</Subheading>
+…
+<Caption>{lid.goal_title ?? …}</Caption>
+```
+
+Boven de meedoen-knop. Dezelfde schade, dezelfde functie, hetzelfde scherm als
+waarvoor `groups_name_geen_bidi` net gebouwd is.
+
+⚠️⚠️ **Dit is precies de fout die dit besluit zegt te repareren, nog een keer.**
+Het document hierboven schrijft op dat een weggezette bevinding laag bleef staan
+op een aanname die al onwaar was — en zette er toen een nieuwe rij onder met
+opnieuw een aanname in plaats van een meting. **Een 📏 die niet klopt is duurder
+dan een ontbrekende meting, want de eerste lees je als bewijs.**
+
+**Wat er daarom veranderd is:** de scope-regel is versmald tot wat hij werkelijk
+dekt — *vrije tekst **in `groups`** die een niet-lid ziet* — en `goals.title`
+staat als gemeten gat met zijn eigen issue. Wat 0270 doet is onveranderd; wat het
+document beweert niet meer.
 
 ### Drie constraints en niet één
 
@@ -116,10 +149,46 @@ eigenaar geëvalueerd.
 **De grant beschermt dus alleen de directe PATCH-route.** Dat stond nergens, en
 een volgende lezer zou het moeten raden.
 
-⚠️ Die aanmaaktoets was bij zijn eerste versie groen om de **verkeerde** reden:
-hij eiste alleen *"het mislukte"*, en onder C4 mislukte `create_group()` ook —
-op `permission denied`. Een dichte deur leest als een veilige deur. Hij eist nu
-de constraintnaam, en dát is wat hem onder C4 om de juiste reden groen laat.
+⚠️⚠️ **Hier stond dat `create_group()` onder C4 omviel op `permission denied`,
+en dat was een aanname die als meting was opgeschreven.** Ze sprak bovendien de
+alinea hierboven tegen: als de definer-route met de rechten van de eigenaar
+draait, kán hij niet op een ingetrokken `authenticated`-grant vallen.
+
+📏 Nagemeten in een geïsoleerde database, alle vier de combinaties:
+
+| | directe insert, schoon | directe insert, bidi | definer, schoon | definer, bidi |
+|---|---|---|---|---|
+| **mét** grant | ok | `23514` | ok | `23514` |
+| **zónder** grant | `42501` | `42501` | ok | **`23514` + constraintnaam** |
+
+De aanmaaktoets blijft onder C4 dus groen **op de CHECK**, niet op een
+permissiefout. Dat de constraintnaam-assertie er hoort, blijft waar — een toets
+die alleen *"het mislukte"* eist, leest een dichte deur als een veilige deur —
+maar de reden is deze tabel en niet wat ik eerst opschreef.
+
+## ⚠️ Twee gaten die deze migratie niet dicht, en allebei gemeten
+
+**Een groepsnaam van uitsluitend onzichtbare tekens komt er nog steeds door.**
+📏 `create_group(U&'\200B\200B', …)` haalt élke validatie en alle drie de CHECKs
+en strandt pas op de foreign key. `create_group()` doet alleen `btrim()` en
+`length >= 2` — géén `schone_naam()`, anders dan de aanmeldtrigger bij
+`profiles`. En `groepSchema` helpt niet: JS `.trim()` strijkt `U+200B` niet, en
+`'\u200b\u200b'.length === 2`.
+
+⚠️⚠️ **`groups.name` is op die as dus strikt zwakker beschermd dan
+`display_name`**, waar de trigger tenminste de randen strijkt. Dat is dezelfde
+klasse als QS8-495 en het hoort daar bij.
+
+**`group_join_requests.bericht` is het spiegelbeeld van de scope-regel.** Vrije
+tekst **van** een vreemde, gelezen door de beheerder op het moment dat hij
+besluit iemand toe te laten — 📏 geen bidi-CHECK (alleen `_len` en
+`_status_valid`), `vraag_lidmaatschap_aan()` doet enkel `nullif(btrim(…), '')`,
+en `app/groep/beheer/[id].tsx` rendert naam → bericht → "Aannemen"/"Afwijzen".
+
+De regel hierboven zegt *"tekst die een niet-lid **ziet** vóór hij besluit te
+vertrouwen"*. De omgekeerde richting — tekst **van** een niet-lid, gelezen vóór
+een **autorisatiebesluit** — weegt minstens even zwaar, want lidmaatschap is de
+grens waar domeinregels 3, 4 en 7 alle drie op leunen.
 
 ## Wat er blijft liggen
 
@@ -131,5 +200,10 @@ Twee dingen die in het meten boven kwamen en met hun voorwaarde in
   naam, terwijl de CHECK (80 codepunten) en `create_group()` (60 codepunten) hem
   allebei doorlaten. De client is dus strenger op een manier die van de inhoud
   afhangt — de klasse van QS8-448, één oppervlak verderop.
-- Er komt geen nette melding vóór de grens: `groepSchema` kent de bidi-regel niet,
-  dus een gebruiker die zo'n naam intypt krijgt de databasefout te zien.
+- Er komt geen nette melding vóór de grens: `groepSchema` kent de bidi-regel niet.
+  📏 Hier stond dat de gebruiker dan "de databasefout" ziet, en dat is onjuist —
+  en het werkelijke gedrag is **slechter**. `maakGroep()` en `wijzigGroep()` in
+  `src/modules/buddies/api.ts` vangen élke fout af en tonen
+  `t('groep.aanmaken_mislukt_kort')` respectievelijk `t('groep.opslaan_mislukt')`.
+  De beheerder krijgt dus een ondoorzichtig *"opslaan mislukt"* zonder enige
+  aanwijzing wélk teken het probleem is, en kan het niet zelf oplossen.

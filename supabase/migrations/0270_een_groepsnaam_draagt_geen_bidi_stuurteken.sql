@@ -174,10 +174,20 @@ comment on constraint groups_name_geen_bidi on public.groups is
   'via invite_preview() naar een uitgelogde bezoeker en via ontdek_groepen() '
   'naar niet-leden; een omgekeerde naam rendert als een andere groep.';
 
+-- ⚠️ **Deze CHECK loopt vooruit op een scherm dat er nog niet is, en dat staat
+--    er met zoveel woorden bij.** 📏 Gemeten in de security-ronde: `groups.icon`
+--    wordt in `app/` en `src/` **nergens** gerenderd, `groepSchema` kent de kolom
+--    niet en geen enkele functie schrijft hem — alleen `invite_preview()` geeft
+--    hem mee. Hij is dus vandaag niet te vullen en niet te zien.
+--
+--    Hier stond eerst dat hij "naast de naam gerenderd wordt", en dat was een
+--    aanname die als meting gelezen kon worden. De CHECK blijft staan — hij kost
+--    niets en de kolom gaat wél naar `anon` zodra er een scherm komt — maar de
+--    reden is "voorsprong", niet "dit lekt vandaag".
 comment on constraint groups_icon_geen_bidi on public.groups is
-  'Het icoon van een groep draagt geen bidi-stuurteken — QS8-494. Het staat in '
-  'invite_preview() naast de naam, en een override werkt door op wat ernaast '
-  'gerenderd wordt.';
+  'Het icoon van een groep draagt geen bidi-stuurteken — QS8-494. De kolom gaat '
+  'via invite_preview() naar een uitgelogde bezoeker; er is vandaag nog geen '
+  'scherm dat hem toont of schrijft.';
 
 comment on constraint groups_omschrijving_geen_bidi on public.groups is
   'De omschrijving van een groep draagt geen bidi-stuurteken — QS8-494. Hij gaat '

@@ -931,7 +931,7 @@ niet kon, staat in `docs/VOLGENDE-SESSIE.md` bij punt 0.
   harnas tekent ze sinds 23-08 zelf en logt niet meer in
 - `npm run typecheck` en `lint` staan groen; het aantal tests staat in §0 en
   niet hier — twee tellers die elkaar tegenspreken zijn precies waarom die regel
-  bestaat. 📏 `tests/rls` telt **157** testbestanden (`ls tests/rls/*.test.ts`,
+  bestaat. 📏 `tests/rls` telt **167** testbestanden (`ls tests/rls/*.test.ts`,
   hermeten 11-09-2026; hier stond **140** met 10-09 erbij, en dat getal was
   gedrift — het is met de hand geteld en niet overgenomen). Zonder
   credentials én zonder lokale stack slaan ze over — zie §3b, en let op het

@@ -1,6 +1,13 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
-import { adminDb, createTestUser, removeTestUsers, rlsTestsConfigured, type TestUser } from './harness';
+import {
+  adminDb,
+  createTestUser,
+  registreerGroep,
+  removeTestUsers,
+  rlsTestsConfigured,
+  type TestUser,
+} from './harness';
 
 /**
  * De belofte: **een groepsnaam kan niet als een ándere groep renderen** —
@@ -76,6 +83,13 @@ describe.skipIf(!rlsTestsConfigured)('een groepsnaam keert de tekens eromheen ni
     const gd = groep.data as unknown as { ok?: boolean; group?: { id: string } };
     if (gd.ok !== true || !gd.group) throw new Error(`groep: ${JSON.stringify(groep.data)}`);
     groupId = gd.group.id;
+
+    // ⚠️ **Vergeten aan te roepen is geen stille fout**, zegt de harnaskop — maar
+    //    hij viel hier nét goed uit omdat de beheerder lid blijft en
+    //    `wipe('groups','created_by')` hem terugvindt. Dat is toeval en geen
+    //    ontwerp; tien andere suites melden hun groep wél aan. Gevonden in de
+    //    security-ronde.
+    registreerGroep(groupId);
   }, SETUP_TIMEOUT);
 
   afterAll(async () => {
@@ -149,13 +163,20 @@ describe.skipIf(!rlsTestsConfigured)('een groepsnaam keert de tekens eromheen ni
           'geldt niet voor deze route',
       ).toBe(true);
 
-      // ⚠️⚠️ **De reden erbij, en dat is een ijking die deze toets zelf vond.**
-      //    📏 Met `grant execute on zonder_bidi` ingetrokken vielen elf van de
-      //    twaalf toetsen om — en deze bleef groen, want `create_group()` faalde
-      //    toen óók, alleen op `permission denied` in plaats van op de CHECK.
-      //    Een toets die alleen "het mislukte" eist, leest een dichte deur als
-      //    een veilige deur; dat is woordelijk de les uit de security-ronde op
-      //    QS8-450.
+      // ⚠️⚠️ **De reden erbij, en niet alleen dát het mislukte.** Een toets die
+      //    alleen "het mislukte" eist, leest een dichte deur als een veilige
+      //    deur — de les uit de security-ronde op QS8-450.
+      //
+      //    📏 **En wat die mutatie hier laat zien, is precies andersom dan ik
+      //    eerst opschreef.** Met `grant execute on zonder_bidi` ingetrokken
+      //    vallen elf van de twaalf toetsen om; deze blijft groen, en hij blijft
+      //    groen op de **CHECK** (`23514` mét de constraintnaam) en niet op
+      //    `permission denied`. `create_group()` is `security definer` en
+      //    eigendom van `postgres`, dus de aanroep van `zonder_bidi()` binnen de
+      //    CHECK draait daar met de rechten van de eigenaar. Nagemeten in een
+      //    geïsoleerde database, alle vier de combinaties.
+      //
+      //    **De grant beschermt dus alleen de directe PATCH-route.**
       expect(
         `${error?.message ?? ''}`,
         'create_group() mislukte, maar niet op de CHECK die deze toets bewaakt',
