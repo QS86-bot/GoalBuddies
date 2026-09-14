@@ -246,36 +246,47 @@ describe.skipIf(!rlsTestsConfigured)('Domeinregel 3 — de trigger overschrijft'
  *    vast dat dezelfde weg voor een groepsgenoot wél openstaat.
  *
  * IJKING — met de hand gedraaid op 14-09-2026 tegen de lokale stack op 0262,
- * één mutatie per grendel, en van elke mutatie is eerst op de database
- * bevestigd dát hij erin zat. Vooraf: 9 groen. Na herstel: 9 groen.
+ * één mutatie per grendel, en van élke mutatie is eerst op de database
+ * bevestigd dát hij erin zat. Vooraf 20 groen, na herstel 20 groen (dit bestand
+ * plus `tests/rls/opruiming.test.ts`, want de `null`-tak raakt het wisrecht).
  *
- *   M1  de lidmaatschapstoets uit `fill_approval_subject()`
- *       -> 3 rood: bewakingsslot `clausule2-lidmaatschap`, plus "weigert een
- *          goedkeurder die geen lid is" en "weigert een lid dat op inactief staat"
- *   M2  de koppelingstoets (`goal_group_links`) eruit
- *       -> 2 rood: bewakingsslot `clausule2-koppeling`, plus "weigert een groep
- *          waar het doel niet aan hangt"
- *   M3  de foreign key van 0252 gedropt
- *       -> 1 rood: bewakingsslot `eigenaar-fk`
- *   M4  op UPDATE altijd hertoetsen (`toets_clausule2 := true`)
- *       -> 1 rood: "laat een gegeven goedkeuring staan nadat de goedkeurder de
- *          groep verlaat" — precies de vorm die een foreign key zou opleggen
- *   M5  de lidmaatschapstoets omgekeerd (`status = 'inactive'`)
- *       -> 6 rood, waaronder de controlemeting "laat een groepsgenoot erdoor"
- *   M6  de `elsif new.approver_id is null`-tak eruit
- *       -> 5 rood, en dat is de belangrijkste uitslag van deze ijking: vier
- *          ervan staan in `tests/rls/opruiming.test.ts` en gaan over het
- *          wisrecht, niet over domeinregel 3. Zie de kop van de laatste test
- *          hieronder
+ *   M1  de lidmaatschapstoets eruit                      -> 6 rood
+ *   M2  de koppelingstoets (`goal_group_links`) eruit     -> 4 rood
+ *   M4  op UPDATE altijd hertoetsen                       -> 2 rood
+ *   M5  de lidmaatschapstoets omgekeerd                   -> 11 rood, incl. de
+ *                                                            controlemeting
+ *   M6  de `elsif new.approver_id is null`-tak eruit      -> 5 rood, waarvan
+ *                                                            **vier over het
+ *                                                            wisrecht**
+ *   M7  `completion_id` uit de hertoetsvoorwaarde          -> 1 rood
+ *   M8  weer twee verschillende foutteksten                -> 2 rood
  *
- * ⚠️⚠️ **En één ding aan die ijking klopte eerst niet, en dat hoort hier te
- *    staan.** De eerste bevestigingsquery voor M4 zocht `toets_clausule2 :=
- *    true;` in het functielichaam — maar die regel stáát ook in de ongemuteerde
- *    versie, in de INSERT-tak. Hij las dus `true` in élke stand, ook zonder
- *    mutatie: een indicator die nergens op reageert. M4 is daarna opnieuw
- *    bevestigd op `is distinct from old.group_id` (false met mutatie, true na
- *    herstel). **Een ijking die op "er werd iets rood" leunt, moet weten dat
- *    er ook echt iets veránderd is** — CLAUDE.md bij regel 18.
+ * En vier op de bewaking zelf, die tot deze ronde alle vier **stil** bleven —
+ * gevonden door de security-ronde en daarna hier nagemeten:
+ *
+ *   M9a  de trigger uitgezet (`tgenabled = 'D'`)           -> 9 rood
+ *   M9b  de trigger opnieuw als `before insert` **only**   -> 3 rood
+ *   M10  het lichaam uitgehold, de twee gezochte zinnen
+ *        in een `/* … *\/`-blokcommentaar                  -> 7 rood
+ *
+ * (Een vierde — de trigger naar een lege functie laten wijzen — is direct op
+ * `domeinregel3_bewaking()` gemeten en meldt sindsdien `trigger`.)
+ *
+ * ⚠️⚠️ **Twee keer klopte een bevestigingsquery niet, en dat hoort hier te
+ *    staan, want het is precies de fout waar CLAUDE.md bij regel 18 voor
+ *    waarschuwt.** De eerste zocht `toets_clausule2 := true;` voor M4 — maar
+ *    die regel stáát ook in de ongemuteerde versie, in de INSERT-tak. De tweede
+ *    zocht `old.completion_id then` voor M7 en trof daarmee de `null`-tak in
+ *    plaats van de hertoetsvoorwaarde. Allebei lazen ze `true` in élke stand:
+ *    **indicatoren die nergens op reageren.** Opnieuw bevestigd op
+ *    `is distinct from old.group_id` en op
+ *    `or new.completion_id is distinct from old.completion_id`, allebei `false`
+ *    met mutatie en `true` na herstel.
+ *
+ *    De uitslagen waren geen van beide fout — de goede tests werden rood. Maar
+ *    de **bevestiging** bewees niets, en dat is aan de uitslag niet te zien.
+ *    *Een meting die op "er werd iets rood" leunt, moet weten wat er veranderd
+ *    is.*
  */
 describe.skipIf(!rlsTestsConfigured)('Domeinregel 3 — clausule 2 geldt ook buiten RLS', () => {
   let alice: TestUser;
@@ -283,6 +294,8 @@ describe.skipIf(!rlsTestsConfigured)('Domeinregel 3 — clausule 2 geldt ook bui
   let dave: TestUser;
   let groupId: string;
   let andereGroep: string;
+  /** Een voltooiing van Dave, op een doel dat alleen aan Daves groep hangt. */
+  let vreemdeVoltooiing: string;
   const voltooiingen: string[] = [];
 
   beforeAll(async () => {
@@ -359,7 +372,51 @@ describe.skipIf(!rlsTestsConfigured)('Domeinregel 3 — clausule 2 geldt ook bui
       }
       voltooiingen.push(voltooiing.data.id);
     }
+
+    vreemdeVoltooiing = await maakVoltooiingVoorDave(cycle);
   }, SETUP_TIMEOUT);
+
+  /** Doel + weekdoel + voltooiing van Dave, gekoppeld aan Daves eigen groep. */
+  async function maakVoltooiingVoorDave(
+    cycle: { startDate: string; endDate: string },
+  ): Promise<string> {
+    const doel = await dave.db
+      .from('goals')
+      .insert({ owner_id: dave.id, title: 'Daves doel', target_date: cycle.endDate })
+      .select('id')
+      .single();
+    if (doel.error || doel.data === null) throw new Error(`doel dave: ${doel.error?.message}`);
+
+    const koppel = await dave.db
+      .from('goal_group_links')
+      .insert({ goal_id: doel.data.id, group_id: andereGroep });
+    if (koppel.error) throw new Error(`koppeling dave: ${koppel.error.message}`);
+
+    const weekdoel = await dave.db
+      .from('weekly_goals')
+      .insert({ goal_id: doel.data.id, title: 'Daves week', cycle_start_date: cycle.startDate })
+      .select('id')
+      .single();
+    if (weekdoel.error || weekdoel.data === null) {
+      throw new Error(`weekdoel dave: ${weekdoel.error?.message}`);
+    }
+
+    const voltooiing = await dave.db
+      .from('completions')
+      .insert({
+        weekly_goal_id: weekdoel.data.id,
+        user_id: dave.id,
+        achieved_level: 'ceiling',
+        note: 'Daves proef',
+        cycle_start_date: cycle.startDate,
+      })
+      .select('id')
+      .single();
+    if (voltooiing.error || voltooiing.data === null) {
+      throw new Error(`voltooiing dave: ${voltooiing.error?.message}`);
+    }
+    return voltooiing.data.id;
+  }
 
   afterAll(async () => {
     await removeTestUsers();
@@ -408,7 +465,9 @@ describe.skipIf(!rlsTestsConfigured)('Domeinregel 3 — clausule 2 geldt ook bui
       //    invulveld: je noemt een groep waar je toevallig in zit.
       const uitslag = await keurGoedLangsRls(voltooiingen[2] ?? '', dave.id, andereGroep);
       expect(uitslag.code, uitslag.message).toBe('23514');
-      expect(uitslag.message).toContain('hoort niet bij de opgegeven groep');
+      // ⚠️ Dezelfde tekst als de vorige test, en dat is met opzet — zie de test
+      //    "beide helften weigeren met exact dezelfde tekst" hieronder.
+      expect(uitslag.message).toContain('buddy-groep');
     },
     TEST_TIMEOUT,
   );
@@ -432,6 +491,102 @@ describe.skipIf(!rlsTestsConfigured)('Domeinregel 3 — clausule 2 geldt ook bui
           .eq('group_id', groupId)
           .eq('user_id', bob.id);
       }
+    },
+    TEST_TIMEOUT,
+  );
+
+  /**
+   * ⚠️⚠️ **`completion_id` telt net zo hard mee als `group_id` en `approver_id`.**
+   *
+   * 📏 De eerste versie hertoetste alleen op die twee, en de security-ronde op
+   *    QS8-480 verplaatste een bestaande goedkeuring daarmee naar een voltooiing
+   *    van een doel dat aan een ándere groep hangt: geval C van de migratiekop,
+   *    maar dan op het UPDATE-pad. Het slot sloot INSERT helemaal en UPDATE half.
+   *
+   * ⚠️ **De tweede helft van deze test is de reden dat de eerste iets zegt.**
+   *    Een goedkeuring verplaatsen naar een andere voltooiing van hetzelfde doel
+   *    hóórt te mogen — de hertoets is een toets en geen verbod. Zonder die
+   *    controlemeting zou "geweigerd" net zo goed kunnen betekenen dat elke
+   *    `completion_id`-wijziging klapt.
+   */
+  it(
+    'hertoetst ook als alleen completion_id verandert',
+    async () => {
+      const nieuw = await adminDb()
+        .from('completion_approvals')
+        .insert({
+          completion_id: voltooiingen[3] ?? '',
+          approver_id: bob.id,
+          subject_id: alice.id,
+          group_id: groupId,
+          status: 'approved',
+        })
+        .select('id')
+        .single();
+      expect(nieuw.error?.message ?? null).toBeNull();
+      const id = nieuw.data?.id ?? '';
+
+      try {
+        const omhangen = await adminDb()
+          .from('completion_approvals')
+          .update({ completion_id: vreemdeVoltooiing })
+          .eq('id', id);
+        expect(omhangen.error?.code, omhangen.error?.message ?? '').toBe('23514');
+
+        // De controlemeting: binnen hetzelfde doel mag het wél.
+        const legitiem = await adminDb()
+          .from('completion_approvals')
+          .update({ completion_id: voltooiingen[1] ?? '' })
+          .eq('id', id);
+        expect(legitiem.error?.message ?? null).toBeNull();
+      } finally {
+        await adminDb().from('completion_approvals').delete().eq('id', id);
+      }
+    },
+    TEST_TIMEOUT,
+  );
+
+  /**
+   * ⚠️⚠️ **De twee helften van clausule 2 weigeren met exact dezelfde tekst, en
+   *    dat is een beveiligingseis en geen stijlkeuze.**
+   *
+   * Een BEFORE-trigger draait vóór de RLS `with check`, en hij toetst
+   * `new.approver_id` — een waarde die de client zélf meestuurt. Verschillen de
+   * twee meldingen, dan is dit slot een aftastinstrument: stuur je eigen
+   * voltooiing in met een vreemd profiel als goedkeurder en de `group_id` van
+   * een groep waar je niet in zit, en het antwoord verklapt of die persoon daar
+   * lid is — precies wat `group_members_select` afschermt.
+   *
+   * 📏 Gemeten als `authenticated` op de eerste versie van 0262: de proeven
+   *    gaven *"hoort niet bij de opgegeven groep"* tegenover *"alleen een lid
+   *    van dezelfde buddy-groep"*, terwijl `select count(*) from group_members`
+   *    voor dezelfde gebruiker **0** gaf. Met de functie van vóór 0262 gaven
+   *    allebei de proeven letterlijk *"new row violates row-level security
+   *    policy"* — één antwoord werd er twee.
+   *
+   * ⚠️ Er zit geen rem op: `goedkeuringen_rem` en `begrens_goedkeuringen`
+   *    tellen rijen die er kómen, en een geweigerde probe schrijft niets.
+   *
+   * ⚠️ **Deze test vergelijkt de twee meldingen met elkaar en niet met een
+   *    letterlijke zin.** Een assertie op de tekst zelf zou groen blijven zodra
+   *    iemand allebei de teksten verandert maar verschillend houdt, en de
+   *    belofte is juist dat ze gelijk zijn. Regel 18, vraag 2.
+   */
+  it(
+    'weigert beide helften van clausule 2 met exact dezelfde tekst en errcode',
+    async () => {
+      // Dave is geen lid van `groupId` -> de eerste helft weigert.
+      const geenLid = await keurGoedLangsRls(voltooiingen[1] ?? '', dave.id, groupId);
+      // Dave is wél lid van `andereGroep`, maar het doel hangt daar niet aan
+      // -> de tweede helft weigert.
+      const geenKoppeling = await keurGoedLangsRls(voltooiingen[2] ?? '', dave.id, andereGroep);
+
+      expect(geenLid.code).toBe('23514');
+      expect(geenKoppeling.code).toBe(geenLid.code);
+      expect(
+        geenKoppeling.message,
+        'de twee helften van clausule 2 mogen niet uit elkaar te houden zijn',
+      ).toBe(geenLid.message);
     },
     TEST_TIMEOUT,
   );
@@ -499,6 +654,15 @@ describe.skipIf(!rlsTestsConfigured)('Domeinregel 3 — clausule 2 geldt ook bui
    *    een goedkeuring zonder goedkeurder is geen goedkeuring, en clausule 2
    *    zou er anders langs kunnen. Zonder die tweede helft is de uitzondering
    *    een gat.
+   *
+   * ⚠️⚠️ **En de uitzondering beschrijft de vórm van de referentiële actie, niet
+   *    alleen zijn uitkomst.** Dat is niet netjesheid maar een gat dat er anders
+   *    in zit: één UPDATE die `approver_id` op `null` zet **én** tegelijk
+   *    `group_id` verplaatst, glipt langs een uitzondering die alleen naar
+   *    `new.approver_id is null` kijkt — met precies de bewering die deze
+   *    migratie wil toetsen. 📏 Gemeten met die smallere vorm: toegelaten. Met
+   *    de drie voorwaarden samen (van gevuld naar leeg, en `group_id` blijft
+   *    staan): `23514`.
    */
   it(
     'laat de anonimisering van een vertrokken goedkeurder door, maar geen lege goedkeuring',
@@ -507,12 +671,34 @@ describe.skipIf(!rlsTestsConfigured)('Domeinregel 3 — clausule 2 geldt ook bui
         .from('completion_approvals')
         .select('id')
         .eq('completion_id', voltooiingen[0] ?? '');
+      const goedkeuringId = (data ?? [])[0]?.id ?? '';
 
+      // Eerst het gat: null zetten én verplaatsen in dezelfde UPDATE.
+      const sluiproute = await adminDb()
+        .from('completion_approvals')
+        .update({ approver_id: null, group_id: andereGroep })
+        .eq('id', goedkeuringId);
+      expect(sluiproute.error?.code, sluiproute.error?.message ?? '').toBe('23514');
+
+      // En dan de echte referentiële vorm: alleen de ene kolom.
       const anonimiseren = await adminDb()
         .from('completion_approvals')
         .update({ approver_id: null })
-        .eq('id', (data ?? [])[0]?.id ?? '');
+        .eq('id', goedkeuringId);
       expect(anonimiseren.error?.message ?? null).toBeNull();
+
+      // Een al geanonimiseerde rij blijft bewerkbaar, maar niet verplaatsbaar.
+      const bewerken = await adminDb()
+        .from('completion_approvals')
+        .update({ comment: 'na de anonimisering' })
+        .eq('id', goedkeuringId);
+      expect(bewerken.error?.message ?? null).toBeNull();
+
+      const verplaatsen = await adminDb()
+        .from('completion_approvals')
+        .update({ group_id: andereGroep })
+        .eq('id', goedkeuringId);
+      expect(verplaatsen.error?.code, verplaatsen.error?.message ?? '').toBe('23514');
 
       const leeg = await keurGoedLangsRls(voltooiingen[1] ?? '', null, groupId);
       expect(leeg.code, leeg.message).toBe('23514');

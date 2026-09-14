@@ -90,6 +90,16 @@ de belofte op een moment, of voor altijd?
 Een trigger toetst op precies het moment dat het feit waar moet zijn, en vuurt
 óók in een `security definer`-functie.
 
+⚠️ **Eén ding dat bij deze afweging hoort en er niet stond.** Het argument
+hierboven is dat een foreign key fout is omdat *"geldt voor altijd"* strenger is
+dan de belofte. De trigger legt diezelfde strengheid op aan élke **schrijfactie**,
+en dat is niet hetzelfde als aan elke rij — maar het raakt wél één geval dat
+telt: 📏 een goedkeuring die legitiem ontstaan is, is niet meer terug te
+schrijven zodra de goedkeurder inactief is, vertrokken is, of het doel is
+losgekoppeld. Een volledige `pg_restore` gaat goed (triggers zitten in de
+post-data-sectie), maar een `--data-only` terugzet van deze tabel valt om. Dat
+staat als eigen rij in `docs/ENGINEER-REVIEW.md`.
+
 ### Eén trigger en geen tweede
 
 `fill_approval_subject()` draait al `before insert or update` op deze tabel en
@@ -138,6 +148,73 @@ gaat en niet over domeinregel 3. De gerichte test staat sindsdien in
 
 ---
 
+## ⚠️⚠️ Twee verschillende foutmeldingen zijn een orakel
+
+De eerste versie van 0262 wierp twee teksten: één voor het lidmaatschap, één
+voor de koppeling. Dat leek behulpzaam en was een **lek** — gevonden door de
+security-ronde en daarna zelf nagemeten.
+
+Een BEFORE-trigger draait vóór de RLS `with check`, en hij toetst
+`new.approver_id` — een waarde die de client zélf meestuurt.
+
+📏 Gemeten als `authenticated`, met een eigen voltooiing, een vreemd profiel als
+goedkeurder en de `group_id` van een groep waar de aanvaller niet in zit:
+
+| Vraag | Antwoord |
+|---|---|
+| controlemeting: `select count(*) from group_members where group_id = <die groep>` | **0** — RLS weigert |
+| is dat profiel lid van die groep? | *"hoort niet bij de opgegeven groep"* |
+| is dat profiel géén lid? | *"alleen een lid van dezelfde buddy-groep"* |
+
+Twee antwoorden op een vraag die `group_members_select` juist afschermt. En het
+is een **regressie**, geen bestaande stand: 📏 met de functie van vóór 0262
+teruggezet gaven allebei de proeven letterlijk *"new row violates row-level
+security policy"*. Eén antwoord werd er twee.
+
+⚠️ Er zit geen rem op. `goedkeuringen_rem` en `begrens_goedkeuringen` tellen
+rijen die er kómen; een geweigerde probe schrijft niets en telt dus niet mee
+voor een dagplafond.
+
+⚠️ **Waarom dit hier zwaarder weegt dan elders.** Groepslidmaatschap is in deze
+app gevoelige informatie — of iemand in een groep over afkicken, schulden of
+werkstress zit, is precies het soort feit waar domeinregel 7 voor bestaat.
+
+**Dit project had die afweging al gemaakt**, in `vraag_lidmaatschap_aan()`:
+*"Eén antwoord voor 'bestaat niet', 'is niet ontdekbaar' en sinds QS8-232 ook
+'er zit een blokkade tussen'. Drie antwoorden zouden van deze functie een
+aftastinstrument maken."* Zelfde afweging, dus dezelfde uitkomst: **één tekst en
+één errcode voor allebei de helften.** Welke helft het was, staat in de tests en
+in het migratiebestand — niet in wat de deur uit gaat. In `detail` of `hint`
+zetten is geen uitweg: PostgREST geeft die mee.
+
+📏 Na de reparatie geven allebei de proeven `23514` met dezelfde tekst, en
+`tests/rls/domeinregel3.test.ts` vergelijkt de twee meldingen **met elkaar** —
+niet met een letterlijke zin, want dan blijft hij groen zodra iemand ze allebei
+verandert maar verschillend houdt.
+
+---
+
+## Het UPDATE-pad was maar half dicht
+
+Dezelfde ronde vond twee gaten aan de UPDATE-kant, allebei nagemeten:
+
+1. **De `null`-uitzondering keek naar de wáárde, niet naar de situatie.** Eén
+   UPDATE die `approver_id` op `null` zet **en** tegelijk `group_id` verplaatst,
+   glipte erlangs — met precies de bewering die deze migratie wil toetsen. De
+   voorwaarde beschrijft nu de vórm van de referentiële actie: van gevuld naar
+   leeg, en `group_id` én `completion_id` blijven staan.
+2. **`completion_id` wijzigen werd niet hertoetst.** 📏 Daarmee was een
+   goedkeuring te verplaatsen naar een voltooiing van een doel dat aan een
+   ándere groep hangt — geval C uit de tabel bovenaan, maar dan op het
+   UPDATE-pad. `completion_id` telt nu mee.
+
+⚠️ Geen van beide is vandaag bereikbaar voor een client: `authenticated` heeft
+📏 op géén enkele kolom van deze tabel UPDATE-recht. Maar het is wél precies het
+dreigingsmodel dat deze migratie zélf opschrijft. **Een slot dat INSERT helemaal
+sluit en UPDATE half, is een slot waarvan in de tekst staat dat het er is.**
+
+---
+
 ## De bewaking: van drie sloten naar zes
 
 `domeinregel3_bewaking()` telde drie sloten. Er zijn er nu zes:
@@ -157,10 +234,24 @@ sloten van domeinregel 3 kijkt, noemde hem niet. **Een slot dat niemand telt,
 raak je stil kwijt** — zelfde vorm als de dossierrijen over grendels die alleen
 in een comment staan.
 
+⚠️⚠️ **Slot 3 toetste tot deze ronde alleen de trigger*naam*, en dat is drie keer
+te weinig gebleken.** 📏 De security-ronde hield `domeinregel3_bewaking()` op
+**nul meldingen** met: de trigger uitzetten (`tgenabled = 'D'`), hem naar een
+lege functie laten wijzen, en hem opnieuw aanmaken als `before insert` **only** —
+die laatste haalt precies de UPDATE-tak weg die deze migratie zojuist geschreven
+heeft. Slot 3 toetst nu ook `tgenabled`, `tgfoid` en `tgtype = 23`
+(`ROW|BEFORE|INSERT|UPDATE`), als gelijkheid en niet als masker: erbij komen is
+ook een verandering die iemand hoort te zien.
+
 ⚠️ **Slot 5 en 6 zijn zwakker dan de andere vier, en dat hoort opgeschreven en
-niet weggepoetst.** Ze lezen tekst na een knip van `--`-commentaar. Die knip zou
-ook een `--` binnen een stringliteral opeten en de rest van die regel meenemen —
-dezelfde klasse als de knip die in QS8-412 een URL opat. Vandaag staat er geen
+niet weggepoetst.** Ze lezen tekst na een knip van commentaar. De eerste versie
+knipte alleen `--` weg, en 📏 de security-ronde hield ze groen door het lichaam
+uit te hollen en de twee gezochte zinnen in een `/* … */`-blok te zetten. **Dat
+is de stille richting van een te smalle knip**, en de kop redeneerde alleen over
+de vals-alarmkant. De knip pakt nu allebei de vormen.
+
+Wat blijft: een `--` binnen een stringliteral zou de rest van die regel meenemen
+— dezelfde klasse als de knip die in QS8-412 een URL opat. Vandaag staat er geen
 `--` in een literal in dit lichaam; komt die er ooit, dan meldt het slot ten
 onrechte *"ontbreekt"*. **Dat is de veilige richting**: vals alarm en geen
 stilte.
@@ -176,26 +267,44 @@ structuurcontrole niets.
 Zes mutaties, elk apart, en van élke mutatie is eerst op de database bevestigd
 dát hij erin zat vóór de suite draaide. Vooraf 18 groen, na herstel 18 groen.
 
+Vooraf 20 groen, na herstel 20 groen (`domeinregel3.test.ts` plus
+`opruiming.test.ts`, want de `null`-tak raakt het wisrecht).
+
 | | Mutatie | Rood |
 |---|---|---|
-| M1 | de lidmaatschapstoets eruit | 3 — bewakingsslot + twee gedragstests |
-| M2 | de koppelingstoets eruit | 2 — bewakingsslot + één gedragstest |
+| M1 | de lidmaatschapstoets eruit | 6 |
+| M2 | de koppelingstoets eruit | 4 |
 | M3 | de foreign key van 0252 gedropt | 1 — bewakingsslot `eigenaar-fk` |
-| M4 | op UPDATE altijd hertoetsen | 1 — de test die het vertrek beschermt |
-| M5 | de lidmaatschapstoets omgekeerd | 6, waaronder de controlemeting |
+| M4 | op UPDATE altijd hertoetsen | 2 |
+| M5 | de lidmaatschapstoets omgekeerd | 11, waaronder de controlemeting |
 | M6 | de `null`-tak eruit | 5, waarvan **vier over het wisrecht** |
+| M7 | `completion_id` uit de hertoetsvoorwaarde | 1 |
+| M8 | weer twee verschillende foutteksten | 2 |
 
-⚠️⚠️ **Eén ding aan die ijking klopte eerst niet, en dat hoort hier te staan.**
-De eerste bevestigingsquery voor M4 zocht `toets_clausule2 := true;` in het
-functielichaam — maar die regel stáát ook in de ongemuteerde versie, in de
-INSERT-tak. Hij las dus `true` in élke stand: **een indicator die nergens op
-reageert.** M4 is daarna opnieuw bevestigd op `is distinct from old.group_id`
-(`false` met mutatie, `true` na herstel).
+En vier op de bewaking zelf, die tot de security-ronde alle vier **stil** bleven:
 
-Dat is CLAUDE.md bij regel 18 in zijn zuiverste vorm: *een meting die op "er werd
-iets rood" leunt, moet weten wát er veranderd is.* Hij ging hier niet mis op de
-uitslag — M4 werd terecht rood — maar de **bevestiging** bewees niets, en dat is
-niet aan de uitslag te zien.
+| | Mutatie | Rood |
+|---|---|---|
+| M9a | de trigger uitgezet | 9 |
+| M9b | de trigger opnieuw als `before insert` only | 3 |
+| M9c | de trigger naar een lege functie | meldt `trigger` |
+| M10 | het lichaam uitgehold, de zinnen in blokcommentaar | 7 |
+
+⚠️⚠️ **Twee bevestigingsquery's klopten niet, en dat hoort hier te staan.** De
+eerste zocht `toets_clausule2 := true;` voor M4 — maar die regel stáát ook in de
+ongemuteerde versie, in de INSERT-tak. De tweede zocht `old.completion_id then`
+voor M7 en trof daarmee de `null`-tak in plaats van de hertoetsvoorwaarde.
+Allebei lazen ze `true` in élke stand: **indicatoren die nergens op reageren.**
+Opnieuw bevestigd op `is distinct from old.group_id` en op
+`or new.completion_id is distinct from old.completion_id`, allebei `false` met
+mutatie en `true` na herstel.
+
+De uitslagen waren geen van beide fout — de goede tests werden rood. Maar de
+**bevestiging** bewees niets, en dat is aan de uitslag niet te zien. Dat is
+CLAUDE.md bij regel 18 in zijn zuiverste vorm: *een meting die op "er werd iets
+rood" leunt, moet weten wát er veranderd is.* Twee keer in één issue, dus het is
+geen vergissing maar een vorm — **een indicator hoort zelf geijkt, met een
+meting vóór de mutatie.**
 
 ---
 

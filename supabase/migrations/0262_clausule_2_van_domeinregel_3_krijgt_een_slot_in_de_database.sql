@@ -92,6 +92,46 @@
 --    beweging dan winst.
 --
 -- ---------------------------------------------------------------------------
+-- ⚠️⚠️ Eén melding voor allebei de helften — anders is het slot een orakel
+-- ---------------------------------------------------------------------------
+--
+-- De eerste versie van deze migratie wierp twee verschillende teksten: één voor
+-- het lidmaatschap en één voor de koppeling. Dat leek behulpzaam en was een
+-- **lek**, gevonden door de security-ronde op QS8-480 en daarna zelf nagemeten.
+--
+-- Een BEFORE-trigger draait vóór de RLS `with check`, en hij toetst
+-- `new.approver_id` — een waarde die de client zélf meestuurt. Dus:
+--
+-- 📏 Gemeten als `authenticated`, met een eigen voltooiing, een vreemde
+--    `approver_id` en de `group_id` van een groep waar de aanvaller niet in zit:
+--
+--      controlemeting: select count(*) from group_members
+--                      where group_id = <die groep>      -> 0 (RLS weigert)
+--
+--      is dat profiel lid van die groep?   -> "hoort niet bij de opgegeven groep"
+--      is dat profiel géén lid?            -> "alleen een lid van dezelfde ..."
+--
+--    Twee antwoorden op een vraag die de policy `group_members_select` juist
+--    afschermt. 📏 Met de functie van vóór 0262 teruggezet gaven **allebei** de
+--    proeven letterlijk *"new row violates row-level security policy"* — het is
+--    dus een regressie die deze migratie erbij maakte en geen bestaande stand.
+--
+-- ⚠️ En er zit geen rem op: `goedkeuringen_rem` en `begrens_goedkeuringen`
+--    tellen rijen die er kómen. Een geweigerde probe schrijft niets en telt dus
+--    niet mee voor een dagplafond.
+--
+-- ⚠️ **Dit project heeft precies deze afweging al een keer gemaakt**, in
+--    `vraag_lidmaatschap_aan()`: *"Eén antwoord voor 'bestaat niet', 'is niet
+--    ontdekbaar' en sinds QS8-232 ook 'er zit een blokkade tussen'. Drie
+--    antwoorden zouden van deze functie een aftastinstrument maken."* Zelfde
+--    afweging, dus dezelfde uitkomst: **één tekst en één errcode voor allebei de
+--    helften.** Welke helft het was, staat in de tests en in dit bestand — niet
+--    in wat de deur uit gaat. In `detail` of `hint` zetten is geen uitweg:
+--    PostgREST geeft die mee.
+--
+-- 📏 Na de reparatie geven allebei de proeven `23514` met dezelfde tekst.
+--
+-- ---------------------------------------------------------------------------
 -- 1. De trigger: clausule 2 erbij
 -- ---------------------------------------------------------------------------
 
@@ -122,6 +162,19 @@ begin;
 --    anonimisering van een vertrokken account en geen nieuwe bewering. Op een
 --    INSERT blijft `null` wél weigeren — een goedkeuring zónder goedkeurder is
 --    geen goedkeuring, en clausule 2 zou er anders langs kunnen.
+--
+--    ⚠️⚠️ **En die uitzondering beschrijft de vórm van de referentiële actie en
+--    niet alleen zijn uitkomst**, want anders is hij zelf het gat: één UPDATE
+--    die `approver_id` op `null` zet **en** tegelijk `group_id` verplaatst,
+--    glipt er dan langs met precies de bewering die deze migratie wil toetsen.
+--    Vandaar de drie voorwaarden samen: de kolom gaat van gevuld naar leeg, en
+--    `group_id` blijft staan. Elke andere vorm loopt door de toets heen, en een
+--    lege goedkeurder loopt daar stuk.
+--
+--    ⚠️ De twee takken die 0252 toevoegt vallen hier netjes buiten: een
+--    `on update cascade` op `subject_id` raakt `group_id` noch `approver_id`, en
+--    de `else`-tak toetst dan niets. Een tweede UPDATE op een al geanonimiseerde
+--    rij ook niet — `null is distinct from null` is onwaar.
 --
 --    ⚠️ **De dossierrij van QS8-182 had deze klasse al één keer genoteerd**
 --    (*"via een referentiële actie en niet via een functie of een policy, wat de
@@ -161,12 +214,18 @@ begin
 
   if tg_op = 'INSERT' then
     toets_clausule2 := true;
-  elsif new.approver_id is null then
-    -- De referentiële actie van een verwijderd account, niet een bewering.
+  elsif new.approver_id is null
+        and old.approver_id   is not null
+        and new.group_id      is not distinct from old.group_id
+        and new.completion_id is not distinct from old.completion_id then
+    -- Precies de vorm van de referentiële actie: één kolom op null, de rest
+    -- onaangeroerd. Een UPDATE die de goedkeuring óók verplaatst valt hier niet
+    -- onder en gaat gewoon door de toets — waar een lege goedkeurder op stukloopt.
     toets_clausule2 := false;
   else
-    toets_clausule2 := new.group_id    is distinct from old.group_id
-                    or new.approver_id is distinct from old.approver_id;
+    toets_clausule2 := new.group_id      is distinct from old.group_id
+                    or new.approver_id   is distinct from old.approver_id
+                    or new.completion_id is distinct from old.completion_id;
   end if;
 
   if toets_clausule2 then
@@ -177,7 +236,7 @@ begin
         and m.user_id  = new.approver_id
         and m.status  <> 'inactive'
     ) then
-      raise exception 'Alleen een lid van dezelfde buddy-groep mag een voltooiing goedkeuren'
+      raise exception 'Alleen een lid van dezelfde buddy-groep mag deze voltooiing goedkeuren'
         using errcode = 'check_violation';
     end if;
 
@@ -189,7 +248,7 @@ begin
       where c.id       = new.completion_id
         and l.group_id = new.group_id
     ) then
-      raise exception 'Deze voltooiing hoort niet bij de opgegeven groep'
+      raise exception 'Alleen een lid van dezelfde buddy-groep mag deze voltooiing goedkeuren'
         using errcode = 'check_violation';
     end if;
   end if;
@@ -254,7 +313,15 @@ set search_path to 'public', 'pg_catalog', 'pg_temp'
 as $$
   with romp as (
     -- Eén knip, één keer — niet per slot een eigen kopie.
-    select regexp_replace(pg_get_functiondef(p.oid), '--[^\n]*', '', 'g') as tekst
+    --
+    -- ⚠️ **Twee soorten commentaar en niet één.** De eerste versie knipte alleen
+    --    `--` weg, en 📏 de security-ronde op QS8-480 hield slot 5 en 6 groen door
+    --    het lichaam uit te hollen en de twee gezochte zinnen in een
+    --    `/* … */`-blok te zetten. Dat is de **stille** richting van een te
+    --    smalle knip; de kop hieronder redeneerde alleen over de vals-alarmkant.
+    select regexp_replace(
+             regexp_replace(pg_get_functiondef(p.oid), '/\*.*?\*/', '', 'g'),
+             '--[^\n]*', '', 'g') as tekst
     from pg_proc p
     join pg_namespace n on n.oid = p.pronamespace
     where n.nspname = 'public'
@@ -292,13 +359,27 @@ as $$
 
   -- 3. De trigger die die kolom vult. Zonder hem is de CHECK te omzeilen door
   --    een gelogen `subject_id` mee te sturen, en dan is slot 2 een sierhek.
+  --
+  -- ⚠️⚠️ **Dit slot toetste tot 0262 alleen de naam, en dat is drie keer te
+  --    weinig.** 📏 De security-ronde op QS8-480 hield het groen met: de trigger
+  --    uitzetten (`tgenabled = 'D'`), hem naar een lege functie laten wijzen, en
+  --    hem opnieuw aanmaken als `before insert` **only** — die derde haalt
+  --    precies de UPDATE-tak weg die 0262 zojuist geschreven heeft. Een naam is
+  --    geen grendel.
+  --
+  --    `tgtype = 23` is `ROW|BEFORE|INSERT|UPDATE` (1|2|4|16). Een gelijkheid en
+  --    geen masker: erbij komen is ook een verandering die iemand hoort te zien.
   select 'trigger'::text,
-         'completion_approvals_subject bestaat niet meer'::text
+         'completion_approvals_subject ontbreekt, staat uit, wijst naar een andere '
+         'functie, of vuurt niet meer op BEFORE INSERT OR UPDATE FOR EACH ROW'::text
   where not exists (
     select 1 from pg_trigger
     where tgrelid = 'public.completion_approvals'::regclass
       and tgname = 'completion_approvals_subject'
       and not tgisinternal
+      and tgenabled = 'O'
+      and tgfoid = 'public.fill_approval_subject()'::regprocedure
+      and tgtype = 23
   )
 
   union all
