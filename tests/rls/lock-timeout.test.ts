@@ -31,12 +31,10 @@
  */
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
-import { createTestUser, removeTestUsers, rlsTestsConfigured, type TestUser } from './harness';
-import { psql, psqlBasisArgumenten } from './psql-stack';
-
 import { spawn, type ChildProcess } from 'node:child_process';
 
-import { PSQL_OMGEVING } from './psql-stack';
+import { createTestUser, removeTestUsers, rlsTestsConfigured, type TestUser } from './harness';
+import { PSQL_OMGEVING, psql, psqlBasisArgumenten } from './psql-stack';
 
 const TEST_TIMEOUT = 120_000;
 
