@@ -205,17 +205,62 @@ describe('geen scherm laat de gebruiker een tijdzone kiezen', () => {
   });
 
   /**
-   * ⚠️ De must-allow-helft: de onboarding schrijft `tz` en dat hóórt. Wat deze
-   *    toets vastlegt is waar die waarde vandaan komt — uit het apparaat, niet
-   *    uit een veld. Zonder deze helft is de toets hierboven te bevredigen door
-   *    de onboarding een willekeurige constante te laten schrijven.
+   * ⚠️⚠️ **De must-allow-helft, en hij is scherper geworden na een gemeten
+   *    bevinding.** De onboarding schrijft `tz` en dat hóórt — bij een vers
+   *    account is dat de eerste keer dat de kolom een echte waarde krijgt. Wat
+   *    deze toets vastlegt is waar die waarde vandaan komt, en dáár zat de fout:
+   *    hij stond als `useState(profiel?.tz ?? apparaatTijdzone())`, en dat
+   *    bevriest bij een vers profiel de kolomstandaard `Europe/Amsterdam`
+   *    (migratie 0001). `Tijdzonewacht` schreef de échte zone weg en onthield
+   *    dat; dit formulier schreef de standaard terug; de wacht probeerde het die
+   *    sessie niet meer. Een gebruiker in Tokio rondde zijn onboarding af in
+   *    Amsterdam.
+   *
+   *    Vandaar `const tz = apparaatTijdzone()` en niets eromheen: geen state om
+   *    te bevriezen, geen `profiel` om uit te lezen. Beide schrijvers lezen uit
+   *    dezelfde bron.
    */
-  it('laat de onboarding zijn zone uit het apparaat halen', () => {
+  it('laat de onboarding zijn zone rechtstreeks uit het apparaat halen', () => {
     const bron = readFileSync(join(WORTEL, 'app', 'onboarding', 'profiel.tsx'), 'utf8');
 
     expect(bron, 'de onboarding leidt zijn tijdzone niet meer af van het apparaat').toMatch(
-      /const \[tz\][^\n]*apparaatTijdzone\(\)/,
+      /const tz = apparaatTijdzone\(\);/,
     );
+    // ⚠️ **`const [tz` en niet `useState(...tz...)`, en dat is opnieuw de
+    //    commentaarval.** De eerste vorm hiervan zocht `useState\([^)]*tz` en
+    //    werd rood op de uitleg hierboven, die die vorm letterlijk cíteert. Een
+    //    comment-knipper ervoor zou een dérde kopie van `ontdaanVanCommentaar()`
+    //    in deze testboom zijn, en QS8-412 is precies het verhaal van dezelfde
+    //    knip die in twee bestanden blind bleek. Een patroon dat niet in proza
+    //    voorkomt is hier het kortere pad.
+    expect(
+      /const \[tz[,\]]/.test(bron),
+      'de onboarding bevriest de tijdzone weer in een useState — dan schrijft hij de waarde van vóór de sync terug',
+    ).toBe(false);
+  });
+
+  /**
+   * ⚠️⚠️ **De lusgrendel hangt aan een gebruiker, en dat is een gemeten
+   *    bevinding.** `Tijdzonewacht` hangt in `RootLayout` en demonteert nooit —
+   *    `SessionProvider` vervangt alleen de sessie. Hield de ref alleen de zone
+   *    bij, dan sloeg de wacht na een accountwissel op één toestel over: de
+   *    tweede gebruiker zat die sessie vast in de zone van de eerste, en er is
+   *    geen veld meer om dat recht te zetten. Dat is het gedeelde-toestel-geval
+   *    dat `Pushwacht` in hetzelfde bestand als hoofdpad beschrijft.
+   */
+  it('koppelt de lusgrendel aan de gebruiker en niet alleen aan de zone', () => {
+    const bron = readFileSync(
+      join(WORTEL, 'src', 'modules', 'auth', 'useTijdzoneSync.ts'),
+      'utf8',
+    );
+
+    expect(bron, 'de ref draagt geen userId — dan slaat de wacht over na een accountwissel').toMatch(
+      /useRef<\{[^}]*\buserId\b/,
+    );
+    expect(
+      bron,
+      'de hook beslist zonder te toetsen of het geladen profiel van deze gebruiker is',
+    ).toMatch(/profiel\.id !== userId/);
   });
 
   /** Het profieltabblad schrijft helemáál geen zone — daar is niets te vullen. */

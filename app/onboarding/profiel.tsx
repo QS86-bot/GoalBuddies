@@ -86,7 +86,20 @@ function OnboardingProfielFormulier() {
   const { profiel, zetProfiel } = useProfiel();
 
   const [naam, setNaam] = useState(profiel?.display_name ?? '');
-  const [tz] = useState(profiel?.tz ?? apparaatTijdzone());
+  // ⚠️⚠️ **Geen `useState` en niet uit `profiel`, en dat is een gemeten
+  //    bevinding uit de security-review van QS8-472.** Dit stond als
+  //    `useState(profiel?.tz ?? apparaatTijdzone())`, en dat bevriest de zone bij
+  //    de eerste render. 📏 Het gevolg: `profiles.tz` draagt bij een vers account
+  //    de kolomstandaard `Europe/Amsterdam` (migratie 0001). `Tijdzonewacht`
+  //    schrijft daar de échte zone overheen en onthoudt dat hij dat gedaan heeft;
+  //    dit formulier schrijft seconden later de bevroren standaard terug, en de
+  //    wacht probeert het die sessie niet meer. Een gebruiker in Tokio rondde zijn
+  //    onboarding dus af in Amsterdam — en `zetWeekStartdag()` hieronder rekent
+  //    zijn éérste cyclusgrens in díé zone uit.
+  //
+  //    Nu lezen beide schrijvers uit dezelfde bron. Ze kunnen elkaar nog steeds
+  //    overschrijven, maar niet meer met een andere waarde.
+  const tz = apparaatTijdzone();
   const [weekStart, setWeekStart] = useState<Weekday>((profiel?.week_start_day ?? 1) as Weekday);
   const [eigenDoel, setEigenDoel] = useState(profiel?.wants_own_goal ?? true);
 

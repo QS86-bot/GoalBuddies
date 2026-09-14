@@ -783,14 +783,26 @@ async function afsluitbareCyclus(profiel: Profiel, nu: Date) {
   //    coulanceperiode is dat nog de vórige week, en dan is er dus níéts te
   //    rollen — anders kost een late log alsnog een minpunt (QS8-51).
   //
-  // ⚠️ In een try, en dat is geen overdreven voorzichtigheid. `profiles.tz` is
-  //    vrije tekst zonder controle en de eigenaar mag hem zelf zetten;
-  //    `Intl.DateTimeFormat` gooit een RangeError op een onbekende zone. Zonder
-  //    deze try valt de hele handler om op één profiel — elk uur opnieuw, op
-  //    hetzelfde profiel — en sluit er voor niemand meer een week af. Eén
-  //    gebruiker met een typefout legt dan de job voor alle anderen stil.
-  //    Gevonden door de security-review op QS8-81; de echte reparatie is een
-  //    CHECK op `profiles.tz`, zoals 0019 die voor `groups.tz` al zette.
+  // ⚠️ In een try, en dat is geen overdreven voorzichtigheid. `Intl.DateTimeFormat`
+  //    gooit een RangeError op een onbekende zone; zonder deze try valt de hele
+  //    handler om op één profiel — elk uur opnieuw, op hetzelfde profiel — en
+  //    sluit er voor niemand meer een week af. Eén gebruiker met een onbruikbare
+  //    zone legt dan de job voor alle anderen stil. Gevonden door de
+  //    security-review op QS8-81.
+  //
+  // ⚠️ **Hier stond dat `profiles.tz` "vrije tekst zonder controle" is en dat de
+  //    echte reparatie een CHECK zou zijn. Dat klopt sinds migratie 0119 niet
+  //    meer** (gevonden in de security-review op QS8-472): die zette de trigger
+  //    `profiles_tijdzone` → `bewaak_tijdzone()`, die toetst tegen
+  //    `pg_catalog.pg_timezone_names` en géén rol-uitzondering kent — ook
+  //    `service_role` komt er niet langs. Een CHECK kon het niet zijn, en 0119
+  //    legt uit waarom.
+  //
+  //    De try blijft staan, en niet uit gewoonte: de trigger toetst tegen de
+  //    zonelijst van Postgres en deze regel draait op die van Deno's ICU. Dat
+  //    zijn twee lijsten, en `npm run tijdzones:controle` bestaat precies omdat
+  //    ze uiteen kunnen lopen. Sinds QS8-472 verandert `tz` bovendien
+  //    automatisch en dus vaker.
   try {
     return closableUserCycle(
       { weekStartDay: profiel.week_start_day as Weekday, tz: profiel.tz },

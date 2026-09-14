@@ -25,12 +25,24 @@ import { useSession } from './SessionProvider';
  *    zijn CHECK, en `shared/time` leest de zone per aanroep uit het profiel. Wat
  *    verandert is wie hem aanstoot: het apparaat in plaats van een veld.
  *
- * ⚠️ **Geen verzetting van lopende weekdoelen, en dat is met opzet.** Een
- *    tijdzone verandert de week-startdág niet, dus de invariant van 0198 — een
- *    cyclus begint op de week-startdag van de eigenaar — blijft staan; alleen
- *    *welke* maandag "vandaag" bevat kan rond middernacht verschuiven. Dat is
- *    dezelfde toestand als een gewone weekovergang en de rollover behandelt hem
- *    al. `zet_week_startdag()` blijft de enige schrijver van `cycle_start_date`.
+ * ⚠️⚠️ **Geen verzetting van lopende weekdoelen — en dat is een keuze met een
+ *    gevolg, niet een keuze zonder gevolg.** Hier stond dat een zonesprong
+ *    "dezelfde toestand als een gewone weekovergang" oplevert en dat de rollover
+ *    hem al behandelt. Dat is onwaar, en de security-review van QS8-472 heeft het
+ *    gemeten: valt de sprong over de week-startdag, dan verschuift de cyclusgrens
+ *    niet met een dag maar met **zeven**, en westwaarts gaat hij terúg. Op
+ *    `2026-09-13T22:30Z` met week-start maandag geeft `Europe/Amsterdam`
+ *    `2026-09-14` en `Pacific/Honolulu` `2026-09-07`. `fetchWeekdoelen()` matcht
+ *    exact op `cycle_start_date`, dus een weekdoel kan uit je lijst verdwijnen
+ *    zonder dat er iets verstreken is — iets wat een gewone weekovergang nooit
+ *    doet, en waar de rollover dus ook niets aan doet.
+ *
+ *    Wat wél blijft staan: de invariant van 0198 (een cyclus begint op de
+ *    week-startdag van de eigenaar), want de week-startdág verandert niet, en
+ *    `zet_week_startdag()` blijft de enige schrijver van `cycle_start_date`.
+ *    Er wordt hier dus niets stukgemaakt dat de database bewaakt — wat er gebeurt
+ *    is dat de gebruiker een andere week te zien krijgt. Rij in
+ *    `docs/ENGINEER-REVIEW.md`.
  *
  * ⚠️⚠️ **De ref is de grendel tegen een schrijflus.** Zou de server de zone
  *    anders terugschrijven dan wij aanboden — een normalisatie, een CHECK die
@@ -44,18 +56,39 @@ export function useTijdzoneSync(): void {
   const { userId } = useSession();
   const { profiel, zetProfiel } = useProfiel();
 
-  /** De zone die we voor deze gebruiker al geprobeerd hebben. */
-  const geprobeerd = useRef<string | null>(null);
+  /**
+   * De zone die we al geprobeerd hebben, mét voor wie.
+   *
+   * ⚠️⚠️ **De `userId` erbij is een gemeten bevinding uit de security-review van
+   *    QS8-472.** Hier stond alleen de zone, met een comment dat beweerde dat het
+   *    "voor deze gebruiker" was — en dat was niet zo: `Tijdzonewacht` hangt in
+   *    `RootLayout` en demonteert nooit, want `SessionProvider` vervangt alleen de
+   *    sessie. 📏 Gevolg op een gedeeld toestel: A logt in, de wacht schrijft zijn
+   *    zone en zet de ref; A logt uit, B logt in met een ándere zone in zijn
+   *    profiel — en de wacht sloeg over. B zat die sessie vast in A's zone, en er
+   *    is geen veld meer om dat recht te zetten.
+   */
+  const geprobeerd = useRef<{ readonly userId: string; readonly zone: string } | null>(null);
 
   useEffect(() => {
     if (!userId || profiel === null) return undefined;
 
+    // ⚠️ **Het geladen profiel moet van déze gebruiker zijn.** `ProfielProvider`
+    //    laat bij een accountwissel de oude rij staan tot de nieuwe binnen is —
+    //    met opzet, zodat de app niet knippert — dus er is een venster waarin
+    //    `userId` al B is en `profiel` nog van A. Een besluit dat in dat venster
+    //    op `profiel.tz` van A leunt, is een besluit over de verkeerde rij.
+    if (profiel.id !== userId) return undefined;
+
     const apparaat = apparaatTijdzone();
-    if (!moetSynchroniseren({ opgeslagen: profiel.tz, apparaat, geprobeerd: geprobeerd.current })) {
+    const eerder = geprobeerd.current;
+    const alGeprobeerd = eerder !== null && eerder.userId === userId ? eerder.zone : null;
+
+    if (!moetSynchroniseren({ opgeslagen: profiel.tz, apparaat, geprobeerd: alGeprobeerd })) {
       return undefined;
     }
 
-    geprobeerd.current = apparaat;
+    geprobeerd.current = { userId, zone: apparaat };
     let levend = true;
 
     updateProfiel(userId, { tz: apparaat })
