@@ -97,23 +97,49 @@ describe('ontleed', () => {
 });
 
 describe('de census zelf', () => {
-  it('draagt de veertig tabellen met een tabelbrede SELECT-grant', () => {
-    // 📏 Gemeten op 14-09-2026 tegen een verse opbouw (269 migraties).
-    expect(Object.keys(CENSUS)).toHaveLength(40);
+  it('draagt de vierenveertig relaties met een tabelbrede SELECT-grant', () => {
+    // 📏 Gemeten op 14-09-2026 tegen een verse opbouw (269 migraties): 40
+    //    tabellen én 4 views. Die views ontbraken tot de security-ronde —
+    //    `relkind in ('r','p')` sloot ze uit terwijl `pg_default_acl` objtype
+    //    `r` in Postgres tabellen én views dekt.
+    expect(Object.keys(CENSUS)).toHaveLength(44);
   });
 
-  it('merkt er eenentwintig als groepszichtbaar', () => {
-    // ⚠️ Exact de lijst uit QS8-457. `groups` hoort erbij en is makkelijk te
-    //    missen: `groups_select` is `mag_groep_lezen(id)` en delegeert naar een
-    //    functie, dus een regex op `polqual` ziet hem niet.
+  it('heeft de vier views erin', () => {
+    // ⚠️ Drie ervan staan op `security_invoker = false` en draaien als de
+    //    eigenaar; daar is de `where` in de view de énige grens.
+    for (const v of ['goal_dashboard', 'group_visible_streaks', 'mijn_doelvelden', 'mijn_profiel']) {
+      expect(Object.keys(CENSUS), `${v} ontbreekt in de census`).toContain(v);
+    }
+  });
+
+  it('merkt er vijfentwintig als groepszichtbaar', () => {
+    // ⚠️ `groups` is makkelijk te missen: `groups_select` is
+    //    `mag_groep_lezen(id)` en delegeert naar een functie.
     const groeps = Object.entries(CENSUS)
       .filter(([, t]) => t.groepszichtbaar)
       .map(([naam]) => naam);
 
-    expect(groeps).toHaveLength(21);
+    expect(groeps).toHaveLength(25);
     expect(groeps).toContain('groups');
     expect(groeps).toContain('weekly_goals');
     expect(groeps).not.toContain('points_ledger');
+  });
+
+  it('merkt completion_approvals en approval_withdrawals als groepszichtbaar', () => {
+    // ⚠️⚠️ 📏 Stonden op `false` tot de security-ronde. Hun policy noemt geen
+    //    groep maar de persoon — `approver_id = auth.uid() or subject_id =
+    //    auth.uid()` — en `CHECK (approver_id <> subject_id)` garandeert dat de
+    //    lezer nooit het onderwerp is. De beoordelaar is per INSERT-policy een
+    //    groepslid, dus een groepsgenoot leest hier aantoonbaar mee.
+    expect(CENSUS.completion_approvals?.groepszichtbaar).toBe(true);
+    expect(CENSUS.approval_withdrawals?.groepszichtbaar).toBe(true);
+  });
+
+  it('houdt de eigenaar-only views op false', () => {
+    // `mijn_profiel` en `mijn_doelvelden` filteren op `auth.uid()`.
+    expect(CENSUS.mijn_profiel?.groepszichtbaar).toBe(false);
+    expect(CENSUS.mijn_doelvelden?.groepszichtbaar).toBe(false);
   });
 
   it('heeft voor elke tabel een niet-lege kolomlijst', () => {

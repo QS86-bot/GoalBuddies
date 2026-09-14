@@ -49,8 +49,23 @@
  * ## Wat hij niet is
  *
  * ⚠️ Geen oordeel over óf een kolom gedeeld mag worden. Dat blijft handwerk; deze
- *    controle zorgt alleen dat het handwerk gebeurt. Rij 530 in
- *    `docs/ENGINEER-REVIEW.md` blijft staan met zijn eigen voorwaarde.
+ *    controle zorgt alleen dat het handwerk gebeurt. De rij over de schrijfkant
+ *    in `docs/ENGINEER-REVIEW.md` blijft staan met zijn eigen voorwaarde.
+ *
+ * ⚠️⚠️ **Drie grenzen van de vraag, en ze staan hier omdat zwijgen erover een
+ *    volgende lezer geruststelt zonder dat er iets gemeten is.** Hij kijkt alleen
+ *    in schema `public`, alleen naar een **directe** grant aan `authenticated`,
+ *    en niet naar wat er ná de grant met een kolom gebeurt. 📏 De eerste twee
+ *    zijn vandaag ongevaarlijk en dat is gemeten (14-09-2026): **nul**
+ *    SELECT-grants aan `PUBLIC`, en `authenticated` erft van geen enkele rol.
+ *    Dat is een eigenschap van de huidige stand en niet van de query.
+ *
+ * ⚠️ **En hij ziet niet dat een tabelbrede `REVOKE` de kolomgrants eronder
+ *    meeneemt.** 📏 `revoke select on public.profiles from authenticated` haalde
+ *    ook de drie kolomgrants van 0089 weg; deze controle blijft dan groen, want
+ *    `profiles` valt daarmee juist búiten de census. `kolomrechten:controle`
+ *    vangt dát geval wél. De twee dekken elkaars blinde vlek: de een ziet een
+ *    grant die erbij komt, de ander een kolomrecht dat verdwijnt.
  */
 
 import { execFileSync } from 'node:child_process';
@@ -62,10 +77,20 @@ import { psqlArgumenten, verbindingsmelding } from './psql.mjs';
  * De census: per tabel met een tabelbrede SELECT-grant aan `authenticated`, welke
  * kolommen er zijn en of de rij groepszichtbaar is.
  *
- * ⚠️⚠️ **`groepszichtbaar: true` betekent: wie deze rij mag lezen, is een
- *    groepsgenoot.** Voeg je hier een kolom toe, beantwoord dan eerst de twee
- *    vragen uit CLAUDE.md hierboven — en kan er iemands gemiste week uit worden
- *    afgeleid, dan hoort die kolom er niet in, of niet in deze tabel.
+ * ⚠️⚠️ **`groepszichtbaar: true` betekent: de lezer kán een ánder zijn dan het
+ *    onderwerp van de rij.** Voeg je hier een kolom toe, beantwoord dan eerst de
+ *    twee vragen uit CLAUDE.md hierboven — en kan er iemands gemiste week uit
+ *    worden afgeleid, dan hoort die kolom er niet in, of niet in deze tabel.
+ *
+ * ⚠️⚠️ **Die formulering is scherper dan "een groepsgenoot leest mee", en dat
+ *    verschil kostte twee rijen.** 📏 In de security-ronde op QS8-457 bleken
+ *    `completion_approvals` en `approval_withdrawals` op `false` te staan terwijl
+ *    een groepsgenoot ze aantoonbaar leest. Hun policy noemt geen groep maar de
+ *    persoon: `approver_id = auth.uid() or subject_id = auth.uid()`. De
+ *    beoordelaar ís een groepslid (afgedwongen door de INSERT-policy) en is per
+ *    `CHECK (approver_id <> subject_id)` **nooit** het onderwerp — de database
+ *    garandeert dus dat er een lezer is die iemand anders is. Een afleiding die
+ *    naar groeps-tokens zoekt, ziet dat niet.
  *
  * ⚠️ **`false` is geen vrijbrief.** Het zegt alleen dat de lezer geen
  *    groepsgenoot is maar de eigenaar zelf (of een smallere kring). De kolom is
@@ -80,12 +105,53 @@ import { psqlArgumenten, verbindingsmelding } from './psql.mjs';
  * @type {Record<string, { groepszichtbaar: boolean, kolommen: string }>}
  */
 export const CENSUS = {
+  // ⚠️⚠️ **De vier views, en die ontbraken tot de security-ronde op QS8-457.**
+  //    `relkind in ('r','p')` sloot ze uit, terwijl `pg_default_acl` objtype `r`
+  //    in Postgres tabellen **én** views dekt: 📏 een view aangemaakt zónder één
+  //    grant-regel krijgt `authenticated=arwdx/postgres`. Drie van de vier staan
+  //    bovendien op `security_invoker = false` en draaien dus als de eigenaar —
+  //    daar is de `where` in de view de énige grens, en geen RLS eronder.
+  //
+  // ⚠️ En dit is precies de plek waar deze klasse per instructie landt: CLAUDE.md
+  //    noemt bij domeinregel 7 *"een view met een expliciete kolomlijst"* als
+  //    remedie. Een census die daar niet keek, keek weg van zijn eigen onderwerp.
+  //    📏 Aangetoond met een view die `status = 'missed'` van iedereen uitdeelde:
+  //    de controle bleef groen, mét de geruststellende slotzin.
+  goal_dashboard: {
+    // `security_invoker = true`, dus de RLS van `goals` geldt voor de lezer — en
+    // `goals_select` is `owner_id = auth.uid() or shares_group_with_goal(id)`.
+    groepszichtbaar: true,
+    kolommen:
+      'id, owner_id, title, description, category, target_date, status, created_at, updated_at, ' +
+      'milestones_total, milestones_done, weekly_total, weekly_approved, ritme',
+  },
+  group_visible_streaks: {
+    // De naam zegt het, en het lichaam bevat `deelt_open_groep_met_doel(g.id)`.
+    groepszichtbaar: true,
+    kolommen: 'user_id, goal_id, current_streak, best_streak, last_cycle_start',
+  },
+  mijn_doelvelden: {
+    // `where owner_id = auth.uid()`. Eigenaar-only ondanks `security_invoker = false`.
+    groepszichtbaar: false,
+    kolommen: 'id, identity_statement, available_hours_per_week, max_points',
+  },
+  mijn_profiel: {
+    // `where id = auth.uid()`. Eigenaar-only; `profiles` zelf is sinds 0089
+    // bewust géén tabelbrede grant meer.
+    groepszichtbaar: false,
+    kolommen:
+      'id, display_name, avatar_url, week_start_day, tz, reminder_time, reminder_enabled, ' +
+      'reminder_tone, share_moves_by_default, created_at, updated_at, onboarded_at, ' +
+      'wants_own_goal, locale, focus_areas, minutes_per_day, when_i_do_it, what_breaks_it, ' +
+      'notify_approval_request, notify_approval_received, notify_cycle_summary, ' +
+      'notify_commitment_witness, quiet_from, quiet_to',
+  },
   ai_jobs: {
     groepszichtbaar: false,
     kolommen: 'id, user_id, goal_id, kind, status, input, input_hash, output, error, model, input_tokens, output_tokens, cost_cents, created_at, finished_at',
   },
   approval_withdrawals: {
-    groepszichtbaar: false,
+    groepszichtbaar: true,
     kolommen: 'id, approval_id, completion_id, approver_id, created_at',
   },
   badges: {
@@ -117,7 +183,7 @@ export const CENSUS = {
     kolommen: 'completion_id, group_id, approvals_required, created_at',
   },
   completion_approvals: {
-    groepszichtbaar: false,
+    groepszichtbaar: true,
     kolommen: 'id, completion_id, approver_id, subject_id, group_id, status, comment, created_at',
   },
   completions: {
@@ -255,7 +321,7 @@ export const CENSUS = {
 const VRAAG = `
 with tabelbreed as (
   select c.oid, c.relname from pg_class c join pg_namespace n on n.oid = c.relnamespace
-  where n.nspname = 'public' and c.relkind in ('r','p')
+  where n.nspname = 'public' and c.relkind in ('r','p','v','m','f')
     and exists (select 1 from aclexplode(c.relacl) a
                 where a.grantee = 'authenticated'::regrole and a.privilege_type = 'SELECT')
 )
@@ -264,6 +330,24 @@ from tabelbreed t
 join pg_attribute a on a.attrelid = t.oid and a.attnum > 0 and not a.attisdropped
 group by t.relname
 order by t.relname;
+`;
+
+/**
+ * De soorten die dit script behandelt. Alles daarbuiten met een tabelbrede
+ * SELECT-grant is een bevinding en geen stilte.
+ *
+ * ⚠️⚠️ **Zwijgen over een onbekende `relkind` is hier de verkeerde faalrichting**,
+ *    en dat is precies hoe de views tot de security-ronde buiten beeld bleven:
+ *    de vraag filterde ze weg en de slotzin zei "geen enkele erbij of eraf".
+ *    📏 Vandaag nul soorten buiten deze vijf; komt er ooit één bij, dan hoort de
+ *    controle dat te melden in plaats van hem over te slaan.
+ */
+const ONBEKENDE_SOORTEN = `
+select coalesce(string_agg(c.relkind::text || ' ' || c.relname, ', ' order by c.relname), '')
+from pg_class c join pg_namespace n on n.oid = c.relnamespace
+where n.nspname = 'public' and c.relkind not in ('r','p','v','m','f')
+  and exists (select 1 from aclexplode(c.relacl) a
+              where a.grantee = 'authenticated'::regrole and a.privilege_type = 'SELECT');
 `;
 
 /** Leest de uitvoer van de vraag hierboven. */
@@ -330,6 +414,23 @@ const DE_VRAAG =
   '  kolomgrant, een view met een expliciete kolomlijst of een rijbeperking\n' +
   '  nodig. Zie CLAUDE.md bij domeinregel 7.';
 
+/**
+ * Geeft `true` als er een soort relatie is die dit script niet behandelt.
+ *
+ * ⚠️ Apart van `hoofd()` omdat die anders boven de vijftig regels komt
+ *    (onwrikbare regel 15).
+ */
+function meldOnbekendeSoort(onbekend) {
+  if (onbekend === '') return false;
+  console.error(
+    '✗ Er staat een soort relatie in `public` met een tabelbrede SELECT-grant die\n' +
+      `dit script niet behandelt: ${onbekend}\n\n` +
+      '  Voeg de soort toe aan de vraag én aan CENSUS, of leg vast waarom hij er\n' +
+      '  buiten valt. Stil overslaan is hoe de views hier tot QS8-457 uit beeld bleven.',
+  );
+  return true;
+}
+
 function meldKolommen(verschillen) {
   for (const v of verschillen) {
     const waar = v.groeps ? 'GROEPSZICHTBAAR' : 'niet groepszichtbaar';
@@ -363,11 +464,13 @@ function hoofd() {
     return 1;
   }
 
+  if (meldOnbekendeSoort(psql(ONBEKENDE_SOORTEN).trim())) return 1;
+
   const { nieuweTabellen, verdwenenTabellen, kolomverschillen } = beoordeel(gevonden);
 
   if (nieuweTabellen.length > 0) {
     console.error(
-      `✗ ${nieuweTabellen.length} tabel(len) met een tabelbrede SELECT-grant aan\n` +
+      `✗ ${nieuweTabellen.length} relatie(s) met een tabelbrede SELECT-grant aan\n` +
         `\`authenticated\` staan niet in CENSUS: ${nieuweTabellen.join(', ')}\n\n` +
         '  Elke kolom erop is leesbaar voor wie de rij mag zien. Zet de tabel in\n' +
         '  CENSUS met zijn kolommen en met `groepszichtbaar`, en beantwoord bij\n' +
@@ -393,9 +496,9 @@ function hoofd() {
   const groeps = Object.values(CENSUS).filter((t) => t.groepszichtbaar).length;
   const kolommen = Object.values(CENSUS).reduce((n, t) => n + splits(t.kolommen).length, 0);
   console.log(
-    `groepskolommen-controle: ${kolommen} kolommen op ${tabellen} tabellen met een ` +
-      `tabelbrede SELECT-grant, waarvan ${groeps} groepszichtbaar; geen enkele erbij ` +
-      'of eraf sinds de laatste census.',
+    `groepskolommen-controle: ${kolommen} kolommen op ${tabellen} relaties (tabellen en ` +
+      `views) met een tabelbrede SELECT-grant, waarvan ${groeps} groepszichtbaar; geen ` +
+      'enkele erbij of eraf sinds de laatste census.',
   );
   return 0;
 }
