@@ -19,6 +19,7 @@ export {
   type Melding,
   type Meldingsvoorkeuren,
   type NudgeSituatie,
+  stemmomentVoor,
   type Toon,
 } from './regels';
 

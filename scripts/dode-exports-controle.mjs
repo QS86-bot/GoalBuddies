@@ -118,8 +118,9 @@ export const BEKENDE_ONBEREIKBAAR = {
     'kopie van een databaseregel die onder test staat. Weghalen breekt die toets.',
 
   // ⚠️ Hier stonden zeven rijen voor één gat — QS8-469. Sinds QS8-474 zijn het
-  //    er vier: `held()`, `heldTekstSleutel()` en `isHeldsleutel()` hebben een
-  //    aanroeper gekregen in de quiz. Dit register sluit op naam, dus ze staan
+  //    er vier (`held()`, `heldTekstSleutel()` en `isHeldsleutel()` kregen een
+  //    aanroeper in de quiz) en sinds QS8-475 drie (`heldVoorTrigger()` draagt
+  //    daar de prioriteitsregel). Dit register sluit op naam, dus ze staan
   //    los; de reden staat bij de eerste en de rest verwijst ernaar, want vier
   //    keer dezelfde alinea is geen vier redenen.
   alleQuoteSleutels:
@@ -130,13 +131,6 @@ export const BEKENDE_ONBEREIKBAAR = {
     '⚠️ De rest verdwijnt bij QS8-475, de laatste afnemer. Staat er daarna nóg ' +
     'een, dan is er een afnemer die de module níét gebruikt, en dát is de ' +
     'bevinding — niet deze rij.',
-  heldVoorTrigger:
-    'Zelfde gat als `alleQuoteSleutels`, QS8-469. De afbeelding van triggermoment ' +
-    'op held; QS8-475 is de eerste aanroeper.',
-  isTrigger: 'Zelfde gat als `alleQuoteSleutels`, QS8-469. Typewacht op een trigger.',
-  quoteSleutels:
-    'Zelfde gat als `alleQuoteSleutels`, QS8-469. Geeft de tekst- en bronsleutel ' +
-    'van één quote samen, omdat besluit 3 van QS8-468 ze nooit los laat staan.',
 };
 
 /**
@@ -147,8 +141,15 @@ export const BEKENDE_ONBEREIKBAAR = {
  *    verhoging in dezelfde wijziging als de rij en zijn reden — en dat is het
  *    hele verschil met een register dat stil kan groeien.
  */
-export const PLAFOND = 6;
+export const PLAFOND = 3;
 
+// ⚠️ Van 5 naar 3 op 14-09-2026, bij QS8-475: `isTrigger()` bewaakt daar de
+//    triggerwaarde uit de database en `quoteSleutels()` levert de quote onder de
+//    melding. Wat er nog staat, staat er tot iemand het aansluit of weghaalt.
+//
+// ⚠️ Van 6 naar 5 op 14-09-2026, bij QS8-475: `heldVoorTrigger()` draagt daar de
+//    prioriteitsregel en heeft dus een aanroeper gekregen.
+//
 // ⚠️ Van 9 naar 6 op 14-09-2026, bij QS8-474: `held()`, `heldTekstSleutel()` en
 //    `isHeldsleutel()` hebben een aanroeper gekregen in de quiz, dus hun rijen
 //    zijn eruit en het plafond zakt mee. De rest volgt bij QS8-475.

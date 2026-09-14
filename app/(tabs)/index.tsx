@@ -6,6 +6,12 @@ import { vraagMijlpaalTip, werkJobAf } from '@/modules/ai';
 import { useProfiel, useSession, userClock } from '@/modules/auth';
 import { fetchGetuigenissen, type Getuigenis } from '@/modules/commitments';
 import {
+  heldTekstSleutel,
+  laatsteVerschijning,
+  quoteVoorVerschijning,
+  type Verschijning,
+} from '@/modules/helden';
+import {
   bewijseisVoorDoel,
   opnieuwMetBewijs,
   fetchAfgevinktOp,
@@ -50,7 +56,7 @@ import {
 } from '@/modules/goals';
 import { opmaaktaal, t, taal, vergelijkTekst } from '@/shared/i18n';
 import { space } from '@/shared/theme';
-import { localDateIn, now, toonDatum, type IsoDate, type UserClock } from '@/shared/time';
+import { localDateIn, localDateOf, now, toonDatum, type IsoDate, type UserClock } from '@/shared/time';
 import {
   AsyncView,
   bevestigingen,
@@ -300,6 +306,14 @@ export default function Vandaag() {
    */
   const { data: getuigenissen } = useAsync(userId ? () => fetchGetuigenissen() : null, [userId, ronde]);
 
+  // ⚠️ De held die vandaag gesproken heeft — QS8-475. Een mislukte leesactie is
+  //    hier geen storing maar een blok dat niet verschijnt: de melding zelf is
+  //    al aangekomen, en dit is de quote eronder.
+  const { data: verschijning } = useAsync(
+    userId ? () => laatsteVerschijning(userId) : null,
+    [userId, ronde],
+  );
+
   // Gemiste weken uit eerdere cycli. Apart opgehaald en apart falend, om
   // dezelfde reden als het stand-blok: dit is een blok onder de lijst, en een
   // storing hier hoort je week van vandaag niet mee te slepen.
@@ -493,6 +507,8 @@ export default function Vandaag() {
         loading={loading}
       />
 
+      <HeldBlok verschijning={verschijning ?? null} vandaag={vandaagLokaal} tz={profiel?.tz ?? null} />
+
       <GetuigenisBlok getuigenissen={getuigenissen ?? []} />
 
       <BadgeBlok badges={badges ?? []} />
@@ -557,6 +573,51 @@ export default function Vandaag() {
  *    getuige af — titel, streefdatum en voortgang gaan hem niet aan. Wat hij ziet
  *    is de inzet die de ander zichzelf oplegde, en van wie. Zie migratie 0169.
  */
+/**
+ * De held die vandaag gesproken heeft, met zijn quote — QS8-475.
+ *
+ * ⚠️⚠️ **Alleen vandáág, en de dag is die van de gebruiker.** `hero_appearances`
+ *    draagt alleen `shown_at`, dus de grens wordt hier met `localDateOf()` uit
+ *    `shared/time` getrokken — correctheidsregel 7 laat geen tweede plek toe
+ *    waar een dag begint. Zonder die toets staat de quote van vorige week hier
+ *    nog, en dan is het geen "wie er vandaag met je meeliep" meer maar een
+ *    willekeurige spreuk.
+ *
+ * ⚠️ **De quote draagt zijn bron, en dat is besluit 3 van QS8-468.** De
+ *    historische figuur is uit de hoofd-UI gehaald; de bronvermelding onder een
+ *    citaat is iets anders dan een personage vernoemen, en zonder haar leest een
+ *    echt citaat als verzonnen app-copy.
+ *
+ * ⚠️ Geen verschijning, geen profiel of een verschijning van gisteren: dan staat
+ *    er niets. Dat is de lege staat, en die is hier stilte en geen kaart met
+ *    "er is vandaag nog geen held geweest" — dat zou een melding zijn over de
+ *    afwezigheid van een melding.
+ */
+function HeldBlok({
+  verschijning,
+  vandaag,
+  tz,
+}: {
+  readonly verschijning: Verschijning | null;
+  readonly vandaag: IsoDate | null;
+  readonly tz: string | null;
+}) {
+  if (verschijning === null || vandaag === null || tz === null) return null;
+  if (localDateOf(verschijning.wanneer, tz as never) !== vandaag) return null;
+
+  const quote = quoteVoorVerschijning(verschijning.held, verschijning.wanneer);
+
+  return (
+    <Card>
+      <Subheading>{t(heldTekstSleutel(verschijning.held, 'naam'))}</Subheading>
+      <Caption>{t(heldTekstSleutel(verschijning.held, 'ondertitel'))}</Caption>
+
+      <Body>{t(quote.tekst)}</Body>
+      <Caption>{t(quote.bron)}</Caption>
+    </Card>
+  );
+}
+
 function GetuigenisBlok({ getuigenissen }: { readonly getuigenissen: readonly Getuigenis[] }) {
   if (getuigenissen.length === 0) return null;
 

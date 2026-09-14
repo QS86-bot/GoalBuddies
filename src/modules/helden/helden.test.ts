@@ -12,12 +12,12 @@ import {
   held,
   HELDEN,
   HELDSLEUTELS,
-  heldTekstSleutel,
   heldVoorTrigger,
   isHeldsleutel,
   isTrigger,
   TRIGGERS,
 } from './helden';
+import { heldTekstSleutel } from './heldteksten';
 
 /**
  * QS8-469.

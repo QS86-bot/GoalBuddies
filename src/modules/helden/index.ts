@@ -6,7 +6,6 @@ export {
   HELDBRONNEN,
   HELDEN,
   HELDSLEUTELS,
-  heldTekstSleutel,
   heldVoorTrigger,
   isHeldsleutel,
   isTrigger,
@@ -14,22 +13,26 @@ export {
   type Held,
   type Heldbron,
   type Heldsleutel,
-  type Heldtekst,
   type Trigger,
 } from './helden';
+
+export { heldTekstSleutel, type Heldtekst } from './heldteksten';
 
 export {
   AFGEKEURDE_QUOTES,
   alleQuoteSleutels,
   quoteSleutels,
+  quoteVoorVerschijning,
   type Quotesleutels,
 } from './quotes';
 
 export {
   bewaarHeld,
   heldprofiel,
+  laatsteVerschijning,
   type Heldprofiel,
   type HeldUitkomst,
+  type Verschijning,
 } from './heldprofiel';
 
 export {
@@ -46,3 +49,14 @@ export {
   type Heldkeuze,
   type Heldvraag,
 } from './quiz';
+
+export {
+  kiesStem,
+  magVerschijnen,
+  STILTEDREMPEL_DAGEN,
+  tegenslagtrigger,
+  type Stem,
+  type Stemreden,
+} from './stem';
+
+export { heldregel, STEMMOMENTEN, type Stemmoment } from './stemteksten';

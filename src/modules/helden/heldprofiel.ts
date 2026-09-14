@@ -2,7 +2,7 @@ import { reportError } from '../../lib/observability';
 import { supabase } from '../../lib/supabase';
 import { t } from '../../shared/i18n';
 
-import { isHeldsleutel, type Heldbron, type Heldsleutel } from './helden';
+import { isHeldsleutel, isTrigger, type Heldbron, type Heldsleutel, type Trigger } from './helden';
 
 /**
  * Welke held van wie is — de clientkant van `hero_profiles` (migratie 0264,
@@ -149,4 +149,62 @@ export async function bewaarHeld(
   }
 
   return { ok: true };
+}
+
+export interface Verschijning {
+  readonly held: Heldsleutel;
+  readonly trigger: Trigger;
+  /** Wanneer hij sprak, als ISO-timestamp. */
+  readonly wanneer: string;
+}
+
+/**
+ * De held die het laatst gesproken heeft, of `null` als er nog nooit een was.
+ *
+ * ⚠️⚠️ **Dit is een leesactie en geen dagbepaling.** Of die verschijning van
+ *    vandáág is, hoort de aanroeper met `shared/time` uit te rekenen —
+ *    correctheidsregel 7 laat geen tweede plek toe waar een dag begint, en een
+ *    `gte('shown_at', middernacht)` hier zou dat wél zijn.
+ *
+ * ⚠️ `limit(1)` op een aflopende sortering, en niet de hele tabel. Deze tabel
+ *    groeit per gebruiker door en onwrikbare regel 10 laat geen ongepagineerde
+ *    lijstquery toe.
+ *
+ * ⚠️ **Werpt bij een fout, net als `heldprofiel()`.** Een `null` zou "er is nog
+ *    nooit een held geweest" betekenen, en dat is iets anders dan "ik kon het
+ *    niet ophalen", en `reportError()` hoort het te melden.
+ *
+ * ⚠️⚠️ **Maar de énige aanroeper doet er niets mee, en dat is hier juist.** Het
+ *    `HeldBlok` op het Vandaag-scherm tekent bij een fout niets — precies wat
+ *    het ook doet als er geen verschijning is. Dat is geen gemiste foutstaat
+ *    maar de goede: dit blok is de quote ónder een melding die al aangekomen is,
+ *    en "je quote kon niet geladen worden" is een storingsmelding over iets wat
+ *    niemand gevraagd heeft. De fout gaat naar Sentry en de kaart blijft weg.
+ *
+ *    Hier stond eerst *"het scherm heeft dat verschil nodig voor zijn
+ *    foutstaat"*, en dat was onwaar zodra je keek — gevonden in de
+ *    security-review op QS8-475. ⚠️ Komt er ooit een tweede aanroeper die de
+ *    fout wél moet tonen, dan is het werpen er al; dan is dit comment de
+ *    plek die meeverandert.
+ */
+export async function laatsteVerschijning(userId: string): Promise<Verschijning | null> {
+  const { data, error } = await supabase()
+    .from('hero_appearances')
+    .select('hero_key, trigger, shown_at')
+    .eq('user_id', userId)
+    .order('shown_at', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (error) {
+    reportError(error, 'helden.laatsteVerschijning', { user_id: userId });
+    throw error;
+  }
+
+  if (data === null) return null;
+
+  const rij = data as { hero_key: string; trigger: string; shown_at: string };
+  if (!isHeldsleutel(rij.hero_key) || !isTrigger(rij.trigger)) return null;
+
+  return { held: rij.hero_key, trigger: rij.trigger, wanneer: rij.shown_at };
 }

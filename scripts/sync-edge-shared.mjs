@@ -87,6 +87,27 @@ const SETS = [
     //    draait vitest.
     alleen: ['regels.ts', 'nudge-besluit.ts', 'webpush-crypto.ts', 'webpush-verzenden.ts'],
   },
+  // ⚠️ Sinds QS8-475. De meldingenjob kiest daar welke held spreekt en met welke
+  //    zin. `helden.ts` is het register, `stem.ts` de prioriteitsregel en de
+  //    dagregel, `stemteksten.ts` de slotregels per held.
+  //
+  // ⚠️ **`heldteksten.ts` staat hier met opzet niet.** Dat bestand leidt
+  //    catalogussleutels af, en de Edge Function heeft de app-catalogus niet.
+  //    Het is afgesplitst van `helden.ts` juist om die grens te kunnen trekken;
+  //    zet het hier niet alsnog bij.
+  {
+    bron: join('src', 'modules', 'helden'),
+    doel: join('supabase', 'functions', '_shared', 'helden'),
+    alleen: ['helden.ts', 'stem.ts', 'stemteksten.ts'],
+  },
+  // ⚠️ Alleen `types.ts`, en niet de catalogi. `Taal` is een type dat
+  //    `stemteksten.ts` nodig heeft; `nl.ts` en `en.ts` zijn de app-teksten en
+  //    horen niet in een job die zijn eigen teksten draagt.
+  {
+    bron: join('src', 'shared', 'i18n'),
+    doel: join('supabase', 'functions', '_shared', 'i18n'),
+    alleen: ['types.ts'],
+  },
   {
     bron: join('src', 'lib', 'observability'),
     doel: join('supabase', 'functions', '_shared', 'observability'),
@@ -141,10 +162,25 @@ for (const set of SETS) {
     const inhoud = readFileSync(join(set.bron, naam), 'utf8');
 
     // Deno wil expliciete extensies in relatieve imports.
-    const metExtensies = inhoud.replace(
-      /from '\.\/([a-zA-Z0-9_-]+)'/g,
-      (_treffer, module) => `from './${module}.ts'`,
-    );
+    const metExtensies = inhoud
+      .replace(/from '\.\/([a-zA-Z0-9_-]+)'/g, (_treffer, module) => `from './${module}.ts'`)
+      // ⚠️⚠️ **En een import naar een buurmap moet van diepte veranderen** —
+      //    sinds QS8-475. In `src/` staat `modules/helden/` twee niveaus onder
+      //    `shared/`, dus daar leest een import `../../shared/time`. In
+      //    `_shared/` liggen `helden/` en `time/` naast elkaar, dus daar moet
+      //    hetzelfde bestand `../time/index.ts` zeggen. Zonder deze regel
+      //    verwijst de kopie naar `functions/shared/time`, dat niet bestaat, en
+      //    valt `edge:types:controle` erop om — luid, en dat is de goede kant.
+      //
+      // ⚠️ **Map of bestand wordt van schijf gelezen en niet geraden.** De voor
+      //    de hand liggende heuristiek — "een schuine streep erin betekent een
+      //    bestand" — klopt vandaag toevallig voor `i18n/types` en `time`, en
+      //    breekt op de eerste geneste map. `statSync` weet het gewoon.
+      .replace(/from '\.\.\/\.\.\/shared\/([a-zA-Z0-9_/-]+)'/g, (_treffer, pad) => {
+        const bron = join('src', 'shared', pad);
+        const isMap = statSync(bron, { throwIfNoEntry: false })?.isDirectory() ?? false;
+        return `from '../${pad}${isMap ? '/index.ts' : '.ts'}'`;
+      });
 
     const doelpad = join(set.doel, naam);
     const verwacht = kop(set.bron) + metExtensies;
