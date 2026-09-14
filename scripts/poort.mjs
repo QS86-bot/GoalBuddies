@@ -72,6 +72,9 @@ export const HEEFT_DATABASE_NODIG = new Set([
   // ⚠️ Leest `pg_get_functiondef()`: de vorm waarin een `app.`-sleutel
   //    vergeleken wordt (QS8-491). Zonder database meet hij niets.
   'sleutelvorm:controle',
+  // ⚠️ Leest `pg_class.relacl` en `pg_attribute`: welke kolommen staan er op een
+  //    tabel met een tabelbrede SELECT-grant (QS8-457).
+  'groepskolommen:controle',
 ]);
 
 /**
