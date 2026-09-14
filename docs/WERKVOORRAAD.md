@@ -34,7 +34,7 @@ migratienummer aanziet, legt de lijn drie bestanden te hoog en verklaart
 een teller in grafemen bij een grens in codepunten.
 
 **Het gat is daarmee 46 bestanden** — `0225` t/m `0270`, van 09-09
-tot en met 14-09 en uit 38 verschillende issues.
+tot en met 14-09 en uit 37 verschillende issues.
 
 ⚠️ **In cijfers en niet voluit, en dat is sinds 14-09-2026 een controle.**
 📏 `NUMMERWOORDEN` in `scripts/docs-controle.mjs` loopt tot `twintig`; daarboven
@@ -95,6 +95,7 @@ De 46 bestanden:
 | `0267_een_week_draagt_hoogstens_een_goedkeuringsboeking_per_ronde.sql` | QS8-454 | nee |
 | `0268_een_held_in_een_open_groep_is_zichtbaar_voor_die_groep.sql` | QS8-477 | nee |
 | `0269_een_weergavenaam_draagt_geen_bidi_stuurteken.sql` | QS8-450 | nee |
+| `0270_een_groepsnaam_draagt_geen_bidi_stuurteken.sql` | QS8-494 | nee |
 | `0270_een_onzichtbaar_teken_midden_in_een_naam_telt_niet.sql` | QS8-495 | nee |
 
 ⚠️ **Hier stond een uur eerder `0219` met twee bestanden gat, en dat klopte
@@ -931,7 +932,7 @@ niet kon, staat in `docs/VOLGENDE-SESSIE.md` bij punt 0.
   harnas tekent ze sinds 23-08 zelf en logt niet meer in
 - `npm run typecheck` en `lint` staan groen; het aantal tests staat in §0 en
   niet hier — twee tellers die elkaar tegenspreken zijn precies waarom die regel
-  bestaat. 📏 `tests/rls` telt **157** testbestanden (`ls tests/rls/*.test.ts`,
+  bestaat. 📏 `tests/rls` telt **167** testbestanden (`ls tests/rls/*.test.ts`,
   hermeten 11-09-2026; hier stond **140** met 10-09 erbij, en dat getal was
   gedrift — het is met de hand geteld en niet overgenomen). Zonder
   credentials én zonder lokale stack slaan ze over — zie §3b, en let op het
