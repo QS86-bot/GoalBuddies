@@ -215,6 +215,97 @@ export function zonderBidi(ruw: string): string {
 }
 
 /**
+ * De onzichtbare tekens die óók **midden in** een naam niets mogen zijn.
+ *
+ * ⚠️⚠️ **Dit is een derde lijst, en dat is dezelfde reden als waarom
+ *    `BIDI_BEREIKEN` een tweede is.** Elke lijst beantwoordt één vraag:
+ *
+ *    | lijst | vraag | waar toegepast |
+ *    |---|---|---|
+ *    | `ONZICHTBARE_BEREIKEN` | rendert dit als niets **aan de rand**? | alleen de randen |
+ *    | `BIDI_BEREIKEN` | keert dit de tekens eromheen óm? | overal |
+ *    | `MIDDENIN_BEREIKEN` | rendert dit als **niets**, en heeft geen schrift het nodig? | overal |
+ *
+ *    Ze mogen nooit één lijst worden. `ONZICHTBARE_BEREIKEN` bevat de spatie,
+ *    en die overal weghalen maakt van `Jan de Vries` `JandeVries`.
+ *
+ * 📏 **Het gemeten geval (14-09-2026, security-review op QS8-450, QS8-495):**
+ *    `schone_naam(U&'Ja\200Bn')` gaf een naam van vier codepunten die als `Jan`
+ *    rendert en die béíde CHECKs haalde. Twee leden in dezelfde groep konden zo
+ *    een pixel-identieke naam dragen — zonder bidi en zonder homoglyph. Vier
+ *    tekens deden dat: ZWSP, BOM, soft hyphen en ZWNJ.
+ *
+ * ⚠️⚠️ **De scheidslijn is "rendert als niets" tegenover "rendert als
+ *    witruimte", en niet "onzichtbaar".** Een spatie is onzichtbaar en tóch
+ *    betekenisvol: hij scheidt. Wat hier in staat rendert als nul pixels, dus
+ *    `Ja<X>n` en `Jan` zijn niet uit elkaar te houden.
+ *
+ *    Daarom blijven deze staan, elk met een reden en niet als restpost:
+ *
+ *    | teken | waarom het blijft |
+ *    |---|---|
+ *    | `U+0020`, `U+00A0`, `U+2000`–`U+200A`, `U+202F`, `U+205F`, `U+1680`, `U+3000` | spaties — ze scheiden zichtbaar |
+ *    | `U+200D` (ZWJ) | de lijm in `👨‍👩‍👧‍👦`; weghalen houdt vier losse mensen over |
+ *    | `U+200C` (ZWNJ) | orthografisch verplicht in het Perzisch, Hindi en Bengaals |
+ *    | `U+034F` (CGJ) | scheidt grafeemclusters voor sortering, tussen letters |
+ *    | `U+061C`, `U+200E`, `U+200F` | richtingsmarkeringen, legitiem in een naam die schriften mengt |
+ *    | `U+17B4`–`U+17B5`, `U+180B`–`U+180E` | schriftgebonden: Khmer en Mongools |
+ *
+ * ⚠️⚠️ **ZWJ en ZWNJ blijven daarmee een collisievector, en dat is bewust.**
+ *    `Ja<U+200C>n` rendert nog steeds als `Jan`. Ze weghalen zou het Perzisch
+ *    en de gezinsemoji breken, en acceptatiecriterium 2 van QS8-495 zegt met
+ *    zoveel woorden dat de must-allow hier zwaarder weegt dan de weigering. Wat
+ *    er wél voor nodig is, is een **contextregel** ("weg tussen twee
+ *    ASCII-letters") en die past niet in een lijst van codepunten — zie
+ *    `docs/decisions/2026-09-14-onzichtbaar-in-het-midden.md` §4 en de rij in
+ *    `docs/ENGINEER-REVIEW.md`.
+ *
+ * ⚠️ **De bidi-tekens staan hier niet in**, want `zonderBidi()` haalt ze al
+ *    overal weg. Eén vraag, één lijst — een teken dat in twee lijsten staat,
+ *    maakt bij de volgende wijziging onduidelijk welke van de twee hem draagt.
+ *
+ * ⚠️ **Dezelfde bereiken staan in SQL als `zonder_onzichtbaar_middenin()`
+ *    (migratie 0270), en dat is een naad.** `tests/rls/naamnormalisatie.test.ts`
+ *    loopt het hele codepuntbereik af mét een teken in het midden en legt beide
+ *    oordelen naast elkaar. Haal je hier één teken weg, dan wordt die toets
+ *    rood; dat is met de hand nagemeten, per richting.
+ */
+export const MIDDENIN_BEREIKEN: readonly (readonly [number, number])[] = [
+  [0x0001, 0x001f], // C0-stuurtekens, zonder de spatie op U+0020
+  [0x007f, 0x009f], // DEL en de C1-stuurtekens, zonder de no-break space op U+00A0
+  [0x00ad, 0x00ad], // soft hyphen — betekenisvol in lopende tekst, niet in een naam
+  [0x115f, 0x1160], // hangul choseong/jungseong filler
+  [0x200b, 0x200b], // zero-width space
+  [0x2028, 0x2029], // line separator en paragraph separator
+  [0x2060, 0x2064], // word joiner en de onzichtbare operatoren
+  [0x206a, 0x206f], // de afgeschafte opmaaktekens
+  [0x2800, 0x2800], // braille pattern blank
+  [0x3164, 0x3164], // hangul filler
+  [0xfeff, 0xfeff], // byte order mark / zero-width no-break space
+  [0xffa0, 0xffa0], // halfwidth hangul filler
+  [0xfff9, 0xfffb], // interlinear annotation
+  [0xe0000, 0xe007f], // tags, inclusief de language tag
+];
+
+/** Of dit codepunt óók midden in een naam als niets rendert. */
+export function isOnzichtbaarMiddenin(codepunt: number): boolean {
+  return MIDDENIN_BEREIKEN.some(([van, tot]) => codepunt >= van && codepunt <= tot);
+}
+
+/**
+ * Dezelfde tekst zonder de tekens die overal als niets renderen.
+ *
+ * ⚠️ **Overal en niet alleen aan de rand** — net als `zonderBidi()`, en om een
+ *    verwante maar eigen reden: die lijst gaat over volgorde, deze over nul
+ *    pixels.
+ */
+export function zonderOnzichtbaarMiddenin(ruw: string): string {
+  return Array.from(ruw)
+    .filter((teken) => !isOnzichtbaarMiddenin(teken.codePointAt(0) ?? 0))
+    .join('');
+}
+
+/**
  * Een naam zonder onzichtbare randen.
  *
  * ⚠️ **Randen knippen en niet alles**, zie `ONZICHTBARE_BEREIKEN`. Wat er tussen
@@ -230,10 +321,12 @@ export function zonderBidi(ruw: string): string {
  *    in de eerste.
  */
 export function schoneNaam(ruw: string): string {
-  // ⚠️ Eerst de bidi-stuurtekens overal weg, dán de randen — QS8-450. Zo wordt
-  //    ` \u202E Jan ` gewoon `Jan`. De andere volgorde geeft hetzelfde
-  //    resultaat maar leest als toeval.
-  const tekens = Array.from(zonderBidi(ruw));
+  // ⚠️ Eerst de bidi-stuurtekens overal weg, dán de tekens die overal als niets
+  //    renderen (QS8-495), dán de randen. Zo wordt ` \u202E Ja\u200Bn ` gewoon
+  //    `Jan`. De volgorde geeft hetzelfde resultaat als je hem omdraait, maar
+  //    zo leest hij als drie stappen met elk een eigen reden in plaats van als
+  //    toeval.
+  const tekens = Array.from(zonderOnzichtbaarMiddenin(zonderBidi(ruw)));
 
   let begin = 0;
   let eind = tekens.length;

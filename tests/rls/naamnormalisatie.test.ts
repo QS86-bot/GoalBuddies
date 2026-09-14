@@ -326,37 +326,73 @@ describe.runIf(beschikbaar)('de twee talen halen in het midden dezelfde tekens w
   /**
    * ⚠️⚠️ **De must-allow van deze sweep, en hij is scherper dan "niet leeg".**
    *    "Ze halen hetzelfde weg" is ook waar als allebei **alles** weghalen, en
-   *    dan is er van een naam niets over. 📏 Deze verzameling is met opzet
-   *    precies negen groot: `U+202A`–`U+202E` en `U+2066`–`U+2069`.
+   *    dan is er van een naam niets over. Deze toets pint daarom beide kanten:
+   *    wat eruit gaat én wat er met reden in blijft.
    *
-   *    `U+200D` hoort er uitdrukkelijk **niet** in — dat is de lijm in
-   *    `👨‍👩‍👧‍👦`, en hem hier weghalen houdt vier losse mensen over. Dat is
-   *    de reparatie die het erger had gemaakt.
+   * 📏 **Sinds QS8-495 (migratie 0270) is deze verzameling gegroeid van negen
+   *    naar 225**, en dat is de reparatie van een gat dat híer als bedoeld
+   *    gedrag stond vastgespijkerd. De negen zijn de bidi-stuurtekens
+   *    (`zonder_bidi`, 0269); de rest komt uit `MIDDENIN_BEREIKEN`
+   *    (`zonder_onzichtbaar_middenin`, 0270) — de tekens die overal als **nul
+   *    pixels** renderen.
+   *
+   * ⚠️⚠️ **De scheidslijn is "nul pixels" tegenover "witruimte", niet
+   *    "onzichtbaar".** Een spatie is onzichtbaar en tóch betekenisvol: hij
+   *    scheidt. Daarom staan de spaties er niet in, en `U+200D` (de lijm in
+   *    `👨‍👩‍👧‍👦`) en `U+200C` (orthografisch verplicht in het Perzisch)
+   *    evenmin.
    */
-  it('en die verzameling is precies de negen bidi-stuurtekens', () => {
+  it('en die verzameling is de negen bidi-tekens plus wat als nul pixels rendert', () => {
     const database = middenWegVolgensDeDatabase();
 
-    expect(database.size, 'niet meer en niet minder dan de negen').toBe(9);
+    expect(database.size, 'niet meer en niet minder').toBe(225);
+
+    // De negen van 0269 — die volgorde omkeren is een ander soort schade.
     expect(database.has(0x202e), 'de RIGHT-TO-LEFT OVERRIDE hoort erin').toBe(true);
     expect(database.has(0x2067), 'de RIGHT-TO-LEFT ISOLATE hoort erin').toBe(true);
-    expect(database.has(0x200d), 'de zero-width joiner hoort er juist NIET in').toBe(false);
-    // ⚠️⚠️ **Dit is een open gat en geen bedoeld gedrag, en dat staat hier omdat
-    //    deze assertie het anders dichtspijkert alsof het besloten is.** 📏
-    //    Gemeten in de security-ronde op QS8-450: `schone_naam(U&'Ja\200Bn')`
-    //    geeft een naam van vier tekens die als `Jan` rendert en die béíde
-    //    CHECKs haalt — dus twee leden in dezelfde groep kunnen een
-    //    pixel-identieke naam dragen, zonder bidi en zonder homoglyph.
-    //
-    //    Hij staat hier op `false` omdat dát is wat de code vandaag doet, niet
-    //    omdat het goed is. De reparatie is niet "pas `ONZICHTBARE_BEREIKEN`
-    //    met `g` toe" — dat knipt de lijm uit `👨‍👩‍👧‍👦` en U+200C uit het
-    //    Perzisch. Ze vraagt een eigen uitzonderingsanalyse, en staat mét deze
-    //    meting in `docs/ENGINEER-REVIEW.md`.
-    expect(database.has(0x200b), 'vandaag blijft een zero-width space in het midden staan').toBe(
+
+    // 📏 Drie van de vier gevallen die de security-review op QS8-450 mat. Ze
+    //    stonden hier tot QS8-495 op `false` — niet omdat het goed was, maar
+    //    omdat dat was wat de code deed.
+    expect(database.has(0x200b), 'de zero-width space hoort erin').toBe(true);
+    expect(database.has(0xfeff), 'de byte order mark hoort erin').toBe(true);
+    expect(database.has(0x00ad), 'de soft hyphen hoort erin').toBe(true);
+    expect(database.has(0x3164), 'de hangul filler hoort erin').toBe(true);
+    expect(database.has(0x2800), 'de braille blank hoort erin').toBe(true);
+    expect(database.has(0xe0001), 'de language tag hoort erin').toBe(true);
+
+    // ⚠️⚠️ **De must-allow, en die weegt hier zwaarder dan de weigering** —
+    //    acceptatiecriterium 2 van QS8-495. Elk van deze vier breekt een echte
+    //    naam als hij er wél in zou staan.
+    expect(database.has(0x0020), 'een spatie in het midden blijft staan').toBe(false);
+    expect(database.has(0x00a0), 'een no-break space blijft staan').toBe(false);
+    expect(database.has(0x200d), 'de zero-width joiner blijft staan — de emoji-lijm').toBe(false);
+    expect(database.has(0x200c), 'de zero-width non-joiner blijft staan — het Perzisch').toBe(
       false,
     );
-    expect(database.has(0x0020), 'een spatie in het midden blijft staan').toBe(false);
     expect(database.has(0x200f), 'de RLM is een markering en geen override').toBe(false);
+    expect(database.has(0x034f), 'de combining grapheme joiner blijft staan').toBe(false);
+    expect(database.has(0x17b4), 'de Khmer inherent vowel blijft staan').toBe(false);
+  }, 60_000);
+
+  /**
+   * ⚠️⚠️ **Het gat dat QS8-495 níet sluit, en het staat hier als toets zodat het
+   *    een besluit blijft en geen vergeetpost.**
+   *
+   *    `U+200C` en `U+200D` renderen ook als nul pixels, dus `Ja<ZWNJ>n` is nog
+   *    steeds niet van `Jan` te onderscheiden. Ze weghalen breekt het Perzisch
+   *    en de gezinsemoji; ze houden vraagt een **contextregel** ("weg tussen
+   *    twee ASCII-letters") in plaats van een lijst van codepunten, en die past
+   *    niet in de vorm die deze sweep vergelijkt — hij legt beide kanten
+   *    codepunt voor codepunt naast elkaar, los van hun buren.
+   *
+   *    Zie `docs/decisions/2026-09-14-onzichtbaar-in-het-midden.md` §4.
+   */
+  it('laat ZWNJ en ZWJ met reden staan, en dat is een open collisievector', () => {
+    const database = middenWegVolgensDeDatabase();
+
+    expect(database.has(0x200c), 'ZWNJ blijft — het Perzisch heeft hem nodig').toBe(false);
+    expect(database.has(0x200d), 'ZWJ blijft — de gezinsemoji heeft hem nodig').toBe(false);
   }, 60_000);
 
   /**
