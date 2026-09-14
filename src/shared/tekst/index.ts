@@ -162,6 +162,59 @@ export function isOnzichtbaar(codepunt: number): boolean {
 }
 
 /**
+ * De bidi-stuurtekens die de **volgorde** van de tekens eromheen omkeren.
+ *
+ * ⚠️⚠️ **Dit is een tweede lijst en niet een uitbreiding van de eerste, en dat
+ *    verschil is de hele reden dat QS8-450 een eigen issue was.**
+ *    `ONZICHTBARE_BEREIKEN` beantwoordt *"rendert dit als niets aan de rand"* en
+ *    wordt daarom alleen aan de randen toegepast. Deze lijst beantwoordt
+ *    *"rendert dit de rest van de naam anders"*, en dat antwoord moet **overal
+ *    in de string** gelden.
+ *
+ *    De twee mogen nooit één lijst worden: `ONZICHTBARE_BEREIKEN` bevat
+ *    `U+200D`, en die ís de lijm in `👨‍👩‍👧‍👦`. Overal weghalen houdt vier
+ *    losse mensen over in plaats van één gezin.
+ *
+ * 📏 Het gemeten geval (13-09-2026, security-review op QS8-448): `display_name`
+ *    = `gxp‮eterces` rendert als `secrete.pxg`, en `display_name` is
+ *    groepszichtbaar.
+ *
+ * ⚠️ **`U+200E` (LRM), `U+200F` (RLM) en `U+061C` (ALM) staan er met opzet niet
+ *    in.** Dat zijn *markeringen*, geen overrides: ze zetten de richting van de
+ *    **neutrale** tekens ernaast en kunnen een run met sterke tekens niet
+ *    omkeren, en ze hebben legitiem gebruik in een naam die schriften mengt. Aan
+ *    de rand worden ze al gestreken. De voorwaarde waaronder dat besluit
+ *    vervalt, staat in `docs/ENGINEER-REVIEW.md`.
+ *
+ * ⚠️ **Dezelfde lijst staat in SQL als `zonder_bidi()` (migratie 0268), en dat
+ *    is een naad.** `tests/rls/naamnormalisatie.test.ts` loopt het hele
+ *    codepuntbereik af mét een teken in het **midden** en legt beide oordelen
+ *    naast elkaar. Haal je hier één teken weg, dan wordt die toets rood; dat is
+ *    met de hand nagemeten, per richting.
+ */
+export const BIDI_BEREIKEN: readonly (readonly [number, number])[] = [
+  [0x202a, 0x202e], // LRE, RLE, PDF, LRO, RLO
+  [0x2066, 0x2069], // LRI, RLI, FSI, PDI
+];
+
+/** Of dit codepunt de volgorde van de tekens eromheen kan omkeren. */
+export function isBidiStuurteken(codepunt: number): boolean {
+  return BIDI_BEREIKEN.some(([van, tot]) => codepunt >= van && codepunt <= tot);
+}
+
+/**
+ * Dezelfde tekst zonder bidi-overrides en -isolaten, overal.
+ *
+ * ⚠️ **Overal en niet alleen aan de rand** — dat is het verschil met
+ *    `schoneNaam()`, en de reden staat bij `BIDI_BEREIKEN`.
+ */
+export function zonderBidi(ruw: string): string {
+  return Array.from(ruw)
+    .filter((teken) => !isBidiStuurteken((teken.codePointAt(0) ?? 0)))
+    .join('');
+}
+
+/**
  * Een naam zonder onzichtbare randen.
  *
  * ⚠️ **Randen knippen en niet alles**, zie `ONZICHTBARE_BEREIKEN`. Wat er tussen
@@ -171,9 +224,16 @@ export function isOnzichtbaar(codepunt: number): boolean {
  * ⚠️ Geeft een lege string terug als er niets zichtbaars overblijft. Dát is het
  *    signaal waar de trigger, de CHECK op `profiles` en `profielSchema` alle
  *    drie op besluiten; ze mogen het niet elk apart uitrekenen.
+ *
+ * ⚠️ **Strijkt sinds QS8-450 óók de bidi-stuurtekens, en die overal.** Zie
+ *    `BIDI_BEREIKEN` voor waarom dat een tweede lijst is en niet een regel erbij
+ *    in de eerste.
  */
 export function schoneNaam(ruw: string): string {
-  const tekens = Array.from(ruw);
+  // ⚠️ Eerst de bidi-stuurtekens overal weg, dán de randen — QS8-450. Zo wordt
+  //    ` \u202E Jan ` gewoon `Jan`. De andere volgorde geeft hetzelfde
+  //    resultaat maar leest als toeval.
+  const tekens = Array.from(zonderBidi(ruw));
 
   let begin = 0;
   let eind = tekens.length;

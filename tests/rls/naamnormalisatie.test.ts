@@ -45,7 +45,7 @@ import { execFileSync } from 'node:child_process';
 
 import { describe, expect, it } from 'vitest';
 
-import { isOnzichtbaar, schoneNaam, telTekens } from '../../src/shared/tekst';
+import { isBidiStuurteken, isOnzichtbaar, schoneNaam, telTekens } from '../../src/shared/tekst';
 import { PSQL_OMGEVING, psqlBasisArgumenten, stackBeschikbaarOfFaal } from './psql-stack';
 
 const beschikbaar = stackBeschikbaarOfFaal(
@@ -245,6 +245,148 @@ describe.runIf(beschikbaar)('de twee talen kennen dezelfde verzameling', () => {
     expect(database.has('J'.codePointAt(0) as number), 'een letter hoort er niet in').toBe(false);
     expect(database.has(0xfe0f), 'de variatieselector hoort er juist niet in').toBe(false);
   }, 60_000);
+});
+
+// ---------------------------------------------------------------------------
+
+/**
+ * De codepunten die de **database** ook in het **midden** van een naam weghaalt.
+ *
+ * ⚠️⚠️ **Dit is een tweede sweep en niet dezelfde nog een keer, en dat verschil
+ *    is wat QS8-450 opleverde.** De sweep hierboven vraagt
+ *    `schone_naam(chr(cp)) = ''` — dat is *"telt dit als onzichtbare rand"*. Elk
+ *    bidi-stuurteken zat dáár al in, en toch kwam
+ *    `display_name` = `gxp‮eterces` er ongehinderd door: `schone_naam()` strijkt
+ *    met opzet alleen de randen.
+ *
+ *    📏 Die sweep bleef dus groen op een naam die als `secrete.pxg` rendert, in
+ *    een kolom die groepszichtbaar is. Een verzameling die je aan de rand
+ *    bevraagt, zegt niets over het midden — en de belofte van QS8-450 gaat over
+ *    het midden.
+ *
+ * ⚠️ `'a' || chr(cp) || 'b'` en niet `chr(cp)` alleen: met zichtbare tekens
+ *    eromheen is een rand per definitie geen rand meer, en dat is precies de
+ *    invoer waar de bug op zat.
+ */
+function middenWegVolgensDeDatabase(): Set<number> {
+  const uit = execFileSync('psql', psqlBasisArgumenten(), {
+    env: PSQL_OMGEVING,
+    encoding: 'utf8',
+    input:
+      'select cp from generate_series(1, 1114111) cp ' +
+      'where (cp < 55296 or cp > 57343) ' +
+      "and public.schone_naam('a' || chr(cp) || 'b') <> 'a' || chr(cp) || 'b' order by cp;",
+  });
+
+  return new Set(
+    uit
+      .split('\n')
+      .filter((regel) => regel.trim() !== '')
+      .map((regel) => Number(regel.trim())),
+  );
+}
+
+/** Dezelfde vraag aan de TypeScript-kant. */
+function middenWegVolgensDeClient(): Set<number> {
+  const uit = new Set<number>();
+
+  for (let cp = 1; cp <= 0x10ffff; cp += 1) {
+    if (cp >= 0xd800 && cp <= 0xdfff) continue;
+    const teken = String.fromCodePoint(cp);
+    if (schoneNaam(`a${teken}b`) !== `a${teken}b`) uit.add(cp);
+  }
+
+  return uit;
+}
+
+describe.runIf(beschikbaar)('de twee talen halen in het midden dezelfde tekens weg', () => {
+  /**
+   * ⚠️ **Beide richtingen apart benoemd**, om dezelfde reden als bij de
+   *    randensweep. Een teken dat alleen de database weghaalt, is een naam die
+   *    het formulier goedkeurt en de CHECK weigert. Een teken dat alleen de
+   *    client weghaalt, is een naam die groepszichtbaar omgekeerd rendert.
+   */
+  it('haalt aan beide kanten exact dezelfde codepunten weg', () => {
+    const database = middenWegVolgensDeDatabase();
+    const client = middenWegVolgensDeClient();
+
+    expect(
+      [...database].filter((cp) => !client.has(cp)).map(alsHexCodepunt),
+      'de database haalt deze tekens uit het midden en de client niet — dan ' +
+        'weigert de CHECK een naam die het formulier net goedkeurde',
+    ).toEqual([]);
+
+    expect(
+      [...client].filter((cp) => !database.has(cp)).map(alsHexCodepunt),
+      'de client haalt deze tekens uit het midden en de database niet — dan ' +
+        'staat er een groepszichtbare naam die omgekeerd rendert',
+    ).toEqual([]);
+  }, 60_000);
+
+  /**
+   * ⚠️⚠️ **De must-allow van deze sweep, en hij is scherper dan "niet leeg".**
+   *    "Ze halen hetzelfde weg" is ook waar als allebei **alles** weghalen, en
+   *    dan is er van een naam niets over. 📏 Deze verzameling is met opzet
+   *    precies negen groot: `U+202A`–`U+202E` en `U+2066`–`U+2069`.
+   *
+   *    `U+200D` hoort er uitdrukkelijk **niet** in — dat is de lijm in
+   *    `👨‍👩‍👧‍👦`, en hem hier weghalen houdt vier losse mensen over. Dat is
+   *    de reparatie die het erger had gemaakt.
+   */
+  it('en die verzameling is precies de negen bidi-stuurtekens', () => {
+    const database = middenWegVolgensDeDatabase();
+
+    expect(database.size, 'niet meer en niet minder dan de negen').toBe(9);
+    expect(database.has(0x202e), 'de RIGHT-TO-LEFT OVERRIDE hoort erin').toBe(true);
+    expect(database.has(0x2067), 'de RIGHT-TO-LEFT ISOLATE hoort erin').toBe(true);
+    expect(database.has(0x200d), 'de zero-width joiner hoort er juist NIET in').toBe(false);
+    expect(database.has(0x200b), 'een rand-teken hoort hier niet in het midden in').toBe(false);
+    expect(database.has(0x0020), 'een spatie in het midden blijft staan').toBe(false);
+    expect(database.has(0x200f), 'de RLM is een markering en geen override').toBe(false);
+  }, 60_000);
+
+  /**
+   * 📏 Het geval dat de security-review mat, woordelijk, aan beide kanten.
+   */
+  it('maakt van de gemeten spoofnaam weer een gewone naam', () => {
+    const spoof = 'gxp\u202Eeterces';
+
+    expect(schoneNaam(spoof)).toBe('gxpeterces');
+    expect(viaDeDatabase([spoof])[0]).toBe(alsHex('gxpeterces'));
+  }, 30_000);
+
+  /**
+   * ⚠️⚠️ **Twee stuurtekens en niet één, en dat geval is met een ijking
+   *    afgedwongen.** 📏 Bij het ijken van deze suite bleek de `g`-vlag uit
+   *    `zonder_bidi()` halen **alle tien de toetsen groen** te laten: elk geval
+   *    hierboven draagt precies één bidi-teken, en zonder `g` wordt de eerste
+   *    treffer nog steeds weggehaald. De migratiekop noemt die vlag *"het hele
+   *    punt van deze functie"* — en niets toetste hem.
+   *
+   *    Dat is dezelfde klasse als de bug die dit issue repareert: een bron die
+   *    beweert dat er een grendel op staat, terwijl de toets er met één
+   *    voorbeeld naast grijpt.
+   */
+  it('haalt ook een tweede en derde stuurteken weg', () => {
+    const dubbel = `a${String.fromCodePoint(0x202e)}b${String.fromCodePoint(0x202e)}c`;
+
+    expect(schoneNaam(dubbel)).toBe('abc');
+    expect(viaDeDatabase([dubbel])[0]).toBe(alsHex('abc'));
+  }, 30_000);
+
+  /** De lijst in TypeScript is dezelfde als wat `schoneNaam()` doet. */
+  it('en `isBidiStuurteken` kent precies diezelfde negen', () => {
+    const uit: number[] = [];
+    for (let cp = 1; cp <= 0x10ffff; cp += 1) {
+      if (cp >= 0xd800 && cp <= 0xdfff) continue;
+      if (isBidiStuurteken(cp)) uit.push(cp);
+    }
+
+    expect(uit.map(alsHexCodepunt)).toEqual([
+      'U+202A', 'U+202B', 'U+202C', 'U+202D', 'U+202E',
+      'U+2066', 'U+2067', 'U+2068', 'U+2069',
+    ]);
+  });
 });
 
 /** `U+200B` leest als een bevinding; `8203` leest als een regelnummer. */
