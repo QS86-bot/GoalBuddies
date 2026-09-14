@@ -393,6 +393,29 @@
 > de vórm die je zoekt én op een paar varianten ernaast**, en schrijf op hoeveel
 > er in elke vorm staan — dan weet je of je filter smal of toevallig is.
 >
+> **14-09, punt AB: een tabel die níet in een meting voorkomt, is een uitslag en
+> geen afwezigheid — en dat verschil zie je alleen door hem er met een mutatie in
+> te duwen.** QS8-471 zette twee tabellen neer waarvan de ene te laten groeien is
+> door de client en de andere alleen door de server. `plafonddekking.test.ts`
+> meldde de eerste en zweeg over de tweede, en dat zwijgen ís de append-only-
+> belofte — maar precies zoals een groene test ook zwijgt als de query stuk is.
+> De ijking was dus niet "de regel weghalen" maar `grant insert (hero_key) …
+> to authenticated` op de lokale stack: 📏 de tabel verschijnt mét naam in de
+> melding en de zelftoets gaat 32 → 33, en `has_any_column_privilege` is vóór en
+> na gemeten (`false` → `true` → `false`). **Ijk een belofte die uit een leegte
+> bestaat door de leegte te vullen**, niet door ernaar te kijken.
+>
+> ⚠️ **En in dezelfde ronde: een reden in een register kan twee grendels nodig
+> hebben terwijl er één in de zin staat.** De eerste formulering was
+> *"PRIMARY KEY (user_id) — hoogstens één rij per gebruiker"*, en dat is onwaar:
+> een sleutel bindt het aantal rijen **per** `user_id`, niet het aantal rijen.
+> Wat de tabel op één rij houdt is de sleutel **plus** de insert-policy die
+> `user_id` aan `auth.uid()` vastzet. Zo'n zin leest als af — hij noemt een echte
+> constraint, hij klopt half — en dat is precies de vorm waar CLAUDE.md voor
+> waarschuwt: **een afwijking die je onderbouwt is duurder dan een die je
+> vergeet.** Lees bij elke registerrij na of de grens die er staat écht de grens
+> is die je bedoelt, of alleen de eerste die je opviel.
+>
 > ⚠️⚠️ **11-09, punt P: een lintregel kan code laten buigen, en dan verplaats je
 > het probleem naar de lezer.** QS8-422 moest in de rollover een `if` in een `if`
 > vervangen door een ternair met twee guards, puur omdat dat blok toen ín twee
