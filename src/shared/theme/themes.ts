@@ -3,11 +3,14 @@ import type { ColorSchemeName } from 'react-native';
 import {
   categoriekleurenNavy,
   categoriekleurenNavyLight,
+  heldkleurenNavy,
+  heldkleurenNavyLight,
   navy,
   navyLight,
   roles,
   shadow,
   type Categoriekleuren,
+  type Heldpalet,
   type Palette,
 } from './tokens';
 
@@ -26,6 +29,14 @@ export interface Theme {
    *    bij `Categoriekleuren` in `tokens.ts`.
    */
   readonly families: Categoriekleuren;
+  /**
+   * Het kleurenpaar per held — QS8-470.
+   *
+   * ⚠️ Staat naast `families` en niet erin: dit is de benoemde uitzondering op
+   *    het Q-Projects-stelsel en geldt alleen voor heldenoppervlakken. Zie de
+   *    kop bij `Heldkleuren` in `tokens.ts`.
+   */
+  readonly helden: Heldpalet;
   readonly shadow: (typeof shadow)['navy'] | (typeof shadow)['navyLight'];
 }
 
@@ -35,6 +46,7 @@ export const navyTheme: Theme = {
   colors: navy,
   roles: roles(navy),
   families: categoriekleurenNavy,
+  helden: heldkleurenNavy,
   shadow: shadow.navy,
 };
 
@@ -44,6 +56,7 @@ export const navyLightTheme: Theme = {
   colors: navyLight,
   roles: roles(navyLight),
   families: categoriekleurenNavyLight,
+  helden: heldkleurenNavyLight,
   shadow: shadow.navyLight,
 };
 
