@@ -7,6 +7,10 @@
 --   -- zie die migratie voor de kolomlijst.
 --   revoke update (vindbaar) on public.profiles from authenticated;
 --   alter table public.profiles drop column if exists vindbaar;
+--   -- en `avatars_select` terug naar de vorm van 0126 (zonder de derde tak).
+--
+--   ⚠️ De kolom droppen wist ieders keuze om vindbaar te zijn. Op een gevulde
+--      database is dat geen rollback maar een besluit.
 --
 -- ---------------------------------------------------------------------------
 -- Waar dit vandaan komt
@@ -83,10 +87,35 @@ create or replace view public.mijn_profiel as
     from public.profiles p
    where id = (select auth.uid());
 
--- ⚠️ Een partiële index: alleen vindbare profielen worden ooit doorzocht, en dat
---    is verreweg de kleinste kant van de tabel. Onwrikbare regel 11.
+-- ⚠️ **Partieel, op `lower()`, met `text_pattern_ops`, en met `id` als staart.**
+--    📏 **Nagemeten met `explain (analyze, buffers)`, en de uitslag is
+--    genuanceerder dan "de index wordt gebruikt" — vandaar beide plannen hier:**
+--
+--      selectieve set (weinig vindbaar)   -> Index Scan using profiles_vindbaar_naam_idx
+--                                            Index Cond: lower(display_name)
+--                                              ~>=~ 'zaai1a' AND ~<~ 'zaai1b'
+--      50.000 vindbaar van 50.000         -> Bitmap Heap Scan, Recheck Cond: vindbaar
+--                                            Filter: lower(display_name) ~~ 'zaai1a%'
+--                                            217 rijen, 198 heapblokken, 0,55 ms
+--
+--    Dat tweede plan is geen defect maar selectiviteit: is iedereen vindbaar, dan
+--    zegt de partiële voorwaarde niets meer en is een bitmapscan goedkoper. De
+--    `text_pattern_ops`-reeks wérkt — dat is het eerste plan, en dat is precies
+--    de stand die je in de praktijk hebt, want `vindbaar` staat standaard uit.
+--
+--    ⚠️ De reden dat dit hier staat en niet als "de index wordt gebruikt": een
+--    meting op één selectiviteit is geen uitspraak over de andere.
+--
+--    - partieel op `vindbaar`: de index is zo groot als de vindbare populatie en
+--      niet als de hele gebruikersgroep (onwrikbare regel 11);
+--    - `lower(...)`: de query zoekt hoofdletterongevoelig, en een index op de
+--      kale kolom wordt dan niet gebruikt;
+--    - `text_pattern_ops`: zonder die operatorklasse gebruikt `like 'x%'` onder
+--      een niet-C-collatie géén btree;
+--    - `id` erachter: de sortering is `(lower(display_name), id)` en komt zo
+--      volledig uit de index.
 create index if not exists profiles_vindbaar_naam_idx
-  on public.profiles (display_name)
+  on public.profiles (lower(display_name) text_pattern_ops, id)
   where vindbaar;
 
 -- ---------------------------------------------------------------------------
@@ -157,7 +186,17 @@ begin
       from public.profiles p
      where p.vindbaar
        and p.id <> v_ik
-       and p.display_name ilike '%' || v_term || '%' escape '\'
+       -- ⚠️⚠️ **Zoeken op het begin van de naam en niet middenin, en dat is een
+       --    meting en geen voorkeur.** `like '%x%'` kan geen enkele btree
+       --    gebruiken: dat is een sequentiële scan over `profiles` bij élke
+       --    toetsaanslag, op een tabel die naar 100k+ moet. `lower(...) like
+       --    'x%'` gebruikt de index hierboven wél.
+       --
+       --    ⚠️ De prijs staat erbij: wie "de Vries" heet wordt niet gevonden op
+       --    "vries". Middenin zoeken vraagt `pg_trgm`, en dat is een extensie
+       --    die dit project vandaag niet heeft — een eigen besluit met een eigen
+       --    meting, en geen regel die je er stilletjes bij schrijft.
+       and lower(p.display_name) like lower(v_term) || '%' escape '\'
        -- ⚠️ Blokkeren werkt beide kanten op: wie jou blokkeerde verdwijnt uit
        --    jouw resultaten, en jij uit de zijne. Eén richting zou een
        --    geblokkeerde je alsnog laten vinden en uitnodigen (QS8-232).
@@ -187,3 +226,58 @@ comment on function public.zoek_mensen(text, integer, integer) is
 revoke all on function public.zoek_mensen(text, integer, integer)
   from public, anon, authenticated;
 grant execute on function public.zoek_mensen(text, integer, integer) to authenticated;
+
+-- ---------------------------------------------------------------------------
+-- 3. De foto, en waarom die hier staat en niet in een vervolgissue
+-- ---------------------------------------------------------------------------
+--
+-- 📏 **Gemeten: zonder dit blok levert dit issue de helft van wat het belooft,
+--    en er wordt niets rood van.** De bucket `avatars` is privé
+--    (`storage.buckets.public = false`), dus een `<Image>` heeft een ondertekende
+--    URL nodig, en die ontstaat alleen als `avatars_select` je doorlaat. Die
+--    policy stond op *eigen map of gedeelde groep*:
+--
+--      (storage.foldername(name))[1] = auth.uid()::text
+--        or shares_group_with_user(...)
+--
+--    Een vreemde die je via `zoek_mensen()` vindt, deelt per definitie geen
+--    groep. `avatar_url` komt netjes terug, het tekenen levert nul URL's op, en
+--    `Avatar` valt terug op initialen — **elk schakeltje af en de keten
+--    onderbroken**. Dat is regel 18 vraag 5, en het besluit zegt met zoveel
+--    woorden *"profielfoto en gebruikersnaam"*.
+--
+-- ⚠️ **Dezelfde grendel als de RPC en niet ruimer:** alleen wie zichzelf
+--    vindbaar heeft gemaakt. Wie de schakelaar uit heeft, verandert er niets aan.
+--
+-- ⚠️⚠️ **Dit deel kan een bouwsessie niet op het echte project toepassen.** Daar
+--    is `storage.objects` eigendom van `supabase_storage_admin`, de MCP draait
+--    als `postgres`, en die is geen lid van die rol — `set role` geeft
+--    *permission denied* (WERKVOORRAAD §0). Dit bestand komt dus op de stapel
+--    die op Quintens hand wacht. Tot die tijd werkt de naam wél en de foto niet,
+--    en dat staat in het beslisdocument in plaats van dat het een verrassing is.
+drop policy if exists avatars_select on storage.objects;
+create policy avatars_select on storage.objects
+  for select
+  using (
+    bucket_id = 'avatars'
+    and (
+      (storage.foldername(name))[1] = (select auth.uid())::text
+      or shares_group_with_user(
+           case
+             when (storage.foldername(name))[1] ~
+                  '^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$'
+             then ((storage.foldername(name))[1])::uuid
+             else null::uuid
+           end
+         )
+      -- ⚠️ De derde tak, en hij leunt op dezelfde kolom als de RPC.
+      or exists (
+           select 1
+             from public.profiles p
+            where p.vindbaar
+              and (storage.foldername(name))[1] ~
+                  '^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$'
+              and p.id = ((storage.foldername(name))[1])::uuid
+         )
+    )
+  );
