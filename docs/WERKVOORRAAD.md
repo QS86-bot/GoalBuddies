@@ -1113,9 +1113,14 @@ afhankelijkheden zitten er echt in.
 
 ### Nieuw sinds 14-09-2026: de zes helden (QS8-468)
 
-Een epic dat nog **geen milestone** heeft, en dat is bewust: Fase 2 staat op 100%
-en Fase 3 gaat over echt geld, analytics en moderatie. Waar dit hoort is aan
-Quinten.
+Milestone **Fase 2**, label `phase:v2` — besloten door Quinten op 14-09-2026.
+Die milestone stond op 100%; dit epic zet hem weer open.
+
+⚠️ **Vrijgegeven om nu te bouwen, terwijl Fase 1 zijn exit-criterium nog niet
+haalt.** Zelfde vorm als de drie issues die op 27-08 met naam vrijgegeven zijn:
+de grens verschuift niet, dit epic staat er met naam naast. Quinten heeft op
+14-09 gezegd de voorbereidende PR te mergen en er daarna sessies op te starten;
+dát is de vrijgave.
 
 Zes superhelden-archetypes worden de stem van de app — Strix, Ignis, Meridian,
 Forge, Lucerna en Quip. Zes deelissues: QS8-469 en QS8-470 kunnen meteen en
