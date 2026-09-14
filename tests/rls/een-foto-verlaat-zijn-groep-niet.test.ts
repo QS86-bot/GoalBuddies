@@ -221,9 +221,14 @@ describe.runIf(beschikbaar)('een foto verlaat zijn groep niet', () => {
     const alleenFotoOver = psql(
       `select count(*) from public.chat_messages where attachment_url = '${alleenFoto}'`,
     );
+    // ⚠️ **`group_id` erbij, en dat is geen overbodige nauwkeurigheid.** Elke
+    //    andere telling hierboven is met `${groepA}/${vertrekker}/%` op deze run
+    //    ingeperkt; deze één leunde alleen op de letterlijke tekst `kijk hier`.
+    //    Draait er een tweede suite tegen dezelfde stack, dan telt hij diens rij
+    //    mee en komt er 2 uit waar 1 hoort — gemeten op 14-09-2026 (QS8-481).
     const tekstOver = psql(
       `select count(*) from public.chat_messages
-       where body = 'kijk hier' and attachment_url is null`,
+       where group_id = '${groepA}' and body = 'kijk hier' and attachment_url is null`,
     );
 
     psql(`delete from storage.objects where bucket_id = 'chatfotos' and name like '${groepA}/${vertrekker}/%'`);
