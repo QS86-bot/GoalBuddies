@@ -300,6 +300,18 @@ export const BEWAAKT_BUITEN_DE_APP = {
  * @type {Record<string, string>}
  */
 export const WACHT_OP_EEN_BESLUIT = {
+  groep_helden:
+    '⚠️ **De vraag: krijgt dit oppervlak een plek op het groepsscherm, of hoort ' +
+    'de RPC weg?** (0268, QS8-477, vervolgissue QS8-493.) De functie geeft een ' +
+    'open groep per lid de held en de trigger van de laatste verschijning binnen ' +
+    'zeven dagen — besluit 5 van QS8-468. Dat er geen knop naartoe loopt is hier ' +
+    'geen omissie: het paraplu-issue zet "een eigen heldenscherm of heldenkaart op ' +
+    'het overzicht" met zoveel woorden buiten scope voor deze ronde, en QS8-477 is ' +
+    '`area:backend` met zeven acceptatiecriteria die alle zeven over de functie ' +
+    'gaan. ⚠️ Wat hem ongevaarlijk houdt zolang de vraag openstaat: nul rijen in ' +
+    'een beschermde groep, aan een niet-lid en aan een uitgezet lid, vastgelegd in ' +
+    '`tests/rls/heldenstem-in-een-open-groep.test.ts`. Komt er een scherm, dan ' +
+    'meldt deze controle zelf dat de rij weg mag.',
 };
 
 /** Bestanden waarin een aanroep als "productie" telt. Tests en scripts niet. */

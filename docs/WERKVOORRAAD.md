@@ -14,7 +14,7 @@ productie in twee rondes)
 ⚠️ **Productie staat op `0224`.** 📏 Hermeten op 14-09 om 05:02 UTC met
 `migratieregister()` tegen `wehgocadxehottiiyvsc`: **227 registerrijen**, `0001`
 t/m `0224` aaneengesloten, inclusief de drie letterversies. De map telt er
-**270**.
+**272**.
 
 ⚠️ **Hier stond tot 14-09 `0221`, en dat was op 09-09 om 16:10 UTC juist.**
 `0222`, `0223` en `0224` zijn er sindsdien op toegepast — alle drie uit QS8-71,
@@ -33,8 +33,8 @@ migratienummer aanziet, legt de lijn drie bestanden te hoog en verklaart
 `0222` t/m `0224` toegepast op een dag dat ze dat niet waren. Zelfde klasse als
 een teller in grafemen bij een grens in codepunten.
 
-**Het gat is daarmee 43 bestanden** — `0225` t/m `0267`, van 09-09
-tot en met 14-09 en uit vijfendertig verschillende issues.
+**Het gat is daarmee 45 bestanden** — `0225` t/m `0269`, van 09-09
+tot en met 14-09 en uit 37 verschillende issues.
 
 ⚠️ **In cijfers en niet voluit, en dat is sinds 14-09-2026 een controle.**
 📏 `NUMMERWOORDEN` in `scripts/docs-controle.mjs` loopt tot `twintig`; daarboven
@@ -46,7 +46,7 @@ stilte een klacht: staat er een bewering en is haar getal niet te lezen, dan is
 dát de fout, en de melding zegt erbij dat er boven de twintig een cijfer hoort.
 Uitleg in `docs/decisions/2026-09-14-een-bewering-die-niet-te-lezen-is.md`.
 
-De drieenveertig bestanden:
+De 45 bestanden:
 
 | | | DDL op `storage.objects` |
 | -- | -- | -- |
@@ -93,6 +93,8 @@ De drieenveertig bestanden:
 | `0265_een_geweigerde_groepswijziging_zegt_dat_hij_geweigerd_is.sql` | QS8-488 | nee |
 | `0266_een_teruggedraaide_weekboeking_mag_opnieuw_geboekt_worden.sql` | QS8-456 | nee |
 | `0267_een_week_draagt_hoogstens_een_goedkeuringsboeking_per_ronde.sql` | QS8-454 | nee |
+| `0268_een_held_in_een_open_groep_is_zichtbaar_voor_die_groep.sql` | QS8-477 | nee |
+| `0269_een_weergavenaam_draagt_geen_bidi_stuurteken.sql` | QS8-450 | nee |
 
 ⚠️ **Hier stond een uur eerder `0219` met twee bestanden gat, en dat klopte
 toen.** `0220` en `0221` zijn erna toegepast en `0222` t/m `0226` landden
@@ -356,7 +358,7 @@ schemaname = 'public'` gaf `41|41`. Vraag het aan de database en niet aan deze
 regel — net als bij het aantal migraties in §0.
 
 <!-- STAND:BEGIN — gegenereerd door `npm run stand` -->
-Migraties `0001` t/m `0267` staan in de map: **270 bestanden**,
+Migraties `0001` t/m `0269` staan in de map: **272 bestanden**,
 waarvan 3 met een letter-achtervoegsel (`0039a`, `0041a`, `0052a`).
 De nummering is aaneengesloten.
 <!-- STAND:EINDE -->
@@ -1178,15 +1180,26 @@ tegelijk, QS8-471 daarna, en QS8-474, QS8-475 en QS8-477 weer parallel.
 | QS8-470 | het heldenpalet als benoemde uitzondering op het navystelsel | ✅ af — PR #464 |
 | QS8-471 | datamodel: welke held is van wie, elke verschijning append-only | ✅ af — PR #470, migratie `0264` |
 | QS8-474 | de vragenlijst van vier naar acht vragen, gelijkspel is de regel | ✅ af — PR #473 |
-| QS8-475 | de heldenstem in de meldingen die er al zijn | in review |
-| QS8-477 | je held in een open groep, en nergens anders | open |
+| QS8-475 | de heldenstem in de meldingen die er al zijn | ✅ af — PR #478 |
+| QS8-477 | je held in een open groep, en nergens anders | in review — migratie `0268` |
+| QS8-493 | *(vervolg)* de heldenlijst van een open groep heeft nog geen scherm | open |
 
 ⚠️ **QS8-477 is het enige issue van dit epic met een groepsoppervlak, en dat is
 met opzet zo gehouden.** 0264 bevat geen enkele groepstak: `hero_appearances`
 draagt `trigger`, en `misser` en `stilte` zijn tegenslagsignalen. Een vierde tak
 op de leespolicy geeft de hele rij weg, want RLS kan geen kolommen beperken —
 dus de vorm is een RPC met een expliciete kolomlijst, zoals
-`straffen_bij_uitstelverzoek()` (0218) en `getuigenissen()` (0169).
+`straffen_bij_uitstelverzoek()` (0218) en `getuigenissen()` (0169). Zo is het
+ook gebouwd: `groep_helden()` in `0268`, oppervlak 37 in
+`docs/decisions/002-domeinregel7-oppervlakken.md`.
+
+⚠️ **Het epic is met QS8-477 kompleet, maar dat groepsoppervlak heeft nog geen
+knop.** QS8-468 zet "een eigen heldenscherm of heldenkaart op het overzicht" met
+zoveel woorden buiten scope voor deze ronde, dus `groep_helden()` staat met de
+vraag erbij in `WACHT_OP_EEN_BESLUIT` (`scripts/dode-keten-controle.mjs`) en
+QS8-493 draagt hem. De regels en de reden staan in CLAUDE.md en in
+`docs/decisions/2026-09-14-een-held-verraadt-geen-doel.md` §7; dít bestand houdt
+alleen de stand bij.
 
 De zeven besluiten die eraan vooraf gingen staan in
 `docs/decisions/2026-09-14-zes-helden-en-de-zeven-besluiten-eronder.md`; de
