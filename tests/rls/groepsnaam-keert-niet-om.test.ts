@@ -43,6 +43,24 @@ const RLO = String.fromCodePoint(0x202e);
 /** `U+2067` RIGHT-TO-LEFT ISOLATE. */
 const RLI = String.fromCodePoint(0x2067);
 
+/**
+ * De drie kolommen die 0270 dekt.
+ *
+ * ⚠️ **Een berekende sleutel (`{ [kolom]: waarde }`) typecheckt niet tegen de
+ *    gegenereerde Supabase-types**: die maken van een index-signatuur `never`, en
+ *    dan is élke waarde onjuist. Een `as`-cast eromheen zou het stil maken en
+ *    precies het soort fout verbergen dat deze suite moet vinden — een kolomnaam
+ *    die niet bestaat. Vandaar een schakelaar die per tak een letterlijk object
+ *    teruggeeft; `tsc` toetst dan nog steeds of de kolom bestaat.
+ */
+type BidiKolom = 'name' | 'icon' | 'omschrijving';
+
+function patchVoor(kolom: BidiKolom, waarde: string) {
+  if (kolom === 'name') return { name: waarde };
+  if (kolom === 'icon') return { icon: waarde };
+  return { omschrijving: waarde };
+}
+
 let beheerder: TestUser;
 let groupId: string;
 
@@ -68,7 +86,7 @@ describe.skipIf(!rlsTestsConfigured)('een groepsnaam keert de tekens eromheen ni
   // Schrijver 1 — de kale PATCH
   // -------------------------------------------------------------------------
 
-  it.each([
+  it.each<{ naam: string; kolom: BidiKolom; waarde: string }>([
     { naam: 'de gemeten spoofnaam', kolom: 'name', waarde: `Just${RLO}kcart` },
     { naam: 'een override midden in de naam', kolom: 'name', waarde: `a${RLO}b` },
     { naam: 'een isolaat midden in de naam', kolom: 'name', waarde: `a${RLI}b` },
@@ -79,7 +97,7 @@ describe.skipIf(!rlsTestsConfigured)('een groepsnaam keert de tekens eromheen ni
     async ({ kolom, waarde }) => {
       const { error } = await beheerder.db
         .from('groups')
-        .update({ [kolom]: waarde })
+        .update(patchVoor(kolom, waarde))
         .eq('id', groupId);
 
       expect(
@@ -161,7 +179,7 @@ describe.skipIf(!rlsTestsConfigured)('een groepsnaam keert de tekens eromheen ni
    *    weigeringen hierboven óók groen zijn, maar op `42501` in plaats van
    *    `23514`.
    */
-  it.each([
+  it.each<{ naam: string; kolom: BidiKolom; waarde: string }>([
     { naam: 'een gewone hernoeming', kolom: 'name', waarde: 'Gewone groep, hernoemd' },
     { naam: 'een Arabische groepsnaam', kolom: 'name', waarde: 'مجموعة' },
     { naam: 'een naam met een emoji', kolom: 'name', waarde: '🏃 Hardlopers' },
@@ -176,13 +194,21 @@ describe.skipIf(!rlsTestsConfigured)('een groepsnaam keert de tekens eromheen ni
     async ({ kolom, waarde }) => {
       const { error } = await beheerder.db
         .from('groups')
-        .update({ [kolom]: waarde })
+        .update(patchVoor(kolom, waarde))
         .eq('id', groupId);
 
       expect(error, 'de CHECK weigert een groepstekst die hij hoort door te laten').toBeNull();
 
-      const na = await adminDb().from('groups').select(kolom).eq('id', groupId).single();
-      expect((na.data as unknown as Record<string, unknown> | null)?.[kolom]).toBe(waarde);
+      // ⚠️ Een vaste kolomlijst en geen `select(kolom)`: die laatste geeft `tsc`
+      //    weer een berekende sleutel, en de terugleesregel is juist de helft die
+      //    bewijst dát de waarde geland is en de update niet stil niets deed.
+      const na = await adminDb()
+        .from('groups')
+        .select('name, icon, omschrijving')
+        .eq('id', groupId)
+        .single();
+
+      expect(na.data?.[kolom], 'de update gaf geen fout maar de waarde staat er niet').toBe(waarde);
     },
     TEST_TIMEOUT,
   );
