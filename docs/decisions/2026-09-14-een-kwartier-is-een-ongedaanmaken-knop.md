@@ -128,6 +128,45 @@ geval langs een eerdere grendel voert, bewaakt niets van wat hij belooft.
 dezelfde reden voor dezelfde week"* — binnen één ronde dedupliceert de index nog
 precies zoals eerst.
 
+## Wat de security-ronde eraan toevoegde
+
+⚠️⚠️ **De eerste versie repareerde één van de twee routes, en niet de
+waarschijnlijkste.** 📏 Gemeten: drie handelingen binnen een kwartier, zonder dat
+er iemand vertrekt of een termijn verstrijkt —
+
+```
+1. a1 keurt goed              -> completion_approved_ceiling +2 (ronde 1)
+2. a1 trekt in (misklik)      -> correction -2, week -> pending
+3. a2, gewoon groepslid, keurt alsnog goed
+   week = approved, punten eigenaar = 0
+```
+
+`award_points_on_approval()` boekte impliciet ronde 1 en botste op de rij uit
+stap 1. Dat is woordelijk de uitkomst die deze migratie zegt op te lossen — en
+op déze route is er zelfs een **échte** peer-goedkeuring, dus het argument om uit
+te betalen is er sterker dan bij de termijn, niet zwakker. Geen enkele toets
+raakte die naad.
+
+⚠️ **En `trek_goedkeuring_in()` kon een tweede intrekking niet aan.** 📏 `23505`
+op dezelfde index: de correctie van a2 botste op die van a1, de RPC wierp, en de
+`approval_withdrawals`-rij rolde mee terug. Een databasefout op een
+ongedaan-maken-knop.
+
+**De regel is dus: de ronde geldt overal of nergens.** Alle drie de schrijfpaden
+naar `points_ledger` die aan een week hangen, bepalen hem nu op dezelfde manier.
+
+### En het rollback-pad was gevaarlijker dan de bug
+
+📏 Het oorspronkelijke pad — drie statements los in psql, autocommit, geen
+`ON_ERROR_STOP` — geeft `DROP INDEX` committed, dán een unique violation op het
+opnieuw aanmaken, dán `ALTER TABLE` committed. Eindstand: `points_ledger`
+**zonder enige dedupe-index**. Vanaf dat moment is elke `on conflict do nothing`
+een gewone insert. Het enige signaal is één foutregel in de scrollback.
+
+Het pad staat nu in één transactie met `ON_ERROR_STOP`, en met een verplichte
+stap 0 die de meting noemt: bestaan er meerdere rondes, dan is wat daarmee moet
+gebeuren een productbeslissing die vóór stap 1 beantwoord hoort te zijn.
+
 ## Wat er blijft staan
 
 De week kan nog steeds op `pending` blijven staan als de intrekkende buddy

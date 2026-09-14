@@ -3,13 +3,40 @@
 -- weer punten op in plaats van netto nul.
 --
 -- ROLLBACK-PAD:
---   drop index if exists points_ledger_dedupe_idx;
---   create unique index points_ledger_dedupe_idx on public.points_ledger
---     (user_id, reason, ref_type, ref_id)
---     where ref_id is not null and reason <> 'review_given';
---   alter table public.points_ledger drop column if exists ronde;
---   -- en `keur_vastgelopen_goedkeuringen_goed()` terug naar de vorm van 0194:
---   -- `insert … values (…, true) on conflict do nothing;` zonder rondebepaling.
+--   ⚠️⚠️ **In één transactie en met ON_ERROR_STOP, en dat is geen stijlregel.**
+--   📏 Gemeten in de security-ronde op dit issue: de drie statements los in psql
+--   geplakt (autocommit, geen ON_ERROR_STOP) geeft `DROP INDEX` committed,
+--   dán een unique violation op het opnieuw aanmaken, en dán `ALTER TABLE`
+--   committed. Eindstand: `points_ledger` **zonder enige dedupe-index** en
+--   zonder `ronde`. Vanaf dat moment is elke `on conflict do nothing` een
+--   gewone insert en boekt élke herhaalde goedkeuring opnieuw uit — één
+--   foutregel in de scrollback is het enige signaal.
+--
+--   STAP 0, en hij is verplicht: deze query moet leeg zijn.
+--     select user_id, reason, ref_type, ref_id, count(*)
+--     from points_ledger
+--     where ref_id is not null and reason <> 'review_given'
+--     group by 1,2,3,4 having count(*) > 1;
+--
+--   Geeft hij rijen, dan heeft de reparatie gewerkt en bestaan er meerdere
+--   rondes. Wat daarmee moet gebeuren — de latere rondes weggooien (de eigenaar
+--   verliest punten die hij verdiend heeft) of de rijen samenvoegen — is een
+--   productbeslissing en hoort hier beantwoord te zijn vóór stap 1, niet als
+--   unique violation naar boven te komen.
+--
+--   psql -v ON_ERROR_STOP=1 <<'SQL'
+--   begin;
+--     drop index if exists points_ledger_dedupe_idx;
+--     create unique index points_ledger_dedupe_idx on public.points_ledger
+--       (user_id, reason, ref_type, ref_id)
+--       where ref_id is not null and reason <> 'review_given';
+--     alter table public.points_ledger drop column if exists ronde;
+--   commit;
+--   SQL
+--
+--   En de drie functies terug naar hun vorm van vóór deze migratie:
+--   `keur_vastgelopen_goedkeuringen_goed()` (0194), `award_points_on_approval()`
+--   en `trek_goedkeuring_in()` — alle drie zonder rondebepaling.
 --
 -- ---------------------------------------------------------------------------
 -- Waar dit vandaan komt
@@ -206,3 +233,313 @@ begin
   return v_aantal;
 end;
 $function$;
+
+-- ---------------------------------------------------------------------------
+-- 3. De ronde geldt overal, en niet alleen op de termijn
+-- ---------------------------------------------------------------------------
+--
+-- ⚠️⚠️ **De eerste versie van deze migratie repareerde één van de twee routes,
+--    en niet de waarschijnlijkste.** Gevonden in de security-ronde. 📏 Gemeten,
+--    drie handelingen binnen een kwartier en zonder dat er iemand vertrekt of
+--    een termijn verstrijkt:
+--
+--      1. a1 keurt de week goed          -> completion_approved_ceiling +2 (ronde 1)
+--      2. a1 trekt in (misklik, <15 min) -> correction -2, week -> pending
+--      3. a2, gewoon groepslid, keurt alsnog goed
+--
+--      week = approved, punten eigenaar = 0
+--
+--    `award_points_on_approval()` boekte impliciet ronde 1 en botste dus op de
+--    rij uit stap 1. Dat is woordelijk de uitkomst die deze migratie zegt op te
+--    lossen — en op déze route is er zelfs een échte peer-goedkeuring, dus het
+--    argument om uit te betalen is hier sterker dan bij de termijn.
+--
+-- ⚠️ **En `trek_goedkeuring_in()` kon een tweede intrekking niet meer aan.**
+--    📏 Gemeten: a2 die zijn eigen goedkeuring intrekt, botst met `23505` op
+--    dezelfde index, en de `approval_withdrawals`-rij rolt mee terug.
+--
+-- De regel is dus: **de ronde geldt overal of nergens.** Alle drie de
+-- schrijfpaden naar `points_ledger` die aan een week hangen, bepalen hem nu op
+-- dezelfde manier.
+
+CREATE OR REPLACE FUNCTION public.award_points_on_approval()
+ RETURNS trigger
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO 'public', 'pg_temp'
+AS $function$
+declare
+  c        completions%rowtype;
+  w        weekly_goals%rowtype;
+  g_owner  uuid;
+  punten   integer;
+  reden    text;
+  v_ronde  smallint;
+begin
+  select * into c from completions where id = new.completion_id;
+  select * into w from weekly_goals where id = c.weekly_goal_id;
+  select owner_id into g_owner from goals where id = w.goal_id;
+
+  if c.superseded_by is not null then
+    return new;
+  end if;
+
+  -- ⚠️ **Eén punt per buddy per cyclus** (besluit A51). De verwijzing is de
+  --    eigenaar van het weekdoel — de buddy voor wie je opdaagt — en niet de
+  --    voltooiing. Een tweede weekdoel van dezelfde buddy in dezelfde week
+  --    levert daarom niets extra's op; een andere buddy of een andere week wel.
+  --
+  -- ⚠️ De cyclus komt uit `weekly_goals` en wordt hier niet uitgerekend.
+  --    Correctheidsregel 7: de database rekent geen weken uit. Het is de cyclus
+  --    van de éigenaar, want dat is de week die beoordeeld wordt.
+  --
+  -- ⚠️ "Vertel me meer" claimt het punt voor die cyclus, en de goedkeuring die er
+  --    later op volgt levert niets extra's op. Dat is bedoeld: een echte vraag
+  --    stellen ís de aandacht die dit punt beloont, en het haalt de prikkel weg
+  --    om snel af te stempelen.
+  --
+  -- ⚠️ **Dit punt hangt níét aan de drempel** (QS8-65). Wie als eerste van drie
+  --    bevestigt heeft dezelfde aandacht gegeven als wie als derde bevestigt.
+  --    Zou het punt pas bij het halen van de drempel vallen, dan betaalt alleen
+  --    de laatste beoordelaar zich uit en wordt vroeg kijken onaantrekkelijk.
+  if w.status = 'pending' and g_owner is not null and w.cycle_start_date is not null then
+    insert into points_ledger (
+      user_id, goal_id, group_id, delta, reason, ref_type, ref_id, cycle_start_date
+    )
+    values (
+      new.approver_id, null, new.group_id, 1, 'review_given',
+      'buddy_cycle', g_owner, w.cycle_start_date
+    )
+    on conflict do nothing;
+  end if;
+
+  if new.status <> 'approved' then
+    return new;
+  end if;
+
+  if w.status <> 'pending' then
+    return new;
+  end if;
+
+  -- ⚠️ **De regel van QS8-65, en de enige plek waar hij de week raakt.** Tot deze
+  --    migratie bevestigde één goedkeuring de week onvoorwaardelijk. Nu telt
+  --    `goedkeuringsdrempel_gehaald()` per groep tegen de drempel die bij het
+  --    indienen bevroren is. Bij `approval_rule = 'any'` — de standaard en de
+  --    enige stand die vandaag bestaat — is die drempel 1 en verandert er niets.
+  if not goedkeuringsdrempel_gehaald(new.completion_id) then
+    return new;
+  end if;
+
+  if c.achieved_level = 'ceiling' then
+    punten := w.points_ceiling;
+    reden  := 'completion_approved_ceiling';
+  else
+    punten := w.points_floor;
+    reden  := 'completion_approved_floor';
+  end if;
+
+  update weekly_goals set status = 'approved' where id = w.id;
+
+  -- ⚠️⚠️ **Dezelfde rondebepaling als de termijn, en dat is de reparatie van
+  --  de security-ronde op QS8-456.** Zonder deze regels boekt deze trigger
+  --  impliciet ronde 1, en dán botst hij op de rij van een góedkeuring die
+  --  daarna is ingetrokken — 📏 gemeten: week `approved`, netto **nul**.
+  --
+  --  Dat is bovendien de wáárschijnlijkste vorm van deze bug: hier hoeft
+  --  niemand de groep te verlaten en hoeft er geen week termijn te verstrijken,
+  --  alleen een tweede groepsgenoot die alsnog goedkeurt.
+  select coalesce(max(p.ronde), 0) + 1 into v_ronde
+  from points_ledger p
+  where p.user_id  = g_owner
+    and p.reason   = reden
+    and p.ref_type = 'weekly_goal'
+    and p.ref_id   = w.id;
+
+  insert into points_ledger (user_id, goal_id, group_id, delta, reason, ref_type, ref_id, ronde)
+  values (g_owner, w.goal_id, new.group_id, punten, reden, 'weekly_goal', w.id, v_ronde)
+  on conflict do nothing;
+
+  perform verdien_weekpassen(g_owner, w.goal_id);
+
+  perform herbereken_reeks(g_owner, w.goal_id);
+
+  return new;
+end;
+$function$
+
+;
+
+CREATE OR REPLACE FUNCTION public.trek_goedkeuring_in(p_approval_id uuid)
+ RETURNS jsonb
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO 'public', 'pg_temp'
+AS $function$
+declare
+  a        completion_approvals%rowtype;
+  c        completions%rowtype;
+  w        weekly_goals%rowtype;
+  g_owner  uuid;
+  punten   integer;
+  treffers integer;
+  v_ronde  smallint;
+begin
+  if auth.uid() is null then
+    return jsonb_build_object('ok', false, 'reason', 'not_signed_in');
+  end if;
+
+  select * into a from completion_approvals where id = p_approval_id;
+
+  if a.id is null then
+    return jsonb_build_object('ok', false, 'reason', 'not_found');
+  end if;
+
+  -- ⚠️⚠️ **`is distinct from` en niet `<>`, en dat is een reparatie** (QS8-371).
+  --    `completion_approvals.approver_id` staat op `on delete set null`, dus zodra
+  --    de goedkeurder zijn account verwijdert is dit `null`. `null <> auth.uid()`
+  --    is `null` en niet `true`, dus plpgsql sloeg de `then`-tak over en deze
+  --    eigendomstoets weigerde niemand meer.
+  --
+  -- 📏 Gemeten: Alice bevestigt de week van Bob en verwijdert haar account;
+  --    Mallory, een willekeurig ander actief lid van de groep, komt daarna langs
+  --    `not_yours`, langs de lidmaatschapstoets, langs het venster en langs
+  --    `already_withdrawn`. Wat haar tegenhield was een `not null` in een ándere
+  --    tabel — eerst `approval_withdrawals.approver_id`, en na 0212 nog alleen
+  --    `points_ledger.user_id`. Een toevallige muur, geen slot.
+  --
+  -- ⚠️ **Dit is de weiger-kant.** Op de toesta-kant sluit een `null`; hier opent
+  --    hij. Dezelfde nul, tegengestelde uitwerking, en dat verschil is de reden
+  --    dat deze regel in dezelfde migratie hoort als de kolom die de nul mogelijk
+  --    maakt.
+  if a.approver_id is distinct from auth.uid() then
+    return jsonb_build_object('ok', false, 'reason', 'not_yours');
+  end if;
+
+  if not exists (
+    select 1 from group_members m
+    where m.group_id = a.group_id and m.user_id = auth.uid() and m.status <> 'inactive'
+  ) then
+    return jsonb_build_object('ok', false, 'reason', 'not_member');
+  end if;
+
+  if a.created_at <= now() - (intrekvenster_minuten() || ' minutes')::interval then
+    return jsonb_build_object('ok', false, 'reason', 'window_closed');
+  end if;
+
+  if exists (select 1 from approval_withdrawals x where x.approval_id = a.id) then
+    return jsonb_build_object('ok', false, 'reason', 'already_withdrawn');
+  end if;
+
+  insert into approval_withdrawals (approval_id, completion_id, approver_id)
+  values (a.id, a.completion_id, a.approver_id);
+
+  insert into points_ledger (user_id, goal_id, group_id, delta, reason, ref_type, ref_id)
+  values (a.approver_id, null, a.group_id, -1, 'correction', 'completion', a.completion_id);
+
+  if a.status <> 'approved' then
+    return jsonb_build_object('ok', true, 'reverted', false);
+  end if;
+
+  select * into c from completions   where id = a.completion_id;
+  select * into w from weekly_goals  where id = c.weekly_goal_id;
+  select owner_id into g_owner from goals where id = w.goal_id;
+
+  -- ⚠️ **Hier stond `nog_geldig > 0`, en dat was dezelfde som op een tweede
+  --    plek** (QS8-65). Met een drempel boven één zou die som "nog iemand
+  --    anders is akkoord" hebben gelezen als "de regel is nog gehaald", en dan
+  --    blijft een week bevestigd die de meerderheid niet meer heeft.
+  --
+  --    De intrekking staat hierboven al in `approval_withdrawals`, dus de telling
+  --    hieronder ziet hem niet meer meetellen. Eén bron, twee aanroepers.
+  if goedkeuringsdrempel_gehaald(a.completion_id) then
+    return jsonb_build_object('ok', true, 'reverted', false);
+  end if;
+
+  if c.achieved_level = 'ceiling' then
+    punten := w.points_ceiling;
+  else
+    punten := w.points_floor;
+  end if;
+
+  update weekly_goals set status = 'pending' where id = w.id;
+
+  -- ⚠️⚠️ **Ook hier de ronde, en zonder haar kon een tweede intrekking niet.**
+  --    📏 Gemeten in de security-ronde op QS8-456: keurt a1 goed en trekt hij in,
+  --    keurt a2 daarna goed en wil hij ook intrekken, dan botste deze insert op
+  --    `points_ledger_dedupe_idx` met `23505` — de RPC wierp, en de
+  --    `approval_withdrawals`-rij rolde mee terug. Een databasefout op een
+  --    ongedaan-maken-knop.
+  select coalesce(max(p.ronde), 0) + 1 into v_ronde
+  from points_ledger p
+  where p.user_id  = g_owner
+    and p.reason   = 'correction'
+    and p.ref_type = 'weekly_goal'
+    and p.ref_id   = w.id;
+
+  insert into points_ledger (user_id, goal_id, group_id, delta, reason, ref_type, ref_id, ronde)
+  values (g_owner, w.goal_id, a.group_id, -punten, 'correction', 'weekly_goal', w.id, v_ronde);
+
+  perform herbereken_reeks(g_owner, w.goal_id);
+
+  -- ⚠️⚠️ **Hier stond `and m.body = tekst`, en dat is met 0213 weg** (QS8-372).
+  --    Deze functie bouwde de zin opnieuw op — `weergavenaam(approver) ||
+  --    ' bevestigde de week van ' || weergavenaam(subject)` — en zocht het
+  --    bericht daarmee terug. De zin wás het identificatiemiddel.
+  --
+  -- 📏 Dat werkte alleen doordat er een naam in stond en de zin dus toevallig
+  --    uniek genoeg was. 0213 haalt de naam uit elke systeemberichtzin, en dan
+  --    dragen twee bevestigingen van dezelfde beoordelaar voor dezelfde persoon
+  --    in dezelfde groep exact dezelfde tekst. `treffers` wordt dan 2, de `if`
+  --    slaat over, en er blijft een bericht staan dat zegt dat een week
+  --    bevestigd is terwijl de bevestiging is ingetrokken.
+  --
+  -- ⚠️ **Een zin is geen sleutel.** Het bericht draagt sinds 0213 de
+  --    `completion_id` in zijn `payload`, en dáár wordt op gezocht.
+  --
+  -- ⚠️⚠️ **Plus `actor_id`, en dat is een reparatie uit de security-ronde op deze
+  --    branch.** De zin codeerde twee dingen: de voltooiing én de beoordelaar
+  --    (zijn naam stond erin). `completion_id` codeert alleen het eerste, en
+  --    `completion_approvals_one_vote` is `unique (completion_id, approver_id)` —
+  --    bij een drempel boven één bevestigen dus meerdere mensen dezelfde
+  --    voltooiing, en `meld_goedkeuring()` plaatst een bericht bij élke
+  --    bevestiging die de drempel haalt.
+  --
+  -- 📏 Zonder `actor_id` gaat dat twee kanten op fout, allebei nagespeeld:
+  --      * Alice trekt haar eigen bevestiging in en wist daarmee het bericht van
+  --        Carol, wiens bevestiging gewoon geldig blijft. Dit draait als
+  --        `security definer`, dus langs `chat_messages_delete` heen: een
+  --        gebruiker wist een rij die aan een ander is toegeschreven.
+  --      * Bij drie beoordelaars blijven na het intrekken twéé berichten staan
+  --        die zeggen dat een week bevestigd is, terwijl de week op `pending`
+  --        staat — precies de uitkomst die deze migratie zegt te repareren.
+  --
+  --    De sleutel is dus het paar, net als de zin dat was: `completion_id` uit
+  --    `payload` én `actor_id`. Zie `completion_approvals_one_vote`.
+  --
+  -- ⚠️ De telling blijft staan en blijft `= 1` eisen: liever een bericht laten
+  --    staan dan er twee weghalen. `treffers` is nu wel een bewering die kan
+  --    kloppen in plaats van een die van de tekst afhangt.
+  select count(*) into treffers
+  from chat_messages m
+  where m.group_id     = a.group_id
+    and m.type         = 'system'
+    and m.system_event = 'completion_approved'
+    and m.payload->>'completion_id' = a.completion_id::text
+    and m.actor_id     = a.approver_id
+    and m.created_at  >= a.created_at;
+
+  if treffers = 1 then
+    delete from chat_messages m
+    where m.group_id     = a.group_id
+      and m.type         = 'system'
+      and m.system_event = 'completion_approved'
+      and m.payload->>'completion_id' = a.completion_id::text
+      and m.actor_id     = a.approver_id
+      and m.created_at  >= a.created_at;
+  end if;
+
+  return jsonb_build_object('ok', true, 'reverted', true);
+end;
+$function$
+
+;

@@ -1585,4 +1585,145 @@ describe.skipIf(!rlsTestsConfigured)('een week die zijn beoordelaars kwijtraakt'
       TEST_TIMEOUT,
     );
   });
+
+  /**
+   * QS8-456, de tweede route — gevonden in de security-ronde op migratie 0266.
+   *
+   * ⚠️⚠️ **De eerste versie van 0266 repareerde alleen de termijn, en dit is de
+   *    waarschijnlijkste vorm van dezelfde bug.** Hier hoeft niemand de groep te
+   *    verlaten en hoeft er geen week te verstrijken: drie handelingen binnen een
+   *    kwartier, en een gewoon tweede groepslid dat alsnog goedkeurt.
+   *
+   *    📏 Gemeten vóór de reparatie: week `approved`, punten eigenaar **0**.
+   *    `award_points_on_approval()` boekte impliciet ronde 1 en botste op de rij
+   *    van de ingetrokken goedkeuring.
+   *
+   * ⚠️ Géén enkele bestaande toets raakte deze naad — `vastgelopen.test.ts` toetste
+   *    alleen de termijnroute, en `goedkeuringsdrempel.test.ts` trekt wel in maar
+   *    keurt daarna niet opnieuw goed en telt geen punten. Regel 18 vraag 5: elk
+   *    schakeltje af, de keten onderbroken.
+   */
+  describe('een tweede beoordelaar keurt goed nadat de eerste introk (QS8-456)', () => {
+    it(
+      'levert de eigenaar alsnog zijn punten op',
+      async () => {
+        const o = await bouwOpstelling('tweede-beoordelaar');
+
+        const admin = adminDb();
+        const groep = await admin
+          .from('groups')
+          .select('invite_code')
+          .eq('id', o.groupId)
+          .single();
+        if (groep.error || !groep.data) throw new Error(`uitnodigingscode: ${groep.error?.message}`);
+
+        const tweede = await createTestUser('tweede-beoordelaar-a2');
+        const mee = await tweede.db.rpc('join_group_with_code', {
+          code: groep.data.invite_code as string,
+        });
+        const meeData = (mee.data ?? {}) as { ok?: boolean; reason?: string };
+        if (meeData.ok !== true) throw new Error(`a2 werd geen lid: ${meeData.reason ?? '?'}`);
+
+        // 1. a1 keurt goed
+        const eerste = await o.beoordelaar.db
+          .from('completion_approvals')
+          .insert({
+            completion_id: o.completionId,
+            approver_id: o.beoordelaar.id,
+            subject_id: o.eigenaar.id,
+            group_id: o.groupId,
+            status: 'approved',
+          })
+          .select('id')
+          .single();
+        if (eerste.error) throw new Error(`a1 goedkeuren: ${eerste.error.message}`);
+        expect(await weekstatus(o.completionId)).toBe('approved');
+
+        // 2. a1 trekt in — binnen het kwartier, dus een misklik
+        const terug = await o.beoordelaar.db.rpc('trek_goedkeuring_in', {
+          p_approval_id: eerste.data.id as string,
+        });
+        if (terug.error) throw new Error(`intrekken: ${terug.error.message}`);
+        expect(await weekstatus(o.completionId), 'de intrekking zette de week niet terug').toBe(
+          'pending',
+        );
+
+        // 3. a2 keurt alsnog goed — een échte peer-goedkeuring
+        const tweedeKeur = await tweede.db
+          .from('completion_approvals')
+          .insert({
+            completion_id: o.completionId,
+            approver_id: tweede.id,
+            subject_id: o.eigenaar.id,
+            group_id: o.groupId,
+            status: 'approved',
+          })
+          .select('id')
+          .single();
+        if (tweedeKeur.error) throw new Error(`a2 goedkeuren: ${tweedeKeur.error.message}`);
+
+        expect(await weekstatus(o.completionId)).toBe('approved');
+
+        // ⚠️ Dít is de belofte. Vóór de reparatie stond hier 0.
+        const netto = await punten(o.goalId);
+        expect(
+          netto,
+          'de week staat op `approved` maar levert de eigenaar netto niets op — ' +
+            'award_points_on_approval() botste op de rij van de ingetrokken goedkeuring',
+        ).toBeGreaterThan(0);
+      },
+      TEST_TIMEOUT,
+    );
+
+    it(
+      'laat die tweede beoordelaar zijn goedkeuring ook weer intrekken',
+      async () => {
+        // ⚠️ 📏 Vóór de reparatie wierp deze tweede intrekking `23505` op
+        //    `points_ledger_dedupe_idx`: de correctie van a2 botste op die van a1.
+        //    Een databasefout op een ongedaan-maken-knop.
+        const o = await bouwOpstelling('tweede-intrekking');
+
+        const admin = adminDb();
+        const groep = await admin
+          .from('groups')
+          .select('invite_code')
+          .eq('id', o.groupId)
+          .single();
+        if (groep.error || !groep.data) throw new Error(`uitnodigingscode: ${groep.error?.message}`);
+
+        const tweede = await createTestUser('tweede-intrekking-a2');
+        const mee = await tweede.db.rpc('join_group_with_code', {
+          code: groep.data.invite_code as string,
+        });
+        if ((mee.data as { ok?: boolean })?.ok !== true) throw new Error('a2 werd geen lid');
+
+        const keur = async (u: typeof tweede) => {
+          const r = await u.db
+            .from('completion_approvals')
+            .insert({
+              completion_id: o.completionId,
+              approver_id: u.id,
+              subject_id: o.eigenaar.id,
+              group_id: o.groupId,
+              status: 'approved',
+            })
+            .select('id')
+            .single();
+          if (r.error) throw new Error(`goedkeuren: ${r.error.message}`);
+          return r.data.id as string;
+        };
+
+        const id1 = await keur(o.beoordelaar);
+        const in1 = await o.beoordelaar.db.rpc('trek_goedkeuring_in', { p_approval_id: id1 });
+        if (in1.error) throw new Error(`eerste intrekking: ${in1.error.message}`);
+
+        const id2 = await keur(tweede);
+        const in2 = await tweede.db.rpc('trek_goedkeuring_in', { p_approval_id: id2 });
+
+        expect(in2.error, `tweede intrekking wierp: ${in2.error?.message ?? ''}`).toBeNull();
+        expect((in2.data as { ok?: boolean })?.ok).toBe(true);
+      },
+      TEST_TIMEOUT,
+    );
+  });
 });

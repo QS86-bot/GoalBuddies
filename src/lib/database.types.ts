@@ -1685,6 +1685,7 @@ export type Database = {
           reason: string
           ref_id: string | null
           ref_type: string | null
+          ronde: number
           user_id: string
           zonder_beoordelaar: boolean
         }
@@ -1698,6 +1699,7 @@ export type Database = {
           reason: string
           ref_id?: string | null
           ref_type?: string | null
+          ronde?: number
           user_id: string
           zonder_beoordelaar?: boolean
         }
@@ -1711,6 +1713,7 @@ export type Database = {
           reason?: string
           ref_id?: string | null
           ref_type?: string | null
+          ronde?: number
           user_id?: string
           zonder_beoordelaar?: boolean
         }
