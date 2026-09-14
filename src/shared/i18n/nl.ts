@@ -599,7 +599,6 @@ export const nl = {
   'onboarding.naam_plaatshouder': 'Quinten',
   'onboarding.geen_avatar': 'Geen foto? Dan tonen we je initialen. Je kunt er hier een kiezen, of later bij Profiel.',
   'onboarding.tijdzone_van_telefoon': 'Tijdzone: {zone}, van je telefoon.',
-  'onboarding.tijdzone_klopt_niet': 'Klopt niet',
   'onboarding.waarvoor': 'Waarvoor kom je?',
   'onboarding.waarvoor_hint': 'Kwam je binnen om een vriend te helpen? Dan hoef je zelf geen doel. Je kunt er altijd later een maken.',
   'onboarding.zelf_doel': 'Ik wil zelf een doel',
@@ -2257,16 +2256,9 @@ export const nl = {
   // De tijdzone met de hand zetten — QS8-27, criterium 1
   // ---------------------------------------------------------------------------
   'tijdzone.label': 'Tijdzone',
-  'tijdzone.hint':
-    'Hierin worden "vandaag" en "deze week" berekend. Standaard die van je telefoon; zoek op een plaatsnaam om hem te wijzigen.',
-  'tijdzone.zoek_voorbeeld': 'Amsterdam',
   'tijdzone.nu': 'Nu ingesteld: {zone}',
-  'tijdzone.gebruik_getypt': 'Gebruik {zone}',
-  'tijdzone.van_apparaat': 'De tijdzone van dit apparaat ({zone})',
-  'tijdzone.niets_gevonden': 'Geen tijdzone gevonden. Zoek op een grote stad in de buurt.',
-  'tijdzone.uitleg':
-    'Wijzigen laat je punten en je reeks met rust: die staan vast op de weken die er al zijn. Wat verandert is wanneer de volgende week omslaat.',
-  'tijdzone.opgeslagen': 'Tijdzone opgeslagen.',
+  'tijdzone.van_het_apparaat':
+    'Deze komt uit je apparaat en wordt automatisch bijgewerkt als je verhuist of reist.',
 
 
   // ---------------------------------------------------------------------------

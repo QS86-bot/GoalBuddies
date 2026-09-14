@@ -425,7 +425,6 @@ export const en: Record<Sleutel, string> = {
   'onboarding.naam_plaatshouder': 'Quinten',
   'onboarding.geen_avatar': 'No photo? Then we show your initials. You can pick one here, or later under Profile.',
   'onboarding.tijdzone_van_telefoon': 'Time zone: {zone}, from your phone.',
-  'onboarding.tijdzone_klopt_niet': 'Not right',
   'onboarding.waarvoor': 'What brings you here?',
   'onboarding.waarvoor_hint': 'Did you come in to help a friend? Then you do not need a goal yourself. You can always make one later.',
   'onboarding.zelf_doel': 'I want a goal of my own',
@@ -1793,16 +1792,9 @@ export const en: Record<Sleutel, string> = {
 
 
   'tijdzone.label': 'Time zone',
-  'tijdzone.hint':
-    'This is where “today” and “this week” are calculated. Your phone’s zone by default; search for a city to change it.',
-  'tijdzone.zoek_voorbeeld': 'Amsterdam',
   'tijdzone.nu': 'Currently set to: {zone}',
-  'tijdzone.gebruik_getypt': 'Use {zone}',
-  'tijdzone.van_apparaat': 'This device’s time zone ({zone})',
-  'tijdzone.niets_gevonden': 'No time zone found. Search for a large city nearby.',
-  'tijdzone.uitleg':
-    'Changing this leaves your points and your streak alone: those are fixed to the weeks already there. What changes is when the next week rolls over.',
-  'tijdzone.opgeslagen': 'Time zone saved.',
+  'tijdzone.van_het_apparaat':
+    'This comes from your device and updates automatically when you move or travel.',
 
 
   'weektip.lichaam.1': 'Your body remembers the weeks you showed up. This was one of them.',

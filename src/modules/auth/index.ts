@@ -26,6 +26,8 @@ export {
 
 export { SessionProvider, useSession } from './SessionProvider';
 export { ProfielProvider, useProfiel } from './ProfielProvider';
+export { useTijdzoneSync } from './useTijdzoneSync';
+export { moetSynchroniseren } from './tijdzonesync-regel';
 
 export {
   fetchProfiel,
