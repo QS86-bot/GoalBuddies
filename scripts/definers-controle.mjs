@@ -560,6 +560,11 @@ const LEESREGISTER = new Map([
   ['groep_teller', 'Lidmaatschapspoort: `where is_group_member(p_group_id)` — geen lid, nul rijen. Telt alleen omhoog (domeinregel 7).'],
   ['ketting_stand', 'Lidmaatschapspoort: `where is_group_member(p_group_id)`. Geeft `{schakels, in_aanmerking, voltallig}` en nooit een naam.'],
   ['groep_klassement', 'Poort op `lid_van_open_groep(p_group_id)`: in een beschermde groep nul rijen (A54). Geen delta en geen datum, dus geen gemiste week af te leiden.'],
+  // ⚠️ **De enige rij in dit register waar het antwoord op de eerste vraag "ja"
+  //    is, en dat is geen bezwaar maar het oppervlak zelf** (0268, QS8-477).
+  //    `trigger = 'misser'` zégt dat er iets gemist is. Besluit A41 staat dat toe
+  //    in een open groep; de poort is wat het bij die groep houdt.
+  ['groep_helden', 'Poort op `lid_van_open_groep(p_group_id)`: in een beschermde groep nul rijen, en ook aan een niet-lid en een uitgezet lid. ⚠️ Hieruit is iemands gemiste week wél af te leiden — `trigger` draagt `misser` en `stilte` — en dat is precies wat besluit 5 van QS8-468 een open groep gunt. Wat er niet uit komt is het tijdstip, het rij-id en `hero_profiles`; die kolommen bestaan niet in de handtekening. Alles ouder dan zeven dagen valt eruit, zodat een misser geen merkteken wordt dat nooit vervalt. DEFINER is hier noodzaak: `hero_appearances_select` staat op `user_id = auth.uid()`, dus een INVOKER-functie gaf een lijst van één persoon.'],
   ['zichtbare_reeksen_van_groep', 'Lidmaatschapspoort in de `where` plus `shares_group_with_goal()` per doel; `best_streak` en `last_cycle_start` zijn gemaskeerd buiten een open groep (0078).'],
   ['verzoekers_eerder_lid', 'Beheerderspoort: `and is_group_admin(p_group_id)` in de `where`.'],
   ['getuigenissen', 'Scoping op `c.beneficiary_user_id = auth.uid()` plus `deelt_groep_met_eigenaar()` (QS8-306). ⚠️ Bestaat als RPC en niet als policy omdat RLS geen kolommen kan beperken — de kolomlijst ís hier de grendel.'],
