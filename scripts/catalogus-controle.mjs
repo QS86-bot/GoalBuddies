@@ -78,151 +78,126 @@ export const NOG_NIET_AANGESLOTEN = {
   // De zes helden — QS8-469, epic QS8-468
   // ---------------------------------------------------------------------------
   //
-  // ⚠️ **Tweeënzestig rijen voor één gat, en dat is met opzet zichtbaar lelijk.**
-  //    De copy van de zes helden landde vóór de schermen die haar tonen: QS8-474
-  //    toont naam, ondertitel en persoonlijkheid in de quiz, QS8-475 zet een
-  //    quote onder een melding. Tot die twee er zijn toont niemand deze teksten,
-  //    en dat is precies wat deze controle hoort te melden.
+  // ⚠️ **Hier stonden tweeënzestig rijen; sinds QS8-474 zijn het er
+  //    vierenveertig.** De copy van de zes helden landde vóór de schermen die
+  //    haar tonen. QS8-474 toont naam, ondertitel en persoonlijkheid in de quiz
+  //    — die achttien zijn eruit — en QS8-475 zet een quote onder een melding.
+  //    Die vierenveertig staan hieronder en verdwijnen dáár.
   //
   //    Zelfde patroon als `goedkeuringsregel.nog_een` hierboven: de tekst was er
   //    eerder dan de feature. Het verschil is de schaal, en dáárom staat het hier
   //    en niet in een stille uitzondering — een register dat in één keer van zes
   //    naar achtenzestig rijen gaat, hoort op te vallen.
   //
-  // ⚠️ **Alle tweeënzestig verdwijnen samen.** Staat er na QS8-474 en QS8-475 nog
-  //    één, dan is dat geen opruimklus maar een tekst die niemand aansluit — en
-  //    dan is díé rij de bevinding.
+  // ⚠️⚠️ **De achttien kwamen er niet uit doordat ze getoond worden, maar
+  //    doordat hun sleutel voluit geschreven is.** Dat verschil is de moeite
+  //    waard om te onthouden: deze controle volgt een template-literal alleen
+  //    als hij **direct in `t()`** staat. `heldTekstSleutel()` gaf er een terug
+  //    uit een helper, en dan ziet de controle niets — óók niet nadat QS8-474 de
+  //    tekst op het scherm zette. Zonder die omzetting had de reden hieronder
+  //    ("nog geen scherm") stilletjes onwaar gestaan bij achttien rijen die wél
+  //    getoond werden.
+  //
+  //    De omzetting naar een opzoektabel met `Sleutel`-literals in
+  //    `src/modules/helden/helden.ts` en `quiz.ts` doet er nog iets bij: `tsc`
+  //    toetst nu of de sleutel bestáát, wat een `as Sleutel`-cast juist
+  //    wegnam. De vierenveertig quotes hieronder worden bij QS8-475 op dezelfde
+  //    manier aangesloten.
   //
   // 📏 Hier stonden er eerst eenenzestig: `held.strix.naam` ontsnapte omdat die
   //    sleutel letterlijk in een comment van `src/modules/helden/helden.ts`
   //    stond, en deze controle knipt commentaar niet weg. Dat literaal is
   //    weggehaald zodat alle zes de helden hetzelfde gemeten worden. De vondst
   //    zelf — een vermelding in commentaar telt hier als aanroeper — is breder
-  //    dan dit issue en hoort een eigen rij te krijgen.
-  'held.strix.naam':
-    'Heldencopy zonder scherm, QS8-469. Weg bij QS8-474 en QS8-475.',
-  'held.strix.ondertitel':
-    'Heldencopy zonder scherm, QS8-469. Weg bij QS8-474 en QS8-475.',
-  'held.strix.persoonlijkheid':
-    'Heldencopy zonder scherm, QS8-469. Weg bij QS8-474 en QS8-475.',
+  //    dan dit issue en staat als rij in `docs/ENGINEER-REVIEW.md`.
   'held.strix.quote1':
-    'Heldencopy zonder scherm, QS8-469. Weg bij QS8-474 en QS8-475.',
+    'Heldenquote zonder melding, QS8-469. Weg bij QS8-475.',
   'held.strix.quote1.bron':
-    'Heldencopy zonder scherm, QS8-469. Weg bij QS8-474 en QS8-475.',
+    'Heldenquote zonder melding, QS8-469. Weg bij QS8-475.',
   'held.strix.quote2':
-    'Heldencopy zonder scherm, QS8-469. Weg bij QS8-474 en QS8-475.',
+    'Heldenquote zonder melding, QS8-469. Weg bij QS8-475.',
   'held.strix.quote2.bron':
-    'Heldencopy zonder scherm, QS8-469. Weg bij QS8-474 en QS8-475.',
+    'Heldenquote zonder melding, QS8-469. Weg bij QS8-475.',
   'held.strix.quote3':
-    'Heldencopy zonder scherm, QS8-469. Weg bij QS8-474 en QS8-475.',
+    'Heldenquote zonder melding, QS8-469. Weg bij QS8-475.',
   'held.strix.quote3.bron':
-    'Heldencopy zonder scherm, QS8-469. Weg bij QS8-474 en QS8-475.',
+    'Heldenquote zonder melding, QS8-469. Weg bij QS8-475.',
   'held.strix.quote4':
-    'Heldencopy zonder scherm, QS8-469. Weg bij QS8-474 en QS8-475.',
+    'Heldenquote zonder melding, QS8-469. Weg bij QS8-475.',
   'held.strix.quote4.bron':
-    'Heldencopy zonder scherm, QS8-469. Weg bij QS8-474 en QS8-475.',
-  'held.ignis.naam':
-    'Heldencopy zonder scherm, QS8-469. Weg bij QS8-474 en QS8-475.',
-  'held.ignis.ondertitel':
-    'Heldencopy zonder scherm, QS8-469. Weg bij QS8-474 en QS8-475.',
-  'held.ignis.persoonlijkheid':
-    'Heldencopy zonder scherm, QS8-469. Weg bij QS8-474 en QS8-475.',
+    'Heldenquote zonder melding, QS8-469. Weg bij QS8-475.',
   'held.ignis.quote1':
-    'Heldencopy zonder scherm, QS8-469. Weg bij QS8-474 en QS8-475.',
+    'Heldenquote zonder melding, QS8-469. Weg bij QS8-475.',
   'held.ignis.quote1.bron':
-    'Heldencopy zonder scherm, QS8-469. Weg bij QS8-474 en QS8-475.',
+    'Heldenquote zonder melding, QS8-469. Weg bij QS8-475.',
   'held.ignis.quote2':
-    'Heldencopy zonder scherm, QS8-469. Weg bij QS8-474 en QS8-475.',
+    'Heldenquote zonder melding, QS8-469. Weg bij QS8-475.',
   'held.ignis.quote2.bron':
-    'Heldencopy zonder scherm, QS8-469. Weg bij QS8-474 en QS8-475.',
+    'Heldenquote zonder melding, QS8-469. Weg bij QS8-475.',
   'held.ignis.quote3':
-    'Heldencopy zonder scherm, QS8-469. Weg bij QS8-474 en QS8-475.',
+    'Heldenquote zonder melding, QS8-469. Weg bij QS8-475.',
   'held.ignis.quote3.bron':
-    'Heldencopy zonder scherm, QS8-469. Weg bij QS8-474 en QS8-475.',
+    'Heldenquote zonder melding, QS8-469. Weg bij QS8-475.',
   'held.ignis.quote4':
-    'Heldencopy zonder scherm, QS8-469. Weg bij QS8-474 en QS8-475.',
+    'Heldenquote zonder melding, QS8-469. Weg bij QS8-475.',
   'held.ignis.quote4.bron':
-    'Heldencopy zonder scherm, QS8-469. Weg bij QS8-474 en QS8-475.',
-  'held.meridian.naam':
-    'Heldencopy zonder scherm, QS8-469. Weg bij QS8-474 en QS8-475.',
-  'held.meridian.ondertitel':
-    'Heldencopy zonder scherm, QS8-469. Weg bij QS8-474 en QS8-475.',
-  'held.meridian.persoonlijkheid':
-    'Heldencopy zonder scherm, QS8-469. Weg bij QS8-474 en QS8-475.',
+    'Heldenquote zonder melding, QS8-469. Weg bij QS8-475.',
   'held.meridian.quote1':
-    'Heldencopy zonder scherm, QS8-469. Weg bij QS8-474 en QS8-475.',
+    'Heldenquote zonder melding, QS8-469. Weg bij QS8-475.',
   'held.meridian.quote1.bron':
-    'Heldencopy zonder scherm, QS8-469. Weg bij QS8-474 en QS8-475.',
+    'Heldenquote zonder melding, QS8-469. Weg bij QS8-475.',
   'held.meridian.quote2':
-    'Heldencopy zonder scherm, QS8-469. Weg bij QS8-474 en QS8-475.',
+    'Heldenquote zonder melding, QS8-469. Weg bij QS8-475.',
   'held.meridian.quote2.bron':
-    'Heldencopy zonder scherm, QS8-469. Weg bij QS8-474 en QS8-475.',
+    'Heldenquote zonder melding, QS8-469. Weg bij QS8-475.',
   'held.meridian.quote3':
-    'Heldencopy zonder scherm, QS8-469. Weg bij QS8-474 en QS8-475.',
+    'Heldenquote zonder melding, QS8-469. Weg bij QS8-475.',
   'held.meridian.quote3.bron':
-    'Heldencopy zonder scherm, QS8-469. Weg bij QS8-474 en QS8-475.',
+    'Heldenquote zonder melding, QS8-469. Weg bij QS8-475.',
   'held.meridian.quote4':
-    'Heldencopy zonder scherm, QS8-469. Weg bij QS8-474 en QS8-475.',
+    'Heldenquote zonder melding, QS8-469. Weg bij QS8-475.',
   'held.meridian.quote4.bron':
-    'Heldencopy zonder scherm, QS8-469. Weg bij QS8-474 en QS8-475.',
-  'held.forge.naam':
-    'Heldencopy zonder scherm, QS8-469. Weg bij QS8-474 en QS8-475.',
-  'held.forge.ondertitel':
-    'Heldencopy zonder scherm, QS8-469. Weg bij QS8-474 en QS8-475.',
-  'held.forge.persoonlijkheid':
-    'Heldencopy zonder scherm, QS8-469. Weg bij QS8-474 en QS8-475.',
+    'Heldenquote zonder melding, QS8-469. Weg bij QS8-475.',
   'held.forge.quote1':
-    'Heldencopy zonder scherm, QS8-469. Weg bij QS8-474 en QS8-475.',
+    'Heldenquote zonder melding, QS8-469. Weg bij QS8-475.',
   'held.forge.quote1.bron':
-    'Heldencopy zonder scherm, QS8-469. Weg bij QS8-474 en QS8-475.',
+    'Heldenquote zonder melding, QS8-469. Weg bij QS8-475.',
   'held.forge.quote2':
-    'Heldencopy zonder scherm, QS8-469. Weg bij QS8-474 en QS8-475.',
+    'Heldenquote zonder melding, QS8-469. Weg bij QS8-475.',
   'held.forge.quote2.bron':
-    'Heldencopy zonder scherm, QS8-469. Weg bij QS8-474 en QS8-475.',
+    'Heldenquote zonder melding, QS8-469. Weg bij QS8-475.',
   'held.forge.quote3':
-    'Heldencopy zonder scherm, QS8-469. Weg bij QS8-474 en QS8-475.',
+    'Heldenquote zonder melding, QS8-469. Weg bij QS8-475.',
   'held.forge.quote3.bron':
-    'Heldencopy zonder scherm, QS8-469. Weg bij QS8-474 en QS8-475.',
-  'held.lucerna.naam':
-    'Heldencopy zonder scherm, QS8-469. Weg bij QS8-474 en QS8-475.',
-  'held.lucerna.ondertitel':
-    'Heldencopy zonder scherm, QS8-469. Weg bij QS8-474 en QS8-475.',
-  'held.lucerna.persoonlijkheid':
-    'Heldencopy zonder scherm, QS8-469. Weg bij QS8-474 en QS8-475.',
+    'Heldenquote zonder melding, QS8-469. Weg bij QS8-475.',
   'held.lucerna.quote1':
-    'Heldencopy zonder scherm, QS8-469. Weg bij QS8-474 en QS8-475.',
+    'Heldenquote zonder melding, QS8-469. Weg bij QS8-475.',
   'held.lucerna.quote1.bron':
-    'Heldencopy zonder scherm, QS8-469. Weg bij QS8-474 en QS8-475.',
+    'Heldenquote zonder melding, QS8-469. Weg bij QS8-475.',
   'held.lucerna.quote2':
-    'Heldencopy zonder scherm, QS8-469. Weg bij QS8-474 en QS8-475.',
+    'Heldenquote zonder melding, QS8-469. Weg bij QS8-475.',
   'held.lucerna.quote2.bron':
-    'Heldencopy zonder scherm, QS8-469. Weg bij QS8-474 en QS8-475.',
+    'Heldenquote zonder melding, QS8-469. Weg bij QS8-475.',
   'held.lucerna.quote3':
-    'Heldencopy zonder scherm, QS8-469. Weg bij QS8-474 en QS8-475.',
+    'Heldenquote zonder melding, QS8-469. Weg bij QS8-475.',
   'held.lucerna.quote3.bron':
-    'Heldencopy zonder scherm, QS8-469. Weg bij QS8-474 en QS8-475.',
+    'Heldenquote zonder melding, QS8-469. Weg bij QS8-475.',
   'held.lucerna.quote4':
-    'Heldencopy zonder scherm, QS8-469. Weg bij QS8-474 en QS8-475.',
+    'Heldenquote zonder melding, QS8-469. Weg bij QS8-475.',
   'held.lucerna.quote4.bron':
-    'Heldencopy zonder scherm, QS8-469. Weg bij QS8-474 en QS8-475.',
-  'held.quip.naam':
-    'Heldencopy zonder scherm, QS8-469. Weg bij QS8-474 en QS8-475.',
-  'held.quip.ondertitel':
-    'Heldencopy zonder scherm, QS8-469. Weg bij QS8-474 en QS8-475.',
-  'held.quip.persoonlijkheid':
-    'Heldencopy zonder scherm, QS8-469. Weg bij QS8-474 en QS8-475.',
+    'Heldenquote zonder melding, QS8-469. Weg bij QS8-475.',
   'held.quip.quote1':
-    'Heldencopy zonder scherm, QS8-469. Weg bij QS8-474 en QS8-475.',
+    'Heldenquote zonder melding, QS8-469. Weg bij QS8-475.',
   'held.quip.quote1.bron':
-    'Heldencopy zonder scherm, QS8-469. Weg bij QS8-474 en QS8-475.',
+    'Heldenquote zonder melding, QS8-469. Weg bij QS8-475.',
   'held.quip.quote2':
-    'Heldencopy zonder scherm, QS8-469. Weg bij QS8-474 en QS8-475.',
+    'Heldenquote zonder melding, QS8-469. Weg bij QS8-475.',
   'held.quip.quote2.bron':
-    'Heldencopy zonder scherm, QS8-469. Weg bij QS8-474 en QS8-475.',
+    'Heldenquote zonder melding, QS8-469. Weg bij QS8-475.',
   'held.quip.quote3':
-    'Heldencopy zonder scherm, QS8-469. Weg bij QS8-474 en QS8-475.',
+    'Heldenquote zonder melding, QS8-469. Weg bij QS8-475.',
   'held.quip.quote3.bron':
-    'Heldencopy zonder scherm, QS8-469. Weg bij QS8-474 en QS8-475.',
+    'Heldenquote zonder melding, QS8-469. Weg bij QS8-475.',
 };
 
 /**

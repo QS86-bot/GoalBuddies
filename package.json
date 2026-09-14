@@ -65,6 +65,7 @@
     "functies:controle": "node scripts/functies-controle.mjs",
     "keten:controle": "node scripts/dode-keten-controle.mjs",
     "schermingang:controle": "node scripts/schermingang-controle.mjs",
+    "sleutelvorm:controle": "node scripts/sleutelvorm-controle.mjs",
     "padverwijzing:controle": "node scripts/padverwijzing-controle.mjs",
     "idempotent:controle": "node scripts/idempotent-controle.mjs",
     "cidekking:controle": "node scripts/ci-controles.mjs",

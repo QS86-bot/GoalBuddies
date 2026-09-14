@@ -117,28 +117,22 @@ export const BEKENDE_ONBEREIKBAAR = {
     'geldige reden om te bestaan en geen reden om bereikbaar te zijn: hij is een ' +
     'kopie van een databaseregel die onder test staat. Weghalen breekt die toets.',
 
-  // ⚠️ De zeven hieronder zijn zeven rijen voor één gat — QS8-469. Dit register
-  //    sluit op naam, dus ze staan los; ze verdwijnen samen. De reden staat bij
-  //    de eerste en de andere zes verwijzen ernaar, want zes keer dezelfde
-  //    alinea is geen zes redenen.
+  // ⚠️ Hier stonden zeven rijen voor één gat — QS8-469. Sinds QS8-474 zijn het
+  //    er vier: `held()`, `heldTekstSleutel()` en `isHeldsleutel()` hebben een
+  //    aanroeper gekregen in de quiz. Dit register sluit op naam, dus ze staan
+  //    los; de reden staat bij de eerste en de rest verwijst ernaar, want vier
+  //    keer dezelfde alinea is geen vier redenen.
   alleQuoteSleutels:
     'De fundering van het heldenepic (QS8-468) landde vóór zijn afnemers. ' +
     '`src/modules/helden` is het register van de zes helden; de code die het ' +
-    'leest bestaat nog niet: QS8-471 zet deze sleutels in een CHECK, QS8-474 ' +
-    'slaat de quizuitslag ermee op, QS8-475 kiest er een stem mee. ' +
-    '⚠️ Alle zeven heldenrijen verdwijnen samen zodra die drie geland zijn. ' +
-    'Staan ze er dan nóg, dan is er een afnemer die de module níét gebruikt, en ' +
-    'dát is de bevinding — niet deze rij.',
-  held: 'Zelfde gat als `alleQuoteSleutels`, QS8-469. Opzoeken op sleutel.',
-  heldTekstSleutel:
-    'Zelfde gat als `alleQuoteSleutels`, QS8-469. Leidt de catalogussleutel af ' +
-    'voor naam, ondertitel en persoonlijkheid van een held.',
+    'leest kwam erna: QS8-471 zette deze sleutels in een CHECK, QS8-474 slaat de ' +
+    'quizuitslag ermee op, QS8-475 kiest er een stem mee. ' +
+    '⚠️ De rest verdwijnt bij QS8-475, de laatste afnemer. Staat er daarna nóg ' +
+    'een, dan is er een afnemer die de module níét gebruikt, en dát is de ' +
+    'bevinding — niet deze rij.',
   heldVoorTrigger:
     'Zelfde gat als `alleQuoteSleutels`, QS8-469. De afbeelding van triggermoment ' +
     'op held; QS8-475 is de eerste aanroeper.',
-  isHeldsleutel:
-    'Zelfde gat als `alleQuoteSleutels`, QS8-469. Typewacht op een waarde uit de ' +
-    'database; QS8-471 is de eerste aanroeper.',
   isTrigger: 'Zelfde gat als `alleQuoteSleutels`, QS8-469. Typewacht op een trigger.',
   quoteSleutels:
     'Zelfde gat als `alleQuoteSleutels`, QS8-469. Geeft de tekst- en bronsleutel ' +
@@ -153,8 +147,12 @@ export const BEKENDE_ONBEREIKBAAR = {
  *    verhoging in dezelfde wijziging als de rij en zijn reden — en dat is het
  *    hele verschil met een register dat stil kan groeien.
  */
-export const PLAFOND = 9;
+export const PLAFOND = 6;
 
+// ⚠️ Van 9 naar 6 op 14-09-2026, bij QS8-474: `held()`, `heldTekstSleutel()` en
+//    `isHeldsleutel()` hebben een aanroeper gekregen in de quiz, dus hun rijen
+//    zijn eruit en het plafond zakt mee. De rest volgt bij QS8-475.
+//
 // ⚠️ Van 2 naar 9 op 14-09-2026, bij QS8-469 — zeven rijen erbij voor één gat:
 //    het heldenregister landde vóór de code die het leest. De verhoging staat
 //    hier in dezelfde wijziging als de rijen en hun reden, precies zoals de kop

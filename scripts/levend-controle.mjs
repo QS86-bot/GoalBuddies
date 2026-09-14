@@ -48,6 +48,7 @@ import { join, dirname, relative } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 
 import { metSchuineStrepen } from './paden.mjs';
+import { zonderCommentaar } from './zonder-commentaar.mjs';
 
 const WORTEL = join(dirname(fileURLToPath(import.meta.url)), '..');
 
@@ -101,7 +102,23 @@ export function tel(bronnen) {
 
   for (const { pad, inhoud } of bronnen) {
     if (UITGEZONDERD.includes(metSchuineStrepen(pad))) continue;
-    const aantal = (inhoud.match(PATROON) ?? []).length;
+    // ⚠️⚠️ **Commentaar gaat er eerst af, en dat is sinds QS8-474 zo.** 📏 Een
+    //    comment in `app/onboarding/vragenlijst.tsx` legt uit wáárom daar géén
+    //    `let levend = true` staat — en telde als vlag. De ratel sloeg aan op
+    //    drieëntwintig en wees naar een bestand dat de regel juist volgde.
+    //
+    //    Dat is de duurste richting die deze fout op kan: het comment dat een
+    //    keuze uitlegt, is precies het comment dat je wilt kunnen schrijven, en
+    //    de reactie erop is "haal die zin weg" in plaats van "repareer de
+    //    meting". Zelfde klasse als `held.strix.naam` bij QS8-469 en het
+    //    `.upsert()`-comment in `tests/scripts/kolomrechten-controle.test.ts`.
+    //
+    // 📏 Gemeten vóór het aanzetten: van de achtentwintig treffers in `app/` en
+    //    `src/` verandert er precies één door deze knip, en dat is de valse.
+    //    Het plafond blijft dus op 22 en beweegt niet mee — zou er een échte
+    //    vlag door wegvallen, dan zákt de teller en wordt deze ratel rood langs
+    //    zijn andere kant.
+    const aantal = (zonderCommentaar(inhoud).match(PATROON) ?? []).length;
     if (aantal > 0) {
       perBestand.push({ pad, aantal });
       totaal += aantal;
