@@ -2680,10 +2680,8 @@ dossier; dit zijn de zwaarste, en ze staan hier omdat je er anders overheen lees
 1. ✅ **Schrijfgrants zonder policy — gedicht in 0118, ook op productie.** Het
    waren er meer dan de rij dacht: 58 voor `anon` over 21 tabellen en 18 voor
    `authenticated` over 9. `schrijfrechten_bewaking()` rekent de regel nu uit in
-   plaats van een lijst van vier namen te dragen. ⚠️ **Eén ding vraagt nog jouw
-   machine:** de gedeployde bundel doet nog de oude `upsert` op
-   `goal_group_links`, en die eist een UPDATE-recht dat er niet meer is — dus
-   koppelen geeft `42501` tot `npm run deploy` gedraaid heeft. Zie
+   plaats van een lijst van vier namen te dragen. ✅ **De deploy die hier nog
+   gevraagd werd, is gelopen** (10-09; zie het blok verderop over QS8-139). Zie
    `docs/decisions/2026-08-28-een-grant-die-niets-geeft.md`.
 2. ✅ **`te_beoordelen_voor()` heeft nu een inhoudelijke test** —
    `tests/rls/beoordelingsgrens.test.ts`, tien tests via `adminDb()`. Alle zeven
@@ -2796,18 +2794,38 @@ zit, omzeilt hem. Draai daarna `npm run wachtwoord:controle` met een
 schakelaars van QS8-141.
 
 
-⚠️ **Twee dingen wachten op `npm run deploy` van de webbundel.** Allebei zijn het
-migraties die op productie staan terwijl de gedeployde bundel de oude vorm nog
-aanroept, en allebei geven ze een foutmelding in plaats van stilte:
+✅ ~~**Twee dingen wachten op `npm run deploy` van de webbundel.**~~ **De deploy
+is gelopen — hermeten op 14-09-2026 (QS8-139).** Het ging om twee migraties die op
+productie stonden terwijl de gedeployde bundel de oude vorm nog aanriep:
 
-1. `goal_group_links` — de bundel doet nog de oude `upsert`, die een UPDATE-recht
-   eist dat 0118 heeft ingetrokken. Koppelen geeft `42501`.
+1. `goal_group_links` — de bundel deed nog de oude `upsert`, die een UPDATE-recht
+   eist dat 0118 heeft ingetrokken. Koppelen gaf `42501`.
 2. `openstaande_beoordelingen()` — 0125 gaf de functie een cursor in plaats van
-   een `offset`, dus de oude aanroep met `p_offset` bestaat niet meer. Het scherm
-   *Beoordelen* en de kaart "er wachten er N op jou" geven `PGRST202`.
+   een `offset`, dus de oude aanroep met `p_offset` bestond niet meer. Het scherm
+   *Beoordelen* en de kaart "er wachten er N op jou" gaven `PGRST202`.
+
+📏 **Waarom dit nu dicht is, als keten en niet als aanname.** Allebei de
+aanroepen in de bron zijn op **28-08** al omgezet — `ignoreDuplicates: true` in
+`koppelDoelAanGroep()` en de cursorvorm (`p_na_at`/`p_na_id`) in
+`fetchBeoordelingen()`; `p_offset` komt in de hele boom niet meer voor voor deze
+functie. En er is op **10-09** gedeployd: de source-maps-upload van QS8-24 liep
+toen, en het Sentry-event van 14-09 komt uit een productiebundel mét DSN, wat
+sinds 30-08 een harde stop in `npm run deploy` is. Een bundel van ná 10-09 draagt
+dus per constructie beide reparaties.
+
+⚠️ **Wat er niet mee bewezen is: de twee handelingen zijn niet in een browser
+gezien.** Het productiedomein is vanuit een sessieomgeving niet bereikbaar (de
+egress-proxy weigert `goalbuddies.q-projects.tech`), dus dit is een redenering
+over data die klopt en geen waarneming. Twee minuten klikken sluit hem; de stappen
+staan op het issue.
+
+⚠️ **En beide fóutklassen zijn sindsdien bewaakt**, wat de echte winst is: een
+`.rpc()` met een parameter die niet bestaat glipt langs `tsc` en wordt nu gevangen
+door `npm run rpc:controle`, en een schrijfrecht zonder policy door
+`npm run kolomrechten:controle`. Allebei draaien ze in de poort én in CI.
 
 **Nagemeten vóór het toepassen van 0125: één gebruiker op productie, nul
-voltooiingen, nul wachtende beoordelingen.** Er is dus geen lijst die stukgaat —
+voltooiingen, nul wachtende beoordelingen.** Er was dus geen lijst die stukging —
 dat is waarom de migratie is toegepast in plaats van tot de deploy te wachten. Zou
 er wél data staan, dan was de volgorde andersom geweest.
 
