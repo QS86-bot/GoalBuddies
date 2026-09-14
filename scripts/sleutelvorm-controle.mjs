@@ -38,9 +38,19 @@
  *    een latere migratie allang vervangen had. CLAUDE.md bij regel 19:
  *    `pg_get_functiondef()` is de waarheid.
  *
- * ⚠️ **Hij faalt dicht.** Een leesplek die in geen van de klassen past, wordt
- *    gemeld — niet stil overgeslagen. Zelfde keuze als `sleutelzetters()`, en om
- *    dezelfde reden: een onbekende vorm is precies waar de volgende fout in zit.
+ * ⚠️ **Hij faalt dicht, en dat geldt in twee lagen.** Een leesplek die in geen
+ *    van de klassen past, wordt gemeld — niet stil overgeslagen. En een functie
+ *    die volgens de catalogus een `app.`-sleutel leest maar waarin dit script er
+ *    geen enkele vindt, wordt óók gemeld: zie `meldBlind()`.
+ *
+ * ⚠️⚠️ **Die tweede laag ontbrak, en zonder haar was de claim hierboven niet
+ *    waar** — gevonden in de security-ronde op QS8-491. 📏 Het exacte 0199-gat,
+ *    alleen in hoofdletters geschreven (`CURRENT_SETTING`, wat elke
+ *    SQL-formatter uit zichzelf doet), gaf **exitcode 0** en werd niet eens
+ *    meegeteld: 21 functies, ongewijzigd. Voor die klasse faalde hij niet dicht
+ *    maar **open, en zwijgend**. De regexes dekken die schrijfwijzen nu, en de
+ *    zelfcontrole vangt élke volgende blinde vlek — ook een die vandaag nog
+ *    niemand bedacht heeft.
  */
 
 import { execFileSync } from 'node:child_process';
@@ -108,20 +118,89 @@ from pg_proc p
 join pg_namespace n on n.oid = p.pronamespace
 where n.nspname = 'public'
   and p.prokind in ('f', 'p')
-  and pg_get_functiondef(p.oid) ~ 'current_setting\\(\\s*''app\\.';
+  and pg_get_functiondef(p.oid) ~* 'current_setting\\s*\\(\\s*''app\\.';
 `;
+
+/**
+ * Het lichaam uit een `CREATE FUNCTION …` — alles binnen de buitenste
+ * dollar-quote.
+ *
+ * ⚠️⚠️ **Dit moet eerst, anders slaat de knip hieronder het hele lichaam plat.**
+ *    `pg_get_functiondef()` verpakt de body in `$function$ … $function$`. Een
+ *    lexer die élke dollar-quote als tekst ziet, ziet de complete functie als
+ *    één string en vindt nul leesplekken — in élke functie.
+ */
+export function lichaamVan(def) {
+  const m = /\$([A-Za-z_0-9]*)\$/.exec(def);
+  if (!m) return def;
+  const sluitend = def.indexOf(m[0], m.index + m[0].length);
+  return sluitend === -1 ? def : def.slice(m.index + m[0].length, sluitend);
+}
+
+/** De dollar-quote die op `i` begint, of `null`. */
+function dollarTag(src, i) {
+  if (src[i] !== '$') return null;
+  const m = /^\$([A-Za-z_0-9]*)\$/.exec(src.slice(i));
+  return m ? m[0] : null;
+}
+
+/** Een tekstliteral — enkel gequote of dollar-gequote — gaat ongemoeid mee. */
+function neemLetterlijk(src, i) {
+  const tag = dollarTag(src, i);
+  if (tag) {
+    const dicht = src.indexOf(tag, i + tag.length);
+    const eind = dicht === -1 ? src.length : dicht + tag.length;
+    return { uit: src.slice(i, eind), eind };
+  }
+
+  if (src[i] !== "'") return null;
+
+  let j = i + 1;
+  while (j < src.length) {
+    if (src[j] === "'" && src[j + 1] === "'") j += 2;
+    else if (src[j] === "'") return { uit: src.slice(i, j + 1), eind: j + 1 };
+    else j += 1;
+  }
+  return { uit: src.slice(i), eind: src.length };
+}
+
+/** Commentaar wordt een spatie; een blok telt zijn nesting, zoals Postgres. */
+function neemCommentaar(src, i) {
+  if (src[i] === '-' && src[i + 1] === '-') {
+    const nl = src.indexOf('\n', i);
+    return { uit: ' ', eind: nl === -1 ? src.length : nl };
+  }
+  if (src[i] !== '/' || src[i + 1] !== '*') return null;
+  return { uit: ' ', eind: naBlok(src, i) };
+}
+
+/** Het eind van een blokcommentaar op `i`, met nesting meegeteld. */
+function naBlok(src, i) {
+  let diepte = 0;
+  let j = i;
+  while (j < src.length) {
+    if (src[j] === '/' && src[j + 1] === '*') {
+      diepte += 1;
+      j += 2;
+    } else if (src[j] === '*' && src[j + 1] === '/') {
+      diepte -= 1;
+      j += 2;
+      if (diepte === 0) return j;
+    } else j += 1;
+  }
+  return src.length;
+}
 
 /**
  * Haalt SQL-commentaar weg zodat een uitgecommentarieerde vorm niet meetelt.
  *
  * ⚠️ **Dit is SQL en niet JS**, dus niet de gedeelde knip uit
  *    `scripts/zonder-commentaar.mjs`: die filtert regels die met `//` beginnen.
- *    De rij staat met die reden in `MET_REDEN` van `scripts/knip-controle.mjs`,
- *    naast de vier andere SQL-knippen.
+ *    De rij staat met die reden in `MET_REDEN` van `scripts/knip-controle.mjs`.
  *
- * ⚠️⚠️ **Hij loopt teken voor teken om quotes heen, en dat is gemeten en geen
- *    voorzorg.** 📏 De eerste versie hier knipte met één regex op `--`, en
- *    op `v_x := 'a--b' || nullif(current_setting('app.k', true), '') = old.id::text;`
+ * ⚠️⚠️ **Hij loopt om quotes heen, en dat is gemeten en geen voorzorg.** 📏 De
+ *    eerste versie knipte met één regex op `--`, en op
+ *    `v_x := 'a--b' || nullif(current_setting('app.k', true), '') = old.id::text;`
  *    hield die `v_x := 'a` over: **nul** leesplekken waar er één hoort, dus een
  *    kale vergelijking die stil doorglipt. Dat is de richting die telt — een
  *    knip die te veel wegneemt houdt de controle groen terwijl de belofte breekt.
@@ -129,36 +208,31 @@ where n.nspname = 'public'
  * ⚠️ **En de toets die dat had moeten vangen deed het niet.** Die zette de `--`
  *    en de leesplek op verschillende régels, en dan valt de vorm binnen de knip
  *    zijn eigen regelgrens — groen om een reden die niets met de belofte te
- *    maken heeft. Precies de val die CLAUDE.md bij regel 18 noemt: een ijking
- *    die zijn geval langs een andere grendel voert, bewaakt niets.
+ *    maken heeft. Precies de val die CLAUDE.md bij regel 18 noemt.
  *
- * Zelfde vorm als `zonderCommentaar()` in `scripts/klokgrens-controle.mjs`.
+ * ⚠️⚠️ **Dollar-quotes en geneste blokken tellen mee, gevonden in de
+ *    security-ronde op QS8-491.** 📏 Een knip die alleen om enkele quotes heen
+ *    loopt, kapt op de `--` in `v_sql := $q$a--b$q$ || (nullif(…) = old.id)` en
+ *    vindt nul leesplekken waar er één onveilige hoort. Postgres nest
+ *    blokcommentaar bovendien, dus dat wordt geteld.
  */
-export function zonderCommentaar(src) {
-  return String(src)
-    .replace(/\/\*[\s\S]*?\*\//g, ' ')
-    .split('\n')
-    .map(regelZonderCommentaar)
-    .join('\n');
-}
+export function zonderCommentaar(bron) {
+  const src = String(bron);
+  let uit = '';
+  let i = 0;
 
-/** Knipt op de eerste `--` die buiten een tekstliteral staat. */
-function regelZonderCommentaar(regel) {
-  let inTekst = false;
-
-  for (let i = 0; i < regel.length; i += 1) {
-    if (regel[i] === "'") {
-      if (inTekst && regel[i + 1] === "'") {
-        i += 1;
-        continue;
-      }
-      inTekst = !inTekst;
-      continue;
+  while (i < src.length) {
+    const sprong = neemLetterlijk(src, i) ?? neemCommentaar(src, i);
+    if (sprong === null) {
+      uit += src[i];
+      i += 1;
+    } else {
+      uit += sprong.uit;
+      i = sprong.eind;
     }
-    if (!inTekst && regel[i] === '-' && regel[i + 1] === '-') return regel.slice(0, i);
   }
 
-  return regel;
+  return uit;
 }
 
 /** De index van de `)` die hoort bij de `(` op `open`. */
@@ -201,11 +275,49 @@ function omhullende(src, start, eind) {
   return { naam: src.slice(i + 1, naamEind + 1).toLowerCase(), open, dicht };
 }
 
-const OPERATOREN = [
+/**
+ * De operator rechts van de leesplek.
+ *
+ * ⚠️ `(?!=)` zodat `=` van `==` niet meetelt; de lijst is op volgorde, dus de
+ *    lange `is not distinct from` moet vóór `is distinct from` staan.
+ */
+const RECHTS = [
   { re: /^\s*is\s+not\s+distinct\s+from\b/i, soort: 'nullveilig' },
   { re: /^\s*is\s+distinct\s+from\b/i, soort: 'nullveilig' },
   { re: /^\s*(?:<>|!=|=)(?!=)/, soort: 'kaal' },
 ];
+
+/**
+ * Dezelfde operatoren, maar links van de leesplek: `old.x = <sleutel>`.
+ *
+ * ⚠️⚠️ **Gevonden in de security-ronde op QS8-491.** Zonder deze kant werd
+ *    `old.x is distinct from nullif(current_setting(…), '')` — een volkomen
+ *    nullveilige vorm — ingedeeld als `onbekend` en dus **gemeld**. Dat is
+ *    precies waar de kop van dit bestand voor waarschuwt: een controle die de
+ *    reparatie als fout meldt, leer je uitzetten.
+ *
+ * ⚠️ De `:=` van plpgsql is géén vergelijking, en `<=` / `>=` evenmin; vandaar
+ *    de terugblik die een `=` met `:`, `<`, `>`, `!` of `=` ervoor uitsluit.
+ */
+const LINKS = [
+  { re: /\bis\s+not\s+distinct\s+from\s*$/i, soort: 'nullveilig' },
+  { re: /\bis\s+distinct\s+from\s*$/i, soort: 'nullveilig' },
+  { re: /(?:<>|!=|(?<![:<>!=])=)\s*$/, soort: 'kaal' },
+];
+
+/** Het begin van de vergelijking: vanaf de komma of de openhaak op dit niveau. */
+function vergelijkingBegin(src, start) {
+  let diepte = 0;
+  for (let i = start - 1; i >= 0; i -= 1) {
+    const c = src[i];
+    if (c === ')') diepte += 1;
+    else if (c === '(') {
+      if (diepte === 0) return i + 1;
+      diepte -= 1;
+    } else if (c === ',' && diepte === 0) return i + 1;
+  }
+  return 0;
+}
 
 /** Het eind van de vergelijking: tot de komma of de sluithaak op dit niveau. */
 function vergelijkingEind(src, eind) {
@@ -230,7 +342,9 @@ function vergelijkingEind(src, eind) {
 function coalesceMetFalse(src, start, eind) {
   const om = omhullende(src, start, eind);
   if (!om || om.naam !== 'coalesce') return false;
-  return /^\s*,\s*false\s*\)$/i.test(src.slice(eind + 1, om.dicht + 1));
+  // ⚠️ `coalesce(<vgl>, null, false)` is óók nullveilig: wat telt is dat het
+  //    láátste argument `false` is, niet dat het er precies twee zijn.
+  return /,\s*false\s*\)$/i.test(src.slice(eind + 1, om.dicht + 1));
 }
 
 /** Een `coalesce(<dit>, '<iets>')` met niet-lege terugval kan geen null geven. */
@@ -260,7 +374,7 @@ function doorNullifHeen(src, start, eind) {
 export function leesplekken(bron) {
   const src = zonderCommentaar(bron);
   const plekken = [];
-  const re = /current_setting\(\s*'(app\.[A-Za-z0-9_]+)'/g;
+  const re = /current_setting\s*\(\s*'(app\.[^']+)'/gi;
 
   for (let m = re.exec(src); m !== null; m = re.exec(src)) {
     const open = src.indexOf('(', m.index);
@@ -268,32 +382,46 @@ export function leesplekken(bron) {
     if (dicht === -1) continue;
 
     const { start, eind } = doorNullifHeen(src, m.index, dicht);
-    const staart = src.slice(eind + 1);
-    const op = OPERATOREN.find((o) => o.re.test(staart));
-
-    if (op && op.soort === 'nullveilig') {
-      plekken.push({
-        sleutel: m[1],
-        klasse: 'vergelijking',
-        veilig: true,
-        vorm: 'is [not] distinct from',
-      });
-    } else if (op) {
-      const veilig = coalesceMetFalse(src, start, vergelijkingEind(src, eind));
-      plekken.push({
-        sleutel: m[1],
-        klasse: 'vergelijking',
-        veilig,
-        vorm: veilig ? 'coalesce(…, false)' : 'kale vergelijking',
-      });
-    } else if (coalesceMetLiteral(src, start, eind)) {
-      plekken.push({ sleutel: m[1], klasse: 'numeriek', veilig: true, vorm: "coalesce(…, '0')" });
-    } else {
-      plekken.push({ sleutel: m[1], klasse: 'onbekend', veilig: false, vorm: kort(staart) });
-    }
+    plekken.push({ sleutel: m[1], ...weeg(src, start, eind) });
   }
 
   return plekken;
+}
+
+/**
+ * Deelt één leesplek in: vergelijking (veilig of niet), numeriek, of onbekend.
+ *
+ * ⚠️ Apart van `leesplekken()` omdat de lus er anders te diep nest, maar ook
+ *    omdat dit de enige plek is waar de indeling zélf staat.
+ */
+function weeg(src, start, eind) {
+  const staart = src.slice(eind + 1);
+  const kop = src.slice(0, start);
+  const op =
+    RECHTS.find((o) => o.re.test(staart)) ?? LINKS.find((o) => o.re.test(kop));
+
+  if (op?.soort === 'nullveilig') {
+    return { klasse: 'vergelijking', veilig: true, vorm: 'is [not] distinct from' };
+  }
+
+  if (op) {
+    const veilig = coalesceMetFalse(
+      src,
+      vergelijkingBegin(src, start),
+      vergelijkingEind(src, eind),
+    );
+    return {
+      klasse: 'vergelijking',
+      veilig,
+      vorm: veilig ? 'coalesce(…, false)' : 'kale vergelijking',
+    };
+  }
+
+  if (coalesceMetLiteral(src, start, eind)) {
+    return { klasse: 'numeriek', veilig: true, vorm: "coalesce(…, '0')" };
+  }
+
+  return { klasse: 'onbekend', veilig: false, vorm: kort(staart) };
 }
 
 function kort(staart) {
@@ -310,7 +438,7 @@ export function ontleed(uitvoer) {
       const scheiding = blok.indexOf(VELD);
       return {
         naam: blok.slice(0, scheiding),
-        plekken: leesplekken(blok.slice(scheiding + 1)),
+        plekken: leesplekken(lichaamVan(blok.slice(scheiding + 1))),
       };
     });
 }
@@ -331,6 +459,7 @@ export function beoordeel(functies, register = NUMERIEKE_LEZERS) {
   );
 
   return {
+    blind: functies.filter((f) => f.plekken.length === 0).map((f) => f.naam),
     defect: plekken.map((p) => ({ ...p, reden: gebrek(p, register) })).filter((p) => p.reden !== null),
     verdwenen: Object.keys(register)
       .filter((n) => !numeriek.has(n))
@@ -359,6 +488,36 @@ function gebrek(p, register) {
 
 function psql(vraag) {
   return execFileSync('psql', psqlArgumenten(vraag), { encoding: 'utf8' });
+}
+
+/**
+ * De zelfcontrole: de vraag selecteert alleen functies die een `app.`-sleutel
+ * lézen, dus nul leesplekken kán niet.
+ *
+ * ⚠️⚠️ **Dit is de grendel die dit script eerlijk maakt, en hij komt uit de
+ *    security-ronde op QS8-491.** Élke blinde vlek in de knip of in de
+ *    JS-regex komt hier uit, ook een die vandaag nog niemand bedacht heeft:
+ *    de SQL-kant zegt "hier staat er één" en de JS-kant vindt er nul, en dat
+ *    verschil is per constructie een fout in dit bestand. 📏 Zonder deze
+ *    grendel gaf een `--` in een `$tag$`-string **24 leesplekken in 22
+ *    functies** — de functie wél geselecteerd, de leesplek weg — en exitcode 0.
+ *
+ * ⚠️ De kop van dit bestand claimt dat hij dicht faalt. Vóór deze grendel was
+ *    dat niet waar voor de klasse "de regex ziet de leesplek niet": daar faalde
+ *    hij open, en zwijgend.
+ */
+function meldBlind(blind) {
+  console.error(
+    `✗ ${blind.length} functie(s) noemen een \`app.\`-sleutel volgens de catalogus,\n` +
+      'maar deze controle vindt er geen enkele leesplek in:\n',
+  );
+  for (const n of blind) console.error(`    ${n}()`);
+  console.error(
+    '\nDat is per constructie een fout in `scripts/sleutelvorm-controle.mjs` zelf:\n' +
+      'de SQL-kant selecteert alleen functies die `current_setting(\'app.…\')` doen.\n' +
+      'Kijk naar de knip (een quote- of commentaarvorm die hij niet kent) en naar\n' +
+      'de regex in `leesplekken()` (een schrijfwijze die hij niet dekt).',
+  );
 }
 
 function meldDefect(defect) {
@@ -406,9 +565,10 @@ function hoofd() {
   }
 
   const uitslag = beoordeel(functies);
+  if (uitslag.blind.length > 0) meldBlind(uitslag.blind);
   if (uitslag.defect.length > 0) meldDefect(uitslag.defect);
   if (uitslag.verdwenen.length > 0) meldVerdwenen(uitslag.verdwenen);
-  if (uitslag.defect.length > 0 || uitslag.verdwenen.length > 0) return 1;
+  if (uitslag.blind.length + uitslag.defect.length + uitslag.verdwenen.length > 0) return 1;
 
   const vergelijkingen = functies.reduce(
     (n, f) => n + f.plekken.filter((p) => p.klasse === 'vergelijking').length,

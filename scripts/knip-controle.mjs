@@ -84,8 +84,9 @@ export const MET_REDEN = {
   'scripts/pinuitzonderingen-controle.mjs:zonderCommentaar':
     'knipt SQL-commentaar (`--`) uit een functiedefinitie; JS-commentaar komt er niet in voor',
   'scripts/sleutelvorm-controle.mjs:zonderCommentaar':
-    'knipt SQL-commentaar (`--`) uit een functiedefinitie, teken voor teken om ' +
-    'quotes heen — een `--` binnen een tekstliteral mag de regel niet afkappen (QS8-491)',
+    'knipt SQL-commentaar uit een functiedefinitie: `--` én geneste `/* */`, om ' +
+    'enkele quotes én dollar-quotes heen — een streepje binnen een literal mag ' +
+    'de leesplek niet opeten (QS8-491)',
   'scripts/persoon-in-jsonb-controle.mjs:zonderCommentaar':
     'knipt SQL-commentaar per regel, zodat de regelindeling van de query heel blijft',
   'scripts/klokgrens-controle.mjs:zonderCommentaar':

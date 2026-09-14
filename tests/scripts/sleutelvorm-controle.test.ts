@@ -4,6 +4,7 @@ import { describe, expect, it } from 'vitest';
 import {
   beoordeel,
   leesplekken,
+  lichaamVan,
   NUMERIEKE_LEZERS,
   ontleed,
   zonderCommentaar,
@@ -223,5 +224,122 @@ describe('het register zelf', () => {
       expect(naam).toMatch(/^rem_/);
       expect(reden.length).toBeGreaterThan(20);
     }
+  });
+});
+
+/**
+ * De vormvarianten uit de security-ronde op QS8-491.
+ *
+ * ⚠️⚠️ **Deze suite gaf 19 groen terwijl de controle blind was voor
+ *    `CURRENT_SETTING`.** Elke fixture hierboven schreef de aanroep in kleine
+ *    letters zonder spatie, dus de must-find-helft miste precies de
+ *    schrijfwijzen die de regex moet overleven — CLAUDE.md regel 18, vraag 3:
+ *    een test die groen kan blijven terwijl de belofte breekt, bewaakt niets.
+ */
+describe('schrijfwijzen die de regex moet overleven', () => {
+  const varianten = {
+    'kleine letters': "nullif(current_setting('app.k', true), '') = old.id::text",
+    HOOFDLETTERS: "NULLIF(CURRENT_SETTING('app.k', true), '') = old.id::text",
+    'spatie voor het haakje': "nullif(current_setting ('app.k', true), '') = old.id::text",
+    'spatie na het haakje': "nullif(current_setting( 'app.k', true), '') = old.id::text",
+    'sleutel met twee punten': "nullif(current_setting('app.rem.doelen', true), '') = old.id::text",
+  };
+
+  for (const [naam, bron] of Object.entries(varianten)) {
+    it(`ziet het gat in de vorm: ${naam}`, () => {
+      // 📏 End-to-end gemeten: met `CURRENT_SETTING` in hoofdletters gaf de
+      //    controle exit 0 op precies het 0199-gat, en telde de functie niet
+      //    eens mee. Een SQL-formatter doet dit uit zichzelf.
+      const plekken = leesplekken(bron);
+      expect(plekken).toHaveLength(1);
+      expect(plekken[0]).toMatchObject({ veilig: false });
+    });
+  }
+
+  it('laat `current_setting` op een andere sleutel met rust', () => {
+    expect(leesplekken("current_setting('search_path')")).toEqual([]);
+  });
+});
+
+describe('de sleutel rechts van de operator', () => {
+  // ⚠️ Deze drie werden vóór de security-ronde gemeld als defect, terwijl ze
+  //    volkomen nullveilig zijn. Een controle die de reparatie als fout meldt,
+  //    leer je uitzetten — dat staat in de kop van het script zelf.
+  const veilig = {
+    'is distinct from, sleutel rechts':
+      "old.x is distinct from nullif(current_setting('app.k', true), '')",
+    'coalesce(…, false), sleutel rechts':
+      "coalesce(old.x = nullif(current_setting('app.k', true), ''), false)",
+    'coalesce met drie argumenten':
+      "coalesce(nullif(current_setting('app.k', true), '') = old.x, null, false)",
+  };
+
+  for (const [naam, bron] of Object.entries(veilig)) {
+    it(`blijft stil bij: ${naam}`, () => {
+      expect(leesplekken(bron)[0]).toMatchObject({ klasse: 'vergelijking', veilig: true });
+    });
+  }
+
+  it('meldt een kale vergelijking met de sleutel rechts wél', () => {
+    const bron = "old.x = nullif(current_setting('app.k', true), '')";
+    expect(leesplekken(bron)[0]).toMatchObject({ veilig: false });
+  });
+
+  it('ziet een toewijzing `:=` niet aan voor een vergelijking', () => {
+    // `v_x := nullif(…)` is geen vergelijking; de waarde gaat ergens anders
+    // heen en dan weet deze controle het niet — dus meldt hij het.
+    const bron = "v_x := nullif(current_setting('app.k', true), '')";
+    expect(leesplekken(bron)[0]).toMatchObject({ klasse: 'onbekend', veilig: false });
+  });
+});
+
+describe('de knip kent dollar-quotes en geneste blokken', () => {
+  it('kapt niet af op een streepje binnen een $tag$-string', () => {
+    // 📏 Gemeten vóór de reparatie: dit gaf nul leesplekken waar er één
+    //    onveilige hoort, mét de functie wél geselecteerd door de vraag.
+    const bron =
+      "v_sql := $q$a--b$q$ || (nullif(current_setting('app.k', true), '') = old.id::text)::text;";
+    const plekken = leesplekken(bron);
+
+    expect(plekken).toHaveLength(1);
+    expect(plekken[0]).toMatchObject({ veilig: false });
+  });
+
+  it('telt de nesting van een blokcommentaar, zoals Postgres', () => {
+    const bron =
+      "/* buiten /* binnen */ nullif(current_setting('app.dood', true), '') = x */ select 1";
+    expect(leesplekken(bron)).toEqual([]);
+  });
+
+  it('laat een oneven quote binnen een $tag$-string de rest niet opeten', () => {
+    const bron = "v_a := $q$it's$q$; v_b := nullif(current_setting('app.k', true), '') = old.x;";
+    expect(leesplekken(bron)).toHaveLength(1);
+  });
+});
+
+describe('lichaamVan — de body uit een CREATE FUNCTION', () => {
+  it('pakt alles binnen de buitenste dollar-quote', () => {
+    const def = "CREATE FUNCTION f() RETURNS void AS $function$ begin return; end $function$";
+    expect(lichaamVan(def).trim()).toBe('begin return; end');
+  });
+
+  it('laat een definitie zonder dollar-quote heel', () => {
+    expect(lichaamVan('select 1')).toBe('select 1');
+  });
+});
+
+describe('de zelfcontrole — een geselecteerde functie zonder leesplek', () => {
+  it('meldt een functie waar de regex niets in vindt', () => {
+    // ⚠️⚠️ De grendel die dit script eerlijk maakt. De vraag selecteert alleen
+    //    functies die een `app.`-sleutel lezen, dus nul leesplekken kán niet —
+    //    en élke toekomstige blinde vlek in knip of regex komt hier uit.
+    const uitslag = beoordeel([{ naam: 'zz_blind', plekken: [] }], {});
+
+    expect(uitslag.blind).toEqual(['zz_blind']);
+  });
+
+  it('meldt niets als elke functie minstens één leesplek heeft', () => {
+    const plekken = leesplekken("nullif(current_setting('app.k', true), '') is distinct from x");
+    expect(beoordeel([{ naam: 'f', plekken }], {}).blind).toEqual([]);
   });
 });
