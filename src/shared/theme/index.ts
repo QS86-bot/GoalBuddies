@@ -6,12 +6,15 @@
  *    losse kleur laat ze uit elkaar lopen.
  */
 
-export type { Categoriekleuren, Palette } from './tokens';
+export type { Categoriekleuren, Heldkleuren, Heldpalet, Palette } from './tokens';
 export {
   categoriekleurenNavy,
   categoriekleurenNavyLight,
   fontMono,
   fontSans,
+  heldkleurenNavy,
+  heldkleurenNavyLight,
+  HELDPALETSLEUTELS,
   radius,
   roles,
   space,
