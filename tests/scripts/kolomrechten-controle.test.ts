@@ -3,6 +3,8 @@ import { join } from 'node:path';
 
 import { describe, expect, it } from 'vitest';
 
+import { zonderCommentaar } from '../../scripts/zonder-commentaar.mjs';
+
 // ⚠️ Een `.mjs` zonder eigen typings — zelfde patroon als `levend-controle.test.ts`.
 import {
   SCHRIJFVRAAG,
@@ -1218,10 +1220,31 @@ describe('de echte codebase', () => {
    *
    *    De tweede telling is onafhankelijk: een kale grep over dezelfde bestanden.
    *    Die kent de parser niet en kan dus niet met hem meebewegen.
+   *
+   * ⚠️⚠️ **Maar commentaar gaat er eerst af, en dat is sinds QS8-474 zo.** 📏 De
+   *    kop van `src/modules/helden/heldprofiel.ts` legt uit dat `.upsert()` op
+   *    `hero_profiles` niet werkt — met de gemeten 42501 erbij — en dáárop telde
+   *    deze grep een schrijfactie die er niet is. De test werd rood met de tekst
+   *    *"een schrijfactie die de parser niet ziet"*, terwijl er geen schrijfactie
+   *    was. Dat is erger dan geen melding: hij stuurt de lezer naar de parser
+   *    terwijl het probleem in zijn eigen telling zit.
+   *
+   *    Zelfde klasse als `held.strix.naam` bij QS8-469, dat in een comment stond
+   *    en daardoor als aanroeper telde. En juist hier is het duur: een comment
+   *    dat wáárschuwt voor een schrijfvorm, is precies het comment dat je wilt
+   *    kunnen schrijven.
+   *
+   * ⚠️ De onafhankelijkheid blijft overeind — `zonderCommentaar()` is een
+   *    gedeelde knip met een eigen toets en weet niets van deze parser. Knipt
+   *    hij ooit te veel weg, dan zakt dit getal en wordt de test rood; dat is de
+   *    veilige kant.
    */
   it('vindt élke PostgREST-schrijfketen in src en app', () => {
     const geteld = bronbestanden()
-      .map((pad: string) => readFileSync(pad, 'utf8').match(/\.(insert|update|upsert)\(/g) ?? [])
+      .map(
+        (pad: string) =>
+          zonderCommentaar(readFileSync(pad, 'utf8')).match(/\.(insert|update|upsert)\(/g) ?? [],
+      )
       .reduce((n: number, m: RegExpMatchArray | string[]) => n + m.length, 0);
 
     expect(

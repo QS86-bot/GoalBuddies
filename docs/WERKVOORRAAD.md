@@ -1173,8 +1173,8 @@ tegelijk, QS8-471 daarna, en QS8-474, QS8-475 en QS8-477 weer parallel.
 |---|---|---|
 | QS8-469 | het heldenrooster als data, elke quote op zijn bron | ✅ af — PR #462 |
 | QS8-470 | het heldenpalet als benoemde uitzondering op het navystelsel | ✅ af — PR #464 |
-| QS8-471 | datamodel: welke held is van wie, elke verschijning append-only | in review — PR #470, migratie `0264` |
-| QS8-474 | de vragenlijst van vier naar acht vragen, gelijkspel is de regel | open |
+| QS8-471 | datamodel: welke held is van wie, elke verschijning append-only | ✅ af — PR #470, migratie `0264` |
+| QS8-474 | de vragenlijst van vier naar acht vragen, gelijkspel is de regel | in review |
 | QS8-475 | de heldenstem in de meldingen die er al zijn | open |
 | QS8-477 | je held in een open groep, en nergens anders | open |
 

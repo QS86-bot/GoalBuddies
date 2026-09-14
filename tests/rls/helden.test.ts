@@ -1,6 +1,12 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
-import { HELDSLEUTELS, TRIGGERS } from '../../src/modules/helden';
+// ⚠️ **Rechtstreeks uit `helden.ts` en niet uit `index.ts`.** Sinds QS8-474
+//    exporteert die index ook `heldprofiel.ts`, en dat bestand trekt via
+//    `lib/supabase` de Supabase-client mee — die kan de testomgeving niet
+//    parsen (`react-native`, Flow). 📏 Dit bestand meldde daardoor `0 test` en
+//    de suite werd rood; luid, niet stil, want een suite die zwijgt is de fout
+//    van QS8-270. Zelfde import als `quiz.test.ts` doet.
+import { HELDBRONNEN, HELDSLEUTELS, TRIGGERS } from '../../src/modules/helden/helden';
 
 import {
   adminDb,
@@ -15,7 +21,7 @@ import {
 const TEST_TIMEOUT = 30_000;
 
 /**
- * De twee heldentabellen staan dicht — QS8-471, migratie 0263.
+ * De twee heldentabellen staan dicht — QS8-471, migratie 0264.
  *
  * ⚠️ **Waarom dit meer is dan de gebruikelijke eigenaar-only-toets.**
  *    `hero_appearances.trigger` draagt `misser` en `stilte`, en dat zijn
@@ -109,6 +115,65 @@ describe.skipIf(!rlsTestsConfigured)('De heldentabellen', () => {
         const vreemd = await ander.db.from('hero_appearances').select('id, trigger');
         expect(vreemd.error).toBeNull();
         expect(vreemd.data ?? []).toHaveLength(0);
+      },
+      TEST_TIMEOUT,
+    );
+
+    /**
+     * ⚠️⚠️ **Het slot dat hier draagt is de SELECT-policy, en niet de UPDATE- of
+     *    DELETE-policy. Dat is gemeten, en het ging tegen de verwachting in.**
+     *
+     *    De security-review op QS8-474 meldde dat deze twee policies onbewaakt
+     *    waren: allebei vervangen door
+     *    `using (user_id = (select auth.uid()) or shares_group_with_user(user_id))`
+     *    en de volledige suite bleef groen. 📏 Nagemeten met een echte
+     *    PostgREST-aanroep bleek waaróm, en het is niet "er ontbreekt een test":
+     *    een groepsgenoot die de rij van een ander PATCHt krijgt **200 met een
+     *    lege lijst** en de rij verandert niet — terwijl
+     *    `shares_group_with_user()` voor hem `true` teruggeeft.
+     *
+     *    De reden is dat Postgres bij een `UPDATE … where user_id = …` óók de
+     *    SELECT-policy toepast om de rij te vinden. Zolang die eigenaar-only is,
+     *    matcht de `where` niets en is er niets om te wijzigen. De suite stond
+     *    dus terecht groen.
+     *
+     * ⚠️⚠️ **En daarmee is de waarschuwing voor QS8-477 scherper dan hij leek.**
+     *    📏 Met de SELECT-policy erbij versoepeld landt de aanval wél: de rij van
+     *    de ander wordt `quip/keuze`, en vijf toetsen in dit bestand worden rood
+     *    (deze twee, `leest nul rijen uit hero_profiles`, en twee CHECK-toetsen
+     *    die op de rij van de eigenaar leunen). **Eén versoepeling van SELECT
+     *    opent dus ook het schríjven**, zolang UPDATE en DELETE hun eigen
+     *    eigenaarspredicaat niet apart houden. Dat is precies wat QS8-477 gaat
+     *    aanraken, en het is niet wat je verwacht als je alleen naar de
+     *    leespolicy kijkt.
+     *
+     * ⚠️ **`magNietLanden()` en niet `expect(error).not.toBeNull()`.** 📏 Gemeten:
+     *    een PATCH of DELETE op de rij van een ander geeft **204 zonder fout** en
+     *    nul geraakte rijen. Een toets op de fout zou hier dus altijd rood staan
+     *    om de verkeerde reden, en na een versoepeling stil groen worden.
+     */
+    it(
+      'laat de held van een ander niet overschrijven',
+      async () => {
+        await magNietLanden(
+          () =>
+            ander.db
+              .from('hero_profiles')
+              .update({ hero_key: 'quip', source: 'keuze' })
+              .eq('user_id', eigenaar.id),
+          () => adminDb().from('hero_profiles').select('user_id, hero_key, source').order('user_id'),
+        );
+      },
+      TEST_TIMEOUT,
+    );
+
+    it(
+      'laat de held van een ander niet wissen',
+      async () => {
+        await magNietLanden(
+          () => ander.db.from('hero_profiles').delete().eq('user_id', eigenaar.id),
+          () => adminDb().from('hero_profiles').select('user_id, hero_key, source').order('user_id'),
+        );
       },
       TEST_TIMEOUT,
     );
@@ -229,6 +294,26 @@ describe.skipIf(!rlsTestsConfigured)('De heldentabellen', () => {
               .insert({ user_id: eigenaar.id, hero_key: sleutel, trigger });
             expect(error, `${sleutel}/${trigger}`).toBeNull();
           }
+        }
+      },
+      TEST_TIMEOUT,
+    );
+
+    it(
+      'accepteert elke bron uit HELDBRONNEN',
+      async () => {
+        // ⚠️ **Deze kant ontbrak tot QS8-474, en de kop hierboven belóófde hem
+        //    wel.** Voor `hero_key` en `trigger` stonden beide richtingen er;
+        //    voor `source` alleen de weigering. Een CHECK die per ongeluk
+        //    `keuze` buitensluit, zou dan pas opvallen als een gebruiker bij
+        //    gelijkspel zelf koos — en `bewaarHeld()` meldt dat als "je held kon
+        //    niet bewaard worden", zonder dat iemand ziet waaróm.
+        for (const bron of HELDBRONNEN) {
+          const { error } = await eigenaar.db
+            .from('hero_profiles')
+            .update({ source: bron })
+            .eq('user_id', eigenaar.id);
+          expect(error, bron).toBeNull();
         }
       },
       TEST_TIMEOUT,

@@ -1056,20 +1056,6 @@ export const GEEN_AANROEPER = [
       'de policy weigert élke rij van een client (`with check false`); het schrijven gebeurt in `create_group()`. De grant is daarmee inert. ⚠️ Wordt hij dat niet meer zodra iemand die `false` versoepelt — dan ligt het recht er al.',
   },
   {
-    tabel: 'hero_profiles',
-    soort: 'INSERT',
-    kolommen: ['hero_key', 'source', 'user_id'],
-    reden:
-      'de policy weigert hier **niets** — `hero_profiles_insert` en `hero_profiles_update` laten de eigenaar zijn eigen rij schrijven, en dat is ook de bedoeling. Wat ontbreekt is het scherm: QS8-474 zet de quizuitslag hier weg en is de eerste schrijver. ⚠️ Dit is dus de **open** klasse en niet de inerte: het recht ligt er en is vandaag alleen ongebruikt — zelfde soort als QS8-351 hierboven. Bewust zo gelaten in plaats van de grant in te trekken en QS8-474 hem te laten terugzetten: een recht dat met zijn schrijver meekomt, is beter dan een test die een tijdelijke afsluiting vastlegt en bij dat issue weer weg moet. ⚠️ Weg bij QS8-474; staat deze rij er dan nóg, dan schrijft dat scherm niet wat het hoort te schrijven en is dát de bevinding.',
-  },
-  {
-    tabel: 'hero_profiles',
-    soort: 'UPDATE',
-    kolommen: ['hero_key', 'source'],
-    reden:
-      'zelfde gat en zelfde reden als de INSERT-rij hierboven, QS8-471. Weg bij QS8-474.',
-  },
-  {
     tabel: 'reports',
     soort: 'INSERT',
     kolommen: ['bericht_kopie', 'group_id', 'id', 'message_id', 'reden', 'reporter_id', 'status', 'subject_id', 'toelichting'],

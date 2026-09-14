@@ -2868,6 +2868,74 @@ export const nl = {
     'Gewoonte is gewoonte, en die gooi je niet zomaar het raam uit bij een mens; je lokt haar stap voor stap de trap af.',
   'held.quip.quote3.bron':
     'Mark Twain · Pudd’nhead Wilson’s Calendar, in Following the Equator, 1897',
+
+  // ---------------------------------------------------------------------------
+  // De vier heldenvragen — QS8-474, epic QS8-468
+  // ---------------------------------------------------------------------------
+  //
+  // ⚠️ **De opties staan hier in de volgorde van het brondocument en dat is een
+  //    besluit.** `HELDVRAAGOPTIES` in `src/modules/helden/quiz.ts` bepaalt de
+  //    volgorde op het scherm; deze sleutels dragen alleen de tekst. Elke vraag
+  //    noemt alle zes de helden precies één keer, en `quiz.test.ts` toetst dat
+  //    in beide richtingen — valt er een held uit een vraag weg, dan scoort hij
+  //    structureel lager en ziet niemand dat aan de uitslag.
+  //
+  // ⚠️ Het brondocument nummert de opties A t/m F. Dat is een scoringshulp en
+  //    geen UI-vorm: de letters staan niet in deze teksten en niet op het
+  //    scherm.
+
+  'heldvraag.aantrekking.vraag': 'Wat trekt je het meest aan bij een nieuw doel?',
+  'heldvraag.aantrekking.toelichting': 'Eén antwoord. Ga af op wat je als eerste denkt.',
+  'heldvraag.aantrekking.optie.meridian': 'De eerste sprong wagen',
+  'heldvraag.aantrekking.optie.forge': 'Een plan uitstippelen',
+  'heldvraag.aantrekking.optie.strix': 'Het einddoel scherp voor ogen houden',
+  'heldvraag.aantrekking.optie.ignis': 'Het gewoon aanpakken, winnen of verliezen',
+  'heldvraag.aantrekking.optie.lucerna': 'Er iemand bij betrekken',
+  'heldvraag.aantrekking.optie.quip': 'Er vooral plezier in houden',
+
+  'heldvraag.tegenslag.vraag': 'Een tegenslag: wat is je eerste reactie?',
+  'heldvraag.tegenslag.toelichting': 'Niet wat je zou moeten doen, maar wat je dóét.',
+  'heldvraag.tegenslag.optie.ignis': 'Doorzetten, tanden op elkaar',
+  'heldvraag.tegenslag.optie.quip': 'Er even bij stilstaan en het relativeren met humor',
+  'heldvraag.tegenslag.optie.forge': 'Teruggaan naar de basis en het plan herzien',
+  'heldvraag.tegenslag.optie.lucerna': 'Rust nemen en mezelf niet te hard beoordelen',
+  'heldvraag.tegenslag.optie.strix': 'Erover nadenken wat dit me leert',
+  'heldvraag.tegenslag.optie.meridian': 'Een nieuwe route bedenken',
+
+  'heldvraag.motivatie.vraag': 'Wat motiveert je het meest om door te gaan?',
+  'heldvraag.motivatie.toelichting': 'Waar je het op een matige dag nog voor doet.',
+  'heldvraag.motivatie.optie.ignis': 'Bewijzen dat het kan',
+  'heldvraag.motivatie.optie.meridian': 'Nieuwsgierigheid naar wat er nog meer mogelijk is',
+  'heldvraag.motivatie.optie.forge': 'Het gevoel dat ik iets moois bouw',
+  'heldvraag.motivatie.optie.strix': 'Innerlijke rust en overzicht',
+  'heldvraag.motivatie.optie.lucerna': 'Steun van en voor anderen',
+  'heldvraag.motivatie.optie.quip': 'Dat het simpelweg leuk moet blijven',
+
+  'heldvraag.viering.vraag': 'Hoe vier je een overwinning het liefst?',
+  'heldvraag.viering.toelichting': 'De laatste vraag. Daarna zie je alles op een rij.',
+  'heldvraag.viering.optie.quip': 'Met een grap of een feestje',
+  'heldvraag.viering.optie.strix': 'Rustig reflecteren op wat je geleerd hebt',
+  'heldvraag.viering.optie.meridian': 'Meteen doorpakken naar het volgende doel',
+  'heldvraag.viering.optie.lucerna': 'Delen met wie je gesteund hebben',
+  'heldvraag.viering.optie.ignis': 'Trots zijn dat je het gevecht gewonnen hebt',
+  'heldvraag.viering.optie.forge': 'Kijken hoe je het systeem verder kunt verbeteren',
+
+  'vragenlijst.held.vraag': 'Je held',
+  'vragenlijst.held.kop': 'Wie er met je meeloopt',
+  'vragenlijst.held.een':
+    'Je antwoorden wijzen naar één held. Die neemt straks het woord bij je check-ins.',
+  'vragenlijst.held.gelijk':
+    'Je antwoorden wijzen even hard naar {aantal} helden. Kies zelf wie er met je meeloopt.',
+  'vragenlijst.held.geen':
+    'Je hebt de heldenvragen overgeslagen. Dat mag: je krijgt dan geen vaste held, en de rest van de app werkt gewoon.',
+  'vragenlijst.held.gekozen': 'Dit is je held. Tik een andere aan om te wisselen.',
+  'vragenlijst.held.blijft':
+    'Dit is nu je held. Beantwoord de vier heldenvragen opnieuw om te wisselen.',
+  'vragenlijst.held.laadt': 'Even kijken welke held je nu hebt.',
+  'vragenlijst.held.fout':
+    'Je huidige held kon niet opgehaald worden. Beantwoord de vier vragen om er een te kiezen.',
+  'vragenlijst.held.kies_een': 'Kies er een',
+  'vragenlijst.held.opslaan_mislukt': 'Je held kon niet bewaard worden. Probeer het zo nog eens.',
 } as const;
 
 export type Sleutel = keyof typeof nl;
