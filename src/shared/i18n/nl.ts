@@ -765,7 +765,7 @@ export const nl = {
 
   'bevestiging.groep_openzetten.titel': 'Deze groep openzetten?',
   'bevestiging.groep_openzetten.uitleg':
-    'Vanaf nu ziet iedereen in deze groep ook elkaars gemiste en doorgeschoven weken, elkaars beste reeks ooit, van elke week wie er meedeed, een klassement met elkaars puntentotaal in deze groep, en welke held er de afgelopen week bij wie langs is geweest. Dat is ook de held die na een gemiste week komt, en het geldt ook voor de weken die er al staan. Dit gaat dus niet alleen over jou. Iedereen krijgt een bericht in de groepschat, zodat wie dat niet wil zijn doel kan ontkoppelen. Terugzetten kan altijd en meteen.',
+    'Vanaf nu ziet iedereen in deze groep ook elkaars gemiste en doorgeschoven weken, elkaars beste reeks ooit, van elke week wie er meedeed, een klassement met elkaars puntentotaal in deze groep, en welke held er de afgelopen week bij wie langs is geweest. Dat is ook de held die na een gemiste week komt, en het geldt ook voor de weken die er al staan. Dit gaat dus niet alleen over jou. Iedereen krijgt een bericht in de groepschat, zodat wie dat niet wil zijn doel kan ontkoppelen. Dat werkt voor alles wat aan een doel hangt; de heldenlijst hangt aan je lidmaatschap en blijft dus staan zolang je in de groep zit. Terugzetten kan altijd en meteen.',
   'bevestiging.groep_openzetten.knop': 'Ja, zet hem open',
   'bevestiging.groep_beschermen.titel': 'Deze groep weer beschermen?',
   'bevestiging.groep_beschermen.uitleg':

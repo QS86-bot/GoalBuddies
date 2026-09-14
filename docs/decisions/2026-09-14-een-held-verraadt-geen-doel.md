@@ -117,6 +117,48 @@ begint.
 verzetten, kan hem ook op tien jaar zetten, en dan is de grens een suggestie.
 Zelfde reden als de harde bovengrens op `p_limit`.
 
+### 4a. En het venster is zélf een klok — gevonden in de security-review
+
+Hier stond *"de functie geeft geen tijdstip, dus een aanroeper kan vers niet van
+oud onderscheiden"*. **Dat is waar voor één aanroep en onwaar voor het
+oppervlak**, en de omkering is precies het venster dat hierboven als reparatie
+staat.
+
+Een groepsgenoot die deze functie herhaald opvraagt, ziet een rij **verdwijnen**.
+Met een kale `now() - interval '7 days'` ligt dat moment exact zeven dagen na
+`shown_at`, dus hij leest het tijdstip terug tot op zijn polinterval — de kolom
+die §1 als de hele reden noemt dat dit een RPC is. Zonder venster bestond die
+gebeurtenis niet.
+
+**De reparatie is de rand grover maken en niet het venster weghalen:**
+`date_trunc('day', now(), 'UTC') - interval '7 days'`. Alles van één UTC-dag valt
+tegelijk weg, dus wat er uit een verdwijning te lezen valt is een **datum** en
+geen tijdstip. Dat is geen nul — een open groep ziet via oppervlak 3 al van welke
+week iemand een doel miste — maar de tijd van de dág is weg, en dat is het
+scherpste deel: wanneer iemands nudge afgaat, zegt iets over zijn ritme en zijn
+tijdzone.
+
+⚠️ **De driearguments-`date_trunc` is er met reden.** `date_trunc('day', now())`
+volgt de `TimeZone` van de sessie, en dan hangt het antwoord af van een
+instelling in plaats van van het schema. De rand staat vást op UTC, voor iedere
+gebruiker dezelfde — en dát is wat hem géén dagbepaling maakt in de zin van
+correctheidsregel 7.
+
+⚠️⚠️ **Wat dit níet repareert, en dat is de eerlijker versie van de belofte.** Wie
+elke dag opvraagt, ziet ook elke níeuwe verschijning binnenkomen en bouwt zo
+alsnog een chronologie. Dat is geen eigenschap van dit venster maar van elk
+levend groepsoppervlak: `groep_klassement()` geeft op dezelfde manier zijn deltas
+prijs aan wie hem twee keer opvraagt, en dat is daar bij besluit A54 aanvaard.
+
+> **De belofte van deze functie is: één antwoord draagt geen tijd, en de rand
+> draagt hoogstens een datum.** Niet: een groepsgenoot kan geen tijdlijn
+> bijhouden.
+
+Er staat geen leeslimiet voor PostgREST in dit project — `0203` telt alleen
+schrijfacties. Dat is een rij in `docs/ENGINEER-REVIEW.md` en geen reparatie hier:
+een limiet op leesverkeer is een infrastructuurkeuze en raakt elk oppervlak
+tegelijk.
+
 ## 5. Eén rij per lid, en niet een log
 
 De functie geeft de **laatste** verschijning per lid en niet een lijst. Een lijst
@@ -124,6 +166,11 @@ van verschijningen is een chronologie van tegenslag — "Ignis, Ignis, Lucerna,
 Ignis" is vier missers en een stilte — en dat is dezelfde vorm die
 `groep_klassement()` weigert met "geen delta en geen datum" (rij 28). A41 opent
 dat de groep je tegenslag ziet; het opent geen geschiedenis ervan.
+
+⚠️ **Lees dat als een eigenschap van het antwoord en niet als een garantie over
+de aanroeper** — zie §4a. Eén antwoord is een momentopname; wie elke dag opvraagt
+bouwt de chronologie zelf. Dat geldt hier net zo hard als bij het klassement, en
+geen van beide functies kan het voorkomen.
 
 Om dezelfde reden sorteert de functie **op naam en niet op tijd**. Een sortering
 op `shown_at` geeft het tijdstip niet prijs maar wél de volgorde, en dat is "wie
@@ -140,14 +187,29 @@ dezelfde groep bij twee aanroepen twee antwoorden.
 ## 6. Een `join` en geen `left join`
 
 Een lid zonder recente verschijning valt uit de lijst in plaats van er met lege
-kolommen in te staan. Een lege rij zou zeggen *"bij deze persoon is in geen zeven
-dagen een held langs geweest"*, en dat is een uitspraak over iemand die de
-"wel"-lijst van QS8-477 niet noemt — en die bovendien iets verraadt over zijn
-meldingsinstellingen.
+kolommen in te staan. De handtekening belooft een held en een trigger, en een rij
+waarin allebei `null` zijn is geen antwoord maar een vorm.
 
-De prijs is dat een aanroeper de ledenlijst apart moet ophalen om "iedereen" te
-tonen. Dat is één query die er toch al is (`group_overview()`), en de veilige
-kant wint.
+⚠️⚠️ **Hier stond een tweede reden en die was onwaar.** Er stond dat een lege rij
+*"iets verraadt over zijn meldingsinstellingen"* en dat de inner join dat
+voorkomt. 📏 Gemeten in de security-review op dit issue: `groep_klassement()`
+draagt dezelfde poort (`lid_van_open_groep`) en dezelfde ledenfilter
+(`status <> 'inactive'`), dus het complement is één query — de leden uit het
+klassement die niet in deze lijst staan, zijn exact de leden zonder recente
+verschijning. `group_members` is via `mag_groep_lezen()` sowieso leesbaar.
+
+**De inner join verbergt dus niets.** De keuze zelf blijft staan — hij is niet
+slechter dan een left join — maar de reden eronder klopte niet, en dat is in dit
+project de duurste vorm van een fout: *"een afwijking die je onderbouwt is duurder
+dan een die je vergeet — een uitgeschreven argument leest de volgende persoon als
+een reden om er niet aan te twijfelen"* (CLAUDE.md). De volgende bouwer zou §6
+gelezen hebben als "afwezigheid is niet waarneembaar" en daarop gebouwd.
+
+Wat de afwezigheid daadwerkelijk verraadt — dat iemand geen meldingen krijgt —
+staat als Laag-rij in `docs/ENGINEER-REVIEW.md` en niet als opgelost.
+
+De prijs van de inner join is dat een aanroeper de ledenlijst apart moet ophalen
+om "iedereen" te tonen. Dat is één query die er toch al is (`group_overview()`).
 
 ## 7. Wat er níet gebouwd is, en waarom dat geen omissie is
 
@@ -175,17 +237,44 @@ Regel 18 vraag 3 beantwoord je niet door erover na te denken maar door de beloft
 met de hand te breken. 📏 Gemeten op 14-09-2026 tegen de lokale stack, **mutatie
 per grendel en niet één mutatie voor de hele controle**:
 
-| IJKING | Gebroken | Wat er omviel |
+| IJKING | Gebroken | Wat er omviel (van de 18) |
 |---|---|---|
-| A | `where lid_van_open_groep(p_group_id)` weggehaald | 6 van de 13 — élke must-deny, inclusief de niet-lid en het uitgezette lid |
+| A | `where lid_van_open_groep(p_group_id)` weggehaald | **6** — élke must-deny, inclusief de niet-lid en het uitgezette lid |
 | B | `and m.status <> 'inactive'` weggehaald | 1 — "laat een uitgezet lid ook niet ín de lijst staan" |
-| C | `and a.shown_at > now() - interval '7 days'` weggehaald | 1 — "laat een verschijning van acht dagen oud eruit vallen" |
+| C | de hele venstervoorwaarde weggehaald | **2** — de acht-dagen-toets én de dagrandtoets |
 | D | `shown_at` aan de kolomlijst toegevoegd | 1 — "geeft geen tijdstip en geen rij-id terug" |
+| E | `order by s.display_name` → `order by s.shown_at desc` | 1 — "sorteert op naam en niet op tijd" |
+| F | `least(coalesce(p_limit, 20), 50)` → `coalesce(p_limit, 20)` | 1 — "geeft nooit meer dan vijftig rijen" |
+| G | `date_trunc('day', now(), 'UTC')` → `now()` | 1 — "legt de rand op een hele UTC-dag" |
+| H | de trigger-allowlist weggehaald | 1 — "geeft alleen de vier triggers die deze groep mag zien" |
+| I | de archieftak uit `lid_van_open_groep()` (0102) weggehaald | 1 — "geeft nul rijen in een open groep die gearchiveerd is" |
 
-⚠️ Dat A er zes omgooit en de andere drie er één, is geen slordigheid maar de
-vorm van de functie: de poort is waar élke must-deny op rust, de andere drie zijn
-elk één eigenschap. Een ijking die alle vier op dezelfde toets was uitgekomen,
-had betekend dat drie van de vier toetsen niets eigens bewaakten.
+⚠️ Dat A er zes omgooit en de rest er één (C twee), is geen slordigheid maar de
+vorm van de functie: de poort is waar élke must-deny op rust, de andere zijn elk
+één eigenschap. C raakt er twee omdat het venster zelf én de vorm van zijn rand
+allebei aan die ene voorwaarde hangen; G isoleert de rand.
+
+⚠️⚠️ **E, F, G en H bestaan omdat ze er niet waren, en dat is de scherpste
+uitkomst van de security-review op dit issue.** De eerste ronde had A t/m D en
+stond op 13 toetsen. De review brak de sorteervolgorde en het plafond van vijftig
+met de hand in de draaiende functie, en **de suite bleef 13 van de 13 groen** —
+terwijl de migratiekop allebei als grens opschrijft en §5 uitlegt wát de
+sorteervolgorde kost. Twee grenzen die alleen in een comment stonden, exact de
+klasse van QS8-412.
+
+⚠️ **I breekt niet deze functie maar zijn poort, en dat is met opzet.** De
+archieftoets staat in `lid_van_open_groep()` (0102) en `groep_helden()` erft hem.
+Een erfenis zonder toets is een aanname: haalt iemand die poort ooit uit elkaar in
+twee conjuncten, dan valt de archiefhelft er stil af — precies wat 0102 zelf als
+aanleiding noemt (*"zonder die toets bleef een gearchiveerde open groep zijn
+schakels uitdelen"*). Dezelfde klasse als rij 33 in beslisdocument 002: een
+verruiming die je érft, staat nergens als besluit.
+
+⚠️ **F beet pas nadat de toets zijn eigen gevallen ging máken.** De eerste versie
+eiste "hoogstens vijftig" op een groep van acht: groen mét en zonder de klem.
+`vulGroep()` zet er vijfenvijftig neer via `psql()` en `leegGroep()` haalt ze in
+`finally` weer weg. **Een controle die je niet kunt voeden, kun je niet ijken** —
+en een toets die zijn grens nooit raakt, toetst niets.
 
 ⚠️ **En de mutatie zat in de gedéployde functie en niet in het migratiebestand.**
 `pg_get_functiondef()` is de waarheid; een ijking die een bestand verandert dat
@@ -208,7 +297,84 @@ eronder staat. 📏 Na `npm run rls:stack` opnieuw:
 ⚠️ **Twee lessen, en de tweede is de belangrijkere.** De eerste: herstel een
 ijking door de bron opnieuw af te spelen en niet door het stuk terug te zetten
 dat je gemuteerd hebt — een `drop` neemt meer mee dan wat er in je diff staat.
-De tweede: de twee grendels die dit vonden, vonden het **buiten** het testbestand
-van dit issue om, en ze zijn het waard om te noemen omdat ze precies de fout
-vonden die onwrikbare regel 4 beschrijft. Was de `revoke` in de migratie écht
-vergeten geweest, dan was het net zo hard rood geworden.
+De tweede ronde (E t/m H) doet dat: `psql -f` op het hele migratiebestand, en
+daarna `has_function_privilege('anon', …)` nagemeten. **f**, elke keer.
+
+De tweede les: de twee grendels die dit vonden, vonden het **buiten** het
+testbestand van dit issue om, en ze zijn het waard om te noemen omdat ze precies
+de fout vonden die onwrikbare regel 4 beschrijft. Was de `revoke` in de migratie
+écht vergeten geweest, dan was het net zo hard rood geworden.
+
+⚠️⚠️ **En toen ging het bij IJKING I nóg een keer mis, één laag hoger.** Die
+mutatie zat niet in `groep_helden()` maar in zijn poort `lid_van_open_groep()`,
+en het herstel was `psql -f` op **migratie 0102** — het bestand waar die functie
+vandaan komt. 📏 Uitkomst: `npm run poort` viel om op **52** testbestanden.
+
+Dat was geen defect in de poort maar in het herstel: 0102 doet meer dan die ene
+functie, en hem afspelen op een schema dat al op 0268 staat, draait terug wat
+latere migraties aan diezelfde objecten veranderd hebben. Dit is letterlijk de
+uitzonderingsklasse die CLAUDE.md beschrijft — *"idempotent betekent: idempotent
+tegen de toestand waarvoor de migratie geschreven is"* — alleen dan als
+gereedschapsfout in plaats van als migratiefout. `npm run rls:stack` bouwde het
+schema opnieuw op en de poort was daarna weer schoon.
+
+**De regel die hieruit volgt is smaller dan "speel de bron opnieuw af":**
+
+> Herstel een ijking door het schema opnieuw óp te bouwen, of door de bron van de
+> **laatste** migratie af te spelen. Een oudere migratie terugspelen op een nieuwer
+> schema is geen herstel maar een terugzet.
+
+⚠️ En de omgekeerde les is de belangrijkste: **twee keer op rij was het rood van
+mijn instrument en niet van mijn wijziging** — en allebei de keren was het
+zichtbaar omdat de poort volledig draaide. Had ik na een ijking alleen het
+testbestand van dit issue teruggedraaid, dan was de eerste ronde met `anon`-recht
+gemerged. Dat is de praktische kant van *"een rood is niet vanzelf jouw rood"*
+(QS8-411): het antwoord is niet het rood negeren maar uitzoeken wáár het vandaan
+komt, vóórdat je het wegredeneert.
+
+## 10. Een allowlist op `trigger`, en niet een doorgeefluik
+
+📏 Nagemeten over `supabase/functions/`, `src/` en `app/`: de CHECK
+`hero_appearances_trigger_geldig` laat zes waarden toe en er worden er **vier**
+geschreven — `misser` en `stilte` (nudge), `mijlpaal` (cycle_summary) en
+`tussendoor` (de hoofdheld zonder gebeurtenis). Niets schrijft ooit `nieuw_doel`
+of `vastlopen`.
+
+Gaf deze functie `trigger` ongefilterd door, dan verbreedde dit oppervlak zichzelf
+op de dag dat daar iets aan verandert: de open groep leest dan *dat dit lid een
+doel heeft aangemaakt*. Dat is geen tegenslag en dus niet wat A41 opent, en het is
+per persoon in plaats van per doel — wat botst met domeinregel 4. Niets zou daar
+rood van worden: niet de functie, niet de toetsen, niet `zichtbaarheid:controle`.
+
+CLAUDE.md is hier expliciet: *"Voor élk níeuw oppervlak is beschermd het antwoord
+tot iemand het tegendeel besluit. Bouw niets vast open; dat is precies hoe een
+standaard verschuift zonder dat iemand het besloten heeft."* De allowlist maakt
+van de volgende trigger een besluit met een migratie eronder, dezelfde vorm als
+`chat_messages_system_event_bekend`.
+
+⚠️ **De filter staat in de CTE en niet erna**, dus `distinct on` kiest de nieuwste
+verschijning **die deze groep mag zien**. Een lid met een verse `nieuw_doel` valt
+daardoor niet uit de lijst maar houdt zijn vorige zichtbare held. Dat is de
+conservatieve kant: eruit vallen zou een níeuw afwezigheidssignaal maken, en de
+belofte is "de laatste held die deze groep mag zien" en niet "de laatste held".
+
+## 11. De uitweg die de toestemmingstekst noemt, werkt hier maar half
+
+`bevestiging.groep_openzetten.uitleg` zegt sinds QS8-254: *"Iedereen krijgt een
+bericht in de groepschat, zodat wie dat niet wil zijn doel kan ontkoppelen."*
+Voor elk ander oppervlak dat opengaat klopt dat. Voor dit oppervlak niet:
+`hero_appearances` heeft geen `goal_id` en `groep_helden()` sleutelt op
+`group_members`, dus wie zijn doel ontkoppelt staat de volgende ochtend gewoon
+weer in de lijst — met een `misser` die uit een doel komt dat hij alleen met een
+**beschermde** groep deelt (§2).
+
+Deze commit maakt de zin waar in plaats van de belofte: er staat nu bij dat de
+uitweg werkt voor alles wat aan een doel hangt, en dat de heldenlijst aan je
+lidmaatschap hangt. De echte uitwegen blijven de groep verlaten of je meldingen
+uitzetten.
+
+⚠️ **Of daar een eigen uitweg voor moet komen — een knop "mijn held blijft
+privé" — is een productvraag en valt onder grens 1 van de beslisbevoegdheid: het
+gaat over wat er tegen een mens beloofd wordt.** Die staat als rij in
+`docs/ENGINEER-REVIEW.md` en is voorgelegd bij de PR; een bouwsessie beslist hem
+niet.

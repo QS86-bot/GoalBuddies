@@ -8,6 +8,7 @@ import {
   rlsTestsConfigured,
   type TestUser,
 } from './harness';
+import { psql } from './psql-stack';
 
 /**
  * `groep_helden()` — de éne route waarlangs een open groep je held ziet.
@@ -94,6 +95,79 @@ async function noteer(
   if (error) throw new Error(`verschijning: ${error.message}`);
 }
 
+/**
+ * Een tijdstip op een hele UTC-dag ten opzichte van vandaag.
+ *
+ * ⚠️ **UTC en niet de zone van de testmachine, want de rand van het venster
+ *    staat óók op UTC** (`date_trunc('day', now(), 'UTC')` in 0268). Een helper
+ *    die `new Date(...)` in de lokale zone opbouwt, verschuift de gevallen met
+ *    een paar uur en maakt van "dag −7, één minuut na middernacht" op een machine
+ *    in `Pacific/Honolulu` stilletjes dag −8. Dan toetst dit bestand iets anders
+ *    dan het zegt op elke machine behalve die van de schrijver.
+ */
+function dagRand(dagen: number, uur: number, minuut = 0): string {
+  const nu = new Date();
+  return new Date(
+    Date.UTC(nu.getUTCFullYear(), nu.getUTCMonth(), nu.getUTCDate() + dagen, uur, minuut),
+  ).toISOString();
+}
+
+/** Een verschijning op een exact tijdstip, voor de venstergevallen. */
+async function noteerOp(
+  wie: TestUser,
+  held: string,
+  trigger: string,
+  wanneer: string,
+): Promise<void> {
+  const { error } = await adminDb()
+    .from('hero_appearances')
+    .insert({ user_id: wie.id, hero_key: held, trigger, shown_at: wanneer });
+  if (error) throw new Error(`verschijning op ${wanneer}: ${error.message}`);
+}
+
+/**
+ * Het voorvoegsel waaraan de bulkgebruikers van de klem-toets te herkennen zijn.
+ *
+ * ⚠️ Een eigen voorvoegsel en niet "alles wat de harness niet kent": `leegGroep()`
+ *    verwijdert met een `delete` uit `auth.users`, en dat is een handeling die je
+ *    nooit op een ruimere voorwaarde laat staan dan je bedoelt.
+ */
+const BULK = 'heldgroep-klem-';
+
+/**
+ * Zet `hoeveel` extra actieve leden met elk één verse verschijning in deze groep.
+ *
+ * ⚠️ Via `psql()` en niet via de harness: dit zijn rijen en geen sessies. Er is
+ *    geen JWT voor nodig — ze worden gelezen, niet gebruikt om mee in te loggen —
+ *    en vijfenvijftig keer `createTestUser()` kost een veelvoud aan tijd.
+ */
+function vulGroep(groupId: string, hoeveel: number): void {
+  psql(`
+    with nieuw as (
+      select gen_random_uuid() as id, i from generate_series(1, ${hoeveel}) i
+    ),
+    u as (
+      insert into auth.users (id, email)
+      select n.id, '${BULK}' || n.i || '@klem.local' from nieuw n returning id
+    ),
+    p as (
+      insert into profiles (id, display_name)
+      select n.id, '${BULK}' || lpad(n.i::text, 3, '0') from nieuw n returning id
+    ),
+    m as (
+      insert into group_members (group_id, user_id, status)
+      select '${groupId}', n.id, 'active' from nieuw n returning user_id
+    )
+    insert into hero_appearances (user_id, hero_key, trigger, shown_at)
+    select n.id, 'quip', 'tussendoor', now() from nieuw n;
+  `);
+}
+
+/** Haalt ze weer weg; de cascades ruimen profiel, lidmaatschap en verschijning op. */
+function leegGroep(): void {
+  psql(`delete from auth.users where email like '${BULK}%@klem.local'`);
+}
+
 /** De heldenlijst zoals déze kijker hem krijgt. */
 async function helden(kijker: TestUser, groupId: string): Promise<readonly Heldenrij[]> {
   const { data, error } = await kijker.db.rpc('groep_helden', { p_group_id: groupId });
@@ -116,6 +190,14 @@ describe.skipIf(!rlsTestsConfigured)('groep_helden() — je held in een open gro
   let dirk: TestUser;
   /** Doet mee aan de open groep en wordt daarna uitgezet. */
   let eva: TestUser;
+  /** Lid van de open groep, en de enige wiens verschijningen de toetsen muteren. */
+  let frida: TestUser;
+  /** Twee rijen van dezelfde UTC-dag, allebei buiten het venster. */
+  let gerrit: TestUser;
+  /** Twee rijen van dezelfde UTC-dag, allebei binnen het venster. */
+  let henk: TestUser;
+  /** Krijgt een trigger die deze groep niet mag zien. */
+  let ilse: TestUser;
 
   let open: Groep;
   let beschermd: Groep;
@@ -127,6 +209,10 @@ describe.skipIf(!rlsTestsConfigured)('groep_helden() — je held in een open gro
     cor = await createTestUser('heldgroep-cor');
     dirk = await createTestUser('heldgroep-dirk');
     eva = await createTestUser('heldgroep-eva');
+    frida = await createTestUser('heldgroep-frida');
+    gerrit = await createTestUser('heldgroep-gerrit');
+    henk = await createTestUser('heldgroep-henk');
+    ilse = await createTestUser('heldgroep-ilse');
 
     open = await maakGroep(anna, 'Heldgroep-open', 'open');
     beschermd = await maakGroep(anna, 'Heldgroep-beschermd', 'beschermd');
@@ -135,6 +221,10 @@ describe.skipIf(!rlsTestsConfigured)('groep_helden() — je held in een open gro
     await laatMeedoen(bram, open);
     await laatMeedoen(bram, beschermd);
     await laatMeedoen(eva, open);
+    await laatMeedoen(frida, open);
+    await laatMeedoen(gerrit, open);
+    await laatMeedoen(henk, open);
+    await laatMeedoen(ilse, open);
 
     // ⚠️ Een **misser** en geen mijlpaal: dit is de rij waar domeinregel 7 over
     //    gaat, en een test die een neutrale trigger gebruikt toetst de
@@ -237,15 +327,21 @@ describe.skipIf(!rlsTestsConfigured)('groep_helden() — je held in een open gro
         const uit = (dicht.data ?? {}) as { ok?: boolean; reason?: string };
         expect(uit.ok, JSON.stringify(dicht.data)).toBe(true);
 
-        expect(await helden(bram, open.id), 'beschermd').toHaveLength(0);
-
-        const terug = await anna.db.rpc('zet_groepszichtbaarheid', {
-          p_group_id: open.id,
-          p_naar: 'open',
-          p_bevestigd: true,
-        });
-        const terugUit = (terug.data ?? {}) as { ok?: boolean; reason?: string };
-        expect(terugUit.ok, JSON.stringify(terug.data)).toBe(true);
+        try {
+          expect(await helden(bram, open.id), 'beschermd').toHaveLength(0);
+        } finally {
+          // ⚠️ **`finally` en geen gewone regel eronder.** Valt de assertie, dan
+          //    blijft de groep zonder dit blok beschermd staan en gaat élke
+          //    toets die erna komt om — met een melding die naar de verkeerde
+          //    oorzaak wijst. Een toets die de fixture omzet, zet hem terug.
+          const terug = await anna.db.rpc('zet_groepszichtbaarheid', {
+            p_group_id: open.id,
+            p_naar: 'open',
+            p_bevestigd: true,
+          });
+          const terugUit = (terug.data ?? {}) as { ok?: boolean; reason?: string };
+          expect(terugUit.ok, JSON.stringify(terug.data)).toBe(true);
+        }
 
         expect(rijVan(await helden(bram, open.id), anna.id), 'weer open').toBeDefined();
       },
@@ -287,6 +383,40 @@ describe.skipIf(!rlsTestsConfigured)('groep_helden() — je held in een open gro
     );
 
     it(
+      'geeft nul rijen in een open groep die gearchiveerd is',
+      async () => {
+        /**
+         * ⚠️ **De archieftoets zit in `lid_van_open_groep()` en niet hier, en
+         *    juist dáárom hoort dit oppervlak hem vast te leggen.** 0102 heeft
+         *    die toets erbij gezet met de reden dat een gearchiveerde open groep
+         *    anders *"zijn schakels bleef uitdelen"*. Deze functie erft dat, en
+         *    een erfenis zonder toets is een aanname: haalt iemand de poort ooit
+         *    uit elkaar in twee conjuncten, dan valt de archiefhelft er stil af.
+         *
+         * ⚠️ **Een eigen wegwerpgroep en niet `open` of `elders`.** Archiveren is
+         *    niet terug te draaien binnen deze toets, en een gearchiveerde
+         *    fixture maakt van élke toets die erna komt een groene om de
+         *    verkeerde reden — "nul rijen" klopt dan ook als de poort stuk is.
+         */
+        const tijdelijk = await maakGroep(anna, 'Heldgroep-archief', 'open');
+        await laatMeedoen(bram, tijdelijk);
+        await noteerOp(bram, 'ignis', 'misser', dagRand(0, 0));
+
+        expect(rijVan(await helden(bram, tijdelijk.id), bram.id), 'vóór').toBeDefined();
+
+        const weg = await anna.db.rpc('archiveer_groep', {
+          p_group_id: tijdelijk.id,
+          p_bevestigd: true,
+        });
+        const uit = (weg.data ?? {}) as { ok?: boolean; reason?: string };
+        expect(uit.ok, JSON.stringify(weg.data)).toBe(true);
+
+        expect(await helden(bram, tijdelijk.id), 'ná het archiveren').toHaveLength(0);
+      },
+      TEST_TIMEOUT,
+    );
+
+    it(
       'laat een lid van een ándere open groep niet lekken — acceptatiecriterium 5',
       async () => {
         /**
@@ -310,13 +440,24 @@ describe.skipIf(!rlsTestsConfigured)('groep_helden() — je held in een open gro
     it(
       'geeft de nieuwste verschijning en niet de oudste',
       async () => {
-        await noteer(anna, 'strix', 'mijlpaal');
+        /**
+         * ⚠️ **Op Frida en niet op Anna, en dat is geen smaak.** Anna's `misser`
+         *    is de rij waar élke must-deny hierboven op leunt; die hier
+         *    overschrijven maakt van die toetsen iets dat alleen klopt zolang
+         *    vitest de bestandsvolgorde aanhoudt. Een suite die ooit met
+         *    `--shuffle` of parallel draait, meet dan iets anders dan ze zegt —
+         *    en de ijking van de poort meet dan mee.
+         */
+        await noteer(frida, 'ignis', 'misser', 2);
+        await noteer(frida, 'strix', 'mijlpaal');
 
-        const rijen = await helden(bram, open.id);
-        const vanAnna = rijen.filter((rij) => rij.user_id === anna.id);
+        const vanFrida = (await helden(bram, open.id)).filter((rij) => rij.user_id === frida.id);
 
-        expect(vanAnna, 'precies één rij per lid').toHaveLength(1);
-        expect(vanAnna[0]?.trigger).toBe('mijlpaal');
+        expect(vanFrida, 'precies één rij per lid').toHaveLength(1);
+        expect(vanFrida[0]?.trigger).toBe('mijlpaal');
+        expect(rijVan(await helden(bram, open.id), anna.id)?.trigger, 'Anna onaangeroerd').toBe(
+          'misser',
+        );
       },
       TEST_TIMEOUT,
     );
@@ -325,24 +466,99 @@ describe.skipIf(!rlsTestsConfigured)('groep_helden() — je held in een open gro
       'laat een verschijning van acht dagen oud eruit vallen',
       async () => {
         /**
-         * 📏 IJKING C — `and a.shown_at > now() - interval '7 days'` uit 0268
-         *    weggehaald: deze toets werd rood (Cors `misser` van acht dagen
-         *    stond in de lijst). Met de regel erin valt hij eruit.
+         * 📏 IJKING C — de venstervoorwaarde uit 0268 weggehaald: deze toets werd
+         *    rood (Cors `misser` van acht dagen stond in de lijst). Met de regel
+         *    erin valt hij eruit.
          *
          * ⚠️ **De grens zelf is de toets, niet de twee gevallen eromheen.** Dag
          *    zes en dag acht laten de grens vrij tussen zeven en negen liggen;
          *    daarom staat hier ook de dag ervóór.
          */
         await laatMeedoen(cor, open);
-        await noteer(cor, 'ignis', 'misser', 8);
+        await noteerOp(cor, 'ignis', 'misser', dagRand(-8, 12));
 
         expect(rijVan(await helden(bram, open.id), cor.id), 'acht dagen').toBeUndefined();
 
-        await noteer(cor, 'forge', 'vastlopen', 6);
+        await noteerOp(cor, 'meridian', 'tussendoor', dagRand(-6, 12));
 
         const zes = rijVan(await helden(bram, open.id), cor.id);
         expect(zes, 'zes dagen').toBeDefined();
-        expect(zes?.trigger).toBe('vastlopen');
+        expect(zes?.trigger).toBe('tussendoor');
+      },
+      TEST_TIMEOUT,
+    );
+
+    it(
+      'legt de rand op een hele UTC-dag en niet op een tijdstip',
+      async () => {
+        /**
+         * ⚠️⚠️ **Dit is de grendel onder de reparatie uit de security-review, en
+         *    de belofte is niet "zeven dagen" maar "de rand draagt geen tijd van
+         *    de dag".** Met een kale `now() - interval '7 days'` verdwijnt een
+         *    rij precies zeven dagen ná `shown_at`; wie deze functie herhaald
+         *    opvraagt, leest daarmee het tijdstip terug tot op zijn polinterval —
+         *    juist de kolom die met opzet niet in de handtekening staat.
+         *
+         *    `date_trunc('day', now(), 'UTC')` laat alles van één UTC-dag
+         *    tegelijk wegvallen. De toets daarop is dus niet "hoe oud mag een rij
+         *    zijn" maar: **twee rijen van dezelfde UTC-dag horen hetzelfde lot te
+         *    delen**, hoe ver hun tijdstippen ook uit elkaar liggen.
+         *
+         * 📏 IJKING G — `date_trunc('day', now(), 'UTC')` vervangen door `now()`:
+         *    deze toets werd rood, de vroege rij van dag −7 viel eruit en de late
+         *    bleef staan. Zie §8 van het beslisdocument.
+         */
+        await noteerOp(gerrit, 'ignis', 'misser', dagRand(-8, 0, 1));
+        await noteerOp(gerrit, 'lucerna', 'stilte', dagRand(-8, 23, 59));
+
+        expect(
+          rijVan(await helden(bram, open.id), gerrit.id),
+          'beide rijen van dag −8 horen weg te vallen',
+        ).toBeUndefined();
+
+        await noteerOp(henk, 'ignis', 'misser', dagRand(-7, 0, 1));
+        const vroeg = rijVan(await helden(bram, open.id), henk.id);
+        expect(vroeg, 'de vroegste rij van dag −7 hoort te blijven').toBeDefined();
+
+        await noteerOp(henk, 'lucerna', 'stilte', dagRand(-7, 23, 59));
+        const laat = rijVan(await helden(bram, open.id), henk.id);
+        expect(laat, 'en de laatste van diezelfde dag ook').toBeDefined();
+        expect(laat?.trigger, 'en dat is de nieuwste van de twee').toBe('stilte');
+      },
+      TEST_TIMEOUT,
+    );
+
+    it(
+      'geeft alleen de vier triggers die deze groep mag zien',
+      async () => {
+        /**
+         * ⚠️⚠️ **Een allowlist en geen doorgeefluik.** De CHECK op
+         *    `hero_appearances.trigger` laat zes waarden toe; er worden er
+         *    vandaag vier geschreven. `nieuw_doel` zou de open groep vertellen
+         *    dát dit lid een doel heeft aangemaakt — geen tegenslag, dus niet wat
+         *    A41 opent, en per persoon in plaats van per doel, wat botst met
+         *    domeinregel 4.
+         *
+         *    CLAUDE.md: *"Voor élk níeuw oppervlak is beschermd het antwoord tot
+         *    iemand het tegendeel besluit."* Zonder deze toets verbreedt het
+         *    oppervlak zichzelf op de dag dat er een zevende schrijver bij komt,
+         *    en wordt niets daarvan rood.
+         *
+         * 📏 IJKING H — de `and a.trigger = any (array[…])` uit 0268 weggehaald:
+         *    deze toets werd rood.
+         */
+        await noteerOp(ilse, 'ignis', 'misser', dagRand(-1, 12));
+        expect(rijVan(await helden(bram, open.id), ilse.id)?.trigger, 'opstelling').toBe('misser');
+
+        // Een verse `nieuw_doel` hoort de zichtbare held níet te vervangen, en
+        // hoort het lid ook niet uit de lijst te duwen: de belofte is "de laatste
+        // held die deze groep mag zien".
+        await noteerOp(ilse, 'meridian', 'nieuw_doel', dagRand(0, 0));
+
+        const na = rijVan(await helden(bram, open.id), ilse.id);
+        expect(na, 'het lid blijft in de lijst').toBeDefined();
+        expect(na?.trigger, 'met zijn vorige zichtbare trigger').toBe('misser');
+        expect(na?.hero_key).toBe('ignis');
       },
       TEST_TIMEOUT,
     );
@@ -383,6 +599,114 @@ describe.skipIf(!rlsTestsConfigured)('groep_helden() — je held in een open gro
     );
   });
 
+  describe('de twee grenzen die de migratie opschrijft', () => {
+    /**
+     * ⚠️⚠️ **Deze twee toetsen bestaan omdat ze er niet waren, en dat is gemeten
+     *    en niet bedacht.** De security-review op dit issue brak allebei de
+     *    grenzen hieronder met de hand in de draaiende functie, en de suite bleef
+     *    **13 van de 13 groen**. Een grens die alleen in een comment staat, is
+     *    geen grens — dezelfde klasse als de grendel uit QS8-412 die nooit
+     *    geschreven was.
+     */
+    it(
+      'sorteert op naam en niet op tijd',
+      async () => {
+        /**
+         * ⚠️ **Waarom dit een belofte is en geen smaak.** Een sortering op
+         *    `shown_at` geeft de waarde niet prijs maar wél de vólgorde, en dat
+         *    is "wie miste het laatst iets" — een kolom die met opzet niet in de
+         *    handtekening staat, alsnog afleidbaar uit de rijvolgorde. Iemand kan
+         *    dat over drie maanden omzetten met een net argument erbij ("de verse
+         *    bovenaan leest fijner"), en zonder deze toets wordt niets rood.
+         *
+         * ⚠️ **De toets pint de vólgorde en niet de kolom.** `Object.keys` vangt
+         *    dit niet: je mag sorteren op iets wat je niet teruggeeft.
+         *
+         * 📏 IJKING E — `order by s.display_name asc` vervangen door
+         *    `order by s.shown_at desc` (met `shown_at` door de twee CTE's
+         *    gevoerd, buiten de kolomlijst): deze toets werd rood.
+         */
+        const namen = (await helden(bram, open.id)).map((rij) => rij.display_name);
+
+        expect(namen.length, 'er staat iemand in de lijst').toBeGreaterThan(1);
+        expect(namen, 'oplopend op naam').toEqual([...namen].sort((a, b) => a.localeCompare(b)));
+      },
+      TEST_TIMEOUT,
+    );
+
+    it(
+      'geeft nooit meer dan vijftig rijen, wat de aanroeper ook vraagt',
+      async () => {
+        /**
+         * ⚠️ **Onwrikbare regel 10, en het plafond is met opzet hard.** Een
+         *    `p_limit` die de aanroeper vrij mag kiezen, is geen paginering maar
+         *    een suggestie; de migratie zegt dat met zoveel woorden en niets hield
+         *    het tegen.
+         *
+         * ⚠️ De toets staat op de **klem** en niet op het aantal rijen dat er
+         *    toevallig is: hij vraagt er duizend en eist dat het antwoord niet
+         *    boven vijftig komt. Zo blijft hij kloppen als de fixture groeit én
+         *    als hij krimpt.
+         *
+         * 📏 IJKING F — `least(coalesce(p_limit, 20), 50)` vervangen door
+         *    `coalesce(p_limit, 20)`: deze toets werd rood zodra de groep meer dan
+         *    vijftig zichtbare leden had.
+         */
+        // ⚠️⚠️ **Vijfenvijftig extra leden, en die moeten er écht zijn.** Een
+        //    toets die "hoogstens vijftig" eist op een groep van acht, is groen
+        //    met én zonder de klem — precies de vorm waar regel 18 vraag 3 voor
+        //    bestaat. Ze worden hier gemaakt en in `finally` weer weggehaald,
+        //    zodat de andere toetsen in dit bestand een groep van acht houden.
+        vulGroep(open.id, 55);
+        try {
+          const veel = await bram.db.rpc('groep_helden', {
+            p_group_id: open.id,
+            p_limit: 100000,
+            p_offset: 0,
+          });
+          expect(veel.error).toBeNull();
+          const rijen = (veel.data ?? []) as { totaal: number }[];
+
+          expect(rijen.length, 'de klem knipt op vijftig').toBe(50);
+          expect(rijen[0]?.totaal, 'en het totaal telt wél alles door').toBeGreaterThan(50);
+
+          // ⚠️ En een negatieve of onzinnige waarde levert geen fout maar een lege
+          //    pagina: `greatest(0, …)` aan beide kanten. Een 500 hier zou een
+          //    aanroeper vertellen dát hij een grens raakte.
+          const negatief = await bram.db.rpc('groep_helden', {
+            p_group_id: open.id,
+            p_limit: -5,
+            p_offset: -5,
+          });
+          expect(negatief.error).toBeNull();
+          expect((negatief.data ?? []) as unknown[]).toHaveLength(0);
+        } finally {
+          leegGroep();
+        }
+      },
+      TEST_TIMEOUT,
+    );
+
+    it(
+      'telt in `totaal` de leden mét een zichtbare verschijning en niet de hele groep',
+      async () => {
+        /**
+         * ⚠️ **`totaal` stond nergens onder toets en heeft toch een betekenis die
+         *    ertoe doet.** Zou hij het aantal léden tellen in plaats van het
+         *    aantal rijen, dan biedt een aanroeper een volgende pagina aan die
+         *    leeg terugkomt — en, erger, verraadt het verschil tussen `totaal` en
+         *    de rijen hoeveel leden er géén verschijning hebben.
+         */
+        const rijen = await helden(bram, open.id);
+
+        expect(rijen.length, 'de fixture vult de eerste pagina niet').toBeLessThan(50);
+        expect(new Set(rijen.map((r) => r.totaal)).size, 'één getal voor de hele pagina').toBe(1);
+        expect(rijen[0]?.totaal).toBe(rijen.length);
+      },
+      TEST_TIMEOUT,
+    );
+  });
+
   describe('de grendels eromheen', () => {
     it(
       'laat de tabellen zelf dicht, ook in een open groep',
@@ -395,12 +719,16 @@ describe.skipIf(!rlsTestsConfigured)('groep_helden() — je held in een open gro
          *    breken door een policytak toe te voegen "omdat de functie er toch al
          *    is". Elk onderdeel klopt en het geheel lekt: precies regel 18.
          */
-        const verschijningen = await bram.db.from('hero_appearances').select('id, trigger');
+        // ⚠️ **Geen exact aantal, want dat aantal ontstaat in een ánder blok
+        //    hierboven.** Een toets die op "precies twee" staat, is in
+        //    werkelijkheid een toets op de volgorde van de bestanden. Wat de
+        //    belofte is: élke rij die Bram leest is van hemzelf.
+        const verschijningen = await bram.db.from('hero_appearances').select('id, user_id');
         expect(verschijningen.error).toBeNull();
-        expect(
-          (verschijningen.data ?? []).filter((r) => (r as { id: string }).id !== undefined),
-          'Bram leest alleen zijn eigen rijen',
-        ).toHaveLength(2);
+        const vreemd = (verschijningen.data ?? []).filter(
+          (r) => (r as { user_id: string }).user_id !== bram.id,
+        );
+        expect(vreemd, 'Bram leest alleen zijn eigen rijen').toHaveLength(0);
 
         const vanAnna = await bram.db
           .from('hero_appearances')

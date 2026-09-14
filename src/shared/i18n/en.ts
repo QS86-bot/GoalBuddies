@@ -1683,7 +1683,7 @@ export const en: Record<Sleutel, string> = {
 
   'bevestiging.groep_openzetten.titel': 'Open up this group?',
   'bevestiging.groep_openzetten.uitleg':
-    'From now on everyone in this group also sees each other’s missed and carried weeks, each other’s best streak ever, who took part in each week, a leaderboard of each other’s point totals in this group, and which hero last visited whom in the past week. That includes the hero who turns up after a missed week, and it covers the weeks already there too. So this is not only about you. Everyone gets a message in the group chat, so anyone who would rather not can unlink their goal. You can switch back at any time, immediately.',
+    'From now on everyone in this group also sees each other’s missed and carried weeks, each other’s best streak ever, who took part in each week, a leaderboard of each other’s point totals in this group, and which hero last visited whom in the past week. That includes the hero who turns up after a missed week, and it covers the weeks already there too. So this is not only about you. Everyone gets a message in the group chat, so anyone who would rather not can unlink their goal. That works for everything tied to a goal; the hero list is tied to your membership, so it stays as long as you are in the group. You can switch back at any time, immediately.',
   'bevestiging.groep_openzetten.knop': 'Yes, open it up',
   'bevestiging.groep_beschermen.titel': 'Protect this group again?',
   'bevestiging.groep_beschermen.uitleg':

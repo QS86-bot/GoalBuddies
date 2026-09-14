@@ -94,11 +94,11 @@
 --    `docs/decisions/2026-09-14-een-held-verraadt-geen-doel.md` §2.
 --
 -- ---------------------------------------------------------------------------
--- Het venster van zeven dagen
+-- Het venster van zeven dagen, en de rand die op een dag valt
 -- ---------------------------------------------------------------------------
 --
 -- ⚠️⚠️ **Zonder venster is "Ignis is langs geweest" een permanent merkteken.**
---    De functie geeft geen tijdstip, dus een aanroeper kan vers niet van oud
+--    De functie geeft geen tijdstip, dus één aanroep kan vers niet van oud
 --    onderscheiden: een misser van vijf maanden geleden staat er dan even stellig
 --    als die van gisteren. Een tegenslagsignaal dat nooit vervalt is zwaarder dan
 --    het signaal zelf, en dat is precies de schade waar domeinregel 7 tegen
@@ -111,16 +111,71 @@
 --    recente. Wie er geen heeft, verschijnt niet in de lijst — en dat is het
 --    juiste antwoord, want dan is er niets recents te melden.
 --
+-- ⚠️⚠️ **De rand van het venster is zélf een klok, en dáárom staat er
+--    `date_trunc` omheen.** Gevonden in de security-review op dit issue, en het
+--    is de omkering van de reden hierboven: een aanroeper die deze functie
+--    herhaald opvraagt, ziet een rij **verdwijnen**, en dat moment ligt precies
+--    zeven dagen na `shown_at`. Met een kale `now() - interval '7 days'` leest
+--    hij daarmee het tijdstip terug tot op zijn polinterval — juist de kolom die
+--    hierboven de reden is dat dit een RPC is en geen policytak.
+--
+--    `date_trunc('day', now(), 'UTC')` zet die rand op middernacht UTC. Alles
+--    van één UTC-dag valt daarmee tegelijk weg, dus wat er uit een verdwijning
+--    te lezen valt is een **datum** en geen tijdstip. Dat is geen nul — een open
+--    groep ziet via oppervlak 3 al van welke week iemand een doel miste — maar
+--    het tijdstip van de dag is wél weg, en dat is het scherpste deel: wanneer
+--    iemands nudge afgaat, zegt iets over zijn ritme en zijn tijdzone.
+--
+--    ⚠️ **Wat dit níet repareert, en dat hoort hier te staan in plaats van
+--       weggeredeneerd te worden.** Wie élke dag opvraagt, ziet ook elke níeuwe
+--       verschijning binnenkomen en bouwt zo alsnog een chronologie op. Dat is
+--       geen eigenschap van dit venster maar van elk levend groepsoppervlak —
+--       `groep_klassement()` geeft op dezelfde manier zijn deltas prijs aan wie
+--       hem twee keer opvraagt, en dat is daar bij besluit A54 aanvaard. **De
+--       belofte van deze functie is dus: één antwoord draagt geen tijd, en de
+--       rand draagt hoogstens een datum.** Niet: een groepsgenoot kan geen
+--       tijdlijn bijhouden. Rij in `docs/ENGINEER-REVIEW.md` van 14-09-2026.
+--
 -- ⚠️ **Dit is een leeftijdsfilter en geen dagberekening.** Correctheidsregel 7
 --    gaat over "vandaag" en "deze week": grenzen die van de tijdzone en de
 --    week-startdag van een gebruiker afhangen, en die horen in `shared/time`.
---    `shown_at > now() - interval '7 days'` hangt van geen van beide af — het is
---    dezelfde soort rollende grens als het etmaal in `zet_groepszichtbaarheid()`
---    (0076). Er is hier dus geen tweede plek waar een dag begint.
+--    Deze rand hangt van geen van beide af — hij staat vást op UTC, voor iedere
+--    gebruiker dezelfde, en dat is precies wat hem géén dagbepaling maakt.
+--    De driearguments-`date_trunc` is er om die reden: `date_trunc('day', now())`
+--    zou de `TimeZone` van de sessie volgen, en dan hangt het antwoord af van een
+--    instelling in plaats van van het schema.
 --
 -- ⚠️ **Het venster staat niet in een parameter.** Een aanroeper die hem kan
 --    verzetten, kan hem ook op tien jaar zetten, en dan is de grens een
 --    suggestie. Zelfde reden als de harde bovengrens op `p_limit`.
+--
+-- ---------------------------------------------------------------------------
+-- Welke triggers eruit mogen — een allowlist en geen doorgeefluik
+-- ---------------------------------------------------------------------------
+--
+-- ⚠️⚠️ **`hero_appearances_trigger_geldig` laat zes waarden toe en er worden er
+--    vandaag vier geschreven.** 📏 Nagemeten over `supabase/functions/`, `src/`
+--    en `app/`: `misser` en `stilte` (nudge), `mijlpaal` (cycle_summary) en
+--    `tussendoor` (de hoofdheld zonder gebeurtenis). Niets schrijft ooit
+--    `nieuw_doel` of `vastlopen`.
+--
+--    Zou deze functie `trigger` ongefilterd doorgeven, dan verbreedt dit
+--    oppervlak zichzelf op de dag dat daar iets aan verandert: de open groep
+--    leest dan *dat dit lid een doel heeft aangemaakt* — geen tegenslag, dus
+--    niet wat A41 opent, en per persoon in plaats van per doel, wat botst met
+--    domeinregel 4. Niets zou daar rood van worden.
+--
+--    CLAUDE.md is hier expliciet: *"Voor élk níeuw oppervlak is beschermd het
+--    antwoord tot iemand het tegendeel besluit. Bouw niets vast open."* De
+--    allowlist maakt van de volgende trigger een besluit met een migratie
+--    eronder, zelfde vorm als `chat_messages_system_event_bekend`.
+--
+--    ⚠️ De filter staat in de CTE en niet erna, dus `distinct on` kiest de
+--       nieuwste verschijning **die deze groep mag zien**. Een lid met een verse
+--       `nieuw_doel` valt daardoor niet uit de lijst maar houdt zijn vorige
+--       zichtbare held. Dat is de conservatieve kant: eruit vallen zou een
+--       níeuw afwezigheidssignaal maken, en de belofte is "de laatste held die
+--       deze groep mag zien" en niet "de laatste held".
 --
 -- ---------------------------------------------------------------------------
 
@@ -156,11 +211,25 @@ begin;
 --    tonen die verder nergens meer op het scherm voorkomt; een lid in adempauze
 --    is aangekondigd en blijft staan (oppervlak 21).
 --
--- ⚠️ **Een `join` en geen `left join`.** Een lid zonder recente verschijning
---    valt uit de lijst in plaats van er met lege kolommen in te staan. Een lege
---    rij zou zeggen *"bij deze persoon is in geen zeven dagen een held langs
---    geweest"*, en dat is een uitspraak over iemand die de "wel"-lijst van
---    QS8-477 niet noemt.
+-- ⚠️ **Een `join` en geen `left join`, en de reden is smaller dan ze lijkt.**
+--    Een lid zonder recente verschijning valt uit de lijst in plaats van er met
+--    lege kolommen in te staan: de handtekening belooft een held en een trigger,
+--    en een rij waarin allebei `null` zijn is geen antwoord maar een vorm.
+--
+--    ⚠️⚠️ **Wat dit níet is, is bescherming — en dat stond hier eerst wél.**
+--       📏 Gemeten in de security-review op dit issue: `groep_klassement()`
+--       draagt dezelfde poort (`lid_van_open_groep`) en dezelfde ledenfilter
+--       (`status <> 'inactive'`), dus het complement is één query — de leden uit
+--       het klassement die niet in deze lijst staan, zijn exact de leden zonder
+--       recente verschijning. `group_members` is via `mag_groep_lezen()` sowieso
+--       leesbaar. Wie hier een `left join` van maakt, geeft dus niets weg dat een
+--       aanroeper niet al kon uitrekenen.
+--
+--       Het stond er als een reden om er niet aan te twijfelen, en dat is in dit
+--       project de duurste vorm van een fout (CLAUDE.md: *"een afwijking die je
+--       onderbouwt is duurder dan een die je vergeet"*). Wat de afwezigheid
+--       daadwerkelijk verraadt — dat iemand geen meldingen krijgt — staat als
+--       Laag-rij in `docs/ENGINEER-REVIEW.md` en niet als opgelost.
 create or replace function public.groep_helden(
   p_group_id uuid,
   p_limit    integer default 20,
@@ -192,7 +261,8 @@ as $$
       a.trigger  as trigger
     from hero_appearances a
     where a.user_id in (select l.user_id from leden l)
-      and a.shown_at > now() - interval '7 days'
+      and a.trigger = any (array['misser', 'stilte', 'mijlpaal', 'tussendoor'])
+      and a.shown_at >= date_trunc('day', now(), 'UTC') - interval '7 days'
     order by a.user_id, a.shown_at desc, a.id desc
   ),
   samen as (
@@ -223,7 +293,8 @@ $$;
 
 comment on function public.groep_helden(uuid, integer, integer) is
   'Welke held er de afgelopen zeven dagen bij elk lid van een OPEN groep het '
-  'laatst langs is geweest: naam, held en trigger, meer niet (besluit 5 van '
+  'laatst langs is geweest, van de vier triggers die deze groep mag zien: naam, '
+  'held en trigger, meer niet (besluit 5 van '
   'QS8-468). Geen tijdstip en geen rij-id — die kolommen bestaan niet, zodat de '
   'belofte niet in een component hoeft te staan. Geeft nul rijen in een '
   'beschermde groep, aan een niet-lid en aan een uitgezet lid.';
