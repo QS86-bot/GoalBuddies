@@ -1,0 +1,99 @@
+-- 0263_anon_krijgt_niets_meer_van_een_nieuwe_tabel.sql — 0261 trok de rechten
+-- van `anon` in op de tabellen die er stónden; dit haalt ze uit de standaard.
+--
+-- ROLLBACK-PAD:
+--   alter default privileges in schema public
+--     grant select, insert, update, delete, references on tables to anon;
+--   (dat is de stand die 0073 achterliet)
+--
+-- ---------------------------------------------------------------------------
+-- Waar dit vandaan komt
+-- ---------------------------------------------------------------------------
+--
+-- 📏 **Gemeten op 14-09-2026 (QS8-485) tegen de lokale stack op 0262**, in een
+--    teruggedraaide transactie:
+--
+--      create table public.zzz_proef(id int);
+--      -- anon op een verse tabel:
+--      --   select=true  insert=true  update=true  delete=true  references=true
+--
+--    Migratie 0261 trok de `anon`-SELECT in op de **24 tabellen die er stonden**.
+--    De standaardrechten bleven onveranderd: `pg_default_acl` draagt voor
+--    `postgres` in `public` de regel `anon=arwdx/postgres` op tabellen. Élke
+--    tabel die er morgen bij komt, deelt zichzelf dus opnieuw uit — en niet
+--    alleen SELECT.
+--
+-- ⚠️ **Dat is de vorm waar CLAUDE.md bij de CI-rij van 27-08 voor waarschuwt:**
+--    *"Een reparatie die de instanties opruimt en het mechanisme laat staan,
+--    groeit terug — en hij doet dat onder een rij die 'opgelost' zegt."* 0261 is
+--    zo'n reparatie geweest, en deze migratie is de andere helft.
+--
+-- ---------------------------------------------------------------------------
+-- Het precedent is van dit project zelf
+-- ---------------------------------------------------------------------------
+--
+-- 0073 deed deze ingreep al, voor TRUNCATE en TRIGGER:
+--
+--      alter default privileges in schema public
+--        revoke all on tables from anon, authenticated;
+--      alter default privileges in schema public
+--        grant select, insert, update, delete, references on tables
+--        to anon, authenticated;
+--
+-- Die tweede regel is precies wat hieronder verandert: `anon` komt eruit.
+--
+-- ⚠️ **En 0073 schreef ook de goede les op:** hij bouwde een grendel die
+--    **beide helften** toetst — wat er nu op de tabellen staat én wat de
+--    volgende tabel zou krijgen — met in de kop de reden erbij: *"Alleen de
+--    eerste toetsen zou precies de fout maken die deze migratie repareert."*
+--    `tests/rls/anonleesrecht.test.ts` toetste tot vandaag alleen de eerste.
+--    Die tweede helft komt er in dezelfde branch bij; zonder haar is dit
+--    bestand een afspraak in een comment.
+--
+-- ⚠️ **Het productieverschil dat 0073 vond, geldt hier onverkort.**
+--    `pg_default_acl` draagt op productie een regel van `postgres` **én** een
+--    van `supabase_admin`, en `alter default privileges` raakt alleen die van de
+--    rol die hem uitvoert. `postgres` is geen lid van `supabase_admin`, dus die
+--    tweede is buiten bereik. Hij is onschadelijk zolang alle objecten in
+--    `public` van `postgres` zijn — 📏 op de lokale stack vandaag nagemeten:
+--    élk object in `public` is van `postgres`, en `postgres` is er de enige rol
+--    met standaardrechten. Op productie is dat **niet** hermeten (geen sleutel
+--    in deze omgeving); de toets hieronder koppelt daarom aan eigenaarschap en
+--    wordt vanzelf rood zodra die tweede regel levend wordt.
+--
+-- ---------------------------------------------------------------------------
+-- Wat dit niet is
+-- ---------------------------------------------------------------------------
+--
+-- ⚠️ **`authenticated` blijft ongemoeid, en dat is dezelfde grens die 0261
+--    trok.** Die rol krijgt zijn rechten op nieuwe tabellen juist via deze
+--    standaard, en de kolomgrants van 0236 versmallen ze daarna. Er ook maar
+--    iets van afhalen zou het schema op een plek breken die niets met `anon` te
+--    maken heeft. De positieve toets in `anonleesrecht.test.ts` bewaakt dat.
+--
+-- ⚠️ **Sequences en functies blijven zoals ze zijn**, en dat is een keuze.
+--    📏 Nagemeten: `pg_default_acl` geeft `anon` ook `rwU` op sequences en `X`
+--    op functies. Functies hebben hun eigen discipline — élke `revoke` noemt
+--    `authenticated` (beveiligingsregel 4) en `tests/rls/functiegrants.test.ts`
+--    legt sinds 0115/0253 elk uitvoerrecht naast zijn grant-regel. Sequences
+--    staan als eigen dossierrij met hun meting. Ze hier meenemen zou deze
+--    migratie over drie dingen laten gaan.
+--
+-- ⚠️ **Geen verruiming, ook niet stilzwijgend.** Komt er ooit een tabel die
+--    `anon` wél mag lezen, dan staat die grant er voortaan met zoveel woorden en
+--    met een regel in `REGISTER` — beschermd is het antwoord tot iemand het
+--    tegendeel besluit.
+
+begin;
+
+-- ⚠️ `revoke all` en niet `revoke select`. De meting hierboven laat zien dat het
+--    er vijf zijn en niet één; een revoke die alleen SELECT noemt, laat een
+--    verse tabel nog steeds beschrijfbaar achter voor een niet-ingelogde
+--    bezoeker. Dat zou een reparatie zijn die de gemeten helft weghaalt.
+--
+-- ⚠️ Dit raakt geen enkele bestáánde tabel — standaardrechten gelden alleen bij
+--    het aanmaken. 0261 heeft die kant al gedaan; samen dekken ze het geheel.
+alter default privileges in schema public
+  revoke all on tables from anon;
+
+commit;

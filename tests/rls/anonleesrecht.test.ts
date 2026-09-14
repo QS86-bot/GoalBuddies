@@ -219,3 +219,112 @@ describe.skipIf(!beschikbaar)('geen tabel geeft anon een leesrecht zonder reden'
     expect(verdwenen, 'Deze tabellen bestaan niet meer; haal ze uit REGISTER.').toEqual([]);
   });
 });
+
+/**
+ * De tweede helft: wat de **volgende** tabel krijgt. QS8-485.
+ *
+ * ⚠️⚠️ **De suite hierboven toetst de instanties, en dat is niet het
+ *    mechanisme.** Migratie 0261 trok de `anon`-rechten in op de 24 tabellen
+ *    die er stónden; de standaardrechten bleven staan. 📏 Gemeten op
+ *    14-09-2026, in een teruggedraaide transactie:
+ *
+ *        create table public.zzz_proef(id int);
+ *        -- anon: select=true insert=true update=true delete=true references=true
+ *
+ *    Vijf rechten, niet één — een revoke die alleen SELECT noemt, laat een
+ *    verse tabel beschrijfbaar achter voor een niet-ingelogde bezoeker.
+ *
+ *    CLAUDE.md schrijft die vorm bij de CI-rij van 27-08 uit: *een reparatie
+ *    die de instanties opruimt en het mechanisme laat staan, groeit terug — en
+ *    hij doet dat onder een rij die "opgelost" zegt.* 0261 was zo'n reparatie.
+ *
+ * ⚠️ **0073 had de les al opgeschreven en deze suite volgde hem niet.** Die
+ *    migratie deed dezelfde ingreep voor TRUNCATE en TRIGGER en bouwde
+ *    `ddl_rechten_in_de_api()`, die **beide helften** toetst — met in de kop:
+ *    *"Alleen de eerste toetsen zou precies de fout maken die deze migratie
+ *    repareert."* Dit blok is die tweede helft voor `anon`.
+ *
+ * ⚠️ **De koppeling aan eigenaarschap is van 0073 overgenomen en is geen
+ *    filter maar een vangnet.** Standaardrechten gelden per **eigenaar van het
+ *    nieuwe object**. Op productie draagt `pg_default_acl` een regel van
+ *    `postgres` én een van `supabase_admin`, en `alter default privileges`
+ *    raakt alleen die van de rol die hem uitvoert — `supabase_admin` is dus
+ *    buiten bereik. Die regel is onschadelijk zolang `supabase_admin` niets
+ *    bezit in `public`. Door aan eigenaarschap te koppelen wordt hij hier
+ *    **rood op het moment dat hij levend wordt**, in plaats van weggefilterd te
+ *    blijven. 📏 Lokaal is vandaag élk object in `public` van `postgres`, en is
+ *    `postgres` er de enige rol met standaardrechten; op productie is dat niet
+ *    hermeten (geen sleutel in deze omgeving).
+ *
+ * ⚠️ **Deze klasse is niet zonder database te meten, en dat is een grens en
+ *    geen omissie.** Standaardrechten leven in de database; er is geen
+ *    statische vorm die ze kan zien. De poort houdt "ongemeten" en "groen" uit
+ *    elkaar en faalt op allebei — dat is hier het enige eerlijke antwoord.
+ *
+ * IJKING — met de hand gedraaid op 14-09-2026, één mutatie per grendel, en van
+ * elke mutatie eerst bevestigd dát hij erin zat:
+ *
+ *   D  `alter default privileges in schema public grant select on tables to anon`
+ *      → 1 rood: "anon staat weer in de standaardrechten"
+ *   E  `alter default privileges in schema public revoke all on tables
+ *       from authenticated`
+ *      → 1 rood op de positieve toets, en **nul** op de negatieve — precies
+ *        waarom die positieve toets bestaat: zonder haar is "anon staat er niet
+ *        in" ook waar als er helemáál niets meer in staat
+ */
+function standaardrechten(rol: string): string[] {
+  const uit = psql(`
+    select d.defaclrole::regrole::text || '|' || d.defaclobjtype::text
+        || '|' || a.privilege_type
+      from pg_default_acl d,
+           lateral aclexplode(d.defaclacl) a
+     where d.defaclnamespace = 'public'::regnamespace
+       and d.defaclobjtype = 'r'
+       and a.grantee::regrole::text = '${rol}'
+       and exists (
+         select 1 from pg_class c
+          where c.relnamespace = 'public'::regnamespace
+            and c.relkind in ('r', 'v', 'm')
+            and c.relowner = d.defaclrole
+       )
+     order by 1
+  `);
+
+  return uit
+    .split('\n')
+    .map((r) => r.trim())
+    .filter((r) => r !== '');
+}
+
+describe.skipIf(!beschikbaar)('een nieuwe tabel geeft anon niets', () => {
+  it('anon staat in geen enkele standaardregel voor tabellen in public', () => {
+    expect(
+      standaardrechten('anon'),
+      'De standaardrechten delen een nieuwe tabel in `public` weer uit aan ' +
+        '`anon`. Dat is het mechanisme en niet een instantie: elke tabel die er ' +
+        'hierna bij komt draagt het recht opnieuw. Trek het in met ' +
+        '`alter default privileges in schema public revoke all on tables from ' +
+        'anon` (zie 0263), en revoke het ook van de tabellen die er inmiddels ' +
+        'staan — de suite hierboven vindt die.',
+    ).toEqual([]);
+  });
+
+  /**
+   * ⚠️ **Zonder deze toets is de regel hierboven ook waar als er niets meer
+   *    staat.** Dat is dezelfde vorm als `ddl_rechten_van_service_role()` in
+   *    0073: een suite van alleen negatieve toetsen wordt groen zodra de
+   *    database stukgaat. `authenticated` krijgt zijn rechten op een nieuwe
+   *    tabel juist via deze standaard; valt die weg, dan is elke tabel die
+   *    hierna ontstaat onbereikbaar voor de hele app.
+   */
+  it('authenticated houdt zijn standaardrechten — anders is de regel hierboven leeg', () => {
+    const rechten = standaardrechten('authenticated').map((r) => r.split('|')[2]);
+
+    expect(
+      rechten,
+      'De standaardrechten van `authenticated` op tabellen in `public` zijn weg ' +
+        'of uitgedund. Elke tabel die hierna ontstaat is dan onbereikbaar voor ' +
+        'de app, en de toets hierboven blijft er groen bij.',
+    ).toEqual(expect.arrayContaining(['SELECT', 'INSERT', 'UPDATE', 'DELETE']));
+  });
+});
