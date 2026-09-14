@@ -215,13 +215,27 @@ describe.skipIf(!beschikbaar)('QS8-176 — de allowlist van goal_events staat on
  *      -> GELUKT: 56 kB in één rij
  *
  *    Vijf miljoen tekens. De legitieme payloads van vandaag zijn **213** tekens
- *    (`created` met een titel van 200, het maximum) en **112**
+ *    (`created` met een titel van 200, het maximum) en **109**
  *    (`deadline_moved` in zijn echte vorm) — ruwweg 25.000× speling. Deze tabel
  *    is append-only, dus het gaat er nooit meer uit, en de tier is gratis.
  *
  * ⚠️ Twee grenzen en niet één: een omvangsgrens houdt een vrije-tekstveld
  *    `reden` niet tegen, en een sleutelgrens laat een toegestane sleutel met een
  *    megabyte erin staan.
+ *
+ * ⚠️⚠️ **En twee waren er nog altijd te weinig, want een `string` heeft geen
+ *    lengte.** 📏 Met sleutel én soort op hun plek ging dit er nog gewoon in, als
+ *    gewone `authenticated`, en een lid van een **beschermde** groep las het
+ *    terug:
+ *
+ *      new_value = {"title": "<3976 tekens vrije tekst>"}
+ *
+ *    De bronkolom `goals_title_len` staat op 200. **Geen enkele toets zag dat**,
+ *    en dat is de leerzame kant: de must-allow zat op 1213 tekens json en de
+ *    must-block op vijf miljoen, dus de band ertussen was leeg. Regel 18 vraag 3
+ *    letterlijk — groen terwijl de belofte breekt. Sinds die bevinding draagt het
+ *    register een `maxlengte`, en staan de toetsen hieronder aan wéérszijden van
+ *    de 200 in plaats van alleen aan de uiteinden.
  */
 describe.skipIf(!beschikbaar)('QS8-464 — de inhoud van goal_events heeft een grens', () => {
   /**
@@ -330,6 +344,28 @@ describe.skipIf(!beschikbaar)('QS8-464 — de inhoud van goal_events heeft een g
     },
     { naam: 'completed zonder inhoud', type: 'completed', oud: 'null', nieuw: 'null' },
     { naam: 'archived zonder inhoud', type: 'archived', oud: 'null', nieuw: 'null' },
+    // ⚠️ **Precies 200, in de drie vormen die het duurst ontsnappen.** `->>` geeft
+    //    de gedecodeerde tekst, dus `char_length` telt codepunten — dezelfde
+    //    eenheid als `goals_title_len`. 📏 Gemeten: alle drie landen op exact 200.
+    //    Telde de grens in UTF-16-eenheden, dan viel de emoji-rij hier om.
+    {
+      naam: 'een titel van precies 200 gewone tekens',
+      type: 'created',
+      oud: 'null',
+      nieuw: `jsonb_build_object('title', repeat('x', 200))`,
+    },
+    {
+      naam: 'een titel van precies 200 emoji',
+      type: 'created',
+      oud: 'null',
+      nieuw: `jsonb_build_object('title', repeat('😀', 200))`,
+    },
+    {
+      naam: 'een titel van precies 200 stuurtekens',
+      type: 'created',
+      oud: 'null',
+      nieuw: `jsonb_build_object('title', repeat(chr(1), 200))`,
+    },
   ])('laat $naam door', ({ type, oud, nieuw }) => {
     expect(
       sleutelsKloppen(type, oud, nieuw),
@@ -380,6 +416,28 @@ describe.skipIf(!beschikbaar)('QS8-464 — de inhoud van goal_events heeft een g
       nieuw: `jsonb_build_object('title', jsonb_build_array('a','b'))`,
     },
     { naam: 'een getal als titel', type: 'created', oud: 'null', nieuw: `jsonb_build_object('title', 5)` },
+    // ⚠️⚠️ **De lengtegrens, en dit is het geval dat twee ronden lang doorkwam.**
+    //    Soort `string` klopt, sleutel `title` mag, en de omvangsgrens van 4000
+    //    haalt hij ruim — 3976 tekens vrije tekst, plat, in een kolom waarvan de
+    //    bron op 200 staat. Zie de kop van 0260.
+    {
+      naam: 'een titel van 201 tekens, één boven de bronkolom',
+      type: 'created',
+      oud: 'null',
+      nieuw: `jsonb_build_object('title', repeat('x', 201))`,
+    },
+    {
+      naam: 'een titel van 3976 tekens onder de omvangsgrens',
+      type: 'created',
+      oud: 'null',
+      nieuw: `jsonb_build_object('title', repeat('GEHEIM ', 568))`,
+    },
+    {
+      naam: 'een target_date die geen datum meer is',
+      type: 'deadline_moved',
+      oud: 'null',
+      nieuw: `jsonb_build_object('target_date', repeat('9', 33))`,
+    },
     {
       naam: 'een tekst waar een getal hoort',
       type: 'deadline_moved',

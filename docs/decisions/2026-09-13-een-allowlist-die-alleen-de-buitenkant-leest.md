@@ -11,11 +11,15 @@ omvang, geen type — en elke gekoppelde groep leest die kolommen mee. De
 reparatie is een register per `event_type` van de sleutels die erin mogen, plus
 een omvangsgrens.
 
-Die reparatie is drie keer geschreven. De eerste versie was groen op negentien
-toetsen en liet het scenario van de reviewrij woordelijk door. De tweede was
-groen op negenentwintig toetsen en **weigerde elk akkoord op een
-uitstelverzoek**. Dit document gaat niet over `goal_events` maar over de vorm van
-die twee fouten, want geen van beide is aan deze tabel gebonden.
+Die reparatie is vier keer geschreven, en de drie tussenversies waren alle drie
+groen. De eerste liet het scenario van de reviewrij woordelijk door. De tweede
+**weigerde elk akkoord op een uitstelverzoek**. De derde liet datzelfde scenario
+opnieuw door, nu plat in plaats van genest. Dit document gaat niet over
+`goal_events` maar over de vorm van die drie fouten, want geen ervan is aan deze
+tabel gebonden.
+
+De rode draad: **het register werd steeds één laag dieper, en elke laag die
+ontbrak was een open deur die er dicht uitzag.** Naam, dan soort, dan lengte.
 
 ## 1. `jsonb_object_keys()` beantwoordt een smallere vraag dan hij lijkt
 
@@ -62,7 +66,44 @@ velden doorlaat, en elke toekomstige CHECK die een payload weegt. De vraag om te
 stellen is niet *"staan de goede sleutels erin"* maar *"kan er iets in staan dat
 mijn toets niet bekijkt"*.
 
-## 2. Een register dat je van de naam afleest in plaats van van de schrijver
+## 2. Een `string` heeft geen lengte, en de toetsen stonden aan de uiteinden
+
+De soortkolom uit §1 sloot de geneste vorm. Dezelfde vrije tekst ging er daarna
+gewoon **plat** in.
+
+📏 Gemeten, end-to-end, met twee gewone gebruikers en de soortgrens op zijn plek:
+
+```
+A schrijft  event_type='created', new_value = {"title": "<3976 tekens>"}  -> INSERT 0 1
+B leest     (gewoon lid van een BESCHERMDE groep)                        -> 3976 tekens
+```
+
+Sleutel `title`: mag. Soort `string`: klopt. Omvangsgrens 4000: gehaald. En de
+bronkolom `goals_title_len` staat op **200**. De auditkopie van een titel was
+daarmee bijna twintig keer breder dan de titel, in een kolom die
+`goal_events_select` aan elk gekoppeld lid teruggeeft — die policy volgt het
+**doel** en varieert niet op `groups.zichtbaarheid`, dus ook een beschermde groep
+las mee. Dat is woordelijk het scenario van reviewrij 519: de rij die deze
+migratie zou sluiten.
+
+⚠️⚠️ **En dit is de scherpste les van de drie, want hij gaat niet over de code
+maar over waar de toetsen stonden.** Er was een must-allow op 1213 tekens json en
+een must-block op vijf miljoen. Allebei gemeten, allebei zinnig, allebei aan een
+**uiteinde**. De band van 1214 tot 4000 was leeg, en daar zat precies het gat.
+
+Een grens toets je niet op zijn uiteinden maar op zijn rand. De toetsen staan nu
+aan weerszijden van de 200: precies 200 (in gewone tekens, in emoji en in
+stuurtekens, want die ontsnappen verschillend) moet erdoor, 201 niet.
+
+⚠️ `char_length(w.v ->> k)` en niet `char_length((w.v -> k)::text)`: `->>` geeft
+de **gedecodeerde** tekst, dus dit telt codepunten — dezelfde eenheid als
+`goals_title_len` en als `telTekens()`. 📏 Gemeten landen 200 gewone tekens, 200
+emoji en 200 aanhalingstekens alle drie op exact 200. Had deze grens in
+UTF-16-eenheden geteld, dan was de emoji-rij op 400 uitgekomen en had hij een
+titel geweigerd die het schema goedkeurt — de fout van QS8-118, in een nieuwe
+kolom.
+
+## 3. Een register dat je van de naam afleest in plaats van van de schrijver
 
 De soortkolom uit §1 loste het lek op en maakte meteen een nieuwe fout mogelijk,
 want nu moest er van elk veld een soort opgeschreven worden. Eén ervan heet
@@ -97,9 +138,9 @@ dat type zelf — `goal_events_insert` laat alleen `created`, `archived` en
 `tests/rls/goalgebeurtenissen.test.ts`; voor de tweede verwijst die suite naar de
 straf-suite, want die vraagt een groep, een verzoek en een begunstigde.
 
-## 3. Een must-allow die als eigenaar draait, toetst de grant niet
+## 4. Een must-allow die als eigenaar draait, toetst de grant niet
 
-De derde fout zit ook in de toets. De CHECK roept een functie aan, en Postgres
+Deze fout zit ook in de toets en niet in de code. De CHECK roept een functie aan, en Postgres
 toetst EXECUTE op zo'n functie op het moment van **schrijven**. Zonder
 `grant execute … to authenticated` valt daarmee élke insert van een ingelogde
 gebruiker om — ook een volkomen normale. Dat is de les van QS8-453, hij staat in
@@ -126,7 +167,7 @@ rol die dat recht nodig heeft. Voor deze suite betekent dat `set local role
 authenticated` met claims, en bij voorkeur langs de échte schrijfroute — daar
 staan de policy, de grant en de CHECK samen in.
 
-## 4. Een grens die je onderbouwt met een getal dat je niet gemeten hebt
+## 5. Een grens die je onderbouwt met een getal dat je niet gemeten hebt
 
 Kleiner, maar dezelfde familie. De omvangsgrens stond op 2000 met de
 onderbouwing *"ruim tienvoudig boven het huidige maximum"*. Het huidige maximum
@@ -157,12 +198,12 @@ Tegen de misbruikkant maakt 2000 of 4000 niets uit — allebei liggen ze ruim
 duizendvoudig onder de vijf miljoen tekens die er vóór 0260 gewoon in gingen.
 Tegen de valse weigering maakt het alles uit, en dat is de kant waar een grens
 kan omvallen zonder dat iemand het merkt: een insert die hoort te lukken en niet
-lukt, ziet er van buiten uit als een veilige tabel. §2 is daar het bewijs van —
-die fout stond vier uur in de branch en zag er als een strengere grens uit.
+lukt, ziet er van buiten uit als een veilige tabel. §3 is daar het bewijs van —
+die fout stond uren in de branch en zag er als een strengere grens uit.
 
 ## Wat er onder staat
 
-Zeven mutaties over twee suites (47 toetsen), elke keer teruggelezen uit de
+Negen mutaties over twee suites (53 toetsen), elke keer teruggelezen uit de
 database vóór de uitslag geloofd is, elk tegen de toets die hem noemt:
 
 | Mutatie | Rood | Welke |
@@ -171,10 +212,14 @@ database vóór de uitslag geloofd is, elk tegen de toets die hem noemt:
 | het register op `select true` | 12 | elke must-block, geen must-allow |
 | de soortvergelijking eruit | 6 | de vijf soortgevallen plus de geneste langs de schrijfroute |
 | de `grant execute` weg | 19 | inclusief de gewone `created`-insert langs de echte route |
-| de grens op 1000 | 1 | de must-allow van het slechtste legitieme geval (1213) |
+| de omvangsgrens op 1000 | 1 | de must-allow van het slechtste legitieme geval (1213) |
 | `straffen_teruggezet` weer `boolean` | 4 | **allebei de straf-toetsen**, plus de must-allow die nu de echte vorm draagt |
 | `target_date` uit de nieuw-kant | 4 | allebei de straf-toetsen, plus de echte aanroep van `zet_streefdatum()` |
+| de lengtevergelijking eruit | 3 | 201 tekens, 3976 tekens, en een `target_date` van 33 |
+| `title` op 199 in plaats van 200 | 4 | de drie exacte-200-toetsen plus het slechtste legitieme geval |
 
-De laatste twee rijen zijn de ijking die telt. Ze laten zien dat de fout uit §2
-nu **binnen deze branch** rood wordt en niet alleen in de suite van een ander
-issue — en dat is precies het verschil tussen een grendel en een toevalstreffer.
+Vier van die negen zijn de ijking die telt. De zesde en zevende laten zien dat de
+fout uit §3 nu **binnen deze branch** rood wordt en niet alleen in de suite van
+een ander issue. De achtste en negende staan aan weerszijden van dezelfde grens —
+zonder die twee samen is een lengtegrens niet te onderscheiden van een dichte
+deur, en dat is precies het verschil dat §2 vier uur lang niemand liet zien.
