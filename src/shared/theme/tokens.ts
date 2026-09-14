@@ -147,6 +147,113 @@ export const categoriekleurenNavyLight: Categoriekleuren = {
 };
 
 /**
+ * Het kleurenpaar van een held — QS8-470, epic QS8-468.
+ *
+ * ⚠️ **Dit is de benoemde uitzondering op het navystelsel.** CLAUDE.md zei tot
+ *    14-09-2026 "uitsluitend Q-Projects-kleurstellingen"; besluit 4 van QS8-468
+ *    geeft de zes helden een eigen palet uit `docs/helden-codex.html`. 📏 Geen
+ *    van de twaalf waarden komt voor in de tokenset hierboven.
+ *
+ *    ⚠️ De uitzondering geldt **alleen voor heldenoppervlakken**. Krijgt een
+ *       knop of kaart die niets met helden te maken heeft een heldenkleur, dan
+ *       is de regel niet verruimd maar afgeschaft.
+ *
+ * ⚠️ **`primair` is een vulling en `accent` een voorgrond, en dat is geen
+ *    smaakverschil maar de reden dat ze verschillend getoetst worden.** Zo
+ *    gebruikt de codex ze ook: `primair` tint de badge en de rand, `accent` is
+ *    de lijnkleur van het symbool erop. 📏 Gemeten op 14-09-2026: elke `primair`
+ *    zakt op de donkere ondergrond onder de 3.0 (1.08 tot 2.94) en haalt het
+ *    licht moeiteloos (5.52 tot 14.22). Als voorgrond is hij dus onbruikbaar op
+ *    navy — en dat hoort ook niet, want hij staat er niet als voorgrond.
+ *
+ * ⚠️⚠️ **De zes helden zijn één kleurfamilie en dat is met opzet.** 📏 De
+ *    onderlinge afstand van de accenten is **1.08** waar `MIN_AFSTAND` 10 is.
+ *    Dat is geen fout in het palet: codexprincipe 01 zegt "één systeem, zes
+ *    gezichten — alleen het kleurenpaar en symbool verschillen". Het **symbool**
+ *    draagt de identiteit van een held, de kleur draagt zijn stemming.
+ *
+ *    Voorgelegd op 14-09-2026 mét de meting erbij: zes onderscheidbare kleuren
+ *    zijn haalbaar (maximaal 16.07 donker, 19.35 licht), maar alleen door twee
+ *    helden naar bijna-wit en grijs te duwen of door de tinten los te laten
+ *    waar de namen en symbolen op gebouwd zijn. Quinten heeft de oorspronkelijke
+ *    kleuren behouden. `heldkleuren.test.ts` legt de gemeten afstanden vast als
+ *    bodem, zodat ze niet verder naar elkaar toe kunnen kruipen.
+ */
+export interface Heldkleuren {
+  /** Vulling: badge, rand, gloed. Nooit een voorgrondkleur. */
+  readonly primair: string;
+  /** Voorgrond: de lijnkleur van het symbool. Moet leesbaar zijn op de ondergrond. */
+  readonly accent: string;
+}
+
+/**
+ * De zes sleutels waarop dit palet gesleuteld is.
+ *
+ * ⚠️⚠️ **Dit is een kopie en geen bron, en dat is een naad om in de gaten te
+ *    houden.** `src/modules/helden` bezit de canonieke lijst (QS8-469). Hij
+ *    staat hier tóch, omdat `shared/` niet naar `modules/` mag importeren — die
+ *    richting is omgekeerd, net zoals `shared/categorieen` bestaat omdat twee
+ *    modules dezelfde woordenschat nodig hadden.
+ *
+ *    Twee lijsten die uit elkaar lopen zonder dat iets rood wordt is precies de
+ *    fout van 0032/0034. De toets die ze naast elkaar legt hoort in
+ *    `modules/helden`, want dáár mag je beide kanten importeren, en hij landt
+ *    met het issue dat als tweede merget. **Staat die toets er niet, dan is deze
+ *    lijst onbewaakt** — dat is geen theoretisch risico maar de reden dat dit
+ *    blok hier staat in plaats van een regel type.
+ */
+export const HELDPALETSLEUTELS = [
+  'strix',
+  'ignis',
+  'meridian',
+  'forge',
+  'lucerna',
+  'quip',
+] as const;
+
+/** De zes paren. */
+export type Heldpalet = Readonly<Record<(typeof HELDPALETSLEUTELS)[number], Heldkleuren>>;
+
+/**
+ * Donker thema: de waarden uit `docs/helden-codex.html`, onveranderd.
+ *
+ * 📏 Elke `accent` haalt hier 4.68 tot 9.76 op `navy.bg` — ruim boven de 3.0.
+ */
+export const heldkleurenNavy: Heldpalet = {
+  strix: { primair: '#1B2A4A', accent: '#C9A24B' },
+  ignis: { primair: '#B3211E', accent: '#F2B705' },
+  meridian: { primair: '#1F6F5C', accent: '#E07A34' },
+  forge: { primair: '#4B2E83', accent: '#B87333' },
+  lucerna: { primair: '#8C2F39', accent: '#E8A33D' },
+  quip: { primair: '#4A1942', accent: '#D9A62E' },
+};
+
+/**
+ * Licht thema: dezelfde kleur, leesbaar gemaakt.
+ *
+ * ⚠️ **Donkerder accenten, om precies dezelfde reden als bij
+ *    `categoriekleurenNavyLight`.** 📏 Op wit zakken vijf van de zes
+ *    codexaccenten onder de drempel: 1.67 (Ignis) tot 3.00 (Meridian). Alleen
+ *    Forge's `#B87333` haalt het al (3.48), en die blijft daarom staan.
+ *
+ * ⚠️ **Dit is geen andere kleur maar dezelfde tint donkerder**, en dat verschil
+ *    is de hele reden dat dit mag: besluit van 14-09-2026 is dat de helden hun
+ *    oorspronkelijke kleuren houden. De tint blijft; alleen de helderheid past
+ *    zich aan de ondergrond aan.
+ *
+ * ⚠️ De `primair` staat hier ongewijzigd: die haalt het licht al met 5.52 tot
+ *    14.22, en hij is hier evengoed een vulling en geen voorgrond.
+ */
+export const heldkleurenNavyLight: Heldpalet = {
+  strix: { primair: '#1B2A4A', accent: '#a9883f' },
+  ignis: { primair: '#B3211E', accent: '#b18604' },
+  meridian: { primair: '#1F6F5C', accent: '#d37331' },
+  forge: { primair: '#4B2E83', accent: '#B87333' },
+  lucerna: { primair: '#8C2F39', accent: '#b78130' },
+  quip: { primair: '#4A1942', accent: '#b08625' },
+};
+
+/**
  * Betekenisrollen. Componenten praten in rollen, niet in kleuren — dan blijft
  * "wat betekent deze kleur" op één plek staan.
  */

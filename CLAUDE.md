@@ -164,9 +164,38 @@ Voordat er één feature gebouwd wordt:
 - Werkvoorraad: Linear
 - Visuele richting: **het Q-Projects navy-stelsel**, gedeeld met de Status Tracker
   (`tracker.q-projects.tech`), thema's `navy` en `navy-licht`. Navy is de
-  ondergrond, goud het accent. **Gebruik uitsluitend Q-Projects-kleurstellingen** —
-  geen zelfbedachte kleuren erbij. Volledige tokenset in Linear QS8-87.
+  ondergrond, goud het accent. **Gebruik Q-Projects-kleurstellingen** — geen
+  zelfbedachte kleuren erbij. Volledige tokenset in Linear QS8-87.
   *(Vervangt de emerald-richting uit PRD 10.1, gewijzigd 15-08-2026.)*
+
+  ⚠️ **Eén benoemde uitzondering sinds 14-09-2026 (QS8-470, besluit 4 van
+  QS8-468): het heldenpalet.** De zes helden dragen elk een kleurenpaar uit
+  `docs/helden-codex.html`, en 📏 geen van die twaalf waarden staat in de
+  Q-Projects-tokenset. Ze staan als `heldkleurenNavy` en `heldkleurenNavyLight`
+  in `src/shared/theme/tokens.ts`.
+
+  **De uitzondering geldt uitsluitend voor heldenoppervlakken.** Krijgt een knop,
+  kaart of badge die niets met een held te maken heeft een heldenkleur, dan is de
+  regel niet verruimd maar afgeschaft — en dat is precies hoe een standaard
+  verschuift zonder dat iemand het besloten heeft. Bij twijfel is het antwoord
+  navy.
+
+  ⚠️ **`primair` is een vulling en `accent` een voorgrond**, en die twee worden
+  verschillend getoetst. 📏 Elke `primair` zakt op navy onder de contrastdrempel
+  (1.08–2.94) en dat is geen fout: hij tint de badge, hij ís geen lijn. Een
+  contrasteis op `primair` tegen de schermgrond toetst iets wat nooit beloofd is.
+
+  ⚠️⚠️ **De zes helden zijn één kleurfamilie en `MIN_AFSTAND` geldt hier niet.**
+  📏 De onderlinge afstand van de accenten is **1.08** waar die drempel 10 is.
+  Codexprincipe 01 wil dat zo: *"één systeem, zes gezichten — alleen het
+  kleurenpaar en symbool verschillen"*. Het **symbool** draagt de identiteit van
+  een held, de kleur zijn stemming. Zes onderscheidbare kleuren zijn wél haalbaar
+  (📏 maximaal 16.07 op navy, 19.35 op licht), maar alleen door twee helden naar
+  bijna-wit en grijs te duwen of door de tinten los te laten waar de namen en
+  symbolen op gebouwd zijn; dat is op 14-09-2026 mét die meting voorgelegd en
+  afgewezen. `src/shared/theme/heldkleuren.test.ts` legt de gemeten afstand vast
+  als bodem, zodat "één familie" een keuze blijft en geen grens die stil
+  verschuift.
 
 ### Live-adressen
 | Omgeving | Adres |
