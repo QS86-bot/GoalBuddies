@@ -88,6 +88,7 @@ De veertig bestanden:
 | `0261_anon_leest_niets_meer_van_wat_een_bezoeker_nooit_hoort_te_zien.sql` | QS8-467 | nee |
 | `0262_clausule_2_van_domeinregel_3_krijgt_een_slot_in_de_database.sql` | QS8-480 | nee |
 | `0263_anon_krijgt_niets_meer_van_een_nieuwe_tabel.sql` | QS8-485 | nee |
+| `0264_een_held_hoort_bij_een_gebruiker_en_zijn_verschijningen_zijn_append_only.sql` | QS8-471 | nee |
 | `0264_een_geweigerde_groepswijziging_zegt_dat_hij_geweigerd_is.sql` | QS8-488 | nee |
 
 ⚠️ **Hier stond een uur eerder `0219` met twee bestanden gat, en dat klopte
@@ -1165,8 +1166,24 @@ de grens verschuift niet, dit epic staat er met naam naast. Quinten heeft op
 dát is de vrijgave.
 
 Zes superhelden-archetypes worden de stem van de app — Strix, Ignis, Meridian,
-Forge, Lucerna en Quip. Zes deelissues: QS8-469 en QS8-470 kunnen meteen en
+Forge, Lucerna en Quip. Zes deelissues: QS8-469 en QS8-470 konden meteen en
 tegelijk, QS8-471 daarna, en QS8-474, QS8-475 en QS8-477 weer parallel.
+
+| Issue | Wat | Stand |
+|---|---|---|
+| QS8-469 | het heldenrooster als data, elke quote op zijn bron | ✅ af — PR #462 |
+| QS8-470 | het heldenpalet als benoemde uitzondering op het navystelsel | ✅ af — PR #464 |
+| QS8-471 | datamodel: welke held is van wie, elke verschijning append-only | in review — PR #470, migratie `0264` |
+| QS8-474 | de vragenlijst van vier naar acht vragen, gelijkspel is de regel | open |
+| QS8-475 | de heldenstem in de meldingen die er al zijn | open |
+| QS8-477 | je held in een open groep, en nergens anders | open |
+
+⚠️ **QS8-477 is het enige issue van dit epic met een groepsoppervlak, en dat is
+met opzet zo gehouden.** 0264 bevat geen enkele groepstak: `hero_appearances`
+draagt `trigger`, en `misser` en `stilte` zijn tegenslagsignalen. Een vierde tak
+op de leespolicy geeft de hele rij weg, want RLS kan geen kolommen beperken —
+dus de vorm is een RPC met een expliciete kolomlijst, zoals
+`straffen_bij_uitstelverzoek()` (0218) en `getuigenissen()` (0169).
 
 De zeven besluiten die eraan vooraf gingen staan in
 `docs/decisions/2026-09-14-zes-helden-en-de-zeven-besluiten-eronder.md`; de

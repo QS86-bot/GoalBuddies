@@ -80,8 +80,21 @@ import { psql, stackBeschikbaarOfFaal } from './psql-stack';
  *      → 2 rood: de zelftoets (29 → 17) en de registertest, want de twaalf
  *        tabellen met alléén een kolomgrant vallen dan uit de meting
  *
+ * En op 14-09-2026 erbij, voor de twee heldentabellen van 0264 (QS8-471):
+ *
+ *   F  de regel `hero_profiles` uit het register halen
+ *      → 1 rood, met `hero_profiles` in de melding
+ *   G  `grant insert (hero_key) on hero_appearances to authenticated` op de
+ *      lokale stack — de tabel die hier met opzet buiten valt een clientroute
+ *      geven
+ *      → 2 rood: het gat zelf mét `hero_appearances` in de melding, en de
+ *        zelftoets (32 → 33). Dat is de helft die telt: de append-only-belofte
+ *        van 0264 is hier een meting en geen aanname, en zodra iemand er een
+ *        schrijfroute bij zet, staat het er.
+ *
  * ⚠️ Bij elke mutatie is eerst met een grep in het bestand of in `pg_trigger`
- *    nagekeken dat hij er écht in stond vóór de uitslag geloofd werd.
+ *    nagekeken dat hij er écht in stond vóór de uitslag geloofd werd. Bij G is
+ *    dat `has_any_column_privilege`, vóór én na: `false` → `true` → `false`.
  */
 
 /**
@@ -131,6 +144,20 @@ const REGISTER: Readonly<Record<string, string>> = {
     'routes ernaartoe hebben zelf een grens: create_group() 10 per etmaal, ' +
     'join_group_with_code() 20 pogingen per etmaal en 12 leden per groep.',
   groups: 'create_group() weigert vanaf 10 groepen in het laatste etmaal, en vanaf 10 lidmaatschappen.',
+  hero_profiles:
+    'PRIMARY KEY (user_id) én een insert-policy die `user_id` aan `auth.uid()` ' +
+    'vastzet — samen hoogstens één rij per gebruiker. 📏 Gemeten op 14-09-2026 ' +
+    '(QS8-471, 0264): een tweede insert op eigen naam geeft 23505, en dat staat ' +
+    'vast in `tests/rls/helden.test.ts` ("houdt het bij één held per gebruiker"). ' +
+    '⚠️ De sleutel alléén is hier niet genoeg als reden: die bindt het aantal ' +
+    'rijen per `user_id`, niet het aantal rijen. Het is de policy die de waarde ' +
+    'aan de sessie vastzet, en pas die twee samen maken er één van. ' +
+    '⚠️ **`hero_appearances` staat hier met opzet níet**, en dat is geen omissie ' +
+    'maar de meting: 📏 `has_any_column_privilege(authenticated, ' +
+    'hero_appearances, INSERT)` is `false`, dus die tabel valt buiten deze query. ' +
+    'Hij groeit wél, maar alleen onder `service_role`. Komt er ooit een ' +
+    'clientroute bij, dan meldt de test hierboven hem vanzelf als bevinding — ' +
+    'en dan is een dagplafond het antwoord, niet een regel hier.',
   invite_events: 'join_group_with_code() weigert vanaf 20 pogingen in het laatste etmaal.',
   invite_preview_limits:
     'PRIMARY KEY (group_id) — één rij per groep, en invite_preview() werkt hem ' +
@@ -251,7 +278,14 @@ describe.skipIf(!beschikbaar)('elke groeibare tabel heeft een plafond of een red
     //    nieuwe totaal op; git merget dat schoon en houdt er één over. Dat het
     //    hier een exact getal is en geen ondergrens, is precies wat dat vangt —
     //    bij `> 29` was deze merge stil goed gegaan met een tabel te weinig.
-    expect(gevonden.length, 'het aantal groeibare tabellen is veranderd').toBe(31);
+    //
+    // ⚠️ En eenendertig werd tweeëndertig met `hero_profiles` (QS8-471, 0264).
+    //    📏 De tweede heldentabel van diezelfde migratie, `hero_appearances`,
+    //    komt hier níet binnen: `authenticated` heeft er geen enkele
+    //    INSERT-kolomgrant op. Dat verschil is de hele opzet van die migratie —
+    //    de ene tabel schrijf je zelf, de andere schrijft de server — en dat het
+    //    hier als één in plaats van twee telt, is de meting die dat bevestigt.
+    expect(gevonden.length, 'het aantal groeibare tabellen is veranderd').toBe(32);
     expect(
       gevonden.filter((t) => t.plafond).length,
       'het aantal groeibare tabellen mét plafond is veranderd',
