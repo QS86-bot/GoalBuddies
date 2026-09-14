@@ -3,7 +3,13 @@
 > Kopieer alles onder de streep in een nieuwe chat. Werk dit bestand bij aan het
 > eind van elke sessie — het is de overdracht, niet een archief.
 >
-> **Laatst bijgewerkt:** 13-09-2026, na QS8-446 (PR #439, `0846646`). Diezelfde
+> **Laatst bijgewerkt:** 14-09-2026, na QS8-477 (PR #483) — het laatste deelissue
+> van het heldenepic QS8-468. Diezelfde dag uit deze sessie QS8-471 (PR #470),
+> QS8-474 (PR #473) en QS8-475 (PR #478); QS8-493 is het vervolgissue dat de
+> vraag draagt of `groep_helden()` een scherm krijgt. De lessen van deze ronde
+> staan als punt AC, AD en AE hieronder.
+>
+> **Daarvóór:** 13-09-2026, na QS8-446 (PR #439, `0846646`). Diezelfde
 > dag uit deze sessie QS8-445, QS8-443, QS8-441 (PR #436), QS8-444 (PR #437) en
 > QS8-442 (PR #438), en uit de parallelle QS8-439, QS8-440 en de
 > storage-eigendomcontrole. 📏 Bij het
@@ -415,6 +421,59 @@
 > waarschuwt: **een afwijking die je onderbouwt is duurder dan een die je
 > vergeet.** Lees bij elke registerrij na of de grens die er staat écht de grens
 > is die je bedoelt, of alleen de eerste die je opviel.
+>
+> **14-09, punt AC: een grens die je invoert om schade te beperken, kan zélf het
+> kanaal zijn — en dat zie je alleen als je hem als aanvaller leest.** QS8-477
+> geeft een open groep de laatste heldverschijning per lid, met opzet zónder
+> `shown_at`: dát iemand iets miste mag, wannéér niet. Daar kwam een venster van
+> zeven dagen bij, zodat een misser geen merkteken wordt dat nooit vervalt. Maar
+> een rij verdwijnt dan precies zeven dagen ná `shown_at`, dus wie de RPC elke
+> minuut opvraagt leest dat tijdstip terug — de kolom die de hele reden was dat
+> het een RPC werd en geen policytak. **De reparatie is de rand grover maken en
+> niet het venster weghalen** (`date_trunc('day', now(), 'UTC')`: een hele UTC-dag
+> valt tegelijk weg, dus een verdwijning draagt hoogstens een datum).
+>
+> ⚠️ **En de eerlijke helft: wie dagelijks opvraagt bouwt de chronologie alsnog,
+> want hij ziet elke níeuwe rij binnenkomen.** Dat is geen eigenschap van dít
+> venster maar van elk levend groepsoppervlak — `groep_klassement()` geeft zijn
+> deltas op dezelfde manier prijs, en dat is bij A54 aanvaard. De belofte die
+> overblijft is dus smaller dan wat er eerst stond: *één antwoord draagt geen
+> tijd, en de rand hoogstens een datum*. Niet: een groepsgenoot kan geen tijdlijn
+> bijhouden. **Schrijf de smallere belofte op in plaats van de mooiere** — anders
+> leest de volgende bouwer er een garantie in die er niet is.
+>
+> **14-09, punt AD: een grens die alleen in de migratiekop staat, hield twee keer
+> niets tegen — en de suite was 13 van de 13 groen.** In dezelfde ronde schreef de
+> kop van 0268 met zoveel woorden op dat de lijst op naam sorteert en niet op tijd
+> ("een sortering op `shown_at` geeft de waarde niet prijs maar wél de volgorde"),
+> en dat er nooit meer dan vijftig rijen uit komen. De `security-reviewer` brak
+> allebei met de hand in de draaiende functie: **geen enkele toets viel om.** Dat
+> is de klasse van QS8-412 — een grendel die alleen in een comment staat — maar
+> dan andersom: hier stond de uitleg érbij, inclusief wat hij kost.
+>
+> ⚠️ **En de klem-toets beet pas nadat hij zijn eigen geval ging máken.** De
+> eerste versie eiste "hoogstens vijftig" op een groep van acht, en dat is groen
+> mét en zonder de klem. 📏 Pas met vijfenvijftig extra leden erin (via `psql()`,
+> in `finally` weer weg) werd hij rood op de mutatie. **Een toets die zijn eigen
+> grens nooit raakt, toetst niets** — dezelfde gedachte als "een controle die je
+> niet kunt voeden, kun je niet ijken", een laag concreter.
+>
+> **14-09, punt AE: herstel een ijking door het schema óp te bouwen, niet door een
+> migratie terug te spelen.** Twee keer op rij was het rood van het instrument en
+> niet van de wijziging. Eerst: een ijking die de handtekening verandert vraagt
+> `drop function`, en een `create` daarna krijgt via `alter default privileges`
+> `anon` er weer bij — het herstel speelde alleen het functielichaam terug, niet
+> het `revoke`-blok, en twee ándere testbestanden werden daar rood van. Daarna:
+> een mutatie in een geërfde poort (`lid_van_open_groep()`) herstellen met
+> `psql -f` op **migratie 0102** draaide terug wat latere migraties aan diezelfde
+> objecten veranderd hadden — 📏 **52** rode testbestanden. `npm run rls:stack`
+> loste allebei op.
+>
+> ⚠️ **Wat dit zegt over de poort: draai hem volledig ná een ijkingsronde.** Had
+> ik alleen het testbestand van dat issue teruggedraaid, dan was de eerste ronde
+> met `anon`-uitvoerrecht gemerged. Dat is de praktische kant van *"een rood is
+> niet vanzelf jouw rood"* (QS8-411): het antwoord is niet het rood negeren maar
+> uitzoeken wáár het vandaan komt, vóórdat je het wegredeneert.
 >
 > ⚠️⚠️ **11-09, punt P: een lintregel kan code laten buigen, en dan verplaats je
 > het probleem naar de lezer.** QS8-422 moest in de rollover een `if` in een `if`
