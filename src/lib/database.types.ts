@@ -1778,6 +1778,7 @@ export type Database = {
           tz: string
           updated_at: string
           wants_own_goal: boolean
+          vindbaar: boolean
           week_start_day: number
           what_breaks_it: string[]
           when_i_do_it: string | null
@@ -1804,6 +1805,7 @@ export type Database = {
           tz?: string
           updated_at?: string
           wants_own_goal?: boolean
+          vindbaar?: boolean
           week_start_day?: number
           what_breaks_it?: string[]
           when_i_do_it?: string | null
@@ -1830,6 +1832,7 @@ export type Database = {
           tz?: string
           updated_at?: string
           wants_own_goal?: boolean
+          vindbaar?: boolean
           week_start_day?: number
           what_breaks_it?: string[]
           when_i_do_it?: string | null
@@ -2474,6 +2477,7 @@ export type Database = {
       }
       mijn_profiel: {
         Row: {
+          vindbaar: boolean | null
           avatar_url: string | null
           created_at: string | null
           display_name: string | null
@@ -2521,6 +2525,7 @@ export type Database = {
           tz?: string | null
           updated_at?: string | null
           wants_own_goal?: boolean | null
+          vindbaar?: boolean
           week_start_day?: number | null
           what_breaks_it?: string[] | null
           when_i_do_it?: string | null
@@ -2547,6 +2552,7 @@ export type Database = {
           tz?: string | null
           updated_at?: string | null
           wants_own_goal?: boolean | null
+          vindbaar?: boolean
           week_start_day?: number | null
           what_breaks_it?: string[] | null
           when_i_do_it?: string | null
@@ -2730,6 +2736,14 @@ export type Database = {
           totaal: number
           trigger: string
           user_id: string
+        }[]
+      }
+      zoek_mensen: {
+        Args: { p_term: string; p_limit?: number; p_offset?: number }
+        Returns: {
+          avatar_url: string | null
+          display_name: string
+          id: string
         }[]
       }
       groep_klassement: {
