@@ -275,8 +275,13 @@ Typecheck, lint en alle 58 controlescripts groen;
     coulanceperiode: daarvóór is die vraag per definitie nee. Daarna
     QS8-200/QS8-201. Wat
     van Fase 1 overblijft vraagt nog steeds Quintens hand en geen code: een
-    browser met VAPID-sleutels (QS8-124), een iPhone (QS8-117), het
-    Supabase-dashboard (QS8-25, QS8-141) en de twee deploys (QS8-139, QS8-140).
+    browser met VAPID-sleutels (QS8-124), een iPhone (QS8-117) en het
+    Supabase-dashboard (QS8-25, QS8-141). ⚠️ **De twee deploys staan hier niet
+    meer bij, en dat is sinds 14-09-2026 een gemeten stand en geen aanname:**
+    QS8-140 is op 09-09 gedeployd en Done, en de webdeploy van QS8-139 is op
+    10-09 gelopen — bewezen doordat de source-maps-upload toen slaagde en doordat
+    het Sentry-event van 14-09 uit een productiebundel mét DSN komt. Van QS8-139
+    rest alleen nog de bevestiging in de browser.
     **Het bord klopt beter dan deze documenten** — kijk dus eerst in Linear en
     dan pas hier.
 
