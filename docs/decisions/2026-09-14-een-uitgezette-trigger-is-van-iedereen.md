@@ -134,6 +134,29 @@ een `where` die te weinig zegt. De reparatie is één kolom erbij.
 zónder de fix **6 van de 6** rood, mét de fix **6 van de 6** groen, en het rood
 was elke keer de toets die de mutatie noemt.
 
+## De afsluitende meting
+
+📏 Twee volledige suites tegelijk op een verse stack, mét de solo-controlemeting
+ernaast — dezelfde opstelling als de meting bovenaan, ná alle vier de
+reparaties:
+
+```
+run A   408 bestanden, 5855 tests groen  (1 expected fail, 1 overgeslagen)
+run B   408 bestanden, 5855 tests groen  (1 expected fail, 1 overgeslagen)
+solo    408 bestanden, 5855 tests groen  (1 expected fail, 1 overgeslagen)
+```
+
+⚠️ **De solo-meting staat er niet voor de volledigheid maar omdat het cijfer
+zonder haar niets zegt.** Gelijktijdig en solo geven exact hetzelfde getal; dát
+is de uitslag. Was er één rood geweest, dan was zonder deze regel niet te stellen
+of het van de gelijktijdigheid kwam.
+
+⚠️ **Wat deze meting níet uitsluit**, en dat hoort het instrument zelf op te
+schrijven in plaats van te overschreeuwen: een oorzaak die alleen optreedt als
+twee bestanden elkaar op de seconde raken. QS8-492 is precies zo'n geval — één
+keer gezien, daarna bij drie gelijktijdige rondes niet te herhalen. Groen hier
+betekent "niet aangetroffen", niet "kan niet meer".
+
 ## De klasse, niet de instanties
 
 CLAUDE.md schrijft het bij de CI-controles van 27-08: *"een reparatie die de
