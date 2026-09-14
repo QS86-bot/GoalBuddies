@@ -1,4 +1,4 @@
--- 0263_een_held_hoort_bij_een_gebruiker_en_zijn_verschijningen_zijn_append_only.sql
+-- 0264_een_held_hoort_bij_een_gebruiker_en_zijn_verschijningen_zijn_append_only.sql
 -- — twee tabellen voor de zes helden van QS8-468: welke held van wie is, en
 -- welke held wanneer gesproken heeft. Allebei eigenaar-only; de tweede
 -- append-only (QS8-471).

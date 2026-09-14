@@ -6,6 +6,7 @@ import {
   adminDb,
   createTestUser,
   magNietLanden,
+  registreerGroep,
   removeTestUsers,
   rlsTestsConfigured,
   type TestUser,
@@ -33,10 +34,36 @@ const TEST_TIMEOUT = 30_000;
 describe.skipIf(!rlsTestsConfigured)('De heldentabellen', () => {
   let eigenaar: TestUser;
   let ander: TestUser;
+  let groepId: string;
 
+  /**
+   * ⚠️⚠️ **`ander` is een groepsgenoot en geen willekeurige vreemde, en dat is de
+   *    hele reden dat deze opzet zo staat.** De eerste versie van dit bestand
+   *    zette twee gebruikers neer die geen groep deelden. 📏 Met de hand
+   *    nagespeeld op de lokale stack: met een groepstak op
+   *    `hero_appearances_select` — precies de vorm die QS8-477 zou kunnen
+   *    schrijven in plaats van de RPC — bleef die opzet **groen** terwijl een
+   *    groepsgenoot `trigger = 'misser'` las.
+   *
+   *    Een vreemde toetst niets wat hier gevaarlijk is: het gevaar zit bij de
+   *    mensen die je kent. Regel 18 vraag 3 — een test die groen kan blijven
+   *    terwijl de belofte breekt, bewaakt niets.
+   */
   beforeAll(async () => {
     eigenaar = await createTestUser('helden-eigenaar');
     ander = await createTestUser('helden-ander');
+
+    const groep = await eigenaar.db.rpc('create_group', { group_name: 'Helden' });
+    const groepData = groep.data as { ok?: boolean; group?: { id: string; invite_code: string } };
+    if (groepData.ok !== true || !groepData.group) {
+      throw new Error(`groep aanmaken mislukte: ${JSON.stringify(groep.data)}`);
+    }
+    groepId = groepData.group.id;
+    registreerGroep(groepId);
+
+    const mee = await ander.db.rpc('join_group_with_code', { code: groepData.group.invite_code });
+    const meeData = (mee.data ?? {}) as { ok?: boolean; reason?: string };
+    if (meeData.ok !== true) throw new Error(`ander werd geen lid: ${meeData.reason ?? '?'}`);
 
     await eigenaar.db
       .from('hero_profiles')
@@ -95,6 +122,42 @@ describe.skipIf(!rlsTestsConfigured)('De heldentabellen', () => {
           .from('hero_appearances')
           .insert({ user_id: eigenaar.id, hero_key: 'quip', trigger: 'tussendoor' });
         expect(verschijning.error).not.toBeNull();
+      },
+      TEST_TIMEOUT,
+    );
+
+    /**
+     * ⚠️⚠️ **Béide standen van `groups.zichtbaarheid`, want één stand bewijst de
+     *    helft.** Besluit A41 laat een groep kiezen tussen beschermd en open, en
+     *    besluit 5 van QS8-468 laat de heldenzichtbaarheid die keuze volgen.
+     *    Maar dat gebeurt in QS8-477 via een RPC — niet hier via een policy.
+     *
+     *    Deze tabellen horen dus in **allebei** de standen nul rijen te geven
+     *    aan een groepsgenoot. Toetst deze suite alleen de beschermde stand, dan
+     *    is ze over een halfjaar blind voor precies de verruiming die dan
+     *    gebouwd wordt.
+     */
+    it(
+      'blijft dicht voor een groepsgenoot, in een beschermde én in een open groep',
+      async () => {
+        const beschermd = await ander.db.from('hero_appearances').select('id, trigger');
+        expect(beschermd.error).toBeNull();
+        expect(beschermd.data ?? [], 'beschermde groep').toHaveLength(0);
+
+        const zicht = await eigenaar.db.rpc('zet_groepszichtbaarheid', {
+          p_group_id: groepId,
+          p_naar: 'open',
+          p_bevestigd: true,
+        });
+        const uitkomst = (zicht.data ?? {}) as { ok?: boolean; reason?: string };
+        expect(uitkomst.ok, JSON.stringify(zicht.data)).toBe(true);
+
+        const open = await ander.db.from('hero_appearances').select('id, trigger');
+        expect(open.error).toBeNull();
+        expect(open.data ?? [], 'open groep').toHaveLength(0);
+
+        const profielen = await ander.db.from('hero_profiles').select('user_id');
+        expect(profielen.data ?? [], 'open groep, profielen').toHaveLength(0);
       },
       TEST_TIMEOUT,
     );
