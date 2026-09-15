@@ -1,4 +1,4 @@
--- 0273_een_dagplafond_op_blokkades_dat_niemand_raakt_die_misbruik_ontvlucht.sql
+-- 0274_een_dagplafond_op_blokkades_dat_niemand_raakt_die_misbruik_ontvlucht.sql
 -- — `user_blocks` krijgt een dagplafond. QS8-496.
 -- Afweging, metingen en ijkingen:
 -- `docs/decisions/2026-09-15-een-plafond-dat-een-uitweg-niet-versperd.md`
@@ -143,7 +143,7 @@ comment on function public.blokkades_plafond() is
   'een verzoek, elk in een groep van hoogstens twaalf, is ~330 verschillende '
   'mensen op één dag. Bewust hoog: te laag zit iemand in de weg die misbruik '
   'ontvlucht, en dat is de verkeerde kant om te falen. De gevoelige knop zijn '
-  'die twee dagbudgetten, niet de leden- of groepsplafonds. Zie 0273 en '
+  'die twee dagbudgetten, niet de leden- of groepsplafonds. Zie 0274 en '
   'QS8-496.';
 
 -- ⚠️ Onwrikbare regel 4: `authenticated` staat er met zoveel woorden bij. Deze
@@ -378,7 +378,7 @@ AS $function$
       --    de taak die hij deelt, en `pin_taak()` leest hem om precies díe rij
       --    door te laten. Twee functies, één sleutel: de zetter en de lezer.
       ('app.taak_gedeeld',             array['zet_taakzichtbaarheid', 'pin_taak']),
-      -- ⚠️ Uit 0273 (QS8-496). De achttiende dagteller krijgt zijn rem, en dus
+      -- ⚠️ Uit 0274 (QS8-496). De achttiende dagteller krijgt zijn rem, en dus
       --    zijn sleutel. 📏 Deze regel is er niet uit voorzorg bij gezet maar
       --    omdat de derde tak hieronder rood stond: `rem_blokkades -> noemt
       --    app.rem_blokkades, een app.-sessiesleutel die in geen enkel register

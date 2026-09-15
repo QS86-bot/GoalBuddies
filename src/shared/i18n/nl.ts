@@ -2726,7 +2726,7 @@ export const nl = {
   'melden.geblokkeerd_titel': 'Geblokkeerd',
   'melden.blokkades_mislukt': 'Je blokkades konden niet geladen worden.',
   // ⚠️ Een eigen zin en niet `melden.te_veel`: die noemt twintig meldingen, en
-  //    dit gaat over blokkades met een heel ander getal. Zie 0273 en QS8-496.
+  //    dit gaat over blokkades met een heel ander getal. Zie 0274 en QS8-496.
   'melden.te_veel_blokkades':
     'Je hebt vandaag heel veel mensen geblokkeerd. Morgen kan het weer. Gaat het om iemand die je nu lastigvalt? Meld hem dan; dat kan wel.',
   /**

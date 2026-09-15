@@ -140,7 +140,7 @@ export async function blokkeer(userId: string): Promise<Resultaat<true>> {
   //    hier gaat het om blokkades en om een heel ander getal. Op de knop
   //    "blokkeer deze persoon" is een verkeerd getal geen schoonheidsfout: dit
   //    is de handeling waar 0203 met opzet géén rem op zette, en wie hem raakt
-  //    moet lezen wat er echt aan de hand is en wat er wél kan. Zie 0273.
+  //    moet lezen wat er echt aan de hand is en wat er wél kan. Zie 0274.
   if (uit.reason === 'rate_limited') {
     return { ok: false, melding: t('melden.te_veel_blokkades') };
   }
