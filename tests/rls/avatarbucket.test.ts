@@ -165,7 +165,7 @@ describe.runIf(beschikbaar)('de avatar-bucket (0126)', () => {
   });
 
   // ---------------------------------------------------------------------------
-  // De derde tak: vindbaar buiten je groep (0271, QS8-476)
+  // De derde tak: vindbaar buiten je groep (0272, QS8-476)
   // ---------------------------------------------------------------------------
   //
   // ⚠️⚠️ **Deze twee staan hier en niet bij de RPC, want ze toetsen deze policy.**

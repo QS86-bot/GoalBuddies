@@ -88,7 +88,7 @@ export async function zoekMensen(
   //    De bucket is privé sinds 0126, dus wat de RPC teruggeeft is
   //    `<uuid>/foto.jpg`. Dat rechtstreeks in een `<Image>` zetten geeft een leeg
   //    vlak zónder foutmelding — de vorm waar `avatar:controle` voor bestaat, en
-  //    die controle vond dit hier ook. De policy-tak in 0271 opent de deur; deze
+  //    die controle vond dit hier ook. De policy-tak in 0272 opent de deur; deze
   //    regel is de andere helft van diezelfde keten (regel 18 vraag 5).
   //
   // ⚠️ Eén ronde voor de hele pagina en niet één per rij — schaalbaarheidsregel

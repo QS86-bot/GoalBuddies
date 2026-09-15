@@ -1,4 +1,4 @@
--- 0271_vindbaar_buiten_je_groep.sql — wie dat zelf aanzet, is buiten zijn groep te vinden op naam en foto, en op niets anders.
+-- 0272_vindbaar_buiten_je_groep.sql — wie dat zelf aanzet, is buiten zijn groep te vinden op naam en foto, en op niets anders.
 --
 -- ROLLBACK-PAD:
 --   drop function if exists public.zoek_mensen(text, integer, integer);

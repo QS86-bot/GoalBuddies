@@ -14,7 +14,7 @@ productie in twee rondes)
 ⚠️ **Productie staat op `0224`.** 📏 Hermeten op 14-09 om 05:02 UTC met
 `migratieregister()` tegen `wehgocadxehottiiyvsc`: **227 registerrijen**, `0001`
 t/m `0224` aaneengesloten, inclusief de drie letterversies. De map telt er
-**274**.
+**275**.
 
 ⚠️ **Hier stond tot 14-09 `0221`, en dat was op 09-09 om 16:10 UTC juist.**
 `0222`, `0223` en `0224` zijn er sindsdien op toegepast — alle drie uit QS8-71,
@@ -33,7 +33,7 @@ migratienummer aanziet, legt de lijn drie bestanden te hoog en verklaart
 `0222` t/m `0224` toegepast op een dag dat ze dat niet waren. Zelfde klasse als
 een teller in grafemen bij een grens in codepunten.
 
-**Het gat is daarmee 47 bestanden** — `0225` t/m `0271`, van 09-09
+**Het gat is daarmee 48 bestanden** — `0225` t/m `0272`, van 09-09
 tot en met 15-09 en uit 38 verschillende issues.
 
 ⚠️ **In cijfers en niet voluit, en dat is sinds 14-09-2026 een controle.**
@@ -46,7 +46,7 @@ stilte een klacht: staat er een bewering en is haar getal niet te lezen, dan is
 dát de fout, en de melding zegt erbij dat er boven de twintig een cijfer hoort.
 Uitleg in `docs/decisions/2026-09-14-een-bewering-die-niet-te-lezen-is.md`.
 
-De 47 bestanden:
+De 48 bestanden:
 
 | | | DDL op `storage.objects` |
 | -- | -- | -- |
@@ -361,7 +361,7 @@ schemaname = 'public'` gaf `41|41`. Vraag het aan de database en niet aan deze
 regel — net als bij het aantal migraties in §0.
 
 <!-- STAND:BEGIN — gegenereerd door `npm run stand` -->
-Migraties `0001` t/m `0271` staan in de map: **274 bestanden**,
+Migraties `0001` t/m `0272` staan in de map: **275 bestanden**,
 waarvan 3 met een letter-achtervoegsel (`0039a`, `0041a`, `0052a`).
 De nummering is aaneengesloten.
 <!-- STAND:EINDE -->

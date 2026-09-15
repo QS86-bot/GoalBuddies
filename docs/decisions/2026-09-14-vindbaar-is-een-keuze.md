@@ -1,6 +1,6 @@
 # Vindbaar is een keuze, en standaard staat hij uit
 
-**14-09-2026 — QS8-476.** Migratie 0271.
+**14-09-2026 — QS8-476.** Migratie 0272.
 
 ## Het besluit dat eraan voorafging
 
