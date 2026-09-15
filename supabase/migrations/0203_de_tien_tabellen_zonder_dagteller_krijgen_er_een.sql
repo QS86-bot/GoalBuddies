@@ -127,6 +127,16 @@
 --   aantal rijen niet meer begrensd door wie je kent maar door hoeveel accounts
 --   er zijn, en dan hoort hier een plafond dat ruim boven elk echt gebruik ligt.
 --
+--   ✅ **Die voorwaarde is op 15-09-2026 ingetreden en afgehandeld — zie 0272
+--      (QS8-496).** `zoek_mensen()` (QS8-476) geeft tot 50 profiel-id's per
+--      aanroep, en elk teruggegeven `id` is een geldige `blocked_id`; daarmee
+--      verviel de begrenzing "door wie je kent".
+--
+--      ⚠️ De veiligheidskeuze hierboven is **niet** omgedraaid. Het plafond
+--         staat op 500 — ruim tien keer het zwaarste echte geval — juist zodat
+--         wie misbruik ontvlucht er nooit tegenaan loopt. Wat begrensd wordt is
+--         alleen de bulkvorm. De afweging staat in de kop van 0272.
+--
 -- ---------------------------------------------------------------------------
 -- De zes plafonds, en waarom ze zo hoog staan
 -- ---------------------------------------------------------------------------
