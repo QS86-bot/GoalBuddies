@@ -2,7 +2,7 @@
 
 **Datum:** 15-09-2026
 **Issue:** QS8-496
-**Migratie:** 0274 — `blokkades_plafond()`, `begrens_blokkades()`, `rem_blokkades()`
+**Migratie:** 0275 — `blokkades_plafond()`, `begrens_blokkades()`, `rem_blokkades()`
 **Raakt:** 0203 (de tien tabellen zonder dagteller), 0145 (`blokkeer()`),
 0200/0207 (de remmen), QS8-476 (`zoek_mensen()`)
 
@@ -211,7 +211,7 @@ terug, dus de teller bleef op 500 staan.
 **De reparatie:** `blokkeer()` toetst het plafond **vóór** het bestaan en geeft
 `{ok:false, reason:'rate_limited'}`. 📏 Nagemeten: beide probes geven nu
 hetzelfde antwoord. ⚠️ Een `reason` eráchter had het orakel juist laten staan —
-dat is de hele reden dat de volgorde in de kop van 0274 staat uitgeschreven.
+dat is de hele reden dat de volgorde in de kop van 0275 staat uitgeschreven.
 
 ⚠️ **De trigger blijft en wordt hierdoor niet overbodig.** Deze toets zit in één
 RPC; de trigger geldt voor elke schrijver naar `user_blocks`. Een grens die

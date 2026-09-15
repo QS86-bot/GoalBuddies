@@ -14,7 +14,7 @@ productie in twee rondes)
 ⚠️ **Productie staat op `0224`.** 📏 Hermeten op 14-09 om 05:02 UTC met
 `migratieregister()` tegen `wehgocadxehottiiyvsc`: **227 registerrijen**, `0001`
 t/m `0224` aaneengesloten, inclusief de drie letterversies. De map telt er
-**277**.
+**278**.
 
 ⚠️ **Hier stond tot 14-09 `0221`, en dat was op 09-09 om 16:10 UTC juist.**
 `0222`, `0223` en `0224` zijn er sindsdien op toegepast — alle drie uit QS8-71,
@@ -33,8 +33,8 @@ migratienummer aanziet, legt de lijn drie bestanden te hoog en verklaart
 `0222` t/m `0224` toegepast op een dag dat ze dat niet waren. Zelfde klasse als
 een teller in grafemen bij een grens in codepunten.
 
-**Het gat is daarmee 50 bestanden** — `0225` t/m `0274`, van 09-09
-tot en met 15-09 en uit 42 verschillende issues.
+**Het gat is daarmee 51 bestanden** — `0225` t/m `0275`, van 09-09
+tot en met 15-09 en uit 43 verschillende issues.
 
 ⚠️ **In cijfers en niet voluit, en dat is sinds 14-09-2026 een controle.**
 📏 `NUMMERWOORDEN` in `scripts/docs-controle.mjs` loopt tot `twintig`; daarboven
@@ -46,7 +46,7 @@ stilte een klacht: staat er een bewering en is haar getal niet te lezen, dan is
 dát de fout, en de melding zegt erbij dat er boven de twintig een cijfer hoort.
 Uitleg in `docs/decisions/2026-09-14-een-bewering-die-niet-te-lezen-is.md`.
 
-De 50 bestanden:
+De 51 bestanden:
 
 | | | DDL op `storage.objects` |
 | -- | -- | -- |
@@ -100,7 +100,7 @@ De 50 bestanden:
 | `0272_vindbaar_buiten_je_groep.sql` | QS8-476 | ja |
 | `0273_een_doeltitel_en_een_toetredingsbericht_dragen_geen_bidi_stuurteken.sql` | QS8-498 | nee |
 | `0274_tekst_voor_een_autorisatiebesluit_draagt_geen_bidi_stuurteken.sql` | QS8-501 | nee |
-| `0274_een_dagplafond_op_blokkades_dat_niemand_raakt_die_misbruik_ontvlucht.sql` | QS8-496 | nee |
+| `0275_een_dagplafond_op_blokkades_dat_niemand_raakt_die_misbruik_ontvlucht.sql` | QS8-496 | nee |
 
 ⚠️ **Hier stond een uur eerder `0219` met twee bestanden gat, en dat klopte
 toen.** `0220` en `0221` zijn erna toegepast en `0222` t/m `0226` landden
@@ -364,7 +364,7 @@ schemaname = 'public'` gaf `41|41`. Vraag het aan de database en niet aan deze
 regel — net als bij het aantal migraties in §0.
 
 <!-- STAND:BEGIN — gegenereerd door `npm run stand` -->
-Migraties `0001` t/m `0274` staan in de map: **277 bestanden**,
+Migraties `0001` t/m `0275` staan in de map: **278 bestanden**,
 waarvan 3 met een letter-achtervoegsel (`0039a`, `0041a`, `0052a`).
 De nummering is aaneengesloten.
 <!-- STAND:EINDE -->
