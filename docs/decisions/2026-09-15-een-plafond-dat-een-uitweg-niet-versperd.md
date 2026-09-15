@@ -2,9 +2,9 @@
 
 **Datum:** 15-09-2026
 **Issue:** QS8-496
-**Migratie:** 0273 — `blokkades_plafond()`, `begrens_blokkades()`
+**Migratie:** 0273 — `blokkades_plafond()`, `begrens_blokkades()`, `rem_blokkades()`
 **Raakt:** 0203 (de tien tabellen zonder dagteller), 0145 (`blokkeer()`),
-QS8-476 (`zoek_mensen()`)
+0200/0207 (de remmen), QS8-476 (`zoek_mensen()`)
 
 ---
 
@@ -116,7 +116,55 @@ wél uitzoeken waaróm.** Stoppen bij "hij bleef groen, dus de toets deugt niet"
 had hier een goede toets weggegooid; stoppen bij "hij bleef groen, raar" had de
 onware notitie laten staan.
 
-## 6. De drie ijkingen
+## 6. De rem die ik niet gebouwd had, en die de suite ving
+
+⚠⚠ **Dit is het deel van dit issue dat het waard is om te onthouden**, en het
+is geen ijking: het is een gat dat er echt in zat.
+
+Een dagteller is `after insert … for each statement`. Dat móét, want een
+transitietabel bestaat alleen in `after` — en dus schrijft Postgres de hele batch
+fysiek weg vóórdat de trigger nee kan zeggen. 0200 (QS8-347) heeft dat gemeten en
+zette op negen tabellen een `before insert … for each row`-rem ervoor; 0207
+deed er vijf.
+
+Ik bouwde de teller en niet de rem. `tests/rls/remdekking.test.ts` werd rood, met
+`user_blocks (user_blocks_dagplafond)` in de melding.
+
+📏 **Op deze tabel nagemeten in plaats van overgenomen**, één batch van 3000
+rijen in één statement, beide keren vanaf een lege tabel en beide keren
+teruggerold:
+
+| | `pg_relation_size` | wie weigert, en wanneer |
+|---|---|---|
+| mét `blokkades_rem` | 0 → **73.728** bytes | `rem_blokkades()`, bij rij **1001** |
+| zónder (`disable trigger`) | 0 → **204.800** bytes | `tel_dagteller()`, ná alle 3000 |
+
+Nul rijen blijven er in beide gevallen over, en die ruimte komt pas bij een
+`vacuum full` terug. ⚠️ Factor 2,8 bij 3000 rijen, en het groéit met de batch: de
+rem kapt af op een vast getal, de statement-trigger op geen enkel.
+
+⚠️⚠️ **En er zat een tweede fout onder de eerste.** Ik noemde de teller
+`user_blocks_dagplafond`, naar de tábel — als enige van achttien, want de andere
+zeventien dragen het domeinwoord (`dagzetten_dagplafond` op `daily_moves`,
+`weekdoelen_dagplafond` op `weekly_goals`). De koppeling in `remdekking.test.ts`
+loopt over die naam en eist dat de rem `rem_<domeinwoord>()` aanroept. Met de
+tabelnaam had ik de rem er dus náast kunnen zetten zonder dat hij ooit aan zijn
+teller vastzat, en dan was het bestand groen geweest op een rem die niets remt.
+
+⚠️ **Wat dit over de vorige zes ijkingen zegt.** Elke ijking bevestigt dat een
+grendel doet wat je dacht; geen enkele zegt of je de goede grendel hébt. Dit gat
+is niet gevonden door een ijking van mijn eigen werk maar door een grendel van
+iemand anders, die precies naar de leegte keek waar ik niets had staan. Dat is
+dezelfde les als §5, en het is de tweede keer in dit issue.
+
+📏 De aantekening bij die grendel is meteen bijgewerkt: 0214, 0217 en 0246
+zetten er ook een teller bij, maar die drie droegen hun rem meteen. Dit is de
+eerste keer dat `remdekking.test.ts` een écht gat ving in plaats van alleen mee
+te tellen.
+
+---
+
+## 7. De drie ijkingen
 
 📏 Mutatie per grendel, 15-09-2026:
 
@@ -124,7 +172,12 @@ onware notitie laten staan.
 |---|---|---|
 | A | `blokkades_plafond()` op `select 20` | **3** — ook de must-allow, want 48 > 20 |
 | B | de lege-batchtak, op twee plekken | **0** — zie §5 |
-| C | de trigger `user_blocks_dagplafond` gedropt | 1 — de weigering |
+| C | de trigger `blokkades_dagplafond` gedropt | 1 — de weigering |
+
+⚠️ **C is gedraaid toén de trigger nog `user_blocks_dagplafond` heette**, en na de
+hernoeming van §6 opnieuw gedraaid onder de nieuwe naam — zelfde uitslag. Dat
+staat hier omdat een ijkingstabel die een naam noemt die bij het meten anders
+was, precies de vorm is die de volgende lezer niet kan narekenen.
 
 ⚠️ Dat A er drie omgooit is juist het bewijs dat de must-allow scherp staat: een
 te laag plafond raakt als eerste de gebruiker die het niet mag raken.
