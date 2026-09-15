@@ -2167,7 +2167,7 @@ export const en: Record<Sleutel, string> = {
   // ⚠️ A sentence of its own rather than `melden.te_veel`: that one names twenty
   //    reports, and this is about blocks with a very different number.
   'melden.te_veel_blokkades':
-    'You have blocked a great many people today. Tomorrow you can again. If someone is harassing you right now, report them — that still works.',
+    'You have blocked a great many people today. Tomorrow you can again. Is someone harassing you right now? Report them; that still works.',
   'melden.blokkeer_stil': 'They get no message about this and cannot see it anywhere.',
   'melden.geblokkeerd': 'This is not possible.',
 

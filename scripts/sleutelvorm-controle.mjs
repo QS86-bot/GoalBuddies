@@ -88,6 +88,7 @@ const RIJ = '\u0002';
 export const NUMERIEKE_LEZERS = Object.fromEntries(
   [
     'rem_berichten',
+    'rem_blokkades',
     'rem_commitments',
     'rem_dagafvinkingen',
     'rem_dagzetten',
