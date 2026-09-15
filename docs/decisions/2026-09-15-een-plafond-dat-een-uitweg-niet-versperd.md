@@ -45,11 +45,24 @@ plafond van vijf — en dat is precies de fout die dit issue niet mocht maken.
 Het huis rekent een plafond uit als *een veelvoud van een zware gebruiksdag*
 (0203, "De zes plafonds, en waarom ze zo hoog staan"). Voor blokkades:
 
+📏 **En het ergste echte geval is hier geen schatting maar een afgedwongen
+bovengrens** — nagemeten in 0016 in plaats van aangenomen:
+
 | | |
 |---|---|
-| een zware dag | iemand verlaat een groep waar het misging en blokkeert iedereen die hij daar tegenkwam. 0203 gebruikt zelf "een groep van twaalf" als zijn zware geval |
-| het ergste échte geval | uit **vier** zulke groepen tegelijk vertrekken: 48 |
-| het plafond | **500**, ruim tien keer dat |
+| een groep is vol bij | **twaalf** actieve leden |
+| een gebruiker zit in hoogstens | **tien** groepen |
+| het ergste échte geval | uit alle tien vertrekken en daar iedereen blokkeren: 10 × 11 = **110**. Meer kán hij er via groepen niet kennen |
+| het plafond | **500**, ruim vier en een half keer die harde bovengrens |
+
+⚠️ Die bovengrens geldt alleen voor het **legitieme** geval. `zoek_mensen()`
+laat je juist mensen blokkeren die je nooit ontmoet hebt — daar is 110 geen
+grens meer, en dát is waarom er überhaupt een plafond nodig is.
+
+⚠️ **Dit stond eerst als "vier groepen van twaalf is 48, en 500 is tien keer
+dat".** Dat was een schatting waar een afgedwongen getal voorhanden was. Het
+antwoord verandert er niet van — 500 blijft ruim — maar de onderbouwing wel: van
+*"dit lijkt me veel"* naar *"meer kan niet"*.
 
 ⚠️ **Het faalt naar de veilige kant, en dat is hier de hele opdracht.** Te laag
 betekent dat iemand die misbruik ontvlucht tegen een muur loopt; te hoog

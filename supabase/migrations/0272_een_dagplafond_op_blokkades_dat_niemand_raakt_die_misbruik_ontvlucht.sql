@@ -58,12 +58,20 @@
 -- gebruiksdag* (0203, "De zes plafonds, en waarom ze zo hoog staan"). Voor
 -- blokkades:
 --
---   een zware dag    iemand verlaat een groep waar het misgegaan is en
---                    blokkeert iedereen die hij daar tegenkwam. 0203 gebruikt
---                    zelf "een groep van twaalf" als zijn zware geval.
---   het ergste echte iemand vertrekt uit álle groepen waar hij in zit en
---   geval            blokkeert daar iedereen — vier groepen van twaalf is 48.
---   het plafond      500, ruim tien keer dat ergste geval.
+--   📏 **En het ergste echte geval is hier geen schatting maar een afgedwongen
+--      bovengrens**, en dat is nagemeten in plaats van aangenomen (0016):
+--      een groep is vol bij **twaalf** actieve leden, en een gebruiker zit in
+--      hoogstens **tien** groepen.
+--
+--   het ergste echte iemand vertrekt uit álle tien zijn groepen en blokkeert
+--   geval            daar iedereen die hij ooit tegenkwam:
+--                    10 × 11 = **110** mensen. Meer kán hij er via groepen niet
+--                    kennen.
+--   het plafond      **500**, ruim vier en een half keer die harde bovengrens.
+--
+--   ⚠️ Die bovengrens geldt alleen voor het **legitieme** geval. `zoek_mensen()`
+--      laat je juist mensen blokkeren die je nooit ontmoet hebt, en dat is
+--      precies waarom er een plafond nodig is: daar is 110 geen grens meer.
 --
 -- ⚠️ **Het faalt naar de veilige kant, en dat is hier de hele opdracht.** Te
 --    laag betekent dat iemand die misbruik ontvlucht tegen een muur loopt; te
@@ -87,10 +95,12 @@ set search_path = public, pg_temp
 as $$ select 500 $$;
 
 comment on function public.blokkades_plafond() is
-  'Hoeveel mensen één gebruiker per etmaal kan blokkeren. 500 is ruim tien keer '
-  'het zwaarste echte geval (uit vier groepen van twaalf vertrekken en daar '
-  'iedereen blokkeren). Bewust hoog: te laag zit iemand in de weg die misbruik '
-  'ontvlucht, en dat is de verkeerde kant om te falen. Zie 0272 en QS8-496.';
+  'Hoeveel mensen één gebruiker per etmaal kan blokkeren. 500 is ruim vier en '
+  'een half keer de afgedwongen bovengrens van het legitieme geval: een groep '
+  'is vol bij twaalf en je zit in hoogstens tien groepen, dus via groepen ken '
+  'je er hoogstens 110 (0016). Bewust hoog: te laag zit iemand in de weg die '
+  'misbruik ontvlucht, en dat is de verkeerde kant om te falen. Zie 0272 en '
+  'QS8-496.';
 
 -- ⚠️ Onwrikbare regel 4: `authenticated` staat er met zoveel woorden bij. Deze
 --    twee worden alleen vanuit een trigger aangeroepen, dus er komt geen grant

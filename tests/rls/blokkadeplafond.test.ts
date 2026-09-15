@@ -69,9 +69,12 @@ describe.skipIf(!rlsTestsConfigured)('het dagplafond op blokkades', () => {
       'laat een hele groep blokkeren zonder één weigering',
       async () => {
         /**
-         * ⚠️⚠️ **Dit is de toets die het zwaarst weegt.** Het zwaarste échte
-         *    geval uit de onderbouwing van 0272: iemand vertrekt uit vier
-         *    groepen van twaalf en blokkeert daar iedereen — 48 mensen.
+         * ⚠️⚠️ **Dit is de toets die het zwaarst weegt.** 📏 Het zwaarste échte
+         *    geval is een afgedwongen bovengrens en geen schatting (0016): een
+         *    groep is vol bij twaalf en je zit in hoogstens tien groepen, dus
+         *    via groepen ken je er hoogstens 110. Deze toets neemt er 48 —
+         *    ruim boven één volle groep, en genoeg om een te krap plafond te
+         *    laten omvallen zonder vijfhonderd sessies op te zetten.
          *
          * 📏 IJKING A — `blokkades_plafond()` op `select 20` gezet: deze toets
          *    werd rood bij de eenentwintigste blokkade. Met 500 komen alle
