@@ -296,6 +296,8 @@ describe.skipIf(!rlsTestsConfigured)('Domeinregel 3 — clausule 2 geldt ook bui
   let andereGroep: string;
   /** Een voltooiing van Dave, op een doel dat alleen aan Daves groep hangt. */
   let vreemdeVoltooiing: string;
+  /** De cyclus van de opstelling, om diezelfde reden. */
+  let aliceCyclus = { startDate: '', endDate: '' };
   const voltooiingen: string[] = [];
 
   beforeAll(async () => {
@@ -372,6 +374,8 @@ describe.skipIf(!rlsTestsConfigured)('Domeinregel 3 — clausule 2 geldt ook bui
       }
       voltooiingen.push(voltooiing.data.id);
     }
+
+    aliceCyclus = cycle;
 
     vreemdeVoltooiing = await maakVoltooiingVoorDave(cycle);
   }, SETUP_TIMEOUT);
@@ -706,4 +710,222 @@ describe.skipIf(!rlsTestsConfigured)('Domeinregel 3 — clausule 2 geldt ook bui
     },
     TEST_TIMEOUT,
   );
+
+  // ---------------------------------------------------------------------------
+  // Clausule 4 — de voltooiing is nog de actieve (QS8-503, migratie 0275)
+  // ---------------------------------------------------------------------------
+  //
+  // ⚠️⚠️ **De vierde clausule van `completion_approvals_insert` stond tot 0275
+  //    alleen in RLS.** 0262 nam er drie over; deze niet. 📏 Gemeten vóór de
+  //    reparatie: een goedkeuring op een vervangen voltooiing kwam er als
+  //    `service_role` gewoon in (`INSERT 0 1`), terwijl dezelfde rij als
+  //    `authenticated` door de policy geweigerd wordt.
+  //
+  // ⚠️ **En de schade is een andere dan de agenda zei.** `award_points_on_approval()`
+  //    slaat een vervangen voltooiing zelf al over, dus er kwamen géén punten
+  //    bij. Wat er wél gebeurde: een `completion_approved`-systeembericht de
+  //    groep in, over een week die al opnieuw ingediend was, plus een badge —
+  //    `meld_goedkeuring()`, `risico_na_goedkeuring()` en
+  //    `badge_na_gebeurtenis()` noemen `superseded` geen van drieën. Een
+  //    systeembericht is een onveranderlijke kopie (beslisdocument 002 §3), dus
+  //    dat oppervlak was niet meer weg te krijgen.
+  describe('clausule 4 — de voltooiing is nog de actieve', () => {
+    /**
+     * ⚠️⚠️ **Eigen voltooiingen en niet `voltooiingen[2]`/`[3]`.** 📏 Die twee
+     *    worden door eerdere toetsen in dit bestand gemuteerd — er hangt al een
+     *    stem aan, een koppeling is verlegd, of een lidmaatschap is omgezet en
+     *    weer terug. De eerste versie van deze toetsen viel daardoor om op
+     *    clausule **2** (*"Alleen een lid van dezelfde buddy-groep"*), en dan
+     *    meet je de opstelling en niet de grendel.
+     */
+    // ⚠️⚠️ **Een eigen paar per toets, en dat is een gemeten reparatie.** Eerst
+    //    deelden de weiger- en de intrektoets één voltooiing. Bij de ijking —
+    //    clausule 4 eruit — landde de goedkeuring in de eerste toets alsnog, en
+    //    dan botste de tweede op `completion_approvals_one_vote`. Die viel dus
+    //    om op een grendel die niets met zijn eigen belofte te maken heeft.
+    //
+    //    **Een must-allow-toets die rood wordt van een mutatie in een ándere
+    //    grendel, meet die andere grendel.** Zelfde klasse als de
+    //    `already_open`-val bij QS8-501.
+    const paren: Record<string, { oud: string; vervanger: string }> = {};
+
+    beforeAll(async () => {
+      // ⚠️⚠️ **En een eigen goedkeurder.** 📏 Gemeten met een diagnostische regel
+      //    in de toets zelf: op dit punt is Bobs rij in `group_members`
+      //    **weg** — niet op `inactive`, maar verwijderd door de toets over een
+      //    vertrekkend lid. Zonder deze regel valt de opstelling om op clausule
+      //    2 en meet dit blok de opstelling in plaats van de grendel.
+      //
+      //    Dat is de derde keer in dit bestand dat een gedeelde opstelling iets
+      //    anders bleek dan hij leek; vandaar dat dit blok álles zelf zet.
+      const lid = await adminDb()
+        .from('group_members')
+        .upsert(
+          { group_id: groupId, user_id: bob.id, role: 'member', status: 'active' },
+          { onConflict: 'group_id,user_id' },
+        );
+      if (lid.error !== null) throw new Error(`lidmaatschap: ${lid.error.message}`);
+
+      // ⚠️ Een eigen doel én een eigen koppeling, niet alleen eigen weekdoelen.
+      //    📏 Met alleen eigen weekdoelen op `aliceDoel` viel de opstelling nog
+      //    steeds om op clausule 2: eerdere toetsen in dit bestand raken ook de
+      //    koppeling doel-groep. Wie een gedeelde opstelling half overneemt,
+      //    erft de mutaties die hij niet ziet.
+      const doel = await alice.db
+        .from('goals')
+        .insert({
+          owner_id: alice.id,
+          title: 'Clausule-vier-doel',
+          target_date: aliceCyclus.endDate,
+        })
+        .select('id')
+        .single();
+      if (doel.error || doel.data === null) throw new Error(`doel: ${doel.error?.message}`);
+
+      const koppel = await alice.db
+        .from('goal_group_links')
+        .insert({ goal_id: doel.data.id, group_id: groupId });
+      if (koppel.error !== null) throw new Error(`koppeling: ${koppel.error.message}`);
+
+      async function maakVoltooiing(naam: string): Promise<string> {
+        const week = await alice.db
+          .from('weekly_goals')
+          .insert({
+            goal_id: doel.data?.id ?? '',
+            title: naam,
+            cycle_start_date: aliceCyclus.startDate,
+          })
+          .select('id')
+          .single();
+        if (week.error || week.data === null) throw new Error(`${naam}: ${week.error?.message}`);
+
+        const voltooiing = await alice.db
+          .from('completions')
+          .insert({
+            weekly_goal_id: week.data.id,
+            user_id: alice.id,
+            achieved_level: 'ceiling',
+            note: naam,
+            cycle_start_date: aliceCyclus.startDate,
+          })
+          .select('id')
+          .single();
+        if (voltooiing.error || voltooiing.data === null) {
+          throw new Error(`${naam}: ${voltooiing.error?.message}`);
+        }
+        return voltooiing.data.id;
+      }
+
+      for (const toets of ['weigeren', 'intrekken']) {
+        paren[toets] = {
+          oud: await maakVoltooiing(`clausule4-${toets}-oud`),
+          vervanger: await maakVoltooiing(`clausule4-${toets}-vervanger`),
+        };
+      }
+    }, SETUP_TIMEOUT);
+
+    /** Zet een voltooiing op vervangen, met een andere voltooiing als vervanger. */
+    async function zetVervangen(oud: string, vervanger: string): Promise<void> {
+      const uit = await adminDb()
+        .from('completions')
+        .update({ superseded_by: vervanger })
+        .eq('id', oud);
+      if (uit.error !== null) throw new Error(`vervangen zetten: ${uit.error.message}`);
+    }
+
+    async function zetActief(id: string): Promise<void> {
+      const uit = await adminDb().from('completions').update({ superseded_by: null }).eq('id', id);
+      if (uit.error !== null) throw new Error(`actief zetten: ${uit.error.message}`);
+    }
+
+    it(
+      'weigert een goedkeuring op een vervangen voltooiing, ook langs RLS om',
+      async () => {
+        const { oud, vervanger } = paren.weigeren ?? { oud: '', vervanger: '' };
+
+        // ⚠️ De bevestigende helft eerst: zolang de voltooiing actief is, mág
+        //    deze goedkeuring. Zonder deze regel is de weigering hieronder ook
+        //    waar als er iets ánders in de weg zat.
+        const actief = await keurGoedLangsRls(oud, bob.id, groupId);
+        expect(actief.code, `de opstelling zelf mislukte: ${actief.message}`).toBeNull();
+
+        const weg = await adminDb()
+          .from('completion_approvals')
+          .delete()
+          .eq('completion_id', oud);
+        expect(weg.error?.message ?? null).toBeNull();
+
+        await zetVervangen(oud, vervanger);
+        try {
+          const uitslag = await keurGoedLangsRls(oud, bob.id, groupId);
+          expect(uitslag.code, uitslag.message).toBe('23514');
+          // ⚠️ Een eigen melding en niet die van clausule 2: dit gaat niet over
+          //    wíe mag goedkeuren maar over wélke voltooiing nog de actieve is.
+          expect(uitslag.message).toContain('vervangen');
+        } finally {
+          await zetActief(oud);
+        }
+      },
+      TEST_TIMEOUT,
+    );
+
+    it(
+      'laat een goedkeuring op een vervangen voltooiing wél intrekken',
+      async () => {
+        // ⚠️⚠️ **Dit is de must-allow-helft en de belangrijkste van de twee.**
+        //    Zou clausule 4 óók op de intrek-tak gelden, dan zit een goedkeuring
+        //    op een vervangen voltooiing vast — woordelijk de klasse van
+        //    QS8-371, waar wie ooit een goedkeuring introk zijn account niet
+        //    meer kon verwijderen. QS8-456 hangt aan dezelfde tak.
+        //
+        // 📏 En dit is geen randgeval: bij een quorum is één goedkeuring niet
+        //    genoeg, blijft de week `pending`, en accepteert `dien_opnieuw_in()`
+        //    een nieuwe poging. De oude goedkeuring blijft dan legitiem staan op
+        //    een voltooiing die vervangen is.
+        const { oud, vervanger } = paren.intrekken ?? { oud: '', vervanger: '' };
+
+        const gemaakt = await keurGoedLangsRls(oud, bob.id, groupId);
+        expect(gemaakt.code, `de opstelling zelf mislukte: ${gemaakt.message}`).toBeNull();
+
+        await zetVervangen(oud, vervanger);
+        try {
+          const { data } = await adminDb()
+            .from('completion_approvals')
+            .select('id')
+            .eq('completion_id', oud);
+          const id = (data ?? [])[0]?.id ?? '';
+
+          const intrekken = await adminDb()
+            .from('completion_approvals')
+            .update({ approver_id: null })
+            .eq('id', id);
+          expect(
+            intrekken.error?.message ?? null,
+            'het intrekken van een goedkeuring op een vervangen voltooiing werd geblokkeerd',
+          ).toBeNull();
+        } finally {
+          await zetActief(oud);
+          await adminDb().from('completion_approvals').delete().eq('completion_id', oud);
+        }
+      },
+      TEST_TIMEOUT,
+    );
+
+    it(
+      'meldt het zodra de policy en de trigger weer uiteen lopen',
+      async () => {
+        // ⚠️ De bewaking is de reden dat deze reparatie geen momentopname is.
+        //    Hij vond tijdens het bouwen zijn eigen bug: de policy rendert
+        //    `superseded_by IS NULL` in hoofdletters, en de eerste versie van
+        //    deze tak zocht met `like` in plaats van `ilike`.
+        const { data, error } = await adminDb().rpc('domeinregel3_bewaking');
+        expect(error).toBeNull();
+        expect(
+          (data ?? []) as unknown[],
+          `de bewaking meldt iets: ${JSON.stringify(data)}`,
+        ).toHaveLength(0);
+      },
+      TEST_TIMEOUT,
+    );
+  });
 });
