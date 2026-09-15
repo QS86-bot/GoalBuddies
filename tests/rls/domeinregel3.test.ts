@@ -927,5 +927,23 @@ describe.skipIf(!rlsTestsConfigured)('Domeinregel 3 — clausule 2 geldt ook bui
       },
       TEST_TIMEOUT,
     );
+
+    /**
+     * ⚠️⚠️ **Wat hier bewust níet staat, en waarom.** De toets hierboven eist
+     *    stilte, en stilte is ook wat je krijgt als de bewaking haar takken
+     *    kwíjt is — regel 18 vraag 3. 📏 Concreet: hij bleef groen terwijl de
+     *    trigger-tak van 0275 verzwakt was van `tgenabled = 'O'` naar
+     *    `<> 'D'`, en een wildvreemde daardoor andermans week kon goedkeuren.
+     *
+     *    De toets die dát vindt, moet de bewaking iets láten zeggen, en dat
+     *    vraagt `alter table … enable replica trigger`. Deze suite draait óók
+     *    tegen productie (`RLS_DOEL`), en DDL hoort daar niet in een test; er
+     *    is bovendien geen helper om een `alter table` via PostgREST te sturen,
+     *    en er eentje bijbouwen is een groter gat dan het dicht.
+     *
+     *    Het is daarom met de hand gemeten en het staat als Laag-rij op de
+     *    agenda, mét de voorwaarde waaronder het zwaarder wordt. Een toets die
+     *    niet kán draaien is geen grendel maar een geruststelling.
+     */
   });
 });

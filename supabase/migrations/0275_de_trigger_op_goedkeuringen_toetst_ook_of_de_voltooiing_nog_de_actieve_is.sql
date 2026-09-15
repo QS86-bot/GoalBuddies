@@ -69,17 +69,25 @@
 -- 0262 heeft daar al een poort voor, met uitzonderingen die doordacht zijn:
 --
 --   INSERT                                        -> toetsen
---   het intrekken van een goedkeuring             -> niet toetsen
+--   de anonimisering van een vertrokken account   -> niet toetsen
 --     (`approver_id` van gevuld naar `null`, met dezelfde groep en voltooiing)
 --   een UPDATE die groep, goedkeurder of
 --     voltooiing verlegt                          -> toetsen
 --
 -- ⚠️⚠️ **Die middelste is hier geen detail maar de kern.** Een goedkeuring op
---    een voltooiing die later vervangen is, moet ingetrokken kunnen blijven
---    worden. Zou de vierde clausule óók op dat pad gelden, dan zit die
---    goedkeuring vast — en dat is woordelijk de klasse van QS8-371, waar wie
---    ooit een goedkeuring introk zijn account niet meer kon verwijderen.
---    QS8-456 hangt aan dezelfde tak.
+--    een voltooiing die later vervangen is, moet nog te anonimiseren zijn. Zou
+--    de vierde clausule óók op dat pad gelden, dan blokkeert hij het opzeggen
+--    van een account — woordelijk de klasse van QS8-371. QS8-456 hangt aan
+--    dezelfde tak.
+--
+-- ⚠️ **En "intrekken" is hier het verkeerde woord, hoe vanzelfsprekend het ook
+--    klinkt.** 📏 Gemeten: `trek_goedkeuring_in()` raakt `completion_approvals`
+--    niet aan — die schrijft in `approval_withdrawals` en `points_ledger`. De
+--    enige schrijver die `approver_id` op `null` zet is de referentiële actie
+--    `completion_approvals_approver_id_fkey … on delete set null` bij het
+--    verwijderen van een account. 0262 noemt die tak daarom consequent *de
+--    anonimisering van een vertrokken account*, en wie op "intrekken" zoekt
+--    belandt bij de verkeerde functie en concludeert dat de tak dood is.
 --
 -- ---------------------------------------------------------------------------
 -- ⚠️ De prijs, en die is groter dan bij de andere drie clausules
@@ -225,8 +233,15 @@ comment on function public.fill_approval_subject() is
 --
 -- ⚠️⚠️ **Zonder deze tak is de reparatie een momentopname.** `domeinregel3_bewaking()`
 --    bestaat precies omdat de policy en de trigger uit elkaar kunnen lopen, en
---    hij had zes takken voor drie clausules. Een vierde clausule zonder zevende
---    tak herhaalt de fout die dit issue is.
+--    hij had **zes** takken voor drie clausules. Er komen er **twee** bij, niet
+--    één: `rls-superseded` bewaakt de policykant en `clausule4-actieve-voltooiing`
+--    de triggerkant. Zes wordt dus acht.
+--
+--    ⚠️ Hier stond "een zevende tak", en dat verhulde dat er een tweede nieuw
+--       slot bij kwam — juist het slot dat bij het schrijven twee keer fout
+--       ging (eerst `like` in plaats van `ilike`, daarna de omgekeerde
+--       clausule). Een telling die niet klopt, maakt van een tweede grendel
+--       een detail.
 create or replace function public.domeinregel3_bewaking()
 -- ⚠️ De OUT-namen zijn `slot` en `ontbreekt` en niet iets leesbaarders:
 --    `create or replace` kan een returntype niet wijzigen, en dat geldt ook
@@ -278,6 +293,19 @@ as $$
       --    vond dat zelf, bij de eerste run na het schrijven.
       and public.zonder_initplan_hijs(pg_get_expr(p.polwithcheck, p.polrelid))
             ilike '%superseded_by is null%'
+      -- ⚠️⚠️ **En de ómgekeerde clausule telt niet mee.** 📏 Gemeten: een policy
+      --    met `not (c.superseded_by is null)` — die dus uitsluitend
+      --    goedkeuringen op vervángen voltooiingen toelaat — rendert als
+      --    `NOT (c.superseded_by IS NULL)`, bevat de gezochte deelstring, en
+      --    liet deze tak zwijgen. Precies de redenering die hieronder op de
+      --    triggerkant staat, hoort ook hier: zoek op de clausule en niet op de
+      --    kolomnaam.
+      --
+      --    ⚠️ Dezelfde zwakte zit in de `rls`-tak van 0262. Die staat hier niet
+      --       mee gerepareerd — dat is een eigen bevinding op de agenda — maar
+      --       ze kopiëren is wél een keuze, en die maak ik niet.
+      and public.zonder_initplan_hijs(pg_get_expr(p.polwithcheck, p.polrelid))
+            not ilike '%not (c.superseded_by is null)%'
   )
 
   union all
@@ -300,7 +328,36 @@ as $$
     select 1 from pg_trigger
     where tgrelid = 'public.completion_approvals'::regclass
       and tgname = 'completion_approvals_subject'
-      and tgenabled <> 'D'
+      -- ⚠️⚠️ **`not tgisinternal and tgenabled = 'O'`, woordelijk uit 0262, en
+      --    hier stond bij het overtypen `tgenabled <> 'D'`. Dat is geen
+      --    verkorting maar een gat.** `tgenabled` kent vier waarden: `O`
+      --    (origin), `D` (disabled), `R` (replica) en `A` (always). Een trigger
+      --    op `R` vuurt **alleen** in replica-modus, dus in een gewone sessie
+      --    vuurt hij niet — en `<> 'D'` laat die waarde door.
+      --
+      --    📏 Gemeten, in een teruggedraaide transactie, met
+      --    `alter table completion_approvals enable replica trigger
+      --    completion_approvals_subject` (vraagt alleen tabeleigenaarschap):
+      --
+      --      tgenabled                       R
+      --      de bewaking met `<> 'D'`        meldt NIETS
+      --      het predicaat van 0262          meldt wél
+      --      een WILDVREEMDE keurt goed      INSERT 0 1
+      --
+      --    De hele trigger valt dus weg — clausule 2 én 4 — en de bewaking die
+      --    daar precies voor bestaat, zwijgt.
+      --
+      -- ⚠️ **En dit is woordelijk de klasse die 0262 in zijn eigen kop
+      --    dichtzette:** *"de security-ronde op QS8-480 hield het groen met: de
+      --    trigger uitzetten (`tgenabled = 'D'`) … Een naam is geen grendel."*
+      --    De helft daarvan stond met deze regel weer open.
+      --
+      -- ⚠️ `A` (always) staat er bewust **niet** bij. Dat is strenger dan nodig
+      --    — een `always`-trigger vuurt óók in replica-modus — maar 0262 koos
+      --    `= 'O'` en een migratie die een grendel overneemt, verruimt hem niet
+      --    ongevraagd. Wie `A` wil toestaan, schrijft `in ('O','A')` mét reden.
+      and not tgisinternal
+      and tgenabled = 'O'
       and tgfoid = 'public.fill_approval_subject()'::regprocedure
       and tgtype = 23
   )
@@ -330,7 +387,7 @@ as $$
 
   union all
 
-  -- ⚠️ De zevende tak — QS8-503. Hij zoekt op `superseded_by is not null` en
+  -- ⚠️ De achtste tak — QS8-503. Hij zoekt op `superseded_by is not null` en
   --    niet op het kale `superseded_by`, want dat laatste staat ook in een
   --    kolomlijst of een comment en dan meldt de bewaking niets terwijl de
   --    clausule weg is.
