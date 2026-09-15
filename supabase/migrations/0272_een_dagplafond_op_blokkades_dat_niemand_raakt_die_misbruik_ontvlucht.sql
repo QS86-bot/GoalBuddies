@@ -5,6 +5,8 @@
 --   drop trigger if exists user_blocks_dagplafond on public.user_blocks;
 --   drop function if exists public.begrens_blokkades();
 --   drop function if exists public.blokkades_plafond();
+--   ⚠️ Zet `blokkades_plafond()` niet terug op `immutable`: dat is route A uit
+--      0254 en `volatiliteit:controle` wordt er rood van.
 --
 -- ⚠️ Deze migratie raakt geen bestaande rij: ze voegt twee functies en één
 --    trigger toe. De trigger vuurt pas bij een nieuwe INSERT.
@@ -87,10 +89,18 @@
 
 begin;
 
+-- ⚠️⚠️ **`stable` en niet `immutable`, en dat is route A uit 0254.** Een
+--    `immutable` functie met nul argumenten wordt bij het plannen uitgerekend;
+--    PostgREST hergebruikt dat plan per poolverbinding, en dan komt de
+--    EXECUTE-toets er nooit meer aan te pas — één aanroep door een bevoorrechte
+--    rol en de grant is weg voor iedereen op die verbinding. `set search_path`
+--    helpt daar niet tegen; dat sluit route B. 0214 zette `pushtokens_plafond()`
+--    nog op `immutable` en 0254 heeft dat rechtgezet — dit is dezelfde vorm, dus
+--    hier meteen goed. `npm run volatiliteit:controle` is de grendel.
 create or replace function public.blokkades_plafond()
 returns integer
 language sql
-immutable
+stable
 set search_path = public, pg_temp
 as $$ select 500 $$;
 
