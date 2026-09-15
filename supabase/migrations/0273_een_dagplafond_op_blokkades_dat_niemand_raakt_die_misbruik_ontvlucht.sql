@@ -2,7 +2,9 @@
 -- — `user_blocks` krijgt een dagplafond. QS8-496.
 --
 -- ROLLBACK-PAD:
---   drop trigger if exists user_blocks_dagplafond on public.user_blocks;
+--   drop trigger if exists blokkades_dagplafond on public.user_blocks;
+--   drop trigger if exists blokkades_rem on public.user_blocks;
+--   drop function if exists public.rem_blokkades();
 --   drop function if exists public.begrens_blokkades();
 --   drop function if exists public.blokkades_plafond();
 --   ⚠️ Zet `blokkades_plafond()` niet terug op `immutable`: dat is route A uit
@@ -151,8 +153,70 @@ end $$;
 revoke execute on function public.begrens_blokkades()
   from public, anon, authenticated;
 
+-- ⚠️⚠️ **De rem hóórt bij de teller en is geen tweede feature.** Een
+--    dagteller is `after insert … for each statement`, want een transitietabel
+--    bestaat alleen in `after` — en dus schrijft Postgres de hele batch fysiek
+--    weg vóórdat de trigger nee zegt. 0200 heeft dat gemeten: een geweigerde
+--    batch van 20.000 kostte 2,9 MB die pas bij een `vacuum full` terugkomt.
+--    Deze rem hakt dat af op rijniveau, bij de noodgrens van twee keer het
+--    dagplafond.
+--
+--    📏 **Op deze tabel nagemeten en niet overgenomen uit 0200**, op de lokale
+--       stack met één batch van 3000 rijen in één statement, beide keren vanaf
+--       een lege tabel (`vacuum full` ertussen) en beide keren teruggerold:
+--
+--         mét de rem     `pg_relation_size` gaat van 0 naar **73.728** bytes; de
+--                        fout komt uit `rem_blokkades()` bij rij **1001**, de
+--                        noodgrens van tweemaal het dagplafond.
+--         zónder de rem  (`disable trigger blokkades_rem`) van 0 naar **204.800**
+--                        bytes; de fout komt dan pas uit `tel_dagteller()`, via
+--                        de statement-trigger, nádat alle 3000 rijen geschreven
+--                        zijn.
+--
+--       Nul rijen blijven er in beide gevallen over, en die ruimte komt pas bij
+--       een `vacuum full` terug. ⚠️ Het verschil is een factor 2,8 bij 3000 rijen
+--       en het groéit met de batch: de rem kapt af op een vast getal, de
+--       statement-trigger op geen enkel.
+--
+--    📏 **Ik had hem niet gebouwd, en `tests/rls/remdekking.test.ts` vond dat.**
+--    Dat is precies waar die test voor bestaat: 0203 landde ooit met zes nieuwe
+--    dagtellers en géén rem, een paar uur nadat het dossier er letterlijk voor
+--    waarschuwde. De waarschuwing was geen grendel; de test is dat wel.
+--
+-- ⚠️ **`current_setting` met `is_local = true` en niet een tellertabel.** De
+--    instelling leeft in de tránsactie, dus hij telt één verzoek en verdwijnt
+--    erna vanzelf — ook bij een rollback. Zelfde vorm als de veertien remmen
+--    van 0200 en 0207.
+create or replace function public.rem_blokkades() returns trigger
+ language plpgsql security definer set search_path to 'public', 'pg_temp' as $$
+declare v_n integer;
+begin
+  if (select auth.uid()) is null then return new; end if;
+  v_n := coalesce(nullif(current_setting('app.rem_blokkades', true), ''), '0')::integer + 1;
+  perform set_config('app.rem_blokkades', v_n::text, true);
+  if v_n > blokkades_plafond() * 2 then
+    raise exception 'Te veel blokkades in één verzoek (% rijen, noodgrens %)',
+      v_n, blokkades_plafond() * 2
+      using errcode = 'check_violation',
+            hint = 'Dit verzoek schrijft er te veel in één keer. Verdeel het over meerdere verzoeken.';
+  end if;
+  return new;
+end $$;
+
+revoke all on function public.rem_blokkades() from public, anon, authenticated;
+
+-- ⚠️ **De namen zijn een afspraak die `remdekking.test.ts` uitleest**: een teller
+--    heet `<domeinwoord>_dagplafond` en zijn rem `<domeinwoord>_rem`, en die rem
+--    moet `rem_<domeinwoord>()` aanroepen. De eerste versie hiervan noemde de
+--    teller naar de tábel (`user_blocks_dagplafond`) — de enige van achttien die
+--    dat deed, en daarmee zou de rem nooit aan zijn teller gekoppeld zijn.
 drop trigger if exists user_blocks_dagplafond on public.user_blocks;
-create trigger user_blocks_dagplafond
+drop trigger if exists blokkades_rem on public.user_blocks;
+create trigger blokkades_rem before insert on public.user_blocks
+  for each row execute function public.rem_blokkades();
+
+drop trigger if exists blokkades_dagplafond on public.user_blocks;
+create trigger blokkades_dagplafond
   after insert on public.user_blocks
   referencing new table as nieuw
   for each statement
