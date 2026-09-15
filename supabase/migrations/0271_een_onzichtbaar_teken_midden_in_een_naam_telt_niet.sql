@@ -18,16 +18,33 @@
 --     drop constraint if exists profiles_display_name_geen_onzichtbaar_middenin;
 --   drop function if exists public.zonder_onzichtbaar_middenin(text);
 --
--- ⚠️ Deze migratie raakt geen rij en geen policy — ze herdefinieert één functie
---    en voegt er één toe. Grens 2 van de beslisbevoegdheid is niet in beeld.
+-- ⚠️ Deze migratie voegt geen kolom toe en verandert geen policy — ze
+--    herdefinieert één functie, voegt er één toe, en zet er één CHECK bij.
 --
---    ⚠️⚠️ **Maar ze verandert wél wat er met bestáánde namen gebeurt.** De
---       trigger op `profiles` draait `schone_naam()` bij elke schrijfactie, dus
---       een naam met een ZWSP erin wordt bij de eerstvolgende wijziging stil
---       schoongemaakt. Dat is de bedoeling en het is dezelfde afspraak als in
---       0256 en 0269: de database bepaalt de vorm, niet de client. 📏 Er zijn
---       vandaag geen echte gebruikers (WERKVOORRAAD §0, regel 2), dus er is geen
---       bestaande naam die hierdoor verandert.
+-- ⚠️⚠️ **Maar de CHECK wordt gevalideerd, en dus scant hij élke bestaande rij.**
+--    📏 Nagemeten op een scratch-tabel: staat er één rij die hem niet haalt, dan
+--    **breekt de `alter table` af** met `check constraint … is violated by some
+--    row`. Hij maakt bestaande namen dus níet stil schoon — er is geen trigger
+--    op `profiles` die dat doet (zie de meting verderop) — hij weigert te
+--    landen.
+--
+--    Dat is de veiligere faalrichting, en het is precies het tegenovergestelde
+--    van wat hier eerst stond. Die zin beweerde dat een trigger de naam bij de
+--    eerstvolgende wijziging schoonmaakt; die trigger bestaat niet, en honderd
+--    regels lager in dit bestand stond de meting die dat zegt. Gevonden in de
+--    security-review op dit issue.
+--
+-- ⚠️ **Gevolg voor de uitrol.** Productie staat op `0224` met een gat van 47
+--    bestanden. Draai vóór het uitrollen van dit blok:
+--
+--      select count(*) from public.profiles
+--      where display_name <> public.zonder_onzichtbaar_middenin(display_name);
+--
+--    ⚠️ Die functie bestaat daar pas ná deze migratie, dus draai de regexp los
+--       of draai hem ná `create function` en vóór `alter table`. Komt er iets
+--       uit, dan is dát een besluit (naam normaliseren of de gebruiker vragen)
+--       en geen detail van deze migratie. 📏 Vandaag zijn er nog geen echte
+--       gebruikers (WERKVOORRAAD §0, regel 2), dus de telling hoort 0 te zijn.
 --
 -- ---------------------------------------------------------------------------
 -- Waar dit vandaan komt
@@ -78,9 +95,11 @@
 --    joiner `U+034F`, de richtingsmarkeringen `U+061C`/`U+200E`/`U+200F`, en de
 --    schriftgebonden `U+17B4`–`U+17B5` (Khmer) en `U+180B`–`U+180E` (Mongools).
 --
--- ⚠️⚠️ **ZWJ en ZWNJ blijven daarmee een collisievector, en dat is een besluit
---    en geen omissie.** `Ja<U+200C>n` rendert nog steeds als `Jan`. Van de vier
---    gemeten gevallen sluit deze migratie er **drie**; de vierde vraagt een
+-- ⚠️⚠️ **ZWJ, ZWNJ en CGJ blijven daarmee een collisievector, en dat is een
+--    besluit en geen omissie.** `Ja<U+200C>n` rendert nog steeds als `Jan`. Van
+--    de vier oorspronkelijk gemeten gevallen sluit deze migratie er **drie**, en
+--    van de bredere klasse `Default_Ignorable` alles behalve de acht
+--    uitzonderingen; wat overblijft vraagt een
 --    **contextregel** ("weg tussen twee ASCII-letters") in plaats van een lijst
 --    van codepunten, en die past niet in de vorm die de naadtest vergelijkt —
 --    die legt SQL en TypeScript codepunt voor codepunt naast elkaar, los van hun
@@ -101,6 +120,19 @@ begin;
 -- zonder_onzichtbaar_middenin() — de derde lijst
 -- ---------------------------------------------------------------------------
 --
+-- ⚠️⚠️ **Dit bereik is gegenereerd en niet met de hand opgesomd**, en dat is de
+--    reparatie van een eerdere versie van deze migratie. 📏 Gemeten in de
+--    security-review: een handgeschreven lijst dekte **146** van de **4174**
+--    codepunten die Unicode `Default_Ignorable_Code_Point` noemt, en negen van
+--    de tien geteste tekens landden alsnog als een naam die als `Jan` rendert.
+--
+--    De bron is nu die property, plus de C0/C1-stuurtekens en de interlinear
+--    annotation, **min acht benoemde uitzonderingen**. De spiegel staat in
+--    `MIDDENIN_BEREIKEN` (`src/shared/tekst/index.ts`) en
+--    `src/shared/tekst/index.test.ts` rekent de property elke run opnieuw uit en
+--    legt hem naast die lijst — dus een nieuwe Unicode-versie wordt hier rood en
+--    niet stil.
+--
 -- ⚠️ **Als escapes en niet als letterlijke tekens**, net als in `zonder_bidi()`.
 --    Een `.sql` met een echte ZERO WIDTH SPACE erin is niet te reviewen: je ziet
 --    niet wat er staat, en de volgende lezer kan het verschil tussen deze regel
@@ -117,7 +149,7 @@ set search_path to 'pg_catalog', 'pg_temp'
 as $$
   select regexp_replace(
     coalesce(p_ruw, ''),
-    '[' || U&'\0001-\001F\007F-\009F\00AD\115F-\1160\200B\2028-\2029\2060-\2064\206A-\206F\2800\3164\FEFF\FFA0\FFF9-\FFFB\+0E0000-\+0E007F' || ']',
+    '[' || U&'\0001-\001F\007F-\009F\00AD\115F-\1160\17B4-\17B5\200B\202A-\202E\2060-\206F\3164\FEFF\FFA0\FFF0-\FFFB\+01BCA0-\+01BCA3\+01D173-\+01D17A\+0E0000-\+0E001F\+0E0080-\+0E00FF\+0E01F0-\+0E0FFF' || ']',
     '',
     'g'
   );

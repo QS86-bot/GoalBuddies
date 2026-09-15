@@ -47,7 +47,7 @@ een foto heeft geüpload, en dat is geen grendel.
 (CLAUDE.md, en het issue zegt het zelf), en dit is de enige van de drie die daar
 kán staan: geen enkele policy dwingt af dat een scherm een avatar tekent.
 
-## 3. De scheidslijn is nul pixels, niet onzichtbaarheid
+## 3. De scheidslijn is nul pixels, en de lijst is afgeleid
 
 ⚠️ **De voor de hand liggende reparatie is de verkeerde**, en het issue
 waarschuwde daar terecht voor: de randenlijst van 0256 met een `g`-vlag
@@ -55,41 +55,82 @@ toepassen. Die lijst bevat de **spatie**, en dan wordt `Jan de Vries` gewoon
 `JandeVries`. Ze bevat ook `U+200D`, de lijm in `👨‍👩‍👧‍👦`.
 
 De bruikbare vraag is niet *"is dit onzichtbaar"* maar **"rendert dit als nul
-pixels, en heeft een schrift het nodig"**. Een spatie is onzichtbaar en tóch
-betekenisvol: hij scheidt. Wat daar niet onder valt, scheidt niet en bindt niet —
-het is er gewoon niet, en dan is `Ja<X>n` niet van `Jan` te onderscheiden.
+pixels"**. Een spatie is onzichtbaar en tóch betekenisvol: hij scheidt.
 
-Dat leverde een **derde lijst** op, `MIDDENIN_BEREIKEN`, en dat is dezelfde vorm
-als waarom `BIDI_BEREIKEN` een tweede was:
+⚠️⚠️ **De eerste versie beantwoordde die vraag met een eigen opsomming, en dat
+was fout — met een factor.** 📏 Gemeten in de security-review op dit issue: die
+lijst dekte **146** van de **4174** codepunten die Unicode zelf
+`Default_Ignorable_Code_Point` noemt. De overige **4028** overleefden midden in
+een naam. Negen van de tien geteste gevallen landden via PostgREST als een naam
+van vier codepunten die als `Jan` rendert: `U+034F`, `U+FE00`, `U+2065`,
+`U+FFF0`, `U+1D173`, `U+180E`, `U+180F`, `U+E0100` en `U+200E`.
 
-| lijst | vraag | waar toegepast |
-|---|---|---|
-| `ONZICHTBARE_BEREIKEN` | rendert dit als niets **aan de rand**? | alleen de randen |
-| `BIDI_BEREIKEN` | keert dit de tekens eromheen óm? | overal |
-| `MIDDENIN_BEREIKEN` | rendert dit als **nul pixels**, en heeft geen schrift het nodig? | overal |
+**De lijst komt daarom uit de property en niet uit het hoofd:**
 
-Wat er met reden blijft staan, elk met een eigen reden en niet als restpost: de
-spaties, de emoji-lijm `U+200D`, de orthografisch verplichte `U+200C`, de
-combining grapheme joiner, de richtingsmarkeringen, en de schriftgebonden tekens
-voor Khmer en Mongools.
+> `Default_Ignorable_Code_Point` ∪ {C0/C1-stuurtekens, interlinear annotation}
+> **min acht benoemde uitzonderingen**
+
+⚠️ **En hij faalt de goede kant op.** Een nieuwe Unicode-versie voegt codepunten
+aan de property toe; die vallen dan **dicht**, en `src/shared/tekst/index.test.ts`
+rekent de property elke run opnieuw uit en wordt rood zodat iemand ernaar kijkt.
+Een eigen opsomming laat ze stil open — precies wat hier gebeurd was.
+
+⚠️ **De property lost bovendien de scheidslijn gratis op.** 📏 `U+0020`,
+`U+00A0` en `U+2800` (de lege braillecel, die breedte heeft) zijn géén
+`Default_Ignorable`. Ze vallen er dus vanzelf buiten, in plaats van dat iemand
+eraan moet denken. De handgeschreven versie had `U+2800` er wél in staan, met een
+reden die de eigen scheidslijn tegensprak.
+
+### De acht uitzonderingen
+
+Elk breekt een echte naam als hij zou meedoen. Ze staan met hun reden in
+`src/shared/tekst/index.test.ts`, want dát is het stuk dat een mens beslist.
+
+| teken | waarom het blijft |
+|---|---|
+| `U+200D` (ZWJ) | de lijm in `👨‍👩‍👧‍👦` |
+| `U+200C` (ZWNJ) | orthografisch verplicht in het Perzisch, Hindi en Bengaals |
+| `U+034F` (CGJ) | scheidt grafeemclusters voor sortering, tussen letters |
+| `U+061C`, `U+200E`, `U+200F` | richtingsmarkeringen, legitiem in een naam die schriften mengt |
+| `U+180B`–`U+180F` | Mongoolse variatieselectors, MVS en FVS4 |
+| `U+FE00`–`U+FE0F` | variatieselectors, waaronder VS16 voor emoji-presentatie |
+| `U+E0020`–`U+E007F` | tags — de subdivisievlaggen 🏴 |
+| `U+E0100`–`U+E01EF` | ideographic variation selectors, voor Japanse namen |
+
+⚠️⚠️ **De tags stonden er in de eerste versie wél in, en dat brak de Schotse,
+Welshe en Engelse vlag.** 🏴 is `U+1F3F4` plus zes tagtekens; 📏 gemeten werden
+dat er één. Dat is woordelijk dezelfde schade als het uiteenvallen van
+`👨‍👩‍👧‍👦` — aan een emoji die in de eerste redenering niet voorkwam, terwijl
+die redenering drie alinea's aan het gezin besteedde. **Een uitzonderingslijst
+beschermt wat je bedacht hebt; de gevallen die je niet bedacht hebt, breekt hij.**
 
 ## 4. Wat er níet gesloten is, en waarom dat een besluit is
 
-⚠️⚠️ **`Ja<ZWNJ>n` komt er nog steeds door.** Van de vier gemeten gevallen
-sluit 0271 er **drie**; ZWNJ en ZWJ blijven, omdat ze weghalen het Perzisch en de
-gezinsemoji breekt. Acceptatiecriterium 2 van QS8-495 zegt met zoveel woorden dat
-de must-allow hier zwaarder weegt dan de weigering.
+⚠️⚠️ Drie dingen blijven staan, en ze renderen alle drie als nul pixels:
 
-Wat er voor nodig zou zijn is een **contextregel** — "weg tussen twee
-ASCII-letters" — en die past niet in de vorm die de naadtest vergelijkt: die legt
-SQL en TypeScript **codepunt voor codepunt** naast elkaar, los van hun buren. Een
-contextregel vraagt dus zowel een andere implementatie als een ander soort toets,
-en dat is een eigen issue.
+1. **`U+200C` en `U+200D`** — `Ja<ZWNJ>n` rendert nog steeds als `Jan`. Weghalen
+   breekt het Perzisch en de gezinsemoji.
+2. **`U+034F` (CGJ)** — zelfde verhaal, tussen letters.
+3. **Een tag áán de rand van een naam.** 📏 Gemeten en belangrijk om goed toe te
+   schrijven: `schone_naam()` strijkt `U+E0000`–`U+E007F` aan de randen weg via
+   `ONZICHTBARE_BEREIKEN`, dus een naam die op 🏴 **eindigt** verliest zijn vlag.
+   Dat is **ouder dan dit issue** — de versie van 0269 doet het net zo hard
+   (7 codepunten in, 1 uit) — en het staat los van wat hier gebouwd is. Een vlag
+   **midden** in een naam blijft sinds deze migratie wél heel.
+
+Acceptatiecriterium 2 van QS8-495 zegt met zoveel woorden dat de must-allow
+zwaarder weegt dan de weigering, en dat is bij alle drie de reden.
+
+Wat ervoor nodig is, is een **contextregel** — "weg tussen twee ASCII-letters",
+"tags alleen ná `U+1F3F4`" — en die past niet in de vorm die de naadtest
+vergelijkt: die legt SQL en TypeScript **codepunt voor codepunt** naast elkaar,
+los van hun buren. Een contextregel vraagt dus zowel een andere implementatie als
+een ander soort toets. Dat is **QS8-499**.
 
 Het staat als toets in `tests/rls/een-naam-rendert-niet-als-een-andere.test.ts`,
 met de reden erbij — zodat het een besluit blijft en geen vergeetpost. Dat is
-precies de vorm die QS8-495 zelf opleverde: een assertie die een gat dichtspijkert
-alsof het besloten is, is duurder dan geen assertie.
+precies de vorm die QS8-495 zelf opleverde: een assertie die een gat
+dichtspijkert alsof het besloten is, is duurder dan geen assertie.
 
 ## 5. De functie aanpassen was niet de reparatie
 
@@ -115,28 +156,42 @@ met dezelfde vorm als `..._geen_bidi`: **weigeren en niet normaliseren**. Dat
 hindert niemand, want `profielSchema` doet `.transform(schoneNaam)` vóór het
 versturen — wie deze grens raakt, stuurt buiten de app om.
 
-## 6. Vier ijkingen, en twee ervan logen eerst
+## 6. Ijkingen, en de helft ervan loog in de eerste ronde
 
-📏 Mutatie per grendel, 14-09-2026:
+📏 Mutatie per grendel, 14-09-2026, ná de security-review:
 
 | IJKING | Gebroken | Wat er omviel |
 |---|---|---|
-| A | de CHECK `profiles_display_name_geen_onzichtbaar_middenin` | 3 — élke must-deny in de belofte-toets |
-| B | `[0x200b, 0x200b]` → `[0x200b, 0x200d]` (de reparatie die het erger maakt) | 3 — de gezinsemoji, het Perzisch, en de open-rest-toets |
-| C | de middenin-stap uit `schone_naam()` | 2 — de naadtoets, aan beide kanten |
-| D | de spatie mee in `MIDDENIN_BEREIKEN` | 1 — `Jan de Vries` |
+| A | de CHECK `profiles_display_name_geen_onzichtbaar_middenin` | 4 — élke must-deny in de belofte-toets |
+| B | de tags terug in `MIDDENIN_BEREIKEN` (`[0xe0000, 0xe007f]`) | 3 — de afleidingstoets, de uitzonderingstoets en de vlag-must-allow |
+| C | één codepunt uit de lijst (`U+200B`) | 1 — de afleidingstoets |
+| D | de middenin-stap uit `schone_naam()` | 2 — de naadtoets, aan beide kanten |
 
-⚠️⚠️ **B en D vielen bij de eerste ijking níet om, en dat was een fout in de
-toetsen.** Ze schreven via PostgREST en lazen terug, dus ze bevroegen uitsluitend
-de **SQL**-kant; de mutatie zat in **TypeScript**. De naadtoets vángt zo'n
-divergentie wel — 📏 met de spatie erbij vielen daar vier toetsen om — maar dat
-is een andere toets in een ander bestand, en haar melding zegt *"SQL en TS zijn
-het oneens"* en niet *"het gezin viel uit elkaar"*.
+⚠️ **C is de toets die er in de eerste ronde niet was, en juist die had de fout
+gevonden.** `src/shared/tekst/index.test.ts` rekent
+`Default_Ignorable_Code_Point` elke run opnieuw uit en legt hem naast de
+ingecheckte lijst. Daarmee is "de lijst is compleet" geen bewering meer maar een
+meting — en een nieuwe Unicode-versie wordt rood in plaats van stil.
 
-Gerepareerd door elke must-allow aan **béíde** kanten te vragen: een
-`schoneNaam()`-assertie naast de schrijfactie. Daarna bijten alle vier.
+### Wat er in de eerste ronde misging, en dat is het opschrijven waard
 
-⚠️ **Dit is waarom een ijking per grendel moet en waarom je kijkt wélke toets
-omvalt.** Was ik gestopt bij "er werd iets rood", dan stonden er twee
-calibratienotities in dit bestand die niet waar zijn — en die lezen daarna als
-bewijs.
+📏 De eerste ronde had vier ijkingen en ze bevestigden allemaal iets wat niet
+waar was.
+
+**Twee vielen niet om.** De must-allow-toetsen schreven via PostgREST en lazen
+terug, dus ze bevroegen uitsluitend de **SQL**-kant; de mutatie zat in
+**TypeScript**. De naadtoets vángt zo'n divergentie wel, maar dat is een andere
+toets in een ander bestand, en haar melding zegt *"SQL en TS zijn het oneens"* en
+niet *"het gezin viel uit elkaar"*. Gerepareerd door elke must-allow aan **béíde**
+kanten te vragen.
+
+⚠️⚠️ **En de twee die wél omvielen, bewezen te weinig.** Ze toetsten dat de vier
+gemeten tekens dicht waren, en daaruit las ik "drie van de vier dicht, ZWNJ is de
+rest". 📏 De security-review mat er **4028** die nog open stonden. Een ijking
+bevestigt dat je grendel doet wat je dácht; hij zegt niets over de vraag of je
+grendel de goede klasse afdekt. **Daarvoor is een toets nodig die de klasse zélf
+uitrekent**, en die ontbrak.
+
+⚠️ Dat is dezelfde vorm als waar dit project vaker aan betaald heeft: een
+controle die zijn eigen gevallenlijst gebruikt als definitie van volledigheid.
+Zie ook de ijking van `rls:dekking` in QS8-411.

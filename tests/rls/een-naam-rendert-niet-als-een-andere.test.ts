@@ -111,6 +111,35 @@ describe.skipIf(!rlsTestsConfigured)('een naam die als een andere naam rendert',
     );
 
     it(
+      'weigert ook de tekens die een handgeschreven lijst niet had bedacht',
+      async () => {
+        /**
+         * ⚠️⚠️ **Deze toets bestaat omdat de eerste versie er 146 van 4174
+         *    dekte.** 📏 Gemeten in de security-review op dit issue: negen van
+         *    de tien hieronder landden als een naam die als `Jan` rendert,
+         *    terwijl de commit beweerde dat er nog twee open stonden.
+         *
+         *    Ze staan hier stuk voor stuk en niet als "de lijst klopt", want dat
+         *    laatste toetst `src/shared/tekst/index.test.ts` al tegen de
+         *    property. Wat híer bewezen wordt is dat ze ook echt niet meer door
+         *    de deur van de app komen.
+         */
+        const gevallen: readonly [string, string][] = [
+          ['U+2065 reserved', '\u2065'],
+          ['U+FFF0 reserved', '\ufff0'],
+          ['U+1D173 muziek', '\u{1d173}'],
+          ['U+2060 word joiner', '\u2060'],
+        ];
+
+        for (const [naam, teken] of gevallen) {
+          await magNietLandenAlsNaam(mallory, `Ja${teken}n`);
+          expect(schoneNaam(`Ja${teken}n`), `${naam}, TypeScript`).toBe('Jan');
+        }
+      },
+      TEST_TIMEOUT,
+    );
+
+    it(
       'laat Jan zijn eigen naam houden terwijl Mallory die niet kan nadoen',
       async () => {
         /**
@@ -182,6 +211,30 @@ describe.skipIf(!rlsTestsConfigured)('een naam die als een andere naam rendert',
     );
 
     it(
+      'laat een subdivisievlag heel — 🏴 houdt zijn zeven codepunten',
+      async () => {
+        /**
+         * ⚠️⚠️ **De eerste versie brak deze vlag, en dat is dezelfde schade als
+         *    een gezinsemoji die uit elkaar valt.** 🏴 is `U+1F3F4` plus zes
+         *    tagtekens uit `U+E0020`–`U+E007F`; 📏 met die tags in de lijst werd
+         *    zeven codepunten er één — een zwarte vlag zonder land.
+         *
+         * ⚠️ **Midden in de naam en niet aan het eind, en dat is met opzet.**
+         *    `schone_naam()` strijkt tags aan de **randen** nog steeds weg via
+         *    `ONZICHTBARE_BEREIKEN`, en dat is ouder dan dit issue — 📏 de
+         *    versie van 0269 doet het net zo hard. Die rest hoort bij QS8-499;
+         *    wat hier getoetst wordt is dat de middenin-stap hem niet breekt.
+         */
+        const vlag = '\u{1f3f4}\u{e0067}\u{e0062}\u{e0073}\u{e0063}\u{e0074}\u{e007f}';
+        expect(telTekens(vlag), 'de invoer zelf klopt niet meer').toBe(7);
+
+        expect(telTekens(schoneNaam(`Jan ${vlag} Vries`)), 'TypeScript').toBe(17);
+        expect(telTekens(await schrijfEnLees(mallory, `Jan ${vlag} Vries`)), 'de database').toBe(17);
+      },
+      TEST_TIMEOUT,
+    );
+
+    it(
       'laat een Arabische naam en een naam met spaties werken',
       async () => {
         // 📏 IJKING D — de spatie meegenomen in `MIDDENIN_BEREIKEN`
@@ -217,6 +270,13 @@ describe.skipIf(!rlsTestsConfigured)('een naam die als een andere naam rendert',
 
       expect(telTekens(uit), 'vier codepunten: de ZWNJ blijft staan').toBe(4);
       expect(schoneNaam(`Ja${ZWJ}n`), 'en de ZWJ net zo').toBe(`Ja${ZWJ}n`);
+      // ⚠️ En de combining grapheme joiner, die de security-review erbij vond.
+      expect(schoneNaam('Ja\u034Fn'), 'en de CGJ ook').toBe('Ja\u034Fn');
+      // ⚠️ `U+180E` blijft omdat de hele Mongoolse reeks `U+180B`–`U+180F`
+      //    schriftgebonden is. Hij rendert als nul pixels en is dus óók een
+      //    collisievector; hij staat in dezelfde uitzonderingslijst en hoort bij
+      //    hetzelfde vervolgissue.
+      expect(schoneNaam('Ja\u180En'), 'en de Mongoolse vowel separator').toBe('Ja\u180En');
     }, TEST_TIMEOUT);
   });
 });

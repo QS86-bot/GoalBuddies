@@ -1,6 +1,14 @@
 import { describe, expect, it, vi } from 'vitest';
 
-import { eersteTeken, grafemen, initiaalVan, kapAf, telGrafemen, telTekens } from './index';
+import {
+  eersteTeken,
+  grafemen,
+  initiaalVan,
+  isOnzichtbaarMiddenin,
+  kapAf,
+  telGrafemen,
+  telTekens,
+} from './index';
 
 const EMOJI = '\u{1F600}'; // 😀 — één codepunt, twee UTF-16-eenheden
 const GEZIN = '\u{1F468}‍\u{1F469}‍\u{1F467}‍\u{1F466}'; // 👨‍👩‍👧‍👦
@@ -202,5 +210,84 @@ describe('initiaalVan', () => {
   it('geeft een vraagteken bij een naam die alleen onzichtbaar is', () => {
     expect(initiaalVan(String.fromCodePoint(0x200b))).toBe('?');
     expect(initiaalVan(String.fromCodePoint(0x3164))).toBe('?');
+  });
+});
+
+// ---------------------------------------------------------------------------
+
+describe('MIDDENIN_BEREIKEN is afgeleid en niet met de hand bedacht', () => {
+  /**
+   * ⚠️⚠️ **Deze toets bestaat omdat de handgeschreven versie er 146 van 4174
+   *    dekte, en de commit beweerde dat er nog twee open stonden.** 📏 Gemeten
+   *    in de security-review op QS8-495: van de tekens die Unicode zelf
+   *    `Default_Ignorable_Code_Point` noemt, overleefden er **4028** midden in
+   *    een naam — waaronder `U+034F`, `U+FE00`, `U+2065`, `U+1D173` en
+   *    `U+E0100`. Negen van de tien geteste gevallen landden als een naam die
+   *    als `Jan` rendert.
+   *
+   *    Een lijst die je zelf opsomt, dekt de gevallen die je bedacht hebt. De
+   *    property dekt de klasse — en, belangrijker, **hij faalt de goede kant
+   *    op**: een nieuwe Unicode-versie voegt codepunten toe aan de property, en
+   *    die vallen dan dicht in plaats van open.
+   *
+   * ⚠️ **De uitzonderingen staan hier en nergens anders**, want dát is het stuk
+   *    dat een mens moet beslissen. Elk van de acht breekt een echte naam als
+   *    hij zou meedoen; ze staan met hun reden in `MIDDENIN_BEREIKEN` hierboven
+   *    en in `docs/decisions/2026-09-14-onzichtbaar-in-het-midden.md` §3.
+   */
+  const MAG_BLIJVEN: readonly (readonly [number, number])[] = [
+    [0x034f, 0x034f], // combining grapheme joiner
+    [0x061c, 0x061c], // arabic letter mark
+    [0x180b, 0x180f], // mongoolse variatieselectors, MVS en FVS4
+    [0x200c, 0x200d], // ZWNJ (Perzisch, Hindi, Bengaals) en ZWJ (emoji-lijm)
+    [0x200e, 0x200f], // LRM en RLM
+    [0xfe00, 0xfe0f], // variatieselectors, incl. VS16 (emoji-presentatie)
+    [0xe0020, 0xe007f], // tags — de subdivisievlaggen 🏴󠁧󠁢󠁳󠁣󠁴󠁿
+    [0xe0100, 0xe01ef], // ideographic variation selectors (Japanse namen)
+  ];
+
+  const inBereik = (cp: number, bereiken: readonly (readonly [number, number])[]): boolean =>
+    bereiken.some(([van, tot]) => cp >= van && cp <= tot);
+
+  it('dekt precies `Default_Ignorable` plus de stuurtekens, min de acht uitzonderingen', () => {
+    const teveel: string[] = [];
+    const tekort: string[] = [];
+
+    for (let cp = 1; cp <= 0x10ffff; cp += 1) {
+      if (cp >= 0xd800 && cp <= 0xdfff) continue;
+
+      const teken = String.fromCodePoint(cp);
+      const stuurteken = cp <= 0x1f || (cp >= 0x7f && cp <= 0x9f);
+      const annotatie = cp >= 0xfff9 && cp <= 0xfffb;
+      const onzichtbaar = /\p{Default_Ignorable_Code_Point}/u.test(teken);
+
+      const hoort = (stuurteken || annotatie || onzichtbaar) && !inBereik(cp, MAG_BLIJVEN);
+      const staat = isOnzichtbaarMiddenin(cp);
+
+      if (staat && !hoort) teveel.push(`U+${cp.toString(16).toUpperCase().padStart(4, '0')}`);
+      if (hoort && !staat) tekort.push(`U+${cp.toString(16).toUpperCase().padStart(4, '0')}`);
+    }
+
+    expect(tekort.slice(0, 20), 'deze renderen als nul pixels en staan er niet in').toEqual([]);
+    expect(teveel.slice(0, 20), 'deze staan erin zonder dat de property ze noemt').toEqual([]);
+  });
+
+  it('en de acht uitzonderingen blijven alle acht staan', () => {
+    // ⚠️ De must-allow, en die weegt hier zwaarder dan de weigering — zie
+    //    acceptatiecriterium 2 van QS8-495.
+    for (const [van, tot] of MAG_BLIJVEN) {
+      for (let cp = van; cp <= tot; cp += 1) {
+        expect(isOnzichtbaarMiddenin(cp), `U+${cp.toString(16).toUpperCase()}`).toBe(false);
+      }
+    }
+  });
+
+  it('laat de spatie en de no-break space met rust', () => {
+    // ⚠️ De scheidslijn: een spatie is onzichtbaar en tóch betekenisvol. Hij is
+    //    niet `Default_Ignorable`, en dat is precies waarom de property de
+    //    goede bron is en een eigen opsomming niet.
+    expect(isOnzichtbaarMiddenin(0x0020), 'de spatie').toBe(false);
+    expect(isOnzichtbaarMiddenin(0x00a0), 'de no-break space').toBe(false);
+    expect(isOnzichtbaarMiddenin(0x2800), 'de braille blank — die heeft breedte').toBe(false);
   });
 });

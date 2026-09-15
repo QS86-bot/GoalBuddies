@@ -45,7 +45,7 @@ import { execFileSync } from 'node:child_process';
 
 import { describe, expect, it } from 'vitest';
 
-import { isBidiStuurteken, isOnzichtbaar, schoneNaam, telTekens } from '../../src/shared/tekst';
+import { isBidiStuurteken, schoneNaam, telTekens } from '../../src/shared/tekst';
 import { PSQL_OMGEVING, psqlBasisArgumenten, stackBeschikbaarOfFaal } from './psql-stack';
 
 const beschikbaar = stackBeschikbaarOfFaal(
@@ -186,13 +186,28 @@ function onzichtbaarVolgensDeDatabase(): Set<number> {
   );
 }
 
-/** Dezelfde vraag aan de TypeScript-kant. */
+/**
+ * Dezelfde vraag aan de TypeScript-kant.
+ *
+ * ⚠️⚠️ **Via `schoneNaam()` en niet via `isOnzichtbaar()`, en dat verschil is
+ *    sinds QS8-495 wezenlijk.** De databasekant vraagt
+ *    `schone_naam(chr(cp)) = ''`, en die functie doet sinds 0271 drie dingen:
+ *    de bidi-tekens weg, de nul-pixeltekens weg, en dán de randen. `isOnzichtbaar`
+ *    beantwoordt alleen dat derde stuk, dus de twee kanten stelden verschillende
+ *    vragen en de sweep werd rood op 3748 codepunten die geen van beide kanten
+ *    fout deed.
+ *
+ *    De belofte van deze sweep is *"beide talen doen hetzelfde met een los
+ *    teken"*, en dan hoort aan allebei de kanten dezelfde functie te staan. Welke
+ *    van de drie lijsten een codepunt draagt, is een vraag voor de sweep in het
+ *    midden hieronder en voor `src/shared/tekst/index.test.ts`.
+ */
 function onzichtbaarVolgensDeClient(): Set<number> {
   const uit = new Set<number>();
 
   for (let cp = 1; cp <= 0x10ffff; cp += 1) {
     if (cp >= 0xd800 && cp <= 0xdfff) continue;
-    if (isOnzichtbaar(cp)) uit.add(cp);
+    if (schoneNaam(String.fromCodePoint(cp)) === '') uit.add(cp);
   }
 
   return uit;
@@ -330,11 +345,17 @@ describe.runIf(beschikbaar)('de twee talen halen in het midden dezelfde tekens w
    *    wat eruit gaat én wat er met reden in blijft.
    *
    * 📏 **Sinds QS8-495 (migratie 0271) is deze verzameling gegroeid van negen
-   *    naar 225**, en dat is de reparatie van een gat dat híer als bedoeld
-   *    gedrag stond vastgespijkerd. De negen zijn de bidi-stuurtekens
+   *    naar 3878**, en dat is de reparatie van een gat dat híer als bedoeld
+   *    gedrag stond vastgespijkerd. De negen waren de bidi-stuurtekens
    *    (`zonder_bidi`, 0269); de rest komt uit `MIDDENIN_BEREIKEN`
    *    (`zonder_onzichtbaar_middenin`, 0271) — de tekens die overal als **nul
    *    pixels** renderen.
+   *
+   *    ⚠️ **Het getal ging onderweg van 225 naar 3878**, en dat is het verschil
+   *       tussen een handgeschreven lijst en een afgeleide. 📏 De eerste dekte
+   *       146 van de 4174 codepunten die Unicode `Default_Ignorable_Code_Point`
+   *       noemt; de tweede dekt ze allemaal op acht benoemde uitzonderingen na.
+   *       Gevonden in de security-review op dit issue.
    *
    * ⚠️⚠️ **De scheidslijn is "nul pixels" tegenover "witruimte", niet
    *    "onzichtbaar".** Een spatie is onzichtbaar en tóch betekenisvol: hij
@@ -345,7 +366,7 @@ describe.runIf(beschikbaar)('de twee talen halen in het midden dezelfde tekens w
   it('en die verzameling is de negen bidi-tekens plus wat als nul pixels rendert', () => {
     const database = middenWegVolgensDeDatabase();
 
-    expect(database.size, 'niet meer en niet minder').toBe(225);
+    expect(database.size, 'niet meer en niet minder').toBe(3878);
 
     // De negen van 0269 — die volgorde omkeren is een ander soort schade.
     expect(database.has(0x202e), 'de RIGHT-TO-LEFT OVERRIDE hoort erin').toBe(true);
@@ -358,7 +379,15 @@ describe.runIf(beschikbaar)('de twee talen halen in het midden dezelfde tekens w
     expect(database.has(0xfeff), 'de byte order mark hoort erin').toBe(true);
     expect(database.has(0x00ad), 'de soft hyphen hoort erin').toBe(true);
     expect(database.has(0x3164), 'de hangul filler hoort erin').toBe(true);
-    expect(database.has(0x2800), 'de braille blank hoort erin').toBe(true);
+    // ⚠️ De braille blank hoort er juist NIET in, en dat is een correctie uit de
+    //    security-review. Een lege braillecel heeft **breedte** — hij is
+    //    witruimte en geen nul pixels, en hij is dan ook geen
+    //    `Default_Ignorable`. De handgeschreven lijst had hem er wél in staan,
+    //    met een reden die de eigen scheidslijn tegensprak.
+    expect(database.has(0x2800), 'de braille blank heeft breedte').toBe(false);
+    expect(database.has(0x2065), 'een niet-toegewezen Default_Ignorable hoort erin').toBe(true);
+    expect(database.has(0xe0100), 'de IVS blijft juist staan — Japanse namen').toBe(false);
+    expect(database.has(0xe0067), 'en een tag ook — de subdivisievlaggen').toBe(false);
     expect(database.has(0xe0001), 'de language tag hoort erin').toBe(true);
 
     // ⚠️⚠️ **De must-allow, en die weegt hier zwaarder dan de weigering** —
@@ -372,7 +401,14 @@ describe.runIf(beschikbaar)('de twee talen halen in het midden dezelfde tekens w
     );
     expect(database.has(0x200f), 'de RLM is een markering en geen override').toBe(false);
     expect(database.has(0x034f), 'de combining grapheme joiner blijft staan').toBe(false);
-    expect(database.has(0x17b4), 'de Khmer inherent vowel blijft staan').toBe(false);
+    // ⚠️ **De Khmer inherent vowels gáán er wél uit, en dat is een correctie.**
+    //    De handgeschreven lijst hield ze buiten met "schriftgebonden". Unicode
+    //    markeert `U+17B4`–`U+17B5` als **afgeschaft** én `Default_Ignorable`;
+    //    de bewering dat een schrift ze nodig heeft, hield geen stand.
+    expect(database.has(0x17b4), 'de afgeschafte Khmer inherent vowel gaat eruit').toBe(true);
+    expect(database.has(0x180b), 'de Mongoolse variatieselector blijft — schriftgebonden').toBe(
+      false,
+    );
   }, 60_000);
 
   /**
