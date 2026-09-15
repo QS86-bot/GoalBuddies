@@ -45,7 +45,7 @@ import { execFileSync } from 'node:child_process';
 
 import { describe, expect, it } from 'vitest';
 
-import { isBidiStuurteken, isOnzichtbaar, schoneNaam, telTekens } from '../../src/shared/tekst';
+import { isBidiStuurteken, schoneNaam, telTekens } from '../../src/shared/tekst';
 import { PSQL_OMGEVING, psqlBasisArgumenten, stackBeschikbaarOfFaal } from './psql-stack';
 
 const beschikbaar = stackBeschikbaarOfFaal(
@@ -186,13 +186,28 @@ function onzichtbaarVolgensDeDatabase(): Set<number> {
   );
 }
 
-/** Dezelfde vraag aan de TypeScript-kant. */
+/**
+ * Dezelfde vraag aan de TypeScript-kant.
+ *
+ * ⚠️⚠️ **Via `schoneNaam()` en niet via `isOnzichtbaar()`, en dat verschil is
+ *    sinds QS8-495 wezenlijk.** De databasekant vraagt
+ *    `schone_naam(chr(cp)) = ''`, en die functie doet sinds 0271 drie dingen:
+ *    de bidi-tekens weg, de nul-pixeltekens weg, en dán de randen. `isOnzichtbaar`
+ *    beantwoordt alleen dat derde stuk, dus de twee kanten stelden verschillende
+ *    vragen en de sweep werd rood op 3748 codepunten die geen van beide kanten
+ *    fout deed.
+ *
+ *    De belofte van deze sweep is *"beide talen doen hetzelfde met een los
+ *    teken"*, en dan hoort aan allebei de kanten dezelfde functie te staan. Welke
+ *    van de drie lijsten een codepunt draagt, is een vraag voor de sweep in het
+ *    midden hieronder en voor `src/shared/tekst/index.test.ts`.
+ */
 function onzichtbaarVolgensDeClient(): Set<number> {
   const uit = new Set<number>();
 
   for (let cp = 1; cp <= 0x10ffff; cp += 1) {
     if (cp >= 0xd800 && cp <= 0xdfff) continue;
-    if (isOnzichtbaar(cp)) uit.add(cp);
+    if (schoneNaam(String.fromCodePoint(cp)) === '') uit.add(cp);
   }
 
   return uit;
@@ -326,37 +341,94 @@ describe.runIf(beschikbaar)('de twee talen halen in het midden dezelfde tekens w
   /**
    * ⚠️⚠️ **De must-allow van deze sweep, en hij is scherper dan "niet leeg".**
    *    "Ze halen hetzelfde weg" is ook waar als allebei **alles** weghalen, en
-   *    dan is er van een naam niets over. 📏 Deze verzameling is met opzet
-   *    precies negen groot: `U+202A`–`U+202E` en `U+2066`–`U+2069`.
+   *    dan is er van een naam niets over. Deze toets pint daarom beide kanten:
+   *    wat eruit gaat én wat er met reden in blijft.
    *
-   *    `U+200D` hoort er uitdrukkelijk **niet** in — dat is de lijm in
-   *    `👨‍👩‍👧‍👦`, en hem hier weghalen houdt vier losse mensen over. Dat is
-   *    de reparatie die het erger had gemaakt.
+   * 📏 **Sinds QS8-495 (migratie 0271) is deze verzameling gegroeid van negen
+   *    naar 3878**, en dat is de reparatie van een gat dat híer als bedoeld
+   *    gedrag stond vastgespijkerd. De negen waren de bidi-stuurtekens
+   *    (`zonder_bidi`, 0269); de rest komt uit `MIDDENIN_BEREIKEN`
+   *    (`zonder_onzichtbaar_middenin`, 0271) — de tekens die overal als **nul
+   *    pixels** renderen.
+   *
+   *    ⚠️ **Het getal ging onderweg van 225 naar 3878**, en dat is het verschil
+   *       tussen een handgeschreven lijst en een afgeleide. 📏 De eerste dekte
+   *       146 van de 4174 codepunten die Unicode `Default_Ignorable_Code_Point`
+   *       noemt; de tweede dekt ze allemaal op acht benoemde uitzonderingen na.
+   *       Gevonden in de security-review op dit issue.
+   *
+   * ⚠️⚠️ **De scheidslijn is "nul pixels" tegenover "witruimte", niet
+   *    "onzichtbaar".** Een spatie is onzichtbaar en tóch betekenisvol: hij
+   *    scheidt. Daarom staan de spaties er niet in, en `U+200D` (de lijm in
+   *    `👨‍👩‍👧‍👦`) en `U+200C` (orthografisch verplicht in het Perzisch)
+   *    evenmin.
    */
-  it('en die verzameling is precies de negen bidi-stuurtekens', () => {
+  it('en die verzameling is de negen bidi-tekens plus wat als nul pixels rendert', () => {
     const database = middenWegVolgensDeDatabase();
 
-    expect(database.size, 'niet meer en niet minder dan de negen').toBe(9);
+    expect(database.size, 'niet meer en niet minder').toBe(3878);
+
+    // De negen van 0269 — die volgorde omkeren is een ander soort schade.
     expect(database.has(0x202e), 'de RIGHT-TO-LEFT OVERRIDE hoort erin').toBe(true);
     expect(database.has(0x2067), 'de RIGHT-TO-LEFT ISOLATE hoort erin').toBe(true);
-    expect(database.has(0x200d), 'de zero-width joiner hoort er juist NIET in').toBe(false);
-    // ⚠️⚠️ **Dit is een open gat en geen bedoeld gedrag, en dat staat hier omdat
-    //    deze assertie het anders dichtspijkert alsof het besloten is.** 📏
-    //    Gemeten in de security-ronde op QS8-450: `schone_naam(U&'Ja\200Bn')`
-    //    geeft een naam van vier tekens die als `Jan` rendert en die béíde
-    //    CHECKs haalt — dus twee leden in dezelfde groep kunnen een
-    //    pixel-identieke naam dragen, zonder bidi en zonder homoglyph.
-    //
-    //    Hij staat hier op `false` omdat dát is wat de code vandaag doet, niet
-    //    omdat het goed is. De reparatie is niet "pas `ONZICHTBARE_BEREIKEN`
-    //    met `g` toe" — dat knipt de lijm uit `👨‍👩‍👧‍👦` en U+200C uit het
-    //    Perzisch. Ze vraagt een eigen uitzonderingsanalyse, en staat mét deze
-    //    meting in `docs/ENGINEER-REVIEW.md`.
-    expect(database.has(0x200b), 'vandaag blijft een zero-width space in het midden staan').toBe(
+
+    // 📏 Drie van de vier gevallen die de security-review op QS8-450 mat. Ze
+    //    stonden hier tot QS8-495 op `false` — niet omdat het goed was, maar
+    //    omdat dat was wat de code deed.
+    expect(database.has(0x200b), 'de zero-width space hoort erin').toBe(true);
+    expect(database.has(0xfeff), 'de byte order mark hoort erin').toBe(true);
+    expect(database.has(0x00ad), 'de soft hyphen hoort erin').toBe(true);
+    expect(database.has(0x3164), 'de hangul filler hoort erin').toBe(true);
+    // ⚠️ De braille blank hoort er juist NIET in, en dat is een correctie uit de
+    //    security-review. Een lege braillecel heeft **breedte** — hij is
+    //    witruimte en geen nul pixels, en hij is dan ook geen
+    //    `Default_Ignorable`. De handgeschreven lijst had hem er wél in staan,
+    //    met een reden die de eigen scheidslijn tegensprak.
+    expect(database.has(0x2800), 'de braille blank heeft breedte').toBe(false);
+    expect(database.has(0x2065), 'een niet-toegewezen Default_Ignorable hoort erin').toBe(true);
+    expect(database.has(0xe0100), 'de IVS blijft juist staan — Japanse namen').toBe(false);
+    expect(database.has(0xe0067), 'en een tag ook — de subdivisievlaggen').toBe(false);
+    expect(database.has(0xe0001), 'de language tag hoort erin').toBe(true);
+
+    // ⚠️⚠️ **De must-allow, en die weegt hier zwaarder dan de weigering** —
+    //    acceptatiecriterium 2 van QS8-495. Elk van deze vier breekt een echte
+    //    naam als hij er wél in zou staan.
+    expect(database.has(0x0020), 'een spatie in het midden blijft staan').toBe(false);
+    expect(database.has(0x00a0), 'een no-break space blijft staan').toBe(false);
+    expect(database.has(0x200d), 'de zero-width joiner blijft staan — de emoji-lijm').toBe(false);
+    expect(database.has(0x200c), 'de zero-width non-joiner blijft staan — het Perzisch').toBe(
       false,
     );
-    expect(database.has(0x0020), 'een spatie in het midden blijft staan').toBe(false);
     expect(database.has(0x200f), 'de RLM is een markering en geen override').toBe(false);
+    expect(database.has(0x034f), 'de combining grapheme joiner blijft staan').toBe(false);
+    // ⚠️ **De Khmer inherent vowels gáán er wél uit, en dat is een correctie.**
+    //    De handgeschreven lijst hield ze buiten met "schriftgebonden". Unicode
+    //    markeert `U+17B4`–`U+17B5` als **afgeschaft** én `Default_Ignorable`;
+    //    de bewering dat een schrift ze nodig heeft, hield geen stand.
+    expect(database.has(0x17b4), 'de afgeschafte Khmer inherent vowel gaat eruit').toBe(true);
+    expect(database.has(0x180b), 'de Mongoolse variatieselector blijft — schriftgebonden').toBe(
+      false,
+    );
+  }, 60_000);
+
+  /**
+   * ⚠️⚠️ **Het gat dat QS8-495 níet sluit, en het staat hier als toets zodat het
+   *    een besluit blijft en geen vergeetpost.**
+   *
+   *    `U+200C` en `U+200D` renderen ook als nul pixels, dus `Ja<ZWNJ>n` is nog
+   *    steeds niet van `Jan` te onderscheiden. Ze weghalen breekt het Perzisch
+   *    en de gezinsemoji; ze houden vraagt een **contextregel** ("weg tussen
+   *    twee ASCII-letters") in plaats van een lijst van codepunten, en die past
+   *    niet in de vorm die deze sweep vergelijkt — hij legt beide kanten
+   *    codepunt voor codepunt naast elkaar, los van hun buren.
+   *
+   *    Zie `docs/decisions/2026-09-14-onzichtbaar-in-het-midden.md` §4.
+   */
+  it('laat ZWNJ en ZWJ met reden staan, en dat is een open collisievector', () => {
+    const database = middenWegVolgensDeDatabase();
+
+    expect(database.has(0x200c), 'ZWNJ blijft — het Perzisch heeft hem nodig').toBe(false);
+    expect(database.has(0x200d), 'ZWJ blijft — de gezinsemoji heeft hem nodig').toBe(false);
   }, 60_000);
 
   /**

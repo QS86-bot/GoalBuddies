@@ -96,7 +96,8 @@ De 47 bestanden:
 | `0268_een_held_in_een_open_groep_is_zichtbaar_voor_die_groep.sql` | QS8-477 | nee |
 | `0269_een_weergavenaam_draagt_geen_bidi_stuurteken.sql` | QS8-450 | nee |
 | `0270_een_groepsnaam_draagt_geen_bidi_stuurteken.sql` | QS8-494 | nee |
-| `0271_vindbaar_buiten_je_groep.sql` | QS8-476 | ja |
+| `0271_een_onzichtbaar_teken_midden_in_een_naam_telt_niet.sql` | QS8-495 | nee |
+| `0272_vindbaar_buiten_je_groep.sql` | QS8-476 | ja |
 
 ⚠️ **Hier stond een uur eerder `0219` met twee bestanden gat, en dat klopte
 toen.** `0220` en `0221` zijn erna toegepast en `0222` t/m `0226` landden

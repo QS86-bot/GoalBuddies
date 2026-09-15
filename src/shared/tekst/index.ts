@@ -215,6 +215,113 @@ export function zonderBidi(ruw: string): string {
 }
 
 /**
+ * De onzichtbare tekens die óók **midden in** een naam niets mogen zijn.
+ *
+ * ⚠️⚠️ **Deze lijst is afgeleid en niet bedacht, en dat is de reparatie van een
+ *    eerdere versie die dat wél was.** 📏 Gemeten in de security-review op
+ *    QS8-495: een handgeschreven opsomming dekte **146** van de **4174**
+ *    codepunten die Unicode zelf `Default_Ignorable_Code_Point` noemt. De
+ *    overige **4028** overleefden midden in een naam, en negen van de tien
+ *    geteste gevallen landden als een naam die als `Jan` rendert — `U+034F`,
+ *    `U+FE00`, `U+2065`, `U+FFF0`, `U+1D173`, `U+180E`, `U+E0100` en `U+200E`.
+ *
+ *    De regel is nu: **`Default_Ignorable_Code_Point`, plus de C0/C1-stuurtekens
+ *    en de interlinear annotation, min acht benoemde uitzonderingen.**
+ *    `tests/shared/…` — zie `src/shared/tekst/index.test.ts` — rekent dat elke
+ *    run opnieuw uit en legt het naast deze lijst.
+ *
+ * ⚠️ **En hij faalt de goede kant op.** Een nieuwe Unicode-versie voegt
+ *    codepunten aan de property toe; die vallen dan **dicht** en de toets wordt
+ *    rood zodat iemand ernaar kijkt. Een eigen opsomming laat ze stil open.
+ *
+ * ⚠️⚠️ **Dit is een derde lijst, en dat is dezelfde reden als waarom
+ *    `BIDI_BEREIKEN` een tweede is.** Elke lijst beantwoordt één vraag:
+ *
+ *    | lijst | vraag | waar toegepast |
+ *    |---|---|---|
+ *    | `ONZICHTBARE_BEREIKEN` | rendert dit als niets **aan de rand**? | alleen de randen |
+ *    | `BIDI_BEREIKEN` | keert dit de tekens eromheen óm? | overal |
+ *    | `MIDDENIN_BEREIKEN` | rendert dit als **nul pixels**? | overal |
+ *
+ *    Ze mogen nooit één lijst worden. `ONZICHTBARE_BEREIKEN` bevat de spatie,
+ *    en die overal weghalen maakt van `Jan de Vries` `JandeVries`.
+ *
+ *    ⚠️ **Deze lijst en `BIDI_BEREIKEN` overlappen wél**, en dat is hier geen
+ *       bezwaar: een bidi-override rendert óók als nul pixels, dus hij hoort in
+ *       allebei de antwoorden thuis. Twee keer strippen is hetzelfde als één
+ *       keer. Wat de doctrine verbiedt is een handgeschreven duplicaat dat uit
+ *       de pas kan lopen — deze is afgeleid en kan dat niet.
+ *
+ * ⚠️⚠️ **De scheidslijn is "nul pixels" tegenover "witruimte".** Een spatie is
+ *    onzichtbaar en tóch betekenisvol: hij scheidt. 📏 En dat is precies waarom
+ *    de property de goede bron is: `U+0020`, `U+00A0` en `U+2800` (de lege
+ *    braillecel, die breedte heeft) zijn géén `Default_Ignorable`, dus ze vallen
+ *    er vanzelf buiten in plaats van dat iemand eraan moet denken.
+ *
+ * ⚠️ **De acht uitzonderingen staan in `index.test.ts` en dragen daar elk hun
+ *    reden.** Kort: de emoji-lijm `U+200D`, de orthografisch verplichte
+ *    `U+200C`, de combining grapheme joiner, de richtingsmarkeringen
+ *    `U+061C`/`U+200E`/`U+200F`, de Mongoolse variatieselectors, de
+ *    variatieselectors `U+FE00`–`U+FE0F` (waaronder VS16), de tags
+ *    `U+E0020`–`U+E007F` — die de subdivisievlaggen 🏴 dragen — en de
+ *    ideographic variation selectors voor Japanse namen.
+ *
+ *    ⚠️⚠️ **Die tags stonden in de eerste versie wél in de lijst, en dat brak
+ *       de Schotse, Welshe en Engelse vlag.** 📏 Gemeten: 🏴 van zeven
+ *       codepunten werd er één. Dat is woordelijk dezelfde schade als het
+ *       uiteenvallen van `👨‍👩‍👧‍👦`, aan een emoji die in de eerste
+ *       redenering niet voorkwam.
+ *
+ * ⚠️ **Wat hiermee níet gesloten is:** `U+200C`, `U+200D` en `U+034F` renderen
+ *    ook als nul pixels, dus `Ja<ZWNJ>n` blijft als `Jan` renderen. Dat vraagt
+ *    een **contextregel** in plaats van een lijst — QS8-499. En een tag áán de
+ *    rand van een naam wordt nog steeds door `ONZICHTBARE_BEREIKEN` weggestreken;
+ *    dat is ouder dan QS8-495 en hoort bij hetzelfde vervolg.
+ *
+ * ⚠️ **Dezelfde bereiken staan in SQL als `zonder_onzichtbaar_middenin()`
+ *    (migratie 0271), en dat is een naad.** `tests/rls/naamnormalisatie.test.ts`
+ *    loopt het hele codepuntbereik af mét een teken in het midden en legt beide
+ *    oordelen naast elkaar. Haal je hier één teken weg, dan wordt die toets
+ *    rood; dat is met de hand nagemeten, per richting.
+ */
+export const MIDDENIN_BEREIKEN: readonly (readonly [number, number])[] = [
+  [0x0001, 0x001f], // C0-stuurtekens, zonder de spatie op U+0020
+  [0x007f, 0x009f], // DEL en de C1-stuurtekens, zonder de no-break space op U+00A0
+  [0x00ad, 0x00ad], // soft hyphen
+  [0x115f, 0x1160], // hangul choseong/jungseong filler
+  [0x17b4, 0x17b5], // khmer inherent vowels (afgeschaft, en `Default_Ignorable`)
+  [0x200b, 0x200b], // zero-width space
+  [0x202a, 0x202e], // de bidi-overrides — zie de noot hieronder over de overlap
+  [0x2060, 0x206f], // word joiner, de onzichtbare operatoren, de isolaten en de afgeschafte opmaaktekens
+  [0x3164, 0x3164], // hangul filler
+  [0xfeff, 0xfeff], // byte order mark / zero-width no-break space
+  [0xffa0, 0xffa0], // halfwidth hangul filler
+  [0xfff0, 0xfffb], // niet-toegewezen `Default_Ignorable` en de interlinear annotation
+  [0x1bca0, 0x1bca3], // shorthand format controls
+  [0x1d173, 0x1d17a], // muzieknotatie-opmaak
+  [0xe0000, 0xe001f], // tags vóór het bruikbare bereik
+  [0xe0080, 0xe00ff], // niet-toegewezen tags
+  [0xe01f0, 0xe0fff], // niet-toegewezen variatieselectors
+];
+/** Of dit codepunt óók midden in een naam als niets rendert. */
+export function isOnzichtbaarMiddenin(codepunt: number): boolean {
+  return MIDDENIN_BEREIKEN.some(([van, tot]) => codepunt >= van && codepunt <= tot);
+}
+
+/**
+ * Dezelfde tekst zonder de tekens die overal als niets renderen.
+ *
+ * ⚠️ **Overal en niet alleen aan de rand** — net als `zonderBidi()`, en om een
+ *    verwante maar eigen reden: die lijst gaat over volgorde, deze over nul
+ *    pixels.
+ */
+export function zonderOnzichtbaarMiddenin(ruw: string): string {
+  return Array.from(ruw)
+    .filter((teken) => !isOnzichtbaarMiddenin(teken.codePointAt(0) ?? 0))
+    .join('');
+}
+
+/**
  * Een naam zonder onzichtbare randen.
  *
  * ⚠️ **Randen knippen en niet alles**, zie `ONZICHTBARE_BEREIKEN`. Wat er tussen
@@ -230,10 +337,12 @@ export function zonderBidi(ruw: string): string {
  *    in de eerste.
  */
 export function schoneNaam(ruw: string): string {
-  // ⚠️ Eerst de bidi-stuurtekens overal weg, dán de randen — QS8-450. Zo wordt
-  //    ` \u202E Jan ` gewoon `Jan`. De andere volgorde geeft hetzelfde
-  //    resultaat maar leest als toeval.
-  const tekens = Array.from(zonderBidi(ruw));
+  // ⚠️ Eerst de bidi-stuurtekens overal weg, dán de tekens die overal als niets
+  //    renderen (QS8-495), dán de randen. Zo wordt ` \u202E Ja\u200Bn ` gewoon
+  //    `Jan`. De volgorde geeft hetzelfde resultaat als je hem omdraait, maar
+  //    zo leest hij als drie stappen met elk een eigen reden in plaats van als
+  //    toeval.
+  const tekens = Array.from(zonderOnzichtbaarMiddenin(zonderBidi(ruw)));
 
   let begin = 0;
   let eind = tekens.length;
