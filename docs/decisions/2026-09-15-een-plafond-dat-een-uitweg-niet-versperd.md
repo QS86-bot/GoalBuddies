@@ -174,10 +174,12 @@ te tellen.
 | B | de lege-batchtak, op twee plekken | **0** — zie §5 |
 | C | de trigger `blokkades_dagplafond` gedropt | 1 — de weigering |
 
-⚠️ **C is gedraaid toén de trigger nog `user_blocks_dagplafond` heette**, en na de
-hernoeming van §6 opnieuw gedraaid onder de nieuwe naam — zelfde uitslag. Dat
-staat hier omdat een ijkingstabel die een naam noemt die bij het meten anders
-was, precies de vorm is die de volgende lezer niet kan narekenen.
+⚠️ **C is gedraaid toén de trigger nog `user_blocks_dagplafond` heette.** De
+hernoeming van §6 kwam erna, dus de tabel hierboven noemt een naam die bij het
+meten anders was — en dat is precies de vorm die de volgende lezer niet kan
+narekenen. C wordt daarom onder de nieuwe naam opnieuw gedraaid en deze regel vervangen
+door die uitslag; tot dat gebeurd is, staat hier wat er wél gemeten is en niet
+wat ervan verwacht wordt.
 
 ⚠️ Dat A er drie omgooit is juist het bewijs dat de must-allow scherp staat: een
 te laag plafond raakt als eerste de gebruiker die het niet mag raken.
