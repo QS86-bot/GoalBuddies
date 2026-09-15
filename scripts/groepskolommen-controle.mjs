@@ -144,7 +144,7 @@ export const CENSUS = {
       'reminder_tone, share_moves_by_default, created_at, updated_at, onboarded_at, ' +
       'wants_own_goal, locale, focus_areas, minutes_per_day, when_i_do_it, what_breaks_it, ' +
       'notify_approval_request, notify_approval_received, notify_cycle_summary, ' +
-      'notify_commitment_witness, quiet_from, quiet_to',
+      'notify_commitment_witness, quiet_from, quiet_to, vindbaar',
   },
   ai_jobs: {
     groepszichtbaar: false,

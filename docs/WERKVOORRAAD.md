@@ -34,7 +34,7 @@ migratienummer aanziet, legt de lijn drie bestanden te hoog en verklaart
 een teller in grafemen bij een grens in codepunten.
 
 **Het gat is daarmee 48 bestanden** — `0225` t/m `0272`, van 09-09
-tot en met 14-09 en uit 37 verschillende issues.
+tot en met 15-09 en uit 38 verschillende issues.
 
 ⚠️ **In cijfers en niet voluit, en dat is sinds 14-09-2026 een controle.**
 📏 `NUMMERWOORDEN` in `scripts/docs-controle.mjs` loopt tot `twintig`; daarboven
@@ -97,6 +97,7 @@ De 48 bestanden:
 | `0269_een_weergavenaam_draagt_geen_bidi_stuurteken.sql` | QS8-450 | nee |
 | `0270_een_groepsnaam_draagt_geen_bidi_stuurteken.sql` | QS8-494 | nee |
 | `0271_een_onzichtbaar_teken_midden_in_een_naam_telt_niet.sql` | QS8-495 | nee |
+| `0272_vindbaar_buiten_je_groep.sql` | QS8-476 | ja |
 | `0272_een_dagplafond_op_blokkades_dat_niemand_raakt_die_misbruik_ontvlucht.sql` | QS8-496 | nee |
 
 ⚠️ **Hier stond een uur eerder `0219` met twee bestanden gat, en dat klopte

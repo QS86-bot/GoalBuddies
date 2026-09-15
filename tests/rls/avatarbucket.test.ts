@@ -164,6 +164,50 @@ describe.runIf(beschikbaar)('de avatar-bucket (0126)', () => {
     ).toBe('0');
   });
 
+  // ---------------------------------------------------------------------------
+  // De derde tak: vindbaar buiten je groep (0272, QS8-476)
+  // ---------------------------------------------------------------------------
+  //
+  // ⚠️⚠️ **Deze twee staan hier en niet bij de RPC, want ze toetsen deze policy.**
+  //    De belofte van QS8-476 is *"naam én foto buiten je groep"*, en die keten
+  //    loopt over twee objecten: `zoek_mensen()` geeft het `avatar_url`, en deze
+  //    policy bepaalt of er een ondertekende URL uit komt. `zoek_mensen()`
+  //    testen bewijst de helft — precies het patroon van regel 18 vraag 5, waar
+  //    elk schakeltje af is en de keten onderbroken.
+  //
+  // 📏 **De aanleiding is gemeten en niet bedacht.** De eerste vorm van die tak
+  //    was `exists (select 1 from public.profiles p where p.vindbaar and …)`
+  //    rechtstreeks in de policy. Een policy-expressie draait met de rechten van
+  //    wie de query stelt, en `authenticated` heeft op `profiles` een kolomgrant
+  //    zonder `vindbaar`. Dat gaf geen stille *nee* maar
+  //    `ERROR: 42501: permission denied for table profiles` op de héle policy —
+  //    zes tests in dít bestand werden er rood van, het lezen van je eigen foto
+  //    incluis. Vandaar `vindbaar_voor_mij()`, `security definer`, net als
+  //    `shares_group_with_user()` ernaast.
+  it('laat een vreemde de avatar zien van wie zichzelf vindbaar maakte', () => {
+    psql(`update public.profiles set vindbaar = true where id = '${alice}'`);
+    try {
+      expect(
+        als(vreemde, `select count(*) from storage.objects where name like '${alice}/%'`),
+      ).toBe('1');
+    } finally {
+      psql(`update public.profiles set vindbaar = false where id = '${alice}'`);
+    }
+  });
+
+  // ⚠️ De must-deny-helft, en zonder haar bewijst de test hierboven niets: een
+  //    tak die iedereen doorlaat is groen op "de vreemde ziet de foto".
+  it('laat de vindbaarheid van de één de foto van de ánder niet openen', () => {
+    psql(`update public.profiles set vindbaar = true where id = '${vreemde}'`);
+    try {
+      expect(
+        als(vreemde, `select count(*) from storage.objects where name like '${alice}/%'`),
+      ).toBe('0');
+    } finally {
+      psql(`update public.profiles set vindbaar = false where id = '${vreemde}'`);
+    }
+  });
+
   // -------------------------------------------------------------------------
   // Schrijven — hier hangt de grens aan het pad en niet aan `owner`
   // -------------------------------------------------------------------------

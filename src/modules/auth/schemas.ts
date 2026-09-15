@@ -177,6 +177,16 @@ export const profielSchema = z.object({
   quiet_from: z.number().int().min(0).max(23).nullable(),
   quiet_to: z.number().int().min(0).max(23).nullable(),
   share_moves_by_default: z.boolean(),
+
+  /**
+   * Of je buiten je eigen groepen vindbaar bent op naam en profielfoto —
+   * QS8-476.
+   *
+   * ⚠️ Standaard uit, en dat is een besluit en geen erfenis: CLAUDE.md zegt dat
+   *    voor élk nieuw oppervlak beschermd het antwoord is tot iemand het
+   *    tegendeel besluit. De kolom draagt dezelfde `default false`.
+   */
+  vindbaar: z.boolean(),
   /**
    * De taalkeuze — QS8-115, criterium 4.
    *

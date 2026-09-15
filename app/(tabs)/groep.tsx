@@ -90,6 +90,10 @@ export default function GroepTab() {
            eerste — en een lijst met vreemden bovenaan het scherm zou dit
            tabblad iets anders maken dan het is.
       */}
+      <Button variant="stil" block onPress={() => router.push('/mensen/zoek')}>
+        {t('mensen.titel')}
+      </Button>
+
       <Button variant="stil" block onPress={() => router.push('/groep/ontdek')}>
         {t('groepen.ontdekken')}
       </Button>
