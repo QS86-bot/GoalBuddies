@@ -226,3 +226,12 @@ export {
   type ChatRegelItem,
 } from './systeemberichten-vouwen';
 export type { SysteembericthInvoer } from './systeemberichten';
+
+// Mensen zoeken buiten je eigen groepen — QS8-476.
+export {
+  MENSEN_PER_PAGINA,
+  ZOEKTERM_MIN,
+  termIsLangGenoeg,
+  zoekMensen,
+} from './zoeken';
+export type { GevondenPersoon } from './zoeken';

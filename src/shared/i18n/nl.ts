@@ -905,6 +905,19 @@ export const nl = {
   //    niet bij: die schakelaar is de herinneringkaart hierboven, en dat zegt
   //    `meldingsoort.uitleg` met zoveel woorden — zonder die zin lijkt de lijst
   //    incompleet.
+  'vindbaar.titel': 'Buiten je groepen te vinden',
+  'vindbaar.uitleg': 'Staat dit aan, dan kunnen mensen die zijn ingelogd je vinden op je naam. Ze zien je naam en je profielfoto.',
+  'vindbaar.label': 'Vindbaar',
+  'vindbaar.wat_niet': 'Verder blijft alles dicht: je doelen, je reeks, je punten, je groepen en je weken ziet niemand die geen groep met je deelt.',
+  'vindbaar.terugdraaien': 'Dit staat standaard uit en je kunt het altijd terugzetten.',
+  'mensen.titel': 'Mensen zoeken',
+  'mensen.zoeken_mislukt': 'Zoeken lukte niet. Probeer het zo nog eens.',
+  'mensen.veld': 'Naam',
+  'mensen.begin': 'Typ een naam om iemand te zoeken die zichzelf vindbaar heeft gemaakt.',
+  'mensen.te_kort': 'Typ minstens {aantal} tekens.',
+  'mensen.niets_gevonden': 'Niemand met die naam heeft zichzelf vindbaar gemaakt.',
+  'mensen.meer': 'Meer laden',
+  'mensen.uitleg': 'Je zoekt op het begin van de naam. Je ziet alleen mensen die dit zelf hebben aangezet.',
   'meldingsoort.titel': 'Welke meldingen wil je?',
   'meldingsoort.uitleg':
     'De dagelijkse herinnering zet je hierboven aan of uit. Deze vier staan los ' +

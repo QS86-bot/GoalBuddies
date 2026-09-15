@@ -144,6 +144,8 @@ export default function Profiel() {
 
             <Avatarkaart profiel={p} onGewijzigd={zetProfiel} />
 
+            <VindbaarInstelling profiel={p} userId={p.id} onOpgeslagen={zetProfiel} />
+
             <BuddyBijdrage userId={p.id} />
 
             <Blokkades />
@@ -936,6 +938,72 @@ function MeldingsoortRij({
  *    omdat de tijd vrije tekst is die je halverwege kunt typen. Een schakelaar is
  *    een gesloten keuze — zelfde vorm als `TaalInstelling` en `TijdzoneInstelling`.
  */
+/**
+ * Of je buiten je eigen groepen te vinden bent — QS8-476.
+ *
+ * ⚠️⚠️ **De tekst moet allebei de helften zeggen, en dat is criterium 2
+ *    letterlijk.** Wát opengaat (je naam en je profielfoto, voor iedereen die is
+ *    ingelogd) én wat dicht blijft (je doelen, je reeks, je punten, je groepen,
+ *    je weken). Een schakelaar die alleen het eerste noemt, laat de gebruiker
+ *    zelf raden wat hij weggeeft — en dat is precies waar domeinregel 7 voor
+ *    bestaat.
+ *
+ * ⚠️ **Geen bevestigingsstap.** `zet_groepszichtbaarheid()` eist er een omdat
+ *    dát besluit met terugwerkende kracht verandert wat er over ándere leden
+ *    zichtbaar wordt. Dit gaat over jezelf, is omkeerbaar, en heeft geen
+ *    consequentie — domeinregel 5 raakt het niet.
+ *
+ * ⚠️ **Geen optimistic update.** De stand komt uit het opgeslagen profiel en
+ *    verandert pas als de database het bevestigt. Een scherm dat "aan" toont
+ *    terwijl de opslag mislukte, liegt over wie jou kan vinden.
+ */
+function VindbaarInstelling({
+  profiel,
+  userId,
+  onOpgeslagen,
+}: {
+  readonly profiel: ProfielRij;
+  readonly userId: string;
+  readonly onOpgeslagen: (profiel: ProfielRij) => void;
+}) {
+  const [bezig, setBezig] = useState(false);
+  const [fout, setFout] = useState<string | null>(null);
+
+  async function zet(aan: boolean) {
+    setBezig(true);
+    setFout(null);
+
+    const uitkomst = await updateProfiel(userId, { vindbaar: aan });
+
+    if (uitkomst.ok) onOpgeslagen(uitkomst.profiel);
+    else setFout(uitkomst.melding);
+
+    setBezig(false);
+  }
+
+  return (
+    <Card>
+      <Subheading>{t('vindbaar.titel')}</Subheading>
+      <Body muted>{t('vindbaar.uitleg')}</Body>
+
+      <Choice
+        label={t('vindbaar.label')}
+        opties={[
+          { waarde: 'aan', label: t('profiel.aan') },
+          { waarde: 'uit', label: t('profiel.uit') },
+        ]}
+        waarde={profiel.vindbaar === true ? 'aan' : 'uit'}
+        onKies={(v) => void zet(v === 'aan')}
+        disabled={bezig}
+      />
+
+      <Caption>{t('vindbaar.wat_niet')}</Caption>
+      <Caption>{t('vindbaar.terugdraaien')}</Caption>
+      {fout === null ? null : <Caption danger>{fout}</Caption>}
+    </Card>
+  );
+}
+
 function MeldingsoortenInstelling({
   profiel,
   userId,

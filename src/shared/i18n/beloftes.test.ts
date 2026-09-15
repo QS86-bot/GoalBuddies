@@ -143,6 +143,16 @@ const TOEGESTAAN: Readonly<Record<string, string>> = {
     'goal_interviews (eigenaar-only, één policy met alleen een eigenaarstak) en de twee ' +
     'velden die naar goals gespiegeld worden zijn sinds migratie 0236 niet meer leesbaar ' +
     'voor een groepsgenoot.',
+  'vindbaar.wat_niet':
+    'Waar, en nagemeten in plaats van aangenomen. De zin belooft dat doelen, reeks, punten, ' +
+    'groepen en weken dicht blijven voor wie geen groep met je deelt. zoek_mensen() geeft ' +
+    'precies drie kolommen — id, display_name, avatar_url — en is een SECURITY DEFINER met ' +
+    'een expliciete kolomlijst, geen tak op profiles_select. 📏 De naadtest in ' +
+    'tests/rls/vindbaar-buiten-je-groep.test.ts voert een gevonden id door goals, ' +
+    'daily_moves, completions, points_ledger, group_members, user_streaks, chain_links en ' +
+    'profiles en eist overal nul. ⚠️ groups.zichtbaarheid raakt dit oppervlak niet: A41 gaat ' +
+    'over wat leden van elkaar zien, en de kijker is hier per definitie geen lid — de zin is ' +
+    'dus in beide standen waar en hoeft niet gesplitst.',
   'straf.tot_dan':
     'Een commitment vóór de deadline. Oppervlak 20 is in EPIC 13 bewust niet opengezet: ' +
     'commitments_select geeft de begunstigde groep pas leesrecht vanaf unlocked/due/resolved. ' +
