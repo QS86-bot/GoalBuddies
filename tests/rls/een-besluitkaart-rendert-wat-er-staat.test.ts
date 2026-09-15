@@ -334,6 +334,69 @@ describe.skipIf(!rlsTestsConfigured)('een besluitkaart rendert wat er staat', ()
   );
 
   // ---------------------------------------------------------------------------
+  // De naad: de bron van een weekdoel draagt dezelfde grendel
+  // ---------------------------------------------------------------------------
+  //
+  // ⚠️⚠️ **Dit is de toets die deze migratie zelf nodig had.** Een CHECK op
+  //    `weekly_goals` zonder een CHECK op `weekly_plan_steps` maakt van een
+  //    geaccepteerde schrijfactie een **uitgestelde** fout:
+  //    `weekplanstap_naar_weekdoel()` kopieert de tekst, en de insert valt een
+  //    week later om — in `rollover`, die `console.error` doet en `continue`.
+  //    De gebruiker heeft die week geen weekdoel en ziet nergens waarom.
+  //
+  //    📏 Gemeten vóór de reparatie: de stap werd geaccepteerd, de omzetting gaf
+  //    `violates check constraint "weekly_goals_title_geen_bidi"`.
+  //
+  // ⚠️ Regel 18 vraag 1: hier knopen twee correcte onderdelen aan elkaar, en de
+  //    toets hoort op de naad te staan en niet op weerszijden ervan.
+  it(
+    'laat geen stuurteken in een weekplanstap staan — de bron van een weekdoel',
+    async () => {
+      // De bevestigende helft: een gewone stap landt wél.
+      const gewoon = await f.alice.db.from('weekly_plan_steps').insert({
+        goal_id: f.doel,
+        order_index: 40,
+        title: 'Elke ochtend een blokje om',
+        floor_text: 'Eén keer',
+        ceiling_text: 'Zeven keer',
+      });
+      expect(gewoon.error, `een gewone stap viel om: ${gewoon.error?.message}`).toBeNull();
+
+      const basis = {
+        goal_id: f.doel,
+        order_index: 41,
+        title: 'Stap',
+        floor_text: 'vloer',
+        ceiling_text: 'plafond',
+      };
+      const besmet = `Stap ${RLO}exe.gpj`;
+      const gevallen = [
+        { veld: 'title', rij: { ...basis, title: besmet } },
+        { veld: 'floor_text', rij: { ...basis, floor_text: besmet } },
+        { veld: 'ceiling_text', rij: { ...basis, ceiling_text: besmet } },
+      ];
+
+      for (const geval of gevallen) {
+        const poging = await f.alice.db.from('weekly_plan_steps').insert(geval.rij);
+        expect(
+          poging.error,
+          `een stuurteken landde in weekly_plan_steps.${geval.veld}`,
+        ).not.toBeNull();
+      }
+
+      // ⚠️ En de belofte zelf: er staat nergens in die tabel een stuurteken dat
+      //    over zeven dagen een weekdoel wordt.
+      const alles = await adminDb()
+        .from('weekly_plan_steps')
+        .select('title, floor_text, ceiling_text')
+        .eq('goal_id', f.doel);
+      expect(alles.error).toBeNull();
+      expect(JSON.stringify(alles.data ?? []), 'een stap draagt een override').not.toContain(RLO);
+    },
+    TEST_TIMEOUT,
+  );
+
+  // ---------------------------------------------------------------------------
   // De must-allow-helft — zonder deze is elke weigertoets gratis
   // ---------------------------------------------------------------------------
   //

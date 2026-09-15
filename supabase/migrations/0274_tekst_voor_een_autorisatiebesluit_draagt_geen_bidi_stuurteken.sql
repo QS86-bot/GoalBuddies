@@ -11,6 +11,10 @@
 --     drop constraint if exists completions_note_geen_bidi;
 --   alter table public.deadline_requests
 --     drop constraint if exists deadline_requests_reason_geen_bidi;
+--   alter table public.weekly_plan_steps
+--     drop constraint if exists weekly_plan_steps_title_geen_bidi,
+--     drop constraint if exists weekly_plan_steps_floor_text_geen_bidi,
+--     drop constraint if exists weekly_plan_steps_ceiling_text_geen_bidi;
 --
 -- ---------------------------------------------------------------------------
 -- Waar dit vandaan komt
@@ -95,6 +99,40 @@
 --      kopiëren bestaande tekst, dus ze kunnen niets binnenbrengen dat er niet
 --      al stond — maar ze schrijven de kolom, en dat is wat telt.
 --
+-- ⚠️⚠️ **En bij die tweede is "kopiëren" precies het probleem, niet de
+--    geruststelling.** Hier stond dat een kopiërende schrijver niets nieuws
+--    binnenbrengt. Dat klopt over **veiligheid** en is onjuist over **gevolg**:
+--    `weekplanstap_naar_weekdoel()` leest uit `weekly_plan_steps`, en die tabel
+--    droeg alleen lengte-CHECKs. Een CHECK op de bestemming zonder een CHECK op
+--    de bron verandert een geaccepteerde schrijfactie in een **uitgestelde**
+--    fout.
+--
+--    📏 Gemeten op de lokale stack, in een teruggedraaide transactie:
+--
+--      insert into weekly_plan_steps (…, title, …)   -- 'Stap ' || chr(8238) || …
+--        -> INSERT 0 1                                  geaccepteerd
+--      insert into weekly_goals (…, title, …)  <- diezelfde tekst
+--        -> new row violates check constraint "weekly_goals_title_geen_bidi"
+--
+--    En waar die fout landt, is het echte bezwaar: `rollover/index.ts` roept
+--    `activeer_weekplanstap` aan en doet bij een fout `console.error` gevolgd
+--    door `continue`. De gebruiker heeft die week geen weekdoel, ziet nergens
+--    waarom, en het herhaalt zich elke week. Via de knop krijgt hij
+--    `t('weekplan.starten_mislukt')` — een melding die nooit meer weggaat.
+--
+--    ⚠️ Dat is regel 18 vraag 5 in zijn zuiverste vorm: elk schakeltje werkt en
+--       de keten loopt dood op wáárdeniveau binnen een functie. Geen van de drie
+--       sporten — `schermingang:`, `exports:` of `keten:controle` — vindt dit.
+--
+--    Vandaar dat `weekly_plan_steps` hieronder dezelfde drie CHECKs krijgt. Dat
+--    is inhoudelijk ook juister: **een weekplanstap ís het weekdoel van volgende
+--    week**, dus hij staat over zeven dagen op precies dezelfde goedkeurkaart.
+--
+--    ⚠️ En er is een tweede route naar die tabel die de gebruiker niet zelf
+--       typt: `maakWeekplan()` schrijft rijen met `ai_generated = true`. Wat het
+--       model teruggeeft kan een stuurteken bevatten dat uit `goals.description`
+--       geëchood is — die kolom draagt er geen grendel op.
+--
 -- 📏 `completions.note`:
 --   1. **`POST /rest/v1/completions`** — INSERT-grant `true`, policy eist
 --      `user_id = auth.uid()` én eigenaarschap van het weekdoel. **UPDATE is
@@ -132,12 +170,68 @@
 --
 -- ⚠️ **Geen spiegel in de client-schema's.** 0270 deed dat voor `groups` niet en
 --    0273 voor `goals` niet, om dezelfde reden: één regel op twee plekken is een
---    regel die je maar half verplaatst. De prijs — een rauwe databasefout bij het
---    plakken uit een RTL-document — staat als Laag-rij op de novemberagenda.
+--    regel die je maar half verplaatst. 📏 `weekly-schemas.ts`,
+--    `completion-schemas.ts` en `deadline-schemas.ts` doen alleen `.trim()` en
+--    `.max()`, dus vanaf nu geeft de database op deze velden een CHECK-fout waar
+--    de gebruiker een generieke melding ziet.
+--
+--    ⚠️ Hier stond dat die prijs *"als Laag-rij op de novemberagenda staat"*, en
+--       dat was onjuist: de bestaande rij gaat alleen over `doelSchema.title`.
+--       Er staat er sinds 15-09-2026 wél een voor deze drie schema's. **Een
+--       verwijzing naar een vangnet is zelf een bewering** — dezelfde klasse als
+--       de meting die dit issue heeft voortgebracht.
 --
 -- ⚠️ **Geen nieuwe grant.** `zonder_bidi()` is sinds 0269 gegund aan
 --    `authenticated` en dat is genoeg. Een tweede grant erbij zou een recht op
 --    twee plekken uitdelen, en dat is een recht dat je maar half intrekt.
+--
+-- ---------------------------------------------------------------------------
+-- 4a. Wat er langs het criterium gelegd is en afviel — en dat is gemeten
+-- ---------------------------------------------------------------------------
+--
+-- ⚠️⚠️ **Deze sectie stond er eerst niet, en juist dit issue bestaat omdat een
+--    scopetabel ontbrak.** 0273 §3 liep zes kandidaten na; de opvolger deed dat
+--    niet, en dan is er over een half jaar geen spoor dat iemand ze bekeken
+--    heeft. De discipline moet meeverhuizen met het probleem.
+--
+-- Het criterium: *tekst die iemand leest vlak vóór een handeling die iets
+-- toestaat.* 📏 Nagelopen door élk scherm met zo'n knop te nemen en te kijken
+-- welke vrije tekst erboven staat:
+--
+--   | besluit                | functie                        | tekst erboven          | gedekt door |
+--   |------------------------|--------------------------------|------------------------|-------------|
+--   | voltooiing goedkeuren  | `openstaande_beoordelingen()`  | naam, doeltitel,       | 0269, 0273, |
+--   |                        |                                | weektitel, vloer,      | **0274**    |
+--   |                        |                                | plafond, notitie       |             |
+--   | lid aannemen           | `beslis_lidmaatschapsverzoek()`| naam, bericht          | 0269, 0273  |
+--   | uitstel toestaan       | `beslis_deadline_verzoek()`    | toelichting            | **0274**    |
+--
+-- En wat er níet bij hoeft, elk met de reden:
+--
+--   - **de groepschat** — elke knop is versturen, ouder laden, bijlage kiezen of
+--     terug. Geen handeling die iets toestaat.
+--   - **de weekafsluiting** — opslaan, reageren, eigen reactie weghalen. Idem.
+--   - **het ledenscherm** — vóór "Blokkeer" en "Zet eruit" staat alleen
+--     `display_name`, gegrendeld sinds 0269.
+--   - **de stuurloze straf** — `herstel_stuurloze_straf()` toont alleen namen;
+--     het commitment-lichaam staat niet op die kaart.
+--   - **`completion_approvals.comment` en `deadline_requests.decision_note`** —
+--     vrije tekst van een groepsgenoot, maar gelezen *ná* het besluit. Opnieuw
+--     indienen of een besluit lezen autoriseert niets voor een ander. Dit is de
+--     eerstvolgende ring als het criterium ooit verbreedt.
+--   - **`commitments.body`** via `getuigenissen()` — staat op het startscherm van
+--     de getuige, maar er hoort geen knop bij die kaart. Wel de persoon aan wie
+--     de straf verschuldigd wordt (domeinregel 11), dus dit is een randgeval dat
+--     verschuift zodra die kaart een handeling krijgt.
+--   - **`reports.{reden,toelichting,bericht_kopie}`** — 📏 en dit is de scherpste
+--     van de lijst: `reports_select` staat al open voor een beheerder die niet
+--     zelf het onderwerp is, en zijn vervolghandeling is `verwijder_lid()` of
+--     een blokkade — een echte autorisatiebeslissing. Er is vandaag alleen géén
+--     leesscherm (`reports` komt in `app/` nergens voor aan de leeskant) en
+--     `reports_update` is `false`. **Dit oppervlak bestaat dus in de database en
+--     mist alleen de UI**; komt die er, dan hoort de CHECK er vóór het scherm.
+--
+-- ⚠️ Zoals altijd: dit is een meting van vandaag en geen eigenschap.
 --
 -- ---------------------------------------------------------------------------
 -- 5. Staat er al zo een? — en dit blok staat vóór de CHECKs
@@ -163,6 +257,7 @@ declare
   v_plafond bigint;
   v_notitie bigint;
   v_reden   bigint;
+  v_stap    bigint;
 begin
   select count(*) filter (where title <> public.zonder_bidi(title)),
          count(*) filter (where floor_text is not null
@@ -180,14 +275,21 @@ begin
                             and reason <> public.zonder_bidi(reason))
     into v_reden from public.deadline_requests;
 
-  if v_titel + v_vloer + v_plafond + v_notitie + v_reden > 0 then
+  select count(*) filter (where title <> public.zonder_bidi(title))
+       + count(*) filter (where floor_text is not null
+                            and floor_text <> public.zonder_bidi(floor_text))
+       + count(*) filter (where ceiling_text is not null
+                            and ceiling_text <> public.zonder_bidi(ceiling_text))
+    into v_stap from public.weekly_plan_steps;
+
+  if v_titel + v_vloer + v_plafond + v_notitie + v_reden + v_stap > 0 then
     raise notice
       '⚠️ Bidi-stuurtekens gevonden: % in weekly_goals.title, % in floor_text, '
-      '% in ceiling_text, % in completions.note, % in deadline_requests.reason. '
-      'De CHECKs hierna gaan daarop om en deze migratie stopt. Bepaal eerst wat '
-      'er met die teksten gebeurt — dat is een productbeslissing, geen '
-      'migratiestap.',
-      v_titel, v_vloer, v_plafond, v_notitie, v_reden;
+      '% in ceiling_text, % in completions.note, % in deadline_requests.reason, '
+      '% in weekly_plan_steps. De CHECKs hierna gaan daarop om en deze migratie '
+      'stopt. Bepaal eerst wat er met die teksten gebeurt — dat is een '
+      'productbeslissing, geen migratiestap.',
+      v_titel, v_vloer, v_plafond, v_notitie, v_reden, v_stap;
   end if;
 end;
 $$;
@@ -204,9 +306,24 @@ $$;
 --    0256, 0269, 0270 én 0273 gemeten en het was elke keer bijna een
 --    ship-stopper. De must-allow-helft staat daarom in de toetsen.
 --
--- ⚠️ `weekly_goals.title` is `not null`, dus daar staat geen null-tak. De vier
---    andere kolommen zijn nullable en krijgen hem expliciet — zonder die tak
---    laat de CHECK een NULL door bij toeval in plaats van met opzet.
+-- ⚠️ **Welke kolom een null-tak krijgt, is nagemeten en niet aangenomen.** 📏
+--    `information_schema.columns`:
+--
+--      weekly_goals.title          not null     -> geen null-tak
+--      weekly_goals.floor_text     nullable     -> null-tak
+--      weekly_goals.ceiling_text   nullable     -> null-tak
+--      completions.note            nullable     -> null-tak
+--      deadline_requests.reason    not null     -> de null-tak is dode code
+--      weekly_plan_steps.title     not null     -> geen null-tak
+--      weekly_plan_steps.floor_text    nullable -> null-tak
+--      weekly_plan_steps.ceiling_text  nullable -> null-tak
+--
+--    ⚠️ Hier stond dat *"de vier andere kolommen nullable zijn"*, en dat was
+--       onjuist: `deadline_requests.reason` is `not null` sinds 0032. De
+--       null-tak op die CHECK blijft staan — hij kost niets en hij is niet fout
+--       — maar de **bewering** moest weg. Dit issue bestaat omdat een kopregel
+--       die als vaststelling leest, de volgende lezer belet te twijfelen; dan
+--       mag deze kop dat zelf niet doen.
 alter table public.weekly_goals
   drop constraint if exists weekly_goals_title_geen_bidi,
   drop constraint if exists weekly_goals_floor_text_geen_bidi,
@@ -217,6 +334,11 @@ alter table public.completions
 
 alter table public.deadline_requests
   drop constraint if exists deadline_requests_reason_geen_bidi;
+
+alter table public.weekly_plan_steps
+  drop constraint if exists weekly_plan_steps_title_geen_bidi,
+  drop constraint if exists weekly_plan_steps_floor_text_geen_bidi,
+  drop constraint if exists weekly_plan_steps_ceiling_text_geen_bidi;
 
 alter table public.weekly_goals
   add constraint weekly_goals_title_geen_bidi
@@ -233,6 +355,28 @@ alter table public.completions
 alter table public.deadline_requests
   add constraint deadline_requests_reason_geen_bidi
   check (reason is null or reason = public.zonder_bidi(reason));
+
+alter table public.weekly_plan_steps
+  add constraint weekly_plan_steps_title_geen_bidi
+  check (title = public.zonder_bidi(title)),
+  add constraint weekly_plan_steps_floor_text_geen_bidi
+  check (floor_text is null or floor_text = public.zonder_bidi(floor_text)),
+  add constraint weekly_plan_steps_ceiling_text_geen_bidi
+  check (ceiling_text is null or ceiling_text = public.zonder_bidi(ceiling_text));
+
+comment on constraint weekly_plan_steps_title_geen_bidi on public.weekly_plan_steps is
+  'Een weekplanstap draagt geen bidi-stuurteken — QS8-501. Hij wordt door '
+  'weekplanstap_naar_weekdoel() een weekdoel, en staat dan op de goedkeurkaart. '
+  'Zonder deze CHECK landt het stuurteken hier en valt de omzetting een week '
+  'later om in een achtergrondtaak die de fout wegslikt.';
+
+comment on constraint weekly_plan_steps_floor_text_geen_bidi on public.weekly_plan_steps is
+  'De vloer van een weekplanstap draagt geen bidi-stuurteken — QS8-501. Zelfde '
+  'route en zelfde reden als de titel.';
+
+comment on constraint weekly_plan_steps_ceiling_text_geen_bidi on public.weekly_plan_steps is
+  'Het plafond van een weekplanstap draagt geen bidi-stuurteken — QS8-501. '
+  'Zelfde route en zelfde reden als de titel.';
 
 comment on constraint weekly_goals_title_geen_bidi on public.weekly_goals is
   'Een weektitel draagt geen bidi-override of -isolaat — QS8-501. Hij staat op '
