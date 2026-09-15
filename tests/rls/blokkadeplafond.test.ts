@@ -164,8 +164,20 @@ describe.skipIf(!rlsTestsConfigured)('het dagplafond op blokkades', () => {
          *    aanroep, en zonder plafond is het aantal rijen niet meer begrensd
          *    door wie je kent maar door hoeveel accounts er zijn.
          *
-         * 📏 IJKING C — de trigger `user_blocks_dagplafond` gedropt: deze toets
-         *    werd rood, álle blokkades kwamen er doorheen.
+         * 📏 IJKING C — de trigger `blokkades_dagplafond` gedropt: deze toets
+         *    werd rood, álle blokkades kwamen er doorheen, en de twee
+         *    must-allows hierboven bleven groen. Gedraaid op 15-09-2026, en
+         *    daarna nóg een keer nadat de trigger van `user_blocks_dagplafond`
+         *    naar `blokkades_dagplafond` hernoemd was — zelfde uitslag.
+         *
+         * ⚠⚠ **De uitkomst is `{ok:false, reason:'rate_limited'}` en niet een
+         *    `23514`, en dat verschil is een veiligheidseis en geen nettere
+         *    melding.** `blokkeer()` toetst het plafond **vóór** het bestaan
+         *    van het profiel. Zou hij dat erna doen, dan antwoordt een
+         *    onbestaand id `{ok:true}` waar een bestaand id een fout geeft, en
+         *    is de functie weer een manier om te toetsen óf een profiel-id
+         *    bestaat — precies de grendel die 0145 zette en die 0197 een
+         *    migratie kostte. De toets hieronder legt beide kanten vast.
          *
          * ⚠️ De toets rekent vanaf de stand die er al is — de toetsen hierboven
          *    hebben er 49 verbruikt — zodat hij niet afhangt van zijn plaats in
@@ -182,13 +194,15 @@ describe.skipIf(!rlsTestsConfigured)('het dagplafond op blokkades', () => {
           expect((await blokkeer(vluchter, id)).ok).toBe(true);
         }
 
-        // ⚠️ En de eerstvolgende niet. De toets staat op de úitkomst en op de
-        //    foutcode: `tel_dagteller()` werpt een `check_violation`, en een
-        //    ándere fout zou deze toets groen houden zonder dat het plafond
-        //    er iets mee te maken had.
+        // ⚠️ En de eerstvolgende niet. De toets staat op de úitkomst én op de
+        //    reden: een ándere weigering zou hem groen houden zonder dat het
+        //    plafond er iets mee te maken had.
         const teveel = await vluchter.db.rpc('blokkeer', { p_user: ids[rest] as string });
-        expect(teveel.error, 'de blokkade over het plafond heen werd toegelaten').not.toBeNull();
-        expect(teveel.error?.code, 'en wel door het dagplafond').toBe('23514');
+        expect(teveel.error, 'de RPC hoort niet te werpen maar een reden te geven').toBeNull();
+        expect(
+          (teveel.data as unknown as { ok?: boolean; reason?: string })?.reason,
+          'en wel door het dagplafond',
+        ).toBe('rate_limited');
 
         const staat = await adminDb()
           .from('user_blocks')
@@ -196,6 +210,92 @@ describe.skipIf(!rlsTestsConfigured)('het dagplafond op blokkades', () => {
           .eq('blocker_id', vluchter.id)
           .eq('blocked_id', ids[rest] as string);
         expect(staat.data ?? [], 'en hij landde niet alsnog').toHaveLength(0);
+      },
+      TEST_TIMEOUT,
+    );
+
+    it(
+      'verraadt bij een vol plafond niet of een profiel-id bestaat',
+      async () => {
+        /**
+         * ⚠⚠ **De grendel van 0145, en het plafond zette hem bijna terug.**
+         *    0145 schrijft boven zijn bestaanstoets: *"Eén antwoord voor
+         *    'bestaat niet' en 'bestaat wel'. Zou dit onderscheid maken, dan is
+         *    deze functie een manier om te toetsen of een profiel-id bestaat."*
+         *    0197 heeft daar een hele migratie aan besteed.
+         *
+         * 📏 Gemeten vóórdat `blokkeer()` de plafondtak kreeg, met de teller
+         *    op 500: een onbestaand id gaf `{"ok": true}` en een bestaand id
+         *    `ERROR 23514`. Elke probe was gratis — de exception rolt de
+         *    ophoging mee terug, dus de teller bleef op 500 en de aanvaller kon
+         *    24 uur lang doorvragen.
+         *
+         * ⚠️ Deze toets draait ná de toets hierboven, die het plafond volmaakt.
+         *    Hij toetst de belofte (*de twee antwoorden zijn niet uit elkaar te
+         *    houden*) en niet de vorm ervan.
+         */
+        const [bestaat] = maakProfielen(1);
+        expect(bestaat, 'de opstelling zelf mislukte').toBeDefined();
+
+        const onbekend = '00000000-0000-0000-0000-0000000000ff';
+
+        const a = await vluchter.db.rpc('blokkeer', { p_user: onbekend });
+        const b = await vluchter.db.rpc('blokkeer', { p_user: bestaat as string });
+
+        expect(a.error, 'een onbestaand id hoort niet te werpen').toBeNull();
+        expect(b.error, 'een bestaand id hoort niet te werpen').toBeNull();
+        expect(
+          JSON.stringify(a.data),
+          'een vol plafond antwoordt verschillend voor bestaand en onbestaand',
+        ).toBe(JSON.stringify(b.data));
+      },
+      TEST_TIMEOUT,
+    );
+
+    it(
+      'raakt het quotum van een ándere gebruiker niet',
+      async () => {
+        /**
+         * ⚠⚠ **Dit is de zwaarste belofte die deze feature heeft en er stond
+         *    geen enkele toets onder.** Gevonden in de security-review.
+         *
+         *    `begrens_blokkades()` sleutelt op `auth.uid()`. Zou die sleutel
+         *    ooit een constante worden — of het id van de géblokkeerde in
+         *    plaats van de blokkeerder — dan sluit één account dat 500 mensen
+         *    blokkeert **iedereen** 24 uur lang uit van blokkeren. Dat is
+         *    precies de uitweg waar 0203 om deze reden géén plafond op zette.
+         *
+         *    ⚠️ De drie toetsen hierboven blijven allémaal groen bij een
+         *    gedeelde sleutel: ze meten één sessie, en `tellerstand()` filtert
+         *    op die ene sleutel. Een belofte over schéiding is niet te toetsen
+         *    met één deelnemer.
+         *
+         * ⚠️ Deze toets draait als laatste, wánt het plafond van `vluchter` is
+         *    dan vol. Dat is de opstelling die ertoe doet.
+         */
+        const tweede = await createTestUser('blokkade-tweede');
+        const [voorVluchter, voorTweede] = maakProfielen(2);
+        expect(voorTweede, 'de opstelling zelf mislukte').toBeDefined();
+
+        // ⚠⚠ **De opstelling wordt gedrágsmatig vastgesteld en niet via de
+        //    tellersleutel.** Een `tellerstand()` hier leest `sleutel =
+        //    vluchter.id`, en juist bij de fout die deze toets zoekt — een
+        //    gedeelde of verkeerde sleutel — staat daar niets. 📏 Gemeten: met
+        //    een constante sleutel viel deze toets dan om op zijn eigen
+        //    opstelling in plaats van op zijn belofte. Een toets die struikelt
+        //    vóórdat hij toekomt aan wat hij belooft, bewaakt die belofte niet.
+        const nog = await vluchter.db.rpc('blokkeer', { p_user: voorVluchter as string });
+        expect(
+          (nog.data as unknown as { reason?: string })?.reason,
+          'de opstelling klopt niet: vluchter zit niet vol',
+        ).toBe('rate_limited');
+
+        const uit = await tweede.db.rpc('blokkeer', { p_user: voorTweede as string });
+        expect(uit.error, 'de tweede gebruiker werd geweigerd').toBeNull();
+        expect(
+          (uit.data as unknown as { ok?: boolean })?.ok,
+          'een vol quotum van de één sluit de ánder uit',
+        ).toBe(true);
       },
       TEST_TIMEOUT,
     );

@@ -52,12 +52,33 @@ bovengrens** — nagemeten in 0016 in plaats van aangenomen:
 |---|---|
 | een groep is vol bij | **twaalf** actieve leden |
 | een gebruiker zit in hoogstens | **tien** groepen |
-| het ergste échte geval | uit alle tien vertrekken en daar iedereen blokkeren: 10 × 11 = **110**. Meer kán hij er via groepen niet kennen |
-| het plafond | **500**, ruim vier en een half keer die harde bovengrens |
+| pogingen om ergens binnen te komen | **20** per etmaal via een code, **10** via een verzoek |
+| het ergste échte etmaal | 30 keer een groep in, elk met hoogstens 11 anderen: **~330** verschillende mensen |
+| het plafond | **500**, ruim anderhalf keer dat getal |
 
-⚠️ Die bovengrens geldt alleen voor het **legitieme** geval. `zoek_mensen()`
-laat je juist mensen blokkeren die je nooit ontmoet hebt — daar is 110 geen
-grens meer, en dát is waarom er überhaupt een plafond nodig is.
+⚠⚠ **Hier stond 110, en dat was de verkeerde eenheid.** Gevonden in de
+security-review. De redenering was: tien groepen van twaalf, dus 10 × 11 = 110,
+*"meer kán hij er via groepen niet kennen"*. De twee plafonds kloppen — 📏
+nagemeten dat 12 en 10 server-afgedwongen zijn en dat `authenticated` géén INSERT
+op `group_members` heeft, dus de definer-functies zijn de enige weg. **Maar 110
+is een momentopname en dit plafond telt een etmaal.** 📏 `verlaat_groep()` doet
+een `delete from group_members`, dus vertrekken maakt de plek meteen vrij; wat
+een dag begrenst zijn de dagbudgetten om binnen te komen, en dat zijn er 30.
+
+⚠️ **Afgeleid uit gemeten constanten, niet end-to-end gedraaid.** Dertig groepen
+volbouwen en weer verlaten is geen toets die hier thuishoort; de constanten (20,
+10, 12, 10, en de `delete`) zijn stuk voor stuk uit de draaiende database
+gelezen.
+
+⚠⚠ **De marge is dus anderhalf en niet vier en een half, en dat verandert wat
+je in de gaten houdt** — niet de leden- en groepsplafonds maar die twee
+dágbudgetten. De rij in `docs/ENGINEER-REVIEW.md` noemde de verkeerde variabele
+en is bijgewerkt.
+
+⚠️ Die bovengrens geldt bovendien alleen voor het **legitieme** geval.
+`zoek_mensen()` laat je juist mensen blokkeren die je nooit ontmoet hebt — daar
+bindt de groepsroute niets meer, en dát is waarom er überhaupt een plafond nodig
+is.
 
 ⚠️ **Dit stond eerst als "vier groepen van twaalf is 48, en 500 is tien keer
 dat".** Dat was een schatting waar een afgedwongen getal voorhanden was. Het
@@ -164,22 +185,97 @@ te tellen.
 
 ---
 
-## 7. De drie ijkingen
+## 7. Wat de security-review vond, en wat ervan gerepareerd is
+
+⚠⚠ **Twee bevindingen waren gaten die ik zelf gemaakt had, en ze zijn allebei
+gerepareerd in plaats van weggeschreven in een dossierrij.**
+
+### 7a. Het plafond zette een bestaansorakel terug dat 0197 een migratie kostte
+
+0145 schrijft boven zijn bestaanstoets: *"Eén antwoord voor 'bestaat niet' en
+'bestaat wel'. Zou dit onderscheid maken, dan is deze functie een manier om te
+toetsen of een profiel-id bestaat."* 0197 heeft daarvoor de directe
+INSERT-grant ingetrokken.
+
+📏 Gemeten met de teller van de aanroeper op 500:
+
+| probe | antwoord |
+|---|---|
+| een id dat **niet** bestaat | `{"ok": true}` |
+| een id dat **wel** bestaat | `ERROR 23514 Te veel blokkades in één dag (501).` |
+
+Een fout betekende dan *"dit account bestaat én ik heb het nog niet
+geblokkeerd"*, en elke probe was gratis: 📏 de exception rolt de ophoging mee
+terug, dus de teller bleef op 500 staan.
+
+**De reparatie:** `blokkeer()` toetst het plafond **vóór** het bestaan en geeft
+`{ok:false, reason:'rate_limited'}`. 📏 Nagemeten: beide probes geven nu
+hetzelfde antwoord. ⚠️ Een `reason` eráchter had het orakel juist laten staan —
+dat is de hele reden dat de volgorde in de kop van 0273 staat uitgeschreven.
+
+⚠️ **De trigger blijft en wordt hierdoor niet overbodig.** Deze toets zit in één
+RPC; de trigger geldt voor elke schrijver naar `user_blocks`. Een grens die
+alleen in de aanroeproute staat is precies wat onwrikbare regel 2 verbiedt.
+
+### 7b. De gebruiker kreeg onjuist advies, op een veiligheidshandeling
+
+Zonder `reason` mapte de client elke fout op **"Dat lukte niet. Probeer het
+opnieuw."** — en opnieuw proberen werkt tot 24 uur lang niet. Op de knop
+"blokkeer deze persoon" is dat de verkeerde zin, en dit is de handeling waar
+0203 met opzet géén rem op zette.
+
+⚠️ **En `rate_limited` stond al in de gedeelde tabel, gemapt op
+`melden.te_veel`** — *"Je hebt vandaag twintig meldingen gedaan"*. Verkeerd getal
+én verkeerde handeling. `blokkeer()` heeft nu zijn eigen zin, die er bovendien
+bij zegt dat mélden nog wél kan.
+
+### 7c. De belofte "het plafond geldt per gebruiker" stond onder geen enkele toets
+
+De zwaarste belofte die deze feature heeft, en er was één blokkerende sessie in
+het testbestand. Zou de sleutel ooit een constante worden, dan sluit één account
+dat 500 mensen blokkeert **iedereen** 24 uur lang uit — precies de uitweg waar
+0203 om deze reden geen plafond op zette. Er staat nu een tweede gebruiker in.
+
+⚠⚠ **En de eerste versie van die toets deugde niet, wat bij het ijken bleek.**
+Hij stelde zijn opstelling vast met `tellerstand()`, die filtert op
+`sleutel = vluchter.id` — en juist bij een gedeelde sleutel staat daar niets.
+📏 Gemeten: de toets viel dan om op zijn eigen opstelling ("vluchter zit niet
+vol") in plaats van op zijn belofte. **Een toets die struikelt vóórdat hij
+toekomt aan wat hij belooft, bewaakt die belofte niet.** De opstelling wordt nu
+gedrágsmatig vastgesteld (vluchter kríjgt `rate_limited`), en dan valt hij om op
+de goede regel.
+
+⚠️ **Bij het ijken kwam er nog een naad boven.** De plafondtoets in `blokkeer()`
+en de sleutel in `begrens_blokkades()` moéten dezelfde zijn; lopen ze uiteen, dan
+weigert de RPC op de ene teller terwijl de trigger op de andere werpt. 📏 Dat is
+gezien: met alleen de trígger op een gedeelde sleutel gaf de suite een `23514`
+waar een `reason` hoorde. Twee plekken, één sleutel.
+
+### Wat er niet gerepareerd is
+
+De overige bevindingen staan als rij in `docs/ENGINEER-REVIEW.md`, elk met de
+voorwaarde die hem laag houdt.
+
+---
+
+## 8. De ijkingen
 
 📏 Mutatie per grendel, 15-09-2026:
 
-| IJKING | Gebroken | Wat er omviel (van 3) |
+| IJKING | Gebroken | Wat er omviel (van 5) |
 |---|---|---|
 | A | `blokkades_plafond()` op `select 20` | **3** — ook de must-allow, want 48 > 20 |
 | B | de lege-batchtak, op twee plekken | **0** — zie §5 |
 | C | de trigger `blokkades_dagplafond` gedropt | 1 — de weigering |
+| D | de plafondtak ná de bestaanstoets gezet | 1 — en precies de orakeltoets |
+| E | de tellersleutel een constante gemaakt, in én `blokkeer()` én de trigger | 2 — waaronder de per-gebruikertoets, op zijn belofte |
 
 ⚠️ **C is gedraaid toén de trigger nog `user_blocks_dagplafond` heette.** De
 hernoeming van §6 kwam erna, dus de tabel hierboven noemt een naam die bij het
 meten anders was — en dat is precies de vorm die de volgende lezer niet kan
-narekenen. C wordt daarom onder de nieuwe naam opnieuw gedraaid en deze regel vervangen
-door die uitslag; tot dat gebeurd is, staat hier wat er wél gemeten is en niet
-wat ervan verwacht wordt.
+narekenen. 📏 C is daarom onder de nieuwe naam opnieuw gedraaid: één rode toets — de
+weigering — en de twee must-allows bleven groen. Zelfde uitslag als onder de
+oude naam.
 
 ⚠️ Dat A er drie omgooit is juist het bewijs dat de must-allow scherp staat: een
 te laag plafond raakt als eerste de gebruiker die het niet mag raken.

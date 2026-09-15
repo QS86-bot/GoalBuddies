@@ -133,9 +133,19 @@ export async function blokkeer(userId: string): Promise<Resultaat<true>> {
   }
 
   const uit = data as unknown as Uitkomst;
-  if (uit.ok !== true) return { ok: false, melding: meldingBijReden(uit.reason) };
+  if (uit.ok === true) return { ok: true, waarde: true };
 
-  return { ok: true, waarde: true };
+  // ⚠️⚠️ **`rate_limited` betekent hier iets anders dan bij melden.** De gedeelde
+  //    tabel mapt hem op `melden.te_veel`, en die zin noemt *twintig meldingen* —
+  //    hier gaat het om blokkades en om een heel ander getal. Op de knop
+  //    "blokkeer deze persoon" is een verkeerd getal geen schoonheidsfout: dit
+  //    is de handeling waar 0203 met opzet géén rem op zette, en wie hem raakt
+  //    moet lezen wat er echt aan de hand is en wat er wél kan. Zie 0273.
+  if (uit.reason === 'rate_limited') {
+    return { ok: false, melding: t('melden.te_veel_blokkades') };
+  }
+
+  return { ok: false, melding: meldingBijReden(uit.reason) };
 }
 
 export async function deblokkeer(userId: string): Promise<Resultaat<true>> {

@@ -133,9 +133,11 @@
 --      verviel de begrenzing "door wie je kent".
 --
 --      ⚠️ De veiligheidskeuze hierboven is **niet** omgedraaid. Het plafond
---         staat op 500 — ruim tien keer het zwaarste echte geval — juist zodat
---         wie misbruik ontvlucht er nooit tegenaan loopt. Wat begrensd wordt is
---         alleen de bulkvorm. De afweging staat in de kop van 0273.
+--         staat op 500 — ruim boven het zwaarste echte geval — juist zodat wie
+--         misbruik ontvlucht er nooit tegenaan loopt. Wat begrensd wordt is
+--         alleen de bulkvorm. Het getal en de marge staan in de kop van 0273;
+--         hier staat er met opzet géén tweede versie van, want dit is precies
+--         de plek waar twee documenten uiteen gaan lopen.
 --
 -- ---------------------------------------------------------------------------
 -- De zes plafonds, en waarom ze zo hoog staan
