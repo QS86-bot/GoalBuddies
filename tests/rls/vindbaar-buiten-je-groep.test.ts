@@ -38,6 +38,7 @@ let zoeker: TestUser;
 let vindbaar: TestUser;
 let verborgen: TestUser;
 let blokkeerder: TestUser;
+let metateken: TestUser;
 
 /** Een naamfragment dat alleen bij deze run hoort. */
 const STAM = `Zx${Math.random().toString(36).slice(2, 8)}`;
@@ -56,11 +57,13 @@ describe.runIf(rlsTestsConfigured)('vindbaar buiten je groep', () => {
     vindbaar = await createTestUser('vindbaar-ja');
     verborgen = await createTestUser('vindbaar-nee');
     blokkeerder = await createTestUser('vindbaar-blok');
+    metateken = await createTestUser('vindbaar-meta');
 
     await noemEnZetVindbaar(vindbaar, 'Vindbaar', true);
     await noemEnZetVindbaar(verborgen, 'Verborgen', false);
     await noemEnZetVindbaar(blokkeerder, 'Blokkeerder', true);
     await noemEnZetVindbaar(zoeker, 'Zoeker', true);
+    await noemEnZetVindbaar(metateken, 'Meta', true);
 
     const blok = await adminDb()
       .from('user_blocks')
@@ -99,7 +102,10 @@ describe.runIf(rlsTestsConfigured)('vindbaar buiten je groep', () => {
       // ⚠️ Per tabel uitgeschreven en niet in een lus met een variabele
       //    kolomnaam: de kolom heet niet overal hetzelfde, en een lus die dat
       //    met een cast gladstrijkt, toetst niet meer welke kolom hij bevraagt.
-      const deuren: ReadonlyArray<readonly [string, () => PromiseLike<{ data: unknown[] | null }>]> = [
+      const deuren: readonly (readonly [
+        string,
+        () => PromiseLike<{ data: unknown[] | null }>,
+      ])[] = [
         ['goals', () => zoeker.db.from('goals').select('id').eq('owner_id', gevonden)],
         // ⚠️ `daily_moves` en niet `weekly_goals`: die tweede hangt aan `goal_id`
         //    en is niet op gebruiker te bevragen. De Dagzet is bovendien privé
@@ -203,6 +209,47 @@ describe.runIf(rlsTestsConfigured)('vindbaar buiten je groep', () => {
         expect(uit.error).toBeNull();
         expect((uit.data ?? []) as unknown[], `term ${term} gaf rijen`).toHaveLength(0);
       }
+    },
+    TEST_TIMEOUT,
+  );
+
+  // ⚠️⚠️ **Deze toets bestaat omdat de vorige groen was om de verkeerde reden.**
+  //    Hierboven staan `%`, `%%` en `_` op nul rijen — en dat lukte ook toen de
+  //    ondergrens ná de ontsnapping gemeten werd, simpelweg doordat geen enkele
+  //    fixture-naam met zo'n teken begint. De belofte ("één teken is geen
+  //    zoekopdracht") kon breken terwijl de test groen bleef: regel 18 vraag 3.
+  //
+  //    📏 Met de lengtetoets terug achter de ontsnapping geeft `zoek_mensen('%')`
+  //    de rij hieronder wél terug — `%` wordt `\%`, twee tekens, en komt door
+  //    een grens die "minstens twee" heet. Vandaar een naam die met een
+  //    letterlijk metateken begint: zonder die naam meet de vorige test niets.
+  it(
+    'telt de ondergrens op de kale term en niet op de ontsnapte',
+    async () => {
+      await noemEnZetVindbaar(metateken, '', true);
+      // De naam begint met een letterlijke `%`, dus een term van één `%` zou
+      // hem vinden zodra de grens de ontsnapping meetelt.
+      const uit = await adminDb()
+        .from('profiles')
+        .update({ display_name: `%${STAM}Meta` })
+        .eq('id', metateken.id);
+      expect(uit.error).toBeNull();
+
+      const eenTeken = await zoeker.db.rpc('zoek_mensen', { p_term: '%' });
+      expect(eenTeken.error).toBeNull();
+      expect(
+        (eenTeken.data ?? []) as unknown[],
+        'een term van één teken kwam door de ondergrens',
+      ).toHaveLength(0);
+
+      // ⚠️ De must-allow-helft: met twee kale tekens hóórt hij gevonden te
+      //    worden, anders bewijst de nul hierboven alleen dat er niets staat.
+      const tweeTekens = await zoeker.db.rpc('zoek_mensen', { p_term: `%${STAM}` });
+      expect(tweeTekens.error).toBeNull();
+      expect(
+        (tweeTekens.data ?? []) as unknown[],
+        'een letterlijk metateken werd als wildcard behandeld of viel weg',
+      ).toHaveLength(1);
     },
     TEST_TIMEOUT,
   );

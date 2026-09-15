@@ -112,6 +112,13 @@ function naarKolommen(velden: ProfielPatch): TablesUpdate<'profiles'> {
   }
   if (velden.locale !== undefined) update.locale = velden.locale;
 
+  // ⚠️ Deze regel is niet optioneel, en de comment hieronder legt uit waarom:
+  //    zonder hem valt `vindbaar` uit de patch, blijft `update` leeg, neemt de
+  //    "niets gewijzigd"-tak het over, en meldt het scherm succes terwijl de
+  //    schakelaar niets deed. `kolomrechten:controle` vindt dat als een
+  //    UPDATE-grant die niets gebruikt — QS8-476.
+  if (velden.vindbaar !== undefined) update.vindbaar = velden.vindbaar;
+
   // De vier schakelaars per meldingsoort — QS8-92. Zelfde regel als hierboven.
   //
   // ⚠️ **Deze vier stonden er eerst niet, en dat was stil.** `meldingsoortVelden()`
