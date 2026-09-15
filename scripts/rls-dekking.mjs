@@ -900,7 +900,171 @@ function draai(bestanden) {
   return leesUitkomst(uit.stdout.slice(begin, eind + 1));
 }
 
-function hoofd() {
+/**
+ * De URL waar de suite PostgREST verwacht — dezelfde afleiding als
+ * `tests/rls/harness.ts`, zodat deze controle de verbinding toetst die de suite
+ * ook echt gebruikt en niet een tweede die er toevallig op lijkt.
+ */
+const POSTGREST_URL = process.env.RLS_LOKAAL_URL ?? 'http://127.0.0.1:3010';
+
+/**
+ * Het oordeel over de koppeling, los aangeboden zodat hij te ijken is.
+ *
+ * @param {{ status: number | null, merk: string, fout?: string }} waarneming
+ * @returns {{ ok: boolean, reden?: string }}
+ */
+export function beoordeelKoppeling({ status, merk, fout }) {
+  if (status === 200) return { ok: true };
+
+  if (status === null) {
+    return {
+      ok: false,
+      reden:
+        `PostgREST op ${POSTGREST_URL} antwoordde niet (${fout ?? 'geen reden'}). ` +
+        'Zonder antwoord is niet vast te stellen of hij dezelfde database serveert ' +
+        'als die ik muteer, en dan is elke uitslag hieronder een aanname',
+    };
+  }
+
+  if (status === 404) {
+    return {
+      ok: false,
+      reden:
+        `ik heb \`${merk}\` aangemaakt in de database die ik muteer, en PostgREST ` +
+        `op ${POSTGREST_URL} kent hem niet (404). Die twee zijn dus niet dezelfde ` +
+        'database: ik zou de ene openzetten en de andere meten. Dat is precies ' +
+        'het stille geval — zonder deze toets was elk gat er als bewaakt uitgekomen',
+    };
+  }
+
+  return {
+    ok: false,
+    reden:
+      `PostgREST gaf ${status} op \`${merk}\`. Verwacht is 200 (zelfde database) ` +
+      'of 404 (een andere); iets anders is een storing die deze meting onbruikbaar maakt',
+  };
+}
+
+/**
+ * Plant een merkteken in de database die we muteren en vraagt PostgREST ernaar.
+ *
+ * ⚠️⚠️ **Waarom een merkteken en geen vergelijking van twee instellingen.**
+ *    De `db-uri` van PostgREST is van deze kant niet uit te lezen, en twee
+ *    strings naast elkaar leggen zou de omweg bewaken en niet de belofte. Dit
+ *    toetst het enige dat telt: *ziet de kant die meet, wat de kant die muteert
+ *    doet?*
+ *
+ * ⚠️ `notify pgrst, 'reload schema'` is nodig omdat PostgREST zijn schemacache
+ *    vasthoudt; zonder die regel is een vers aangemaakte tabel een 404 om een
+ *    reden die niets met de database te maken heeft.
+ *
+ * ⚠️ **Het merkteken gaat er in een `finally` weer uit**, ook als de vraag
+ *    onderweg omvalt. Een achtergebleven tabel is hier geen vuiltje maar een
+ *    tweede run die op zijn eigen rommel struikelt.
+ */
+/**
+ * Eén poging: vraagt PostgREST naar het merkteken.
+ *
+ * ⚠️ Los van de lus omdat `max-depth` anders afgaat — en dat is hier niet alleen
+ *    de linter zijn zin geven: een poging die zijn eigen fout teruggeeft in
+ *    plaats van hem in een buitenliggende variabele te zetten, is ook los te
+ *    toetsen.
+ *
+ * @param {string} merk
+ * @returns {Promise<{ status: number | null, fout?: string }>}
+ */
+async function vraagHetMerk(merk) {
+  try {
+    const antwoord = await fetch(`${POSTGREST_URL}/${merk}?limit=1`);
+    return { status: antwoord.status };
+  } catch (f) {
+    return { status: null, fout: f instanceof Error ? f.message : String(f) };
+  }
+}
+
+export async function koppelingKlopt() {
+  const merk = `pgrst_koppeling_${Date.now().toString(36)}`;
+  psql(
+    `create table public.${merk} (id int);` +
+      `grant select on public.${merk} to anon, authenticated;` +
+      `notify pgrst, 'reload schema';`,
+  );
+
+  try {
+    // PostgREST verwerkt de herlaadmelding asynchroon; even wachten is hier
+    // eerlijker dan één poging en een conclusie.
+    let laatste = { status: null, fout: undefined };
+    for (let poging = 0; poging < 20; poging += 1) {
+      await new Promise((klaar) => setTimeout(klaar, 250));
+      laatste = await vraagHetMerk(merk);
+      if (laatste.status === 200) break;
+    }
+    return beoordeelKoppeling({ status: laatste.status, merk, fout: laatste.fout });
+  } finally {
+    psql(`drop table if exists public.${merk}; notify pgrst, 'reload schema';`);
+  }
+}
+
+/**
+ * Toetst de koppeling en schrijft de uitleg als hij niet klopt.
+ *
+ * ⚠️ Los van `hoofd()` omdat coderegel 15 in `scripts/` een ratel is: het
+ *    plafond mag alleen dálen. Een controle erbij hoort dus een functie erbij te
+ *    zijn en geen regels in een bestaande.
+ *
+ * @returns {Promise<boolean>} of er gemeten mag worden
+ */
+/**
+ * Meet waar `psql` werkelijk uitkomt en schrijft de uitleg als dat niet klopt.
+ *
+ * ⚠️ **De `try` dekt alléén de aanroep en niet het ontleden.** De eerste versie
+ *    deed dat wel, en meldde een échte parseerfout als "geen database" — dan
+ *    lijkt een defect een overslag. Zelfde val als in `kolomrechten-controle`.
+ *
+ * ⚠️ Los van `hoofd()` om dezelfde reden als `koppelingOfMeldFout()`: coderegel
+ *    15 is in `scripts/` een ratel, en dit is de laag waar hij op stuurt.
+ *
+ * @returns {boolean} of de bestemming is wat we denken
+ */
+function bestemmingOfMeldFout() {
+  let adres;
+  let poort;
+  let database;
+  try {
+    [adres, poort, database] = psql(
+      "select coalesce(host(inet_server_addr()), 'unix-socket'), inet_server_port(), current_database();",
+    )
+      .trim()
+      .split('|');
+  } catch (fout) {
+    console.error(
+      '⚠ rls-dekking: OVERGESLAGEN — geen database om mee te verbinden.\n\n' +
+        `psql zei: ${fout instanceof Error ? fout.message.split('\n')[0] : String(fout)}`,
+    );
+    return false;
+  }
+
+  const echt = kloptDeBestemming({ adres, poort, database });
+  if (echt.ok) return true;
+
+  console.error(`✗ rls-dekking weigert te draaien: ${echt.reden}.`);
+  return false;
+}
+
+async function koppelingOfMeldFout() {
+  const koppeling = await koppelingKlopt();
+  if (koppeling.ok) return true;
+
+  console.error(
+    `✗ rls-dekking weigert te rapporteren: ${koppeling.reden}.\n\n` +
+      'Dit is geen "alles onbewaakt" en ook geen "alles bewaakt": het is geen\n' +
+      'meting. Zorg dat PostgREST en psql op dezelfde database wijzen — de\n' +
+      'eenvoudigste weg is `npm run rls:stack`, die zet ze allebei.',
+  );
+  return false;
+}
+
+async function hoofd() {
   const filter = process.argv[2] ?? '';
   const mag = magHierDraaien({
     host: BESTEMMING.host,
@@ -926,24 +1090,13 @@ function hoofd() {
   //    het aan het eind van die beurt weer terug — zie `verdachtePolicies()`.
   // ⚠️ **Nameten waar we uitkwamen, en niet aannemen dat het gelukt is.**
   //    Zie `kloptDeBestemming()`.
-  try {
-    const [adres, poort, database] = psql(
-      "select coalesce(host(inet_server_addr()), 'unix-socket'), inet_server_port(), current_database();",
-    )
-      .trim()
-      .split('|');
-    const echt = kloptDeBestemming({ adres, poort, database });
-    if (!echt.ok) {
-      console.error(`✗ rls-dekking weigert te draaien: ${echt.reden}.`);
-      return 1;
-    }
-  } catch (fout) {
-    console.error(
-      '⚠ rls-dekking: OVERGESLAGEN — geen database om mee te verbinden.\n\n' +
-        `psql zei: ${fout instanceof Error ? fout.message.split('\n')[0] : String(fout)}`,
-    );
-    return 1;
-  }
+  if (!bestemmingOfMeldFout()) return 1;
+
+  // ⚠️⚠️ **Hier, vóór de eerste mutatie.** Vanaf de volgende regel zet dit
+  //    script policies wagenwijd open; als dat in een ándere database landt dan
+  //    de suite meet, is elke uitslag hieronder verzonnen — en in het stille
+  //    geval komt elk gat eruit als bewaakt. Zie QS8-497.
+  if (!(await koppelingOfMeldFout())) return 1;
 
   let ruw;
   try {
@@ -1201,4 +1354,6 @@ function hoofd() {
   return 0;
 }
 
-if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) process.exit(hoofd());
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+  hoofd().then((code) => process.exit(code));
+}

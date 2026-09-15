@@ -119,7 +119,7 @@ export const PLAFOND = Object.freeze({
 export const LANGSTE = Object.freeze({
   'app/': 557,
   'src/shared/ui/': 70,
-  'scripts/': 221,
+  'scripts/': 205,
   // ⚠️ Stond op 280 (`draaiRollover`) tot QS8-424 die functie splitste.
   'supabase/functions/': 115,
 });
