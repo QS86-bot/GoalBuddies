@@ -99,6 +99,7 @@ De 50 bestanden:
 | `0271_een_onzichtbaar_teken_midden_in_een_naam_telt_niet.sql` | QS8-495 | nee |
 | `0272_vindbaar_buiten_je_groep.sql` | QS8-476 | ja |
 | `0273_een_doeltitel_en_een_toetredingsbericht_dragen_geen_bidi_stuurteken.sql` | QS8-498 | nee |
+| `0274_tekst_voor_een_autorisatiebesluit_draagt_geen_bidi_stuurteken.sql` | QS8-501 | nee |
 | `0274_een_dagplafond_op_blokkades_dat_niemand_raakt_die_misbruik_ontvlucht.sql` | QS8-496 | nee |
 
 ⚠️ **Hier stond een uur eerder `0219` met twee bestanden gat, en dat klopte
