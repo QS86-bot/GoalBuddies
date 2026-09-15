@@ -2,7 +2,7 @@
 
 **Datum:** 15-09-2026
 **Issue:** QS8-496
-**Migratie:** 0272 — `blokkades_plafond()`, `begrens_blokkades()`
+**Migratie:** 0273 — `blokkades_plafond()`, `begrens_blokkades()`
 **Raakt:** 0203 (de tien tabellen zonder dagteller), 0145 (`blokkeer()`),
 QS8-476 (`zoek_mensen()`)
 

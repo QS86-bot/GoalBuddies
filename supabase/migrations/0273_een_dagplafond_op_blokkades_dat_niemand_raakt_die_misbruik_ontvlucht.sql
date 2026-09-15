@@ -1,4 +1,4 @@
--- 0272_een_dagplafond_op_blokkades_dat_niemand_raakt_die_misbruik_ontvlucht.sql
+-- 0273_een_dagplafond_op_blokkades_dat_niemand_raakt_die_misbruik_ontvlucht.sql
 -- — `user_blocks` krijgt een dagplafond. QS8-496.
 --
 -- ROLLBACK-PAD:
@@ -109,7 +109,7 @@ comment on function public.blokkades_plafond() is
   'een half keer de afgedwongen bovengrens van het legitieme geval: een groep '
   'is vol bij twaalf en je zit in hoogstens tien groepen, dus via groepen ken '
   'je er hoogstens 110 (0016). Bewust hoog: te laag zit iemand in de weg die '
-  'misbruik ontvlucht, en dat is de verkeerde kant om te falen. Zie 0272 en '
+  'misbruik ontvlucht, en dat is de verkeerde kant om te falen. Zie 0273 en '
   'QS8-496.';
 
 -- ⚠️ Onwrikbare regel 4: `authenticated` staat er met zoveel woorden bij. Deze

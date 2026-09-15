@@ -33,8 +33,8 @@ migratienummer aanziet, legt de lijn drie bestanden te hoog en verklaart
 `0222` t/m `0224` toegepast op een dag dat ze dat niet waren. Zelfde klasse als
 een teller in grafemen bij een grens in codepunten.
 
-**Het gat is daarmee 48 bestanden** — `0225` t/m `0272`, van 09-09
-tot en met 15-09 en uit 38 verschillende issues.
+**Het gat is daarmee 49 bestanden** — `0225` t/m `0273`, van 09-09
+tot en met 15-09 en uit 41 verschillende issues.
 
 ⚠️ **In cijfers en niet voluit, en dat is sinds 14-09-2026 een controle.**
 📏 `NUMMERWOORDEN` in `scripts/docs-controle.mjs` loopt tot `twintig`; daarboven
@@ -46,7 +46,7 @@ stilte een klacht: staat er een bewering en is haar getal niet te lezen, dan is
 dát de fout, en de melding zegt erbij dat er boven de twintig een cijfer hoort.
 Uitleg in `docs/decisions/2026-09-14-een-bewering-die-niet-te-lezen-is.md`.
 
-De 48 bestanden:
+De 49 bestanden:
 
 | | | DDL op `storage.objects` |
 | -- | -- | -- |
@@ -98,7 +98,7 @@ De 48 bestanden:
 | `0270_een_groepsnaam_draagt_geen_bidi_stuurteken.sql` | QS8-494 | nee |
 | `0271_een_onzichtbaar_teken_midden_in_een_naam_telt_niet.sql` | QS8-495 | nee |
 | `0272_vindbaar_buiten_je_groep.sql` | QS8-476 | ja |
-| `0272_een_dagplafond_op_blokkades_dat_niemand_raakt_die_misbruik_ontvlucht.sql` | QS8-496 | nee |
+| `0273_een_dagplafond_op_blokkades_dat_niemand_raakt_die_misbruik_ontvlucht.sql` | QS8-496 | nee |
 
 ⚠️ **Hier stond een uur eerder `0219` met twee bestanden gat, en dat klopte
 toen.** `0220` en `0221` zijn erna toegepast en `0222` t/m `0226` landden
@@ -362,7 +362,7 @@ schemaname = 'public'` gaf `41|41`. Vraag het aan de database en niet aan deze
 regel — net als bij het aantal migraties in §0.
 
 <!-- STAND:BEGIN — gegenereerd door `npm run stand` -->
-Migraties `0001` t/m `0272` staan in de map: **275 bestanden**,
+Migraties `0001` t/m `0273` staan in de map: **276 bestanden**,
 waarvan 3 met een letter-achtervoegsel (`0039a`, `0041a`, `0052a`).
 De nummering is aaneengesloten.
 <!-- STAND:EINDE -->
