@@ -87,16 +87,55 @@
 --   | `chat_messages.body`     | nee                  | —                |
 --   | `daily_moves.body`       | nee                  | —                |
 --
---    De twee routes naar een niet-lid zijn `invite_preview()` (geeft
---    `group_name`, `icon`, `huddle_day`, `zichtbaarheid`, `member_count` en per
---    lid `display_name`, `avatar_url` en `goal_title`) en `ontdek_groepen()`
---    (geeft `naam`, `categorie`, `omschrijving`, `voertaal`, `huddle_day`).
---    Geen van beide raakt die zes kolommen aan.
+--    Er zijn **drie** routes naar een niet-lid, en geen ervan raakt die zes
+--    kolommen aan:
+--
+--      `invite_preview()`  group_name, icon, huddle_day, zichtbaarheid,
+--                          member_count, en per lid display_name, avatar_url
+--                          (altijd null sinds 0128) en goal_title
+--      `ontdek_groepen()`  naam, categorie, omschrijving, voertaal, huddle_day
+--      `zoek_mensen()`     id, display_name, avatar_url            (0272)
+--
+--    ⚠️ Hier stond *"de twee routes"*, en dat sprak twaalf regels verderop
+--       zichzelf tegen — daar staat `zoek_mensen()` als "een níeuw oppervlak
+--       naar vreemden" genoemd. 0272 landde één commit vóór de claim van dit
+--       issue, en de telling was van de dag ervoor. Een telling is precies het
+--       soort bewering dat de volgende lezer overneemt zonder hem na te lopen.
 --
 -- ⚠️ **Dat is een meting van vandaag en geen eigenschap.** Komt er een oppervlak
 --    bij dat een van die zes aan een niet-lid geeft, dan verschuift die rij en
 --    hoort de CHECK erbij. Dat is precies de beweging die dit issue heeft laten
 --    zien: 0270's rij was op de dag van schrijven al onwaar.
+--
+-- ⚠️⚠️ **En deze tabel beantwoordt één van de twee criteria van deze migratie,
+--    niet allebei — dat hoort er met zoveel woorden bij te staan.** De kolom
+--    hierboven vraagt *"bereikt dit een niet-lid"*. Maar §2 grendelt
+--    `group_join_requests.bericht` op een ánder en **breder** criterium:
+--    *"tekst die iemand leest vlak vóór een autorisatiebesluit"*. Langs dát
+--    criterium vallen er vijf kolommen buiten, en ze staan hier opgesomd zodat
+--    niemand deze tabel leest als "alles is nagegaan":
+--
+--      weekly_goals.title        ┐
+--      weekly_goals.floor_text   ├ de goedkeurkaart — `openstaande_beoordelingen()`
+--      weekly_goals.ceiling_text │ en `app/beoordelen.tsx`, boven Bevestigen
+--      completions.note          ┘
+--      deadline_requests.reason    `app/groep/[id].tsx` — als `<Body muted>`
+--                                  direct bóven de regel die zegt dát er een
+--                                  straf op het doel staat, en boven Akkoord
+--
+--    📏 Nagemeten op 15-09-2026: alle vijf dragen alleen een lengte-CHECK, en
+--    `openstaande_beoordelingen()` geeft de eerste vier alle vier terug.
+--
+--    ⚠️ De laatste is de zwaarste: `beslis_deadline_verzoek()` kan een straf
+--       vooruit schuiven (QS8-370, migratie 0218), en die waarschuwing staat
+--       één regel ónder de tekst die de aanvrager zelf schreef. Een `reason` die
+--       anders rendert dan hij is, is domeinregel 5 langs de tekstkant.
+--
+--    Dat gat bestond al vóór deze migratie en wordt hier **niet** gedicht — dat
+--    is een eigen issue (QS8-501) en geen bijvangst. Wat hier wél gebeurt is
+--    het opschrijven, want een scopetabel met een 📏 ernaast die een ándere
+--    vraag beantwoordt dan de migratie stelt, is exact de vorm waar dit issue
+--    over gaat.
 --
 -- 📏 En één die al goed stond: `profiles.display_name` draagt sinds 0269
 --    `profiles_display_name_geen_bidi` én sinds 0271
@@ -118,9 +157,15 @@
 --      `zet_doelstatus` en `zet_streefdatum`.
 --
 -- 📏 `group_join_requests.bericht`:
---   1. **`POST`/`PATCH /rest/v1/group_join_requests`** — allebei `true`.
---   2. `vraag_lidmaatschap_aan()` (schrijft de kolom) en
+--   1. `vraag_lidmaatschap_aan()` — de enige functie die de kolom schrijft — en
 --      `beslis_lidmaatschapsverzoek()`.
+--   2. **`POST`/`PATCH /rest/v1/group_join_requests` is dícht**, en dat is een
+--      correctie: de kolomrechten staan op `true`, maar de policies sluiten die
+--      route alsnog — `group_join_requests_insert` is `with check (false)` en
+--      `group_join_requests_update` is `using (false)` (0144). Hier stond eerst
+--      alleen die `true`, en dat leest als een open route die het niet is.
+--      **Een grant is geen route zolang er een policy overheen ligt** — de
+--      spiegelvorm van QS8-433, waar een grant juist géén slot bleek.
 --
 -- ⚠️⚠️ **En dát is precies waarom de grens een CHECK is en geen policy of
 --    grant.** 📏 Een `security definer` komt langs een policy en langs een
@@ -146,6 +191,19 @@
 --
 -- ⚠️ Wat er met zo'n rij moet gebeuren is een productbeslissing — je herschrijft
 --    het doel of het bericht van een echte gebruiker — en dus geen migratiestap.
+-- ⚠️⚠️ **`begin; … commit;` eromheen, en juist bij deze migratie.**
+--    `docs/DEPLOY.md` §5 schrijft `psql -v ON_ERROR_STOP=1 -f <bestand>` voor,
+--    zónder `--single-transaction`: elk statement commit dan apart. Staat er bij
+--    de uitrol wél een schendende rij in `group_join_requests` maar niet in
+--    `goals`, dan landt de eerste CHECK, valt de tweede om, en stopt psql —
+--    half toegepast, met alleen de notice als spoor.
+--
+--    Dat weegt hier zwaarder dan elders omdat deze migratie er met opzet op
+--    ontworpen is om lúid om te vallen op een bestaande rij. Een vangnet dat
+--    zelf halverwege blijft hangen, is geen vangnet. 📏 50 van de 276 migraties
+--    doen dit expliciet, 0271 incluis.
+begin;
+
 do $$
 declare
   v_titel   bigint;
@@ -213,3 +271,5 @@ comment on constraint group_join_requests_bericht_geen_bidi on public.group_join
   'Het bericht bij een toetredingsverzoek draagt geen bidi-stuurteken — '
   'QS8-498. Het is tekst van een niet-lid die een beheerder leest vlak voor hij '
   'op Aannemen of Afwijzen drukt.';
+
+commit;

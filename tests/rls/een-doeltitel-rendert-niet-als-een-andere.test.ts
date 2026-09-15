@@ -136,11 +136,24 @@ describe.skipIf(!rlsTestsConfigured)('een doeltitel rendert niet als een andere'
       expect(kaart, 'een bidi-override bereikte de uitnodigingskaart').not.toContain(RLO);
       expect(kaart, 'een bidi-isolaat bereikte de uitnodigingskaart').not.toContain(LRI);
 
-      // ⚠️ En de rij is onveranderd — anders is "geen RLO op de kaart" ook waar
-      //    als de schrijfactie stilletjes niets raakte (valkuil 5).
-      expect(besmet.error, 'de schrijfactie werd niet geweigerd').not.toBeNull();
+      // ⚠️⚠️ **De schrijfactie moet érgens toe geleid hebben, maar niet tot één
+      //    bepaalde uitkomst.** Zonder deze regel is "geen RLO op de kaart" ook
+      //    waar als de update stilletjes niets raakte (valkuil 5). Maar eisen
+      //    dát hij geweigerd werd, pint één van de vier opties uit QS8-498
+      //    vast: kiest iemand ervoor om `invite_preview()` de tak aan
+      //    lidmaatschap te hangen, dan lándt de titel gewoon en houdt de
+      //    belofte hierboven het nog steeds. Dus: óf geweigerd en de rij
+      //    onveranderd, óf geland mét het teken — en dan doet de kaart-assertie
+      //    het werk. Het enige dat niet mag is "er gebeurde niets en niemand
+      //    weet waarom".
       const na = await adminDb().from('goals').select('title').eq('id', doelId).single();
-      expect((na.data as { title: string }).title, 'de rij veranderde toch').toBe(schoon);
+      const titelNu = (na.data as { title: string }).title;
+
+      if (besmet.error !== null) {
+        expect(titelNu, 'de schrijfactie werd geweigerd maar de rij veranderde toch').toBe(schoon);
+      } else {
+        expect(titelNu, 'de schrijfactie ging door maar raakte de rij niet').toContain(RLO);
+      }
     },
     TEST_TIMEOUT,
   );
@@ -176,9 +189,12 @@ describe.skipIf(!rlsTestsConfigured)('een doeltitel rendert niet als een andere'
       expect(berichten, 'een stuurteken staat in wat de beheerder leest').not.toContain(RLO);
 
       // De must-allow-helft van dezelfde handeling: een gewoon bericht landt wél.
+      // ⚠️ Arabisch en niet kaal ASCII: `goals` krijgt hieronder drie
+      //    must-allows en dit bericht had er één, in het Latijnse alfabet. Wordt
+      //    `zonder_bidi()` ooit te ruim, dan meldde alleen de doelkant dat.
       const gewoon = await vreemde.db.rpc('vraag_lidmaatschap_aan', {
         p_group_id: groepId,
-        p_bericht: 'Laat me erin, ik loop ook hard',
+        p_bericht: 'أريد الانضمام إليكم، أنا أجري أيضًا',
       });
       expect(gewoon.error, `een gewoon verzoek viel om: ${gewoon.error?.message}`).toBeNull();
       expect((gewoon.data as { ok?: boolean }).ok, 'een gewoon verzoek werd geweigerd').toBe(true);
@@ -197,6 +213,20 @@ describe.skipIf(!rlsTestsConfigured)('een doeltitel rendert niet als een andere'
   //    bij élke schrijving op `goals`, ook eentje die niets met bidi te maken
   //    heeft. 📏 Dat is in 0256, 0269 én 0270 gebeurd en het was elke keer
   //    bijna een ship-stopper.
+
+  // ⚠️ **De insertkant apart, en niet omdat er vandaag een gat is.** Een CHECK
+  //    dekt INSERT en UPDATE allebei, dus dit voegt vandaag niets toe. Maar de
+  //    toets hierboven schrijft het geval met een `update`, en vervangt iemand
+  //    dit ooit door een `before update`-trigger, dan blijft die groen terwijl
+  //    de insertkant openstaat. Eén regel die dat onmogelijk maakt.
+  it(
+    'weigert het stuurteken ook op de insertkant',
+    async () => {
+      const uit = await maakDoel(`Sparen voor ${RLO}gpj.exe`);
+      expect(uit.error, 'een nieuw doel met een stuurteken landde').not.toBeNull();
+    },
+    TEST_TIMEOUT,
+  );
 
   it(
     'laat een gewone doeltitel gewoon door',
