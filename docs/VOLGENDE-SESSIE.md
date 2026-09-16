@@ -8,6 +8,9 @@
 > QS8-499 met `0280` t/m `0282` op `main` — het venster van QS8-318 — en die drie
 > zijn in dezelfde ronde meegenomen. De les staat als punt AJ hieronder.
 >
+> **16-09 daarna: QS8-500 en QS8-451 afgerond.** Het tweede leverde QS8-508 op —
+> de randstap van `schone_naam()` staat in geen enkele CHECK. Les AK hieronder.
+>
 > **Daarvóór:** 16-09-2026, na PR #501 — QS8-499, migratie **0282**.
 > Diezelfde middag landden ook #498 (QS8-493), #499 (QS8-504), #500 en #502.
 >
@@ -624,6 +627,35 @@
 > de Supabase-MCP heeft die sleutel niet nodig, en de hele vergelijking (register,
 > functies, kolommen, constraints, policies, triggers, indexen) is er langs die weg
 > mee gedaan. Dat staat als rij in `docs/ENGINEER-REVIEW.md`.
+>
+> **16-09, punt AK: twee implementaties die het eens zijn, bewijzen niet dat de
+> belofte er nog staat.** QS8-451 vroeg of `schone_naam()` `U+200C` aan de rand
+> van een naam mag strijken — in het Perzisch is dat een betekenisdragend teken.
+> Het antwoord is ja (aan de rand heeft hij niets te scheiden, en hij ís daar een
+> collisievector), maar de opbrengst zit in hoe dat gemeten is.
+>
+> `tests/rls/naamnormalisatie.test.ts` legt de SQL- en de TypeScript-kant over het
+> héle codepuntbereik naast elkaar, in zes omgevingen, en is een van de zorgvuldig
+> geijkte bestanden in deze repo. 📏 Toch: `U+200C` uit **beide** randenlijsten
+> halen — precies de ruil die het issue voorlegde — liet alle **twintig** toetsen
+> groen. De twee talen bleven het immers eens; wat verdween was de belofte.
+>
+> ⚠️ **Een naadtoets meet overeenstemming, niet juistheid**, en die twee lijken op
+> elkaar zolang je maar één kant muteert. Dat staat ook als ijking **J** in
+> `docs/decisions/2026-09-16-de-plek-is-het-probleem-en-niet-het-teken.md`: met de
+> functies intact en de CHECKs weg blijft elke veeg groen. **Muteer dus beide
+> kanten als de vraag over de belofte gaat, en één kant als hij over de naad gaat
+> — en weet vooraf welke van de twee je stelt.**
+>
+> ⚠️⚠️ **En de bijvangst was groter dan het issue.** Bij het narekenen bleek dat
+> géén van de vijf CHECKs op `profiles.display_name` gelijkheid met
+> `schone_naam()` eist: de randstap staat in geen enkele constraint en woont
+> alleen in de aanmeldtrigger en in het clientschema — dat laatste zegt in zijn
+> eigen kop dat het geen grens is. 📏 Gemeten op productie: tien nul-pixeltekens
+> komen aan de rand van een naam langs alle vijf heen. Dat gat stond al sinds
+> ijking H2 van QS8-499 in een beslisdocument; wat er niet was, is een plek waar
+> het als wérk stond. **Een bevinding die alleen in een beslisdocument staat, is
+> opgeschreven en niet ingepland** — nu QS8-508.
 >
 > ⚠️⚠️ **11-09, punt P: een lintregel kan code laten buigen, en dan verplaats je
 > het probleem naar de lezer.** QS8-422 moest in de rollover een `if` in een `if`
