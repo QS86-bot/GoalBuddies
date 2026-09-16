@@ -80,17 +80,77 @@ van deze functie een aftastinstrument maken"*.
 stil hoort te zijn (0145: *"hij krijgt geen bericht en kan het nergens zien"*) —
 iets maken dat je kunt aflezen.
 
-## 5. De toets staat vóór de teller, en dat is gemeten
+## 4a. De eerste versie sloot de leden buiten die er nog in zaten
 
-⚠️⚠️ Geen stijlkeuze. De teller van 0131 is **per groep**: raakt hij vol, dan
-krijgt iedereen met die code `{limiet_bereikt: true}`.
+⚠⚠ **Dit is de duurste fout van dit issue en hij was van mij.** De eerste versie
+van de wachttak weigerde ook **actieve leden van de groep zelf**. Gevonden in de
+security-review, daarna zelf nagemeten.
 
-📏 Gemeten vóór 0277: een weggestuurd lid maakte de teller met 61 aanroepen vol,
-waarna een échte genodigde de kaart niet meer kreeg. Wie de kaart niet mag zien,
-kon het uitnodigen van de héle groep een uur lang stilleggen.
+📏 Gemeten: Anna is actief admin, `mag_groep_lezen() = t`, `status = 'active'`.
+Bram — ook actief lid — roept `blokkeer(anna)` aan. Daarna geeft
+`invite_preview()` aan Anna `null` voor de code van haar **eigen** groep.
 
-De wachttak staat daarom vóór de `insert … on conflict`. 📏 Na 0277 laten
-dezelfde 61 aanroepen de teller onaangeroerd en ziet de genodigde de groep nog.
+De oorzaak is dat `blokkade_met_groep()` niet vraagt *"is deze persoon eruit
+gezet"* maar *"zit er ergens in deze groep een blokkade tussen deze persoon en
+een actief lid"* — symmetrisch en groepsbreed. En blokkeren beéindigt geen
+lidmaatschap: in `app/groep/leden/[id].tsx` zijn `blokkeerLid()` en `zetEruit()`
+twee knoppen. Twee leden van dézelfde groep kúnnen dus een blokkade tussen zich
+hebben.
+
+⚠️ **Het misbruikpad was hoofdgedrag, geen randgeval.** Eén lid blokkeert in het
+ledenscherm de andere elf — geen beheerdersrecht nodig, en `blokkades_plafond()`
+staat sinds QS8-496 op 500 per dag — en vanaf dat moment ziet **niemand** in die
+groep zijn eigen uitnodigingskaart nog. Het scherm meldt dan dat de uitnodiging
+is ingetrokken of verlopen, wat onwaar is. Blokkeren is stil (0145), dus de
+oorzaak is niet te vinden, en alleen de blokkeerder kan het opheffen.
+
+**De reparatie is één voorwaarde:** `not mag_groep_lezen(g.id)` vóór de rest van
+de tak. Die helper is precies *"heeft een actief lidmaatschap"*, dus een
+weggestuurd lid (`false`) en een nooit-lid (`false`) lopen nog steeds in de tak,
+en een actief lid niet. Een actief lid dat de kaart wél krijgt lekt niets: alles
+erop leest hij toch al via de gewone, `mag_groep_lezen()`-afgeschermde
+oppervlakken.
+
+⚠⚠ **Waarom mijn eigen ijkingen dit niet vonden.** A, B en C braken alle drie
+de wéigering en keken of die omviel. Geen van drieën vroeg of de weigering te
+brééd was. En de twee must-allows die er stonden gingen allebei over iemand die
+géén lid is — de genodigde en de anonieme bezoeker — dus ze bleven groen terwijl
+de kaart voor elk actief lid weg was. **Een ijking bevestigt dat je grendel doet
+wat je dacht; hij zegt niets over of je de goede grendel hebt.** Dat is dezelfde
+les als bij QS8-496, en dit is de derde keer in drie issues.
+
+IJKING D legt het nu vast.
+
+## 5. De toets staat vóór de teller — en de eerste reden die hier stond was onwaar
+
+⚠⚠ **Hier stond: *"anders legt een weggestuurd lid het uitnodigen van de hele
+groep een uur stil"*. Dat is aantoonbaar onjuist**, gevonden in de
+security-review. 📏 Gemeten: de wachttak begint met `auth.uid() is not null`, en
+`invite_preview()` is `anon`-uitvoerbaar — over HTTP bevestigd, `POST
+/rpc/invite_preview` zonder `Authorization` geeft 200. Dezelfde weggestuurde
+persoon, uitgelogd, krijgt de kaart **én** hoogt de teller op:
+
+| | kaart | teller |
+|---|---|---|
+| ingelogd | `null` | geen rij |
+| uitgelogd, zelfde persoon, zelfde code | volledige kaart | 1, daarna 4 |
+
+Die DoS bestaat dus nog, maar hij is niet van 0277: hij hoort bij 0131 en geldt
+voor iedereen die de code heeft. Hij staat nu als rij in
+`docs/ENGINEER-REVIEW.md`.
+
+**De volgorde blijft staan, om een reden die wél houdt.** Een ongeldige code
+keert terug vóór de `insert … on conflict` en laat géén tellerrij achter. Stond
+de wachttak eráchter, dan liet een géldige code wél een rij achter — ook voor wie
+uitgesloten is — en dan is het verschil tussen *"deze code bestaat niet"* en
+*"jij bent eruit"* af te lezen aan de teller. Nu lijken die twee ook in wat ze
+achterlaten op elkaar, en dat is precies waar het ééne antwoord van §4 voor is.
+
+⚠️ **De les is niet "beter nameten" maar waar dit geld kost.** CLAUDE.md zegt
+het met zoveel woorden: *een afwijking die je onderbouwt is duurder dan een die
+je vergeet* — een omissie valt op, een uitgeschreven argument leest de volgende
+persoon als een reden om er niet aan te twijfelen. Deze paragraaf stond met een
+📏-teken erbij terwijl er alleen de ingelogde helft gemeten was.
 
 ## 6. Wat dit niet dicht doet
 
@@ -110,11 +170,12 @@ verloopt; richting 1 is de enige die hem raakt, en die is hierboven afgewogen.
 
 📏 Mutatie per grendel, 16-09-2026:
 
-| IJKING | Gebroken | Wat er omviel (van 5) |
+| IJKING | Gebroken | Wat er omviel (van 6) |
 |---|---|---|
 | A | de hele wachttak | 3 — beide weigeringen én de teller; de must-allows bleven groen |
 | B | alleen de `inactive`-tak (blokkade blijft) | **2** — de weggestuurde én de teller; de geblokkeerde bleef groen |
 | C | de wachttak ná de teller | 1 — de teller-toets, op zijn eigen belofte |
+| D | `not mag_groep_lezen(g.id)` uit de tak | 1 — en precies de must-allow van §4a; de andere vijf bleven groen |
 
 ⚠️ **Bij B stond eerst "1 rood", en dat was een voorspelling en geen meting.**
 De weggestuurde kijkt dan niet alleen weer naar binnen, hij stookt óók de teller
@@ -127,3 +188,31 @@ wat over de weigering gaat en niet over de genodigde. De lus toetst nu niets en
 de belofte staat er alleen achter. **Een toets die struikelt vóórdat hij toekomt
 aan wat hij belooft, bewaakt die belofte niet** — dezelfde les als bij QS8-496,
 en dit is de tweede keer in twee issues dat hij zich voordoet.
+
+⚠⚠ **En de opstelling zelf is twee keer fout geweest, allebei gevangen door een
+eigen controle erin.** 📏 Eerst riep hij `verwijder_lid()` aan op iemand die
+nooit was toegetreden: de RPC gaf géén fout en liet géén rij achter. 📏 Daarna
+stelde hij de premisse vast met `mag_groep_lezen()` via `psql()` — dat draait als
+superuser zónder JWT, dus `auth.uid()` is null en de helper geeft altijd `f`.
+Allebei de keren viel de toets om op zijn eigen opstelling. **Zet in een
+opstelling een controle op wat je denkt te hebben neergezet**; dat is hier drie
+issues op rij het verschil geweest tussen een toets die meet en een die dat
+alleen lijkt te doen.
+
+## 8. Wat de security-review verder vond en wat ermee gebeurd is
+
+| Bevinding | Wat ermee gedaan is |
+|---|---|
+| **K1** — actieve leden buitengesloten | Gerepareerd, zie §4a, met IJKING D eronder |
+| **M2** — de DoS-onderbouwing van de volgorde is onwaar | §5 herschreven; de DoS staat als rij in `ENGINEER-REVIEW.md` |
+| **M3** — de opstelling zette `inactive` met de hand | Gaat nu via `join_group_with_code()` + `verwijder_lid()`, zodat de naad zelf getoetst wordt |
+| **M4** — geen must-allow voor een actief lid | Toegevoegd en geïjkt met de K1-mutatie (IJKING D) |
+| L5 — timing onderscheidt "ingetrokken" van "jij bent eruit" | Rij in `ENGINEER-REVIEW.md` |
+| L6 — wat een weggestuurd lid anóniem overhoudt | Rij, en §6 hierboven noemt het |
+| L7 — `order by target_date` zonder tiebreaker | Rij; voorbestaand uit 0128 |
+| L8 — de guard weigert stil in plaats van luid | Rij; geen gat, wel goed om te weten |
+| L9 — `goals` heeft geen expliciete DELETE-policy | Rij; voorbestaand, buiten dit issue |
+
+⚠️ **Wat er níet gerepareerd is, is niet weggeschreven maar weggezet met een
+voorwaarde** — elke rij zegt wanneer hij zwaarder wordt.
+

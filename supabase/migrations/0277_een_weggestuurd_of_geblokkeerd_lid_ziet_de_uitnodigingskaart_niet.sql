@@ -136,13 +136,56 @@ begin
   --    hoort te zijn (0145: *"hij krijgt geen bericht en kan het nergens zien"*)
   --    — iets maken dat je kunt aflezen.
   --
-  -- ⚠️⚠️ **En de toets staat vóór de teller, niet erna.** Dat is geen
-  --    stijlkeuze: 📏 gemeten dat een weggestuurd lid met 61 aanroepen de teller
-  --    van 0131 volmaakt, waarna een échte genodigde `{"limiet_bereikt": true}`
-  --    krijgt. De teller is per groep, dus wie de kaart niet mag zien kon het
-  --    uitnodigen van de héle groep een uur lang stilleggen. Erna toetsen laat
-  --    dat staan.
+  -- ⚠️⚠️ **En de toets staat vóór de teller, niet erna — om de teller zelf geen
+  --    orakel te laten zijn.** Een ongeldige code keert terug vóór de
+  --    `insert … on conflict` en laat dus géén tellerrij achter. Stond de
+  --    wachttak eráchter, dan liet een géldige code wél een rij achter, ook voor
+  --    wie uitgesloten is — en dan is het verschil tussen *"deze code bestaat
+  --    niet"* en *"jij bent eruit"* af te lezen aan de teller. Nu lijken die twee
+  --    ook in wat ze achterlaten op elkaar, en dat is de hele bedoeling van het
+  --    ééne antwoord hierboven.
+  --
+  --    ⚠⚠ **Hier stond een ánder argument, en dat was aantoonbaar onwaar.** Er
+  --    stond dat een weggestuurd lid anders de teller van 0131 zou kunnen
+  --    volstoken en zo het uitnodigen van de hele groep een uur kon stilleggen.
+  --    📏 Gemeten in de security-review: dat kan hij nog steeds — hij logt uit.
+  --    De wachttak begint met `auth.uid() is not null`, en `invite_preview()` is
+  --    `anon`-uitvoerbaar (over HTTP bevestigd: 200 zonder `Authorization`).
+  --    Dezelfde persoon, uitgelogd, krijgt de kaart én hoogt de teller op.
+  --
+  --    Die DoS is dus echt maar niet van deze migratie: hij hoort bij 0131 en
+  --    bestaat voor íedereen met de code. Hij staat als rij in
+  --    `docs/ENGINEER-REVIEW.md`. De volgorde blijft staan om de reden hierboven,
+  --    die wél houdt.
+  -- ⚠⚠ **`not mag_groep_lezen()` staat er om een gemeten reden en niet uit
+  --    voorzichtigheid.** Zonder die voorwaarde sluit deze tak ook **actieve
+  --    leden** buiten hun éégen groep, en dat is met één stille handeling over de
+  --    hele groep af te dwingen:
+  --
+  --    📏 Gemeten (gevonden in de security-review): Anna is actief admin met
+  --    `mag_groep_lezen() = t` en `status = 'active'`. Bram, ook actief lid,
+  --    roept `blokkeer(anna)` aan. Daarna geeft `invite_preview()` aan Anna
+  --    `null` voor de code van haar éigen groep.
+  --
+  --    De oorzaak is dat `blokkade_met_groep()` niet vraagt *"is deze persoon
+  --    eruit gezet"* maar *"zit er ergens in deze groep een blokkade tussen deze
+  --    persoon en een actief lid"* — symmetrisch en groepsbreed. En blokkeren
+  --    beéindigt geen lidmaatschap (0145; `blokkeerLid()` en `zetEruit()` zijn in
+  --    `app/groep/leden/[id].tsx` twee knoppen), dus twee leden van dézelfde
+  --    groep kúnnen een blokkade tussen zich hebben.
+  --
+  --    ⚠️ Het misbruikpad is gewoon hoofdgedrag: één lid blokkeert in het
+  --    ledenscherm de andere elf — geen beheerdersrecht nodig, en
+  --    `blokkades_plafond()` staat op 500 per dag — waarna niemand in die groep
+  --    zijn eigen uitnodigingskaart nog ziet. Het scherm meldt dan dat de
+  --    uitnodiging is ingetrokken, wat onwaar is, en blokkeren is stil, dus de
+  --    oorzaak is niet te vinden. Alleen de blokkeerder kan het opheffen.
+  --
+  --    Een actief lid dat de kaart wél krijgt lekt niets: alles erop — namen en
+  --    doeltitels van zijn groepsgenoten — leest hij toch al via de gewone,
+  --    `mag_groep_lezen()`-afgeschermde oppervlakken.
   if (select auth.uid()) is not null
+     and not mag_groep_lezen(g.id)
      and (
        blokkade_met_groep(g.id, (select auth.uid()))
        or exists (
