@@ -1101,7 +1101,7 @@ function HeldenKaart({
  * ⚠⚠ **Hier stond eerst "held en trigger zijn één op één, dus de naam van de
  *    held draagt de reden al" — en 0268 weerlegt dat in zijn eigen kop.** De
  *    bijectie houdt voor víjf van de zes triggers; `tussendoor` draagt iemands
- *    quízheld en geen gebeurtenis. 0278 laat daarom alleen `mijlpaal` en
+ *    quízheld en geen gebeurtenis. 0279 laat daarom alleen `mijlpaal` en
  *    `stilte` door, en vóór die twee is de bewering wél waar.
  *
  * ⚠️ De zin loopt van de held naar de persoon, omdat de kop dat ook doet. Met

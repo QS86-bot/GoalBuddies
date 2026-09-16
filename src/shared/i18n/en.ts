@@ -1945,7 +1945,7 @@ export const en: Record<Sleutel, string> = {
   'klassement.teller_mislukt': 'The counter could not be loaded.',
   'klassement.opnieuw': 'Try again',
 
-  // The hero list of an open group — QS8-493, RPC from 0268/0278.
+  // The hero list of an open group — QS8-493, RPC from 0268/0279.
   // ⚠️ The wording follows `bevestiging.groep_openzetten.uitleg`, which is the
   //    text the consent rests on. "seven days" rather than "week": the window is
   //    a rolling UTC one and follows neither the cycle start nor the huddle day.

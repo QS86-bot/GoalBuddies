@@ -2450,7 +2450,7 @@ export const nl = {
   'klassement.teller_mislukt': 'De teller kon niet geladen worden.',
   'klassement.opnieuw': 'Opnieuw proberen',
 
-  // De heldenlijst van een open groep — QS8-493, RPC uit 0268/0278.
+  // De heldenlijst van een open groep — QS8-493, RPC uit 0268/0279.
   // ⚠⚠ **De kop noemt de held en niet de persoon**, want de rij doet dat ook.
   //    Met de naam voorop las "Wie er langs is geweest → Anna" als het
   //    tegendeel van wat er bedoeld is. Gevonden in de gebruikersreview.

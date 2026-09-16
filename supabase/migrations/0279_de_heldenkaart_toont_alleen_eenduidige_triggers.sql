@@ -1,4 +1,4 @@
--- 0278_de_heldenkaart_toont_alleen_eenduidige_triggers.sql
+-- 0279_de_heldenkaart_toont_alleen_eenduidige_triggers.sql
 -- — `groep_helden()` laat `misser` en `tussendoor` vallen. QS8-493.
 -- Afweging en metingen:
 -- `docs/decisions/2026-09-16-een-held-die-het-tegenovergestelde-zegt.md`

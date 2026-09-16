@@ -26,7 +26,7 @@ import { psql } from './psql-stack';
  *    verschijning gebruikt met alléén `groups.zichtbaarheid` omgezet. Twee
  *    aparte opstellingen zouden op tien manieren kunnen verschillen; deze op één.
  *
- * ⚠⚠ **Hier stond `trigger = 'misser'` als de rij die eróm gaat, en sinds 0278
+ * ⚠⚠ **Hier stond `trigger = 'misser'` als de rij die eróm gaat, en sinds 0279
  *    geeft deze functie die niet meer door.** QS8-493 gaf hem een scherm, en
  *    toen bleek `misser` door de dágelijkse nudge geschreven te worden — "vandaag
  *    niets gedaan" en niet "een week gemist". A41 opende gemiste wéken en
@@ -211,7 +211,7 @@ describe.skipIf(!rlsTestsConfigured)('groep_helden() — je held in een open gro
   let henk: TestUser;
   /** Krijgt een trigger die deze groep niet mag zien. */
   let ilse: TestUser;
-  /** Twee leden voor de uitsluitingstoets van 0278; elk krijgt één verboden trigger. */
+  /** Twee leden voor de uitsluitingstoets van 0279; elk krijgt één verboden trigger. */
   let jasper: TestUser;
   let karin: TestUser;
 
@@ -554,7 +554,7 @@ describe.skipIf(!rlsTestsConfigured)('groep_helden() — je held in een open gro
         /**
          * ⚠⚠ **Een allowlist en geen doorgeefluik.** De CHECK op
          *    `hero_appearances.trigger` laat zes waarden toe; deze functie geeft
-         *    er sinds 0278 nog **twee** door. `nieuw_doel` zou de open groep
+         *    er sinds 0279 nog **twee** door. `nieuw_doel` zou de open groep
          *    vertellen dát dit lid een doel heeft aangemaakt — geen tegenslag,
          *    dus niet wat A41 opent, en per persoon in plaats van per doel, wat
          *    botst met domeinregel 4.
@@ -584,10 +584,10 @@ describe.skipIf(!rlsTestsConfigured)('groep_helden() — je held in een open gro
     );
 
     it(
-      'laat `misser` en `tussendoor` er sinds 0278 buiten — de kaart mag niets bewéren',
+      'laat `misser` en `tussendoor` er sinds 0279 buiten — de kaart mag niets bewéren',
       async () => {
         /**
-         * ⚠⚠ **Dit is de belofte van 0278 en de duurste les van QS8-493.** Tot
+         * ⚠⚠ **Dit is de belofte van 0279 en de duurste les van QS8-493.** Tot
          *    16-09-2026 gaf deze functie ook `misser` en `tussendoor` door. Het
          *    scherm dat er toen bij kwam, kon daardoor het tegenovergestelde
          *    beweren van wat er gebeurd was:

@@ -2,7 +2,7 @@
 
 **Datum:** 16-09-2026
 **Issue:** QS8-493
-**Migratie:** 0278 — `groep_helden()`
+**Migratie:** 0279 — `groep_helden()`
 **Raakt:** 0268 (de RPC en zijn allowlist), 0264 (`hero_appearances`), A41,
 domeinregel 7, domeinregel 9, rij 37 in
 `docs/decisions/002-domeinregel7-oppervlakken.md`
@@ -113,7 +113,7 @@ is niet veranderd.
 | `t()` met een samengestelde sleutel, terwijl `heldTekstSleutel()` daarvoor bestaat sinds QS8-474 | Gerepareerd |
 | Lange namen duwden de held van het scherm | Gerepareerd: één zin in plaats van twee kolommen met `space-between` |
 | `groepshelden.van_totaal` is onbereikbaar (pagina 20, groep maximaal 12) | Weggehaald; de paginering in de datalaag blijft, want die hoort bij de RPC |
-| Eén eenzame naam op de kaart is opvallender dan de laatste plek op een ranglijst | **Niet gerepareerd** — rij in `ENGINEER-REVIEW.md`. Een drempel is een productkeuze, en na 0278 is de overgebleven inhoud minder pijnlijk |
+| Eén eenzame naam op de kaart is opvallender dan de laatste plek op een ranglijst | **Niet gerepareerd** — rij in `ENGINEER-REVIEW.md`. Een drempel is een productkeuze, en na 0279 is de overgebleven inhoud minder pijnlijk |
 | Vier foutdoosjes onder elkaar bij één hapering | **Niet gerepareerd** — rij; het raakt vier bestaande kaarten en niet alleen deze |
 | De kaart is een doodlopend eind: geen uitleg wie die helden zijn | **Niet gerepareerd** — rij |
 | Geen uitweg uit de heldenlijst behalve de groep verlaten | **Niet gerepareerd** — bestaande rij van 14-09, nu herwogen omdat het oppervlak echt zichtbaar is |
