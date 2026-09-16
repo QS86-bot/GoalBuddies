@@ -2450,6 +2450,24 @@ export const nl = {
   'klassement.teller_mislukt': 'De teller kon niet geladen worden.',
   'klassement.opnieuw': 'Opnieuw proberen',
 
+  // De heldenlijst van een open groep — QS8-493, RPC uit 0268/0279.
+  // ⚠⚠ **De kop noemt de held en niet de persoon**, want de rij doet dat ook.
+  //    Met de naam voorop las "Wie er langs is geweest → Anna" als het
+  //    tegendeel van wat er bedoeld is. Gevonden in de gebruikersreview.
+  // ⚠️ **"zeven dagen" en niet "de afgelopen week".** Het venster van de RPC is
+  //    rollend en op UTC; het volgt noch je eigen week-startdag noch de
+  //    huddledag. "Week" is in deze app een geladen woord (domeinregel 1).
+  // ⚠️ De uitleg begint niet met dezelfde bijzin als `klassement.uitleg`. Twee
+  //    kaarten onder elkaar die allebei met "Jullie hebben afgesproken open te
+  //    zijn" beginnen, lezen als een sjabloon.
+  'groepshelden.kop': 'Welke held er langskwam',
+  'groepshelden.uitleg':
+    'In deze groep zie je van elkaar welke held er de afgelopen zeven dagen langskwam.',
+  'groepshelden.rij': 'Bij {naam} kwam {held} langs',
+  'groepshelden.leeg': 'Deze zeven dagen kwam er bij niemand een held langs.',
+  'groepshelden.laden_mislukt': 'De heldenlijst kon niet geladen worden.',
+  'groepshelden.opnieuw': 'Opnieuw proberen',
+
   'teller.kop': 'Samen',
   'teller.weken_een': '1 week afgerond',
   'teller.weken_meer': '{n} weken afgerond',

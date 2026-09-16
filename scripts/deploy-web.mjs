@@ -47,6 +47,31 @@ import { beoordeelAntwoorden, VERPLICHTE_PADEN } from './pwa-controle.mjs';
 
 config({ path: '.env', quiet: true });
 
+/**
+ * De basis van de Hostinger-API.
+ *
+ * ⚠️⚠️ **Hostinger heeft deze API geherstructureerd en dat is stil gebeurd** —
+ *    gemeten bij de echte deploy van 16-09-2026 (QS8-504). Twee routes gaven
+ *    404 en de deploy liep vast op een script dat maanden had gewerkt. Vandaar
+ *    één constante voor de basis: een derde route kan nu niet los afdrijven.
+ *
+ * ⚠️ **Wat er verhuisd is, en waarheen** (zie `upload()` en `zetLive()`):
+ *
+ *      GET  …/websites/{user}/{domein}/upload-url
+ *        -> POST …/files/upload-urls          met {username, domain} in de body
+ *      POST …/websites/{user}/{domein}/static-deploy
+ *        -> POST …/accounts/{user}/websites/{domein}/deploy
+ *
+ * ⚠️⚠️ **Herkomst van die twee vormen, en dat hoort erbij:** ze komen uit een
+ *    deploy die daadwerkelijk slaagde — `goalbuddies.q-projects.tech` stond er
+ *    daarna live — en niet uit een eigen lezing van de OpenAPI-spec. De sessie
+ *    die deze wijziging schreef kon `developers.hostinger.com` niet bereiken
+ *    (egress-proxy). Een geslaagde deploy is sterker bewijs dan een specpagina,
+ *    maar het is bewijs van één moment: gaat een volgende deploy weer op 404,
+ *    kijk dan hier eerst.
+ */
+const API = 'https://developers.hostinger.com/api/hosting/v1';
+
 const DOMEIN = 'goalbuddies.q-projects.tech';
 const GEBRUIKER = 'u349450154';
 const DIST = 'dist';
@@ -408,11 +433,29 @@ ${regels.join('\n')}
 # ⚠️ Sommige Apache-installaties kennen manifest.json niet en sturen
 #    text/plain. Safari negeert het manifest dan stil, en dan is er op iOS geen
 #    "zet op beginscherm" — en zonder beginscherm geen push (QS8-117).
+#
+# ⚠️⚠️ En dezelfde klasse trof de service worker zelf, gemeten bij de echte
+#    deploy van 16-09-2026 (QS8-504): Hostinger levert .js als
+#    \`application/x-javascript\`, en daar registreert geen enkele browser een
+#    service worker op. \`pwa:controle\` keurde dat terecht af.
+#
+#    Het gaat hier om het **content-type** en niet om de cache; dat laatste
+#    staat hierboven in het mod_headers-blok. Twee blokken met dezelfde naam dus,
+#    en met opzet: ze regelen verschillende dingen en Apache kent geen directive
+#    die beide doet. Dit blok staat ná dat andere, zodat de volgordetoets in
+#    \`tests/scripts/deploy-htaccess.test.ts\` het cacheblok blijft meten.
 <IfModule mod_mime.c>
   AddType application/manifest+json .webmanifest
+  AddType text/javascript .js .mjs
 </IfModule>
 <Files "manifest.json">
   ForceType application/manifest+json
+</Files>
+# ⚠️ \`ForceType\` bovenop de \`AddType\` hierboven, en dat is geen dubbelop: een
+#    AddType is te overrulen door een hogere .htaccess of een servermapping, en
+#    dit is het ene bestand waarvoor dat niet mag misgaan.
+<Files "sw.js">
+  ForceType text/javascript
 </Files>
 `;
 
@@ -662,11 +705,13 @@ function pakIn() {
 }
 
 async function upload(archief, token) {
-  const url = `https://developers.hostinger.com/api/hosting/v1/websites/${GEBRUIKER}/${encodeURIComponent(DOMEIN)}/upload-url`;
-
-  const sleutels = await fetch(url, {
+  // ⚠️ De gebruiker en het domein zitten sinds 16-09-2026 in de **body** en niet
+  //    meer in het pad (QS8-504). Zet je ze alleen in het pad, dan geeft deze
+  //    route 404 en niet 400 — de oude URL bestaat simpelweg niet meer.
+  const sleutels = await fetch(`${API}/files/upload-urls`, {
     method: 'POST',
     headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ username: GEBRUIKER, domain: DOMEIN }),
   });
 
   if (!sleutels.ok) {
@@ -710,7 +755,9 @@ async function upload(archief, token) {
 }
 
 async function zetLive(token) {
-  const url = `https://developers.hostinger.com/api/hosting/v1/websites/${GEBRUIKER}/${encodeURIComponent(DOMEIN)}/static-deploy`;
+  // ⚠️ `static-deploy` heette zo tot 16-09-2026 en bestaat niet meer (QS8-504).
+  //    De route hangt nu onder `accounts/{user}` in plaats van onder `websites`.
+  const url = `${API}/accounts/${GEBRUIKER}/websites/${encodeURIComponent(DOMEIN)}/deploy`;
 
   const antwoord = await fetch(url, {
     method: 'POST',
