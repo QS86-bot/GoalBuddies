@@ -271,7 +271,7 @@ describe.skipIf(!rlsTestsConfigured)('Je eigen profiel opslaan', () => {
      *    laat ze met opzet buiten `zonder_bidi()`: ze kéren niets om, ze
      *    markeren. Maar strikt tussen twee ASCII-alfanumerieken markeren ze ook
      *    niets — er is daar geen grens — en `a<RLM>b` is niet van `ab` te
-     *    onderscheiden. QS8-499 (migratie 0280) sluit precies die plek.
+     *    onderscheiden. QS8-499 (migratie 0282) sluit precies die plek.
      *
      * ⚠️ De constraintnaam staat erbij om dezelfde reden als hierboven: dit is
      *    `geen_onzichtbaar_tussen_letters` en niet `geen_bidi`, en een toets die
@@ -314,7 +314,7 @@ describe.skipIf(!rlsTestsConfigured)('Je eigen profiel opslaan', () => {
      *    leest dan waarom hij er stond.
      *
      * ⚠️⚠️ **Hier stond `a<U+200F>b` met als reden "de RLM is een markering en
-     *    geen override", en dat geval is met QS8-499 (migratie 0280) omgeslagen
+     *    geen override", en dat geval is met QS8-499 (migratie 0282) omgeslagen
      *    naar een weigering.** Die reden ging over 0269: de RLM hoort niet in
      *    `zonder_bidi()`, want hij kéért niets om. Hij zegt niets over de plek.
      *

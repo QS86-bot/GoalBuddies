@@ -1,4 +1,4 @@
--- 0280_een_onzichtbaar_teken_tussen_twee_letters_en_een_tag_zonder_vlag.sql —
+-- 0282_een_onzichtbaar_teken_tussen_twee_letters_en_een_tag_zonder_vlag.sql —
 -- de acht uitzonderingen van 0271 krijgen een **contextregel**, en een
 -- subdivisievlag aan het eind van een naam blijft heel (QS8-499).
 --

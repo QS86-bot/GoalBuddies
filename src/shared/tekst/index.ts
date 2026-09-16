@@ -459,7 +459,7 @@ export function zonderOnzichtbaarTussenLetters(ruw: string): string {
     //    voorwaarde voor de hele reeks.** Of die markering daar bidi-werk doet,
     //    is van buitenaf niet te zien — en dan is de conservatieve kant de
     //    juiste. 📏 De prijs is smal en gemeten: `Jan<ZWNJ><RLM> Jansen` blijft
-    //    staan, want die reeks is gemengd. Zie de kop van migratie 0280.
+    //    staan, want die reeks is gemengd. Zie de kop van migratie 0282.
     let heeftRichting = false;
     for (let j = i; j < eind; j += 1) {
       if (isRichtingsmarkering(codepunt(j))) heeftRichting = true;
@@ -589,7 +589,7 @@ export function schoneNaam(ruw: string): string {
   //    ASCII-letters naast elkaar zetten die dat daarvoor niet waren, en stap 4
   //    vuurt alleen tussen ASCII-buren. 📏 `a<U+E0067><U+200C>b` wordt zo `ab`;
   //    omgekeerd blijft `a<ZWNJ>b` over. Uitleg en meting in de kop van
-  //    migratie 0280.
+  //    migratie 0282.
   const tekens = Array.from(
     zonderOnzichtbaarTussenLetters(
       zonderLosseTags(zonderOnzichtbaarMiddenin(zonderBidi(ruw))),

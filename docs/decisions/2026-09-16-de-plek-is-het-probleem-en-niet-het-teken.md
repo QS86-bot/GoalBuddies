@@ -2,7 +2,7 @@
 
 **Datum:** 16-09-2026
 **Issue:** QS8-499
-**Migratie:** 0280
+**Migratie:** 0282
 **Raakt:** domeinregel 3 (peer-goedkeuring is een autorisatiegrens), QS8-448 → QS8-450 → QS8-495
 
 ## De vraag
@@ -347,7 +347,7 @@ precies waarom die notitie zegt dat je "ervoor" moet meten.
 
 ## ⚠️⚠️ De volgorde van stap 3 en 4 was met een onjuist argument verdedigd
 
-In de kop van 0280 stond dat stap 3 vóór stap 4 moet *"omdat daarna elke
+In de kop van 0282 stond dat stap 3 vóór stap 4 moet *"omdat daarna elke
 overgebleven tag er een is die bij een vlag hoort, en stap 4 hem dan niet meer
 per ongeluk kan raken."*
 
