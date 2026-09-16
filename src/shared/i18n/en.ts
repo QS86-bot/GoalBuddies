@@ -1945,6 +1945,17 @@ export const en: Record<Sleutel, string> = {
   'klassement.teller_mislukt': 'The counter could not be loaded.',
   'klassement.opnieuw': 'Try again',
 
+  // The hero list of an open group — QS8-493, RPC from 0268.
+  // ⚠️ Deliberately never says whý a hero came by: hero and trigger are one to
+  //    one, so the hero's name already carries the reason.
+  'groepshelden.kop': 'Who came by',
+  'groepshelden.uitleg':
+    'You agreed to be open, so you can see which hero came by for whom this past week.',
+  'groepshelden.rij_label': '{naam}: {held}, {ondertitel}',
+  'groepshelden.van_totaal': '{getoond} of {totaal} members',
+  'groepshelden.laden_mislukt': 'The hero list could not be loaded.',
+  'groepshelden.opnieuw': 'Try again',
+
   'teller.kop': 'Together',
   'teller.weken_een': '1 week wrapped up',
   'teller.weken_meer': '{n} weeks wrapped up',

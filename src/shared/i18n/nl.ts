@@ -2450,6 +2450,20 @@ export const nl = {
   'klassement.teller_mislukt': 'De teller kon niet geladen worden.',
   'klassement.opnieuw': 'Opnieuw proberen',
 
+  // De heldenlijst van een open groep — QS8-493, RPC uit 0268.
+  // ⚠️⚠️ **Er staat bewust nergens wáárom een held langskwam.** Held en trigger
+  //    zijn één op één (`heldVoorTrigger`), dus de naam van de held dráágt de
+  //    reden al; hem er in proza bij zetten is dubbelop en botter. De
+  //    bevestigingstekst hierboven belooft *"welke held er langs is geweest"* en
+  //    niet waarom, en dat is precies de grens die rij 37 toestaat.
+  'groepshelden.kop': 'Wie er langs is geweest',
+  'groepshelden.uitleg':
+    'Jullie hebben afgesproken open te zijn, dus zie je hier welke held er de afgelopen week bij wie langskwam.',
+  'groepshelden.rij_label': '{naam}: {held}, {ondertitel}',
+  'groepshelden.van_totaal': '{getoond} van {totaal} leden',
+  'groepshelden.laden_mislukt': 'De heldenlijst kon niet geladen worden.',
+  'groepshelden.opnieuw': 'Opnieuw proberen',
+
   'teller.kop': 'Samen',
   'teller.weken_een': '1 week afgerond',
   'teller.weken_meer': '{n} weken afgerond',
