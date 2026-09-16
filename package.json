@@ -72,6 +72,7 @@
     "cidekking:controle": "node scripts/ci-controles.mjs",
     "rpc:controle": "node scripts/rpc-argumenten-controle.mjs",
     "markeringen:controle": "node scripts/conflictmarkeringen-controle.mjs",
+    "tabelcellen:controle": "node scripts/tabelcellen-controle.mjs",
     "storage:controle": "node scripts/storage-controle.mjs",
     "realtime-identiteit:controle": "node scripts/realtime-identiteit-controle.mjs",
     "avatar:controle": "node scripts/avatar-controle.mjs",
