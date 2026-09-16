@@ -174,10 +174,13 @@ export const CENSUS = {
     groepszichtbaar: false,
     kolommen: 'id, commitment_id, actor_id, event_type, payload, created_at, seq',
   },
-  commitments: {
-    groepszichtbaar: true,
-    kolommen: 'id, goal_id, type, body, image_url, beneficiary_group_id, status, confirmed_at, created_at, beneficiary_user_id',
-  },
+  // ⚠️ `commitments` stond hier tot 0279 met een tabelbrede SELECT. Die is
+  //    ingetrokken en per kolom teruggegeven, juist omdat `tz` er níet bij hoort:
+  //    de begunstigde groep leest deze rij zodra een straf `unlocked`, `due` of
+  //    `resolved` is, en een tabelbrede grant zou elke nieuwe kolom meegeven.
+  //    Een rij hier houden die zijn grant kwijt is, dekt ooit stilletjes een
+  //    tabel die hem wél heeft — vandaar dat deze controle daar zelf rood op
+  //    wordt.
   completion_approval_rules: {
     groepszichtbaar: true,
     kolommen: 'completion_id, group_id, approvals_required, created_at',

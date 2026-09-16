@@ -307,7 +307,10 @@ describe.skipIf(!rlsTestsConfigured || !stackErIs)('QS8-312 — een straf in wer
         .from('commitments')
         .update({ status: 'cancelled' })
         .eq('id', w.strafSet)
-        .select();
+        // ⚠️ Een kale `.select()` is `select('*')`, en dat geeft sinds 0279
+        //    een 42501: de SELECT-grant op `commitments` is per kolom en `tz`
+        //    ligt erbuiten. Vraag alleen terug wat deze toets nodig heeft.
+        .select('id, status');
       expect(trek.error).toBeNull();
       expect(trek.data ?? []).toHaveLength(1);
 
