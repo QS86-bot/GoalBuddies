@@ -168,36 +168,59 @@ ijkingen daar werden rood van een randenlijst die de ijking zelf per ongeluk had
 verouderd, en dat rood bewees niets. De randenlijst hierboven verschilt op één
 plek van de gedeployde: `\2000-\200F` is `\2000-\200B\200D-\200F` geworden.
 
-## ⚠️ 6a. Wat de twee omgevingen kosten, en waarom het plafond meeging
+## ⚠️⚠️ 6a. Een meting die zichzelf niet terugvond — de teruggedraaide verhoging
 
 Elke omgeving in `CONTEXTEN` doet een volledige veeg over
-`generate_series(1, 1114111)` met `schone_naam()` erop, aan beide kanten. Twee
-omgevingen erbij is dus geen randgeval maar een derde meer werk in het duurste
-bestand van de RLS-suite.
+`generate_series(1, 1114111)` met `schone_naam()` erop. Twee omgevingen erbij is
+dus meetbaar meer werk in het duurste bestand van de RLS-suite, en de vraag was
+of het CI-plafond van 15 minuten dat nog droeg.
 
-📏 Gemeten op dezelfde machine, zelfde stack, zelfde bestand:
+**Eerst gemeten, daarna verkeerd geconcludeerd, daarna teruggedraaid.**
+
+📏 Lokaal, hetzelfde bestand, dezelfde stack:
 
 | stand | duur | toetsen |
 |---|---|---|
 | zes omgevingen | 317,97 s | 20 |
 | acht omgevingen | 471,46 s | 21 |
 
-**+153,5 s, +48%.** De RLS-job in CI stond op 11:54 tegen een `timeout-minutes`
-van 15. Met die toename komt hij rond 14:30 uit, en dan is één trage runner
-genoeg om hem om te gooien — een rood dat niets over de code zegt. Het plafond
-staat daarom op 25, met de meting in de kop van de job.
+Daaruit las ik **+48%**, concludeerde dat de CI-job van 11:54 richting 14:30 zou
+gaan, en zette het plafond op 25 — met die meting in de kop van de job.
 
-⚠️ **Dat is een plafond dat meegroeide, en dat is precies de beweging waar dit
-project elders voor waarschuwt.** Het is hier te verdedigen omdat de suite
-aantoonbaar méér doet en niet trager hetzelfde; maar een timeout die bij elke
-run die uitloopt omhoog gaat, meet niets meer. De rem staat in de kop: loopt de
-job richting 20 minuten, dan is de vraag waaróm, niet hoeveel hoger.
+⚠️ **Die twee getallen zijn niet vergelijkbaar.** De 471 s is gemeten terwijl er
+op dezelfde machine vier andere controles liepen (`typecheck`, `docs:controle`,
+`padverwijzing:controle`, `tabelcellen:controle`); de 317 s liep vrijwel alleen.
+Wat er gemeten is, is het verschil in **belasting** en niet het verschil in
+**werk**.
+
+📏 Wat CI ervan maakte, dezelfde dag, dezelfde suite, op een runner met een eigen
+Postgres:
+
+| run | stand | duur |
+|---|---|---|
+| 35142664428 | vóór de wijziging | **719 s** |
+| 35153440786 | ná de wijziging, gemergde staat | **680 s** |
+
+De job werd **niet langzamer**. Het plafond staat weer op 15, en de kop van de
+job draagt nu deze intrekking in plaats van het oude getal.
+
+⚠️⚠️ **De les is niet "het viel mee".** Een timeout is een gemeten grens, en een
+grens die omhooggaat op een getal dat de volgende meting niet terugvindt, is
+precies de drift waar dit project elders voor waarschuwt — met als prijs dat je
+de melding kwijt bent die je ervoor terugkreeg. Het is dezelfde vorm als
+`docs/decisions/2026-09-10-een-rood-is-niet-vanzelf-jouw-rood.md`: een instrument
+dat zijn eigen omstandigheden niet meet, meet zichzelf.
+
+⚠️ **En twee metingen per kant is dun.** Dat CI sneller was kan net zo goed
+runnervariatie zijn als bewijs dat de twee vegen gratis zijn. Wat het wél
+uitsluit is de bewering waarop de verhoging rustte. Wie hier iets aan verandert,
+meet in CI en niet naast een draaiende poort.
 
 ⚠️ **Eén omgeving in plaats van twee is overwogen en afgewezen.** De voor- en de
-achterrand zijn apart te breken — in SQL zijn het twee `regexp_replace`-lagen
-(`^[…]+` en `[…]+$`), in TypeScript twee lussen. Dit bestand heeft daar al een
-toets voor (*"strijkt aan beide kanten exact dezelfde codepunten"*), en één
-omgeving zou de helft van de belofte onbewaakt laten voor de helft van de prijs.
+achterrand zijn apart te breken — in SQL twee `regexp_replace`-lagen (`^[…]+` en
+`[…]+$`), in TypeScript twee lussen. Dit bestand heeft daar al een toets voor
+(*"strijkt aan beide kanten exact dezelfde codepunten"*), en één omgeving zou de
+helft van de belofte onbewaakt laten.
 
 ## 7. Wat dit besluit níét is
 
