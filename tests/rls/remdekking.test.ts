@@ -145,7 +145,7 @@ describe.skipIf(!beschikbaar)('elke dagteller heeft een rem', () => {
     //    er meteen bij zat. Precies de handeling waar hij voor bedoeld is: een
     //    mens die naar de nieuwe teller kijkt en vraagt of er een rem bij hoort.
     // ⚠️⚠️ **De vierde keer ging het ánders, en dat is de meting die telt.**
-    //    0275 (QS8-496) zette de achttiende teller op `user_blocks`, en de rem
+    //    0276 (QS8-496) zette de achttiende teller op `user_blocks`, en de rem
     //    zat er — anders dan de drie hierboven — **niet** meteen bij. De test
     //    hierboven werd rood, met `user_blocks (user_blocks_dagplafond)` in de
     //    melding, en pas daardoor is `rem_blokkades()` er gekomen. 📏 Dit

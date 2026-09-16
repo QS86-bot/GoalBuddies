@@ -127,7 +127,7 @@
 --   aantal rijen niet meer begrensd door wie je kent maar door hoeveel accounts
 --   er zijn, en dan hoort hier een plafond dat ruim boven elk echt gebruik ligt.
 --
---   ✅ **Die voorwaarde is op 15-09-2026 ingetreden en afgehandeld — zie 0275
+--   ✅ **Die voorwaarde is op 15-09-2026 ingetreden en afgehandeld — zie 0276
 --      (QS8-496).** `zoek_mensen()` (QS8-476) geeft tot 50 profiel-id's per
 --      aanroep, en elk teruggegeven `id` is een geldige `blocked_id`; daarmee
 --      verviel de begrenzing "door wie je kent".
@@ -135,7 +135,7 @@
 --      ⚠️ De veiligheidskeuze hierboven is **niet** omgedraaid. Het plafond
 --         staat op 500 — ruim boven het zwaarste echte geval — juist zodat wie
 --         misbruik ontvlucht er nooit tegenaan loopt. Wat begrensd wordt is
---         alleen de bulkvorm. Het getal en de marge staan in de kop van 0275;
+--         alleen de bulkvorm. Het getal en de marge staan in de kop van 0276;
 --         hier staat er met opzet géén tweede versie van, want dit is precies
 --         de plek waar twee documenten uiteen gaan lopen.
 --

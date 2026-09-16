@@ -282,7 +282,7 @@ describe.skipIf(!beschikbaar)('elke groeibare tabel heeft een plafond of een red
     //    de ene tabel schrijf je zelf, de andere schrijft de server — en dat het
     //    hier als één in plaats van twee telt, is de meting die dat bevestigt.
     expect(gevonden.length, 'het aantal groeibare tabellen is veranderd').toBe(32);
-    // ⚠️ En zeventien werd achttien met `user_blocks` (QS8-496, 0275). Die tabel
+    // ⚠️ En zeventien werd achttien met `user_blocks` (QS8-496, 0276). Die tabel
     //    stond hierboven in REGISTER met de reden *"begrensd door het aantal
     //    mensen dat je kunt noemen"* — en die reden verviel toen `zoek_mensen()`
     //    (QS8-476, 0272) er tot vijftig id's per aanroep uit begon te geven. De

@@ -219,7 +219,7 @@ describe('het register zelf', () => {
   it('draagt de achttien numerieke lezers, elk met een reden', () => {
     const rijen = Object.entries(NUMERIEKE_LEZERS);
 
-    // ⚠️ Zeventien werd achttien met `rem_blokkades` (QS8-496, 0275), de rem bij
+    // ⚠️ Zeventien werd achttien met `rem_blokkades` (QS8-496, 0276), de rem bij
     //    de achttiende dagteller. 📏 De controle vond hem zelf: hij stond rood met
     //    `numerieke leesplek zonder registerrij` vóórdat deze regel er was. Dat
     //    is de bedoeling — hij faalt dicht, dus een nieuwe rem meldt zich hier.

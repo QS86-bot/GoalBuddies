@@ -4,7 +4,7 @@ import { adminDb, createTestUser, removeTestUsers, rlsTestsConfigured, type Test
 import { psql } from './psql-stack';
 
 /**
- * Het dagplafond op blokkades — QS8-496, migratie 0275.
+ * Het dagplafond op blokkades — QS8-496, migratie 0276.
  *
  * ⚠️⚠️ **De must-allow weegt hier zwaarder dan de weigering, en dat is geen
  *    stijlkeuze maar de hele opdracht van het issue.** 0203 liet `user_blocks`
