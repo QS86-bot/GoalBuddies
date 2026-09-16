@@ -7,148 +7,74 @@
 > Bijwerken is onderdeel van het werk. Sluit je een issue af, werk dan ook dit
 > bestand bij — anders begint de volgende sessie met verouderde informatie.
 
-**Laatst bijgewerkt:** 16-09-2026 (na QS8-499, migratie 0282; daarvóór QS8-450, QS8-482 en QS8-494 uit deze sessie, en QS8-493, QS8-495, QS8-496, QS8-498, QS8-501, QS8-502, QS8-503 en QS8-504 uit de parallelle; daarvóór QS8-488; daarvóór QS8-471; daarvóór QS8-485; daarvóór QS8-484 en QS8-483; daarvóór QS8-480; daarvóór QS8-479; daarvóór QS8-467; daarvóór QS8-465, QS8-463, QS8-462 en QS8-460; daarvóór QS8-449; daarvóór QS8-448 uit de parallelle sessie; daarvóór QS8-447, QS8-446, QS8-439 en QS8-182; daarvóór QS8-441; daarvóór QS8-443; daarvóór QS8-445; daarvóór QS8-438; daarvóór QS8-434, QS8-435, QS8-431, QS8-416 en QS8-432; diezelfde dag QS8-419, QS8-420, QS8-423, QS8-425, QS8-426, QS8-427, QS8-428, QS8-430 en QS8-432 uit deze sessie en QS8-262 ronde 9, QS8-421 en QS8-422 uit de parallelle; daarvóór de hele novemberronde, alle tien — QS8-180, QS8-181, QS8-183, QS8-184, QS8-189 en QS8-194 uit deze sessie, QS8-179, QS8-182, QS8-187 en QS8-204 uit de parallelle; daarvóór QS8-24; daarvóór QS8-92; daarvóór QS8-392 en QS8-393; daarvóór QS8-396 en QS8-402; daarvóór QS8-404, QS8-399, QS8-400 en QS8-401; daarvóór QS8-403, QS8-140 en QS8-320; daarvóór QS8-243 en QS8-220; daarvóór QS8-314; daarvóór QS8-147, QS8-174, QS8-191, QS8-297, QS8-298, QS8-299, QS8-303 en QS8-304; daarvóór QS8-287, QS8-288, QS8-289 en QS8-291;
-daarvóór QS8-266, QS8-202 en QS8-196, en het toepassen van `0139` t/m `0149` op
+**Laatst bijgewerkt:** 16-09-2026 (na QS8-505 — productie stond 58 migraties achter en staat nu gelijk aan de map; daarvóór QS8-499, migratie 0282; daarvóór QS8-450, QS8-482 en QS8-494 uit deze sessie, en QS8-493, QS8-495, QS8-496, QS8-498, QS8-501, QS8-502, QS8-503 en QS8-504 uit de parallelle; daarvóór QS8-488; daarvóór QS8-471; daarvóór QS8-485; daarvóór QS8-484 en QS8-483; daarvóór QS8-480; daarvóór QS8-479; daarvóór QS8-467; daarvóór QS8-465, QS8-463, QS8-462 en QS8-460; daarvóór QS8-449; daarvóór QS8-448 uit de parallelle sessie; daarvóór QS8-447, QS8-446, QS8-439 en QS8-182; daarvóór QS8-441; daarvóór QS8-443; daarvóór QS8-445; daarvóór QS8-438; daarvóór QS8-434, QS8-435, QS8-431, QS8-416 en QS8-432; diezelfde dag QS8-419, QS8-420, QS8-423, QS8-425, QS8-426, QS8-427, QS8-428, QS8-430 en QS8-432 uit deze sessie en QS8-262 ronde 9, QS8-421 en QS8-422 uit de parallelle; daarvóór de hele novemberronde, alle tien — QS8-180, QS8-181, QS8-183, QS8-184, QS8-189 en QS8-194 uit deze sessie, QS8-179, QS8-182, QS8-187 en QS8-204 uit de parallelle; daarvóór QS8-24; daarvóór QS8-92; daarvóór QS8-392 en QS8-393; daarvóór QS8-396 en QS8-402; daarvóór QS8-404, QS8-399, QS8-400 en QS8-401; daarvóór QS8-403, QS8-140 en QS8-320; daarvóór QS8-243 en QS8-220; daarvóór QS8-314; daarvóór QS8-147, QS8-174, QS8-191, QS8-297, QS8-298, QS8-299, QS8-303 en QS8-304; daarvóór QS8-287, QS8-288, QS8-289 en QS8-291;daarvóór QS8-266, QS8-202 en QS8-196, en het toepassen van `0139` t/m `0149` op
 productie in twee rondes)
 
-⚠️ **Productie staat op `0224`.** 📏 Hermeten op 14-09 om 05:02 UTC met
-`migratieregister()` tegen `wehgocadxehottiiyvsc`: **227 registerrijen**, `0001`
-t/m `0224` aaneengesloten, inclusief de drie letterversies. De map telt er
-**286**.
+⚠️ **Productie staat op `0282`.** 📏 Gemeten op 16-09-2026, direct na de uitrol
+van QS8-505, met `migratieregister()` tegen `wehgocadxehottiiyvsc`: **285
+registerrijen**, `0001` t/m `0282` aaneengesloten, inclusief de drie
+letterversies, en **nul** rijen die nog een tijdstempel als versie dragen.
 
-⚠️ **Hier stond tot 14-09 `0221`, en dat was op 09-09 om 16:10 UTC juist.**
-`0222`, `0223` en `0224` zijn er sindsdien op toegepast — alle drie uit QS8-71,
-en `0222` is degene waarvan de alinea hieronder tot vandaag zei dat een
-bouwsessie hem niet kón toepassen. Dat klopte voor een bouwsessie en niet voor
-Quinten; de lijn beweegt dus ook zonder dat er in deze map iets verandert.
-**Lees hem daarom nooit als getal maar meet hem** — hij is op 09-09 twee keer op
-één dag verschoven en tussen 09-09 en 14-09 nog een keer.
+⚠️⚠️ **En "gelijk aan de map" was het één merge lang.** 📏 Nageteld op
+16-09-2026 ná QS8-506: de map telt er **286** — `0283` staat erin en niet op
+productie. Het gat is daarmee **één bestand**.
+
+Dat is geen achterstand maar de normale toestand tussen twee uitrollen, en het
+staat hier omdat de zin erboven binnen één dag onwaar werd: hij is gelijk-op-het-
+moment-van-schrijven, en dat is precies het venster van QS8-318. **Lees de lijn
+nooit als getal maar meet hem** — de regel hieronder zegt hetzelfde en gold al
+voor deze zin.
+
+⚠️⚠️ **En dat "gelijk" is binnen één ronde al een keer verlopen.** 📏 Toen
+`0225` t/m `0279` toegepast waren, was `main` doorgelopen naar `0282`: QS8-499
+landde tijdens de uitrol. Dat is het venster van QS8-318 — het getal was juist
+toen het opgeschreven werd — en het is precies waarom de regel hieronder staat.
+De drie zijn er in dezelfde ronde bij toegepast.
+
+⚠️ **Lees dit nooit als getal maar meet het.** De lijn is op 09-09 twee keer op
+één dag verschoven en tussen 09-09 en 14-09 nog een keer, telkens doordat er
+buiten een sessie om iets op toegepast werd. Gelijk vandaag is dus niet gelijk
+morgen.
 
 ⚠️⚠️ **Meet hem bovendien met het instrument dat de eenheid deelt.** 📏 Op
-14-09 met twee instrumenten nagemeten: `list_migrations` eindigt op `0224` en
-`migratieregister()` telt **227** rijen. Dat is geen tegenspraak maar het
+14-09 met twee instrumenten nagemeten: `list_migrations` eindigde op `0224` en
+`migratieregister()` telde **227** rijen. Dat is geen tegenspraak maar het
 verschil tussen een nummer en een telling — de drie letterversies (`0039a`,
 `0041a`, `0052a`) dragen geen eigen nummer. Wie de registertelling voor een
-migratienummer aanziet, legt de lijn drie bestanden te hoog en verklaart
-`0222` t/m `0224` toegepast op een dag dat ze dat niet waren. Zelfde klasse als
+migratienummer aanziet, legt de lijn drie bestanden te hoog. Zelfde klasse als
 een teller in grafemen bij een grens in codepunten.
 
-**Het gat is daarmee 59 bestanden** — `0225` t/m `0283`, van 09-09
-tot en met 16-09 en uit 48 verschillende issues.
+⚠️⚠️ **Hier stond tot 16-09-2026 een tabel van 58 achterstallige bestanden én
+de zin dat dat gat "niet vanuit een bouwsessie te dichten" was. Het eerste is
+weg en het tweede was al vier dagen onwaar.** Die zin stond er sinds 09-09 mét
+een meting eronder: `0222` viel toen om op
+`ERROR: 42501: must be owner of table objects`. De conclusie die eruit getrokken
+werd — *elke migratie met DDL op `storage.objects` is van hieruit onmogelijk* —
+is breder dan die meting droeg, en `docs/DEPLOY.md` §2.2 wist het op 12-09 al
+beter: Supabase heeft `create policy` en `create trigger` op die tabel sindsdien
+vrijgegeven, en alleen `create index` wordt nog geweigerd.
 
-⚠️ **In cijfers en niet voluit, en dat is sinds 14-09-2026 een controle.**
-📏 `NUMMERWOORDEN` in `scripts/docs-controle.mjs` loopt tot `twintig`; daarboven
-gaf `telWoord()` `undefined` en sloeg `beoordeelStand()` de gatbewering **over**
-in plaats van er iets over te zeggen. Met `veertig` eroverheen, zoals het hier
-tot 14-09 stond, was deze regel dus ongemeten en niet groen — en `zesendertig`
-op de plek van zevenendertig bleef er even hard groen op. QS8-482 maakte van die
-stilte een klacht: staat er een bewering en is haar getal niet te lezen, dan is
-dát de fout, en de melding zegt erbij dat er boven de twintig een cijfer hoort.
-Uitleg in `docs/decisions/2026-09-14-een-bewering-die-niet-te-lezen-is.md`.
+📏 En dat laatste kwam in `0225` t/m `0282` nergens kaal voor: de drie
+`create index`-opdrachten op `storage.objects` staan in een
+`do $$ … exception when insufficient_privilege … end $$;`, en de twee
+`drop index if exists` van `0233` wijzen naar indexen die op productie niet
+bestaan — nagemeten in `pg_indexes`, daar staan alleen de acht van Supabase
+zelf. Er zat dus nergens meer een rem. Alle 58 zijn op 16-09 vanuit deze sessie
+toegepast.
 
-De 55 bestanden:
+⚠️ **De les is niet "het kon toch wel" maar hoe die rem zeven dagen bleef
+staan:** een gemeten grens (*`0222` valt om*) werd een algemene regel (*storage-DDL
+kan niet van hieruit*), en die regel overleefde de meting waarop hij rustte.
+CLAUDE.md zegt het over precies deze tabel met zoveel woorden — *schrijf een
+gemeten grens nooit zonder zijn meetdatum op; hij verloopt, en wie hem overneemt
+neemt de conclusie over in plaats van de meting.* Dit is de tweede keer dat dat
+hier tijd gekost heeft; de eerste waren de drie dagen van QS8-243.
 
-| | | DDL op `storage.objects` |
-| -- | -- | -- |
-| `0225_een_pad_heeft_een_canonieke_vorm.sql` | QS8-71 | ja |
-| `0226_een_plafond_per_lid_naast_dat_van_de_groep.sql` | QS8-71 | nee |
-| `0227_een_bewijsfoto_hoort_bij_een_weekdoel.sql` | QS8-391 | ja |
-| `0228_een_rem_per_uploader_op_bewijsfotos.sql` | QS8-391 | ja |
-| `0229_een_bewijsfoto_wijst_naar_zijn_eigen_voltooiing.sql` | QS8-391 | nee |
-| `0230_een_bewijsfoto_gaat_mee_met_zijn_eigenaar.sql` | QS8-391 | nee |
-| `0231_de_bewijseis_kent_de_bijlage_weer.sql` | QS8-391 | nee |
-| `0232_de_vingerafdruk_kent_de_handtekening.sql` | QS8-398 | nee |
-| `0233_een_dagteller_die_een_delete_overleeft.sql` | QS8-399 | ja |
-| `0234_een_dagteller_is_niet_alleen_voor_opslag.sql` | QS8-401 | nee |
-| `0235_een_chatfoto_is_een_doorgeefluik_en_geen_archief.sql` | QS8-396 | ja |
-| `0236_goals_select_geeft_de_hele_rij_en_dat_is_nooit_besloten.sql` | QS8-392 | nee |
-| `0237_elke_meldingsoort_heeft_een_schakelaar.sql` | QS8-92 | nee |
-| `0238_te_laat_afronden_laat_de_straf_staan.sql` | QS8-322 | nee |
-| `0239_geen_enkele_emmer_heeft_een_update_pad.sql` | QS8-407 | ja |
-| `0240_een_document_hoort_bij_een_groep.sql` | QS8-72 | ja |
-| `0241_een_rem_op_documenten_per_groep_en_per_lid.sql` | QS8-72 | ja |
-| `0242_een_bijlage_zegt_welke_soort_hij_is.sql` | QS8-72 | nee |
-| `0243_een_bijlage_overleeft_zijn_eigenaar_niet.sql` | QS8-72 | nee |
-| `0244_een_stuurloze_straf_krijgt_de_eigenaar_weer_in_handen.sql` | QS8-333 | nee |
-| `0245_stille_uren.sql` | QS8-406 | nee |
-| `0246_de_lijst_krijgt_een_tabel_die_dicht_staat.sql` | QS8-379 | nee |
-| `0247_het_wisrecht_wint_ook_van_het_systeembericht.sql` | QS8-335 | nee |
-| `0248_een_taak_deel_je_per_stuk_en_met_een_gekozen_groep.sql` | QS8-381 | nee |
-| `0249_vereiste_goedkeuringen_verraadt_geen_lidmaatschap.sql` | QS8-181 | nee |
-| `0250_een_document_volgt_dezelfde_weg_als_een_foto.sql` | QS8-408 | ja |
-| `0251_een_bewaartermijn_voor_alle_bijlagen.sql` | QS8-411 | nee |
-| `0252_de_goedkeuring_wijst_naar_de_eigenaar_van_de_voltooiing.sql` | QS8-182 | nee |
-| `0253_functiegrants_kennen_de_handtekening_en_ook_anon.sql` | QS8-428 | nee |
-| `0254_geen_immutable_functie_zonder_argumenten.sql` | QS8-433 | nee |
-| `0255_elke_fotoemmer_pint_de_extensie_in_zijn_insertpolicy.sql` | QS8-416 | ja |
-| `0256_de_naam_uit_een_aanmelding_wordt_schoon_of_naamloos.sql` | QS8-448 | nee |
-| `0257_een_automatische_goedkeuring_laat_een_spoor_na.sql` | QS8-453 | nee |
-| `0258_de_all_tak_van_alleenlezen_bewaking_toetst_het_recht.sql` | QS8-458 | nee |
-| `0259_een_leespolicy_routeert_via_de_gedeelde_groepstoets.sql` | QS8-459 | nee |
-| `0260_goal_events_krijgt_een_grens_op_vorm_en_omvang.sql` | QS8-464 | nee |
-| `0261_anon_leest_niets_meer_van_wat_een_bezoeker_nooit_hoort_te_zien.sql` | QS8-467 | nee |
-| `0262_clausule_2_van_domeinregel_3_krijgt_een_slot_in_de_database.sql` | QS8-480 | nee |
-| `0263_anon_krijgt_niets_meer_van_een_nieuwe_tabel.sql` | QS8-485 | nee |
-| `0264_een_held_hoort_bij_een_gebruiker_en_zijn_verschijningen_zijn_append_only.sql` | QS8-471 | nee |
-| `0265_een_geweigerde_groepswijziging_zegt_dat_hij_geweigerd_is.sql` | QS8-488 | nee |
-| `0266_een_teruggedraaide_weekboeking_mag_opnieuw_geboekt_worden.sql` | QS8-456 | nee |
-| `0267_een_week_draagt_hoogstens_een_goedkeuringsboeking_per_ronde.sql` | QS8-454 | nee |
-| `0268_een_held_in_een_open_groep_is_zichtbaar_voor_die_groep.sql` | QS8-477 | nee |
-| `0269_een_weergavenaam_draagt_geen_bidi_stuurteken.sql` | QS8-450 | nee |
-| `0270_een_groepsnaam_draagt_geen_bidi_stuurteken.sql` | QS8-494 | nee |
-| `0271_een_onzichtbaar_teken_midden_in_een_naam_telt_niet.sql` | QS8-495 | nee |
-| `0272_vindbaar_buiten_je_groep.sql` | QS8-476 | ja |
-| `0273_een_doeltitel_en_een_toetredingsbericht_dragen_geen_bidi_stuurteken.sql` | QS8-498 | nee |
-| `0274_tekst_voor_een_autorisatiebesluit_draagt_geen_bidi_stuurteken.sql` | QS8-501 | nee |
-| `0275_de_trigger_op_goedkeuringen_toetst_ook_of_de_voltooiing_nog_de_actieve_is.sql` | QS8-503 | nee |
-| `0276_een_dagplafond_op_blokkades_dat_niemand_raakt_die_misbruik_ontvlucht.sql` | QS8-496 | nee |
-| `0277_een_weggestuurd_of_geblokkeerd_lid_ziet_de_uitnodigingskaart_niet.sql` | QS8-502 | nee |
-| `0278_de_bewaking_op_standaardrechten_ziet_ook_een_globale_regel.sql` | reviewrij 14-09 | nee |
-| `0279_de_heldenkaart_toont_alleen_eenduidige_triggers.sql` | QS8-493 | nee |
-| `0280_de_klok_onder_een_straf_ligt_vast_vanaf_het_aangaan.sql` | reviewrij 08-09 | nee |
-| `0281_een_deleterecht_zonder_aanroeper_is_dood_hout.sql` | reviewrij 08-09 | nee |
-| `0282_een_onzichtbaar_teken_tussen_twee_letters_en_een_tag_zonder_vlag.sql` | QS8-499 | nee |
-| `0283_nul_pixeltekens_op_elke_groepszichtbare_tekst.sql` | QS8-506 | nee |
-
-⚠️ **Hier stond een uur eerder `0219` met twee bestanden gat, en dat klopte
-toen.** `0220` en `0221` zijn erna toegepast en `0222` t/m `0226` landden
-intussen op `main`. Dat is de vorm van QS8-318 nog een keer: **een regel over de
-achterstand veroudert terwijl je hem opschrijft**, en de enige stand die klopt is
-de gemeten stand.
-
-⚠️⚠️ **En hier stond tot 09-09 21:45 "vijf bestanden", en toen waren het er
-dertien** — `0227` t/m `0234` landden ná de meting van 16:10. **Dat is dezelfde
-alinea die twee waarschuwingen lager vertelt dat hij dit al eens gedaan heeft.**
-Sinds QS8-404 is het geen zin meer: `docs:controle` telt de map en het gat na en
-wordt rood zodra deze regel eroverheen loopt. Waarom de controle dit tot dan niet
-zag, staat in `docs/decisions/2026-09-09-een-generator-kan-niet-liegen.md`.
-
-⚠️⚠️ **Dit gat is niet vanuit een bouwsessie te dichten, en dat is op 09-09
-gemeten in plaats van aangenomen.** `0222` viel toen om op
-`ERROR: 42501: must be owner of table objects`: `storage.objects` is eigendom van
-`supabase_storage_admin`, de MCP draait als `postgres`, en die is **geen lid** van
-die rol — `set role` geeft *permission denied*. 📏 Op 14-09 herteld: **tien van
-de zevenendertig** doen DDL op die tabel (`0225`, `0227`, `0228`, `0233`, `0235`,
-`0239`, `0240`, `0241`, `0250` en `0255` — zie de kolom hierboven); de andere
-zevenentwintig zouden op zichzelf wél gaan, ook `0226`, dat `storage.objects`
-alleen ín een functielichaam noemt en hem niet bezit. Maar de eerste van de reeks
-is nu `0225`, en die doet die DDL wél, **dus stopt hij nog steeds meteen**. De
-andere zevenentwintig alsnog toepassen slaat een gat in het register, en dat is
-de duurdere kant
-(`docs/decisions/2026-09-08-het-gat-is-erger-dan-de-botsing.md`).
-
-⚠️ **De blokkeerder is dus verschoven van `0222` naar `0225` zonder dat er iets
-aan opgelost is.** `0222` t/m `0224` staan er inmiddels op — door Quinten
-toegepast, niet vanuit een sessie — en daarmee schoof de kop van de reeks door
-naar het volgende bestand dat diezelfde DDL doet. Dat is de eigenschap om te
-onthouden: **deze rem zit op de kop van het gat en niet op een bestand**, dus hij
-gaat niet weg door de reeks van voren af te pellen.
-
-⚠️ **Dat corrigeert een regel die sinds 02-09 in QS8-243 stond:** *"een
-bouwsessie kan de drift wel meten maar niet opheffen"* was toen weerlegd omdat de
-MCP `execute_sql` heeft. De grens ligt scherper dan beide beweringen: **alles in
-`public` gaat, alles wat `storage.objects` bezit niet.** De regel staat nu in
-`docs/DEPLOY.md` §2.2, want dit komt terug bij elke volgende opslagmigratie.
+⚠️ **Wat wél blijft gelden:** alles in `public` gaat vanuit een sessie, een
+`create index` op `storage.objects` niet. Die grens staat mét zijn meetdatum in
+`docs/DEPLOY.md` §2.2, want hij komt terug bij elke volgende opslagmigratie.
+De uitrol zelf staat in
+`docs/decisions/2026-09-16-de-rem-die-al-weg-was.md`.
 
 ⚠️⚠️ **Hier stond tot 09-09 `0185`, en dat was 34 migraties naast de
 werkelijkheid.** De ronde die `0187` t/m `0219` toepaste is verderop in dit
@@ -1503,7 +1429,7 @@ Deze dingen kan een sessie niet zelf oplossen.
 | ~~Vier productbeslissingen~~ | A15, A17 en A18 zijn beantwoord op 18-08 en uitgevoerd (0029, 0032). Alleen A16 staat nog open | ✅ op A16 na |
 | ~~Twee beslissingen uit EPIC 6~~ | A19 beantwoord en gebouwd (0030); A20 staat in `CLAUDE.md` met een test | ✅ |
 | Vier nieuwe vragen | A27 t/m A30 uit de besluitenronde van 18-08: een `ref_id` op `chat_messages`, chat anonimiseren of cascaderen, de puntenvariant bij A7, en wie over een deadline-verzoek beslist | wachten op Quinten |
-| `npm run types:db` draaien | Regenereert `src/lib/database.types.ts` uit het echte project. Een sessie in de cloudcontainer kán dit niet: het vraagt én een productietoken én een draaiende Docker-daemon, óók met `--db-url`. Tot dat gebeurt staan er handmatige handtekeningen in het bestand (zie §2), en **een handmatige regel die niemand meer als handmatig herkent, is precies hoe de repo en het project uit elkaar gaan lopen** | open — productie is sinds 09-09 bij (zie §2), dus dit loopt achter op álles vanaf `0120` |
+| `npm run types:db` draaien | Regenereert `src/lib/database.types.ts` uit het echte project. Een sessie in de cloudcontainer kán dit niet: het vraagt én een productietoken én een draaiende Docker-daemon, óók met `--db-url`. Tot dat gebeurt staan er handmatige handtekeningen in het bestand (zie §2), en **een handmatige regel die niemand meer als handmatig herkent, is precies hoe de repo en het project uit elkaar gaan lopen** | open als handeling, maar 📏 op 16-09-2026 staat het bestand wél gelijk: productie en de map dragen sinds QS8-505 hetzelfde schema, en de typen zijn uit die map gegenereerd. Nagemeten dat `vindbaar`, `shared_group_id`, `ronde`, `zonder_beoordelaar`, `quiet_from`, `attachment_name`, `hero_profiles`, `todo_items`, `zoek_mensen`, `zet_taakzichtbaarheid`, `herstel_stuurloze_straf` en `groep_helden` erin staan. ⚠️ `dagtellers` staat er terecht niet in — die tabel is voor `anon` en `authenticated` ingetrokken, dus PostgREST kent hem niet |
 
 ---
 
