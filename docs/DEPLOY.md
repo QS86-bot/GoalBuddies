@@ -707,6 +707,66 @@ tussen "ik ga terugdraaien" en "het is teruggedraaid" past een ronde.
 
 ---
 
+## 2.9a Een dump terugzetten — wat `--data-only` breekt
+
+⚠️ **Een vólledige `pg_restore` gaat goed. Een `--data-only` terugzet van
+`completion_approvals` niet**, en dat is precies de vorm die je gebruikt om één
+migratie ongedaan te maken.
+
+**Waarom.** Sinds `0275` toetst de trigger op goedkeuringen ook of de voltooiing
+nog de actieve is. Voor levend verkeer is dat juist: je keurt geen voltooiing
+goed die al vervangen is. Maar bij een groep met `approval_rule = 'quorum'` is
+een goedkeuring op een inmiddels vervángen voltooiing de **gewone gang van
+zaken**:
+
+1. Bob keurt goed → de week blijft `pending` (1 van 2)
+2. Alice dient opnieuw in → de eerste voltooiing wordt vervangen
+3. die eerste draagt nu een volkomen legitieme goedkeuring
+
+`dien_opnieuw_in()` ruimt die goedkeuring niet op, en dat hoort ook niet:
+voltooiingen en goedkeuringen zijn append-only (domeinregel 6). Bij een volledige
+`pg_restore` merk je er niets van — triggers zitten in de post-data-sectie, dus
+de rijen staan er al vóór de trigger bestaat.
+
+**Wat je doet.** Zet zo'n dump terug met de triggers uit:
+
+```bash
+pg_restore --data-only --disable-triggers -t completion_approvals ...
+```
+
+Of, als je met de hand `psql` gebruikt:
+
+```sql
+begin;
+set session_replication_role = replica;
+-- \copy of insert ...
+set session_replication_role = origin;
+commit;
+```
+
+⚠️⚠️ **De prijs daarvan is niet nul, en hij is gemeten (16-09-2026).** Met de
+triggers uit valt domeinregel 3 in tweeën uiteen:
+
+| grens | waar hij zit | overleeft een terugzet met triggers uit |
+|---|---|---|
+| je keurt nooit jezelf goed | CHECK `completion_approvals_not_self` | **ja** |
+| alleen een lid van dezelfde groep keurt goed | trigger `fill_approval_subject()` | **nee** |
+
+Een CHECK wordt getoetst tegen de rij, wie hem ook schrijft — `security definer`,
+`service_role`, `COPY` en `pg_restore` komen er geen van allen langs. Een trigger
+niet. 📏 Gemeten in een teruggedraaide transactie: onder
+`session_replication_role = replica` weigert een zelfgoedkeuring nog steeds, en
+komt een **wildvreemde** als goedkeurder er wél doorheen.
+
+**Daarom: zet alleen je eigen dump terug, en nooit data van buiten.** Dat is de
+hele reden dat deze grens met twee middelen is afgedwongen en niet met één.
+
+`tests/rls/goedkeuring-terugzetten.test.ts` legt alle vier de eigenschappen vast,
+zodat wie de trigger ooit verzacht, ziet wát hij verzacht.
+
+---
+
+
 ## 3. Build en uitrollen
 
 **Eén commando** — QS8-100:
