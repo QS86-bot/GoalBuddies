@@ -252,8 +252,11 @@ describe.skipIf(!rlsTestsConfigured)('een naam die als een andere naam rendert',
 
         // 📏 Dezelfde vlag áán het eind. ⚠️⚠️ **Wat deze twee regels bewijzen
         //    is smaller dan het lijkt, en dat is met IJKING H2 gemeten.** Er is
-        //    geen CHECK die `display_name = schone_naam(…)` eist — de randstap
-        //    woont in de aanmeldtrigger en in de client. Een rechtstreekse
+        //    geen CHECK die **gelijkheid** met `schone_naam()` eist; de enige
+        //    die hem aanroept is `profiles_display_name_zichtbaar`
+        //    (`schone_naam(display_name) <> ''`), en die vraagt alleen of er
+        //    iets overblijft. De randstap zelf woont in de aanmeldtrigger en
+        //    in de client. Een rechtstreekse
         //    `PATCH` wordt dus niet genormaliseerd, en de databaseregel hier
         //    zegt daarom *"geen CHECK weigert een naam die op een vlag eindigt"*
         //    en niet *"de randstap laat hem heel"*. Dat tweede staat in

@@ -200,8 +200,12 @@ is de vorm van QS8-448 nog een keer, en de reden dat er twee bestanden zijn.
 `tests/rls/een-naam-rendert-niet-als-een-andere.test.ts` **groen** — de toets die
 in de lijst van acceptatiecriteria het dichtst bij criterium 2 staat.
 
-De reden is dat er **geen CHECK** is die `display_name = schone_naam(…)` eist.
-De randstap woont in de aanmeldtrigger en in de client, niet in een constraint.
+De reden is dat geen enkele CHECK **gelijkheid** met `schone_naam()` eist. Er is
+er wel één die hem aanroept — `profiles_display_name_zichtbaar`, met
+`schone_naam(display_name) <> ''` — maar die vraagt alleen *"blijft er iets
+over"*, en dat blijft het bij een naam die zijn vlagstaart kwijtraakt. De
+randstap zelf woont in de aanmeldtrigger en in de client, niet in een constraint.
+
 Een rechtstreekse `PATCH /rest/v1/profiles` wordt dus niet genormaliseerd, en die
 end-to-end-toets zegt in werkelijkheid *"geen CHECK weigert een naam die op een
 vlag eindigt"*. Dat is waar, en het is niet wat criterium 2 vraagt.

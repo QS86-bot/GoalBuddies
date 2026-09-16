@@ -770,11 +770,14 @@ describe.runIf(beschikbaar)('de volgorde van de vijf stappen is zelf een naad', 
    *    `U+E007F` — liet `laat een subdivisievlag heel` in
    *    `een-naam-rendert-niet-als-een-andere.test.ts` **groen**.
    *
-   *    De reden is dat er geen CHECK is die `display_name = schone_naam(…)`
-   *    eist: de randstap woont in de aanmeldtrigger en in de client, niet in een
-   *    constraint. Een rechtstreekse `PATCH` wordt dus niet genormaliseerd, en
-   *    die toets bewijst alleen dat géén CHECK een vlag weigert — waar. Maar
-   *    niet wat criterium 2 vraagt.
+   *    De reden is dat geen enkele CHECK **gelijkheid** met `schone_naam()`
+   *    eist. Er is er wel één die hem aanroept — `profiles_display_name_zichtbaar`
+   *    doet `schone_naam(display_name) <> ''` — maar die vraagt alleen of er
+   *    íets overblijft, en dat blijft het. De randstap woont in de
+   *    aanmeldtrigger en in de client, niet in een constraint, dus een
+   *    rechtstreekse `PATCH` wordt niet genormaliseerd. Die toets bewijst
+   *    daarmee alleen dat géén CHECK een vlag weigert — waar, maar niet wat
+   *    criterium 2 vraagt.
    *
    *    Hier wordt `schone_naam()` rechtstreeks aangeroepen, en dáár is de
    *    randstap wél te zien. 📏 Vóór 0277 hield deze naam 11 codepunten over in
