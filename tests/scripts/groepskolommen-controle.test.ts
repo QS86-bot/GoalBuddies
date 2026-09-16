@@ -102,8 +102,8 @@ describe('de census zelf', () => {
     //    tabellen én 4 views. Die views ontbraken tot de security-ronde —
     //    `relkind in ('r','p')` sloot ze uit terwijl `pg_default_acl` objtype
     //    `r` in Postgres tabellen én views dekt.
-    // ⚠️ **43 sinds 0279, en dat was 44.** `commitments` is eruit: die tabel
-    //    heeft geen tabelbrede SELECT meer. 0279 voegde er `tz` aan toe — de
+    // ⚠️ **43 sinds 0280, en dat was 44.** `commitments` is eruit: die tabel
+    //    heeft geen tabelbrede SELECT meer. 0280 voegde er `tz` aan toe — de
     //    bevroren zone onder een straf — en `commitments_select` geeft de
     //    begunstigde groep leesrecht zodra een straf verschuldigd wordt. Met een
     //    tabelbrede grant had die groep de tijdzone van de eigenaar meegelezen,
@@ -128,7 +128,7 @@ describe('de census zelf', () => {
       .filter(([, t]) => t.groepszichtbaar)
       .map(([naam]) => naam);
 
-    // ⚠️ 24 sinds 0279 en dat was 25 — `commitments` telde als groepszichtbaar
+    // ⚠️ 24 sinds 0280 en dat was 25 — `commitments` telde als groepszichtbaar
     //    en staat nu niet meer in de census. Hij ís nog steeds groepszichtbaar;
     //    wat verdween is de tabelbrede grant waar deze census over gaat.
     expect(groeps).toHaveLength(24);

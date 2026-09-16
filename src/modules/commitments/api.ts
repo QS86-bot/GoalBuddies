@@ -82,7 +82,7 @@ export async function fetchGetuigenissen(): Promise<readonly Getuigenis[]> {
 export async function fetchCommitments(goalId: string): Promise<readonly Commitment[]> {
   const { data, error } = await supabase()
     .from('commitments')
-    // ⚠️ Geen `select('*')`: sinds 0279 is de SELECT-grant op `commitments`
+    // ⚠️ Geen `select('*')`: sinds 0280 is de SELECT-grant op `commitments`
     //    per kolom en ligt `tz` erbuiten — de begunstigde groep leest deze rij
     //    mee zodra een straf verschuldigd wordt. PostgREST geeft bij een `*`
     //    dan 42501 en niet stilzwijgend minder kolommen.

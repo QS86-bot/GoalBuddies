@@ -1,4 +1,4 @@
--- 0279_de_klok_onder_een_straf_ligt_vast_vanaf_het_aangaan.sql —
+-- 0280_de_klok_onder_een_straf_ligt_vast_vanaf_het_aangaan.sql —
 -- `wikkel_commitments_af()` besliste over een straf met `eigenaarsdatum(owner)`,
 -- en dat is de zone die de gestrafte zelf kan verzetten.
 --
@@ -187,7 +187,7 @@ $function$;
 
 comment on function public.bevries_commitmentzone() is
   'Legt de tijdzone van een commitment vast bij het aangaan en houdt hem daarna '
-  'onveranderlijk — de klok onder een straf mag niet van de gestrafte zijn (0279).';
+  'onveranderlijk — de klok onder een straf mag niet van de gestrafte zijn (0280).';
 
 revoke all on function public.bevries_commitmentzone() from public, anon, authenticated;
 revoke all on function public.wikkel_commitments_af(uuid) from public, anon, authenticated;

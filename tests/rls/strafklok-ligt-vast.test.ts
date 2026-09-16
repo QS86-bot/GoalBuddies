@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { psqlMetInvoer, stackBeschikbaarOfFaal } from './psql-stack';
 
 /**
- * De klok onder een straf ligt vast vanaf het aangaan — 0279, reviewrij 08-09-2026.
+ * De klok onder een straf ligt vast vanaf het aangaan — 0280, reviewrij 08-09-2026.
  *
  * ⚠️⚠️ **Wat er mis was.** `wikkel_commitments_af()` besliste over een straf met
  *    `eigenaarsdatum(owner)` = `(now() at time zone profiles.tz)::date`, en `tz`
@@ -15,7 +15,7 @@ import { psqlMetInvoer, stackBeschikbaarOfFaal } from './psql-stack';
  * ⚠️ **Dit was geen nieuwe bug maar een nieuwe consequentie.** 0057 koos de
  *    coulante toets bewust: *"de fout valt zo altijd de goede kant op — een
  *    beloning is iets dat je jezelf hebt beloofd."* Dat argument geldt voor een
- *    beloning en draait om voor een straf. Vandaar dat 0279 alléén de straftak
+ *    beloning en draait om voor een straf. Vandaar dat 0280 alléén de straftak
  *    verzet en de beloningstak woordelijk laat staan; de laatste test hieronder
  *    bewaakt dat die helft níet meebewogen is.
  *
@@ -149,7 +149,7 @@ describe.skipIf(!beschikbaar)('de klok onder een straf', () => {
     // ⚠️ **Deze toets gaat over de splitsing en niet over één tak.** In dezelfde
     //    aanroep wordt de beloning vrijgespeeld (klok van vandaag: Midway, op
     //    tijd) terwijl de straf blijft staan (bevroren klok: Kiritimati, te
-    //    laat). Dát is wat 0279 doet, en geen van beide asserties alleen zegt
+    //    laat). Dát is wat 0280 doet, en geen van beide asserties alleen zegt
     //    het. 0057 koos die coulance met een argument dat voor een beloning nog
     //    steeds klopt; verhuist iemand deze tak alsnog, dan wordt dit rood en is
     //    dat een besluit en geen bijvangst.

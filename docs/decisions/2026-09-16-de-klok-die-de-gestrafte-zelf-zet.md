@@ -1,7 +1,7 @@
 # De klok die de gestrafte zelf zet
 
 **16-09-2026** — sluit de reviewrij van 08-09-2026 over `wikkel_commitments_af()`
-(QS8-322, 0238). Migratie `0279`.
+(QS8-322, 0238). Migratie `0280`.
 
 ## Wat er aan de hand was
 
@@ -25,7 +25,7 @@ kocht daarmee exact één extra dag — `v_op_tijd` bleef waar tot `target_date 
 | straftak | `vervallen` | status |
 |---|---|---|
 | de oude, met de klok van vandaag | **1** | `cancelled` — ontsnapt |
-| `0279`, met de bevroren klok | 0 | `set` — blijft staan |
+| `0280`, met de bevroren klok | 0 | `set` — blijft staan |
 
 ## ⚠️ Waarom dit geen nieuwe bug was maar een nieuwe consequentie
 
