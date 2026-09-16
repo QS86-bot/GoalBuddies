@@ -886,10 +886,18 @@ npm ci
 npm run deploy
 ```
 
-⚠️ **Er is geen versiegeschiedenis op de host.** `static-deploy` overschrijft de
+⚠️ **Er is geen versiegeschiedenis op de host.** De deploy-route overschrijft de
 map; Hostinger bewaart geen vorige uitrol. De repo ís het rollback-pad, en dat
 werkt alleen als wat je deployt ook gecommit is. Deploy daarom nooit vanuit een
 vuile werkboom.
+
+⚠️⚠️ **De routes heetten tot 16-09-2026 `upload-url` en `static-deploy`, en die
+bestaan niet meer** (QS8-504). Hostinger heeft zijn API geherstructureerd; beide
+gaven 404 en de deploy liep vast op een script dat maanden had gewerkt. Ze staan
+nu bij de constante `API` in `scripts/deploy-web.mjs`, met de oude vorm ernaast
+zodat je bij een volgende 404 in één blik ziet wat er verhuisd is. Dit document
+noemt ze met opzet niet meer bij naam: twee plekken die hetzelfde endpoint
+opschrijven lopen uiteen, en dan is de verkeerde de plek waar je het leest.
 
 ### Supabase Auth: de URL's — QS8-99
 
@@ -1245,7 +1253,7 @@ Alles wat nu Hostinger-specifiek is en straks aangepast moet worden:
       SPA-fallback, want `output: "static"` levert een bestand per route.
       `scripts/deploy-web.mjs` leidt ze af uit `dist/`; die afleiding is
       herbruikbaar, het formaat niet.
-- [ ] `scripts/deploy-web.mjs` zelf: de TUS-upload en `static-deploy` zijn
+- [ ] `scripts/deploy-web.mjs` zelf: de TUS-upload en de deploy-route zijn
       Hostinger-API's. De secret-scan en de `.htaccess`-generatie zijn dat níét
       en horen te blijven — de scan hoort dan in de CI-stap vóór `vercel deploy`.
 - [x] ~~Het pad-voorvoegsel `/goalbuddies/`~~ — vervallen. Het subdomein heeft een
