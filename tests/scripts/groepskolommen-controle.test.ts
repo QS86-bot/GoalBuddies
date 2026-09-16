@@ -97,12 +97,20 @@ describe('ontleed', () => {
 });
 
 describe('de census zelf', () => {
-  it('draagt de vierenveertig relaties met een tabelbrede SELECT-grant', () => {
+  it('draagt de drieënveertig relaties met een tabelbrede SELECT-grant', () => {
     // 📏 Gemeten op 14-09-2026 tegen een verse opbouw (269 migraties): 40
     //    tabellen én 4 views. Die views ontbraken tot de security-ronde —
     //    `relkind in ('r','p')` sloot ze uit terwijl `pg_default_acl` objtype
     //    `r` in Postgres tabellen én views dekt.
-    expect(Object.keys(CENSUS)).toHaveLength(44);
+    // ⚠️ **43 sinds 0280, en dat was 44.** `commitments` is eruit: die tabel
+    //    heeft geen tabelbrede SELECT meer. 0280 voegde er `tz` aan toe — de
+    //    bevroren zone onder een straf — en `commitments_select` geeft de
+    //    begunstigde groep leesrecht zodra een straf verschuldigd wordt. Met een
+    //    tabelbrede grant had die groep de tijdzone van de eigenaar meegelezen,
+    //    dus is het recht per kolom teruggegeven zónder `tz`. Een censusrij voor
+    //    een tabel zonder tabelbrede grant dekt ooit stilletjes een tabel die hem
+    //    wél heeft — de controle wordt daar zelf rood op.
+    expect(Object.keys(CENSUS)).toHaveLength(43);
   });
 
   it('heeft de vier views erin', () => {
@@ -113,14 +121,17 @@ describe('de census zelf', () => {
     }
   });
 
-  it('merkt er vijfentwintig als groepszichtbaar', () => {
+  it('merkt er vierentwintig als groepszichtbaar', () => {
     // ⚠️ `groups` is makkelijk te missen: `groups_select` is
     //    `mag_groep_lezen(id)` en delegeert naar een functie.
     const groeps = Object.entries(CENSUS)
       .filter(([, t]) => t.groepszichtbaar)
       .map(([naam]) => naam);
 
-    expect(groeps).toHaveLength(25);
+    // ⚠️ 24 sinds 0280 en dat was 25 — `commitments` telde als groepszichtbaar
+    //    en staat nu niet meer in de census. Hij ís nog steeds groepszichtbaar;
+    //    wat verdween is de tabelbrede grant waar deze census over gaat.
+    expect(groeps).toHaveLength(24);
     expect(groeps).toContain('groups');
     expect(groeps).toContain('weekly_goals');
     expect(groeps).not.toContain('points_ledger');

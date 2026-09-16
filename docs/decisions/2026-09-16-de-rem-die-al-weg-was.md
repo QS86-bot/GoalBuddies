@@ -2,7 +2,7 @@
 
 **Datum:** 16-09-2026
 **Issue:** QS8-505
-**Migraties:** `0225` t/m `0279` toegepast op productie — geen nieuwe migratie
+**Migraties:** `0225` t/m `0282` toegepast op productie — geen nieuwe migratie
 **Raakt:** `docs/WERKVOORRAAD.md` §0, `docs/DEPLOY.md` §2.2, de beslisbevoegdheid
 (grens 2), `docs/ENGINEER-REVIEW.md`
 
@@ -11,7 +11,7 @@
 ## 1. De stand
 
 De webbundel was van 16-09 en de database van 09-09. Daartussen zaten 55
-migratiebestanden, uit 47 issues. Drie RPC's die `src/` en `app/` aanroepen
+migratiebestanden, uit 47 issues; tijdens de uitrol kwamen er drie bij. Drie RPC's die `src/` en `app/` aanroepen
 bestonden niet in productie — `herstel_stuurloze_straf`, `zet_taakzichtbaarheid`
 en `zoek_mensen` — en `profiles.vindbaar` ook niet. Elk scherm dat een van die
 vier raakte gaf `PGRST202` of `PGRST204` aan een echte gebruiker.
@@ -72,6 +72,11 @@ geschat: **7** mijlpalen en één rij in elk van `profiles`, `goals`,
 `weekly_goals`, `ai_jobs` en `goal_events`. De issue noemde die laatste twee
 niet.
 
+⚠️ **`0280` t/m `0282` zijn langs dezelfde zeef gegaan** toen ze er tijdens de
+ronde bij kwamen: 0281 is één `revoke`, 0282 zijn functies en twee CHECKs op
+`profiles`, en de enige DML is de terugvulling van `commitments.tz` in 0280 —
+mét filter, op een tabel met nul rijen.
+
 ⚠️ **Er zat één klasse in die de issue niet noemt en die de uitrol wél had kunnen
 breken:** een CHECK die tegen bestaande rijen valideert. Er staan er tien in het
 bereik — `profiles_display_name_zichtbaar`, drie bidi-constraints,
@@ -85,12 +90,12 @@ tien halen het. Geen enkele migratie kon dus halverwege op data omvallen.
 Een statische scan zegt niets over de vólgorde. Daarom is de uitrol eerst
 gerepeteerd: lokaal het schema opgebouwd tot `0224` met
 `supabase/shim/0000_supabase_shim.sql` en de migratiemap, de elf productierijen
-erin geladen, en daarna `0225`–`0279` afgespeeld zoals `apply_migration` dat doet
+erin geladen, en daarna `0225`–`0282` afgespeeld zoals `apply_migration` dat doet
 — elk bestand in zijn eigen transactie.
 
 📏 De opbouw reproduceerde productie exact: **227** bestanden tot `0224`,
 hetzelfde getal dat `migratieregister()` daar gaf, en een `goals` met vijftien
-kolommen zonder `risk_status`. Daarna **55 toegepast, 0 omgevallen**, en alle elf
+kolommen zonder `risk_status`. Daarna **58 toegepast, 0 omgevallen**, en alle elf
 rijen stonden er na afloop nog.
 
 ⚠️ **De eerste run meldde een `risk_status`-fout die er geen was.** Het
@@ -115,37 +120,71 @@ werkte: `md5(pg_get_constraintdef(…))` is op productie en lokaal
 `docs/DEPLOY.md` §2.2, want hij treft elke volgende migratie met zo'n escape.
 
 Het register is daarna uitgelijnd met `lijn_migratieregister_uit()` — 55 rijen,
-alle 55 `uitgelijnd`. ⚠️ Twee ervan had ik eerst onder een verzonnen naam
+alle 55 `uitgelijnd`, en later nog drie voor `0280` t/m `0282`. ⚠️ Twee ervan had ik eerst onder een verzonnen naam
 toegepast (`0232` en `0244`); dat uitlijnen koppelt op **naam**, dus die twee
 zijn eerst rechtgezet. Een verkeerde naam is hier geen schoonheidsfout maar een
 rij die nooit meer aan zijn bestand te koppelen is.
 
-## 6. Wat er daarna gemeten is
+## 6. Wat er daarna gemeten is, en hoe het instrument me eerst voorloog
 
 Productie is naast de repetitiedatabase gelegd. Dat is de enige controle die een
-overtikfout in 55 met de hand gekopieerde migraties kan vinden.
+overtikfout in 58 met de hand gekopieerde migraties kan vinden.
 
-| Wat | Productie | Repetitie | Gelijk |
-|---|---|---|---|
-| Functies (md5 over `prosrc`) | 282 | 284 | ✅ op de twee `shim_`-functies na |
-| Kolommen in `public` | 401 | 401 | ✅ byte-identiek |
-| Constraints | 289 | 289 | ✅ byte-identiek |
-| Policies (`public` + `storage`) | 115 | 115 | ✅ byte-identiek |
-| Indexen in `public` | 168 | 168 | ✅ byte-identiek |
-| Triggers | 107 | 102 | ✅ op vijf van Supabase zelf na |
+| Wat | Aantal | Gelijk |
+|---|---|---|
+| Functies van dit project (md5 over `prosrc`) | 285 | ✅ |
+| Kolommen in `public` | 402 | ✅ |
+| Constraints | 291 | ✅ |
+| Policies (`public` + `storage`) | 115 | ✅ |
+| Indexen in `public` | 168 | ✅ |
+| Triggers van dit project | 103 | ✅ |
 
-De twee extra lokale functies zijn `shim_maak_gebruiker` en
-`shim_verwijder_gebruiker` uit de steiger; de vijf extra triggers op productie
-staan op `realtime.subscription`, `storage.buckets` en `storage.objects` en zijn
-geen van alle van dit project. **Nul verschillen die van ons zijn.**
+Wat er buiten die telling valt: twee `shim_`-functies uit
+`supabase/shim/0000_supabase_shim.sql`, die alleen lokaal bestaan, en vijf
+triggers die alleen op productie staan — `realtime.subscription`,
+`storage.buckets` (twee) en `storage.objects` (twee). Geen daarvan is van dit
+project.
 
-📏 En de acceptatiepunten van de issue: de drie RPC's bestaan, `profiles.vindbaar`
-bestaat, de buckets zijn `avatars, bewijsfotos, chatdocs, chatfotos`, het register
-telt 282 rijen met `0279` als hoogste, **nul** niet-genummerde rijen en **geen
-gaten** in `0001`–`0279`. De elf datarijen staan er onveranderd.
+### 6a. ⚠️⚠️ De eerste versie van deze vergelijking was onbruikbaar, twee kanten op
 
-`src/lib/database.types.ts` is niet hergenereerd en hoeft dat niet: die is uit de
-map gemaakt, en de map en productie zijn nu aantoonbaar hetzelfde schema.
+📏 Hij aggregeerde met `md5(string_agg(naam || '=' || ruw, … order by naam))`, en
+**dat hangt af van de collatie.** Productie sorteert anders dan de lokale stack:
+`activeer_weekplanstap(uuid, date, integer)` komt daar vóór
+`activeer_weekplanstap(uuid, date)` en hier erna. Zeven van de drieëntwintig
+letterbakken kwamen daardoor als "verschillend" uit de meting terwijl hun inhoud
+identiek was.
+
+⚠️ **Dat is de onschuldige richting. De schadelijke stond ernaast.** Bij de
+eerste ronde (op `0279`) vergeleek ik de volledige verzamelingen, zag ik dat ze
+twee functies scheelden, diffte ik de **namen**, vond ik alleen de twee
+`shim_`-functies — en schreef ik op dat alle 282 projectfuncties byte-identiek
+waren. Dat was niet gemeten. Ik had de namen vergeleken en de lichamen niet, en
+de conclusie ging over de lichamen.
+
+📏 Toen die vergelijking wél goed gedaan werd, vielen er precies **twee** functies
+uit, allebei uit `0231`: `enforce_evidence_policy()` en `dien_opnieuw_in()`. De
+oorzaak is mijn eigen hand: bij de eerste migraties snoeide ik het commentaar
+nog met de hand in plaats van met de gestripte kopie, en bij `0231` raakte dat
+commentaar **binnen** het `$$`-lichaam. `prosrc` draagt dat, dus
+`functies:controle` zou ze terecht gemeld hebben. De logica was ongewijzigd —
+maar dat is een bewering die ik pas kan doen ná de vergelijking, niet ervoor.
+Allebei zijn ze woordelijk uit het migratiebestand teruggezet.
+
+⚠️ **De les zit in de vorm van het instrument.** Een aggregaat over een
+gesorteerde lijst meet twee dingen tegelijk — de inhoud én de volgorde — en bij
+een vergelijking over twee databases is die tweede geen eigenschap van het
+schema maar van een instelling. De vervanging is een som van per-rij-hashes, en
+die heeft geen volgorde:
+
+```sql
+sum(('x' || substr(md5(sleutel), 1, 8))::bit(32)::bigint)
+```
+
+📏 Daarmee komen beide kanten op `285 | 626701432856` voor de functies, en op
+dezelfde som voor elk van de vijf andere categorieën. Dit is de spiegelkant van
+*een rood is niet vanzelf jouw rood* (QS8-411): een rood dat van je instrument
+komt kost je een middag, en een groen dat van je instrument komt kost je de
+bevinding.
 
 ## 7. Wat er níet gedaan is, en door wie besloten
 

@@ -1,0 +1,47 @@
+-- 0281_een_deleterecht_zonder_aanroeper_is_dood_hout.sql — `hero_profiles` gaf
+-- `authenticated` DELETE achter een open policy, en niets riep dat ooit aan.
+--
+-- ROLLBACK-PAD:
+--   grant delete on public.hero_profiles to authenticated;
+--   (dat is de stand die 0264 achterliet)
+--
+-- ---------------------------------------------------------------------------
+-- Waar dit vandaan komt
+-- ---------------------------------------------------------------------------
+--
+-- 📏 **Gemeten op 16-09-2026 tegen de lokale stack op 0280.** Zeventien tabellen
+--    geven `authenticated` DELETE. Zes daarvan staan achter een DELETE-policy met
+--    `using (false)` — daar is de grant dood hout en is de policy het echte slot.
+--    Van de elf die openstaan heeft er precies één géén aanroeper:
+--
+--      hero_profiles   policy: user_id = auth.uid()   open
+--                      client `.delete()`             geen
+--                      definer-functie die hem wist   geen
+--
+--    Ter vergelijking: `user_blocks` heeft ook geen client-`.delete()`, maar wél
+--    `deblokkeer()` — een definer-functie die de grant niet nodig heeft. Dat is
+--    de reden dat deze controle naar allebei kijkt en niet alleen naar `src/`.
+--
+-- ⚠️ **Dit is de klasse die de reviewrij van 08-09 beschrijft, en het is een
+--    nieuwe instantie.** Die rij telde op 14-09 met de hand **zestien** tabellen
+--    en concludeerde terecht *"er zit geen lek in deze klasse"*. `hero_profiles`
+--    kwam er met 0264 bij, ná die telling. Een handtelling blijft niet waar; dat
+--    is precies waarom er nu een controle naast staat.
+--
+-- ⚠️ **Wat het níet is: een lek.** De policy laat alleen je eigen rij toe, dus
+--    niemand komt bij andermans held. Wat er wél aan hangt is de belofte van
+--    0264 zelf — *"de database bepaalt wanneer er gekozen is, niet de client"*:
+--    `chosen_at` staat in geen enkele schrijfgrant en wordt door een trigger
+--    gezet, maar met een DELETE ernaast is "bewerken" gewoon weghalen en opnieuw
+--    invoegen. Dezelfde vorm als wat 0197 bij `daily_moves` en `goal_interviews`
+--    repareerde: *met een DELETE ernaast sluit een UPDATE-revoke de uitkomst
+--    niet.* Vandaag leest niets `chosen_at`, dus er is geen gevolg — de reparatie
+--    is er vóór het gevolg.
+--
+-- ⚠️ **De policy blijft staan en alleen de grant gaat weg.** Komt er ooit een
+--    scherm waar je je held loslaat, dan is één `grant` genoeg en hoeft de
+--    policy niet opnieuw bedacht te worden.
+--
+-- ---------------------------------------------------------------------------
+
+revoke delete on public.hero_profiles from public, anon, authenticated;

@@ -198,7 +198,7 @@ describe.skipIf(!rlsTestsConfigured)('een naam die als een andere naam rendert',
     );
 
     it(
-      'laat een Perzische naam met U+200C werken',
+      'laat een Perzische, Hindi- en Bengaalse naam met U+200C of U+200D werken',
       async () => {
         // ⚠️ `می‌خواهم` — de ZWNJ hoort daar orthografisch, hij is geen sier.
         //    QS8-451 gaat over dezelfde letter aan de ránd.
@@ -206,6 +206,23 @@ describe.skipIf(!rlsTestsConfigured)('een naam die als een andere naam rendert',
 
         expect(schoneNaam(perzisch), 'TypeScript').toBe(perzisch);
         expect(await schrijfEnLees(mallory, perzisch), 'de database').toBe(perzisch);
+
+        // ⚠️⚠️ **Acceptatiecriterium 3 van QS8-499 noemt Hindi en Bengaals met
+        //    zoveel woorden, en die stonden hier niet.** Het Perzisch alleen is
+        //    één schrift; de regel van 0282 is *"tussen twee ASCII-
+        //    alfanumerieken"* en die belofte gaat over álle andere schriften.
+        //    Eén geval per schrift dat het issue noemt, want een must-allow die
+        //    je niet aanbiedt, bewaak je niet.
+        //
+        //    `क्‍ष` — Devanagari, waar de ZWJ de conjunct-vorm afdwingt.
+        const hindi = '\u0915\u094D\u200D\u0937';
+        expect(schoneNaam(hindi), 'TypeScript, Hindi').toBe(hindi);
+        expect(await schrijfEnLees(mallory, hindi), 'de database, Hindi').toBe(hindi);
+
+        //    `ক্‌ষ` — Bengaals, waar de ZWNJ de conjunct juist verhindert.
+        const bengaals = '\u0995\u09CD\u200C\u09B7';
+        expect(schoneNaam(bengaals), 'TypeScript, Bengaals').toBe(bengaals);
+        expect(await schrijfEnLees(mallory, bengaals), 'de database, Bengaals').toBe(bengaals);
       },
       TEST_TIMEOUT,
     );
@@ -219,17 +236,43 @@ describe.skipIf(!rlsTestsConfigured)('een naam die als een andere naam rendert',
          *    tagtekens uit `U+E0020`–`U+E007F`; 📏 met die tags in de lijst werd
          *    zeven codepunten er één — een zwarte vlag zonder land.
          *
-         * ⚠️ **Midden in de naam en niet aan het eind, en dat is met opzet.**
-         *    `schone_naam()` strijkt tags aan de **randen** nog steeds weg via
-         *    `ONZICHTBARE_BEREIKEN`, en dat is ouder dan dit issue — 📏 de
-         *    versie van 0269 doet het net zo hard. Die rest hoort bij QS8-499;
-         *    wat hier getoetst wordt is dat de middenin-stap hem niet breekt.
+         * ⚠️⚠️ **Midden ín de naam én áán het eind, en die tweede is sinds
+         *    QS8-499 pas waar.** `schone_naam()` streek tags aan de **randen**
+         *    weg via `ONZICHTBARE_BEREIKEN` — ouder dan 0271, 📏 de versie van
+         *    0269 deed het net zo hard — dus een naam die op 🏴 eindigde
+         *    verloor zijn staart: zeven codepunten in, één uit. Migratie 0282
+         *    versmalt die randenlijst en geeft de tags een eigen regel: een tag
+         *    blijft als hij bij een `U+1F3F4` hoort en verdwijnt overal anders.
          */
         const vlag = '\u{1f3f4}\u{e0067}\u{e0062}\u{e0073}\u{e0063}\u{e0074}\u{e007f}';
         expect(telTekens(vlag), 'de invoer zelf klopt niet meer').toBe(7);
 
         expect(telTekens(schoneNaam(`Jan ${vlag} Vries`)), 'TypeScript').toBe(17);
         expect(telTekens(await schrijfEnLees(mallory, `Jan ${vlag} Vries`)), 'de database').toBe(17);
+
+        // 📏 Dezelfde vlag áán het eind. ⚠️⚠️ **Wat deze twee regels bewijzen
+        //    is smaller dan het lijkt, en dat is met IJKING H2 gemeten.** Er is
+        //    geen CHECK die **gelijkheid** met `schone_naam()` eist; de enige
+        //    die hem aanroept is `profiles_display_name_zichtbaar`
+        //    (`schone_naam(display_name) <> ''`), en die vraagt alleen of er
+        //    iets overblijft. De randstap zelf woont in de aanmeldtrigger en
+        //    in de client. Een rechtstreekse
+        //    `PATCH` wordt dus niet genormaliseerd, en de databaseregel hier
+        //    zegt daarom *"geen CHECK weigert een naam die op een vlag eindigt"*
+        //    en niet *"de randstap laat hem heel"*. Dat tweede staat in
+        //    `tests/rls/naamnormalisatie.test.ts`, waar `schone_naam()`
+        //    rechtstreeks wordt aangeroepen; de randenlijst verbreden maakt
+        //    dáár twee toetsen rood en híer geen enkele.
+        expect(telTekens(schoneNaam(`Jan Vries ${vlag}`)), 'TypeScript, aan het eind').toBe(17);
+        expect(
+          telTekens(await schrijfEnLees(mallory, `Jan Vries ${vlag}`)),
+          'de database, aan het eind',
+        ).toBe(17);
+
+        // ⚠️ En de andere kant van diezelfde regel: een **losse** tag is nog
+        //    steeds nul pixels en gaat weg, ook aan het eind. Zonder dit geval
+        //    zou "de vlag blijft heel" ook waar zijn als er niets meer weggaat.
+        expect(telTekens(schoneNaam('Jan\u{e0067}')), 'een losse tag gaat weg').toBe(3);
       },
       TEST_TIMEOUT,
     );
@@ -252,31 +295,133 @@ describe.skipIf(!rlsTestsConfigured)('een naam die als een andere naam rendert',
     );
   });
 
+  describe('en de contextregel van 0282 sluit de rest', () => {
+    /**
+     * ⚠️⚠️ **Deze vier stonden tot QS8-499 in het blok hieronder, als het gat
+     *    dat 0271 bewust openliet — en die omslag was vooraf aangekondigd.** Wat
+     *    daar stond was: *"Deze toets staat op 4 omdat dát is wat de code vandaag
+     *    doet. Wordt de contextregel ooit gebouwd, dan hoort hij rood te worden —
+     *    en dan is dat het signaal dat deze aantekening mee moet veranderen."*
+     *    Migratie 0282 bouwde hem, de toets werd rood, en dit is die aantekening.
+     *
+     *    Dat is de vorm die dit project van een weggelegde bevinding vraagt: geen
+     *    TODO die verjaart, maar een assertie die omvalt op de dag dat de aanname
+     *    eronder vervalt.
+     *
+     * ⚠️⚠️ **En ze verhuizen naar `magNietLandenAlsNaam()` en niet naar
+     *    `schrijfEnLees()`, want de app heeft hier drie gedragingen op één
+     *    waarde en geen twee** — 0269 schrijft ze uit: de aanmeldtrigger
+     *    *strijkt*, de client *strijkt stilletjes*, en de rechtstreekse
+     *    `PATCH /rest/v1/profiles` *weigert*. Deze toets is die derde route, en
+     *    dus hoort hier een 23514 en geen schoongeveegde naam. 📏 Ik schreef hem
+     *    eerst met `schrijfEnLees()` en verwachtte `Jan`; de CHECK weigerde, en
+     *    dat wás het ontwerp.
+     */
+    it(
+      'weigert `Ja<ZWNJ>n` en zijn drie familieleden — de rest van QS8-495',
+      async () => {
+        await magNietLandenAlsNaam(mallory, `Ja${ZWNJ}n`);
+        await magNietLandenAlsNaam(mallory, `Ja${ZWJ}n`);
+        // ⚠️ De combining grapheme joiner, die de security-review erbij vond.
+        await magNietLandenAlsNaam(mallory, 'Ja\u034Fn');
+        // ⚠️ `U+180E` hoorde bij dezelfde uitzonderingslijst: schriftgebonden
+        //    voor het Mongools, en tussen twee ASCII-letters dus nul pixels en
+        //    verder niets.
+        await magNietLandenAlsNaam(mallory, 'Ja\u180En');
+      },
+      TEST_TIMEOUT,
+    );
+
+    /**
+     * ⚠️⚠️ **Dit is het geval dat de security-review vond, en het is het gewone
+     *    geval.** De eerste versie van de regel eiste aan **beide** kanten een
+     *    ASCII-alfanumeriek. Een spatie is ASCII maar niet alfanumeriek, dus hij
+     *    blokkeerde de regel — en `Jan Jansen` is de vorm van vrijwel elke echte
+     *    naam.
+     *
+     *    📏 Gemeten vóór de reparatie: van de **267** codepunten die de regel
+     *    tussen twee letters weghaalt, haalde hij er naast een spatie **nul**
+     *    weg. `Jan<ZWNJ> Jansen` landde ongehinderd naast `Jan Jansen`, met alle
+     *    vier de CHECKs op `t`. Twee pixel-identieke namen in één goedkeurlijst,
+     *    precies waar domeinregel 3 voor bestaat.
+     *
+     * ⚠️ De apostrof staat erbij omdat een leesteken dezelfde klasse is als een
+     *    spatie: ASCII, niet alfanumeriek. Zonder dat geval bewaakt deze toets
+     *    alleen de spatie en niet de regel.
+     */
+    it(
+      'weigert een onzichtbaar teken naast een spatie of een leesteken',
+      async () => {
+        await magNietLandenAlsNaam(mallory, `Jan${ZWNJ} Jansen`);
+        await magNietLandenAlsNaam(mallory, `O${ZWNJ}'Brien`);
+        await magNietLandenAlsNaam(mallory, `Jan Jansen${ZWJ}`);
+      },
+      TEST_TIMEOUT,
+    );
+
+    /**
+     * ⚠️⚠️ **Een tagreeks die geen vlag ís, en dat was een kanaal en geen
+     *    randgeval.** De eerste versie liet élke tag staan zodra er ergens een
+     *    `U+1F3F4` vóór stond. 📏 `U+E0020`–`U+E007E` is een 1-op-1 afbeelding
+     *    van ASCII `0x20`–`0x7E`, dus achter één zichtbare 🏴 pasten ~75 tekens
+     *    willekeurige onzichtbare tekst binnen de grens van 80 codepunten — in
+     *    een kolom die groepszichtbaar is en die als platte tekst in
+     *    systeemberichten wordt ingebakken.
+     *
+     *    En `🏴` plus één sluittag rendert als de kále 🏴, dus het was óók een
+     *    collisievector: `Jan 🏴` naast `Jan 🏴󠁿`.
+     *
+     * ⚠️ De must-allow ernaast staat hierboven: de Schotse vlag houdt zijn zeven
+     *    codepunten, ook aan het eind van de naam.
+     */
+    it(
+      'weigert een tagreeks achter een vlagbasis die geen geldige vlag vormt',
+      async () => {
+        // 🏴 plus één losse tag: rendert als de kale vlag.
+        await magNietLandenAlsNaam(mallory, `Jan \u{1f3f4}\u{e0067}`);
+        // 🏴 plus vlagletters zonder sluiter.
+        await magNietLandenAlsNaam(mallory, `Jan \u{1f3f4}\u{e0067}\u{e0062}\u{e0073}`);
+        // en het smokkelgeval: tagtekens die ASCII-tekst dragen.
+        await magNietLandenAlsNaam(
+          mallory,
+          `Jan\u{1f3f4}\u{e0069}\u{e0067}\u{e006e}\u{e006f}\u{e0072}`,
+        );
+      },
+      TEST_TIMEOUT,
+    );
+
+    /**
+     * 📏 De andere helft van 0282: een **losse** tag is nergens iets, ook niet
+     *    aan de rand van een naam. De vlag die er wél bij hoort staat hierboven
+     *    als must-allow; zonder dit geval zou "de vlag blijft heel" ook waar
+     *    zijn als er van de tagregel niets meer over is.
+     */
+    it(
+      'weigert een losse tag zonder vlag ervoor',
+      async () => {
+        await magNietLandenAlsNaam(mallory, 'Jan\u{e0067}Vries');
+      },
+      TEST_TIMEOUT,
+    );
+  });
+
   describe('wat er open blijft, staat hier als toets en niet als vergeetpost', () => {
     /**
-     * ⚠️⚠️ **`Ja<ZWNJ>n` komt er nog steeds door, en dat is een besluit.** Van
-     *    de vier gemeten gevallen sluit 0271 er drie. De vierde vraagt een
-     *    contextregel ("weg tussen twee ASCII-letters") en niet een lijst van
-     *    codepunten; acceptatiecriterium 2 zegt dat de must-allow zwaarder weegt
-     *    dan de weigering, en het Perzisch heeft deze letter nodig.
+     * ⚠️⚠️ **Wat er wél open blijft, en het staat hier met dezelfde scherpte als
+     *    het geval hierboven stond.** De grens van 0282 is *"tussen twee
+     *    **ASCII**-alfanumerieken"* en niet *"tussen twee letters uit een schrift
+     *    dat dit teken niet gebruikt"* — die tweede vraagt Unicode-scriptdata die
+     *    Postgres niet heeft. Dat is een bewuste versmalling en geen omissie.
      *
-     *    Deze toets staat op `4` omdat dát is wat de code vandaag doet. Wordt de
-     *    contextregel ooit gebouwd, dan hoort hij rood te worden — en dan is dat
-     *    het signaal dat deze aantekening mee moet veranderen. Zelfde vorm als
-     *    de assertie die QS8-495 zelf opleverde.
+     *    📏 `Ján<ZWNJ>ös` blijft daarom **6** codepunten en rendert als `Jánös`.
+     *    De prijs staat als rij in `docs/ENGINEER-REVIEW.md`; valt deze toets om,
+     *    dan is de regel verbreed en hoort die rij mee te verdwijnen.
      */
-    it('laat `Ja<ZWNJ>n` nog wél door — de bekende rest van QS8-495', async () => {
-      const uit = await schrijfEnLees(mallory, `Ja${ZWNJ}n`);
+    it('laat `Ján<ZWNJ>ös` nog wél door — de prijs van een ASCII-grens', async () => {
+      const ontsnapt = `J\u00E1n${ZWNJ}\u00F6s`;
 
-      expect(telTekens(uit), 'vier codepunten: de ZWNJ blijft staan').toBe(4);
-      expect(schoneNaam(`Ja${ZWJ}n`), 'en de ZWJ net zo').toBe(`Ja${ZWJ}n`);
-      // ⚠️ En de combining grapheme joiner, die de security-review erbij vond.
-      expect(schoneNaam('Ja\u034Fn'), 'en de CGJ ook').toBe('Ja\u034Fn');
-      // ⚠️ `U+180E` blijft omdat de hele Mongoolse reeks `U+180B`–`U+180F`
-      //    schriftgebonden is. Hij rendert als nul pixels en is dus óók een
-      //    collisievector; hij staat in dezelfde uitzonderingslijst en hoort bij
-      //    hetzelfde vervolgissue.
-      expect(schoneNaam('Ja\u180En'), 'en de Mongoolse vowel separator').toBe('Ja\u180En');
+      expect(telTekens(await schrijfEnLees(mallory, ontsnapt)), 'de database').toBe(6);
+      expect(telTekens(schoneNaam(ontsnapt)), 'TypeScript').toBe(6);
     }, TEST_TIMEOUT);
   });
 });

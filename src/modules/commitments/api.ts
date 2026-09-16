@@ -82,7 +82,11 @@ export async function fetchGetuigenissen(): Promise<readonly Getuigenis[]> {
 export async function fetchCommitments(goalId: string): Promise<readonly Commitment[]> {
   const { data, error } = await supabase()
     .from('commitments')
-    .select('*')
+    // ⚠️ Geen `select('*')`: sinds 0280 is de SELECT-grant op `commitments`
+    //    per kolom en ligt `tz` erbuiten — de begunstigde groep leest deze rij
+    //    mee zodra een straf verschuldigd wordt. PostgREST geeft bij een `*`
+    //    dan 42501 en niet stilzwijgend minder kolommen.
+    .select('id, goal_id, type, body, image_url, beneficiary_group_id, beneficiary_user_id, status, confirmed_at, created_at')
     .eq('goal_id', goalId)
     .order('created_at', { ascending: true });
 
@@ -312,7 +316,7 @@ async function maak(
       // `status` staat er bewust niet bij. De database staat alleen 'set' toe
       // bij een insert (0006); meesturen zou suggereren dat er iets te kiezen is.
     })
-    .select('*')
+    .select('id, goal_id, type, body, image_url, beneficiary_group_id, beneficiary_user_id, status, confirmed_at, created_at')
     .single();
 
   if (error) {

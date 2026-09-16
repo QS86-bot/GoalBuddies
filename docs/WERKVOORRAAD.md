@@ -11,11 +11,17 @@
 daarvóór QS8-266, QS8-202 en QS8-196, en het toepassen van `0139` t/m `0149` op
 productie in twee rondes)
 
-⚠️ **Productie staat op `0279`, en dat is gelijk aan de map.** 📏 Gemeten op
+⚠️ **Productie staat op `0282`, en dat is gelijk aan de map.** 📏 Gemeten op
 16-09-2026, direct na de uitrol van QS8-505, met `migratieregister()` tegen
-`wehgocadxehottiiyvsc`: **282 registerrijen**, `0001` t/m `0279` aaneengesloten,
+`wehgocadxehottiiyvsc`: **285 registerrijen**, `0001` t/m `0282` aaneengesloten,
 inclusief de drie letterversies, en **nul** rijen die nog een tijdstempel als
-versie dragen. De map telt er **282**.
+versie dragen. De map telt er **285**.
+
+⚠️⚠️ **En dat "gelijk" is binnen één ronde al een keer verlopen.** 📏 Toen
+`0225` t/m `0279` toegepast waren, was `main` doorgelopen naar `0282`: QS8-499
+landde tijdens de uitrol. Dat is het venster van QS8-318 — het getal was juist
+toen het opgeschreven werd — en het is precies waarom de regel hieronder staat.
+De drie zijn er in dezelfde ronde bij toegepast.
 
 ⚠️ **Lees dit nooit als getal maar meet het.** De lijn is op 09-09 twee keer op
 één dag verschoven en tussen 09-09 en 14-09 nog een keer, telkens doordat er
@@ -30,7 +36,7 @@ verschil tussen een nummer en een telling — de drie letterversies (`0039a`,
 migratienummer aanziet, legt de lijn drie bestanden te hoog. Zelfde klasse als
 een teller in grafemen bij een grens in codepunten.
 
-⚠️⚠️ **Hier stond tot 16-09-2026 een tabel van 55 achterstallige bestanden én
+⚠️⚠️ **Hier stond tot 16-09-2026 een tabel van 58 achterstallige bestanden én
 de zin dat dat gat "niet vanuit een bouwsessie te dichten" was. Het eerste is
 weg en het tweede was al vier dagen onwaar.** Die zin stond er sinds 09-09 mét
 een meting eronder: `0222` viel toen om op
@@ -40,12 +46,12 @@ is breder dan die meting droeg, en `docs/DEPLOY.md` §2.2 wist het op 12-09 al
 beter: Supabase heeft `create policy` en `create trigger` op die tabel sindsdien
 vrijgegeven, en alleen `create index` wordt nog geweigerd.
 
-📏 En dat laatste kwam in `0225` t/m `0279` nergens kaal voor: de drie
+📏 En dat laatste kwam in `0225` t/m `0282` nergens kaal voor: de drie
 `create index`-opdrachten op `storage.objects` staan in een
 `do $$ … exception when insufficient_privilege … end $$;`, en de twee
 `drop index if exists` van `0233` wijzen naar indexen die op productie niet
 bestaan — nagemeten in `pg_indexes`, daar staan alleen de acht van Supabase
-zelf. Er zat dus nergens meer een rem. Alle 55 zijn op 16-09 vanuit deze sessie
+zelf. Er zat dus nergens meer een rem. Alle 58 zijn op 16-09 vanuit deze sessie
 toegepast.
 
 ⚠️ **De les is niet "het kon toch wel" maar hoe die rem zeven dagen bleef
@@ -199,8 +205,8 @@ staat er iets bij dat uitleg nodig heeft, dan hoort die uitleg in §2, §3b of �
    **Meet ze dus, tel ze niet op:** bij het samengaan met `main` is het antwoord
    `npm run poort` of `npm run tellers`, nooit het hoogste van twee getallen.
 <!-- POORTSTAND:BEGIN — gegenereerd door `npm run poortstand` -->
-Typecheck, lint en alle 61 controlescripts groen;
-`npm run poort` meldt 65 stappen.
+Typecheck, lint en alle 62 controlescripts groen;
+`npm run poort` meldt 66 stappen.
 <!-- POORTSTAND:EINDE -->
    ⚠️ **Vier ervan meten niets zonder de credentials van het échte project**
    (`adviseur`, `functies`, `register`, `wachtwoord`), en de poort noemt dat
@@ -284,7 +290,7 @@ schemaname = 'public'` gaf `41|41`. Vraag het aan de database en niet aan deze
 regel — net als bij het aantal migraties in §0.
 
 <!-- STAND:BEGIN — gegenereerd door `npm run stand` -->
-Migraties `0001` t/m `0279` staan in de map: **282 bestanden**,
+Migraties `0001` t/m `0282` staan in de map: **285 bestanden**,
 waarvan 3 met een letter-achtervoegsel (`0039a`, `0041a`, `0052a`).
 De nummering is aaneengesloten.
 <!-- STAND:EINDE -->

@@ -58,6 +58,9 @@ export const HEEFT_DATABASE_NODIG = new Set([
   'tijdzones:controle',
   'functies:controle',
   'kolomrechten:controle',
+  // ⚠️ Leest `pg_class`, `pg_policy` en `pg_proc`: welke tabellen `authenticated`
+  //    DELETE geven en of daar iets tegenover staat. Zonder database meet hij niets.
+  'deleterecht:controle',
   'pin:controle',
   'gedeelde-identiteit:controle',
   'logboek:controle',
