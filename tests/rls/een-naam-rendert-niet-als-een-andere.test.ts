@@ -333,6 +333,64 @@ describe.skipIf(!rlsTestsConfigured)('een naam die als een andere naam rendert',
     );
 
     /**
+     * ⚠️⚠️ **Dit is het geval dat de security-review vond, en het is het gewone
+     *    geval.** De eerste versie van de regel eiste aan **beide** kanten een
+     *    ASCII-alfanumeriek. Een spatie is ASCII maar niet alfanumeriek, dus hij
+     *    blokkeerde de regel — en `Jan Jansen` is de vorm van vrijwel elke echte
+     *    naam.
+     *
+     *    📏 Gemeten vóór de reparatie: van de **267** codepunten die de regel
+     *    tussen twee letters weghaalt, haalde hij er naast een spatie **nul**
+     *    weg. `Jan<ZWNJ> Jansen` landde ongehinderd naast `Jan Jansen`, met alle
+     *    vier de CHECKs op `t`. Twee pixel-identieke namen in één goedkeurlijst,
+     *    precies waar domeinregel 3 voor bestaat.
+     *
+     * ⚠️ De apostrof staat erbij omdat een leesteken dezelfde klasse is als een
+     *    spatie: ASCII, niet alfanumeriek. Zonder dat geval bewaakt deze toets
+     *    alleen de spatie en niet de regel.
+     */
+    it(
+      'weigert een onzichtbaar teken naast een spatie of een leesteken',
+      async () => {
+        await magNietLandenAlsNaam(mallory, `Jan${ZWNJ} Jansen`);
+        await magNietLandenAlsNaam(mallory, `O${ZWNJ}'Brien`);
+        await magNietLandenAlsNaam(mallory, `Jan Jansen${ZWJ}`);
+      },
+      TEST_TIMEOUT,
+    );
+
+    /**
+     * ⚠️⚠️ **Een tagreeks die geen vlag ís, en dat was een kanaal en geen
+     *    randgeval.** De eerste versie liet élke tag staan zodra er ergens een
+     *    `U+1F3F4` vóór stond. 📏 `U+E0020`–`U+E007E` is een 1-op-1 afbeelding
+     *    van ASCII `0x20`–`0x7E`, dus achter één zichtbare 🏴 pasten ~75 tekens
+     *    willekeurige onzichtbare tekst binnen de grens van 80 codepunten — in
+     *    een kolom die groepszichtbaar is en die als platte tekst in
+     *    systeemberichten wordt ingebakken.
+     *
+     *    En `🏴` plus één sluittag rendert als de kále 🏴, dus het was óók een
+     *    collisievector: `Jan 🏴` naast `Jan 🏴󠁿`.
+     *
+     * ⚠️ De must-allow ernaast staat hierboven: de Schotse vlag houdt zijn zeven
+     *    codepunten, ook aan het eind van de naam.
+     */
+    it(
+      'weigert een tagreeks achter een vlagbasis die geen geldige vlag vormt',
+      async () => {
+        // 🏴 plus één losse tag: rendert als de kale vlag.
+        await magNietLandenAlsNaam(mallory, `Jan \u{1f3f4}\u{e0067}`);
+        // 🏴 plus vlagletters zonder sluiter.
+        await magNietLandenAlsNaam(mallory, `Jan \u{1f3f4}\u{e0067}\u{e0062}\u{e0073}`);
+        // en het smokkelgeval: tagtekens die ASCII-tekst dragen.
+        await magNietLandenAlsNaam(
+          mallory,
+          `Jan\u{1f3f4}\u{e0069}\u{e0067}\u{e006e}\u{e006f}\u{e0072}`,
+        );
+      },
+      TEST_TIMEOUT,
+    );
+
+    /**
      * 📏 De andere helft van 0279: een **losse** tag is nergens iets, ook niet
      *    aan de rand van een naam. De vlag die er wél bij hoort staat hierboven
      *    als must-allow; zonder dit geval zou "de vlag blijft heel" ook waar

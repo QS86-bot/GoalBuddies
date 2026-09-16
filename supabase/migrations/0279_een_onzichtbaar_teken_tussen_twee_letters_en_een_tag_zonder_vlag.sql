@@ -10,11 +10,31 @@
 --       drop constraint if exists profiles_display_name_geen_onzichtbaar_tussen_letters;
 --     alter table public.profiles
 --       drop constraint if exists profiles_display_name_geen_losse_tag;
---     create or replace function public.schone_naam(p_ruw text) ... (de versie
---       uit 0271: bidi -> middenin -> randen, zónder de twee stappen hieronder);
+--     create or replace function public.schone_naam(p_ruw text)
+--     returns text language sql immutable
+--     set search_path to 'pg_catalog', 'pg_temp'
+--     as $$
+--       select regexp_replace(
+--         regexp_replace(
+--           public.zonder_onzichtbaar_middenin(public.zonder_bidi(coalesce(p_ruw, ''))),
+--           '^[' || rand || ']+', ''
+--         ),
+--         '[' || rand || ']+$', ''
+--       )
+--       from (
+--         select U&'\0001-\0020\007F-\00A0\00AD\034F\061C\115F-\1160\1680\17B4-\17B5\180B-\180E\2000-\200F\2028-\202F\205F-\2064\2066-\206F\2800\3000\3164\FEFF\FFA0\FFF9-\FFFB\+0E0000-\+0E007F' as rand
+--       ) s;
+--     $$;
 --     drop function if exists public.zonder_onzichtbaar_tussen_letters(text);
 --     drop function if exists public.zonder_losse_tags(text);
 --     commit;
+--
+--   ⚠️⚠️ **De functiedefinitie staat er woordelijk en niet als omschrijving, en
+--      dat is een correctie uit de security-review.** Hier stond
+--      *"(de versie uit 0271: bidi -> middenin -> randen)"*. `migraties:controle`
+--      toetst alleen dát er een rollback-kop staat, niet of hij uitvoerbaar is —
+--      en een terugzet gebeurt per definitie onder tijdsdruk. Dit is woordelijk
+--      de body uit 0271, inclusief de brede randenlijst.
 --
 --   ⚠️ **In die volgorde en in één transactie.** De CHECKs roepen de functies
 --      aan, dus die kunnen niet weg zolang ze staan; en `schone_naam()` roept ze
@@ -54,16 +74,45 @@
 --    orthografisch **verplicht**. Het teken is niet het probleem — de plek is
 --    het.
 --
--- ⚠️ **De grens is "tussen twee ASCII-alfanumerieken", en dat is de
---    conservatiefste vorm die het werk áf maakt.** De correctere regel is
---    *"tussen twee letters uit een schrift dat dit teken niet gebruikt"*, en die
---    vraagt Unicode-scriptdata die Postgres niet heeft. ASCII is bewijsbaar
---    veilig: géén schrift dat ZWNJ, ZWJ, CGJ, een richtingsmarkering, een
---    variatieselector of een IVS nodig heeft, schrijft met ASCII-letters.
+-- ⚠️⚠️ **De grens is "één alfanumerieke buur, en de andere ASCII", en dáár is
+--    hij bijgesteld na de security-review.** De eerste versie eiste aan **beide**
+--    kanten `[A-Za-z0-9]`. Een spatie is ASCII maar geen alfanumeriek, dus die
+--    blokkeerde de regel — en dan doet hij niets op de vorm van vrijwel elke
+--    echte naam.
+--
+--    📏 Gemeten: van de **267** codepunten die de regel tussen twee letters
+--    weghaalt, haalde hij er naast een spatie **nul** weg. `Jan<ZWNJ> Jansen`
+--    landde ongehinderd naast `Jan Jansen`, en `O<ZWNJ>'Brien` net zo. Dat is
+--    letterlijk het scenario waarvoor dit issue bestaat.
+--
+--    Een rand telt als ASCII: een teken aan het begin of eind van de naam heeft
+--    daar geen schrift naast staan. 📏 Dat sluit `Jan<VS16>` aan het eind, dat de
+--    randenlijst niet dekt.
+--
+-- ⚠️ De correctere regel is *"tussen twee letters uit een schrift dat dit teken
+--    niet gebruikt"*, en die vraagt Unicode-scriptdata die Postgres niet heeft.
 --
 --    ⚠️ **De prijs staat in `docs/ENGINEER-REVIEW.md`:** `Ján<ZWNJ>ös` ontsnapt,
 --       want `ö` is geen ASCII. De regel vangt het gemeten geval en niet de hele
 --       klasse.
+--
+-- ⚠️⚠️ **Hier stond "ASCII is bewijsbaar veilig: de twee verzamelingen raken
+--    elkaar niet", en dat is onwaar.** 📏 De security-review mat het:
+--    `c<U+034F>h` wordt `ch`, en dat is de gedocumenteerde Slowaakse en
+--    Hongaarse digraafscheiding — `c<CGJ>h` tegenover `ch`, `c<CGJ>s`,
+--    `d<CGJ>z`, `z<CGJ>s`. Twee ASCII-letters, aan beide kanten. De regel raakt
+--    dus wél een legitiem gebruik.
+--
+--    **Het besluit blijft staan; de onderbouwing niet.** De CGJ rendert dáár
+--    óók als nul pixels, dus `ch` en `c<CGJ>h` zijn visueel identiek — en die
+--    collisie weegt zwaarder dan een sorteerhint die niemand ziet. Wat de regel
+--    níet raakt zijn de vier must-allows, en dat is met een veeg nagemeten en
+--    niet aangenomen.
+--
+--    ⚠️ Dat verschil is de moeite van het opschrijven waard omdat dit project
+--       het zelf duur betaald heeft: *een afwijking die je onderbouwt is duurder
+--       dan een die je vergeet.* Wie over een jaar de grens wil verbreden, leest
+--       "de verzamelingen raken elkaar niet" en controleert het niet na.
 --
 -- ⚠️ **Zeven van de acht, en niet alle acht.** De tags (`U+E0020`–`U+E007F`)
 --    hebben een ánder patroon: ze horen bij een `U+1F3F4` en niet tussen twee
@@ -89,6 +138,16 @@ as $$
   --    lookaround zou de eerste treffer zijn rechterbuur opeten en het volgende
   --    geval zijn linkerbuur kwijt zijn.
   --
+  -- ⚠️⚠️ **Twee alternatieven en niet één, na de security-review.** Het patroon
+  --    eist niet langer aan beide kanten een alfanumeriek maar aan één kant, met
+  --    ASCII aan de andere. `(?![^ascii])` slaagt óók aan het eind van de tekst
+  --    en `(?<![^ascii])` aan het begin — een rand telt dus als ASCII, want daar
+  --    staat geen schrift naast.
+  --
+  --    ⚠️ Er ontstaan geen deeltreffers door terugkrabbelen: elk codepunt in
+  --       `tussen` ligt boven `U+007F`, dus een ingekorte reeks laat een
+  --       niet-ASCII teken over en de lookahead faalt alsnog.
+  --
   -- ⚠️ De TypeScript-kant doet hetzelfde **zonder** lookbehind, met een lus over
   --    de codepunten. Dat is met opzet: Hermes (React Native) kent lookbehind
   --    niet, en een regex die daar bij het laden al omvalt is een witte app.
@@ -100,12 +159,17 @@ as $$
   --    schuift de grens mee met een instelling in plaats van met een besluit.
   select regexp_replace(
     coalesce(p_ruw, ''),
-    '(?<=[A-Za-z0-9])[' ||
-      U&'\034F\061C\180B-\180F\200C-\200F\FE00-\FE0F\+0E0100-\+0E01EF'
-    || ']+(?=[A-Za-z0-9])',
+    -- links alfanumeriek, rechts ASCII of het eind van de naam
+    '(?<=[A-Za-z0-9])[' || tussen || ']+(?![^' || asciibereik || '])' ||
+    -- of andersom: links ASCII of het begin, rechts alfanumeriek
+    '|(?<![^' || asciibereik || '])[' || tussen || ']+(?=[A-Za-z0-9])',
     '',
     'g'
-  );
+  )
+  from (
+    select U&'\034F\061C\180B-\180F\200C-\200F\FE00-\FE0F\+0E0100-\+0E01EF' as tussen,
+           U&'\0001-\007F' as asciibereik
+  ) s;
 $$;
 
 comment on function public.zonder_onzichtbaar_tussen_letters(text) is
@@ -134,6 +198,29 @@ grant execute on function public.zonder_onzichtbaar_tussen_letters(text) to auth
 --    motor scant van links naar rechts, dus een tag die bij een vlag hoort wordt
 --    al door de eerste tak opgegeten voordat de tweede hem ziet.
 --
+-- ⚠️⚠️ **De eerste tak toetst de vórm van de reeks en niet alleen de vlagbasis
+--    ervóór, en dat is de reparatie uit de security-review.** Hier stond
+--    `U+1F3F4` gevolgd door `[tag]*` — élke tag mocht blijven zodra er ergens
+--    een vlagbasis vóór stond.
+--
+--    📏 Gemeten: `U+E0020`–`U+E007E` is een 1-op-1 afbeelding van ASCII
+--    `0x20`–`0x7E`. Achter één zichtbare 🏴 pasten dus ~75 tekens **willekeurige
+--    onzichtbare tekst** binnen de grens van 80 codepunten — in een kolom die
+--    groepszichtbaar is en die als platte tekst in systeemberichten wordt
+--    ingebakken. En `🏴` plus één losse sluittag rendert als de kále 🏴, dus het
+--    was ook gewoon een collisievector.
+--
+--    ⚠️ **Aan de rand was het bovendien een regressie.** De randenlijst streek
+--       die staart vóór deze migratie wél weg; de versmalling hieronder haalde
+--       dat weg zonder dat de nieuwe regel de vorm toetste. Er ging dus méér
+--       open dan er dicht ging.
+--
+--    De vorm is die van UTS #51: de basis, 2 t/m 6 tekens uit
+--    `U+E0030`–`U+E0039` / `U+E0061`–`U+E007A` (de tag-varianten van `0`–`9` en
+--    `a`–`z`), en `U+E007F` als sluiter. 📏 Nagemeten dat 🏴󠁧󠁢󠁳󠁣󠁴󠁿, 🏴󠁧󠁢󠁷󠁬󠁳󠁿 en 🏴󠁧󠁢󠁥󠁮󠁧󠁿 alle
+--    drie hun zeven codepunten houden, en dat een reeks zonder sluiter of met
+--    een tag buiten dat bereik terugvalt op de kale vlagbasis.
+--
 --    📏 Geijkt vóór het schrijven: de Schotse vlag houdt zijn **7** codepunten,
 --    en `Jan` plus één losse tag wordt **3**.
 create or replace function public.zonder_losse_tags(p_ruw text)
@@ -144,8 +231,11 @@ set search_path to 'pg_catalog', 'pg_temp'
 as $$
   select regexp_replace(
     coalesce(p_ruw, ''),
-    '(' || U&'\+01F3F4' || '[' || U&'\+0E0020-\+0E007F' || ']*)' ||
-      '|[' || U&'\+0E0020-\+0E007F' || ']',
+    -- een wélgevormde vlagreeks: de basis, 2 t/m 6 vlagletters, de sluiter
+    '(' || U&'\+01F3F4' || '[' || U&'\+0E0030-\+0E0039\+0E0061-\+0E007A' ||
+      ']{2,6}' || U&'\+0E007F' || ')' ||
+    -- al het andere tagteken, waar het ook staat
+    '|[' || U&'\+0E0020-\+0E007F' || ']',
     '\1',
     'g'
   );

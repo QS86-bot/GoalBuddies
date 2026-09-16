@@ -156,12 +156,26 @@ function alsHex(waarde: string): string {
  *    staan en niet één.
  *
  * ⚠️ Elke omgeving heeft een eigen reden, en ze zijn met opzet niet inwisselbaar:
- *    de eerste is waar de regel moet vúren, de andere drie zijn waar hij met
- *    rust moet laten — en elk van die drie dekt een ander van de vier
+ *    de eerste drie zijn waar de regel moet vúren, de laatste drie zijn waar hij
+ *    met rust moet laten — en elk van die drie dekt een ander van de vier
  *    must-allows uit het issue.
+ *
+ * ⚠️⚠️ **De twee middelste kwamen er pas na de security-review, en hun
+ *    afwezigheid wás de blinde vlek.** De vier die er stonden waren gekozen als
+ *    *"één waar de regel moet vuren plus drie must-allows"*. Wat ontbrak is de
+ *    omgeving waar hij zou moeten vuren **en het niet deed**: naast een spatie
+ *    of een leesteken.
+ *
+ *    📏 Gemeten vóór de reparatie: van de **267** codepunten die de regel tussen
+ *    twee letters weghaalt, haalde hij er naast een spatie **nul** weg —
+ *    `Jan<ZWNJ> Jansen` landde ongehinderd naast `Jan Jansen`, en dat is de vorm
+ *    van vrijwel elke echte naam. Alle veertien toetsen in dit bestand bleven er
+ *    groen onder. Dat is regel 18 vraag 3 in zijn zuiverste vorm.
  */
 const CONTEXTEN: readonly { readonly naam: string; readonly voor: string; readonly na: string }[] = [
   { naam: 'tussen ASCII-letters', voor: 'a', na: 'b' },
+  { naam: 'tussen een letter en een spatie', voor: 'Jan', na: ' Jansen' },
+  { naam: 'tussen een letter en een leesteken', voor: 'O', na: "'Brien" },
   { naam: 'tussen Arabische letters', voor: 'م', na: 'خ' },
   { naam: 'tussen emoji', voor: '\u{1F468}', na: '\u{1F469}' },
   { naam: 'na de vlagbasis', voor: '\u{1F3F4}', na: '' },
@@ -703,6 +717,8 @@ describe.runIf(beschikbaar)('de twee talen oordelen in élke context hetzelfde',
     const db = veegDatabase();
 
     const ascii = inContext(db, ASCII);
+    const spatie = inContext(db, 'tussen een letter en een spatie');
+    const leesteken = inContext(db, 'tussen een letter en een leesteken');
     const arabisch = inContext(db, 'tussen Arabische letters');
     const emoji = inContext(db, 'tussen emoji');
     const vlag = inContext(db, 'na de vlagbasis');
@@ -711,14 +727,31 @@ describe.runIf(beschikbaar)('de twee talen oordelen in élke context hetzelfde',
     expect(arabisch.has(0x200c), 'ZWNJ is orthografisch verplicht in het Perzisch').toBe(false);
     expect(emoji.has(0x200d), 'de ZWJ is de lijm in een gezinsemoji').toBe(false);
     expect(ascii.has(0x200d), 'dezelfde ZWJ hoort wél weg tussen twee ASCII-letters').toBe(true);
-    expect(vlag.has(0xe0067), 'een tag hoort te blijven ná de vlagbasis').toBe(false);
     expect(ascii.has(0x034f), 'de CGJ hoort weg tussen twee ASCII-letters').toBe(true);
+
+    // ⚠️⚠️ **Deze twee zijn het geval dat de security-review vond.** Ze stonden
+    //    hier niet, en de regel deed er niets — 📏 `Jan<ZWNJ> Jansen` landde
+    //    ongehinderd naast `Jan Jansen`. Een spatie en een apostrof zijn ASCII
+    //    maar niet alfanumeriek, en de eerste versie eiste aan bèide kanten een
+    //    alfanumeriek.
+    expect(spatie.has(0x200c), 'een spatie mag de regel niet blokkeren').toBe(true);
+    expect(leesteken.has(0x200c), 'een leesteken evenmin').toBe(true);
+
+    // ⚠️⚠️ **En deze omsloeg mee met de tagreparatie.** Hier stond `false` met
+    //    als reden *"een tag hoort te blijven ná de vlagbasis"* — maar
+    //    `U+1F3F4` plus één losse tag is geen vlag, hij rendert als de kále 🏴,
+    //    en achter die basis paste zo ~75 tekens onzichtbare ASCII-tekst. De
+    //    regel toetst sinds de security-review de vórm van de reeks; de
+    //    must-allow ernaast is de echte vlag, die zijn zeven codepunten houdt.
+    expect(vlag.has(0xe0067), 'een losse tag vormt geen vlag en gaat weg').toBe(true);
 
     // ⚠️ En de andere kant van dezelfde must-allow: een gewone letter blijft
     //    overal staan. Zonder dit geval is "de contexten verschillen" ook waar
     //    als er ergens per ongeluk letters sneuvelen.
     for (const [naam, verzameling] of [
       ['ascii', ascii],
+      ['spatie', spatie],
+      ['leesteken', leesteken],
       ['arabisch', arabisch],
       ['emoji', emoji],
       ['vlag', vlag],
@@ -790,6 +823,51 @@ describe.runIf(beschikbaar)('de volgorde van de vijf stappen is zelf een naad', 
     expect(telTekens(geval), 'de invoer zelf klopt niet meer').toBe(17);
     expect(schoneNaam(geval), 'TypeScript').toBe(geval);
     expect(viaDeDatabase([geval])[0], 'de database').toBe(alsHex(geval));
+  }, 30_000);
+
+  /**
+   * ⚠️⚠️ **De must-allows van de verbrede buurregel, elk uit een andere hoek.**
+   *    De reparatie uit de security-review laat de regel vuren zodra één buur
+   *    ASCII-alfanumeriek is en de andere ASCII. Dat is strikt ruimer dan wat er
+   *    stond, en ruimer betekent: meer kans om iets te breken dat heel moest
+   *    blijven. Elk geval hier is een echt teken uit een echte naam.
+   *
+   * 📏 Alle vijf nagemeten aan beide kanten, vóór én na de reparatie.
+   */
+  it('laat een variatieselector staan waar hij iets doet', () => {
+    // Een keycap: `1` + VS16 + de omsluitende toets. De VS16 heeft links een
+    // ASCII-cijfer, maar rechts staat U+20E3 — niet ASCII, dus de regel zwijgt.
+    const keycap = '1\uFE0F\u20E3';
+    expect(telTekens(schoneNaam(keycap)), 'keycap').toBe(3);
+    expect(viaDeDatabase([keycap])[0], 'keycap, database').toBe(alsHex(keycap));
+
+    // Een hartje met emoji-presentatie: geen ASCII-buur, dus ook niets.
+    const hartje = '\u2764\uFE0F';
+    expect(telTekens(schoneNaam(hartje)), 'hartje').toBe(2);
+    expect(viaDeDatabase([hartje])[0], 'hartje, database').toBe(alsHex(hartje));
+
+    // Een Japanse naam met een ideografische variatieselector.
+    const japans = '\u6E21\u{E0101}\u9088';
+    expect(telTekens(schoneNaam(japans)), 'IVS').toBe(3);
+    expect(viaDeDatabase([japans])[0], 'IVS, database').toBe(alsHex(japans));
+  }, 30_000);
+
+  /**
+   * ⚠️⚠️ **En het geval dat de regel wél raakt en dat een besluit is, geen
+   *    omissie.** `c<CGJ>h` is de Slowaakse en Hongaarse digraafscheiding —
+   *    twee ASCII-letters met een combining grapheme joiner ertussen, en een
+   *    gedocumenteerd gebruik uit de Unicode Standard.
+   *
+   *    Het beslisdocument beweerde dat de regel geen enkel legitiem gebruik kon
+   *    raken *"omdat de twee verzamelingen elkaar niet raken"*. 📏 De
+   *    security-review mat het tegendeel. De regel blijft zoals hij is — de CGJ
+   *    rendert daar óók als nul pixels, dus `ch` en `c<CGJ>h` zijn visueel
+   *    identiek — maar het staat hier als toets zodat het een besluit blijft en
+   *    niemand het als bewijs leest dat het niet gebeurt.
+   */
+  it('haalt de CGJ ook uit een Slowaakse digraaf, en dat is aanvaard', () => {
+    expect(schoneNaam('c\u034Fh'), 'TypeScript').toBe('ch');
+    expect(viaDeDatabase(['c\u034Fh'])[0], 'de database').toBe(alsHex('ch'));
   }, 30_000);
 
   /**

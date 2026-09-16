@@ -48,7 +48,32 @@ plekken in een naam.
 ### Zeven: weg tussen twee ASCII-alfanumerieken
 
 `U+034F`, `U+061C`, `U+180B`–`U+180F`, `U+200C`–`U+200F`, `U+FE00`–`U+FE0F` en
-`U+E0100`–`U+E01EF`. Tussen `a` en `b` kan geen van deze iets betekenen.
+`U+E0100`–`U+E01EF`.
+
+De voorwaarde is: **één buurman is ASCII-alfanumeriek en de andere is ASCII**
+(`U+0001`–`U+007F`), waarbij een rand als ASCII telt — aan het begin of eind van
+een naam staat er geen schrift naast.
+
+### ⚠️⚠️ Dat "één" is de reparatie uit de security-review, en het gat was het gewone geval
+
+De eerste versie eiste aan **beide** kanten `[A-Za-z0-9]`. Een spatie is ASCII
+maar geen alfanumeriek, dus hij blokkeerde de regel.
+
+📏 Gemeten: van de **267** codepunten die de regel tussen twee letters weghaalt,
+haalde hij er naast een spatie **nul** weg.
+
+```
+Ja<U+200C>n         ->  geweigerd       ✓ de regel werkt
+Jan<U+200C> Jansen  ->  landt ongehinderd naast `Jan Jansen`
+O<U+200C>'Brien     ->  landt ongehinderd naast `O'Brien`
+```
+
+`Jan Jansen` is de vorm van vrijwel elke echte naam, dus de regel deed op het
+gemiddelde geval niets — terwijl het issue juist over dát geval gaat. De
+naadtoetsen bleven er alle veertien groen onder, en dat is regel 18 vraag 3 in
+zijn zuiverste vorm: **`CONTEXTEN` kende geen omgeving waar de regel zou moeten
+vuren en het niet deed.** De vier omgevingen waren gekozen als *"één waar hij
+vuurt plus drie must-allows"*; er staan er nu zes.
 
 ⚠️ **Waarom ASCII en niet "een schrift dat dit teken niet gebruikt".** Die tweede
 is de correctere regel, en het issue noemt hem als optie. Hij vraagt
@@ -56,11 +81,30 @@ Unicode-scriptdata, en die heeft Postgres niet — er is geen `script(codepoint)
 Hem in SQL nabouwen betekent een tabel met scriptbereiken onderhouden die per
 Unicode-versie schuift, en dat is een afhankelijkheid met een eigen levensduur.
 
-ASCII is daarentegen **bewijsbaar veilig**: geen enkel schrift dat ZWNJ, ZWJ,
-CGJ, een richtingsmarkering, een variatieselector of een IVS nodig heeft,
-schrijft met ASCII-letters. De regel kan dus geen enkele van de vier
-must-allows breken — niet omdat het toevallig goed uitpakt, maar omdat de twee
-verzamelingen elkaar niet raken.
+### ⚠️⚠️ "De twee verzamelingen raken elkaar niet" was onwaar
+
+Hier stond: *ASCII is bewijsbaar veilig — geen enkel schrift dat ZWNJ, ZWJ, CGJ,
+een richtingsmarkering, een variatieselector of een IVS nodig heeft, schrijft met
+ASCII-letters. De regel kan dus geen enkele van de vier must-allows breken, niet
+omdat het toevallig goed uitpakt, maar omdat de twee verzamelingen elkaar niet
+raken.*
+
+📏 De security-review mat het tegendeel: `c<U+034F>h` wordt `ch`. Dat is de
+gedocumenteerde Slowaakse en Hongaarse digraafscheiding — `c<CGJ>h` tegenover
+`ch`, en net zo `c<CGJ>s`, `d<CGJ>z`, `z<CGJ>s`. Twee ASCII-letters, aan beide
+kanten. De regel raakt dus wél een legitiem gebruik.
+
+**Het besluit blijft; de onderbouwing niet.** De CGJ rendert daar óók als nul
+pixels, dus `ch` en `c<CGJ>h` zijn visueel identiek — en die collisie weegt
+zwaarder dan een sorteerhint die geen lezer ziet. Wat de regel níet raakt zijn de
+vier must-allows, en dat is met een veeg nagemeten in plaats van afgeleid.
+
+⚠️ Dit hoort opgeschreven omdat dit project er zelf voor waarschuwt: *een
+afwijking die je onderbouwt is duurder dan een die je vergeet.* Wie over een jaar
+de grens wil verbreden, leest "de verzamelingen raken elkaar niet" en controleert
+het niet na. Het is dezelfde klasse als de drie 📏-beweringen die de
+security-review op QS8-494 in mijn documenten vond — code goed, onderbouwing
+fout.
 
 ⚠️ **De prijs, en die staat in `docs/ENGINEER-REVIEW.md`:** `Ján<ZWNJ>ös`
 ontsnapt, want `ö` is geen ASCII. De regel vangt het gemeten geval en niet de
@@ -172,6 +216,69 @@ laten staan. Maar `= ''` vraagt *"telt dit als onzichtbare rand"* en
 `<> chr(cp)` vraagt *"raakt de functie dit aan"*. De dag dat een stap iets
 **vervangt** in plaats van wist, lopen die twee uiteen. Ze samenvoegen omdat het
 antwoord nu toevallig gelijk is, is precies waar vraag 2 van regel 18 voor staat.
+
+## ⚠️⚠️ De security-review was blokkerend, en allebei de gaten stonden in de ijking niet
+
+Vijf ijkingen, alle vijf geslaagd, alle vijf op de grendel die ze noemden — en
+tóch twee blokkerende bevindingen. Dat is de les van dit issue en hij is
+ongemakkelijker dan de vorige.
+
+### B1 — de regel deed niets op de gewone naam
+
+De voorwaarde was *"beide buren `[A-Za-z0-9]`"*. Een spatie is ASCII maar geen
+alfanumeriek.
+
+📏 Gemeten met een veeg over het hele codepuntbereik, per omgeving:
+
+| omgeving | codepunten die `schone_naam()` aanraakt |
+|---|---|
+| `a<cp>b` | 4241 |
+| `Jan<cp> Jansen` | 4241 − **267** |
+| `O<cp>'Brien` | 4241 − **267** |
+
+267 is exact de hele `TUSSEN_LETTERS_BEREIKEN`. **Naast een spatie deed de regel
+precies niets** — en `Jan Jansen` is de vorm van vrijwel elke echte naam. Het
+aanvalsscenario is letterlijk dat waarvoor dit issue bestaat: Mallory zet haar
+naam op `Jan<U+200C> Jansen`, en in de goedkeurlijst staan twee keer
+`Jan Jansen`.
+
+Gerepareerd: **één** buur alfanumeriek, de andere ASCII, met een rand die als
+ASCII telt. 📏 Nagemeten, alle drie de omgevingen geven nu 4241, en geen van de
+vijf must-allows sneuvelt.
+
+### B2 — achter één 🏴 paste ~75 tekens onzichtbare tekst
+
+De regel was *"een tag mag blijven als er een `U+1F3F4` vóór staat"* en toetste
+de **vorm** van de reeks niet. 📏 `U+E0020`–`U+E007E` is een 1-op-1 afbeelding
+van ASCII `0x20`–`0x7E`; binnen de grens van 80 codepunten past er achter één
+zichtbare vlag dus ~75 tekens willekeurige onzichtbare tekst, in een
+groepszichtbare kolom die als platte tekst in systeemberichten wordt ingebakken.
+En `🏴` plus één sluittag rendert als de kále 🏴 — dus het was óók een
+collisievector.
+
+⚠️ **Aan de rand was het bovendien een regressie.** De randenlijst streek die
+staart vóór deze migratie wél weg. De versmalling was nodig (zonder haar verliest
+de Schotse vlag zijn staart), maar ze ging erdoor zónder dat de nieuwe regel de
+vorm toetste: er ging méér open dan er dicht ging.
+
+Gerepararerd met de vorm uit UTS #51 — basis, 2 t/m 6 vlagletters, sluiter.
+📏 🏴󠁧󠁢󠁳󠁣󠁴󠁿, 🏴󠁧󠁢󠁷󠁬󠁳󠁿 en 🏴󠁧󠁢󠁥󠁮󠁧󠁿 houden alle drie hun zeven codepunten.
+
+### ⚠️⚠️ Waarom de ijking dit niet ving, en wat dat zegt
+
+**`CONTEXTEN` kende geen omgeving waar de regel zou moeten vuren en het niet
+deed.** De vier omgevingen waren gekozen als *"één waar hij vuurt plus drie
+must-allows"* — een indeling die klopt en die precies één soort fout niet kan
+zien: een regel die te smal is.
+
+Een ijking toetst of een grendel bíjt als je hem breekt. Ze zegt niets over of de
+grendel op de goede plek zit. **Alle vijf de ijkingen waren geldig en de belofte
+was toch te smal**, en dat is een andere vraag dan de vijf die regel 18 stelt —
+die gaan over of de toets de belofte bewaakt, niet over of de belófte klopt.
+
+Wat wél had gewerkt is de vraag die de security-review stelt en die geen script
+stelt: *lees de regel als aanvaller en zoek de invoer waar hij niet vuurt.* Er
+staan nu zes omgevingen, en de twee nieuwe zijn precies die invoer.
 
 ## De ijking — en de twee ijkingen die ongeldig bleken
 

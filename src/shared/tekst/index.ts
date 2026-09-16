@@ -353,13 +353,29 @@ export function isOnzichtbaarTussenLetters(codepunt: number): boolean {
   return TUSSEN_LETTERS_BEREIKEN.some(([van, tot]) => codepunt >= van && codepunt <= tot);
 }
 
-/** `A-Z`, `a-z` of `0-9` — de buren waartussen de zeven niets kunnen betekenen. */
+/** `A-Z`, `a-z` of `0-9` — de buur die van een teken bewijst dat het niets doet. */
 function isAsciiAlfanumeriek(codepunt: number): boolean {
   return (
     (codepunt >= 0x41 && codepunt <= 0x5a) ||
     (codepunt >= 0x61 && codepunt <= 0x7a) ||
     (codepunt >= 0x30 && codepunt <= 0x39)
   );
+}
+
+/**
+ * `U+0001`–`U+007F` — de buur die van een teken bewijst dat er geen schrift bij
+ * betrokken is dat het nodig heeft.
+ *
+ * ⚠️⚠️ **Deze tweede soort buur is de reparatie van de security-review op
+ *    QS8-499, en het gat dat hij dicht is het gewone geval.** De eerste versie
+ *    eiste aan **beide** kanten een alfanumeriek, en een spatie is ASCII maar
+ *    niet alfanumeriek. 📏 Gemeten: van de 267 codepunten die de regel tussen
+ *    twee letters weghaalt, haalde hij er naast een spatie **nul** weg —
+ *    `Jan<ZWNJ> Jansen` landde ongehinderd naast `Jan Jansen`, en dat is de
+ *    vorm van vrijwel elke echte naam.
+ */
+function isAscii(codepunt: number): boolean {
+  return codepunt >= 0x01 && codepunt <= 0x7f;
 }
 
 /**
@@ -374,9 +390,18 @@ function isAsciiAlfanumeriek(codepunt: number): boolean {
  *    context** en niet meer alleen per codepunt.
  *
  * ⚠️ De grens is ASCII en niet "een schrift dat dit teken niet gebruikt". Die
- *    tweede is correcter en vraagt Unicode-scriptdata die er niet is. ASCII is
- *    bewijsbaar veilig: geen schrift dat deze tekens nodig heeft, schrijft met
- *    ASCII-letters. 📏 De prijs — `Ján<ZWNJ>ös` ontsnapt — staat in
+ *    tweede is correcter en vraagt Unicode-scriptdata die er niet is.
+ *
+ * ⚠️⚠️ **Hier stond "bewijsbaar veilig: de twee verzamelingen raken elkaar
+ *    niet", en dat is onwaar.** 📏 Gemeten in de security-review op QS8-499:
+ *    `c<U+034F>h` wordt `ch`, en dat is de gedocumenteerde Slowaakse en
+ *    Hongaarse digraafscheiding — twee ASCII-letters met een CGJ ertussen. De
+ *    regel raakt dus wél een legitiem gebruik. Dat is aanvaard omdat de CGJ
+ *    dáár óók als nul pixels rendert: `ch` en `c<CGJ>h` zijn visueel identiek,
+ *    en die collisie weegt zwaarder dan de sorteerhint. Wat de regel níet raakt
+ *    zijn de vier must-allows, en dat is met een veeg nagemeten.
+ *
+ * 📏 De prijs — `Ján<ZWNJ>ös` ontsnapt, want `ö` is geen ASCII — staat in
  *    `docs/ENGINEER-REVIEW.md`.
  */
 export function zonderOnzichtbaarTussenLetters(ruw: string): string {
@@ -397,10 +422,19 @@ export function zonderOnzichtbaarTussenLetters(ruw: string): string {
     let eind = i;
     while (eind < tekens.length && isOnzichtbaarTussenLetters(codepunt(eind))) eind += 1;
 
-    const linksAscii = i > 0 && isAsciiAlfanumeriek(codepunt(i - 1));
-    const rechtsAscii = eind < tekens.length && isAsciiAlfanumeriek(codepunt(eind));
+    // ⚠️⚠️ **Eén alfanumerieke buur is genoeg, mits de ándere ASCII is** — de
+    //    reparatie uit de security-review. Een rand telt als ASCII: een teken
+    //    aan het begin of eind van de naam heeft daar geen schrift naast staan.
+    //    📏 `Jan<ZWNJ> Jansen` en `O<ZWNJ>'Brien` gingen hiervóór ongehinderd
+    //    door; `Ján<ZWNJ>ös` ontsnapt nog steeds, en dat is de bewuste prijs.
+    const linksAlnum = i > 0 && isAsciiAlfanumeriek(codepunt(i - 1));
+    const rechtsAlnum = eind < tekens.length && isAsciiAlfanumeriek(codepunt(eind));
+    const linksAscii = i === 0 || isAscii(codepunt(i - 1));
+    const rechtsAscii = eind === tekens.length || isAscii(codepunt(eind));
 
-    if (!linksAscii || !rechtsAscii) {
+    const weg = (linksAlnum && rechtsAscii) || (linksAscii && rechtsAlnum);
+
+    if (!weg) {
       for (let j = i; j < eind; j += 1) uit.push(tekens[j] as string);
     }
 
@@ -413,29 +447,84 @@ export function zonderOnzichtbaarTussenLetters(ruw: string): string {
 /** `U+1F3F4` — de zwarte vlag waar een subdivisievlag mee begint. */
 const VLAGBASIS = 0x1f3f4;
 
-/** Of dit codepunt een tagteken is dat bij een vlag hóórt te staan. */
+/** Of dit codepunt een tagteken is. */
 function isTag(codepunt: number): boolean {
   return codepunt >= 0xe0020 && codepunt <= 0xe007f;
 }
 
+/** `U+E007F` CANCEL TAG — het sluitteken van een vlagreeks. */
+const TAGSLUITER = 0xe007f;
+
 /**
- * Dezelfde tekst zonder tagtekens die niet bij een `U+1F3F4` horen.
+ * Of dit codepunt in het lichaam van een geldige vlagreeks mag staan.
+ *
+ * UTS #51: een RGI-tagreeks draagt alleen de tag-varianten van `0`–`9` en
+ * `a`–`z`. Een tag buiten dat bereik hoort niet bij een vlag, hoe hij ook staat.
+ */
+function isVlagletter(codepunt: number): boolean {
+  return (
+    (codepunt >= 0xe0030 && codepunt <= 0xe0039) ||
+    (codepunt >= 0xe0061 && codepunt <= 0xe007a)
+  );
+}
+
+/**
+ * Hoeveel codepunten de geldige vlagreeks op deze plek lang is, of `0`.
+ *
+ * ⚠️ `tekens[begin]` is de vlagbasis. Daarna 2 tot 6 vlagletters en dan de
+ *    sluiter — de vorm die UTS #51 voorschrijft.
+ */
+function vlagreeksLengte(tekens: readonly string[], begin: number): number {
+  let i = begin + 1;
+  while (i < tekens.length && isVlagletter(tekens[i]?.codePointAt(0) ?? 0)) i += 1;
+
+  const letters = i - begin - 1;
+  const sluit = i < tekens.length && (tekens[i]?.codePointAt(0) ?? 0) === TAGSLUITER;
+
+  return letters >= 2 && letters <= 6 && sluit ? i - begin + 1 : 0;
+}
+
+/**
+ * Dezelfde tekst zonder tagtekens die niet in een geldige vlagreeks staan.
  *
  * ⚠️ 🏴󠁧󠁢󠁳󠁣󠁴󠁿 is `U+1F3F4` plus zes tags. Een losse tag daarentegen rendert als nul
  *    pixels en is dus een collisievector — én de reden dat de randenlijst zijn
  *    tagbereik kwijt is: die at de staart van een echte vlag op.
+ *
+ * ⚠️⚠️ **De vórm van de reeks wordt getoetst en niet alleen de vlagbasis
+ *    ervóór, en dat is de reparatie uit de security-review op QS8-499.** De
+ *    eerste versie liet élke tag staan zodra er ergens een `U+1F3F4` vóór stond.
+ *    📏 Gemeten: `U+E0020`–`U+E007E` is een 1-op-1 afbeelding van ASCII
+ *    `0x20`–`0x7E`, dus achter één zichtbare 🏴 pasten ~75 tekens **willekeurige
+ *    onzichtbare tekst** binnen de grens van 80 codepunten — in een kolom die
+ *    groepszichtbaar is en die als platte tekst in systeemberichten wordt
+ *    ingebakken. En `🏴` plus één sluittag rendert als de kale 🏴, dus het was
+ *    ook een collisievector.
+ *
+ *    Aan de rand was het bovendien een regressie: de randenlijst streek die
+ *    staart vóór QS8-499 juist wél weg.
  */
 export function zonderLosseTags(ruw: string): string {
-  let naVlag = false;
+  const tekens = Array.from(ruw);
+  const uit: string[] = [];
+  let i = 0;
 
-  return Array.from(ruw)
-    .filter((teken) => {
-      const cp = teken.codePointAt(0) ?? 0;
-      if (isTag(cp)) return naVlag;
-      naVlag = cp === VLAGBASIS;
-      return true;
-    })
-    .join('');
+  while (i < tekens.length) {
+    const cp = tekens[i]?.codePointAt(0) ?? 0;
+
+    if (cp === VLAGBASIS) {
+      const lengte = vlagreeksLengte(tekens, i);
+      // Geen geldige reeks: de vlagbasis blijft, zijn tags gaan als los weg.
+      for (let j = i; j < i + Math.max(lengte, 1); j += 1) uit.push(tekens[j] as string);
+      i += Math.max(lengte, 1);
+      continue;
+    }
+
+    if (!isTag(cp)) uit.push(tekens[i] as string);
+    i += 1;
+  }
+
+  return uit.join('');
 }
 
 /**
