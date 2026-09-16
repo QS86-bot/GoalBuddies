@@ -228,23 +228,35 @@ ongemakkelijker dan de vorige.
 De voorwaarde was *"beide buren `[A-Za-z0-9]`"*. Een spatie is ASCII maar geen
 alfanumeriek.
 
-📏 Gemeten met een veeg over het hele codepuntbereik, per omgeving:
+📏 Gemeten met een veeg over het hele codepuntbereik, per omgeving — de hele
+tabel, vóór en ná, met dezelfde opstelling:
 
-| omgeving | codepunten die `schone_naam()` aanraakt |
-|---|---|
-| `a<cp>b` | 4241 |
-| `Jan<cp> Jansen` | 4241 − **267** |
-| `O<cp>'Brien` | 4241 − **267** |
+| omgeving | vóór | ná |
+|---|---|---|
+| losse tekens (de randen) | 3908 | **4004** |
+| `a<cp>b` | 4241 | 4241 |
+| `Jan<cp> Jansen` | 3974 | **4238** |
+| `O<cp>'Brien` | 3974 | **4238** |
+| `م<cp>خ` (Perzisch) | 3974 | 3974 |
+| tussen emoji | 3974 | 3974 |
+| ná de vlagbasis | 3908 | **4004** |
 
-267 is exact de hele `TUSSEN_LETTERS_BEREIKEN`. **Naast een spatie deed de regel
-precies niets** — en `Jan Jansen` is de vorm van vrijwel elke echte naam. Het
-aanvalsscenario is letterlijk dat waarvoor dit issue bestaat: Mallory zet haar
-naam op `Jan<U+200C> Jansen`, en in de goedkeurlijst staan twee keer
-`Jan Jansen`.
+4241 − 3974 = **267**, en dat is exact de hele `TUSSEN_LETTERS_BEREIKEN`. Naast
+een spatie deed de regel dus **precies niets** — en `Jan Jansen` is de vorm van
+vrijwel elke echte naam. Het aanvalsscenario is letterlijk dat waarvoor dit issue
+bestaat: Mallory zet haar naam op `Jan<U+200C> Jansen`, en in de goedkeurlijst
+staan twee keer `Jan Jansen`.
 
-Gerepareerd: **één** buur alfanumeriek, de andere ASCII, met een rand die als
-ASCII telt. 📏 Nagemeten, alle drie de omgevingen geven nu 4241, en geen van de
-vijf must-allows sneuvelt.
+⚠️⚠️ **De spatiecontext komt uit op 4238 en niet op 4241, en dat verschil van
+drie is de controle op de reparatie erna.** Het zijn `U+061C`, `U+200E` en
+`U+200F`: sinds de richtingsmarkeringen de strikte voorwaarde terugkregen,
+vuren ze naast een spatie niet meer. 📏 Hier stond eerst 4241 — dat was gemeten
+vóór die reparatie en is blijven staan tot de veeg met zeven omgevingen het
+tegensprak. **Een getal dat je één keer meet en daarna als vaststaand behandelt,
+veroudert precies zo stil als een regel over de achterstand.**
+
+De 96 die de vlagbasis erbij krijgt zijn de tagcodepunten `U+E0020`–`U+E007F`;
+de randenveeg krijgt dezelfde 96 omdat een losse tag daar nu ook wegvalt.
 
 ### B2 — achter één 🏴 paste ~75 tekens onzichtbare tekst
 

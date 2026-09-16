@@ -173,6 +173,17 @@ export function psqlMetInvoer(sql: string, { verbose = false } = {}): string {
  *    maakt alleen elke afzonderlijke duur onvoorspelbaar. `cpus().length` leest
  *    de maat van de machine waar hij draait, en de timeout geldt dan per vraag
  *    die daadwerkelijk CPU krijgt.
+ *
+ * 📏 **Nagemeten met de zeven vegen van `naamnormalisatie`, op deze bak:**
+ *
+ *      gelijktijdig=2  ->  409 s in totaal, ~102 s per veeg
+ *      gelijktijdig=4  ->  208 s in totaal
+ *
+ *    Twee is de maat van een GitHub-runner, en 102 s per veeg zit ruim binnen de
+ *    timeout hieronder. Het totaal verdubbelt wel, en dat is de prijs: zeven
+ *    vegen over het hele codepuntbereik kósten dat. Een grendel die te traag is
+ *    wordt uitgezet — maar een grendel die omvalt omdat hij zichzelf verdringt,
+ *    bewaakt al helemaal niets.
  */
 export async function psqlParallel(
   vragen: readonly string[],
