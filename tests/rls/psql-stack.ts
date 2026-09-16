@@ -1,5 +1,6 @@
-import { execFileSync } from 'node:child_process';
+import { execFile, execFileSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
+import { promisify } from 'node:util';
 
 /**
  * Eén psql-omgeving voor de RLS-tests die de database rechtstreeks lezen.
@@ -120,6 +121,62 @@ export function psqlMetInvoer(sql: string, { verbose = false } = {}): string {
     encoding: 'utf8',
     input: sql,
   });
+}
+
+/**
+ * Meerdere zware vragen **tegelijk**, elk in een eigen psql-proces — QS8-499.
+ *
+ * ⚠️⚠️ **Waarom dit bestaat, en waarom het geen luxe is.** `naamnormalisatie`
+ *    veegt het hele codepuntbereik langs `schone_naam()`. 📏 Gemeten op de
+ *    lokale stack: **74 s** voor één zo'n veeg. QS8-499 maakt de regel
+ *    contextgevoelig, dus één veeg is niet langer genoeg — er zijn er vier
+ *    nodig, en achter elkaar is dat vijf minuten voor één toets.
+ *
+ *    📏 Diezelfde vier tegelijk: **74 s** in totaal. De veeg is processorwerk in
+ *    één backend en deze bak heeft vier kernen, dus ze staan elkaar niet in de
+ *    weg. Dat verschil is wat een grendel scheidt van een grendel die iemand
+ *    uitzet — en `CLAUDE.md` waarschuwt bij regel 18 precies daarvoor: een
+ *    controle die je leert overslaan, bewaakt niets.
+ *
+ * ⚠️ **Via `-c` en niet via stdin**, anders dan `psqlMetInvoer()`: elke vraag
+ *    hier is één statement en `execFile` schrijft niet naar stdin. Wie hier een
+ *    `:'variabele'` nodig heeft, hoort bij `psqlMetInvoer()` — psql
+ *    interpoleert die alleen in invoer die hij zélf inleest.
+ *
+ * ⚠️ **`maxBuffer` met zoveel woorden.** De standaard van Node is 1 MiB en een
+ *    veeg over 1.114.111 codepunten haalt dat ruim. Node kapt dan af met
+ *    `ERR_CHILD_PROCESS_STDIO_MAXBUFFER` — een fout die leest als een kapotte
+ *    verbinding en niet als een te kleine emmer.
+ *
+ * ⚠️ De uitkomsten komen terug in de volgorde waarin de vragen binnenkwamen, en
+ *    niet in de volgorde waarin ze klaar waren. `Promise.all` garandeert dat;
+ *    zou het anders zijn, dan legt de aanroeper twee metingen naast elkaar die
+ *    niet bij elkaar horen.
+ *
+ * ⚠️ **Een `timeout`, want onwrikbare regel 14 zegt dat elke externe call er een
+ *    heeft.** Zonder zou een psql die blijft hangen pas opvallen bij de timeout
+ *    van de aanroepende `beforeAll` — en die zegt dan *"de opstelling duurde te
+ *    lang"* in plaats van *"de database antwoordde niet"*. 📏 Een veeg kost hier
+ *    74 s, dus de marge is ruim en hij vangt alleen wat écht vastzit.
+ */
+export async function psqlParallel(
+  vragen: readonly string[],
+  { verbose = false, maxBuffer = 256 * 1024 * 1024, timeout = 300_000 } = {},
+): Promise<string[]> {
+  const uitvoeren = promisify(execFile);
+
+  const uitkomsten = await Promise.all(
+    vragen.map((sql) =>
+      uitvoeren('psql', [...basisArgumenten(verbose), '-c', sql], {
+        env: PSQL_OMGEVING,
+        encoding: 'utf8' as const,
+        maxBuffer,
+        timeout,
+      }),
+    ),
+  );
+
+  return uitkomsten.map(({ stdout }) => stdout);
 }
 
 /** Wat er met deze suite moet gebeuren. */

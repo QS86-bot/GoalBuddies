@@ -171,8 +171,28 @@ grant execute on function public.zonder_losse_tags(text) to authenticated;
 --      4. de zeven tussen twee ASCII-letters  (hier)
 --      5. de randen                           (0256)
 --
---    Stap 3 staat vóór stap 4 met reden: daarna is elke overgebleven tag er een
---    die bij een vlag hoort, en dan kan stap 4 hem niet meer per ongeluk raken.
+-- ⚠️⚠️ **Stap 3 staat vóór stap 4, en de reden die hier eerst stond klopte
+--    niet.** Er stond: *"daarna is elke overgebleven tag er een die bij een vlag
+--    hoort, en dan kan stap 4 hem niet meer per ongeluk raken."* 📏 Nagemeten:
+--    de tekenklasse van stap 4 bevat géén enkel codepunt uit
+--    `U+E0020`–`U+E007F`, dus stap 4 kan een tag in **geen van beide**
+--    volgordes raken. Die reden verdedigde iets wat sowieso niet kon gebeuren.
+--
+--    De volgorde is wél dragend, maar om de spiegelzijde: **stap 3 kan twee
+--    ASCII-letters naast elkaar zetten die dat daarvoor niet waren**, en stap 4
+--    vuurt alleen tussen ASCII-buren. 📏 Gemeten op de lokale stack:
+--
+--      `a<U+E0067><U+200C>b`   stap 3 dan 4  ->  `ab`         (2 codepunten)
+--                              stap 4 dan 3  ->  `a<ZWNJ>b`   (3 codepunten)
+--
+--    Omgekeerd ziet stap 4 links van de ZWNJ een tag in plaats van `a`, vuurt
+--    niet, en ruimt stap 3 daarna de tag op — met de ZWNJ er nog tussen. Dat is
+--    precies het geval dat deze migratie moet sluiten.
+--
+--    ⚠️ Dit staat als naadtoets in `tests/rls/naamnormalisatie.test.ts`. Een
+--       volgorde die alleen in een comment verdedigd wordt, is een aanname —
+--       en een uitgeschreven argument leest de volgende persoon als een reden
+--       om er niet aan te twijfelen.
 --
 -- ⚠️⚠️ **De randenlijst versmalt van `\+0E0000-\+0E007F` naar
 --    `\+0E0000-\+0E001F`.** Dat is de helft van acceptatiecriterium 2: zonder

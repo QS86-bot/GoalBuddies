@@ -461,8 +461,11 @@ export function schoneNaam(ruw: string): string {
   //      4. de zeven tussen twee ASCII-letters  (QS8-499)
   //      5. de randen                           (QS8-448)
   //
-  //    Stap 3 staat vóór stap 4 met reden: daarna is elke overgebleven tag er
-  //    een die bij een vlag hoort, en dan kan stap 4 hem niet meer raken.
+  // ⚠️ Stap 3 staat vóór stap 4, en dat is dragend: stap 3 kan twee
+  //    ASCII-letters naast elkaar zetten die dat daarvoor niet waren, en stap 4
+  //    vuurt alleen tussen ASCII-buren. 📏 `a<U+E0067><U+200C>b` wordt zo `ab`;
+  //    omgekeerd blijft `a<ZWNJ>b` over. Uitleg en meting in de kop van
+  //    migratie 0277.
   const tekens = Array.from(
     zonderOnzichtbaarTussenLetters(
       zonderLosseTags(zonderOnzichtbaarMiddenin(zonderBidi(ruw))),
