@@ -291,7 +291,23 @@ export function zonderBidi(ruw: string): string {
  *    rood; dat is met de hand nagemeten, per richting.
  */
 export const MIDDENIN_BEREIKEN: readonly (readonly [number, number])[] = [
-  [0x0001, 0x001f], // C0-stuurtekens, zonder de spatie op U+0020
+  // ⚠️⚠️ **TAB (`U+0009`), LF (`U+000A`) en CR (`U+000D`) zitten hier met opzet
+  //    NIET in, en dat is een reparatie van 16-09-2026 (QS8-507, migratie 0285).**
+  //    Ze stonden er wél in, en daarmee weigerde de nul-pixelregel élke tekst met
+  //    een alinea erin — terwijl zijn onderbouwing luidt *"een teken dat als nul
+  //    pixels rendert is nooit inhoud"* en een regelovergang lay-out rendert.
+  //    📏 Tien van de twaalf kolommen van 0284 en vier van de dertien van 0283
+  //    hangen aan een `multiline`-veld; waar de client meestreek verdwenen de
+  //    alinea's stil, waar hij dat niet deed kwam er een onoplosbare melding.
+  //
+  // ⚠️ `U+000B` en `U+000C` blijven wél staan: geen lay-out die iemand typt, en
+  //    ze renderen per platform verschillend.
+  //
+  // ⚠️ Voor de belofte *"dit veld is één regel"* is er `zonderRegelovergang()`;
+  //    die hoort bij een náám en niet bij proza.
+  [0x0001, 0x0008], // C0-stuurtekens vóór TAB
+  [0x000b, 0x000c], // vertical tab en form feed
+  [0x000e, 0x001f], // de rest van C0, zonder de spatie op U+0020
   [0x007f, 0x009f], // DEL en de C1-stuurtekens, zonder de no-break space op U+00A0
   [0x00ad, 0x00ad], // soft hyphen
   [0x115f, 0x1160], // hangul choseong/jungseong filler
@@ -630,6 +646,38 @@ export function schoneVrijeTekst(ruw: string): string {
 }
 
 /**
+ * Dezelfde tekst zonder TAB, LF en CR — de spiegel van
+ * `zonder_regelovergang()` uit migratie 0285.
+ *
+ * ⚠️⚠️ **Dit is een ándere belofte dan de nul-pixelregel, en dat is precies
+ *    waarom hij een eigen functie is.** Tot 0285 lifte *"een naam is één regel"*
+ *    mee op `zonderOnzichtbaarMiddenin()`, doordat TAB, LF en CR toevallig in het
+ *    C0-bereik zitten. Dat was het juiste gedrag om de verkeerde reden: het gold
+ *    net zo hard voor tweeduizend tekens proza, en daar kostte het alinea's.
+ *
+ * ⚠️ **Hij hoort bij een náám en niet bij vrije tekst.** 📏 Gemeten per
+ *    invoerveld welke kolommen eenregelig zijn; de acht die het zijn staan in de
+ *    kop van 0285, mét de reden waarom `weekly_goals.ceiling_text` en
+ *    `floor_text` er níét bij horen: hun bron in `weekly_plan_steps` is wél
+ *    `multiline`, en `weekplanstap_naar_weekdoel()` kopieert die ongewijzigd.
+ *    Een kopie erft de grenzen van zijn bron.
+ */
+export function zonderRegelovergang(ruw: string): string {
+  return ruw.replace(/[\t\n\r]/g, '');
+}
+
+/**
+ * De vorm waarin een eenregelig veld de deur uit gaat: strijken, regelovergangen
+ * weg, dán de randen.
+ *
+ * ⚠️ Zelfde reden als `schoneVrijeTekst()`: één functie en niet acht keer een
+ *    eigen `.transform()`, zodat de volgorde niet op de negende plek omdraait.
+ */
+export function schoneEneRegel(ruw: string): string {
+  return zonderRegelovergang(zonderNulPixels(ruw)).trim();
+}
+
+/**
  * Een naam zonder onzichtbare randen.
  *
  * ⚠️ **Randen knippen en niet alles**, zie `ONZICHTBARE_BEREIKEN`. Wat er tussen
@@ -645,12 +693,21 @@ export function schoneVrijeTekst(ruw: string): string {
  *    in de eerste.
  */
 export function schoneNaam(ruw: string): string {
-  // ⚠️ Vijf stappen, elk met een eigen reden, in deze volgorde:
+  // ⚠️ Zes stappen, elk met een eigen reden, in deze volgorde:
   //      1. bidi-overrides overal weg          (QS8-450)
   //      2. nul-pixeltekens overal weg          (QS8-495)
+  //      2b. regelovergangen weg                (QS8-507)
   //      3. losse tags weg, vlaggen heel        (QS8-499)
   //      4. de zeven tussen twee ASCII-letters  (QS8-499)
   //      5. de randen                           (QS8-448)
+  //
+  // ⚠️⚠️ **Stap 2b is er sinds 0285 en hij houdt een belofte overeind die tot
+  //    dan toe meelifte.** TAB, LF en CR zaten in de tekenklasse van stap 2, dus
+  //    een naam met een regelovergang werd gestreken — het juiste gedrag om de
+  //    verkeerde reden, want diezelfde klasse gold ook voor tweeduizend tekens
+  //    proza en kostte daar alinea's. Nu stap 2 gecorrigeerd is, draagt stap 2b
+  //    *"een naam is één regel"* met zoveel woorden. 📏 Zonder deze stap gaf
+  //    `schoneNaam('Jan' + LF + 'Admin')` gewoon `'Jan\nAdmin'` terug.
   //
   // ⚠️ Stap 3 staat vóór stap 4, en dat is dragend: stap 3 kan twee
   //    ASCII-letters naast elkaar zetten die dat daarvoor niet waren, en stap 4
@@ -659,7 +716,7 @@ export function schoneNaam(ruw: string): string {
   //    migratie 0282.
   const tekens = Array.from(
     zonderOnzichtbaarTussenLetters(
-      zonderLosseTags(zonderOnzichtbaarMiddenin(zonderBidi(ruw))),
+      zonderLosseTags(zonderRegelovergang(zonderOnzichtbaarMiddenin(zonderBidi(ruw)))),
     ),
   );
 

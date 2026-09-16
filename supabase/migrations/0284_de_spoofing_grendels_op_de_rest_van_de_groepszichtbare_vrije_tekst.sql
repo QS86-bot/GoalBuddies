@@ -125,6 +125,14 @@
 --       vlagreeks halveren en een losse tag achterlaten. Wie de kopie ooit tóch
 --       wil grendelen, grendelt eerst de bron en kijkt dan naar die knip.
 --
+--     - **`chat_messages.attachment_name`** — voldoet aan het criterium
+--       (📏 `mag_groep_lezen(group_id)`, SELECT-grant aanwezig, en de waarde komt
+--       van de bestandsnaam van de gebruiker), en heeft hier tóch niets te
+--       zoeken: 📏 `chat_messages_attachment_name_vorm` (0242) weigert de
+--       stuurtekens en de bidi-reeksen al. Een tweede CHECK ernaast zou hetzelfde
+--       twee keer zeggen. Hij staat hier omdat een lezer die deze lijst naast de
+--       kolommen legt hem anders als gat vindt.
+--
 --     - **`chat_messages.body`** — voldoet aan het criterium en gaat hier tóch
 --       niet mee. Niet omdat het mag, maar omdat het een eigen afweging is: dit
 --       is de heetste schrijfroute van de app, en de openstaande rij in

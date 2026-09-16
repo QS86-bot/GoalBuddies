@@ -108,6 +108,97 @@ tweede route om naast te leggen, dus hij eist dat wat er de deur uit gaat een
 **vast punt** van `zonderNulPixels()` is — woordelijk wat de CHECK vraagt — met
 een tweede toets eronder die vaststelt dat er daadwerkelijk iets gestreken wordt.
 
+## 5a. De regel strijkt meer dan hij belooft — migratie 0285
+
+De security-review op dit issue vond een fout die verder reikt dan de scope
+ervan, en die al in `main` zat.
+
+`zonder_onzichtbaar_middenin()` strijkt sinds 0271 het bereik `U+0001`–`U+001F`,
+en daar zitten **TAB, LF en CR** in. 📏 Gemeten op de gedeployde functie:
+
+```
+newline       nul-pixelregel laat door: nee
+tab           nul-pixelregel laat door: nee
+CR            nul-pixelregel laat door: nee
+nbsp          nul-pixelregel laat door: ja
+```
+
+**Dat klopt niet met de onderbouwing van de regel.** Die luidt *"een teken dat
+als nul pixels rendert is nooit inhoud"*, en een regelovergang rendert als
+lay-out. De regel strijkt dus méér dan hij belooft, en precies dat verschil kost
+een gebruiker zijn alinea's.
+
+📏 Tien van de twaalf kolommen van 0284 en vier van de dertien van 0283 hangen
+aan een `multiline`-veld. Twee gedragingen, en de tweede is de ergste omdat
+niemand hem merkt: een route zónder client-spiegel geeft `opslaan mislukt` op
+tekst waar niets aan te zien is; een route mét spiegel slaat de tekst op zónder
+alinea's. Bij `reports.toelichting` is dat het meldformulier voor intimidatie.
+
+### Waarom de naadtest het niet kon vinden
+
+`tests/rls/nulpixelkolommen.test.ts` vraagt *"is de client het eens met de
+database"*. Beide kanten vernietigden de regelovergang, dus ze waren het eens,
+dus hij was groen.
+
+> ⚠️⚠️ Dat is onwrikbare regel 18 vraag 3 in zuivere vorm — *kan deze test groen
+> blijven terwijl de belofte breekt?* — op een toets die die regel in zijn eigen
+> kop aanhaalt.
+
+`src/shared/tekst/alinea.test.ts` stelt daarom de andere vraag: **kan een
+gebruiker nog een alinea schrijven?** Hij heeft geen database nodig en draait dus
+in elke `npm test`, ook waar de naadtest zichzelf overslaat.
+
+### De functie corrigeren, niet een tweede ernaast zetten
+
+Een `zonder_onzichtbaar_middenin_proza()` erbij zou de kopieervorm zijn waar
+CLAUDE.md voor waarschuwt — *elke definer-functie is een kopie van de vorige*.
+De fout zit in de functie, gemeten tegen zijn eigen onderbouwing, dus wordt de
+functie gerepareerd en gaat de reparatie in één keer naar élke kolom die hem
+gebruikt, de dertien van 0283 incluis. **Een reparatie die de instanties opruimt
+en het mechanisme laat staan, groeit terug.**
+
+### De belofte die eronder vandaan kwam
+
+⚠️ Zonder een tweede helft zou 0285 een grendel wéghalen: vandaag weigert
+`display_name` een regelovergang, per ongeluk, omdat die in het C0-bereik zit.
+Dat is het juiste gedrag om de verkeerde reden. *Een naam is één regel* is een
+**ándere** belofte, en krijgt daarom `zonder_regelovergang()` plus eigen CHECKs
+op de acht kolommen waarvan het invoerveld eenregelig is.
+
+⚠️⚠️ **En `weekly_goals.ceiling_text`/`floor_text` zitten er met opzet niet bij,
+hoewel hun veld eenregelig is.** 📏 `weekplan.plafond` en `weekplan.vloer`
+(`weekly_plan_steps`) zijn wél `multiline`, en `weekplanstap_naar_weekdoel()`
+kopieert die ongewijzigd naar `weekly_goals`. Een CHECK op de bestemming die de
+bron niet heeft, breekt de wekelijkse rollover — **dezelfde regel als bij
+`reports.bericht_kopie` in §2, en dit is de tweede keer op één dag dat hij een
+kolom uit de scope houdt.**
+
+### En `schone_naam()` moest mee
+
+📏 Na de correctie gaf `schoneNaam('Jan' + LF + 'Admin')` gewoon `'Jan\nAdmin'`
+terug — de naam die als twee regels rendert, precies waar 0269 voor gebouwd is.
+`schone_naam()` stelt de gecorrigeerde functie samen, dus de regelovergangstap
+moest er expliciet bij, aan **beide** kanten tegelijk: die twee staan onder een
+naadtest die het hele codepuntbereik afloopt. 📏 Na de wijziging: 30 tests groen
+over beide suites, dus de twee talen zijn het nog steeds over elk codepunt eens.
+
+### De tweede schrijfroute, opnieuw
+
+📏 `src/modules/ai/plan-rijen.ts` gaf de modeluitvoer woordelijk door en insert
+die rechtstreeks — `mijlpaalSchema` komt er niet aan te pas. Dat raakt
+`milestones.title/.description`, `goals.title` en de drie velden van het eerste
+weekdoel. Eén meerregelige AI-omschrijving liet de hele insert omvallen;
+`schrijfMijlpalen()` vangt dat af en geeft `[]` terug, dus de gebruiker verliest
+zijn plan zonder dat er iets zichtbaar misgaat.
+
+⚠️ Modeluitvoer is bovendien precies de plek waar een prompt-injectie een
+bidi-override zou landen. Dat de CHECK hem weigert is het goede antwoord; dat de
+gebruiker er zijn plan mee verliest niet.
+
+**Dit is de derde keer in twee issues dat een kolom twee schrijfroutes bleek te
+hebben.** De eerste twee stonden in een `api.ts`; deze in een AI-module. De vraag
+*"welke routes schrijven deze kolom"* is er niet één die je één keer beantwoordt.
+
 ## 6. De ijkingen
 
 ⚠️ Mutatie per grendel, en kijken wélke toets omvalt.
@@ -117,8 +208,10 @@ een tweede toets eronder die vaststelt dat er daadwerkelijk iets gestreken wordt
 | 10 | `milestones_title_geen_nul_pixels` gedropt | *elke kolom noemt beide regels* — meldt `milestones.title bidi -` |
 | 11 | `beslisDeadlineVerzoek()` terug naar `.trim()` | 7 van de 16 in `rpc-tekstroutes` |
 | 12 | `stuurMelding()` geeft de toelichting ongestreken door | 7 van de 16, de andere zeven |
+| 13 | het oude bereik `[0x0001, 0x001f]` teruggezet in `MIDDENIN_BEREIKEN` | 6 van de 15 in `alinea.test.ts` — precies de alinea-toetsen |
+| 14 | de eenregelige regel óók op `week_reviews.did_text` gezet | *de prozakolommen dragen hem juist níet* — meldt `week_reviews.did_text` |
 
-Samen met de negen van QS8-506 zijn dat er twaalf op deze twee migraties.
+Samen met de negen van QS8-506 zijn dat er veertien op deze drie migraties.
 
 ## 7. Wat er bewust níét in zit
 

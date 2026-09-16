@@ -298,6 +298,77 @@ describe.runIf(beschikbaar)('elke groepszichtbare tekstkolom draagt allebei de C
   });
 });
 
+/**
+ * De acht kolommen waarvan het invoerveld eenregelig is — 0285 (QS8-507).
+ *
+ * ⚠️ **Een ándere regel dan de twee hierboven**, en met opzet een eigen lijst:
+ *    *"een naam is één regel"* lifte tot 0285 mee op de nul-pixelregel, doordat
+ *    TAB, LF en CR toevallig in het C0-bereik zaten. Nu die eruit zijn, draagt
+ *    deze lijst die belofte met zoveel woorden.
+ *
+ * ⚠️ `weekly_goals.ceiling_text` en `.floor_text` staan er met opzet **niet** bij,
+ *    hoewel hun veld eenregelig is: hun bron in `weekly_plan_steps` is
+ *    `multiline` en wordt er ongewijzigd naartoe gekopieerd. Zie de kop van 0285.
+ */
+const EENREGELIG: readonly (readonly [string, string])[] = [
+  ['profiles', 'display_name'],
+  ['groups', 'name'],
+  ['groups', 'icon'],
+  ['goals', 'title'],
+  ['milestones', 'title'],
+  ['weekly_goals', 'title'],
+  ['weekly_plan_steps', 'title'],
+  ['commitments', 'body'],
+];
+
+describe.runIf(beschikbaar)('de eenregelige kolommen weigeren een regelovergang', () => {
+  it('elk van de acht draagt `_een_regel`', () => {
+    const uit = viaPsql(
+      "select c.relname || '.' || a.attname || ' ' || " +
+        "  (case when exists (select 1 from pg_constraint k where k.conrelid = c.oid " +
+        "     and pg_get_constraintdef(k.oid) like '%zonder_regelovergang%' " +
+        "     and pg_get_constraintdef(k.oid) like '%' || a.attname || '%') then 'ja' else '-' end) " +
+        'from pg_attribute a join pg_class c on c.oid = a.attrelid ' +
+        "join pg_namespace n on n.oid = c.relnamespace where n.nspname = 'public' " +
+        `and (c.relname, a.attname) in (${EENREGELIG.map(([t, k]) => `('${t}','${k}')`).join(',')}) ` +
+        'order by 1;',
+    );
+
+    const rijen = uit.split('\n').filter((r) => r.trim() !== '');
+
+    expect(rijen).toHaveLength(EENREGELIG.length);
+    expect(rijen.filter((r) => !r.endsWith(' ja'))).toEqual([]);
+  });
+
+  /**
+   * ⚠️ En de tegenhanger: de kolommen waar proza in hoort, dragen hem **niet**.
+   *    Zonder deze toets zou "zet hem overal op" groen zijn, en dan is elk
+   *    multiline-veld weer zijn alinea's kwijt — de fout die 0285 repareert.
+   */
+  it('en de prozakolommen dragen hem juist níet', () => {
+    const proza: readonly (readonly [string, string])[] = [
+      ['groups', 'omschrijving'],
+      ['completions', 'note'],
+      ['week_reviews', 'did_text'],
+      ['reports', 'toelichting'],
+      ['weekly_plan_steps', 'ceiling_text'],
+      ['weekly_goals', 'ceiling_text'],
+    ];
+
+    const uit = viaPsql(
+      "select c.relname || '.' || a.attname " +
+        'from pg_attribute a join pg_class c on c.oid = a.attrelid ' +
+        "join pg_namespace n on n.oid = c.relnamespace where n.nspname = 'public' " +
+        `and (c.relname, a.attname) in (${proza.map(([t, k]) => `('${t}','${k}')`).join(',')}) ` +
+        'and exists (select 1 from pg_constraint k where k.conrelid = c.oid ' +
+        "  and pg_get_constraintdef(k.oid) like '%zonder_regelovergang%' " +
+        "  and pg_get_constraintdef(k.oid) like '%' || a.attname || '%') order by 1;",
+    );
+
+    expect(uit.split('\n').filter((r) => r.trim() !== '')).toEqual([]);
+  });
+});
+
 describe.runIf(beschikbaar)('de must-allows overleven allebei de kanten', () => {
   it.each(MUST_ALLOW)('laat $naam heel op de client', ({ waarde }) => {
     expect(zonderNulPixels(waarde)).toBe(waarde);

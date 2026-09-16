@@ -81,7 +81,7 @@ import {
   type Ritme,
 } from '@/modules/goals';
 import { opmaaktaal, t } from '@/shared/i18n';
-import { telTekens } from '@/shared/tekst';
+import { schoneEneRegel, telTekens } from '@/shared/tekst';
 import { space } from '@/shared/theme';
 import {
   addDays,
@@ -1191,7 +1191,14 @@ function Straf({
             groep: getuige ?? t('straf.jouw_groep'),
           })}
         </Body>
-        <Body muted>{t('straf.dan_geldt', { tekst })}</Body>
+        {/* ⚠️ **De geschoonde tekst en niet de rauwe state** — gevonden in de
+            security-review op QS8-507. `zetStraf()` haalt hem door
+            `commitmentSchema`, dat sinds 0284 strijkt; zou dit scherm de rauwe
+            waarde tonen, dan bevestigt de gebruiker A en slaat de app B op.
+            Domeinregel 5 eist dat een consequentie expliciet bevestigd én
+            auditeerbaar is, en de begunstigde groep leest later `body` — niet
+            wat hier stond. */}
+        <Body muted>{t('straf.dan_geldt', { tekst: schoneEneRegel(tekst) })}</Body>
         <Caption>{t('straf.tot_dan')}</Caption>
         {fout === null ? null : <Caption danger>{fout}</Caption>}
         <View style={styles.knoppen}>

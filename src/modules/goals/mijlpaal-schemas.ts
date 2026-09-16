@@ -1,7 +1,7 @@
 import { z } from 'zod';
 
 import { t } from '../../shared/i18n';
-import { schoneVrijeTekst, telTekens } from '../../shared/tekst';
+import { schoneVrijeTekst, telTekens, schoneEneRegel } from '../../shared/tekst';
 
 /**
  * De regels van een mijlpaal, zonder Supabase en zonder React Native — QS8-39.
@@ -21,7 +21,7 @@ export const mijlpaalSchema = z.object({
     .string()
     // ⚠️ Eerst schoonmaken, dán oordelen — QS8-507, migratie 0284. Zie
     //    `schoneVrijeTekst()`; de trimvolgorde zit erin.
-    .transform(schoneVrijeTekst)
+    .transform(schoneEneRegel)
     .refine((v) => telTekens(v) >= 3, { error: () => t('validatie.mijlpaaltitel') })
     .refine((v) => telTekens(v) <= MIJLPAAL_TITEL_MAX, {
       error: `Maximaal ${MIJLPAAL_TITEL_MAX} tekens.`,

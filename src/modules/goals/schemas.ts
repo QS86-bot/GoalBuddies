@@ -2,7 +2,7 @@ import { z } from 'zod';
 
 import { CATEGORIEEN, isCategorie, type Categorie } from '../../shared/categorieen';
 import { t } from '../../shared/i18n';
-import { telTekens, schoneVrijeTekst } from '../../shared/tekst';
+import { telTekens, schoneVrijeTekst, schoneEneRegel } from '../../shared/tekst';
 import { isGeldigeIsoDatum, type IsoDate } from '../../shared/time';
 
 /**
@@ -239,7 +239,7 @@ export const doelSchema = z.object({
     //    ondergrens, komt leeg in de database aan en loopt daar stuk op
     //    `goals_title_len`. Dat is een tweede melding waar de gebruiker niets
     //    aan kan zien. QS8-506.
-    .transform(schoneVrijeTekst)
+    .transform(schoneEneRegel)
     .refine((v) => telTekens(v) >= 3, { error: () => t('validatie.doeltitel_kort') })
     .refine((v) => telTekens(v) <= 200, { error: () => t('validatie.doeltitel_lang') }),
   description: z
