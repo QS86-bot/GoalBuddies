@@ -31,7 +31,7 @@
 > | #496 | reviewrij 15-09 — een `--data-only` terugzet van goedkeuringen: gemeten en vastgelegd |
 > | #497 | reviewrij 14-09 — de bewaking op standaardrechten ziet ook een regel zonder `in schema` (0278) |
 >
-> De lessen van deze ronde staan als punt AF, AG en AH hieronder.
+> De lessen van deze ronde staan als punt AF, AG, AH en AI hieronder.
 >
 > **Daarvóór:** 14-09-2026, na QS8-477 (PR #483) — het laatste deelissue
 > van het heldenepic QS8-468. Diezelfde dag uit die sessie QS8-471 (PR #470),
@@ -451,6 +451,39 @@
 > waarschuwt: **een afwijking die je onderbouwt is duurder dan een die je
 > vergeet.** Lees bij elke registerrij na of de grens die er staat écht de grens
 > is die je bedoelt, of alleen de eerste die je opviel.
+>
+> **16-09, punt AI: een ijking zegt of een grendel bíjt, niet of hij op de goede
+> plek zit — en dat verschil kostte QS8-499 twee blokkerende bevindingen.** Vijf
+> ijkingen, alle vijf geldig, alle vijf op de grendel die ze noemden, en de
+> security-review vond er daarna tóch twee gaten in. Allebei ernstig.
+>
+> 📏 Het eerste: de contextregel eiste aan **beide** kanten een ASCII-alfanumeriek.
+> Een spatie is ASCII maar niet alfanumeriek, dus van de 267 codepunten die de
+> regel tussen twee letters weghaalt, haalde hij er naast een spatie **nul** weg.
+> `Jan<ZWNJ> Jansen` landde ongehinderd naast `Jan Jansen` — de vorm van vrijwel
+> elke echte naam, en precies het scenario waarvoor het issue bestond. Veertien
+> naadtoetsen bleven er groen onder.
+>
+> ⚠️⚠️ **De oorzaak zit in hoe ik de omgevingen indeelde.** `CONTEXTEN` had er
+> vier: *één waar de regel moet vuren, plus drie must-allows*. Die indeling is
+> netjes en ze kan per constructie precies één soort fout niet zien — **een regel
+> die te smal is**. Er ontbrak de omgeving waar hij zou moeten vuren en het niet
+> deed.
+>
+> Dat is een andere vraag dan de zes van regel 18. Die gaan over of de tóets de
+> belofte bewaakt; deze gaat over of de belófte klopt. Een ijking kan de tweede
+> niet beantwoorden, want ze begint bij wat je gebouwd hebt.
+>
+> ⚠️ **Wat het wél vindt is de vraag die geen script stelt:** *lees de regel als
+> aanvaller en zoek de invoer waar hij niet vuurt.* Zet bij elke nieuwe regel dus
+> niet alleen de gevallen neer waar hij moet vuren en waar hij moet zwijgen, maar
+> ook het geval dat er **net** buiten valt — en vraag je af of dat geval het
+> gewone geval is. Bij QS8-499 was het dat.
+>
+> 📏 Het tweede gat had dezelfde vorm: `zonder_losse_tags()` toetste of er een
+> vlagbasis vóór een tag stond, maar niet of de reeks een vlag ís. Achter één 🏴
+> paste ~75 tekens onzichtbare ASCII-tekst. Ook daar dekte elke toets wat de
+> functie belóófde en niet wat er omheen kon.
 >
 > **16-09, punt AF: een ijking die zijn eigen instrument overtypt, meet zichzelf —
 > en hij wordt wél rood.** Bij QS8-499 zijn twee ijkingen weggegooid. Ze braken
