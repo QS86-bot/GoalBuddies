@@ -32,11 +32,68 @@ describe('de service worker mag nooit uit de cache komen', () => {
     // ⚠️ Apache past `Header set` in volgorde toe. Staat het `<Files>`-blok
     //    eerder, dan overschrijft `immutable` het alsnog en is de reparatie een
     //    regel tekst zonder werking.
+    //
+    // ⚠️⚠️ **Niet `indexOf('<Files \"sw.js\">')`, en dat is sinds QS8-504 het
+    //    verschil tussen meten en gokken.** Er zijn nu twee blokken met die
+    //    naam — één voor de cache, één voor het content-type — en `indexOf`
+    //    pakt het eerste dat langskomt. Die toets zou dus stil van blok kunnen
+    //    wisselen zodra iemand de volgorde verzet, en dan bewaakt hij iets
+    //    anders dan zijn naam zegt. Zoek daarom het blok aan zijn ínhoud.
+    //
+    // 📏 **Gemeten, niet aangenomen.** Met de oude assertie en het ForceType-blok
+    //    vóór het cacheblok wordt deze toets **rood** — op een verplaatsing die
+    //    niets kapotmaakt, want `ForceType` en `Header set` zijn verschillende
+    //    directives en hun onderlinge volgorde is geen belofte. Een vals alarm
+    //    dus, en in de spiegelstand een vals groen: `indexOf` meet wie er
+    //    toevallig eerst staat, niet wie de toets bedoelt. Met de vorm hieronder
+    //    blijft hij groen op die verplaatsing en rood zodra het cacheblok
+    //    daadwerkelijk boven de algemene regel belandt.
     const algemeen = HTACCESS.indexOf('max-age=31536000');
-    const specifiek = HTACCESS.indexOf('<Files "sw.js">');
+    const cacheblok = HTACCESS.search(
+      /<Files "sw\.js">\s*\n\s*Header set Cache-Control "no-cache, no-store, must-revalidate"/,
+    );
 
-    expect(algemeen).toBeGreaterThan(-1);
-    expect(specifiek).toBeGreaterThan(algemeen);
+    expect(algemeen, 'geen algemene .js-cacheregel meer').toBeGreaterThan(-1);
+    expect(cacheblok, 'geen <Files "sw.js"> met een Cache-Control erin').toBeGreaterThan(-1);
+    expect(cacheblok).toBeGreaterThan(algemeen);
+  });
+});
+
+/**
+ * De service worker moet als JavaScript binnenkomen — QS8-504.
+ *
+ * ⚠️ **Gemeten bij de echte deploy van 16-09-2026.** Hostinger levert `.js` als
+ *    `application/x-javascript`, en daar registreert geen enkele browser een
+ *    service worker op. `pwa:controle` keurde dat af en de deploy liep vast.
+ *
+ * ⚠️ **Dit is niet hetzelfde als het cacheblok hierboven**, ook al heten de
+ *    `<Files>`-blokken gelijk. Dat gaat over hóelang de browser hem vasthoudt,
+ *    dit over wát hij denkt dat het is. Een service worker die een jaar
+ *    gecachet wordt is oud; een service worker met het verkeerde content-type
+ *    bestaat niet — er is geen push, geen offline, niets.
+ */
+describe('de service worker komt binnen als JavaScript', () => {
+  it('zet het type voor .js en .mjs', () => {
+    expect(HTACCESS).toMatch(/AddType\s+text\/javascript\s+\.js\s+\.mjs/);
+  });
+
+  it('forceert het op sw.js, ook als een AddType overruled wordt', () => {
+    // Een `AddType` is te overrulen door een hogere .htaccess of een
+    // servermapping; dit is het ene bestand waarvoor dat niet mag misgaan.
+    expect(HTACCESS).toMatch(
+      /<Files "sw\.js">\s*\n\s*ForceType\s+text\/javascript\s*\n\s*<\/Files>/,
+    );
+  });
+
+  /**
+   * ⚠️ De must-allow-helft: het cacheblok mag hier niet door verdwijnen. Twee
+   *    blokken met dezelfde naam is precies de vorm waarin er per ongeluk één
+   *    overblijft — en dan is de reparatie van vandaag de regressie van morgen.
+   */
+  it('laat het cacheblok van sw.js staan', () => {
+    expect(HTACCESS).toMatch(
+      /<Files "sw\.js">\s*\n\s*Header set Cache-Control "no-cache, no-store, must-revalidate"/,
+    );
   });
 });
 
