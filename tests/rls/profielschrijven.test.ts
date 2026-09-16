@@ -267,6 +267,40 @@ describe.skipIf(!rlsTestsConfigured)('Je eigen profiel opslaan', () => {
     );
 
     /**
+     * ⚠️⚠️ **De richtingsmarkeringen, en die horen bij een ándere CHECK.** `0269`
+     *    laat ze met opzet buiten `zonder_bidi()`: ze kéren niets om, ze
+     *    markeren. Maar strikt tussen twee ASCII-alfanumerieken markeren ze ook
+     *    niets — er is daar geen grens — en `a<RLM>b` is niet van `ab` te
+     *    onderscheiden. QS8-499 (migratie 0280) sluit precies die plek.
+     *
+     * ⚠️ De constraintnaam staat erbij om dezelfde reden als hierboven: dit is
+     *    `geen_onzichtbaar_tussen_letters` en niet `geen_bidi`, en een toets die
+     *    alleen op `23514` let zou niet merken dat de verkeerde CHECK het deed.
+     */
+    it.each([
+      { naam: 'de right-to-left mark', waarde: `a${String.fromCodePoint(0x200f)}b` },
+      { naam: 'de left-to-right mark', waarde: `a${String.fromCodePoint(0x200e)}b` },
+      { naam: 'de arabic letter mark', waarde: `a${String.fromCodePoint(0x061c)}b` },
+    ])(
+      'weigert $naam tússen twee letters, waar hij niets markeert',
+      async ({ waarde }) => {
+        const { error } = await alice.db
+          .from('profiles')
+          .update({ display_name: waarde })
+          .eq('id', alice.id)
+          .select('id')
+          .single();
+
+        expect(error?.code, 'de CHECK liet een naam door die als een andere rendert').toBe('23514');
+        expect(
+          error?.message ?? '',
+          'een CHECK weigerde dit, maar niet degene die deze toets bewaakt',
+        ).toContain('profiles_display_name_geen_onzichtbaar_tussen_letters');
+      },
+      TEST_TIMEOUT,
+    );
+
+    /**
      * ⚠️ **De must-allow, en om dezelfde reden als hierboven niet optioneel.**
      *    📏 `profiles_display_name_geen_bidi` roept `public.zonder_bidi()` aan;
      *    zónder `grant execute` aan `authenticated` valt élke profielschrijving
@@ -274,17 +308,37 @@ describe.skipIf(!rlsTestsConfigured)('Je eigen profiel opslaan', () => {
      *    niets met bidi te maken heeft. Een dichte deur leest als een veilige
      *    deur.
      *
-     * ⚠️ De laatste twee zijn de besluiten uit migratie 0269: de RLM is een
-     *    *markering* en geen override, en homoglyphen worden hier niet opgelost.
-     *    Ze staan hier zodat die twee besluiten zichtbaar zijn als besluit en
-     *    niet als omissie — wie ze ooit omkeert, maakt deze toetsen rood en leest
-     *    dan waarom ze er stonden.
+     * ⚠️ De laatste is een besluit uit migratie 0269: homoglyphen worden hier
+     *    niet opgelost. Hij staat hier zodat dat besluit zichtbaar is als besluit
+     *    en niet als omissie — wie het ooit omkeert, maakt deze toets rood en
+     *    leest dan waarom hij er stond.
+     *
+     * ⚠️⚠️ **Hier stond `a<U+200F>b` met als reden "de RLM is een markering en
+     *    geen override", en dat geval is met QS8-499 (migratie 0280) omgeslagen
+     *    naar een weigering.** Die reden ging over 0269: de RLM hoort niet in
+     *    `zonder_bidi()`, want hij kéért niets om. Hij zegt niets over de plek.
+     *
+     *    📏 Strikt tussen twee ASCII-alfanumerieken is `a<RLM>b` niet van `ab`
+     *    te onderscheiden en is er geen grens waar de markering op werkt — dus
+     *    daar gaat hij weg. Het geval staat nu hierboven bij de weigeringen.
+     *
+     *    Wat ervoor in de plaats komt is het geval waar de markering wél werk
+     *    doet: een naam die twee schriften mengt. 📏 Die is gemeten en hij was
+     *    bijna de bijvangst van deze wijziging — een eerdere versie van de regel
+     *    haalde hem wél weg, en geen enkele toets zag dat.
      */
     it.each([
       { naam: 'een gewone naam', waarde: 'Jan Jansen' },
       { naam: 'een gezinsemoji', waarde: '👨‍👩‍👧‍👦' },
       { naam: 'een Arabische naam', waarde: 'محمد' },
-      { naam: 'een naam met een right-to-left mark', waarde: `a${String.fromCodePoint(0x200f)}b` },
+      {
+        naam: 'een naam die twee schriften mengt met een right-to-left mark',
+        waarde: `Jan${String.fromCodePoint(0x200f)} محمد`,
+      },
+      {
+        naam: 'dezelfde markering vóór een spatie',
+        waarde: `Jan${String.fromCodePoint(0x200f)} Jansen`,
+      },
       { naam: 'een naam met een Cyrillische homoglyph', waarde: 'J\u0430n' },
     ])(
       'laat $naam wel toe',

@@ -353,6 +353,29 @@ export function isOnzichtbaarTussenLetters(codepunt: number): boolean {
   return TUSSEN_LETTERS_BEREIKEN.some(([van, tot]) => codepunt >= van && codepunt <= tot);
 }
 
+/**
+ * De richtingsmarkeringen — `U+061C`, `U+200E` en `U+200F`.
+ *
+ * ⚠️⚠️ **Deze drie krijgen de stríktere voorwaarde, en dat is met een meting
+ *    afgedwongen.** De andere vier groepen hangen aan een **teken**: een
+ *    variatieselector kiest een vorm voor zijn basisteken, een ZWNJ verhindert
+ *    een verbinding tussen twee verbindende letters, een CGJ blokkeert
+ *    hergroepering. Naast een spatie of een leesteken is daar geen teken om aan
+ *    te hangen, dus zijn ze daar bewijsbaar inert.
+ *
+ *    Een richtingsmarkering hangt aan een **grens**. Haar werk begint juist
+ *    waar er iets niet-alfanumeriek naast staat. 📏 Gemeten: met de verbrede
+ *    voorwaarde verloor `Jan<U+200F> محمد` zijn markering — precies de plek waar
+ *    hij de lay-out van wat erop volgt bepaalt.
+ *
+ *    Strikt tússen twee ASCII-alfanumerieken is er geen grens om op te werken,
+ *    en dáár is `a<RLM>b` niet van `ab` te onderscheiden. Die en alleen die
+ *    plek is veilig.
+ */
+function isRichtingsmarkering(codepunt: number): boolean {
+  return codepunt === 0x061c || codepunt === 0x200e || codepunt === 0x200f;
+}
+
 /** `A-Z`, `a-z` of `0-9` — de buur die van een teken bewijst dat het niets doet. */
 function isAsciiAlfanumeriek(codepunt: number): boolean {
   return (
@@ -432,7 +455,19 @@ export function zonderOnzichtbaarTussenLetters(ruw: string): string {
     const linksAscii = i === 0 || isAscii(codepunt(i - 1));
     const rechtsAscii = eind === tekens.length || isAscii(codepunt(eind));
 
-    const weg = (linksAlnum && rechtsAscii) || (linksAscii && rechtsAlnum);
+    // ⚠️⚠️ **Draagt de reeks een richtingsmarkering, dan geldt de stríkte
+    //    voorwaarde voor de hele reeks.** Of die markering daar bidi-werk doet,
+    //    is van buitenaf niet te zien — en dan is de conservatieve kant de
+    //    juiste. 📏 De prijs is smal en gemeten: `Jan<ZWNJ><RLM> Jansen` blijft
+    //    staan, want die reeks is gemengd. Zie de kop van migratie 0280.
+    let heeftRichting = false;
+    for (let j = i; j < eind; j += 1) {
+      if (isRichtingsmarkering(codepunt(j))) heeftRichting = true;
+    }
+
+    const weg = heeftRichting
+      ? linksAlnum && rechtsAlnum
+      : (linksAlnum && rechtsAscii) || (linksAscii && rechtsAlnum);
 
     if (!weg) {
       for (let j = i; j < eind; j += 1) uit.push(tekens[j] as string);

@@ -853,6 +853,43 @@ describe.runIf(beschikbaar)('de volgorde van de vijf stappen is zelf een naad', 
   }, 30_000);
 
   /**
+   * ⚠️⚠️ **De richtingsmarkeringen krijgen de stríktere voorwaarde, en dat gat
+   *    is met een meting gevonden en niet met een ijking.** De verbreding uit de
+   *    security-review haalde `Jan<U+200F> محمد` zijn markering weg — precies de
+   *    plek waar hij de lay-out bepaalt van wat erop volgt. Geen enkele toets
+   *    zag dat; de poort werd rood op een ánder geval (`a<RLM>b`) en dat leidde
+   *    ernaartoe.
+   *
+   *    De andere vier groepen hangen aan een **teken** en zijn naast een spatie
+   *    bewijsbaar inert. Een richtingsmarkering hangt aan een **grens**, en haar
+   *    werk begint juist waar er iets niet-alfanumerieks naast staat.
+   *
+   * ⚠️ **En de prijs staat er als toets naast.** De uitzondering geldt voor de
+   *    héle reeks, dus een reeks die een markering mengt met een ander teken
+   *    ontsnapt naast een spatie. Staat als rij in `docs/ENGINEER-REVIEW.md`;
+   *    valt dit geval om, dan is de regel verbreed en hoort die rij mee te
+   *    verdwijnen.
+   */
+  it('laat een richtingsmarkering staan waar hij een grens markeert', () => {
+    // Weg: strikt tussen twee ASCII-letters markeert hij niets.
+    expect(schoneNaam('a\u200Fb'), 'tussen twee letters').toBe('ab');
+    expect(viaDeDatabase(['a\u200Fb'])[0], 'tussen twee letters, database').toBe(alsHex('ab'));
+
+    // Blijft: op de grens naar een ander schrift doet hij werk.
+    const gemengd = 'Jan\u200F \u0645\u062D\u0645\u062F';
+    expect(schoneNaam(gemengd), 'twee schriften').toBe(gemengd);
+    expect(viaDeDatabase([gemengd])[0], 'twee schriften, database').toBe(alsHex(gemengd));
+
+    // ⚠️ De bekende prijs: een gemengde reeks valt onder de strikte voorwaarde.
+    const gemengdeReeks = 'Jan\u200C\u200F Jansen';
+    expect(schoneNaam(gemengdeReeks), 'ZWNJ plus RLM ontsnapt naast een spatie').toBe(gemengdeReeks);
+    expect(viaDeDatabase([gemengdeReeks])[0], 'idem, database').toBe(alsHex(gemengdeReeks));
+
+    // ...maar dezelfde reeks tússen twee letters niet.
+    expect(schoneNaam('a\u200C\u200Fb'), 'tussen twee letters wél weg').toBe('ab');
+  }, 30_000);
+
+  /**
    * ⚠️⚠️ **En het geval dat de regel wél raakt en dat een besluit is, geen
    *    omissie.** `c<CGJ>h` is de Slowaakse en Hongaarse digraafscheiding —
    *    twee ASCII-letters met een combining grapheme joiner ertussen, en een

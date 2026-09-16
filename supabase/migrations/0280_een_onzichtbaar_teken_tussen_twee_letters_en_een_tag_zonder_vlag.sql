@@ -138,14 +138,35 @@ as $$
   --    lookaround zou de eerste treffer zijn rechterbuur opeten en het volgende
   --    geval zijn linkerbuur kwijt zijn.
   --
-  -- ⚠️⚠️ **Twee alternatieven en niet één, na de security-review.** Het patroon
-  --    eist niet langer aan beide kanten een alfanumeriek maar aan één kant, met
-  --    ASCII aan de andere. `(?![^ascii])` slaagt óók aan het eind van de tekst
-  --    en `(?<![^ascii])` aan het begin — een rand telt dus als ASCII, want daar
-  --    staat geen schrift naast.
+  -- ⚠️⚠️ **Twee stappen, en de tweede laat de richtingsmarkeringen met rust.**
+  --    Na de security-review eist de regel niet langer aan beide kanten een
+  --    alfanumeriek maar aan één kant, met ASCII aan de andere. `(?![^ascii])`
+  --    slaagt óók aan het eind van de tekst en `(?<![^ascii])` aan het begin —
+  --    een rand telt dus als ASCII, want daar staat geen schrift naast.
+  --
+  -- ⚠️⚠️ **Maar die verbreding brak `U+061C`, `U+200E` en `U+200F`, en dat is
+  --    met een meting gevonden.** 📏 `Jan<U+200F> محمد` verloor zijn markering.
+  --    De andere vier groepen hangen aan een **teken**: een variatieselector
+  --    kiest een vorm voor zijn basis, een ZWNJ verhindert een verbinding tussen
+  --    twee verbindende letters, een CGJ blokkeert hergroepering. Naast een
+  --    spatie is daar geen teken om aan te hangen, dus zijn ze daar inert.
+  --
+  --    Een richtingsmarkering hangt aan een **grens**, en haar werk begint juist
+  --    waar er iets niet-alfanumerieks naast staat. Strikt tússen twee
+  --    ASCII-alfanumerieken is er geen grens, en dáár is `a<RLM>b` niet van `ab`
+  --    te onderscheiden. Die en alleen die plek is veilig.
+  --
+  --    Vandaar twee stappen: A pakt élke reeks tussen twee alfanumerieken, B
+  --    pakt de rest met de soepele voorwaarde maar zónder de drie markeringen.
+  --
+  --    ⚠️ **Een gemengde reeks valt daardoor onder de strikte voorwaarde**, en
+  --       dat is opzet: draagt een reeks een markering, dan is van buitenaf niet
+  --       te zien of die daar werk doet. 📏 De prijs is smal en bekend:
+  --       `Jan<ZWNJ><RLM> Jansen` blijft staan. Staat als rij in
+  --       `docs/ENGINEER-REVIEW.md`.
   --
   --    ⚠️ Er ontstaan geen deeltreffers door terugkrabbelen: elk codepunt in
-  --       `tussen` ligt boven `U+007F`, dus een ingekorte reeks laat een
+  --       `alle` ligt boven `U+007F`, dus een ingekorte reeks laat een
   --       niet-ASCII teken over en de lookahead faalt alsnog.
   --
   -- ⚠️ De TypeScript-kant doet hetzelfde **zonder** lookbehind, met een lus over
@@ -157,17 +178,27 @@ as $$
   -- ⚠️ `[A-Za-z0-9]` en niet `\w`: die laatste is in Postgres locale-afhankelijk
   --    en zou in een andere collatie letters met accenten mee kunnen nemen. Dan
   --    schuift de grens mee met een instelling in plaats van met een besluit.
-  select regexp_replace(
-    coalesce(p_ruw, ''),
-    -- links alfanumeriek, rechts ASCII of het eind van de naam
-    '(?<=[A-Za-z0-9])[' || tussen || ']+(?![^' || asciibereik || '])' ||
-    -- of andersom: links ASCII of het begin, rechts alfanumeriek
-    '|(?<![^' || asciibereik || '])[' || tussen || ']+(?=[A-Za-z0-9])',
-    '',
-    'g'
-  )
+  select
+    -- Stap B: de tekens die aan een téken hangen, met één alfanumerieke buur.
+    regexp_replace(
+      -- Stap A: élke reeks die strikt tussen twee ASCII-alfanumerieken staat.
+      --    Dit dekt ook een gemengde reeks, waar stap B met opzet van afblijft.
+      regexp_replace(
+        coalesce(p_ruw, ''),
+        '(?<=[A-Za-z0-9])[' || alle || ']+(?=[A-Za-z0-9])',
+        '',
+        'g'
+      ),
+      -- links alfanumeriek, rechts ASCII of het eind van de naam
+      '(?<=[A-Za-z0-9])[' || zonder_richting || ']+(?![^' || asciibereik || '])' ||
+      -- of andersom: links ASCII of het begin, rechts alfanumeriek
+      '|(?<![^' || asciibereik || '])[' || zonder_richting || ']+(?=[A-Za-z0-9])',
+      '',
+      'g'
+    )
   from (
-    select U&'\034F\061C\180B-\180F\200C-\200F\FE00-\FE0F\+0E0100-\+0E01EF' as tussen,
+    select U&'\034F\061C\180B-\180F\200C-\200F\FE00-\FE0F\+0E0100-\+0E01EF' as alle,
+           U&'\034F\180B-\180F\200C\200D\FE00-\FE0F\+0E0100-\+0E01EF' as zonder_richting,
            U&'\0001-\007F' as asciibereik
   ) s;
 $$;
