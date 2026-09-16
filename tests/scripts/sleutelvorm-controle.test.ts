@@ -46,7 +46,7 @@ const IS_NOT_DISTINCT = `
   v_mag_delen := nullif(current_setting('app.taak_gedeeld', true), '') is not distinct from old.id::text;
 `;
 
-/** De vorm van de zeventien `rem_*`-functies. */
+/** De vorm van de achttien `rem_*`-functies. */
 const NUMERIEK = `
   v_aantal := coalesce(nullif(current_setting('app.rem_doelen', true), ''), '0')::integer;
   if v_aantal >= 50 then raise exception 'te veel'; end if;
@@ -216,10 +216,14 @@ describe('ontleed — de uitvoer van de vraag', () => {
 });
 
 describe('het register zelf', () => {
-  it('draagt de zeventien numerieke lezers, elk met een reden', () => {
+  it('draagt de achttien numerieke lezers, elk met een reden', () => {
     const rijen = Object.entries(NUMERIEKE_LEZERS);
 
-    expect(rijen).toHaveLength(17);
+    // ⚠️ Zeventien werd achttien met `rem_blokkades` (QS8-496, 0276), de rem bij
+    //    de achttiende dagteller. 📏 De controle vond hem zelf: hij stond rood met
+    //    `numerieke leesplek zonder registerrij` vóórdat deze regel er was. Dat
+    //    is de bedoeling — hij faalt dicht, dus een nieuwe rem meldt zich hier.
+    expect(rijen).toHaveLength(18);
     for (const [naam, reden] of rijen) {
       expect(naam).toMatch(/^rem_/);
       expect(reden.length).toBeGreaterThan(20);

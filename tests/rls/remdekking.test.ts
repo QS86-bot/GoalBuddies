@@ -144,6 +144,19 @@ describe.skipIf(!beschikbaar)('elke dagteller heeft een rem', () => {
     //    15 ≠ 16 en 16 ≠ 17 — terwijl de test hierboven groen bleef omdat de rem
     //    er meteen bij zat. Precies de handeling waar hij voor bedoeld is: een
     //    mens die naar de nieuwe teller kijkt en vraagt of er een rem bij hoort.
-    expect(aantal, 'het aantal dagtellers is veranderd; hoort er een rem bij?').toBe(17);
+    // ⚠️⚠️ **De vierde keer ging het ánders, en dat is de meting die telt.**
+    //    0276 (QS8-496) zette de achttiende teller op `user_blocks`, en de rem
+    //    zat er — anders dan de drie hierboven — **niet** meteen bij. De test
+    //    hierboven werd rood, met `user_blocks (user_blocks_dagplafond)` in de
+    //    melding, en pas daardoor is `rem_blokkades()` er gekomen. 📏 Dit
+    //    bestand heeft dus één keer gevangen waar het voor geschreven is in
+    //    plaats van alleen meegeteld — en dat is geen ijking die iemand
+    //    opgevoerd heeft, maar een gat dat er echt in zat.
+    //
+    //    ⚠️ De teller heette bovendien eerst `user_blocks_dagplafond`, naar de
+    //    tábel, waar de zeventien anderen het domeinwoord dragen. De koppeling
+    //    hier loopt over die naam, dus met de tabelnaam had de rem nooit aan
+    //    zijn teller vastgezeten — hij heet nu `blokkades_dagplafond`.
+    expect(aantal, 'het aantal dagtellers is veranderd; hoort er een rem bij?').toBe(18);
   }, 60_000);
 });
