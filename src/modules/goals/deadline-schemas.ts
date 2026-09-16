@@ -1,6 +1,6 @@
 import { z } from 'zod';
 
-import { telTekens } from '../../shared/tekst';
+import { telTekens, schoneVrijeTekst } from '../../shared/tekst';
 import { t } from '../../shared/i18n';
 
 import { isoDatum } from './schemas';
@@ -44,7 +44,11 @@ export const deadlineVerzoekSchema = z.object({
   //    dit schema hierboven belooft te voorkomen.
   reason: z
     .string()
-    .trim()
+    // ⚠️ Eerst schoonmaken, dán oordelen — QS8-506. Hier weegt de volgorde het
+    //    zwaarst van allemaal: `deadline_requests_reason_len` eist minstens 20
+    //    tekens, dus een argument van onzichtbare tekens zou anders de
+    //    ondergrens halen en pas in de database stuklopen.
+    .transform(schoneVrijeTekst)
     .refine((tekst) => telTekens(tekst) >= ARGUMENT_MIN, {
       error: () => t('deadline.argument_kort'),
     })
