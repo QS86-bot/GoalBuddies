@@ -563,6 +563,73 @@ export function zonderLosseTags(ruw: string): string {
 }
 
 /**
+ * Dezelfde tekst zonder bidi-stuurtekens en zonder tekens die als nul pixels
+ * renderen — de client-spiegel van de twee CHECKs die élke groepszichtbare
+ * tekstkolom draagt sinds QS8-506.
+ *
+ * ⚠️⚠️ **Waarom dit er is en waarom hij op de client hoort.** 0269 schrijft uit
+ *    dat er drie gedragingen op één waarde zijn: de aanmeldtrigger **strijkt**,
+ *    de client **strijkt stilletjes**, en de database **weigert** — en die derde
+ *    is de enige grens. 📏 Gemeten vóór QS8-506: van de dertien
+ *    groepszichtbare tekstkolommen streek er **geen enkele** iets op de client;
+ *    alleen `display_name` deed dat, via `profielSchema`.
+ *
+ *    Een weigerende CHECK zónder die client-stap is geen grens maar een
+ *    storing: de app toont `opslaan mislukt` zonder te zeggen waaróm, en de
+ *    gebruiker ziet niets in zijn tekst dat daar aanleiding toe geeft. Daarom
+ *    gaan de CHECK en deze transform in dezelfde wijziging, of geen van beide.
+ *
+ * ⚠️ **`schoneNaam()` doet méér en is hier niet de juiste**: die strijkt ook de
+ *    randen en past de contextregel toe. Voor een omschrijving of een notitie is
+ *    een onzichtbare rand geen fout, en de contextregel is afgestemd op tekst
+ *    waaruit een lezer afleidt wíe hij autoriseert. Zie het beslisdocument bij
+ *    QS8-506 voor welke kolom welke regel krijgt.
+ */
+export function zonderNulPixels(ruw: string): string {
+  return zonderOnzichtbaarMiddenin(zonderBidi(ruw));
+}
+
+/**
+ * De vorm waarin een vrij tekstveld van de client de deur uit gaat: eerst
+ * strijken, dán de randen weg.
+ *
+ * ⚠️⚠️ **Die volgorde is de hele functie, en hij is andersom begonnen.** Bij
+ *    QS8-506 stonden de acht velden als `.trim().transform(zonderNulPixels)`, en
+ *    dat is fout omdat `zonderNulPixels()` de randen met opzet niet aanraakt:
+ *    hij is de exacte spiegel van de CHECK, en die zegt niets over randen.
+ *    `String.prototype.trim()` ziet een `U+200B` niet als witruimte, dus
+ *    witruimte die eráchter schuilging komt ná het strijken weer tevoorschijn —
+ *    en er trimt daarna niets meer.
+ *
+ *    📏 Gemeten in de security-review op QS8-506, en zelf nagemeten:
+ *
+ *      doelSchema, titel `<ZWSP>␣␣␣<ZWSP>`  → **aanvaard** als `'␣␣␣'`
+ *      `goals_title_len` (>= 1) laat dat door: een groepszichtbare doeltitel
+ *      die als niets rendert.
+ *
+ *      deadlineVerzoekSchema, `<ZWSP>␣␣␣` + 17 letters + `<ZWSP>` → **aanvaard**
+ *      als 20 codepunten, terwijl `deadline_requests_reason_len` op
+ *      `char_length(btrim(...)) >= 20` staat en er 17 telt. De client keurt goed
+ *      wat de server daarna weigert.
+ *
+ * ⚠️ **Eén functie en niet acht keer `.transform((v) => …)`.** Dit is precies
+ *    het soort volgorde dat op de negende plek weer omdraait; dan is er één
+ *    veld dat het anders doet en niets dat er rood van wordt.
+ *
+ * ⚠️ **`zonderNulPixels()` blijft ongemoeid en trimt niet.** Hij is wat
+ *    `tests/rls/nulpixelkolommen.test.ts` afveegt tegen de CHECKs; zou hij
+ *    trimmen, dan toetst die veeg iets anders dan de grens die hij bewaakt.
+ *
+ * ⚠️ **`trim()` haalt méér weg dan Postgres' `btrim()`**, dat zonder tweede
+ *    argument alleen spaties strijkt. De client is daarmee strenger dan de
+ *    database, en dat is de veilige richting: hij weigert hooguit iets dat de
+ *    server aangenomen zou hebben, en nooit andersom.
+ */
+export function schoneVrijeTekst(ruw: string): string {
+  return zonderNulPixels(ruw).trim();
+}
+
+/**
  * Een naam zonder onzichtbare randen.
  *
  * ⚠️ **Randen knippen en niet alles**, zie `ONZICHTBARE_BEREIKEN`. Wat er tussen
