@@ -209,7 +209,7 @@ describe.skipIf(!rlsTestsConfigured)('een naam die als een andere naam rendert',
 
         // ⚠️⚠️ **Acceptatiecriterium 3 van QS8-499 noemt Hindi en Bengaals met
         //    zoveel woorden, en die stonden hier niet.** Het Perzisch alleen is
-        //    één schrift; de regel van 0277 is *"tussen twee ASCII-
+        //    één schrift; de regel van 0279 is *"tussen twee ASCII-
         //    alfanumerieken"* en die belofte gaat over álle andere schriften.
         //    Eén geval per schrift dat het issue noemt, want een must-allow die
         //    je niet aanbiedt, bewaak je niet.
@@ -240,7 +240,7 @@ describe.skipIf(!rlsTestsConfigured)('een naam die als een andere naam rendert',
          *    QS8-499 pas waar.** `schone_naam()` streek tags aan de **randen**
          *    weg via `ONZICHTBARE_BEREIKEN` — ouder dan 0271, 📏 de versie van
          *    0269 deed het net zo hard — dus een naam die op 🏴 eindigde
-         *    verloor zijn staart: zeven codepunten in, één uit. Migratie 0277
+         *    verloor zijn staart: zeven codepunten in, één uit. Migratie 0279
          *    versmalt die randenlijst en geeft de tags een eigen regel: een tag
          *    blijft als hij bij een `U+1F3F4` hoort en verdwijnt overal anders.
          */
@@ -295,14 +295,14 @@ describe.skipIf(!rlsTestsConfigured)('een naam die als een andere naam rendert',
     );
   });
 
-  describe('en de contextregel van 0277 sluit de rest', () => {
+  describe('en de contextregel van 0279 sluit de rest', () => {
     /**
      * ⚠️⚠️ **Deze vier stonden tot QS8-499 in het blok hieronder, als het gat
      *    dat 0271 bewust openliet — en die omslag was vooraf aangekondigd.** Wat
      *    daar stond was: *"Deze toets staat op 4 omdat dát is wat de code vandaag
      *    doet. Wordt de contextregel ooit gebouwd, dan hoort hij rood te worden —
      *    en dan is dat het signaal dat deze aantekening mee moet veranderen."*
-     *    Migratie 0277 bouwde hem, de toets werd rood, en dit is die aantekening.
+     *    Migratie 0279 bouwde hem, de toets werd rood, en dit is die aantekening.
      *
      *    Dat is de vorm die dit project van een weggelegde bevinding vraagt: geen
      *    TODO die verjaart, maar een assertie die omvalt op de dag dat de aanname
@@ -333,7 +333,7 @@ describe.skipIf(!rlsTestsConfigured)('een naam die als een andere naam rendert',
     );
 
     /**
-     * 📏 De andere helft van 0277: een **losse** tag is nergens iets, ook niet
+     * 📏 De andere helft van 0279: een **losse** tag is nergens iets, ook niet
      *    aan de rand van een naam. De vlag die er wél bij hoort staat hierboven
      *    als must-allow; zonder dit geval zou "de vlag blijft heel" ook waar
      *    zijn als er van de tagregel niets meer over is.
@@ -350,7 +350,7 @@ describe.skipIf(!rlsTestsConfigured)('een naam die als een andere naam rendert',
   describe('wat er open blijft, staat hier als toets en niet als vergeetpost', () => {
     /**
      * ⚠️⚠️ **Wat er wél open blijft, en het staat hier met dezelfde scherpte als
-     *    het geval hierboven stond.** De grens van 0277 is *"tussen twee
+     *    het geval hierboven stond.** De grens van 0279 is *"tussen twee
      *    **ASCII**-alfanumerieken"* en niet *"tussen twee letters uit een schrift
      *    dat dit teken niet gebruikt"* — die tweede vraagt Unicode-scriptdata die
      *    Postgres niet heeft. Dat is een bewuste versmalling en geen omissie.

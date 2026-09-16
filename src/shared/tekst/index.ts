@@ -465,7 +465,7 @@ export function schoneNaam(ruw: string): string {
   //    ASCII-letters naast elkaar zetten die dat daarvoor niet waren, en stap 4
   //    vuurt alleen tussen ASCII-buren. 📏 `a<U+E0067><U+200C>b` wordt zo `ab`;
   //    omgekeerd blijft `a<ZWNJ>b` over. Uitleg en meting in de kop van
-  //    migratie 0277.
+  //    migratie 0279.
   const tekens = Array.from(
     zonderOnzichtbaarTussenLetters(
       zonderLosseTags(zonderOnzichtbaarMiddenin(zonderBidi(ruw))),

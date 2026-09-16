@@ -502,7 +502,7 @@ describe.runIf(beschikbaar)('de twee talen halen in het midden dezelfde tekens w
    *    "onzichtbaar".** Een spatie is onzichtbaar en tóch betekenisvol: hij
    *    scheidt. Daarom staan de spaties er niet in.
    *
-   * ⚠️⚠️ **En sinds QS8-499 (migratie 0277) is dit niet langer een lijst maar
+   * ⚠️⚠️ **En sinds QS8-499 (migratie 0279) is dit niet langer een lijst maar
    *    een antwoord in een omgeving, en dát is de verandering die deze toets
    *    bewust meemaakte.** Hij bood zijn codepunten altijd al aan als
    *    `'a' || chr(cp) || 'b'` — tussen twee ASCII-letters dus — maar zolang
@@ -513,7 +513,7 @@ describe.runIf(beschikbaar)('de twee talen halen in het midden dezelfde tekens w
    *    Daarom staan de must-allows voor `U+200C`, `U+200D`, de IVS en de tags
    *    niet meer híer op `false` maar in de contextveeg onderaan dit bestand.
    *    Ze hier laten staan zou beweren dat ze overal blijven, en dat is sinds
-   *    0277 onwaar.
+   *    0279 onwaar.
    *
    * 📏 **3878 → 4241, en dat verschil is met de hand nagemeten en uitgesplitst**
    *    (16-09-2026, lokale stack): **267** komen van
@@ -553,7 +553,7 @@ describe.runIf(beschikbaar)('de twee talen halen in het midden dezelfde tekens w
     //    ze bewust omgedraaid.** Ze blijven staan waar ze iets kunnen betekenen
     //    — de contextveeg onderaan toetst precies dát — maar tussen twee
     //    ASCII-letters kan geen van de zeven iets anders zijn dan nul pixels
-    //    met een naam eromheen. 📏 `Ja<ZWNJ>n` landde vóór 0277 als vier
+    //    met een naam eromheen. 📏 `Ja<ZWNJ>n` landde vóór 0279 als vier
     //    codepunten die als `Jan` renderen; nu als drie.
     expect(database.has(0x200c), 'de ZWNJ gaat weg tussen twee ASCII-letters').toBe(true);
     expect(database.has(0x200d), 'de ZWJ ook — geen ASCII-schrift lijmt hiermee').toBe(true);
@@ -566,7 +566,7 @@ describe.runIf(beschikbaar)('de twee talen halen in het midden dezelfde tekens w
     // ⚠️⚠️ **De must-allow, en die weegt hier zwaarder dan de weigering** —
     //    acceptatiecriterium 2 van QS8-495. Wat hier blijft staan, blijft in
     //    **élke** omgeving staan: het is witruimte of het is een letter, en
-    //    geen van beide raakt de contextregel van 0277 aan.
+    //    geen van beide raakt de contextregel van 0279 aan.
     expect(database.has(0x0020), 'een spatie in het midden blijft staan').toBe(false);
     expect(database.has(0x00a0), 'een no-break space blijft staan').toBe(false);
     expect(database.has(0x4a), 'en de letter J vanzelfsprekend ook').toBe(false);
@@ -582,12 +582,12 @@ describe.runIf(beschikbaar)('de twee talen halen in het midden dezelfde tekens w
    *    gemeten geval — maar niet voor de hele klasse.** De toets die hier stond
    *    legde `U+200C` en `U+200D` op `false` vast, met als reden dat een
    *    contextregel *"niet past in de vorm die deze sweep vergelijkt"*. Die
-   *    reden was waar over de vórm en niet over de belofte; 0277 veranderde de
+   *    reden was waar over de vórm en niet over de belofte; 0279 veranderde de
    *    vorm, en deze toets is daarom bewust vervangen in plaats van bijgewerkt.
    *
    * ⚠️⚠️ **Wat ervoor in de plaats komt is de rest die nog openstaat**, want een
    *    gat dat je dichtdoet zonder op te schrijven wat er over is, leest als een
-   *    gat dat dicht is. De grens van 0277 is *"tussen twee **ASCII**-
+   *    gat dat dicht is. De grens van 0279 is *"tussen twee **ASCII**-
    *    alfanumerieken"*, en die is met opzet nauwer dan het probleem: de
    *    correcte regel is *"tussen twee letters uit een schrift dat dit teken
    *    niet gebruikt"*, en die vraagt Unicode-scriptdata die Postgres niet heeft.
@@ -736,7 +736,7 @@ describe.runIf(beschikbaar)('de volgorde van de vijf stappen is zelf een naad', 
    *    volgorde waarin `schone_naam()` ze aanroept is een derde feit dat geen
    *    van beide functies draagt.
    *
-   * 📏 **En dat feit is dragend, anders dan de kop van 0277 eerst beweerde.**
+   * 📏 **En dat feit is dragend, anders dan de kop van 0279 eerst beweerde.**
    *    Daar stond dat stap 3 vóór stap 4 moet omdat stap 4 een tag anders per
    *    ongeluk zou raken. Nagemeten klopt dat niet: de tekenklasse van stap 4
    *    bevat geen enkel tagcodepunt, dus dat kan in geen van beide volgordes.
@@ -780,7 +780,7 @@ describe.runIf(beschikbaar)('de volgorde van de vijf stappen is zelf een naad', 
    *    criterium 2 vraagt.
    *
    *    Hier wordt `schone_naam()` rechtstreeks aangeroepen, en dáár is de
-   *    randstap wél te zien. 📏 Vóór 0277 hield deze naam 11 codepunten over in
+   *    randstap wél te zien. 📏 Vóór 0279 hield deze naam 11 codepunten over in
    *    plaats van 17: zeven codepunten vlag in, één zwarte vlag uit.
    */
   it('laat een vlag heel áán het eind van een naam, waar de randstap woont', () => {
