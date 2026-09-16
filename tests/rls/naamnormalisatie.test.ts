@@ -249,9 +249,14 @@ function alsCodepunten(uit: string): Set<number> {
  *    optimalisatie maar een voorwaarde.** 📏 Gemeten op de lokale stack: één
  *    veeg over het hele codepuntbereik kost **74 s**. De oude vorm riep zijn
  *    vegen aan ín de toetsen, dus elke toets die er een nodig had betaalde hem
- *    opnieuw — met de vier contexten van dit issue erbij liep het bestand zijn
- *    timeout van 300 s in. 📏 Alle vijf tegelijk, één keer: **74 s**, want het
- *    is processorwerk in aparte backends en deze bak heeft vier kernen.
+ *    opnieuw — met de contexten van dit issue erbij liep het bestand zijn
+ *    timeout in. 📏 Vier tegelijk, één keer: **74 s**, want het is
+ *    processorwerk in aparte backends en deze bak heeft vier kernen.
+ *
+ * ⚠️ **Maar niet méér tegelijk dan er kernen zijn.** `psqlParallel()` begrenst
+ *    dat zelf, en dat is met een rode CI afgedwongen: een GitHub-runner heeft er
+ *    twee, en zeven gelijktijdige vegen verdringen elkaar daar tot elke
+ *    afzonderlijke veeg zijn timeout inloopt. Zie de kop van die functie.
  *
  * ⚠️ **Een grendel die te traag is, is een grendel die iemand uitzet.** Dat is
  *    dezelfde afweging als bij `CLAUDE.md` regel 18: een controle die je leert
@@ -322,11 +327,19 @@ function inContext(veeg: Vegen, naam: string): Set<number> {
   return gevonden;
 }
 
+/**
+ * ⚠️⚠️ **Een halfuur, en dat getal komt van een rode CI en niet van een
+ *    schatting.** 📏 Op deze bak (vier kernen) kost het geheel 108 s; op een
+ *    GitHub-runner met twee kernen duurt het een veelvoud, en de eerste versie
+ *    liep daar om. Het is één meting voor zeven vegen over het hele
+ *    codepuntbereik — dat kóst tijd, en de marge hoort ruim genoeg te zijn dat
+ *    hij alleen iets vangt wat écht vastzit.
+ */
 beforeAll(async () => {
   if (!beschikbaar) return;
   gemetenDatabase = await meetDeDatabase();
   gemetenClient = meetDeClient();
-}, 600_000);
+}, 1_800_000);
 
 // ---------------------------------------------------------------------------
 

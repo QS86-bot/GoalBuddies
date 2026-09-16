@@ -1,4 +1,5 @@
 import { execFile, execFileSync } from 'node:child_process';
+import { cpus } from 'node:os';
 import { fileURLToPath } from 'node:url';
 import { promisify } from 'node:util';
 
@@ -156,27 +157,56 @@ export function psqlMetInvoer(sql: string, { verbose = false } = {}): string {
  * ⚠️ **Een `timeout`, want onwrikbare regel 14 zegt dat elke externe call er een
  *    heeft.** Zonder zou een psql die blijft hangen pas opvallen bij de timeout
  *    van de aanroepende `beforeAll` — en die zegt dan *"de opstelling duurde te
- *    lang"* in plaats van *"de database antwoordde niet"*. 📏 Een veeg kost hier
- *    74 s, dus de marge is ruim en hij vangt alleen wat écht vastzit.
+ *    lang"* in plaats van *"de database antwoordde niet"*.
+ *
+ * ⚠️⚠️ **Niet álles tegelijk, maar zoveel als er kernen zijn — en dát is met een
+ *    rode CI afgedwongen.** 📏 De eerste versie startte elke vraag meteen en gaf
+ *    ze 300 s. Lokaal kost een veeg over het hele codepuntbereik 74 s en kosten
+ *    er vier tegelijk óók 74 s, want deze bak heeft vier kernen. Een
+ *    GitHub-runner heeft er **twee**: daar verdringen zeven gelijktijdige vegen
+ *    elkaar, duurt elke veeg een veelvoud, en liep de vlagbasis-veeg zijn
+ *    timeout in — `tests/rls/naamnormalisatie.test.ts` viel om op bestandsniveau
+ *    terwijl de andere 175 bestanden groen waren.
+ *
+ *    **De les is niet "de timeout was te kort" maar "het getal nam mijn eigen
+ *    machine als maat".** Meer processen dan kernen maakt niets sneller; het
+ *    maakt alleen elke afzonderlijke duur onvoorspelbaar. `cpus().length` leest
+ *    de maat van de machine waar hij draait, en de timeout geldt dan per vraag
+ *    die daadwerkelijk CPU krijgt.
  */
 export async function psqlParallel(
   vragen: readonly string[],
-  { verbose = false, maxBuffer = 256 * 1024 * 1024, timeout = 300_000 } = {},
+  {
+    verbose = false,
+    maxBuffer = 256 * 1024 * 1024,
+    timeout = 900_000,
+    gelijktijdig = Math.max(1, cpus().length),
+  } = {},
 ): Promise<string[]> {
   const uitvoeren = promisify(execFile);
+  const uit: string[] = new Array<string>(vragen.length);
 
-  const uitkomsten = await Promise.all(
-    vragen.map((sql) =>
-      uitvoeren('psql', [...basisArgumenten(verbose), '-c', sql], {
-        env: PSQL_OMGEVING,
-        encoding: 'utf8' as const,
-        maxBuffer,
-        timeout,
-      }),
-    ),
+  // ⚠️ Een gedeelde teller en geen `chunk`-indeling: een veeg die eerder klaar
+  //    is pakt meteen de volgende, in plaats van te wachten op de traagste van
+  //    zijn groepje.
+  let volgende = 0;
+  const werker = async (): Promise<void> => {
+    for (let i = volgende; i < vragen.length; i = volgende) {
+      volgende += 1;
+      const { stdout } = await uitvoeren(
+        'psql',
+        [...basisArgumenten(verbose), '-c', vragen[i] as string],
+        { env: PSQL_OMGEVING, encoding: 'utf8' as const, maxBuffer, timeout },
+      );
+      uit[i] = stdout;
+    }
+  };
+
+  await Promise.all(
+    Array.from({ length: Math.min(gelijktijdig, vragen.length) }, () => werker()),
   );
 
-  return uitkomsten.map(({ stdout }) => stdout);
+  return uit;
 }
 
 /** Wat er met deze suite moet gebeuren. */
