@@ -186,6 +186,51 @@ describe.skipIf(!rlsTestsConfigured)('een groepsnaam keert de tekens eromheen ni
   );
 
   // -------------------------------------------------------------------------
+  // Schrijver 3 — de contextregel die 0283 erbij zet
+  // -------------------------------------------------------------------------
+
+  /**
+   * ⚠️⚠️ **Dit geval stond hierónder als must-allow en staat nu hier, en die
+   *    verhuizing is zelf de bevinding** — QS8-506, migratie 0283.
+   *
+   *    0269 besloot dat een richtingsmarkering géén override is en dus door de
+   *    bidi-CHECK mag; dat besluit staat nog. 0283 legt er de contextregel van
+   *    0282 naast op `groups.name`, en díé weegt niet *"is dit een override"*
+   *    maar *"doet dit teken hier werk"*. Tussen twee ASCII-letters doet een RLM
+   *    dat niet: hij kan er alleen de leesvolgorde mee kantelen.
+   *
+   *    📏 Gemeten op de lokale stack (16-09-2026):
+   *
+   *      a<RLM>b   zonder_bidi: door   middenin: door   contextregel: geweigerd
+   *      م<RLM>ب   zonder_bidi: door   middenin: door   contextregel: door
+   *
+   * ⚠️ **De constraintnaam erbij, om dezelfde reden als hierboven.** `groups`
+   *    draagt er inmiddels drieëntwintig; een andere die deze invoer toevallig
+   *    ook weigert, houdt deze toets groen terwijl de contextregel weg is.
+   */
+  it(
+    'weigert een richtingsmarkering tussen twee ASCII-letters in een groepsnaam',
+    async () => {
+      const { error } = await beheerder.db
+        .from('groups')
+        .update({ name: `a${String.fromCodePoint(0x200f)}b` })
+        .eq('id', groupId);
+
+      expect(
+        error?.code,
+        'de contextregel van 0282 staat niet op groups.name — een naam die als ' +
+          'twee letters rendert komt er gewoon in',
+      ).toBe('23514');
+
+      expect(
+        error?.message ?? '',
+        'een CHECK weigerde dit, maar niet degene die deze toets bewaakt',
+      ).toContain('groups_name_geen_onzichtbaar_tussen_letters');
+    },
+    TEST_TIMEOUT,
+  );
+
+  // -------------------------------------------------------------------------
   // De must-allows
   // -------------------------------------------------------------------------
 
@@ -209,7 +254,31 @@ describe.skipIf(!rlsTestsConfigured)('een groepsnaam keert de tekens eromheen ni
     // ⚠️ De RLM is een *markering* en geen override — besluit uit 0269, met zijn
     //    voorwaarde in `docs/ENGINEER-REVIEW.md`. Hij staat hier zodat dat besluit
     //    zichtbaar blijft als besluit en niet als omissie.
-    { naam: 'een right-to-left mark', kolom: 'name', waarde: `a${String.fromCodePoint(0x200f)}b` },
+    //
+    // ⚠️⚠️ **Verhuisd van `name` naar `omschrijving` op 16-09-2026 (QS8-506,
+    //    migratie 0283), en dat is een versmalling van dit geval en geen
+    //    herroeping van dat besluit.** 0283 zet de contextregel van 0282 op
+    //    `groups.name` erbij, en díé weigert een richtingsmarkering tussen twee
+    //    ASCII-letters — precies waar hij geen werk doet. 📏 Gemeten:
+    //    `a<RLM>b` komt langs `zonder_bidi()` én langs
+    //    `zonder_onzichtbaar_middenin()` en wordt door
+    //    `zonder_onzichtbaar_tussen_letters()` geweigerd; `م<RLM>ب` komt overal
+    //    langs. `omschrijving` draagt de contextregel niet, dus dáár toetst dit
+    //    geval nog steeds wat het altijd toetste: dat de bidi-CHECK een
+    //    markering niet als een override behandelt.
+    {
+      naam: 'een right-to-left mark in proza',
+      kolom: 'omschrijving',
+      waarde: `a${String.fromCodePoint(0x200f)}b`,
+    },
+    // ⚠️ En de markering waar hij wél werk doet, in de kolom die de contextregel
+    //    nu draagt. Zonder dit geval zou "de contextregel weigert de RLM in een
+    //    naam" hieronder groen blijven terwijl de regel élke markering weigert.
+    {
+      naam: 'een right-to-left mark tussen twee Arabische letters',
+      kolom: 'name',
+      waarde: `م${String.fromCodePoint(0x200f)}ب`,
+    },
   ])(
     'laat $naam wel toe',
     async ({ kolom, waarde }) => {

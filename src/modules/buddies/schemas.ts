@@ -2,7 +2,7 @@ import { z } from 'zod';
 
 import { CATEGORIEEN } from '../../shared/categorieen';
 import { t, weekdagNaam } from '../../shared/i18n';
-import { telTekens } from '../../shared/tekst';
+import { schoneNaam, telTekens, schoneVrijeTekst } from '../../shared/tekst';
 
 import type { Weekday } from '../../shared/time';
 
@@ -180,8 +180,13 @@ export const groepSchema = z.object({
   name: z
     .string()
     .trim()
-    .min(2, { error: () => t('groep.naam_kort') })
-    .max(60, { error: () => t('validatie.groepsnaam_lang') }),
+    // ⚠️ Een groepsnaam krijgt de volle behandeling van `schoneNaam()` en niet
+    //    alleen `schoneVrijeTekst()`: hij draagt sinds QS8-506 óók de
+    //    contextregel van 0282, want uit die naam leidt een lid af in welke
+    //    groep hij handelt. Zelfde grens als `display_name`.
+    .transform(schoneNaam)
+    .refine((v) => telTekens(v) >= 2, { error: () => t('groep.naam_kort') })
+    .refine((v) => telTekens(v) <= 60, { error: () => t('validatie.groepsnaam_lang') }),
   huddle_day: z
     .number()
     .int()
@@ -387,7 +392,10 @@ export const groepPatchSchema = groepSchema
     categorie: z.enum(CATEGORIEEN).nullable().optional(),
     omschrijving: z
       .string()
-      .trim()
+      // ⚠️ Eerst schoonmaken, dán oordelen — QS8-506. Zie `schoneVrijeTekst()`.
+      //    De contextregel van 0282 gaat hier met opzet níét op: dit is proza en
+      //    geen naam, en de migratiekop van 0283 schrijft uit waarom.
+      .transform(schoneVrijeTekst)
       .refine((v) => telTekens(v) <= OMSCHRIJVING_MAX, {
         error: () => t('validatie.groepsomschrijving_lang'),
       })

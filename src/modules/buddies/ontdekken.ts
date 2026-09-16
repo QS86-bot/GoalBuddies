@@ -2,6 +2,7 @@ import { reportError } from '../../lib/observability';
 import { supabase } from '../../lib/supabase';
 import { type Pagina, type Resultaat, type RpcRij } from '../../shared/api';
 import { t } from '../../shared/i18n';
+import { schoneVrijeTekst } from '../../shared/tekst';
 
 import { leesVoertaal, type Voertaal } from './schemas';
 
@@ -120,9 +121,22 @@ export async function vraagLidmaatschapAan(
   groupId: string,
   bericht: string,
 ): Promise<Resultaat<true>> {
+  // ⚠️ **Hier en niet in een schema, want dit veld heeft er geen** — QS8-506.
+  //    `group_join_requests_bericht_geen_nul_pixels` (0283) weigert een teken dat
+  //    als nul pixels rendert, en zonder deze regel is dat een `aanvraag mislukt`
+  //    op tekst waar niets aan te zien is. 0269 schrijft de drieslag uit: de
+  //    database weigert, de client strijkt stilletjes, en die tweede hoort in
+  //    dezelfde wijziging te zitten als de eerste.
+  //
+  // ⚠️ **Strijken vóór de leegtoets en niet erna.** Een bericht van louter
+  //    onzichtbare tekens is ná het strijken leeg, en dat hoort `null` te worden
+  //    in plaats van een lege string die de database als inhoud aanneemt.
+  //    `schoneVrijeTekst()` doet die volgorde; zie zijn kop voor waarom hij er is.
+  const schoon = schoneVrijeTekst(bericht);
+
   const { data, error } = await supabase().rpc('vraag_lidmaatschap_aan', {
     p_group_id: groupId,
-    p_bericht: bericht.trim() === '' ? null : bericht,
+    p_bericht: schoon === '' ? null : schoon,
   });
 
   if (error) {

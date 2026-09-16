@@ -1,6 +1,7 @@
 import { z } from 'zod';
 
 import { t } from '../../shared/i18n';
+import { telTekens, schoneVrijeTekst } from '../../shared/tekst';
 
 /**
  * Geplande weekstappen — QS8-203, migratie 0138.
@@ -31,18 +32,21 @@ export const weekplanstapSchema = z.object({
   milestone_id: z.uuid().nullable(),
   title: z
     .string()
-    .trim()
-    .min(3, { error: () => t('validatie.weekdoeltitel') })
-    .max(200, { error: () => t('validatie.weekdoeltitel_lang') }),
+    // ⚠️ Eerst schoonmaken, dán oordelen — QS8-506. Zie `schoneVrijeTekst()`.
+    .transform(schoneVrijeTekst)
+    .refine((v) => telTekens(v) >= 3, { error: () => t('validatie.weekdoeltitel') })
+    .refine((v) => telTekens(v) <= 200, { error: () => t('validatie.weekdoeltitel_lang') }),
   floor_text: z
     .string()
-    .trim()
-    .max(200, { error: () => t('validatie.vloer_plafond_kort') })
+    // ⚠️ Eerst schoonmaken, dán oordelen — QS8-506.
+    .transform(schoneVrijeTekst)
+    .refine((v) => telTekens(v) <= 200, { error: () => t('validatie.vloer_plafond_kort') })
     .nullable(),
   ceiling_text: z
     .string()
-    .trim()
-    .max(200, { error: () => t('validatie.vloer_plafond_kort') })
+    // ⚠️ Eerst schoonmaken, dán oordelen — QS8-506.
+    .transform(schoneVrijeTekst)
+    .refine((v) => telTekens(v) <= 200, { error: () => t('validatie.vloer_plafond_kort') })
     .nullable(),
 });
 
