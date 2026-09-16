@@ -83,6 +83,7 @@
     "levend:controle": "node scripts/levend-controle.mjs",
     "regel15:controle": "node scripts/regel15-controle.mjs",
     "klokgrens:controle": "node scripts/klokgrens-controle.mjs",
+    "deleterecht:controle": "node scripts/deleterecht-controle.mjs",
     "kolomrechten:controle": "node scripts/kolomrechten-controle.mjs",
     "pin:controle": "node scripts/pinuitzonderingen-controle.mjs",
     "vapid:controle": "node scripts/vapid-controle.mjs",

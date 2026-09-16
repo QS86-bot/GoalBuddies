@@ -14,7 +14,7 @@ productie in twee rondes)
 ⚠️ **Productie staat op `0224`.** 📏 Hermeten op 14-09 om 05:02 UTC met
 `migratieregister()` tegen `wehgocadxehottiiyvsc`: **227 registerrijen**, `0001`
 t/m `0224` aaneengesloten, inclusief de drie letterversies. De map telt er
-**283**.
+**284**.
 
 ⚠️ **Hier stond tot 14-09 `0221`, en dat was op 09-09 om 16:10 UTC juist.**
 `0222`, `0223` en `0224` zijn er sindsdien op toegepast — alle drie uit QS8-71,
@@ -33,7 +33,7 @@ migratienummer aanziet, legt de lijn drie bestanden te hoog en verklaart
 `0222` t/m `0224` toegepast op een dag dat ze dat niet waren. Zelfde klasse als
 een teller in grafemen bij een grens in codepunten.
 
-**Het gat is daarmee 56 bestanden** — `0225` t/m `0280`, van 09-09
+**Het gat is daarmee 57 bestanden** — `0225` t/m `0281`, van 09-09
 tot en met 16-09 en uit 47 verschillende issues.
 
 ⚠️ **In cijfers en niet voluit, en dat is sinds 14-09-2026 een controle.**
@@ -105,7 +105,12 @@ De 55 bestanden:
 | `0277_een_weggestuurd_of_geblokkeerd_lid_ziet_de_uitnodigingskaart_niet.sql` | QS8-502 | nee |
 | `0278_de_bewaking_op_standaardrechten_ziet_ook_een_globale_regel.sql` | reviewrij 14-09 | nee |
 | `0279_de_heldenkaart_toont_alleen_eenduidige_triggers.sql` | QS8-493 | nee |
+<<<<<<< HEAD
 | `0280_een_onzichtbaar_teken_tussen_twee_letters_en_een_tag_zonder_vlag.sql` | QS8-499 | nee |
+=======
+| `0280_de_klok_onder_een_straf_ligt_vast_vanaf_het_aangaan.sql` | reviewrij 08-09 | nee |
+| `0281_een_deleterecht_zonder_aanroeper_is_dood_hout.sql` | reviewrij 08-09 | nee |
+>>>>>>> origin/main
 
 ⚠️ **Hier stond een uur eerder `0219` met twee bestanden gat, en dat klopte
 toen.** `0220` en `0221` zijn erna toegepast en `0222` t/m `0226` landden
@@ -284,8 +289,8 @@ staat er iets bij dat uitleg nodig heeft, dan hoort die uitleg in §2, §3b of �
    **Meet ze dus, tel ze niet op:** bij het samengaan met `main` is het antwoord
    `npm run poort` of `npm run tellers`, nooit het hoogste van twee getallen.
 <!-- POORTSTAND:BEGIN — gegenereerd door `npm run poortstand` -->
-Typecheck, lint en alle 61 controlescripts groen;
-`npm run poort` meldt 65 stappen.
+Typecheck, lint en alle 62 controlescripts groen;
+`npm run poort` meldt 66 stappen.
 <!-- POORTSTAND:EINDE -->
    ⚠️ **Vier ervan meten niets zonder de credentials van het échte project**
    (`adviseur`, `functies`, `register`, `wachtwoord`), en de poort noemt dat
@@ -369,7 +374,11 @@ schemaname = 'public'` gaf `41|41`. Vraag het aan de database en niet aan deze
 regel — net als bij het aantal migraties in §0.
 
 <!-- STAND:BEGIN — gegenereerd door `npm run stand` -->
+<<<<<<< HEAD
 Migraties `0001` t/m `0280` staan in de map: **283 bestanden**,
+=======
+Migraties `0001` t/m `0281` staan in de map: **284 bestanden**,
+>>>>>>> origin/main
 waarvan 3 met een letter-achtervoegsel (`0039a`, `0041a`, `0052a`).
 De nummering is aaneengesloten.
 <!-- STAND:EINDE -->
