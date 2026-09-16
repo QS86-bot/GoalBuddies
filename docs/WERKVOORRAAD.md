@@ -46,7 +46,7 @@ stilte een klacht: staat er een bewering en is haar getal niet te lezen, dan is
 dát de fout, en de melding zegt erbij dat er boven de twintig een cijfer hoort.
 Uitleg in `docs/decisions/2026-09-14-een-bewering-die-niet-te-lezen-is.md`.
 
-De 53 bestanden:
+De 55 bestanden:
 
 | | | DDL op `storage.objects` |
 | -- | -- | -- |
@@ -104,7 +104,8 @@ De 53 bestanden:
 | `0276_een_dagplafond_op_blokkades_dat_niemand_raakt_die_misbruik_ontvlucht.sql` | QS8-496 | nee |
 | `0277_een_weggestuurd_of_geblokkeerd_lid_ziet_de_uitnodigingskaart_niet.sql` | QS8-502 | nee |
 | `0278_de_bewaking_op_standaardrechten_ziet_ook_een_globale_regel.sql` | reviewrij 14-09 | nee |
-| `0279_een_onzichtbaar_teken_tussen_twee_letters_en_een_tag_zonder_vlag.sql` | QS8-499 | nee |
+| `0279_de_heldenkaart_toont_alleen_eenduidige_triggers.sql` | QS8-493 | nee |
+| `0280_een_onzichtbaar_teken_tussen_twee_letters_en_een_tag_zonder_vlag.sql` | QS8-499 | nee |
 
 ⚠️ **Hier stond een uur eerder `0219` met twee bestanden gat, en dat klopte
 toen.** `0220` en `0221` zijn erna toegepast en `0222` t/m `0226` landden

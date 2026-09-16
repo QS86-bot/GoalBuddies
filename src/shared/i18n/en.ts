@@ -1945,6 +1945,18 @@ export const en: Record<Sleutel, string> = {
   'klassement.teller_mislukt': 'The counter could not be loaded.',
   'klassement.opnieuw': 'Try again',
 
+  // The hero list of an open group — QS8-493, RPC from 0268/0279.
+  // ⚠️ The wording follows `bevestiging.groep_openzetten.uitleg`, which is the
+  //    text the consent rests on. "seven days" rather than "week": the window is
+  //    a rolling UTC one and follows neither the cycle start nor the huddle day.
+  'groepshelden.kop': 'Which hero came by',
+  'groepshelden.uitleg':
+    'In this group you can see which hero last visited whom in the past seven days.',
+  'groepshelden.rij': '{held} visited {naam}',
+  'groepshelden.leeg': 'No hero visited anyone in the past seven days.',
+  'groepshelden.laden_mislukt': 'The hero list could not be loaded.',
+  'groepshelden.opnieuw': 'Try again',
+
   'teller.kop': 'Together',
   'teller.weken_een': '1 week wrapped up',
   'teller.weken_meer': '{n} weeks wrapped up',
