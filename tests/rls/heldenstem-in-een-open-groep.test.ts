@@ -26,11 +26,24 @@ import { psql } from './psql-stack';
  *    verschijning gebruikt met alléén `groups.zichtbaarheid` omgezet. Twee
  *    aparte opstellingen zouden op tien manieren kunnen verschillen; deze op één.
  *
- * ⚠️ **`trigger = 'misser'` is wat er op het spel staat.** Wie leest dat Ignis
- *    bij iemand langs is geweest, weet dat die iets gemist heeft. In een open
- *    groep is dat besluit A41; in een beschermde groep is het het schaamtemoment
- *    waar domeinregel 7 voor bestaat. Elke must-deny hieronder gebruikt daarom
- *    een misser en geen mijlpaal.
+ * ⚠⚠ **Hier stond `trigger = 'misser'` als de rij die eróm gaat, en sinds 0278
+ *    geeft deze functie die niet meer door.** QS8-493 gaf hem een scherm, en
+ *    toen bleek `misser` door de dágelijkse nudge geschreven te worden — "vandaag
+ *    niets gedaan" en niet "een week gemist". A41 opende gemiste wéken en
+ *    domeinregel 9 zegt dat een dag overslaan géén gevolg heeft. `tussendoor`
+ *    ging om dezelfde ronde weg: die draagt iemands quízheld en geen gebeurtenis.
+ *
+ *    De must-denies hieronder gebruiken daarom `stilte` (⇔ lucerna): drie dagen
+ *    niets, en dat is wél tegenslag die A41 een open groep toestaat en die
+ *    domeinregel 7 in een beschermde groep buiten de deur houdt. De belofte is
+ *    onveranderd, alleen de rij waarmee ze gemeten wordt is er een die de
+ *    functie nog geeft.
+ *
+ *    De redenering eronder is onveranderd en gold woordelijk voor `misser`: wie
+ *    leest dat een held bij iemand langs is geweest, weet dat er iets gebeurd is.
+ *    In een open groep is dat besluit A41; in een beschermde groep is het het
+ *    schaamtemoment waar domeinregel 7 voor bestaat. Elke must-deny hieronder
+ *    gebruikt daarom een tegenslagtrigger en geen mijlpaal.
  *
  * ⚠️ Met de hand rood gemaakt. Wat er per belofte gebroken is en wat er toen
  *    omviel, staat bij het geval zelf.
@@ -159,7 +172,7 @@ function vulGroep(groupId: string, hoeveel: number): void {
       select '${groupId}', n.id, 'active' from nieuw n returning user_id
     )
     insert into hero_appearances (user_id, hero_key, trigger, shown_at)
-    select n.id, 'quip', 'tussendoor', now() from nieuw n;
+    select n.id, 'strix', 'mijlpaal', now() from nieuw n;
   `);
 }
 
@@ -198,6 +211,9 @@ describe.skipIf(!rlsTestsConfigured)('groep_helden() — je held in een open gro
   let henk: TestUser;
   /** Krijgt een trigger die deze groep niet mag zien. */
   let ilse: TestUser;
+  /** Twee leden voor de uitsluitingstoets van 0278; elk krijgt één verboden trigger. */
+  let jasper: TestUser;
+  let karin: TestUser;
 
   let open: Groep;
   let beschermd: Groep;
@@ -213,6 +229,8 @@ describe.skipIf(!rlsTestsConfigured)('groep_helden() — je held in een open gro
     gerrit = await createTestUser('heldgroep-gerrit');
     henk = await createTestUser('heldgroep-henk');
     ilse = await createTestUser('heldgroep-ilse');
+    jasper = await createTestUser('heldgroep-jasper');
+    karin = await createTestUser('heldgroep-karin');
 
     open = await maakGroep(anna, 'Heldgroep-open', 'open');
     beschermd = await maakGroep(anna, 'Heldgroep-beschermd', 'beschermd');
@@ -225,11 +243,13 @@ describe.skipIf(!rlsTestsConfigured)('groep_helden() — je held in een open gro
     await laatMeedoen(gerrit, open);
     await laatMeedoen(henk, open);
     await laatMeedoen(ilse, open);
+    await laatMeedoen(jasper, open);
+    await laatMeedoen(karin, open);
 
     // ⚠️ Een **misser** en geen mijlpaal: dit is de rij waar domeinregel 7 over
     //    gaat, en een test die een neutrale trigger gebruikt toetst de
     //    makkelijke helft.
-    await noteer(anna, 'ignis', 'misser');
+    await noteer(anna, 'lucerna', 'stilte');
     await noteer(dirk, 'lucerna', 'stilte');
     await noteer(eva, 'strix', 'mijlpaal');
 
@@ -255,8 +275,8 @@ describe.skipIf(!rlsTestsConfigured)('groep_helden() — je held in een open gro
         const gezien = rijVan(await helden(bram, open.id), anna.id);
 
         expect(gezien).toBeDefined();
-        expect(gezien?.hero_key).toBe('ignis');
-        expect(gezien?.trigger).toBe('misser');
+        expect(gezien?.hero_key).toBe('lucerna');
+        expect(gezien?.trigger).toBe('stilte');
         expect(gezien?.display_name.length ?? 0).toBeGreaterThan(0);
       },
       TEST_TIMEOUT,
@@ -400,7 +420,7 @@ describe.skipIf(!rlsTestsConfigured)('groep_helden() — je held in een open gro
          */
         const tijdelijk = await maakGroep(anna, 'Heldgroep-archief', 'open');
         await laatMeedoen(bram, tijdelijk);
-        await noteerOp(bram, 'ignis', 'misser', dagRand(0, 0));
+        await noteerOp(bram, 'lucerna', 'stilte', dagRand(0, 0));
 
         expect(rijVan(await helden(bram, tijdelijk.id), bram.id), 'vóór').toBeDefined();
 
@@ -448,7 +468,7 @@ describe.skipIf(!rlsTestsConfigured)('groep_helden() — je held in een open gro
          *    `--shuffle` of parallel draait, meet dan iets anders dan ze zegt —
          *    en de ijking van de poort meet dan mee.
          */
-        await noteer(frida, 'ignis', 'misser', 2);
+        await noteer(frida, 'lucerna', 'stilte', 2);
         await noteer(frida, 'strix', 'mijlpaal');
 
         const vanFrida = (await helden(bram, open.id)).filter((rij) => rij.user_id === frida.id);
@@ -456,7 +476,7 @@ describe.skipIf(!rlsTestsConfigured)('groep_helden() — je held in een open gro
         expect(vanFrida, 'precies één rij per lid').toHaveLength(1);
         expect(vanFrida[0]?.trigger).toBe('mijlpaal');
         expect(rijVan(await helden(bram, open.id), anna.id)?.trigger, 'Anna onaangeroerd').toBe(
-          'misser',
+          'stilte',
         );
       },
       TEST_TIMEOUT,
@@ -475,15 +495,15 @@ describe.skipIf(!rlsTestsConfigured)('groep_helden() — je held in een open gro
          *    daarom staat hier ook de dag ervóór.
          */
         await laatMeedoen(cor, open);
-        await noteerOp(cor, 'ignis', 'misser', dagRand(-8, 12));
+        await noteerOp(cor, 'lucerna', 'stilte', dagRand(-8, 12));
 
         expect(rijVan(await helden(bram, open.id), cor.id), 'acht dagen').toBeUndefined();
 
-        await noteerOp(cor, 'meridian', 'tussendoor', dagRand(-6, 12));
+        await noteerOp(cor, 'strix', 'mijlpaal', dagRand(-6, 12));
 
         const zes = rijVan(await helden(bram, open.id), cor.id);
         expect(zes, 'zes dagen').toBeDefined();
-        expect(zes?.trigger).toBe('tussendoor');
+        expect(zes?.trigger).toBe('mijlpaal');
       },
       TEST_TIMEOUT,
     );
@@ -508,7 +528,7 @@ describe.skipIf(!rlsTestsConfigured)('groep_helden() — je held in een open gro
          *    deze toets werd rood, de vroege rij van dag −7 viel eruit en de late
          *    bleef staan. Zie §8 van het beslisdocument.
          */
-        await noteerOp(gerrit, 'ignis', 'misser', dagRand(-8, 0, 1));
+        await noteerOp(gerrit, 'lucerna', 'stilte', dagRand(-8, 0, 1));
         await noteerOp(gerrit, 'lucerna', 'stilte', dagRand(-8, 23, 59));
 
         expect(
@@ -516,7 +536,7 @@ describe.skipIf(!rlsTestsConfigured)('groep_helden() — je held in een open gro
           'beide rijen van dag −8 horen weg te vallen',
         ).toBeUndefined();
 
-        await noteerOp(henk, 'ignis', 'misser', dagRand(-7, 0, 1));
+        await noteerOp(henk, 'lucerna', 'stilte', dagRand(-7, 0, 1));
         const vroeg = rijVan(await helden(bram, open.id), henk.id);
         expect(vroeg, 'de vroegste rij van dag −7 hoort te blijven').toBeDefined();
 
@@ -529,26 +549,26 @@ describe.skipIf(!rlsTestsConfigured)('groep_helden() — je held in een open gro
     );
 
     it(
-      'geeft alleen de vier triggers die deze groep mag zien',
+      'geeft alleen de twee eenduidige triggers die deze groep mag zien',
       async () => {
         /**
-         * ⚠️⚠️ **Een allowlist en geen doorgeefluik.** De CHECK op
-         *    `hero_appearances.trigger` laat zes waarden toe; er worden er
-         *    vandaag vier geschreven. `nieuw_doel` zou de open groep vertellen
-         *    dát dit lid een doel heeft aangemaakt — geen tegenslag, dus niet wat
-         *    A41 opent, en per persoon in plaats van per doel, wat botst met
-         *    domeinregel 4.
+         * ⚠⚠ **Een allowlist en geen doorgeefluik.** De CHECK op
+         *    `hero_appearances.trigger` laat zes waarden toe; deze functie geeft
+         *    er sinds 0278 nog **twee** door. `nieuw_doel` zou de open groep
+         *    vertellen dát dit lid een doel heeft aangemaakt — geen tegenslag,
+         *    dus niet wat A41 opent, en per persoon in plaats van per doel, wat
+         *    botst met domeinregel 4.
          *
          *    CLAUDE.md: *"Voor élk níeuw oppervlak is beschermd het antwoord tot
          *    iemand het tegendeel besluit."* Zonder deze toets verbreedt het
          *    oppervlak zichzelf op de dag dat er een zevende schrijver bij komt,
          *    en wordt niets daarvan rood.
          *
-         * 📏 IJKING H — de `and a.trigger = any (array[…])` uit 0268 weggehaald:
-         *    deze toets werd rood.
+         * 📏 IJKING H — de `and a.trigger = any (array[…])` weggehaald: deze
+         *    toets werd rood.
          */
-        await noteerOp(ilse, 'ignis', 'misser', dagRand(-1, 12));
-        expect(rijVan(await helden(bram, open.id), ilse.id)?.trigger, 'opstelling').toBe('misser');
+        await noteerOp(ilse, 'lucerna', 'stilte', dagRand(-1, 12));
+        expect(rijVan(await helden(bram, open.id), ilse.id)?.trigger, 'opstelling').toBe('stilte');
 
         // Een verse `nieuw_doel` hoort de zichtbare held níet te vervangen, en
         // hoort het lid ook niet uit de lijst te duwen: de belofte is "de laatste
@@ -557,8 +577,50 @@ describe.skipIf(!rlsTestsConfigured)('groep_helden() — je held in een open gro
 
         const na = rijVan(await helden(bram, open.id), ilse.id);
         expect(na, 'het lid blijft in de lijst').toBeDefined();
-        expect(na?.trigger, 'met zijn vorige zichtbare trigger').toBe('misser');
-        expect(na?.hero_key).toBe('ignis');
+        expect(na?.trigger, 'met zijn vorige zichtbare trigger').toBe('stilte');
+        expect(na?.hero_key).toBe('lucerna');
+      },
+      TEST_TIMEOUT,
+    );
+
+    it(
+      'laat `misser` en `tussendoor` er sinds 0278 buiten — de kaart mag niets bewéren',
+      async () => {
+        /**
+         * ⚠⚠ **Dit is de belofte van 0278 en de duurste les van QS8-493.** Tot
+         *    16-09-2026 gaf deze functie ook `misser` en `tussendoor` door. Het
+         *    scherm dat er toen bij kwam, kon daardoor het tegenovergestelde
+         *    beweren van wat er gebeurd was:
+         *
+         *    📏 **`tussendoor` draagt geen gebeurtenis maar iemands quízheld.**
+         *       `kiesStem()` geeft `{ held: hoofdheld, trigger: 'tussendoor' }`
+         *       zódra er géén gebeurtenis is — ook bij `approval_received`, dus bij
+         *       goéd nieuws. Is Ignis je quizheld, dan las de kaart
+         *       "Bij Anna kwam Ignis langs", en Ignis is de held van `misser`.
+         *       0268 zegt dit zelf in zijn kop; het scherm beweerde het tegendeel.
+         *
+         *    📏 **`misser` betekent "vandaag niets gedaan".** `nudgeReden()` laat
+         *       de nudge gaan bij geen Dagzet en geen afronding vándaag met
+         *       éérgens een open weekdoel; die nudge schrijft `misser`. Dat botst
+         *       met domeinregel 9 (*"een dag overslaan heeft geen enkel gevolg"*)
+         *       en A41 opende gemiste wéken.
+         *
+         * ⚠️ Deze toets staat op de bélofte en niet op de allowlist: hij schrijft
+         *    de twee verboden triggers als eníge verschijning van een lid en
+         *    eist dat dat lid niet in de lijst staat. Zou iemand de array
+         *    uitbreiden, dan valt hij om — ook als de array anders geschreven is.
+         */
+        await noteerOp(jasper, 'ignis', 'misser', dagRand(0, 6));
+        expect(
+          rijVan(await helden(bram, open.id), jasper.id),
+          'een misser hoort deze groep niet te bereiken',
+        ).toBeUndefined();
+
+        await noteerOp(karin, 'quip', 'tussendoor', dagRand(0, 6));
+        expect(
+          rijVan(await helden(bram, open.id), karin.id),
+          'een tussendoor hoort deze groep niet te bereiken',
+        ).toBeUndefined();
       },
       TEST_TIMEOUT,
     );
@@ -583,7 +645,7 @@ describe.skipIf(!rlsTestsConfigured)('groep_helden() — je held in een open gro
         const twee = await adminDb()
           .from('hero_appearances')
           .insert([
-            { user_id: bram.id, hero_key: 'quip', trigger: 'tussendoor', shown_at: zelfdeMoment },
+            { user_id: bram.id, hero_key: 'strix', trigger: 'mijlpaal', shown_at: zelfdeMoment },
             { user_id: bram.id, hero_key: 'meridian', trigger: 'nieuw_doel', shown_at: zelfdeMoment },
           ]);
         if (twee.error) throw new Error(`twee verschijningen: ${twee.error.message}`);

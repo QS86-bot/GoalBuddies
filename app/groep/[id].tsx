@@ -28,7 +28,7 @@ import {
   zichtbaarheidLabels,
 } from '@/modules/buddies';
 import { fetchStrafDoelen } from '@/modules/commitments';
-import { fetchGroepshelden, type Groepsheldrij } from '@/modules/helden';
+import { fetchGroepshelden, heldTekstSleutel, type Groepsheldrij } from '@/modules/helden';
 import {
   beslisDeadlineVerzoek,
   fetchKoppelbareDoelen,
@@ -273,7 +273,11 @@ export default function GroepDetail() {
                  beschermde groep geeft `groep_helden()` nul rijen en rendert dit
                  niets. De regel staat in 0268, niet hier.
             */}
-            <HeldenKaart uitkomst={s.helden} onOpnieuw={herlaad} />
+            <HeldenKaart
+              uitkomst={s.helden}
+              open={s.groep?.zichtbaarheid === 'open'}
+              onOpnieuw={herlaad}
+            />
 
             {/*
               ⚠️ Twee aparte schermen en niet één. De weekafsluiting is één kaart
@@ -1031,9 +1035,11 @@ function KlassementRij({ rij }: { readonly rij: Klassementsrij }) {
  */
 function HeldenKaart({
   uitkomst,
+  open,
   onOpnieuw,
 }: {
   readonly uitkomst: HeldenUitkomst;
+  readonly open: boolean;
   readonly onOpnieuw: () => void;
 }) {
   if (uitkomst.staat === 'fout') {
@@ -1047,11 +1053,35 @@ function HeldenKaart({
     );
   }
 
-  const { rijen, totaal, meer } = uitkomst.pagina;
+  const { rijen } = uitkomst.pagina;
 
-  // Nul rijen betekent "deze groep is beschermd" of "je bent geen lid". Allebei
-  // is de juiste uitkomst niets, en niet een lege kaart met een kop erboven.
-  if (rijen.length === 0) return null;
+  /**
+   * ⚠⚠ **Nul rijen betekent hier één ding méér dan bij het klassement, en die
+   *    kopie was fout.** `groep_klassement()` geeft een rij per lid, ook op nul
+   *    punten — daarom heeft die kaart een `klassement.leeg`. `groep_helden()`
+   *    joint **inner**: nul rijen betekent "beschermde groep", "geen lid", óf
+   *    "open groep, ik ben lid, maar deze zeven dagen kwam er bij niemand een
+   *    held langs". Dat derde geval kent het klassement niet.
+   *
+   *    Gevonden in de gebruikersreview: wie net op "zet hem open" heeft gedrukt
+   *    en gelezen heeft dát hij dit gaat zien, scrolt anders langs niets en weet
+   *    niet of het stuk is. Onwrikbare regel 16 vraagt een lege staat.
+   *
+   * ⚠️ `open` is een weergavehint en geen autorisatiegrens. De rijen komen nog
+   *    steeds uitsluitend uit de RPC, die `lid_van_open_groep()` in zijn `where`
+   *    draagt. Een beschermde groep en een niet-lid zien nog steeds niets — ook
+   *    niet deze zin.
+   */
+  if (rijen.length === 0) {
+    if (!open) return null;
+
+    return (
+      <Card>
+        <Subheading>{t('groepshelden.kop')}</Subheading>
+        <Body muted>{t('groepshelden.leeg')}</Body>
+      </Card>
+    );
+  }
 
   return (
     <Card>
@@ -1061,39 +1091,36 @@ function HeldenKaart({
       {rijen.map((rij) => (
         <HeldenRij key={rij.userId} rij={rij} />
       ))}
-
-      {meer ? (
-        <Caption>{t('groepshelden.van_totaal', { getoond: rijen.length, totaal })}</Caption>
-      ) : null}
     </Card>
   );
 }
 
 /**
- * Eén regel: naam en held. Meer valt er niet te tonen, en meer hóórt er niet
- * te staan.
+ * Eén regel, als zin en niet als twee kolommen.
  *
- * ⚠⚠ **De trigger staat er met opzet niet bij.** Held en trigger zijn één op
- *    één, dus de naam van de held draagt de reden al; hem er in woorden bij
- *    zetten is dubbelop en botter. De bevestigingstekst bij het openzetten
- *    belooft *"welke held er langs is geweest"* en niet waarom.
+ * ⚠⚠ **Hier stond eerst "held en trigger zijn één op één, dus de naam van de
+ *    held draagt de reden al" — en 0268 weerlegt dat in zijn eigen kop.** De
+ *    bijectie houdt voor víjf van de zes triggers; `tussendoor` draagt iemands
+ *    quízheld en geen gebeurtenis. 0278 laat daarom alleen `mijlpaal` en
+ *    `stilte` door, en vóór die twee is de bewering wél waar.
+ *
+ * ⚠️ De zin loopt van de held naar de persoon, omdat de kop dat ook doet. Met
+ *    de naam voorop las "Wie er langs is geweest → Anna" als het tegendeel van
+ *    wat er bedoeld is. Gevonden in de gebruikersreview.
+ *
+ * ⚠️ `heldTekstSleutel()` en geen samengestelde sleutel: dat is sinds QS8-474
+ *    de afspraak, juist omdat `catalogus:controle` een template-literal niet kan
+ *    volgen.
  */
 function HeldenRij({ rij }: { readonly rij: Groepsheldrij }) {
-  const naamVanHeld = t(`held.${rij.held}.naam`);
-  const ondertitel = t(`held.${rij.held}.ondertitel`);
+  const regel = t('groepshelden.rij', {
+    naam: rij.naam,
+    held: t(heldTekstSleutel(rij.held, 'naam')),
+  });
 
   return (
-    <View
-      style={styles.heldenRij}
-      accessible
-      accessibilityLabel={t('groepshelden.rij_label', {
-        naam: rij.naam,
-        held: naamVanHeld,
-        ondertitel,
-      })}
-    >
-      <Body>{rij.naam}</Body>
-      <Caption>{`${naamVanHeld}, ${ondertitel}`}</Caption>
+    <View style={styles.heldenRij}>
+      <Body>{regel}</Body>
     </View>
   );
 }
@@ -1219,12 +1246,10 @@ async function laadGroep(groupId: string, userId: string): Promise<Stand> {
 
 const styles = StyleSheet.create({
   lijst: { gap: space.blokGap },
-  heldenRij: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: space.blokGap - 3,
-  },
+  // ⚠️ Eén zin en geen twee kolommen, dus geen `space-between`: een naam mag
+  //    80 tekens zijn (`profiles.display_name`) en duwde de held anders van het
+  //    scherm. Gevonden in de gebruikersreview.
+  heldenRij: { flexDirection: 'row' },
   klassementRij: {
     flexDirection: 'row',
     alignItems: 'center',
