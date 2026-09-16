@@ -115,6 +115,31 @@ const GEVALLEN: readonly Geval[] = [
     publiek: 'grant truncate on public.points_ledger to public;',
     aanEenRol: 'grant truncate on public.points_ledger to authenticated;',
   },
+  // ⚠️⚠️ **Deze rij dekt de vorm zónder `in schema`, en die was blind — 0278.**
+  //    `ddl_rechten_in_de_api()` filterde op `defaclnamespace = 'public'` en zag
+  //    daarmee een globale standaardregel niet. 📏 Gemeten op 16-09-2026 op de
+  //    lokale stack, in een teruggedraaide transactie:
+  //
+  //      alter default privileges grant truncate on tables to anon;  -- zonder schema
+  //
+  //                                    nulmeting   na die regel
+  //      ddl_rechten_in_de_api()             0          0   <-- blind
+  //      standaardrechten_bewaking()         0          1
+  //
+  //    De rij hierboven kon dat niet vinden: die geeft een recht op één
+  //    bestaande tabel, niet op de tabellen die nog komen. Twee rijen dus, en
+  //    niet één met een langere grant — het zijn twee helften van de functie.
+  //
+  // ⚠️ **De globale vorm is de gevaarlijkere én de kortere.** Zonder
+  //    `in schema` landt de regel op `defaclnamespace = 0` en geldt hij voor
+  //    álle schema's, `public` inbegrepen. Het is dus de vorm die je per ongeluk
+  //    typt, en precies die werd niet gezien.
+  {
+    bewaking: 'ddl_rechten_in_de_api',
+    wat: 'TRUNCATE op élke volgende tabel, via een regel zónder `in schema`',
+    publiek: 'alter default privileges grant truncate on tables to public;',
+    aanEenRol: 'alter default privileges grant truncate on tables to anon;',
+  },
   // ⚠️⚠️ **Deze rij is er gekomen doordat de klasse opnieuw faalde — QS8-485.**
   //    De bewaking op de standaardrechten stond eerst als query in
   //    `anonleesrecht.test.ts`, en daarmee buiten dit register. 📏 De
