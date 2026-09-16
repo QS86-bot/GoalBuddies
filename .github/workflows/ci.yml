@@ -140,10 +140,25 @@ jobs:
   # ⚠️ **Er zijn hier geen secrets, en dat hoort zo te blijven.** Komt er ooit een
   #    `secrets.` in deze job, dan is de reden daarvoor het opschrijven waard —
   #    want dan draait CI weer tegen iets echts.
+  # ⚠️⚠️ **25 en niet 15 sinds 16-09-2026 (QS8-451), en dat is een gemeten grens
+  #    en geen ruimte-voor-de-zekerheid.** `naamnormalisatie.test.ts` doet per
+  #    omgeving in `CONTEXTEN` een volledige veeg over `generate_series(1,
+  #    1114111)` met `schone_naam()` erop. QS8-451 zette er twee bij — de voor-
+  #    en de achterrand — en dat is 📏 lokaal gemeten **317,97 s → 471,46 s**,
+  #    +48% op het duurste bestand van deze suite. De job stond op 11:54 tegen
+  #    een plafond van 15:00; met die toename komt hij rond 14:30 uit en is één
+  #    trage runner genoeg om hem om te gooien.
+  #
+  # ⚠️ **Verlaag hem niet zonder opnieuw te meten, en verhoog hem niet als
+  #    reflex.** Een timeout die meegroeit met elke run die er langer over doet,
+  #    meet niets meer. Loopt deze job richting 20 minuten, dan is de vraag niet
+  #    of het plafond omhoog moet maar waaróm de suite zoveel duurder werd —
+  #    een veeg per omgeving schaalt lineair in het aantal omgevingen, en dat
+  #    aantal hoort een besluit te zijn.
   rls:
     name: RLS-policies
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 25
 
     services:
       # Postgres 16, gelijk aan waar het schema tegen gebouwd en vergeleken is.

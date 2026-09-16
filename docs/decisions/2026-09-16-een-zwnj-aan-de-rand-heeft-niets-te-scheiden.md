@@ -140,6 +140,37 @@ ijkingen daar werden rood van een randenlijst die de ijking zelf per ongeluk had
 verouderd, en dat rood bewees niets. De randenlijst hierboven verschilt op één
 plek van de gedeployde: `\2000-\200F` is `\2000-\200B\200D-\200F` geworden.
 
+## ⚠️ 6a. Wat de twee omgevingen kosten, en waarom het plafond meeging
+
+Elke omgeving in `CONTEXTEN` doet een volledige veeg over
+`generate_series(1, 1114111)` met `schone_naam()` erop, aan beide kanten. Twee
+omgevingen erbij is dus geen randgeval maar een derde meer werk in het duurste
+bestand van de RLS-suite.
+
+📏 Gemeten op dezelfde machine, zelfde stack, zelfde bestand:
+
+| stand | duur | toetsen |
+|---|---|---|
+| zes omgevingen | 317,97 s | 20 |
+| acht omgevingen | 471,46 s | 21 |
+
+**+153,5 s, +48%.** De RLS-job in CI stond op 11:54 tegen een `timeout-minutes`
+van 15. Met die toename komt hij rond 14:30 uit, en dan is één trage runner
+genoeg om hem om te gooien — een rood dat niets over de code zegt. Het plafond
+staat daarom op 25, met de meting in de kop van de job.
+
+⚠️ **Dat is een plafond dat meegroeide, en dat is precies de beweging waar dit
+project elders voor waarschuwt.** Het is hier te verdedigen omdat de suite
+aantoonbaar méér doet en niet trager hetzelfde; maar een timeout die bij elke
+run die uitloopt omhoog gaat, meet niets meer. De rem staat in de kop: loopt de
+job richting 20 minuten, dan is de vraag waaróm, niet hoeveel hoger.
+
+⚠️ **Eén omgeving in plaats van twee is overwogen en afgewezen.** De voor- en de
+achterrand zijn apart te breken — in SQL zijn het twee `regexp_replace`-lagen
+(`^[…]+` en `[…]+$`), in TypeScript twee lussen. Dit bestand heeft daar al een
+toets voor (*"strijkt aan beide kanten exact dezelfde codepunten"*), en één
+omgeving zou de helft van de belofte onbewaakt laten voor de helft van de prijs.
+
 ## 7. Wat dit besluit níét is
 
 - **Geen uitspraak over `U+200C` midden in een naam.** Die staat sinds QS8-499
