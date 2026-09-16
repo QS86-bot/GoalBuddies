@@ -1,6 +1,7 @@
 import { z } from 'zod';
 
 import { t } from '../../shared/i18n';
+import { schoneVrijeTekst, telTekens } from '../../shared/tekst';
 
 /**
  * De regels van een mijlpaal, zonder Supabase en zonder React Native — QS8-39.
@@ -18,10 +19,18 @@ export const MIJLPAAL_TITEL_MAX = 200;
 export const mijlpaalSchema = z.object({
   title: z
     .string()
-    .trim()
-    .min(3, { error: () => t('validatie.mijlpaaltitel') })
-    .max(MIJLPAAL_TITEL_MAX, { error: `Maximaal ${MIJLPAAL_TITEL_MAX} tekens.` }),
-  description: z.string().trim().max(2000, { error: () => t('validatie.omschrijving_lang') }).nullable(),
+    // ⚠️ Eerst schoonmaken, dán oordelen — QS8-507, migratie 0284. Zie
+    //    `schoneVrijeTekst()`; de trimvolgorde zit erin.
+    .transform(schoneVrijeTekst)
+    .refine((v) => telTekens(v) >= 3, { error: () => t('validatie.mijlpaaltitel') })
+    .refine((v) => telTekens(v) <= MIJLPAAL_TITEL_MAX, {
+      error: `Maximaal ${MIJLPAAL_TITEL_MAX} tekens.`,
+    }),
+  description: z
+    .string()
+    .transform(schoneVrijeTekst)
+    .refine((v) => telTekens(v) <= 2000, { error: () => t('validatie.omschrijving_lang') })
+    .nullable(),
   target_date: z.string().nullable(),
 });
 

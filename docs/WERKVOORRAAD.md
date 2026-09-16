@@ -16,8 +16,8 @@ registerrijen**, `0001` t/m `0282` aaneengesloten, inclusief de drie
 letterversies, en **nul** rijen die nog een tijdstempel als versie dragen.
 
 ⚠️⚠️ **En "gelijk aan de map" was het één merge lang.** 📏 Nageteld op
-16-09-2026 ná QS8-506: de map telt er **286** — `0283` staat erin en niet op
-productie. Het gat is daarmee **één bestand**.
+16-09-2026 ná QS8-507: de map telt er **287** — `0283` en `0284` staan erin en
+niet op productie. Het gat is daarmee **twee bestanden**.
 
 Dat is geen achterstand maar de normale toestand tussen twee uitrollen, en het
 staat hier omdat de zin erboven binnen één dag onwaar werd: hij is gelijk-op-het-
@@ -298,7 +298,7 @@ schemaname = 'public'` gaf `41|41`. Vraag het aan de database en niet aan deze
 regel — net als bij het aantal migraties in §0.
 
 <!-- STAND:BEGIN — gegenereerd door `npm run stand` -->
-Migraties `0001` t/m `0283` staan in de map: **286 bestanden**,
+Migraties `0001` t/m `0284` staan in de map: **287 bestanden**,
 waarvan 3 met een letter-achtervoegsel (`0039a`, `0041a`, `0052a`).
 De nummering is aaneengesloten.
 <!-- STAND:EINDE -->

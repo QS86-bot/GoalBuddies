@@ -52,13 +52,20 @@ const beschikbaar = stackBeschikbaarOfFaal(
 const BEREIK = 'from generate_series(1, 1114111) cp where (cp < 55296 or cp > 57343) ';
 
 /**
- * De dertien kolommen die 0283 raakt, als paren tabel/kolom.
+ * Elke kolom die een van de twee regels draagt, als paar tabel/kolom.
+ *
+ * ⚠️ **Twee migraties, twee criteria, één lijst.** 0283 (QS8-506) koos *tekst
+ *    vlak vóór een handeling die iets toestaat*; 0284 (QS8-507) koos *vrije
+ *    tekst die een ánder dan de schrijver kan lezen*. Ze staan hier bij elkaar
+ *    omdat de tóets dezelfde is — niet omdat de scope dat is. Wie er een kolom
+ *    bij zet, schrijft in de migratiekop op langs wélk criterium hij erin kwam.
  *
  * ⚠️ **Deze lijst is de scope van het issue en niet van de regel.** Wat er
  *    buiten valt en waarom staat in de kop van 0283 en in QS8-507; die twee
  *    dragen de meting, dit bestand draagt de toets.
  */
 const KOLOMMEN: readonly (readonly [string, string])[] = [
+  // De dertien van 0283 (QS8-506).
   ['groups', 'name'],
   ['groups', 'icon'],
   ['groups', 'omschrijving'],
@@ -72,6 +79,22 @@ const KOLOMMEN: readonly (readonly [string, string])[] = [
   ['completions', 'note'],
   ['deadline_requests', 'reason'],
   ['group_join_requests', 'bericht'],
+  // ⚠️ De twaalf van 0284 (QS8-507). Zelfde twee regels, ander criterium: niet
+  //    *"tekst vlak vóór een knop"* maar *"vrije tekst die een ánder dan de
+  //    schrijver kan lezen"*. Welke kolommen daar wél en niet in vallen, staat
+  //    met de meting per kolom in de kop van 0284.
+  ['milestones', 'title'],
+  ['milestones', 'description'],
+  ['goals', 'description'],
+  ['daily_moves', 'body'],
+  ['todo_items', 'body'],
+  ['week_reviews', 'did_text'],
+  ['week_reviews', 'blocked_text'],
+  ['week_reviews', 'next_text'],
+  ['week_review_replies', 'body'],
+  ['commitments', 'body'],
+  ['deadline_requests', 'decision_note'],
+  ['reports', 'toelichting'],
 ];
 
 /**
@@ -252,8 +275,8 @@ describe.runIf(beschikbaar)('wat de client oplevert, neemt de database aan', () 
   });
 });
 
-describe.runIf(beschikbaar)('de dertien kolommen dragen allebei de CHECKs', () => {
-  it('elk van de dertien noemt zowel de bidi- als de nul-pixelregel', () => {
+describe.runIf(beschikbaar)('elke groepszichtbare tekstkolom draagt allebei de CHECKs', () => {
+  it('elke kolom in `KOLOMMEN` noemt zowel de bidi- als de nul-pixelregel', () => {
     const uit = viaPsql(
       "select c.relname || '.' || a.attname || ' ' || " +
         "  (case when exists (select 1 from pg_constraint k where k.conrelid = c.oid " +

@@ -242,7 +242,12 @@ export const doelSchema = z.object({
     .transform(schoneVrijeTekst)
     .refine((v) => telTekens(v) >= 3, { error: () => t('validatie.doeltitel_kort') })
     .refine((v) => telTekens(v) <= 200, { error: () => t('validatie.doeltitel_lang') }),
-  description: z.string().trim().max(2000, { error: () => t('validatie.omschrijving_lang') }).nullable(),
+  description: z
+    .string()
+    // ⚠️ Groepszichtbaar via `goals_select` — QS8-507, migratie 0284.
+    .transform(schoneVrijeTekst)
+    .refine((v) => telTekens(v) <= 2000, { error: () => t('validatie.omschrijving_lang') })
+    .nullable(),
   category: z.enum(CATEGORIEEN),
   target_date: isoDatum,
   /**
