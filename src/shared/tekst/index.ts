@@ -153,7 +153,13 @@ export const ONZICHTBARE_BEREIKEN: readonly (readonly [number, number])[] = [
   [0xfeff, 0xfeff], // byte order mark / zero-width no-break space
   [0xffa0, 0xffa0], // halfwidth hangul filler
   [0xfff9, 0xfffb], // interlinear annotation
-  [0xe0000, 0xe007f], // tags, inclusief de language tag
+  // ⚠️⚠️ **Versmald in QS8-499 van `0xe007f` naar `0xe001f`, en dat is de helft
+  //    van de reparatie.** 🏴 is `U+1F3F4` plus zes tagtekens; stond het hele
+  //    bereik hier, dan at de randstap de staart van een vlag op — 📏 zeven
+  //    codepunten in, één uit. Wat er overblijft (`U+E0000`–`U+E001F`) haalt
+  //    `zonderOnzichtbaarMiddenin()` toch al overal weg; een tag die níet bij een
+  //    vlag hoort gaat sinds dit issue via `zonderLosseTags()`.
+  [0xe0000, 0xe001f], // tags vóór het bruikbare bereik
 ];
 
 /** Of dit codepunt aan de rand van een naam niets zichtbaars oplevert. */
@@ -322,6 +328,241 @@ export function zonderOnzichtbaarMiddenin(ruw: string): string {
 }
 
 /**
+ * De zeven uitzonderingen van QS8-495 die een contextregel nodig hebben.
+ *
+ * ⚠️⚠️ **Deze tekens zijn niet per codepunt te beoordelen, en dát onderscheidt
+ *    ze van `BIDI_BEREIKEN` en `MIDDENIN_BEREIKEN`.** `U+200C` tussen twee
+ *    ASCII-letters is een collisievector — `Ja<ZWNJ>n` rendert als `Jan` —
+ *    terwijl dezelfde `U+200C` tussen twee Perzische letters orthografisch
+ *    **verplicht** is. Het teken is niet het probleem; de plek is het.
+ *
+ * ⚠️ **De tags staan er niet bij.** Die horen bij een `U+1F3F4` en niet tussen
+ *    twee letters; ze hebben hun eigen regel in `zonderLosseTags()`.
+ */
+export const TUSSEN_LETTERS_BEREIKEN: readonly (readonly [number, number])[] = [
+  [0x034f, 0x034f], // combining grapheme joiner
+  [0x061c, 0x061c], // arabic letter mark
+  [0x180b, 0x180f], // mongoolse variatieselectors, MVS en FVS4
+  [0x200c, 0x200f], // ZWNJ, ZWJ, LRM, RLM
+  [0xfe00, 0xfe0f], // variatieselectors, waaronder VS16
+  [0xe0100, 0xe01ef], // ideographic variation selectors
+];
+
+/** Of dit codepunt tussen twee ASCII-alfanumerieken niets kan betekenen. */
+export function isOnzichtbaarTussenLetters(codepunt: number): boolean {
+  return TUSSEN_LETTERS_BEREIKEN.some(([van, tot]) => codepunt >= van && codepunt <= tot);
+}
+
+/**
+ * De richtingsmarkeringen — `U+061C`, `U+200E` en `U+200F`.
+ *
+ * ⚠️⚠️ **Deze drie krijgen de stríktere voorwaarde, en dat is met een meting
+ *    afgedwongen.** De andere vier groepen hangen aan een **teken**: een
+ *    variatieselector kiest een vorm voor zijn basisteken, een ZWNJ verhindert
+ *    een verbinding tussen twee verbindende letters, een CGJ blokkeert
+ *    hergroepering. Naast een spatie of een leesteken is daar geen teken om aan
+ *    te hangen, dus zijn ze daar bewijsbaar inert.
+ *
+ *    Een richtingsmarkering hangt aan een **grens**. Haar werk begint juist
+ *    waar er iets niet-alfanumeriek naast staat. 📏 Gemeten: met de verbrede
+ *    voorwaarde verloor `Jan<U+200F> محمد` zijn markering — precies de plek waar
+ *    hij de lay-out van wat erop volgt bepaalt.
+ *
+ *    Strikt tússen twee ASCII-alfanumerieken is er geen grens om op te werken,
+ *    en dáár is `a<RLM>b` niet van `ab` te onderscheiden. Die en alleen die
+ *    plek is veilig.
+ */
+function isRichtingsmarkering(codepunt: number): boolean {
+  return codepunt === 0x061c || codepunt === 0x200e || codepunt === 0x200f;
+}
+
+/** `A-Z`, `a-z` of `0-9` — de buur die van een teken bewijst dat het niets doet. */
+function isAsciiAlfanumeriek(codepunt: number): boolean {
+  return (
+    (codepunt >= 0x41 && codepunt <= 0x5a) ||
+    (codepunt >= 0x61 && codepunt <= 0x7a) ||
+    (codepunt >= 0x30 && codepunt <= 0x39)
+  );
+}
+
+/**
+ * `U+0001`–`U+007F` — de buur die van een teken bewijst dat er geen schrift bij
+ * betrokken is dat het nodig heeft.
+ *
+ * ⚠️⚠️ **Deze tweede soort buur is de reparatie van de security-review op
+ *    QS8-499, en het gat dat hij dicht is het gewone geval.** De eerste versie
+ *    eiste aan **beide** kanten een alfanumeriek, en een spatie is ASCII maar
+ *    niet alfanumeriek. 📏 Gemeten: van de 267 codepunten die de regel tussen
+ *    twee letters weghaalt, haalde hij er naast een spatie **nul** weg —
+ *    `Jan<ZWNJ> Jansen` landde ongehinderd naast `Jan Jansen`, en dat is de
+ *    vorm van vrijwel elke echte naam.
+ */
+function isAscii(codepunt: number): boolean {
+  return codepunt >= 0x01 && codepunt <= 0x7f;
+}
+
+/**
+ * Dezelfde tekst zonder de zeven op de plek waar ze niets kunnen betekenen.
+ *
+ * ⚠️⚠️ **Een lus en geen lookbehind, en dat is met opzet.** De SQL-kant doet dit
+ *    met `(?<=[A-Za-z0-9])…(?=[A-Za-z0-9])`; Postgres kan dat. **Hermes kan het
+ *    niet** — React Native valt bij het laden al om op een regex met
+ *    lookbehind, en dat is een witte app in plaats van een foutmelding. De twee
+ *    vormen mogen verschillen zolang de naad bewijst dat ze hetzelfde oordelen,
+ *    en `tests/rls/naamnormalisatie.test.ts` doet dat sinds QS8-499 **in
+ *    context** en niet meer alleen per codepunt.
+ *
+ * ⚠️ De grens is ASCII en niet "een schrift dat dit teken niet gebruikt". Die
+ *    tweede is correcter en vraagt Unicode-scriptdata die er niet is.
+ *
+ * ⚠️⚠️ **Hier stond "bewijsbaar veilig: de twee verzamelingen raken elkaar
+ *    niet", en dat is onwaar.** 📏 Gemeten in de security-review op QS8-499:
+ *    `c<U+034F>h` wordt `ch`, en dat is de gedocumenteerde Slowaakse en
+ *    Hongaarse digraafscheiding — twee ASCII-letters met een CGJ ertussen. De
+ *    regel raakt dus wél een legitiem gebruik. Dat is aanvaard omdat de CGJ
+ *    dáár óók als nul pixels rendert: `ch` en `c<CGJ>h` zijn visueel identiek,
+ *    en die collisie weegt zwaarder dan de sorteerhint. Wat de regel níet raakt
+ *    zijn de vier must-allows, en dat is met een veeg nagemeten.
+ *
+ * 📏 De prijs — `Ján<ZWNJ>ös` ontsnapt, want `ö` is geen ASCII — staat in
+ *    `docs/ENGINEER-REVIEW.md`.
+ */
+export function zonderOnzichtbaarTussenLetters(ruw: string): string {
+  const tekens = Array.from(ruw);
+  const codepunt = (i: number): number => (tekens[i] as string).codePointAt(0) ?? 0;
+
+  const uit: string[] = [];
+  let i = 0;
+
+  while (i < tekens.length) {
+    if (!isOnzichtbaarTussenLetters(codepunt(i))) {
+      uit.push(tekens[i] as string);
+      i += 1;
+      continue;
+    }
+
+    // De hele aaneengesloten reeks in één keer, zodat `a<ZWNJ><ZWJ>b` ook gaat.
+    let eind = i;
+    while (eind < tekens.length && isOnzichtbaarTussenLetters(codepunt(eind))) eind += 1;
+
+    // ⚠️⚠️ **Eén alfanumerieke buur is genoeg, mits de ándere ASCII is** — de
+    //    reparatie uit de security-review. Een rand telt als ASCII: een teken
+    //    aan het begin of eind van de naam heeft daar geen schrift naast staan.
+    //    📏 `Jan<ZWNJ> Jansen` en `O<ZWNJ>'Brien` gingen hiervóór ongehinderd
+    //    door; `Ján<ZWNJ>ös` ontsnapt nog steeds, en dat is de bewuste prijs.
+    const linksAlnum = i > 0 && isAsciiAlfanumeriek(codepunt(i - 1));
+    const rechtsAlnum = eind < tekens.length && isAsciiAlfanumeriek(codepunt(eind));
+    const linksAscii = i === 0 || isAscii(codepunt(i - 1));
+    const rechtsAscii = eind === tekens.length || isAscii(codepunt(eind));
+
+    // ⚠️⚠️ **Draagt de reeks een richtingsmarkering, dan geldt de stríkte
+    //    voorwaarde voor de hele reeks.** Of die markering daar bidi-werk doet,
+    //    is van buitenaf niet te zien — en dan is de conservatieve kant de
+    //    juiste. 📏 De prijs is smal en gemeten: `Jan<ZWNJ><RLM> Jansen` blijft
+    //    staan, want die reeks is gemengd. Zie de kop van migratie 0282.
+    let heeftRichting = false;
+    for (let j = i; j < eind; j += 1) {
+      if (isRichtingsmarkering(codepunt(j))) heeftRichting = true;
+    }
+
+    const weg = heeftRichting
+      ? linksAlnum && rechtsAlnum
+      : (linksAlnum && rechtsAscii) || (linksAscii && rechtsAlnum);
+
+    if (!weg) {
+      for (let j = i; j < eind; j += 1) uit.push(tekens[j] as string);
+    }
+
+    i = eind;
+  }
+
+  return uit.join('');
+}
+
+/** `U+1F3F4` — de zwarte vlag waar een subdivisievlag mee begint. */
+const VLAGBASIS = 0x1f3f4;
+
+/** Of dit codepunt een tagteken is. */
+function isTag(codepunt: number): boolean {
+  return codepunt >= 0xe0020 && codepunt <= 0xe007f;
+}
+
+/** `U+E007F` CANCEL TAG — het sluitteken van een vlagreeks. */
+const TAGSLUITER = 0xe007f;
+
+/**
+ * Of dit codepunt in het lichaam van een geldige vlagreeks mag staan.
+ *
+ * UTS #51: een RGI-tagreeks draagt alleen de tag-varianten van `0`–`9` en
+ * `a`–`z`. Een tag buiten dat bereik hoort niet bij een vlag, hoe hij ook staat.
+ */
+function isVlagletter(codepunt: number): boolean {
+  return (
+    (codepunt >= 0xe0030 && codepunt <= 0xe0039) ||
+    (codepunt >= 0xe0061 && codepunt <= 0xe007a)
+  );
+}
+
+/**
+ * Hoeveel codepunten de geldige vlagreeks op deze plek lang is, of `0`.
+ *
+ * ⚠️ `tekens[begin]` is de vlagbasis. Daarna 2 tot 6 vlagletters en dan de
+ *    sluiter — de vorm die UTS #51 voorschrijft.
+ */
+function vlagreeksLengte(tekens: readonly string[], begin: number): number {
+  let i = begin + 1;
+  while (i < tekens.length && isVlagletter(tekens[i]?.codePointAt(0) ?? 0)) i += 1;
+
+  const letters = i - begin - 1;
+  const sluit = i < tekens.length && (tekens[i]?.codePointAt(0) ?? 0) === TAGSLUITER;
+
+  return letters >= 2 && letters <= 6 && sluit ? i - begin + 1 : 0;
+}
+
+/**
+ * Dezelfde tekst zonder tagtekens die niet in een geldige vlagreeks staan.
+ *
+ * ⚠️ 🏴󠁧󠁢󠁳󠁣󠁴󠁿 is `U+1F3F4` plus zes tags. Een losse tag daarentegen rendert als nul
+ *    pixels en is dus een collisievector — én de reden dat de randenlijst zijn
+ *    tagbereik kwijt is: die at de staart van een echte vlag op.
+ *
+ * ⚠️⚠️ **De vórm van de reeks wordt getoetst en niet alleen de vlagbasis
+ *    ervóór, en dat is de reparatie uit de security-review op QS8-499.** De
+ *    eerste versie liet élke tag staan zodra er ergens een `U+1F3F4` vóór stond.
+ *    📏 Gemeten: `U+E0020`–`U+E007E` is een 1-op-1 afbeelding van ASCII
+ *    `0x20`–`0x7E`, dus achter één zichtbare 🏴 pasten ~75 tekens **willekeurige
+ *    onzichtbare tekst** binnen de grens van 80 codepunten — in een kolom die
+ *    groepszichtbaar is en die als platte tekst in systeemberichten wordt
+ *    ingebakken. En `🏴` plus één sluittag rendert als de kale 🏴, dus het was
+ *    ook een collisievector.
+ *
+ *    Aan de rand was het bovendien een regressie: de randenlijst streek die
+ *    staart vóór QS8-499 juist wél weg.
+ */
+export function zonderLosseTags(ruw: string): string {
+  const tekens = Array.from(ruw);
+  const uit: string[] = [];
+  let i = 0;
+
+  while (i < tekens.length) {
+    const cp = tekens[i]?.codePointAt(0) ?? 0;
+
+    if (cp === VLAGBASIS) {
+      const lengte = vlagreeksLengte(tekens, i);
+      // Geen geldige reeks: de vlagbasis blijft, zijn tags gaan als los weg.
+      for (let j = i; j < i + Math.max(lengte, 1); j += 1) uit.push(tekens[j] as string);
+      i += Math.max(lengte, 1);
+      continue;
+    }
+
+    if (!isTag(cp)) uit.push(tekens[i] as string);
+    i += 1;
+  }
+
+  return uit.join('');
+}
+
+/**
  * Een naam zonder onzichtbare randen.
  *
  * ⚠️ **Randen knippen en niet alles**, zie `ONZICHTBARE_BEREIKEN`. Wat er tussen
@@ -337,12 +578,23 @@ export function zonderOnzichtbaarMiddenin(ruw: string): string {
  *    in de eerste.
  */
 export function schoneNaam(ruw: string): string {
-  // ⚠️ Eerst de bidi-stuurtekens overal weg, dán de tekens die overal als niets
-  //    renderen (QS8-495), dán de randen. Zo wordt ` \u202E Ja\u200Bn ` gewoon
-  //    `Jan`. De volgorde geeft hetzelfde resultaat als je hem omdraait, maar
-  //    zo leest hij als drie stappen met elk een eigen reden in plaats van als
-  //    toeval.
-  const tekens = Array.from(zonderOnzichtbaarMiddenin(zonderBidi(ruw)));
+  // ⚠️ Vijf stappen, elk met een eigen reden, in deze volgorde:
+  //      1. bidi-overrides overal weg          (QS8-450)
+  //      2. nul-pixeltekens overal weg          (QS8-495)
+  //      3. losse tags weg, vlaggen heel        (QS8-499)
+  //      4. de zeven tussen twee ASCII-letters  (QS8-499)
+  //      5. de randen                           (QS8-448)
+  //
+  // ⚠️ Stap 3 staat vóór stap 4, en dat is dragend: stap 3 kan twee
+  //    ASCII-letters naast elkaar zetten die dat daarvoor niet waren, en stap 4
+  //    vuurt alleen tussen ASCII-buren. 📏 `a<U+E0067><U+200C>b` wordt zo `ab`;
+  //    omgekeerd blijft `a<ZWNJ>b` over. Uitleg en meting in de kop van
+  //    migratie 0282.
+  const tekens = Array.from(
+    zonderOnzichtbaarTussenLetters(
+      zonderLosseTags(zonderOnzichtbaarMiddenin(zonderBidi(ruw))),
+    ),
+  );
 
   let begin = 0;
   let eind = tekens.length;

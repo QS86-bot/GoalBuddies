@@ -232,8 +232,22 @@ describe('MIDDENIN_BEREIKEN is afgeleid en niet met de hand bedacht', () => {
    *
    * ⚠️ **De uitzonderingen staan hier en nergens anders**, want dát is het stuk
    *    dat een mens moet beslissen. Elk van de acht breekt een echte naam als
-   *    hij zou meedoen; ze staan met hun reden in `MIDDENIN_BEREIKEN` hierboven
-   *    en in `docs/decisions/2026-09-14-onzichtbaar-in-het-midden.md` §3.
+   *    hij **onvoorwaardelijk** zou meedoen; ze staan met hun reden in
+   *    `MIDDENIN_BEREIKEN` hierboven en in
+   *    `docs/decisions/2026-09-14-onzichtbaar-in-het-midden.md` §3.
+   *
+   * ⚠️⚠️ **En sinds QS8-499 betekent "mag blijven" hier niet meer "blijft
+   *    overal", en dat verschil hoort in deze kop te staan.** Deze lijst gaat
+   *    over `isOnzichtbaarMiddenin()`, en die is per codepunt en dus
+   *    onvoorwaardelijk — daar horen de acht niet in, en dat is onveranderd.
+   *    Maar `zonderOnzichtbaarTussenLetters()` en `zonderLosseTags()` halen
+   *    zeven ervan alsnog weg op de plek waar ze niets kunnen betekenen: tussen
+   *    twee ASCII-alfanumerieken, en voor een tag zonder vlag ervoor.
+   *
+   *    Wie deze toets leest als *"de acht zijn toegestaan"* leest hem te breed.
+   *    Wat hij zegt is *"ze zitten niet in de onvoorwaardelijke lijst"* — de
+   *    contextregel staat in `tests/rls/naamnormalisatie.test.ts` en in
+   *    `docs/decisions/2026-09-16-de-plek-is-het-probleem-en-niet-het-teken.md`.
    */
   const MAG_BLIJVEN: readonly (readonly [number, number])[] = [
     [0x034f, 0x034f], // combining grapheme joiner
@@ -272,9 +286,11 @@ describe('MIDDENIN_BEREIKEN is afgeleid en niet met de hand bedacht', () => {
     expect(teveel.slice(0, 20), 'deze staan erin zonder dat de property ze noemt').toEqual([]);
   });
 
-  it('en de acht uitzonderingen blijven alle acht staan', () => {
+  it('en de acht uitzonderingen zitten niet in de onvoorwaardelijke lijst', () => {
     // ⚠️ De must-allow, en die weegt hier zwaarder dan de weigering — zie
-    //    acceptatiecriterium 2 van QS8-495.
+    //    acceptatiecriterium 2 van QS8-495. ⚠️ Maar hij gaat over déze lijst en
+    //    niet over `schoneNaam()`: sinds QS8-499 gaan zeven van de acht alsnog
+    //    weg tussen twee ASCII-letters.
     for (const [van, tot] of MAG_BLIJVEN) {
       for (let cp = van; cp <= tot; cp += 1) {
         expect(isOnzichtbaarMiddenin(cp), `U+${cp.toString(16).toUpperCase()}`).toBe(false);

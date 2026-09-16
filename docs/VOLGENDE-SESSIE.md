@@ -3,10 +3,40 @@
 > Kopieer alles onder de streep in een nieuwe chat. Werk dit bestand bij aan het
 > eind van elke sessie — het is de overdracht, niet een archief.
 >
-> **Laatst bijgewerkt:** 14-09-2026, na QS8-477 (PR #483) — het laatste deelissue
-> van het heldenepic QS8-468. Diezelfde dag uit deze sessie QS8-471 (PR #470),
+> **Laatst bijgewerkt:** 16-09-2026, na PR #497 (migratie 0278). QS8-499
+> (migratie 0279) stond bij het schrijven nog open op zijn branch.
+>
+> 📏 **Bij dit bijwerken stond dit bestand veertien merges achter**, met dertien
+> gelande issue-nummers die er niet in voorkwamen. Dezelfde klasse als QS8-410
+> (23 merges), QS8-418 (10) en de ronde van 13-09 (9) — en opnieuw zonder dat er
+> iets rood van werd. De lijn eronder blijft staan: er is met reden geen controle
+> die dit afdwingt.
+>
+> **Wat er sinds 14-09 12:00 UTC geland is**, in volgorde van merge:
+>
+> | PR | wat |
+> |---|---|
+> | #484 | QS8-450 — een weergavenaam draagt geen bidi-stuurteken (0269) |
+> | #485 | QS8-494 — een groepsnaam keert de tekens eromheen niet meer om (0270) |
+> | #486 | QS8-497 — `rls:dekking` meet de database die hij muteert |
+> | #487 | QS8-495 — een onzichtbaar teken midden in een naam telt niet meer (0271) |
+> | #488 | QS8-476 — vindbaar buiten je groep: naam en profielfoto, verder niets (0272) |
+> | #489 | QS8-498 — een doeltitel en een toetredingsbericht dragen geen bidi (0273) |
+> | #490 | QS8-501 — tekst voor een autorisatiebesluit draagt geen bidi (0274) |
+> | #492 | QS8-503 — de goedkeuringstrigger toetst of de voltooiing nog de actieve is (0275) |
+> | #491 | QS8-496 — een dagplafond op blokkades dat niemand raakt die misbruik ontvlucht (0276) |
+> | #493 | reviewrij 07-09 — `logboek:controle` kijkt naar drie klassen in plaats van één |
+> | #494 | reviewrij 15-09 — de bewaking van domeinregel 3 wordt geijkt in plaats van op stilte getoetst |
+> | #495 | QS8-502 — wie eruit gezet of geblokkeerd is, ziet de uitnodigingskaart niet meer (0277) |
+> | #496 | reviewrij 15-09 — een `--data-only` terugzet van goedkeuringen: gemeten en vastgelegd |
+> | #497 | reviewrij 14-09 — de bewaking op standaardrechten ziet ook een regel zonder `in schema` (0278) |
+>
+> De lessen van deze ronde staan als punt AF, AG, AH en AI hieronder.
+>
+> **Daarvóór:** 14-09-2026, na QS8-477 (PR #483) — het laatste deelissue
+> van het heldenepic QS8-468. Diezelfde dag uit die sessie QS8-471 (PR #470),
 > QS8-474 (PR #473) en QS8-475 (PR #478); QS8-493 is het vervolgissue dat de
-> vraag draagt of `groep_helden()` een scherm krijgt. De lessen van deze ronde
+> vraag draagt of `groep_helden()` een scherm krijgt. De lessen van die ronde
 > staan als punt AC, AD en AE hieronder.
 >
 > **Daarvóór:** 13-09-2026, na QS8-446 (PR #439, `0846646`). Diezelfde
@@ -421,6 +451,93 @@
 > waarschuwt: **een afwijking die je onderbouwt is duurder dan een die je
 > vergeet.** Lees bij elke registerrij na of de grens die er staat écht de grens
 > is die je bedoelt, of alleen de eerste die je opviel.
+>
+> **16-09, punt AI: een ijking zegt of een grendel bíjt, niet of hij op de goede
+> plek zit — en dat verschil kostte QS8-499 twee blokkerende bevindingen.** Vijf
+> ijkingen, alle vijf geldig, alle vijf op de grendel die ze noemden, en de
+> security-review vond er daarna tóch twee gaten in. Allebei ernstig.
+>
+> 📏 Het eerste: de contextregel eiste aan **beide** kanten een ASCII-alfanumeriek.
+> Een spatie is ASCII maar niet alfanumeriek, dus van de 267 codepunten die de
+> regel tussen twee letters weghaalt, haalde hij er naast een spatie **nul** weg.
+> `Jan<ZWNJ> Jansen` landde ongehinderd naast `Jan Jansen` — de vorm van vrijwel
+> elke echte naam, en precies het scenario waarvoor het issue bestond. Veertien
+> naadtoetsen bleven er groen onder.
+>
+> ⚠️⚠️ **De oorzaak zit in hoe ik de omgevingen indeelde.** `CONTEXTEN` had er
+> vier: *één waar de regel moet vuren, plus drie must-allows*. Die indeling is
+> netjes en ze kan per constructie precies één soort fout niet zien — **een regel
+> die te smal is**. Er ontbrak de omgeving waar hij zou moeten vuren en het niet
+> deed.
+>
+> Dat is een andere vraag dan de zes van regel 18. Die gaan over of de tóets de
+> belofte bewaakt; deze gaat over of de belófte klopt. Een ijking kan de tweede
+> niet beantwoorden, want ze begint bij wat je gebouwd hebt.
+>
+> ⚠️ **Wat het wél vindt is de vraag die geen script stelt:** *lees de regel als
+> aanvaller en zoek de invoer waar hij niet vuurt.* Zet bij elke nieuwe regel dus
+> niet alleen de gevallen neer waar hij moet vuren en waar hij moet zwijgen, maar
+> ook het geval dat er **net** buiten valt — en vraag je af of dat geval het
+> gewone geval is. Bij QS8-499 was het dat.
+>
+> 📏 Het tweede gat had dezelfde vorm: `zonder_losse_tags()` toetste of er een
+> vlagbasis vóór een tag stond, maar niet of de reeks een vlag ís. Achter één 🏴
+> paste ~75 tekens onzichtbare ASCII-tekst. Ook daar dekte elke toets wat de
+> functie belóófde en niet wat er omheen kon.
+>
+> **16-09, punt AF: een ijking die zijn eigen instrument overtypt, meet zichzelf —
+> en hij wordt wél rood.** Bij QS8-499 zijn twee ijkingen weggegooid. Ze braken
+> `schone_naam()` door de functie opnieuw in te typen in plaats van hem uit
+> `pg_get_functiondef()` af te leiden, en daarbij is per ongeluk de **randenlijst**
+> een oudere versie geworden — elf ontbrekende bereiken. Allebei werden ze netjes
+> rood, en dat rood bewees niets: de ongeldige ijking maakte de **randveeg** rood,
+> terwijl de herhaalde vorm die veeg groen laat. Het rood kwam dus van de
+> verkeerde mutatie.
+>
+> ⚠️ **De vorm die wél werkt: leid de mutatie af van de gedeployde definitie en
+> druk het aantal gewijzigde regels af.** E2 raakt er vier, H2 raakt er één. Dat
+> getal is het bewijs dat je de grendel brak die je noemde. Zelfde gedachte als
+> `docs/decisions/2026-09-10-een-rood-is-niet-vanzelf-jouw-rood.md`, een laag
+> concreter: dáár ging het erom "ervoor" te meten, hier om te weten wát je
+> muteerde.
+>
+> **16-09, punt AG: een naadtest die te traag wordt, is een naadtest die iemand
+> uitzet.** 📏 Eén veeg over het hele codepuntbereik langs `schone_naam()` kost
+> 74 s. `naamnormalisatie.test.ts` riep zijn vegen aan *ín* de toetsen, dus elke
+> toets betaalde hem opnieuw; met de vier contexten van QS8-499 erbij liep het
+> bestand zijn timeout van 300 s in.
+>
+> De reparatie verandert niets aan wat er gemeten wordt: één meting in een
+> `beforeAll`, en de vijf vragen **tegelijk** via `psqlParallel()` in
+> `tests/rls/psql-stack.ts`. 📏 Vier tegelijk kost óók 74 s — het is
+> processorwerk in aparte backends en deze bak heeft vier kernen. Het hele
+> bestand draait in 108 s.
+>
+> ⚠️ **Zet er geen vegen serieel bij.** Dat is precies hoe het misging, en het
+> valt niet op tot de timeout er is.
+>
+> **16-09, punt AH: de duurste fouten van deze ronde zaten niet in de code maar in
+> de onderbouwing eronder — voor de tweede keer.** Op QS8-494 vond de
+> security-review drie 📏-beweringen in mijn eigen documenten die niet klopten. Op
+> QS8-499 waren het er weer drie, en alle drie vond ik ze zelf pas tijdens het
+> ijken:
+>
+> - De kop van de migratie verdedigde de volgorde van twee stappen met een
+>   argument dat aantoonbaar onjuist is: stap 4 zou een tag anders per ongeluk
+>   raken, terwijl zijn tekenklasse geen enkel tagcodepunt bevat. De volgorde ís
+>   dragend, om de omgekeerde reden — stap 3 zet twee ASCII-letters naast elkaar.
+> - Een acceptatiecriterium stond getoetst op een plek waar de belofte niet
+>   langskomt. De end-to-end-toets bleef groen onder de ijking, want er is geen
+>   CHECK die *gelijkheid* met `schone_naam()` eist en een rechtstreekse `PATCH`
+>   wordt dus niet genormaliseerd.
+> - Een notitie zei "geen CHECK raakt deze functie" waar hij "geen CHECK eist
+>   gelijkheid" bedoelde. Wie dat natrekt vindt er wél een
+>   (`profiles_display_name_zichtbaar`) en concludeert dat de notitie niet klopt.
+>
+> ⚠️ **CLAUDE.md zegt het al: een afwijking die je onderbouwt is duurder dan een
+> die je vergeet.** Wat deze ronde eraan toevoegt is hoe je ze vindt — niet door
+> ze over te lezen, maar door elke grendel die je noemt met de hand te breken en
+> te kijken wélke toets omvalt. Twee van de drie kwamen zo boven.
 >
 > **14-09, punt AC: een grens die je invoert om schade te beperken, kan zélf het
 > kanaal zijn — en dat zie je alleen als je hem als aanvaller leest.** QS8-477
