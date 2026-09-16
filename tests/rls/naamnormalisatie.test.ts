@@ -475,6 +475,168 @@ describe.runIf(beschikbaar)('de twee talen halen in het midden dezelfde tekens w
   });
 });
 
+// ---------------------------------------------------------------------------
+
+/**
+ * De contexten waarin de sweep elk codepunt aanbiedt — QS8-499.
+ *
+ * ⚠️⚠️ **Dit is de grendel die met dit issue mee móest veranderen, en dat stond
+ *    vooraf opgeschreven.** De sweeps hierboven bieden elk codepunt in precies
+ *    één omgeving aan: `'a' || chr(cp) || 'b'`. Zolang elke regel per codepunt
+ *    te beantwoorden was, volstond dat. QS8-499 voegt een **contextregel** toe —
+ *    `U+200C` gaat weg tussen twee ASCII-letters en blijft tussen twee Perzische
+ *    letters — en die is per definitie niet met één omgeving te meten.
+ *
+ *    Een sweep in één context zou dus groen blijven terwijl de twee talen het
+ *    over de Perzische kant oneens zijn. Dát is waarom hier vier omgevingen
+ *    staan en niet één.
+ *
+ * ⚠️ Elke omgeving heeft een eigen reden, en ze zijn met opzet niet inwisselbaar:
+ *    de eerste is waar de regel moet vúren, de andere drie zijn waar hij met
+ *    rust moet laten — en elk van die drie dekt een ander van de vier
+ *    must-allows uit het issue.
+ */
+const CONTEXTEN: readonly { readonly naam: string; readonly voor: string; readonly na: string }[] = [
+  { naam: 'tussen ASCII-letters', voor: 'a', na: 'b' },
+  { naam: 'tussen Arabische letters', voor: '\u0645', na: '\u062E' },
+  { naam: 'tussen emoji', voor: '\u{1F468}', na: '\u{1F469}' },
+  { naam: 'na de vlagbasis', voor: '\u{1F3F4}', na: '' },
+];
+
+/** `'a' || chr(cp) || 'b'` als SQL-uitdrukking, met de context erin gebakken. */
+function sqlUitdrukking(voor: string, na: string): string {
+  const deel = (tekst: string): string =>
+    tekst === ''
+      ? "''"
+      : [...tekst].map((t) => `chr(${t.codePointAt(0) as number})`).join(' || ');
+
+  return `${deel(voor)} || chr(cp) || ${deel(na)}`;
+}
+
+/**
+ * Per context: de codepunten die de **database** in die omgeving aanraakt.
+ *
+ * ⚠️ Eén psql-aanroep voor alle vier, met de context als kolom erbij. Vier losse
+ *    aanroepen zouden vier keer de opstartkosten betalen én vier plekken geven
+ *    waar de vraag net iets anders gesteld kan raken.
+ */
+function contextVolgensDeDatabase(): Map<string, Set<number>> {
+  const takken = CONTEXTEN.map(({ naam, voor, na }) => {
+    const uitdr = sqlUitdrukking(voor, na);
+    return (
+      `select '${naam}' as ctx, cp from generate_series(1, 1114111) cp ` +
+      'where (cp < 55296 or cp > 57343) ' +
+      `and public.schone_naam(${uitdr}) <> ${uitdr}`
+    );
+  });
+
+  const uit = execFileSync('psql', psqlBasisArgumenten(), {
+    env: PSQL_OMGEVING,
+    encoding: 'utf8',
+    input: `${takken.join(' union all ')} order by ctx, cp;`,
+    maxBuffer: 256 * 1024 * 1024,
+  });
+
+  const perContext = new Map<string, Set<number>>();
+  for (const { naam } of CONTEXTEN) perContext.set(naam, new Set());
+
+  for (const regel of uit.split('\n')) {
+    if (regel.trim() === '') continue;
+    const [ctx = '', cp = ''] = regel.split('|');
+    perContext.get(ctx)?.add(Number(cp));
+  }
+
+  return perContext;
+}
+
+/** Dezelfde vraag aan de TypeScript-kant. */
+function contextVolgensDeClient(): Map<string, Set<number>> {
+  const perContext = new Map<string, Set<number>>();
+
+  for (const { naam, voor, na } of CONTEXTEN) {
+    const gevonden = new Set<number>();
+
+    for (let cp = 1; cp <= 0x10ffff; cp += 1) {
+      if (cp >= 0xd800 && cp <= 0xdfff) continue;
+      const invoer = `${voor}${String.fromCodePoint(cp)}${na}`;
+      if (schoneNaam(invoer) !== invoer) gevonden.add(cp);
+    }
+
+    perContext.set(naam, gevonden);
+  }
+
+  return perContext;
+}
+
+describe.runIf(beschikbaar)('de twee talen oordelen in élke context hetzelfde', () => {
+  /**
+   * ⚠️ **Beide richtingen apart benoemd**, om dezelfde reden als bij de twee
+   *    sweeps hierboven — maar nu per context, zodat de melding zegt wáár ze uit
+   *    elkaar lopen. "Ze zijn het oneens over U+200C" is een raadsel; "ze zijn
+   *    het oneens over U+200C tussen Arabische letters" is een bevinding.
+   */
+  it('raakt in elke context aan beide kanten dezelfde codepunten', () => {
+    const database = contextVolgensDeDatabase();
+    const client = contextVolgensDeClient();
+
+    for (const { naam } of CONTEXTEN) {
+      const db = database.get(naam) ?? new Set<number>();
+      const cl = client.get(naam) ?? new Set<number>();
+
+      expect(
+        [...db].filter((cp) => !cl.has(cp)).map(alsHexCodepunt),
+        `${naam}: de database raakt deze tekens aan en de client niet — dan ` +
+          'weigert de CHECK een naam die het formulier net goedkeurde',
+      ).toEqual([]);
+
+      expect(
+        [...cl].filter((cp) => !db.has(cp)).map(alsHexCodepunt),
+        `${naam}: de client raakt deze tekens aan en de database niet — dan ` +
+          'staat er een groepszichtbare naam die niet is wat hij lijkt',
+      ).toEqual([]);
+    }
+  }, 300_000);
+
+  /**
+   * ⚠️⚠️ **De must-allow van deze sweep, en hij is scherper dan "ze zijn het
+   *    eens".** Twee identieke implementaties zijn het ook eens als ze allebei
+   *    niets doen, of allebei álles weghalen. Dit geval eist dat de contexten
+   *    daadwerkelijk **verschillen** — dat is de hele belofte van QS8-499.
+   *
+   *    📏 `U+200C` hoort weg tussen twee ASCII-letters en te blijven tussen twee
+   *    Arabische; `U+200D` hoort te blijven tussen twee emoji; een tag hoort te
+   *    blijven ná de vlagbasis. Zou de regel contextloos zijn, dan staat `U+200C`
+   *    in alle drie of in geen.
+   */
+  it('en die verzamelingen zijn per context verschillend', () => {
+    const db = contextVolgensDeDatabase();
+
+    const ascii = db.get('tussen ASCII-letters') ?? new Set<number>();
+    const arabisch = db.get('tussen Arabische letters') ?? new Set<number>();
+    const emoji = db.get('tussen emoji') ?? new Set<number>();
+    const vlag = db.get('na de vlagbasis') ?? new Set<number>();
+
+    expect(ascii.has(0x200c), 'ZWNJ hoort weg tussen twee ASCII-letters').toBe(true);
+    expect(arabisch.has(0x200c), 'ZWNJ is orthografisch verplicht in het Perzisch').toBe(false);
+    expect(emoji.has(0x200d), 'de ZWJ is de lijm in een gezinsemoji').toBe(false);
+    expect(ascii.has(0x200d), 'dezelfde ZWJ hoort wél weg tussen twee ASCII-letters').toBe(true);
+    expect(vlag.has(0xe0067), 'een tag hoort te blijven ná de vlagbasis').toBe(false);
+    expect(ascii.has(0x034f), 'de CGJ hoort weg tussen twee ASCII-letters').toBe(true);
+
+    // ⚠️ En de andere kant van dezelfde must-allow: een gewone letter blijft
+    //    overal staan. Zonder dit geval is "de contexten verschillen" ook waar
+    //    als er ergens per ongeluk letters sneuvelen.
+    for (const [naam, verzameling] of [
+      ['ascii', ascii],
+      ['arabisch', arabisch],
+      ['emoji', emoji],
+      ['vlag', vlag],
+    ] as const) {
+      expect(verzameling.has(0x4a), `${naam}: de letter J hoort nergens weg`).toBe(false);
+    }
+  }, 300_000);
+});
+
 /** `U+200B` leest als een bevinding; `8203` leest als een regelnummer. */
 function alsHexCodepunt(cp: number): string {
   return `U+${cp.toString(16).toUpperCase().padStart(4, '0')}`;

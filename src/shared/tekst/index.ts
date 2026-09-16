@@ -153,7 +153,13 @@ export const ONZICHTBARE_BEREIKEN: readonly (readonly [number, number])[] = [
   [0xfeff, 0xfeff], // byte order mark / zero-width no-break space
   [0xffa0, 0xffa0], // halfwidth hangul filler
   [0xfff9, 0xfffb], // interlinear annotation
-  [0xe0000, 0xe007f], // tags, inclusief de language tag
+  // ⚠️⚠️ **Versmald in QS8-499 van `0xe007f` naar `0xe001f`, en dat is de helft
+  //    van de reparatie.** 🏴 is `U+1F3F4` plus zes tagtekens; stond het hele
+  //    bereik hier, dan at de randstap de staart van een vlag op — 📏 zeven
+  //    codepunten in, één uit. Wat er overblijft (`U+E0000`–`U+E001F`) haalt
+  //    `zonderOnzichtbaarMiddenin()` toch al overal weg; een tag die níet bij een
+  //    vlag hoort gaat sinds dit issue via `zonderLosseTags()`.
+  [0xe0000, 0xe001f], // tags vóór het bruikbare bereik
 ];
 
 /** Of dit codepunt aan de rand van een naam niets zichtbaars oplevert. */
@@ -322,6 +328,117 @@ export function zonderOnzichtbaarMiddenin(ruw: string): string {
 }
 
 /**
+ * De zeven uitzonderingen van QS8-495 die een contextregel nodig hebben.
+ *
+ * ⚠️⚠️ **Deze tekens zijn niet per codepunt te beoordelen, en dát onderscheidt
+ *    ze van `BIDI_BEREIKEN` en `MIDDENIN_BEREIKEN`.** `U+200C` tussen twee
+ *    ASCII-letters is een collisievector — `Ja<ZWNJ>n` rendert als `Jan` —
+ *    terwijl dezelfde `U+200C` tussen twee Perzische letters orthografisch
+ *    **verplicht** is. Het teken is niet het probleem; de plek is het.
+ *
+ * ⚠️ **De tags staan er niet bij.** Die horen bij een `U+1F3F4` en niet tussen
+ *    twee letters; ze hebben hun eigen regel in `zonderLosseTags()`.
+ */
+export const TUSSEN_LETTERS_BEREIKEN: readonly (readonly [number, number])[] = [
+  [0x034f, 0x034f], // combining grapheme joiner
+  [0x061c, 0x061c], // arabic letter mark
+  [0x180b, 0x180f], // mongoolse variatieselectors, MVS en FVS4
+  [0x200c, 0x200f], // ZWNJ, ZWJ, LRM, RLM
+  [0xfe00, 0xfe0f], // variatieselectors, waaronder VS16
+  [0xe0100, 0xe01ef], // ideographic variation selectors
+];
+
+/** Of dit codepunt tussen twee ASCII-alfanumerieken niets kan betekenen. */
+export function isOnzichtbaarTussenLetters(codepunt: number): boolean {
+  return TUSSEN_LETTERS_BEREIKEN.some(([van, tot]) => codepunt >= van && codepunt <= tot);
+}
+
+/** `A-Z`, `a-z` of `0-9` — de buren waartussen de zeven niets kunnen betekenen. */
+function isAsciiAlfanumeriek(codepunt: number): boolean {
+  return (
+    (codepunt >= 0x41 && codepunt <= 0x5a) ||
+    (codepunt >= 0x61 && codepunt <= 0x7a) ||
+    (codepunt >= 0x30 && codepunt <= 0x39)
+  );
+}
+
+/**
+ * Dezelfde tekst zonder de zeven op de plek waar ze niets kunnen betekenen.
+ *
+ * ⚠️⚠️ **Een lus en geen lookbehind, en dat is met opzet.** De SQL-kant doet dit
+ *    met `(?<=[A-Za-z0-9])…(?=[A-Za-z0-9])`; Postgres kan dat. **Hermes kan het
+ *    niet** — React Native valt bij het laden al om op een regex met
+ *    lookbehind, en dat is een witte app in plaats van een foutmelding. De twee
+ *    vormen mogen verschillen zolang de naad bewijst dat ze hetzelfde oordelen,
+ *    en `tests/rls/naamnormalisatie.test.ts` doet dat sinds QS8-499 **in
+ *    context** en niet meer alleen per codepunt.
+ *
+ * ⚠️ De grens is ASCII en niet "een schrift dat dit teken niet gebruikt". Die
+ *    tweede is correcter en vraagt Unicode-scriptdata die er niet is. ASCII is
+ *    bewijsbaar veilig: geen schrift dat deze tekens nodig heeft, schrijft met
+ *    ASCII-letters. 📏 De prijs — `Ján<ZWNJ>ös` ontsnapt — staat in
+ *    `docs/ENGINEER-REVIEW.md`.
+ */
+export function zonderOnzichtbaarTussenLetters(ruw: string): string {
+  const tekens = Array.from(ruw);
+  const codepunt = (i: number): number => (tekens[i] as string).codePointAt(0) ?? 0;
+
+  const uit: string[] = [];
+  let i = 0;
+
+  while (i < tekens.length) {
+    if (!isOnzichtbaarTussenLetters(codepunt(i))) {
+      uit.push(tekens[i] as string);
+      i += 1;
+      continue;
+    }
+
+    // De hele aaneengesloten reeks in één keer, zodat `a<ZWNJ><ZWJ>b` ook gaat.
+    let eind = i;
+    while (eind < tekens.length && isOnzichtbaarTussenLetters(codepunt(eind))) eind += 1;
+
+    const linksAscii = i > 0 && isAsciiAlfanumeriek(codepunt(i - 1));
+    const rechtsAscii = eind < tekens.length && isAsciiAlfanumeriek(codepunt(eind));
+
+    if (!linksAscii || !rechtsAscii) {
+      for (let j = i; j < eind; j += 1) uit.push(tekens[j] as string);
+    }
+
+    i = eind;
+  }
+
+  return uit.join('');
+}
+
+/** `U+1F3F4` — de zwarte vlag waar een subdivisievlag mee begint. */
+const VLAGBASIS = 0x1f3f4;
+
+/** Of dit codepunt een tagteken is dat bij een vlag hóórt te staan. */
+function isTag(codepunt: number): boolean {
+  return codepunt >= 0xe0020 && codepunt <= 0xe007f;
+}
+
+/**
+ * Dezelfde tekst zonder tagtekens die niet bij een `U+1F3F4` horen.
+ *
+ * ⚠️ 🏴󠁧󠁢󠁳󠁣󠁴󠁿 is `U+1F3F4` plus zes tags. Een losse tag daarentegen rendert als nul
+ *    pixels en is dus een collisievector — én de reden dat de randenlijst zijn
+ *    tagbereik kwijt is: die at de staart van een echte vlag op.
+ */
+export function zonderLosseTags(ruw: string): string {
+  let naVlag = false;
+
+  return Array.from(ruw)
+    .filter((teken) => {
+      const cp = teken.codePointAt(0) ?? 0;
+      if (isTag(cp)) return naVlag;
+      naVlag = cp === VLAGBASIS;
+      return true;
+    })
+    .join('');
+}
+
+/**
  * Een naam zonder onzichtbare randen.
  *
  * ⚠️ **Randen knippen en niet alles**, zie `ONZICHTBARE_BEREIKEN`. Wat er tussen
@@ -337,12 +454,20 @@ export function zonderOnzichtbaarMiddenin(ruw: string): string {
  *    in de eerste.
  */
 export function schoneNaam(ruw: string): string {
-  // ⚠️ Eerst de bidi-stuurtekens overal weg, dán de tekens die overal als niets
-  //    renderen (QS8-495), dán de randen. Zo wordt ` \u202E Ja\u200Bn ` gewoon
-  //    `Jan`. De volgorde geeft hetzelfde resultaat als je hem omdraait, maar
-  //    zo leest hij als drie stappen met elk een eigen reden in plaats van als
-  //    toeval.
-  const tekens = Array.from(zonderOnzichtbaarMiddenin(zonderBidi(ruw)));
+  // ⚠️ Vijf stappen, elk met een eigen reden, in deze volgorde:
+  //      1. bidi-overrides overal weg          (QS8-450)
+  //      2. nul-pixeltekens overal weg          (QS8-495)
+  //      3. losse tags weg, vlaggen heel        (QS8-499)
+  //      4. de zeven tussen twee ASCII-letters  (QS8-499)
+  //      5. de randen                           (QS8-448)
+  //
+  //    Stap 3 staat vóór stap 4 met reden: daarna is elke overgebleven tag er
+  //    een die bij een vlag hoort, en dan kan stap 4 hem niet meer raken.
+  const tekens = Array.from(
+    zonderOnzichtbaarTussenLetters(
+      zonderLosseTags(zonderOnzichtbaarMiddenin(zonderBidi(ruw))),
+    ),
+  );
 
   let begin = 0;
   let eind = tekens.length;
