@@ -125,13 +125,41 @@ of SQL en TypeScript het eens zijn, en dat was de vraag niet.
 |---|---|---|
 | vóór | geen | 20 geslaagd |
 | oude toets | `U+200C` uit `ONZICHTBARE_BEREIKEN` én uit de randenlijst van de gedeployde `schone_naam()` | **20 geslaagd — niets rood** |
-| nieuwe toets | dezelfde mutatie | ⏳ **nog niet gemeten — deze rij is pas waar als hij ingevuld is** |
+| nieuwe toets | dezelfde mutatie | **1 gefaald, 20 geslaagd** — en de gefaalde is die van dit besluit |
+
+📏 De melding van die ene, woordelijk:
+
+```
+AssertionError: aan de voorrand scheidt de ZWNJ niets: expected false to be true
+ ❯ tests/rls/naamnormalisatie.test.ts:825
+```
+
+⚠️ **Wélke toets omvalt is hier de meting en niet dát er een omvalt.** Twintig
+andere bleven groen, dus het rood komt van de grendel die de ijking noemt en niet
+van een buurman. Die controle staat er omdat ze in dit project al een keer
+misgegaan is — QS8-412 werd rood op een ándere toets dan de gemuteerde, en de
+bedoelde grendel bleef groen.
 
 **De middelste rij is de reden dat dit issue niet met één regel in een
 beslisdocument afgedaan kon worden.** De belofte was te breken zonder dat er iets
 rood werd: de twee talen bleven het eens, want ze werden allebei gemuteerd. Wat
 er verdween was niet de overeenstemming maar de belofte — en dit bestand toetste
 alleen de eerste.
+
+⚠️⚠️ **De ijking draaide in een eigen `git worktree`, en dat is niet cosmetisch.**
+De eerste opzet muteerde `src/shared/tekst/index.ts` in de hoofdboom, en dan staat
+er acht minuten lang een kapotte randenlijst in de map waar ook gecommit wordt.
+Halverwege herstellen zou de uitslag laten afhangen van een aanname over wanneer
+vitest zijn modules inleest — en een meting waarvan je de uitkomst niet volledig
+kunt toeschrijven, is precies wat
+`docs/decisions/2026-09-10-een-rood-is-niet-vanzelf-jouw-rood.md` beschrijft. Een
+worktree haalt die ruil weg: de mutatie leeft op een losse checkout.
+
+⚠️ **En de eerste poging daar faalde dicht, wat de goede kant is.** De SQL-mutatie
+stond in een geneste heredoc en `$function$` werd door de shell uitgevouwen; psql
+weigerde, het script brak af op `set -e`, en er is géén toets gedraaid tegen een
+half gemuteerde opstelling. Een ijking die half aanslaat en tóch een getal
+afdrukt, is erger dan een die stopt.
 
 ⚠️ **De mutatie is afgeleid van `pg_get_functiondef()` en niet overgetypt.** Die
 les staat in
