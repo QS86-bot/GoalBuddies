@@ -8,8 +8,8 @@
 > QS8-499 met `0280` t/m `0282` op `main` — het venster van QS8-318 — en die drie
 > zijn in dezelfde ronde meegenomen. De les staat als punt AJ hieronder.
 >
-> **Daarvóór:** 16-09-2026, na PR #497 (migratie 0278). QS8-499
-> (migratie 0279) stond bij het schrijven nog open op zijn branch.
+> **Daarvóór:** 16-09-2026, na PR #501 — QS8-499, migratie **0282**.
+> Diezelfde middag landden ook #498 (QS8-493), #499 (QS8-504), #500 en #502.
 >
 > 📏 **Bij dit bijwerken stond dit bestand veertien merges achter**, met dertien
 > gelande issue-nummers die er niet in voorkwamen. Dezelfde klasse als QS8-410
@@ -35,6 +35,11 @@
 > | #495 | QS8-502 — wie eruit gezet of geblokkeerd is, ziet de uitnodigingskaart niet meer (0277) |
 > | #496 | reviewrij 15-09 — een `--data-only` terugzet van goedkeuringen: gemeten en vastgelegd |
 > | #497 | reviewrij 14-09 — de bewaking op standaardrechten ziet ook een regel zonder `in schema` (0278) |
+> | #498 | QS8-493 — de heldenlijst van een open groep krijgt een eigen kaart (0279) |
+> | #499 | QS8-504 — de deploy-routes van Hostinger, en `sw.js` komt binnen als JavaScript |
+> | #500 | reviewrij 08-09 — de klok onder een straf ligt vast vanaf het aangaan (0280) |
+> | #502 | reviewrij 08-09 — een DELETE-grant zonder aanroeper is dood hout (0281) |
+> | #501 | QS8-499 — een onzichtbaar teken tussen twee letters, en een tag zonder vlag (0282) |
 >
 > De lessen van deze ronde staan als punt AF, AG, AH en AI hieronder.
 >
