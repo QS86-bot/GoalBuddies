@@ -186,7 +186,52 @@ een kale bij komt. Vormen en afweging in
 
 **Wat wél gaat vanuit een bouwsessie:** alles in `public` — tabellen,
 constraints, functies, triggers, policies, indexen, grants. Dat is de reden dat
-`0139` t/m `0221` er langs deze route op gekomen zijn.
+`0139` t/m `0221` er langs deze route op gekomen zijn, en op 16-09-2026 ook
+`0225` t/m `0279` in één ronde (QS8-505).
+
+⚠️⚠️ **De storage-helft gaat tegenwoordig dus óók, en de zin dat een gat "niet
+vanuit een bouwsessie te dichten" is, is op 16-09 weerlegd.** Hij stond in
+`docs/WERKVOORRAAD.md` §0 sinds 09-09, toen `0222` omviel op `42501`. Die meting
+klopte; de algemene regel die eruit groeide — *elke migratie met DDL op
+`storage.objects` kan hier niet* — overleefde de rechtenverruiming van 12-09 die
+hierboven staat. 📏 Van de 55 bestanden deed er geen enkele een kále
+`create index` op die tabel. **Lees de tabel hierboven dus als de grens, niet
+een afgeleide zin ergens anders.**
+
+#### ⚠️⚠️ 2.2a Een `\uXXXX` in de migratie haalt de server niet — QS8-505
+
+📏 Gemeten op 16-09-2026. `0242` draagt in
+`chat_messages_attachment_name_vorm` een regex met letterlijke
+backslash-u-escapes (`[\u0000-\u001F…]`). `apply_migration` viel daarop om met:
+
+```
+ERROR:  08P01: invalid message format
+```
+
+Dat is een **protocol**fout en geen SQL-fout: de JSON-laag onderweg decodeert zo'n
+reeks, dus er belandt een echte NUL-byte in het bericht. Bevestigd met een
+testregel — `'A\u0041B'` kwam als `'AAB'` bij Postgres aan — en verdubbelen van
+de backslash hielp niet.
+
+⚠️ **De omweg mag de opgeslagen tekst niet veranderen**, anders loopt productie
+op dit punt uiteen met wat `scripts/schema-opbouwen.sh` lokaal neerzet. Codeer
+daarom het ómvallende statement — niet de hele migratie — als base64 en laat
+Postgres het decoderen:
+
+```sql
+do $$
+begin
+  execute convert_from(decode('<base64 van het statement>', 'base64'), 'UTF8');
+end $$;
+```
+
+📏 Nameten hoort erbij en is hier gedaan: `md5(pg_get_constraintdef(…))` gaf
+op productie en op de lokale opbouw hetzelfde,
+`7b6d8283d9f606439025710593118345` over 291 tekens.
+
+⚠️ **De migratie in de map blijft ongewijzigd.** `psql` heeft dit probleem niet —
+alleen de MCP-route. Een migratie herschrijven om een transportlaag te plezieren
+zou de grendel verplaatsen naar de plek waar hij het minst thuishoort.
 
 ⚠️ **En dus: hou de volgorde heel.** Struikelt een migratie hierop, dan stopt de
 hele reeks daar. Wie de volgende wél toepast, slaat een **gat** in het register,

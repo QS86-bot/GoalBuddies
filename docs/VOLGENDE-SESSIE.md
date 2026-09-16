@@ -3,7 +3,10 @@
 > Kopieer alles onder de streep in een nieuwe chat. Werk dit bestand bij aan het
 > eind van elke sessie — het is de overdracht, niet een archief.
 >
-> **Laatst bijgewerkt:** 14-09-2026, na QS8-477 (PR #483) — het laatste deelissue
+> **Laatst bijgewerkt:** 16-09-2026, na QS8-505: productie stond 52 migraties
+> achter en staat nu gelijk aan de map. De les staat als punt AF hieronder.
+>
+> **Daarvóór:** 14-09-2026, na QS8-477 (PR #483) — het laatste deelissue
 > van het heldenepic QS8-468. Diezelfde dag uit deze sessie QS8-471 (PR #470),
 > QS8-474 (PR #473) en QS8-475 (PR #478); QS8-493 is het vervolgissue dat de
 > vraag draagt of `groep_helden()` een scherm krijgt. De lessen van deze ronde
@@ -204,10 +207,10 @@
 > die ergens anders hoorde — en dáárom valt hij niet op.
 >
 > ⚠️⚠️ **11-09, punt O: meet je de map of meet je productie?** 📏 Productie stond
-> die dag op `0221` en de migratiemap op **255** — 31 achter. (⚠️ Die twee zijn de
-> stand van 11-09 en niet van vandaag: op 14-09 is het `0224` tegen 264. De lijn
-> hoort in `docs/WERKVOORRAAD.md` §0 en nergens anders — lees hem daar, want dit
-> is een les en geen stand.) Drie agenda-rijen gingen
+> die dag op `0221` en de migratiemap op **255** — 31 achter. (⚠️ Dat is de stand
+> van 11-09 en niet die van vandaag; hier stond tot 16-09 óók die van 14-09, en
+> die was toen al verlopen. De lijn hoort in `docs/WERKVOORRAAD.md` §0 en nergens
+> anders — lees hem daar, want dit is een les en geen stand.) Drie agenda-rijen gingen
 > over vier opslagemmers; op productie bestaat er **één**. Dat maakte ze niet
 > onjuist maar wel iets anders, en de échte voorwaarde bleek *"een deploy die
 > deels landt"* — iets wat geen van de drie noemde. Een bevinding beschrijft
@@ -474,6 +477,28 @@
 > met `anon`-uitvoerrecht gemerged. Dat is de praktische kant van *"een rood is
 > niet vanzelf jouw rood"* (QS8-411): het antwoord is niet het rood negeren maar
 > uitzoeken wáár het vandaan komt, vóórdat je het wegredeneert.
+>
+> **16-09, punt AF: een gemeten grens die een algemene regel wordt, overleeft zijn
+> eigen meting.** Productie liep 52 migraties achter, en de reden dat niemand het
+> dichtte stond in `docs/WERKVOORRAAD.md` §0: *"dit gat is niet vanuit een
+> bouwsessie te dichten"*, met een meting eronder — `0222` viel op 09-09 om op
+> `42501: must be owner of table objects`. Die meting klopte. De regel die eruit
+> groeide (*elke migratie met DDL op `storage.objects` kan hier niet*) was breder,
+> en hij bleef staan toen Supabase de rechten op 12-09 verruimde. 📏 Dat stond
+> zelfs opgeschreven — in `docs/DEPLOY.md` §2.2, het ándere document. Alle 55 zijn
+> op 16-09 in één ronde vanuit een sessie toegepast (QS8-505).
+>
+> ⚠️ **Twee dingen om mee te nemen.** Ten eerste: een afgeleide zin veroudert
+> zonder dat iemand hem aanraakt, dus zet een gemeten grens op één plek en verwijs
+> ernaar. Ten tweede, en dat is de echte: **de controle die deze drift had moeten
+> vinden kan niet draaien waar gebouwd wordt.** `register:controle` en
+> `functies:controle` vragen allebei een productiesleutel, die in een cloudsessie
+> niet bestaat; ze printen `OVERGESLAGEN` en de poort telt ze als *ongemeten*. Dat
+> onderscheid werkt — maar ongemeten blijft ongemeten, elke ronde opnieuw, en de
+> kloof kwam boven doordat een deploy er gebruikers mee raakte. 📏 Wat wél bleek:
+> de Supabase-MCP heeft die sleutel niet nodig, en de hele vergelijking (register,
+> functies, kolommen, constraints, policies, triggers, indexen) is er langs die weg
+> mee gedaan. Dat staat als rij in `docs/ENGINEER-REVIEW.md`.
 >
 > ⚠️⚠️ **11-09, punt P: een lintregel kan code laten buigen, en dan verplaats je
 > het probleem naar de lezer.** QS8-422 moest in de rollover een `if` in een `if`
