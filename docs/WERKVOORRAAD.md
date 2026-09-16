@@ -103,6 +103,7 @@ De 54 bestanden:
 | `0275_de_trigger_op_goedkeuringen_toetst_ook_of_de_voltooiing_nog_de_actieve_is.sql` | QS8-503 | nee |
 | `0276_een_dagplafond_op_blokkades_dat_niemand_raakt_die_misbruik_ontvlucht.sql` | QS8-496 | nee |
 | `0277_een_weggestuurd_of_geblokkeerd_lid_ziet_de_uitnodigingskaart_niet.sql` | QS8-502 | nee |
+| `0278_de_bewaking_op_standaardrechten_ziet_ook_een_globale_regel.sql` | reviewrij 14-09 | nee |
 | `0278_de_heldenkaart_toont_alleen_eenduidige_triggers.sql` | QS8-493 | nee |
 
 ⚠️ **Hier stond een uur eerder `0219` met twee bestanden gat, en dat klopte
