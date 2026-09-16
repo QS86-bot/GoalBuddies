@@ -28,6 +28,7 @@ import {
   zichtbaarheidLabels,
 } from '@/modules/buddies';
 import { fetchStrafDoelen } from '@/modules/commitments';
+import { fetchGroepshelden, heldTekstSleutel, type Groepsheldrij } from '@/modules/helden';
 import {
   beslisDeadlineVerzoek,
   fetchKoppelbareDoelen,
@@ -259,6 +260,24 @@ export default function GroepDetail() {
                  een regel die met één verzoek aan PostgREST te omzeilen valt.
             */}
             <KlassementKaart uitkomst={s.klassement} onOpnieuw={herlaad} />
+
+            {/*
+              ⚠⚠ Een éígen kaart, en met opzet niet in of naast het klassement.
+                 Besloten bij QS8-493. `trigger = 'misser'` betekent dat iemand
+                 iets gemist heeft; dat mag een open groep zien (A41, rij 37),
+                 maar naast een ranglijstpositie wordt het een ranglijst mét
+                 schandpaal. De regel zegt wát er zichtbaar is, niet wáárnaast
+                 het hoort.
+
+              ⚠️ Zelfde poort als het klassement en om dezelfde reden: in een
+                 beschermde groep geeft `groep_helden()` nul rijen en rendert dit
+                 niets. De regel staat in 0268, niet hier.
+            */}
+            <HeldenKaart
+              uitkomst={s.helden}
+              open={s.groep?.zichtbaarheid === 'open'}
+              onOpnieuw={herlaad}
+            />
 
             {/*
               ⚠️ Twee aparte schermen en niet één. De weekafsluiting is één kaart
@@ -1008,6 +1027,105 @@ function KlassementRij({ rij }: { readonly rij: Klassementsrij }) {
 }
 
 /**
+ * De heldenlijst van een open groep — QS8-493.
+ *
+ * ⚠️ Dezelfde drie standen als `KlassementKaart` en om dezelfde reden: nul
+ *    rijen betekent "beschermde groep" óf "geen lid", en dat is allebei
+ *    terecht niets. Een fout is iets anders en zegt dat ook.
+ */
+function HeldenKaart({
+  uitkomst,
+  open,
+  onOpnieuw,
+}: {
+  readonly uitkomst: HeldenUitkomst;
+  readonly open: boolean;
+  readonly onOpnieuw: () => void;
+}) {
+  if (uitkomst.staat === 'fout') {
+    return (
+      <Card nested>
+        <Body muted>{t('groepshelden.laden_mislukt')}</Body>
+        <Button variant="stil" onPress={onOpnieuw}>
+          {t('groepshelden.opnieuw')}
+        </Button>
+      </Card>
+    );
+  }
+
+  const { rijen } = uitkomst.pagina;
+
+  /**
+   * ⚠⚠ **Nul rijen betekent hier één ding méér dan bij het klassement, en die
+   *    kopie was fout.** `groep_klassement()` geeft een rij per lid, ook op nul
+   *    punten — daarom heeft die kaart een `klassement.leeg`. `groep_helden()`
+   *    joint **inner**: nul rijen betekent "beschermde groep", "geen lid", óf
+   *    "open groep, ik ben lid, maar deze zeven dagen kwam er bij niemand een
+   *    held langs". Dat derde geval kent het klassement niet.
+   *
+   *    Gevonden in de gebruikersreview: wie net op "zet hem open" heeft gedrukt
+   *    en gelezen heeft dát hij dit gaat zien, scrolt anders langs niets en weet
+   *    niet of het stuk is. Onwrikbare regel 16 vraagt een lege staat.
+   *
+   * ⚠️ `open` is een weergavehint en geen autorisatiegrens. De rijen komen nog
+   *    steeds uitsluitend uit de RPC, die `lid_van_open_groep()` in zijn `where`
+   *    draagt. Een beschermde groep en een niet-lid zien nog steeds niets — ook
+   *    niet deze zin.
+   */
+  if (rijen.length === 0) {
+    if (!open) return null;
+
+    return (
+      <Card>
+        <Subheading>{t('groepshelden.kop')}</Subheading>
+        <Body muted>{t('groepshelden.leeg')}</Body>
+      </Card>
+    );
+  }
+
+  return (
+    <Card>
+      <Subheading>{t('groepshelden.kop')}</Subheading>
+      <Caption>{t('groepshelden.uitleg')}</Caption>
+
+      {rijen.map((rij) => (
+        <HeldenRij key={rij.userId} rij={rij} />
+      ))}
+    </Card>
+  );
+}
+
+/**
+ * Eén regel, als zin en niet als twee kolommen.
+ *
+ * ⚠⚠ **Hier stond eerst "held en trigger zijn één op één, dus de naam van de
+ *    held draagt de reden al" — en 0268 weerlegt dat in zijn eigen kop.** De
+ *    bijectie houdt voor víjf van de zes triggers; `tussendoor` draagt iemands
+ *    quízheld en geen gebeurtenis. 0279 laat daarom alleen `mijlpaal` en
+ *    `stilte` door, en vóór die twee is de bewering wél waar.
+ *
+ * ⚠️ De zin loopt van de held naar de persoon, omdat de kop dat ook doet. Met
+ *    de naam voorop las "Wie er langs is geweest → Anna" als het tegendeel van
+ *    wat er bedoeld is. Gevonden in de gebruikersreview.
+ *
+ * ⚠️ `heldTekstSleutel()` en geen samengestelde sleutel: dat is sinds QS8-474
+ *    de afspraak, juist omdat `catalogus:controle` een template-literal niet kan
+ *    volgen.
+ */
+function HeldenRij({ rij }: { readonly rij: Groepsheldrij }) {
+  const regel = t('groepshelden.rij', {
+    naam: rij.naam,
+    held: t(heldTekstSleutel(rij.held, 'naam')),
+  });
+
+  return (
+    <View style={styles.heldenRij}>
+      <Body>{regel}</Body>
+    </View>
+  );
+}
+
+/**
  * De uitkomst van De Ketting, met drie standen in plaats van twee.
  *
  * ⚠️ `geen-lid` en `fout` zagen er eerst hetzelfde uit — allebei een leeg
@@ -1040,6 +1158,11 @@ type KlassementUitkomst =
   | { readonly staat: 'ok'; readonly pagina: Pagina<Klassementsrij> }
   | { readonly staat: 'fout' };
 
+/** Zelfde twee standen als het klassement, en om dezelfde reden. */
+type HeldenUitkomst =
+  | { readonly staat: 'ok'; readonly pagina: Pagina<Groepsheldrij> }
+  | { readonly staat: 'fout' };
+
 interface Stand {
   readonly groep: Groep | null;
   readonly overzicht: Pagina<Groepslid>;
@@ -1047,6 +1170,7 @@ interface Stand {
   readonly ketting: KettingUitkomst;
   readonly teller: TellerUitkomst;
   readonly klassement: KlassementUitkomst;
+  readonly helden: HeldenUitkomst;
 }
 
 /**
@@ -1071,6 +1195,7 @@ async function laadGroep(groupId: string, userId: string): Promise<Stand> {
       ketting: { staat: 'geen-lid' },
       teller: { staat: 'geen-lid' },
       klassement: { staat: 'ok', pagina: { rijen: [], totaal: 0, meer: false } },
+      helden: { staat: 'ok', pagina: { rijen: [], totaal: 0, meer: false } },
     };
   }
 
@@ -1083,7 +1208,7 @@ async function laadGroep(groupId: string, userId: string): Promise<Stand> {
   //    kaal in deze `Promise.all`, dan zette één hik in `ketting_stand()` het
   //    hele groepsoverzicht in de foutstand — ledenlijst, chat en al. Bevinding
   //    van de security- en de gebruikersreview, allebei.
-  const [overzicht, lidmaatschap, ketting, teller, klassement] = await Promise.all([
+  const [overzicht, lidmaatschap, ketting, teller, klassement, helden] = await Promise.all([
     fetchGroepsoverzicht(groupId, periode),
     fetchMijnLidmaatschap(groupId, userId),
     fetchKettingStand(groupId, periode)
@@ -1101,6 +1226,11 @@ async function laadGroep(groupId: string, userId: string): Promise<Stand> {
     fetchKlassement(groupId)
       .then((pagina): KlassementUitkomst => ({ staat: 'ok', pagina }))
       .catch((): KlassementUitkomst => ({ staat: 'fout' })),
+    // ⚠️ Draagt zijn eigen fout, net als de drie hierboven: één hik in de
+    //    heldenlijst hoort de ledenlijst en de chat niet mee te nemen.
+    fetchGroepshelden(groupId)
+      .then((pagina): HeldenUitkomst => ({ staat: 'ok', pagina }))
+      .catch((): HeldenUitkomst => ({ staat: 'fout' })),
   ]);
 
   return {
@@ -1110,11 +1240,16 @@ async function laadGroep(groupId: string, userId: string): Promise<Stand> {
     ketting,
     teller,
     klassement,
+    helden,
   };
 }
 
 const styles = StyleSheet.create({
   lijst: { gap: space.blokGap },
+  // ⚠️ Eén zin en geen twee kolommen, dus geen `space-between`: een naam mag
+  //    80 tekens zijn (`profiles.display_name`) en duwde de held anders van het
+  //    scherm. Gevonden in de gebruikersreview.
+  heldenRij: { flexDirection: 'row' },
   klassementRij: {
     flexDirection: 'row',
     alignItems: 'center',

@@ -16,6 +16,12 @@ export {
   type Trigger,
 } from './helden';
 
+export {
+  fetchGroepshelden,
+  GROEPSHELDEN_PER_PAGINA,
+  type Groepsheldrij,
+} from './groepshelden';
+
 export { heldTekstSleutel, type Heldtekst } from './heldteksten';
 
 export {
