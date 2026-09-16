@@ -52,17 +52,17 @@ import { psql } from './psql-stack';
  *        geeft `blokkade_met_groep()` `f`, dus richting 2 uit het issue —
  *        *"`invite_preview()` toetst de blokkade"* — zou dit geval hebben laten
  *        staan, terwijl acceptatiecriterium 1 *weggestuurd óf geblokkeerd* zegt.
+ *   C  de wachttak ná de teller gezet in plaats van ervóór
+ *      → 1 rood: de teller-toets, en die valt om op zijn eigen belofte
+ *        (*"een weggestuurd lid heeft de teller van de groep volgestookt"*) en
+ *        niet op de weigering. De twee weigeringstoetsen blijven groen: de
+ *        weigering zelf klopt dan nog steeds, alleen te laat.
  *   D  `not mag_groep_lezen(g.id)` uit de wachttak gehaald
  *      → 1 rood: de must-allow van een actief lid, op zijn eigen belofte. De
  *        andere vijf blijven groen — en dát is de reden dat die toets er is.
  *        ⚠⚠ De eerste versie van 0277 hád die voorwaarde niet, en geen van de
  *        ijkingen A–C vond dat: alle drie braken de wéigering en keken of die
  *        omviel, en geen ervan vroeg of de weigering te brééd was.
- *   C  de wachttak ná de teller gezet in plaats van ervóór
- *      → 1 rood: de teller-toets, en die valt om op zijn eigen belofte
- *        (*"een weggestuurd lid heeft de teller van de groep volgestookt"*) en
- *        niet op de weigering. De twee weigeringstoetsen blijven groen: de
- *        weigering zelf klopt dan nog steeds, alleen te laat.
  */
 
 const SETUP_TIMEOUT = 180_000;
