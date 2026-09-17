@@ -153,6 +153,20 @@ describe.skipIf(!rlsTestsConfigured)('Je eigen profiel opslaan', () => {
       { naam: 'language tag', waarde: String.fromCodePoint(0xe0001) },
       { naam: 'alleen spaties', waarde: '   ' },
       { naam: 'newline en tab', waarde: '\n\t' },
+      // ⚠️⚠️ **Verhuisd uit de must-allow-lijst hieronder op 16-09-2026**
+      //    (QS8-508, migratie 0286). Tot die migratie was ` Jan ` toegestaan: de
+      //    vier gelijkheids-CHECKs keken naar bidi, nul-pixels, losse tags en
+      //    tekens tussen letters, en geen van vieren naar de **rand**. Sinds
+      //    `profiles_display_name_schoon` moet een naam gelijk zijn aan
+      //    `schone_naam()`, en die strijkt de randen.
+      //
+      //    📏 Dat het hier bij de weigeringen hoort en niet meer bij de
+      //    must-allow, is de gemeten bijvangst van dat issue en geen ongeluk: de
+      //    tien nul-pixeltekens aan de rand waren niet te sluiten zonder de
+      //    spatie mee te nemen. Een gewone gebruiker raakt dit niet —
+      //    `profielSchema` doet `.transform(schoneNaam)` vóór verzending — dus
+      //    alleen een rechtstreekse PATCH komt hier.
+      { naam: 'een naam met een spatie aan de rand', waarde: ' Jan ' },
     ];
 
     it.each(ONZICHTBAAR)(
@@ -183,12 +197,18 @@ describe.skipIf(!rlsTestsConfigured)('Je eigen profiel opslaan', () => {
      *    `permission denied for function schone_naam` — ook een doodgewone naam.
      *    Postgres toetst het uitvoerrecht op het moment van schrijven. Zonder dit
      *    geval was dat een dichte deur die als een veilige deur leest.
+     *
+     * ⚠️ **Er stond een vierde geval — ` Jan `, "onzichtbare randen eromheen" —
+     *    en dat is op 16-09-2026 naar de weigeringen verhuisd** (QS8-508). De
+     *    drie die overblijven dragen de grant-belofte onverkort: een gewone naam,
+     *    een naam met een spatie erín, en een gezinsemoji (die de zero-width
+     *    joiner als lijm gebruikt). Zou de grant ontbreken, dan vallen ze alle
+     *    drie om op `permission denied`, precies zoals de meting hierboven zegt.
      */
     it.each([
       { naam: 'een gewone naam', waarde: 'Jan Jansen' },
       { naam: 'een naam met een spatie erin', waarde: 'Jan  Jansen' },
       { naam: 'een gezinsemoji', waarde: '👨‍👩‍👧‍👦' },
-      { naam: 'een naam met onzichtbare randen eromheen', waarde: ' Jan ' },
     ])(
       'laat $naam wel toe',
       async ({ waarde }) => {

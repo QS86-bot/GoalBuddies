@@ -25,6 +25,12 @@ tussen map en productie is geen achterstand maar de normale toestand tussen twee
 uitrollen; het getal eromheen hoort alleen geen kopie te zijn. Afweging in
 `docs/decisions/2026-09-17-de-uitrolstand-is-een-gegeven-en-geen-alinea.md`.
 
+📏 **En het merge-conflict waarmee dit landde, is het bewijs erbij.** Deze alinea
+zei op 17-09-2026 om 07:30 UTC dat het gat **drie** bestanden was; een uur later
+stond er in `main` **vier**, met de hand bijgewerkt na QS8-508. Twee sessies
+onderhielden dus dezelfde kopie, en de tweede moest hem overtypen om hem te laten
+kloppen. `npm run uitrolstand:controle` rekent hem nu uit.
+
 **Lees de lijn nooit als getal maar meet hem** — de regel hieronder zegt hetzelfde
 en gold al voor de zin die hier stond.
 
@@ -301,7 +307,7 @@ schemaname = 'public'` gaf `41|41`. Vraag het aan de database en niet aan deze
 regel — net als bij het aantal migraties in §0.
 
 <!-- STAND:BEGIN — gegenereerd door `npm run stand` -->
-Migraties `0001` t/m `0285` staan in de map: **288 bestanden**,
+Migraties `0001` t/m `0286` staan in de map: **289 bestanden**,
 waarvan 3 met een letter-achtervoegsel (`0039a`, `0041a`, `0052a`).
 De nummering is aaneengesloten.
 <!-- STAND:EINDE -->
