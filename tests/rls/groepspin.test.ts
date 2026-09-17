@@ -44,6 +44,7 @@
 import { describe, expect, it } from 'vitest';
 
 import { psql, stackBeschikbaarOfFaal } from './psql-stack';
+import { proefCode } from './proefid';
 import { proefId } from './proefid';
 
 
@@ -67,11 +68,23 @@ const EIGENAAR = proefId(1);
  *    `id` en `created_at` staan er niet bij omdat een client ze niet kán
  *    aanwijzen zonder de rij kwijt te raken — die twee zijn de sleutel zelf.
  */
+/**
+ * ⚠️ **Uit `proefCode()` en niet hardgecodeerd — QS8-542.** De opzet hieronder
+ *    schríjft `PIN_CODE` in `groups.invite_code`, en die kolom draagt een
+ *    unieke index over de héle tabel. Twee gelijktijdige runs met dezelfde
+ *    letterlijke waarde botsen daar deterministisch op — de vorm die QS8-348
+ *    opruimde en die hier was blijven staan. `GEKAAPT_CODE` wordt nooit
+ *    geschreven (de update hoort te falen), maar staat er voor de
+ *    consistentie ook uit.
+ */
+const PIN_CODE = proefCode('pin', 1);
+const GEKAAPT_CODE = proefCode('gekaapt', 1);
+
 const GEPIND: readonly { kolom: string; nieuw: string; hoortTeBlijven: string }[] = [
   { kolom: 'status', nieuw: "'sleeping'", hoortTeBlijven: 'active' },
   { kolom: 'ontdekbaar', nieuw: 'true', hoortTeBlijven: 'false' },
   { kolom: 'zichtbaarheid', nieuw: "'open'", hoortTeBlijven: 'beschermd' },
-  { kolom: 'invite_code', nieuw: "'GEKAAPT1'", hoortTeBlijven: 'PINCODE1' },
+  { kolom: 'invite_code', nieuw: `'${GEKAAPT_CODE}'`, hoortTeBlijven: PIN_CODE },
   { kolom: 'invite_revoked', nieuw: 'true', hoortTeBlijven: 'false' },
   { kolom: 'last_activity_at', nieuw: 'now()', hoortTeBlijven: '2020-01-01' },
   // ⚠️ **De groepsklok, sinds QS8-355 (0202).** `groups.tz` is de tweede klok van
@@ -128,7 +141,7 @@ function naClientUpdate(
     -- weigert een ontdekbare groep zonder categorie. Zonder die waarde wordt de
     -- test rood op een CHECK in plaats van op de pin.
     insert into groups (id, name, created_by, status, invite_code, categorie, last_activity_at, tz)
-      select grp, 'Pin', eig, 'active', 'PINCODE1', 'other', '2020-01-01', 'Europe/Amsterdam' from t;
+      select grp, 'Pin', eig, 'active', '${PIN_CODE}', 'other', '2020-01-01', 'Europe/Amsterdam' from t;
     insert into group_members (group_id, user_id, role, status)
       select grp, eig, 'admin', 'active' from t;
 
@@ -247,7 +260,7 @@ describe.skipIf(!beschikbaar)('de pin op groups houdt een client tegen', () => {
         grant select on t to authenticated;
         insert into auth.users (id, email) select eig, 'pin2@x.nl' from t;
         insert into groups (id, name, created_by, status, invite_code)
-          select grp, 'Pin2', eig, 'active', 'PINCODE2' from t;
+          select grp, 'Pin2', eig, 'active', '${proefCode('pincode2', 1)}' from t;
         insert into group_members (group_id, user_id, role, status)
           select grp, eig, 'admin', 'active' from t;
 
@@ -301,7 +314,7 @@ describe.skipIf(!beschikbaar)('0265 — id, created_at en created_by gelden voor
       insert into profiles (id, display_name) select eig, 'Oprichter' from e
         on conflict (id) do nothing;
       insert into groups (id, name, created_by, status, invite_code, tz)
-        select grp, 'Rol264', eig, 'active', 'ROL26400', 'Europe/Amsterdam' from e;
+        select grp, 'Rol264', eig, 'active', '${proefCode('rol26400', 2)}', 'Europe/Amsterdam' from e;
 
       do $rol$
       declare g uuid := (select grp from e); u uuid := (select eig from e);

@@ -30,6 +30,7 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import { adminDb, createTestUser, removeTestUsers, rlsTestsConfigured, type TestUser } from './harness';
+import { proefCode } from './proefid';
 import { psql, stackBeschikbaarOfFaal } from './psql-stack';
 import { proefId } from './proefid';
 
@@ -273,7 +274,7 @@ describe.skipIf(!beschikbaar)('en er is geen lezer voor de waarde achtergebleven
       insert into auth.users (id, email) values
         ('${anna}', 'anna325@x.nl'), ('${bob}', 'bob325@x.nl');
       insert into groups (id, name, created_by, status, invite_code, categorie)
-        values ('${groep}', 'Restweigering', '${anna}', 'active', 'REST325', 'other');
+        values ('${groep}', 'Restweigering', '${anna}', 'active', '${proefCode('rest325', 1)}', 'other');
       insert into group_members (group_id, user_id, role, status) values
         ('${groep}', '${anna}', 'admin', 'active'),
         ('${groep}', '${bob}', 'member', 'active');

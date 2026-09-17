@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import { psql, stackBeschikbaarOfFaal } from './psql-stack';
+import { proefCode } from './proefid';
 import { proefId } from './proefid';
 
 /**
@@ -62,7 +63,7 @@ const OPSTELLING = `
   insert into auth.users (id, email) values
     ('${ALICE}', 'alice146@x.nl'), ('${BOB}', 'bob146@x.nl');
   insert into groups (id, name, created_by, status, invite_code, categorie)
-    values ('${GROEP}', 'Model146', '${ALICE}', 'active', 'MODEL146', 'other');
+    values ('${GROEP}', 'Model146', '${ALICE}', 'active', '${proefCode('model146', 1)}', 'other');
   insert into group_members (group_id, user_id, role, status) values
     ('${GROEP}', '${ALICE}', 'admin', 'active'),
     ('${GROEP}', '${BOB}', 'member', 'active');
@@ -192,8 +193,8 @@ const TWEE_GROEPEN = `
     ('${ALICE}', 'alice146@x.nl'), ('${BOB}', 'bob146@x.nl'),
     ('${CAROL}', 'carol146@x.nl'), ('${DAVE}', 'dave146@x.nl');
   insert into groups (id, name, created_by, status, invite_code, categorie) values
-    ('${GROEP}', 'Model146A', '${ALICE}', 'active', 'MODEL14A', 'other'),
-    ('${GROEP_B}', 'Model146B', '${CAROL}', 'active', 'MODEL14B', 'other');
+    ('${GROEP}', 'Model146A', '${ALICE}', 'active', '${proefCode('model14a', 2)}', 'other'),
+    ('${GROEP_B}', 'Model146B', '${CAROL}', 'active', '${proefCode('model14b', 3)}', 'other');
   insert into group_members (group_id, user_id, role, status) values
     ('${GROEP}', '${ALICE}', 'admin', 'active'),
     ('${GROEP}', '${BOB}', 'member', 'active'),
