@@ -84,6 +84,16 @@ Quinten koos de eerste, op 16-09-2026.
   dan de bevinding vraagt — en dan weet je achteraf niet meer welke helft je
   gemeten hebt.
 
+⚠️⚠️ **Wat dit besluit níet dekt, en dat is op 17-09-2026 nagemeten** (QS8-530).
+Bevriezen sluit `wikkel_commitments_af()`. Maar `eigenaarsdatum()` heeft meer
+aanroepers, en twee ervan lezen de **levende** `profiles.tz`: de verlooppoort van
+`beslis_deadline_verzoek()` (QS8-531) en het zevendaagse schild in
+`maak_straffen_verschuldigd()` (QS8-533). Daar is de bovengrens wél dragend — bij
+de eerste zelfs vierentwintig uur per dag, want de eendaagse variant werkt buiten
+het drie-datumsvenster gewoon. Allebei zijn het commitment devices en dus grens 1;
+de metingen en de drie richtingen staan in
+`docs/decisions/2026-09-17-geen-gat-in-0280-is-niet-geen-gat.md`.
+
 ## ⚠️ Twee dingen die bij het schrijven misgingen, en allebei zijn ze een klasse
 
 **1. De grendel blokkeerde zijn eigen terugvulling.** De `before update`-tak
