@@ -1,4 +1,17 @@
 -- 0287_create_group_stelt_dezelfde_vraag_als_de_check.sql — `create_group()`
+--
+-- ⚠️⚠️ **De premisse onder de lus is op 17-09-2026 vervallen — migratie 0289
+--    (QS8-526).** Deze migratie herhaalt `schone_naam()` tot een vast punt omdát
+--    die functie niet idempotent was. Dat is hij nu wel, dus de lus komt per
+--    definitie na de tweede ronde uit en doet geen werk meer.
+--
+--    Hij blijft met opzet staan: de `name_invalid`-handler ernaast dekt ook
+--    CHECKs die er later bij komen, en hem weghalen is een eigen besluit met een
+--    eigen meting. Wat hier níet meer klopt is de zin verderop dat
+--    `zonder_onzichtbaar_middenin()` een regelscheider **vervangt** door een
+--    spatie: 📏 hermeten in hex blijft `U+2028` onaangeraakt (`61 e280a8 62`).
+--    Die meting las een terminal, en een terminal toont LINE SEPARATOR als
+--    witruimte. Uitleg in de kop van 0289.
 -- normaliseerde de groepsnaam met `btrim()`, en `groups_name_schoon` toetst hem
 -- met `schone_naam()` (QS8-515)
 --
