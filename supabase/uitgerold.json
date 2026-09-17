@@ -3,6 +3,6 @@
   "project": "wehgocadxehottiiyvsc",
   "hoogste": "0282",
   "registerrijen": 285,
-  "gemeten": "2026-09-16",
-  "bron": "migratieregister() via de Supabase-MCP, na de uitrol van QS8-505"
+  "gemeten": "2026-09-17",
+  "bron": "supabase_migrations.schema_migrations via de Supabase-MCP (QS8-523) — ongewijzigd sinds de meting van 16-09"
 }
