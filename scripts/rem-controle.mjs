@@ -198,6 +198,65 @@ function lees() {
   return execFileSync('psql', psqlArgumenten(VRAAG), { encoding: 'utf8' });
 }
 
+/**
+ * De drie rode takken, elk met zijn eigen uitleg.
+ *
+ * ⚠️ Apart van `hoofd()` omdat de tekst het grootste deel is: een melding die
+ *    alleen zegt wát er mis is en niet wat je ermee moet, stuurt de lezer naar
+ *    de verkeerde reparatie. Zie `klokgrens-controle.mjs` voor dezelfde vorm.
+ *
+ * @param {ReturnType<typeof beoordeel>} uitslag
+ */
+function meld(uitslag) {
+  if (uitslag.kaal.length > 0) {
+    console.error(`✗ ${uitslag.kaal.length} tabel(len) die \`authenticated\` mag vullen zonder rem:\n`);
+    for (const r of uitslag.kaal) console.error(`    ${r.tabel}`);
+    console.error(
+      '\nZonder rem is het schrijfvolume van een geweigerd verzoek onbegrensd: de rijen\n' +
+        'worden fysiek geschreven en daarna weggegooid, en die ruimte komt pas terug bij\n' +
+        'een `vacuum full`. 📏 0200 mat 9,6 MB voor één geweigerde batch op `goals`.\n' +
+        'Bouw een rem zoals in 0200, of zet de tabel mét een meting in ZONDER_REM in\n' +
+        'scripts/rem-controle.mjs.',
+    );
+  }
+
+  if (uitslag.anders.length > 0) {
+    console.error(`\n✗ ${uitslag.anders.length} rem(men) op een andere grens dan \`plafond() * 2\`:\n`);
+    for (const r of uitslag.anders) {
+      console.error(`    ${r.tabel}  ${r.rem}  →  ${r.grens || '(niet te lezen)'}`);
+    }
+    console.error(
+      '\nAchttien van de achttien stonden op twee keer het dagplafond toen deze controle\n' +
+        'er kwam. Een andere grens mag, maar dan is het een besluit: zet hem met zijn\n' +
+        'meting in AFWIJKENDE_GRENS. Een standaard die per tabel verschuift zonder dat\n' +
+        'iemand het besloten heeft, is geen standaard meer.',
+    );
+  }
+
+  if (uitslag.verdwenen.length > 0) {
+    console.error(`\n✗ ${uitslag.verdwenen.length} registerrij(en) dekken niets meer:\n`);
+    for (const t of uitslag.verdwenen) console.error(`    ${t}`);
+    console.error(
+      '\nGoed nieuws en toch rood: de tabel is weg of heeft alsnog een gewone rem. Een\n' +
+        'vrijbrief die niemand nodig heeft, dekt straks iets anders af.',
+    );
+  }
+}
+
+/**
+ * ⚠️⚠️ Een lege uitslag is **ongemeten** en niet groen. Zie de kop: precies zo
+ *    meldde de eerste versie van dit script `0 van de 0` met exitcode 0.
+ */
+function meldLeeg() {
+  console.error(
+    '✗ rem-controle vond geen enkele beschrijfbare tabel, en dat kan niet kloppen.\n\n' +
+      'Dit is geen schone uitslag maar een lege vraag. Kijk of de database het schema\n' +
+      'van `supabase/migrations/` draagt, en of de vraag nog `has_any_column_privilege`\n' +
+      'gebruikt: `has_table_privilege` is `false` zodra een tabelrecht is ingetrokken en\n' +
+      'er kolomrechten voor in de plaats staan (0236), en dan vindt hij er nul.',
+  );
+}
+
 /** @returns {number} De exitcode. */
 export function hoofd() {
   let uitvoer;
@@ -216,56 +275,21 @@ export function hoofd() {
     return 1;
   }
 
-  const { kaal, anders, verdwenen, leeg, totaal, metRem } = beoordeel(ontleed(uitvoer));
+  const uitslag = beoordeel(ontleed(uitvoer));
 
-  if (leeg) {
-    console.error(
-      '✗ rem-controle vond geen enkele beschrijfbare tabel, en dat kan niet kloppen.\n\n' +
-        'Dit is geen schone uitslag maar een lege vraag. Kijk of de database het schema\n' +
-        'van `supabase/migrations/` draagt, en of de vraag nog `has_any_column_privilege`\n' +
-        'gebruikt: `has_table_privilege` is `false` zodra een tabelrecht is ingetrokken en\n' +
-        'er kolomrechten voor in de plaats staan (0236), en dan vindt hij er nul.',
-    );
+  if (uitslag.leeg) {
+    meldLeeg();
     return 1;
   }
 
-  if (kaal.length > 0) {
-    console.error(`✗ ${kaal.length} tabel(len) die \`authenticated\` mag vullen zonder rem:\n`);
-    for (const r of kaal) console.error(`    ${r.tabel}`);
-    console.error(
-      '\nZonder rem is het schrijfvolume van een geweigerd verzoek onbegrensd: de rijen\n' +
-        'worden fysiek geschreven en daarna weggegooid, en die ruimte komt pas terug bij\n' +
-        'een `vacuum full`. 📏 0200 mat 9,6 MB voor één geweigerde batch op `goals`.\n' +
-        'Bouw een rem zoals in 0200, of zet de tabel mét een meting in ZONDER_REM in\n' +
-        'scripts/rem-controle.mjs.',
-    );
+  meld(uitslag);
+  if (uitslag.kaal.length > 0 || uitslag.anders.length > 0 || uitslag.verdwenen.length > 0) {
+    return 1;
   }
-
-  if (anders.length > 0) {
-    console.error(`\n✗ ${anders.length} rem(men) op een andere grens dan \`plafond() * 2\`:\n`);
-    for (const r of anders) console.error(`    ${r.tabel}  ${r.rem}  →  ${r.grens || '(niet te lezen)'}`);
-    console.error(
-      '\nAchttien van de achttien stonden op twee keer het dagplafond toen deze controle\n' +
-        'er kwam. Een andere grens mag, maar dan is het een besluit: zet hem met zijn\n' +
-        'meting in AFWIJKENDE_GRENS. Een standaard die per tabel verschuift zonder dat\n' +
-        'iemand het besloten heeft, is geen standaard meer.',
-    );
-  }
-
-  if (verdwenen.length > 0) {
-    console.error(`\n✗ ${verdwenen.length} registerrij(en) dekken niets meer:\n`);
-    for (const t of verdwenen) console.error(`    ${t}`);
-    console.error(
-      '\nGoed nieuws en toch rood: de tabel is weg of heeft alsnog een gewone rem. Een\n' +
-        'vrijbrief die niemand nodig heeft, dekt straks iets anders af.',
-    );
-  }
-
-  if (kaal.length > 0 || anders.length > 0 || verdwenen.length > 0) return 1;
 
   console.log(
-    `rem-controle: ${metRem} van de ${totaal} beschrijfbare tabellen dragen een rem op ` +
-      'twee keer hun dagplafond.',
+    `rem-controle: ${uitslag.metRem} van de ${uitslag.totaal} beschrijfbare tabellen dragen ` +
+      'een rem op twee keer hun dagplafond.',
   );
   return 0;
 }
