@@ -3,15 +3,22 @@
 > Kopieer alles onder de streep in een nieuwe chat. Werk dit bestand bij aan het
 > eind van elke sessie — het is de overdracht, niet een archief.
 >
-> **Laatst bijgewerkt:** 17-09-2026, na PR #525 (QS8-524). De lessen van deze
-> ronde staan als punt AL, AM en AN hieronder.
+> **Laatst bijgewerkt:** 17-09-2026, na PR #526. De lessen van deze ronde staan
+> als punt AL, AM en AN hieronder.
 >
-> 📏 **Bij dit bijwerken stond dit bestand achttien PR-merges achter**, allemaal
+> 📏 **Bij dit bijwerken stond dit bestand negentien PR-merges achter**, allemaal
 > van 17-09 en geen ervan hier genoemd. Dat is de op één na grootste achterstand
 > die dit bestand geregistreerd heeft — QS8-410 stond op 23, QS8-418 op 10, de
 > ronde van 13-09 op 9 en die van 16-09 op 14. **De reeks wordt niet korter.**
 > Er is met reden geen controle die dit afdwingt (zie de lijn verderop), maar het
 > patroon is inmiddels vijf metingen lang en het loopt niet de goede kant op.
+>
+> ⚠️ **Het waren er achttien toen deze bijwerking begon en negentien toen hij
+> landde** — #526 merde ertussenin. Dat is geen anekdote maar de reden dat dit
+> bestand achterloopt: het is de enige plek in de repo waar één sessie een
+> uitspraak doet over wat álle sessies gedaan hebben, en dat getal verandert
+> terwijl je het opschrijft. Tel dus vlak vóór het pushen opnieuw, net als bij
+> een migratienummer (QS8-318).
 >
 > ⚠️ **Twee issues staan Urgent/High open en wachten op een besluit van Quinten —
 > QS8-531 en QS8-533.** Allebei grens 1 (commitment device), allebei gemeten
@@ -46,6 +53,7 @@
 > | #524 | QS8-530 — "geen gat in 0280" is niet "geen gat" |
 > | #525 | QS8-524 — de standtabel van het heldenepic zegt wat Linear zegt |
 > | #519 | QS8-522 — `rem:controle` bewaakt de klasse en niet de instanties |
+> | #526 | QS8-534 — drie dossierrijen die een migratie heeft ingehaald |
 >
 > **Daarvóór:** 16-09-2026, na QS8-505: productie stond 58 migraties
 > achter en staat nu gelijk aan de map (`0282`). ⚠️ Tijdens die uitrol landde
