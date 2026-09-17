@@ -3,7 +3,51 @@
 > Kopieer alles onder de streep in een nieuwe chat. Werk dit bestand bij aan het
 > eind van elke sessie — het is de overdracht, niet een archief.
 >
-> **Laatst bijgewerkt:** 16-09-2026, na QS8-505: productie stond 58 migraties
+> **Laatst bijgewerkt:** 17-09-2026, na PR #525 (QS8-524). De lessen van deze
+> ronde staan als punt AL, AM en AN hieronder.
+>
+> 📏 **Bij dit bijwerken stond dit bestand achttien PR-merges achter**, allemaal
+> van 17-09 en geen ervan hier genoemd. Dat is de op één na grootste achterstand
+> die dit bestand geregistreerd heeft — QS8-410 stond op 23, QS8-418 op 10, de
+> ronde van 13-09 op 9 en die van 16-09 op 14. **De reeks wordt niet korter.**
+> Er is met reden geen controle die dit afdwingt (zie de lijn verderop), maar het
+> patroon is inmiddels vijf metingen lang en het loopt niet de goede kant op.
+>
+> ⚠️ **Twee issues staan Urgent/High open en wachten op een besluit van Quinten —
+> QS8-531 en QS8-533.** Allebei grens 1 (commitment device), allebei gemeten
+> tegen de gedeployde functies, allebei niet gerepareerd. Zie punt AM.
+>
+> ⚠️ **En Linear was vanaf ongeveer 11:30 UTC niet bereikbaar** vanuit de
+> bouwsessie — de MCP-verbinding verloor zijn autorisatie. QS8-524 en QS8-530 zijn
+> dus gemerged terwijl ze in Linear nog op **In Progress** staan, en het
+> statuscommentaar op QS8-530 is niet geplaatst. **Loop dat na voordat je iets
+> claimt**: de standtabellen in `docs/WERKVOORRAAD.md` zeggen hier iets anders dan
+> Linear, en dat is precies de klasse die QS8-524 zelf opruimde.
+>
+> **Wat er op 17-09-2026 geland is**, in volgorde van merge:
+>
+> | PR | wat |
+> |---|---|
+> | #507 | QS8-451 — `U+200C` blijft aan de rand van een naam weg |
+> | #511 | de cyclusgrens overleeft een zonesprong over de week-startdag |
+> | #508 | QS8-507 — de rest van de groepszichtbare vrije tekst (`0284`) en de regelovergang (`0285`) |
+> | #513 | QS8-518 — het plafond van de RLS-job op 25 minuten |
+> | #509 | QS8-433 — twee dossierrijen die zeiden dat productie achterliep |
+> | #510 | QS8-516 — drie dossierrijen die de uitrol achterhaald heeft |
+> | #512 | QS8-508 — de randstap van `schone_naam()` staat in een CHECK (`0286`) |
+> | #514 | QS8-517 — de uitrolstand als gegeven, sleutelloos nagelezen |
+> | #515 | QS8-520 — de telling in de Hoog-rij over RLS-hulpfuncties is hermeten |
+> | #517 | QS8-521 — drie dossierrijen over de gedeployde rollover, met de meting erbij |
+> | #516 | QS8-519 — de twee codepuntvegen van de naadtest delen één COPY |
+> | #520 | QS8-529 — een aanname die rekenkundig niet kón kloppen |
+> | #518 | QS8-523 — drie dossierrijen over onzichtbare tekens, hermeten op beide databases |
+> | #522 | QS8-515 — `create_group()` stelt dezelfde vraag als de CHECK (`0287`) |
+> | #523 | QS8-527 — twee dossierrijen over de idempotentie-grendels |
+> | #524 | QS8-530 — "geen gat in 0280" is niet "geen gat" |
+> | #525 | QS8-524 — de standtabel van het heldenepic zegt wat Linear zegt |
+> | #519 | QS8-522 — `rem:controle` bewaakt de klasse en niet de instanties |
+>
+> **Daarvóór:** 16-09-2026, na QS8-505: productie stond 58 migraties
 > achter en staat nu gelijk aan de map (`0282`). ⚠️ Tijdens die uitrol landde
 > QS8-499 met `0280` t/m `0282` op `main` — het venster van QS8-318 — en die drie
 > zijn in dezelfde ronde meegenomen. De les staat als punt AJ hieronder.
@@ -656,6 +700,74 @@
 > ijking H2 van QS8-499 in een beslisdocument; wat er niet was, is een plek waar
 > het als wérk stond. **Een bevinding die alleen in een beslisdocument staat, is
 > opgeschreven en niet ingepland** — nu QS8-508.
+>
+> **17-09, punt AL: een meting op één moment is geen invariant.** De poort liep om
+> 10:34 UTC rood op `tests/rls/strafklok-ligt-vast.test.ts`, een test die niets met
+> het lopende werk te maken had. Hij legde vast dat de spreiding over álle zones in
+> `pg_timezone_names` *"op elk moment precies twee datums"* is — mét 📏 ervoor en
+> mét de woorden *"nagemeten en niet aangenomen"*.
+>
+> De meting wás gedaan. Ze is alleen op één moment gedaan. 📏 De uiterste offsets
+> lopen van `Etc/GMT+12` tot `Pacific/Kiritimati`, dus **26 uur**, en 26 past niet
+> in 24: van **10:00 t/m 11:59 UTC** bestaan er drie datums tegelijk, de overige
+> tweeëntwintig uur twee. Elke dag. `main` stond daar dus twee uur per etmaal rood,
+> en de bovengrens die een zonesprong oplevert was **twee** dagen en niet één.
+>
+> ⚠️ **De les zit in wát er gemeten wordt, niet in beter meten.** Het aantal datums
+> is een eigenschap van de **klok**; de spanwijdte is er een van de **tz-database**.
+> De redenering leunde op de tweede en de toets vroeg de eerste. De toets vraagt nu
+> de spanwijdte. Vraag dus bij elke grendel die een getal vastlegt: **hangt dit
+> getal aan iets dat vanzelf verandert?**
+>
+> ⚠️⚠️ **En de tegenmeting stond al in de repo.** `0134` draagt in zijn kop een
+> tabel die UTC−8 nul dagen respijt geeft en UTC+10 twee — dat ís een spreiding van
+> twee dagen. `0280` schreef er anderhalve week later één van, met een verse meting
+> erbij. **Een getal met 📏 ervoor leest als bewijs en overtuigt harder dan
+> bestaande documentatie, ook als die documentatie gelijk heeft.**
+>
+> **17-09, punt AM: "geen gat in X" is niet "geen gat".** Twee sessies sloten hun
+> analyse van punt AL af op dezelfde geruststelling: *"er is geen live gat — `0280`
+> bevriest de klok bij het aangaan en neemt de bovengrens weg."* 📏 Dat klopt, en
+> het is nagemeten: `authenticated` heeft geen UPDATE op `commitments.tz` en
+> `bevries_commitmentzone()` werpt op elke wijziging.
+>
+> Maar het is een uitspraak over **0280**, niet over de codebase. `eigenaarsdatum()`
+> heeft meer aanroepers dan `wikkel_commitments_af()`, en twee ervan lezen de
+> **levende** `profiles.tz` — een kolom die wél in de UPDATE-kolomgrant staat.
+> Gemeten tegen de gedeployde functies, met echte rijen en teruggerold: de
+> verlooppoort van `beslis_deadline_verzoek()` zet met zone `Etc/GMT+12` een al
+> verschuldigde straf terug van `due` op `set` (**QS8-531**), en het zevendaagse
+> schild in `maak_straffen_verschuldigd()` rekt op dezelfde manier mee
+> (**QS8-533**). Allebei grens 1, allebei niet gerepareerd, allebei met hun meting
+> als rij van 17-09 in `docs/ENGINEER-REVIEW.md`.
+>
+> ⚠️ **Vraag bij elke afsluitende zin in een beslisdocument: hoeveel aanroepers
+> heeft het ding waar ik dit over zeg?** Dat was hier met één `grep` te zien.
+>
+> ⚠️⚠️ **En meet een geval dat je gevonden hebt ook één maat kleiner.** De
+> tweedaagse variant van QS8-531 werkt maar twee uur per dag; de **eendaagse** werkt
+> altijd. Wie na de eerste meting stopt, schrijft een permanent open poort op als
+> een randgeval. Uitleg in
+> `docs/decisions/2026-09-17-geen-gat-in-0280-is-niet-geen-gat.md`.
+>
+> **17-09, punt AN: de claim ziet één issuenummer, niet één bevinding.** QS8-529 en
+> QS8-530 zijn allebei geopend nadat de poort rood liep op de test van punt AL —
+> geclaimd om 10:18 en om 11:02 UTC, en allebei helemaal afgebouwd. `npm run claim`
+> heeft precies gedaan wat hij belooft: hij leest branchnamen en gelande PR's per
+> **issuenummer**, en er was geen branch en geen PR voor QS8-530.
+>
+> ⚠️ Dat is een andere oorzaak dan QS8-287/QS8-286/QS8-214, waar het hetzelfde
+> nummer was. **Hier waren het twee nummers voor één bevinding**, en dat kan geen
+> enkele controle op nummers vinden. De vorm is bovendien voorspelbaar: hij ontstaat
+> als een rode poort twee sessies tegelijk naar dezelfde regel stuurt.
+>
+> ⚠️ **Wat wél werkte is de afhandeling**, en die is de moeite waard om te herhalen:
+> wie als tweede merget neemt de éérste over. De toets, de migratiekop en het
+> beslisdocument van QS8-529 zijn ongewijzigd van `main` overgenomen — hun tweede
+> grendel (het venster op vier vaste UTC-tijden) was sterker dan de mijne — en wat
+> overbleef was alleen het deel dat zij niet hadden: de security-ronde van punt AM.
+> **Zoek bij een botsing wat er van jouw kant overblijft in plaats van te kiezen
+> tussen twee takken.**
 >
 > ⚠️⚠️ **11-09, punt P: een lintregel kan code laten buigen, en dan verplaats je
 > het probleem naar de lezer.** QS8-422 moest in de rollover een `if` in een `if`
