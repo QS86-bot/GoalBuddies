@@ -163,31 +163,50 @@ function geweigerdeNaamUitvoer(): Set<number> {
  *    commandoregel.
  */
 function veegLangsDeChecks(
-  maakWaarde: (cp: number) => string,
-  voorwaarde: (w: string) => string,
-): Set<number> {
+  vegen: readonly {
+    readonly maakWaarde: (cp: number) => string;
+    readonly voorwaarde: (w: string) => string;
+  }[],
+): Set<number>[] {
   const regels: string[] = [];
   for (let cp = 1; cp <= 1114111; cp += 1) {
     if (cp >= 55296 && cp <= 57343) continue;
-    const uit = maakWaarde(cp);
-    regels.push(`${cp}\t${Buffer.from(uit, 'utf8').toString('hex')}`);
+    const hexen = vegen.map((v) => Buffer.from(v.maakWaarde(cp), 'utf8').toString('hex'));
+    regels.push(`${cp}\t${hexen.join('\t')}`);
   }
 
-  const invoerSql =
-    'create temporary table client_uitvoer (cp int primary key, hex text);\n' +
-    'copy client_uitvoer (cp, hex) from stdin;\n' +
-    `${regels.join('\n')}\n\\.\n` +
-    "select cp from client_uitvoer, lateral (select convert_from(decode(hex, 'hex'), 'UTF8') as w) s " +
-    `where ${voorwaarde('w')} order by cp;`;
+  const kolommen = vegen.map((_, i) => `hex${i} text`).join(', ');
+  const namen = vegen.map((_, i) => `hex${i}`).join(', ');
 
-  return alsCodepunten(
-    execFileSync('psql', [...psqlBasisArgumenten()], {
-      env: PSQL_OMGEVING,
-      encoding: 'utf8',
-      input: invoerSql,
-      maxBuffer: 512 * 1024 * 1024,
-    }),
-  );
+  // ⚠️ Eén `select` per veeg, maar over **dezelfde** tabel: de COPY is het dure
+  //    deel en die gebeurt nu één keer.
+  const vragen = vegen
+    .map(
+      (v, i) =>
+        `select cp from client_uitvoer, lateral (select convert_from(decode(hex${i}, 'hex'), 'UTF8') as w) s ` +
+        `where ${v.voorwaarde('w')} order by cp;`,
+    )
+    .join('\n\\echo ---VEEG---\n');
+
+  const invoerSql =
+    `create temporary table client_uitvoer (cp int primary key, ${kolommen});\n` +
+    `copy client_uitvoer (cp, ${namen}) from stdin;\n` +
+    `${regels.join('\n')}\n\\.\n` +
+    `\\echo ---VEEG---\n${vragen}`;
+
+  const uit = execFileSync('psql', [...psqlBasisArgumenten()], {
+    env: PSQL_OMGEVING,
+    encoding: 'utf8',
+    input: invoerSql,
+    maxBuffer: 512 * 1024 * 1024,
+  });
+
+  // ⚠️ `slice(1)`: het eerste blok staat vóór de eerste scheiding en is leeg.
+  const blokken = uit.split('---VEEG---').slice(1);
+  if (blokken.length !== vegen.length) {
+    throw new Error(`verwachtte ${vegen.length} veegblokken, kreeg ${blokken.length}`);
+  }
+  return blokken.map((blok) => alsCodepunten(blok));
 }
 
 beforeAll(async () => {
@@ -209,23 +228,43 @@ beforeAll(async () => {
   const beideRegels = (w: string): string =>
     `${w} <> public.zonder_bidi(${w}) or ${w} <> public.zonder_onzichtbaar_middenin(${w})`;
 
-  clientOutputGeweigerd = veegLangsDeChecks(
-    (cp) => zonderNulPixels(`A${String.fromCodePoint(cp)}\u200F B`),
-    beideRegels,
-  );
+  // ⚠️ **Twee vegen in één COPY** — QS8-519, 17-09-2026. Ze stonden als twee
+  //    losse aanroepen, elk met een eigen tijdelijke tabel van 1,1 miljoen rijen.
+  //
+  //    📏 Gemeten, twee keer per kant op dezelfde machine:
+  //
+  //      twee COPY's   29,37 s / 27,44 s
+  //      één COPY      24,52 s / 22,53 s
+  //
+  // ⚠️ **De winst is kleiner dan de aanname eronder, en dat hoort erbij.** Het
+  //    idee was dat de COPY het dure deel is. Dat is hij maar half: de
+  //    vergelijkingen kosten ook echt tijd — de naamveeg roept vier functies per
+  //    rij aan. Eén veeg kostte vóór QS8-507 ~12 s, dus de tweede kost nog
+  //    steeds ~11 s. Wie dit bestand verder wil versnellen, moet daar zijn en
+  //    niet bij de COPY.
+  //
+  // ⚠️ Het plafond van de RLS-job in CI staat sinds QS8-518 op 25 minuten, met
+  //    zes metingen in de kop van die job. Deze besparing draagt dat niet en
+  //    hoeft dat niet te dragen; hij staat hier omdat hij gratis is.
+  const [clientVeeg, naamVeeg] = veegLangsDeChecks([
+    {
+      maakWaarde: (cp) => zonderNulPixels(`A${String.fromCodePoint(cp)}\u200F B`),
+      voorwaarde: beideRegels,
+    },
+    // ⚠️ `groups.name` apart, want die kolom heeft een ándere spiegel
+    //    (`schoneNaam()`) en twee CHECKs meer — gevonden in de security-review op
+    //    QS8-506. Zonder deze veeg zou de eerste groen blijven terwijl
+    //    `schoneNaam()` iets oplevert dat de contextregel weigert.
+    {
+      maakWaarde: (cp) => schoneNaam(`A${String.fromCodePoint(cp)}\u200F B`),
+      voorwaarde: (w) =>
+        `${beideRegels(w)} or ${w} <> public.zonder_onzichtbaar_tussen_letters(${w}) ` +
+        `or ${w} <> public.zonder_losse_tags(${w})`,
+    },
+  ]);
 
-  // ⚠️⚠️ **En `groups.name` apart, want die kolom heeft een ándere spiegel en
-  //    twee CHECKs meer** — gevonden in de security-review op QS8-506. Zijn
-  //    client is `schoneNaam()` en niet `zonderNulPixels()`, en hij draagt sinds
-  //    0283 vier tekst-CHECKs in plaats van twee. Die samenstelling stond
-  //    nergens onder toets: de veeg hierboven zou groen blijven terwijl
-  //    `schoneNaam()` iets oplevert dat de contextregel weigert.
-  naamOutputGeweigerd = veegLangsDeChecks(
-    (cp) => schoneNaam(`A${String.fromCodePoint(cp)}\u200F B`),
-    (w) =>
-      `${beideRegels(w)} or ${w} <> public.zonder_onzichtbaar_tussen_letters(${w}) ` +
-      `or ${w} <> public.zonder_losse_tags(${w})`,
-  );
+  clientOutputGeweigerd = clientVeeg;
+  naamOutputGeweigerd = naamVeeg;
 }, 1_800_000);
 
 describe.runIf(beschikbaar)('wat de client oplevert, neemt de database aan', () => {
