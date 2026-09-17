@@ -222,8 +222,8 @@ staat er iets bij dat uitleg nodig heeft, dan hoort die uitleg in §2, §3b of �
    **Meet ze dus, tel ze niet op:** bij het samengaan met `main` is het antwoord
    `npm run poort` of `npm run tellers`, nooit het hoogste van twee getallen.
 <!-- POORTSTAND:BEGIN — gegenereerd door `npm run poortstand` -->
-Typecheck, lint en alle 64 controlescripts groen;
-`npm run poort` meldt 68 stappen.
+Typecheck, lint en alle 65 controlescripts groen;
+`npm run poort` meldt 69 stappen.
 <!-- POORTSTAND:EINDE -->
    ⚠️ **Vier ervan meten niets zonder de credentials van het échte project**
    (`adviseur`, `functies`, `register`, `wachtwoord`), en de poort noemt dat
@@ -1125,13 +1125,23 @@ tegelijk, QS8-471 daarna, en QS8-474, QS8-475 en QS8-477 weer parallel.
 
 | Issue | Wat | Stand |
 |---|---|---|
-| QS8-469 | het heldenrooster als data, elke quote op zijn bron | ✅ af — PR #462 |
-| QS8-470 | het heldenpalet als benoemde uitzondering op het navystelsel | ✅ af — PR #464 |
-| QS8-471 | datamodel: welke held is van wie, elke verschijning append-only | ✅ af — PR #470, migratie `0264` |
-| QS8-474 | de vragenlijst van vier naar acht vragen, gelijkspel is de regel | ✅ af — PR #473 |
-| QS8-475 | de heldenstem in de meldingen die er al zijn | ✅ af — PR #478 |
-| QS8-477 | je held in een open groep, en nergens anders | in review — migratie `0268` |
-| QS8-493 | *(vervolg)* de heldenlijst van een open groep heeft nog geen scherm | open |
+| QS8-469 | het heldenrooster als data, elke quote op zijn bron | ✅ af 14-09 — PR #462 |
+| QS8-470 | het heldenpalet als benoemde uitzondering op het navystelsel | ✅ af 14-09 — PR #464 |
+| QS8-471 | datamodel: welke held is van wie, elke verschijning append-only | ✅ af 14-09 — PR #470, migratie `0264` |
+| QS8-474 | de vragenlijst van vier naar acht vragen, gelijkspel is de regel | ✅ af 14-09 — PR #473 |
+| QS8-475 | de heldenstem in de meldingen die er al zijn | ✅ af 14-09 — PR #478 |
+| QS8-477 | je held in een open groep, en nergens anders | ✅ af 14-09 — PR #483, migratie `0268` |
+| QS8-493 | *(vervolg)* de heldenlijst van een open groep krijgt een eigen kaart | ✅ af 16-09 — PR #498, migratie `0279` |
+
+⚠️ **De datum is de afronding in Linear en niet de merge**, en hij staat er sinds
+QS8-524 bij omdat twee van deze zeven rijen een stand droegen die Linear al dagen
+tegensprak. Dit bestand is het eerste dat een nieuwe sessie leest; een rij die
+`open` zegt over werk dat af is, stuurt die sessie naar een issue dat er al ligt.
+📏 Alle zeven zijn op 17-09-2026 rij voor rij tegen Linear nagelopen. ⚠️ Geen
+enkele controle doet dat voor je — `docs:controle` legt de drie
+overdrachtsdocumenten naast **elkaar**, nooit naast Linear, dus ze kunnen het met
+z'n drieën eens zijn en met z'n drieën ongelijk hebben. Dat gat draagt QS8-452,
+en dat issue wacht op een Linear-sleutel in de bouwomgeving.
 
 ⚠️ **QS8-477 is het enige issue van dit epic met een groepsoppervlak, en dat is
 met opzet zo gehouden.** 0264 bevat geen enkele groepstak: `hero_appearances`
@@ -1142,13 +1152,14 @@ dus de vorm is een RPC met een expliciete kolomlijst, zoals
 ook gebouwd: `groep_helden()` in `0268`, oppervlak 37 in
 `docs/decisions/002-domeinregel7-oppervlakken.md`.
 
-⚠️ **Het epic is met QS8-477 kompleet, maar dat groepsoppervlak heeft nog geen
-knop.** QS8-468 zet "een eigen heldenscherm of heldenkaart op het overzicht" met
-zoveel woorden buiten scope voor deze ronde, dus `groep_helden()` staat met de
-vraag erbij in `WACHT_OP_EEN_BESLUIT` (`scripts/dode-keten-controle.mjs`) en
-QS8-493 draagt hem. De regels en de reden staan in CLAUDE.md en in
-`docs/decisions/2026-09-14-een-held-verraadt-geen-doel.md` §7; dít bestand houdt
-alleen de stand bij.
+⚠️ **Het epic is af sinds 16-09-2026, inclusief het groepsoppervlak.** QS8-468
+zette "een eigen heldenscherm of heldenkaart op het overzicht" met zoveel
+woorden buiten scope voor die ronde, dus `groep_helden()` stond met de vraag erbij in
+`WACHT_OP_EEN_BESLUIT` (`scripts/dode-keten-controle.mjs`). QS8-493 heeft die
+vraag beantwoord met een kaart (`src/modules/helden/groepshelden.ts`, migratie
+`0279`); dat register is sindsdien leeg. De regels en de reden staan in CLAUDE.md
+en in `docs/decisions/2026-09-14-een-held-verraadt-geen-doel.md` §7; dít bestand
+houdt alleen de stand bij.
 
 De zeven besluiten die eraan vooraf gingen staan in
 `docs/decisions/2026-09-14-zes-helden-en-de-zeven-besluiten-eronder.md`; de
