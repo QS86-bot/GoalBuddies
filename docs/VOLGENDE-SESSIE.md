@@ -48,9 +48,9 @@
 >
 > **Daarvóór:** 14-09-2026, na QS8-477 (PR #483) — het laatste deelissue
 > van het heldenepic QS8-468. Diezelfde dag uit die sessie QS8-471 (PR #470),
-> QS8-474 (PR #473) en QS8-475 (PR #478); QS8-493 is het vervolgissue dat de
-> vraag draagt of `groep_helden()` een scherm krijgt. De lessen van die ronde
-> staan als punt AC, AD en AE hieronder.
+> QS8-474 (PR #473) en QS8-475 (PR #478); QS8-493 droeg het vervolg — de vraag
+> of `groep_helden()` een scherm krijgt — en is op 16-09 met PR #498
+> beantwoord. De lessen van die ronde staan als punt AC, AD en AE hieronder.
 >
 > **Daarvóór:** 13-09-2026, na QS8-446 (PR #439, `0846646`). Diezelfde
 > dag uit deze sessie QS8-445, QS8-443, QS8-441 (PR #436), QS8-444 (PR #437) en
