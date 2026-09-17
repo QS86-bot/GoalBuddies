@@ -3,8 +3,15 @@
 > Kopieer alles onder de streep in een nieuwe chat. Werk dit bestand bij aan het
 > eind van elke sessie — het is de overdracht, niet een archief.
 >
-> **Laatst bijgewerkt:** 17-09-2026, na PR #526. De lessen van deze ronde staan
-> als punt AL, AM en AN hieronder.
+> **Laatst bijgewerkt:** 17-09-2026 om 17:35 UTC, **t/m PR #527**. De lessen van
+> deze ronde staan als punt AL, AM en AN hieronder.
+>
+> ⚠️ **Die afkapping is met opzet een nummer en geen "alles".** Terwijl deze
+> bijwerking geschreven werd landden er drie PR's bij — de teller ging van
+> achttien naar negentien naar tweeëntwintig. Een tabel die zegt *alles van
+> vandaag* is onwaar zodra iemand anders merget; een tabel met een genoemde
+> bovengrens blijft kloppen. **Begin de volgende bijwerking dus bij het nummer
+> dat hier staat**, niet bij een datum.
 >
 > 📏 **Bij dit bijwerken stond dit bestand negentien PR-merges achter**, allemaal
 > van 17-09 en geen ervan hier genoemd. Dat is de op één na grootste achterstand
@@ -13,12 +20,13 @@
 > Er is met reden geen controle die dit afdwingt (zie de lijn verderop), maar het
 > patroon is inmiddels vijf metingen lang en het loopt niet de goede kant op.
 >
-> ⚠️ **Het waren er achttien toen deze bijwerking begon en negentien toen hij
-> landde** — #526 merde ertussenin. Dat is geen anekdote maar de reden dat dit
-> bestand achterloopt: het is de enige plek in de repo waar één sessie een
-> uitspraak doet over wat álle sessies gedaan hebben, en dat getal verandert
-> terwijl je het opschrijft. Tel dus vlak vóór het pushen opnieuw, net als bij
-> een migratienummer (QS8-318).
+> ⚠️ **Het waren er achttien toen deze bijwerking begon, negentien toen hij landde
+> en tweeëntwintig een halfuur later** — #526, en daarna #529 en #527. Dat is geen
+> anekdote maar de reden dat dit bestand achterloopt: het is de enige plek in de
+> repo waar één sessie een uitspraak doet over wat álle sessies gedaan hebben, en
+> dat getal verandert terwijl je het opschrijft. Zelfde venster als QS8-318, andere
+> grootheid. **Tel vlak vóór het pushen opnieuw, en schrijf op tot welk PR-nummer
+> je geteld hebt** — dat laatste is de enige vorm die niet veroudert.
 >
 > ⚠️ **Twee issues staan Urgent/High open en wachten op een besluit van Quinten —
 > QS8-531 en QS8-533.** Allebei grens 1 (commitment device), allebei gemeten
@@ -56,6 +64,9 @@
 > | #525 | QS8-524 — de standtabel van het heldenepic zegt wat Linear zegt |
 > | #519 | QS8-522 — `rem:controle` bewaakt de klasse en niet de instanties |
 > | #526 | QS8-534 — drie dossierrijen die een migratie heeft ingehaald |
+> | #528 | QS8-538 — deze bijwerking zelf, zonder issuenummer omdat Linear wegviel |
+> | #529 | QS8-535 — drie dossierrijen over de code-sleutel |
+> | #527 | QS8-537 — agentsturing naar risico in de grondwet |
 >
 > **Daarvóór:** 16-09-2026, na QS8-505: productie stond 58 migraties
 > achter en staat nu gelijk aan de map (`0282`). ⚠️ Tijdens die uitrol landde
