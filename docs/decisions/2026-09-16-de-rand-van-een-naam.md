@@ -72,11 +72,26 @@ nagerekend naast `v = schone_naam(v)`:
 | `Quin` + `U+200B` + `ten` | nee | nee |
 
 **De enige bijvangst is een spatie aan de rand**, en dat is een typefout en geen
-aanval. 📏 Nagemeten dat een gewone gebruiker daar niet tegenaan loopt:
-`profielSchema` doet `.transform(schoneNaam)` vóór de validatie, en `schoneNaam()`
-in `src/shared/tekst/index.ts` heeft de randstap als stap 5 (regels 666–675). Wie
-via de app opslaat, stuurt een getrimde naam. Alleen een rechtstreekse `PATCH`
-raakt deze CHECK — en dat is precies wie we wilden weigeren.
+aanval. 📏 Nagemeten dat een gewone gebruiker daar via het profielscherm niet
+tegenaan loopt: `profielSchema` doet `.transform(schoneNaam)` vóór de validatie,
+en `schoneNaam()` in `src/shared/tekst/index.ts` heeft de randstap als stap 5
+(regels 666–675). Wie via de app zijn naam wijzigt, stuurt een getrimde naam.
+
+⚠️⚠️ **Hier stond "Alleen een rechtstreekse `PATCH` raakt deze CHECK", en dat was
+onwaar.** De **aanmeldroute** raakte hem ook, en hard. `handle_new_user()`
+normaliseert eerst en kapt daarna af op 80 codepunten; die afkapping maakt een
+nieuwe rand. 📏 Gemeten met `repeat('a',79) || ' Jansen'`: het resultaat eindigt op
+een spatie, faalt de nieuwe CHECK, en de insert op `auth.users` rolt mee terug —
+`Database error saving new user`, geen account.
+
+Gevonden door de security-reviewer op deze PR en daarna zelf nagemeten.
+`tests/rls/aanmelding.test.ts` stond er toen al rood van: dat bestand toetst sinds
+QS8-448 dat *een lange naam nooit een account mag kosten*, en die grendel dééd zijn
+werk. De trigger normaliseert nu **ná** het afkappen (0284, zelfde migratie).
+
+⚠️ En dat die zin hier stond is het duurste deel ervan. CLAUDE.md waarschuwt er
+met zoveel woorden voor: een uitgeschreven argument leest de volgende persoon als
+een reden om er niet aan te twijfelen.
 
 ## Op `groups.name` sluit het een tweede gat
 
@@ -119,6 +134,35 @@ ijking, want ze leest als bewijs.
 
 De scherpe vorm hierboven (alleen één specifieke naam weigeren) houdt de suite
 overeind en laat precies één toets omvallen. Dat is wat een ijking hoort te doen.
+
+## ⚠️⚠️ Wat hiermee **niet** gesloten is — 256 codepunten aan de rand
+
+Dit document suggereerde dat de naamkolommen na 0284 dicht zijn voor de
+nul-pixelklasse. Dat is niet zo, en het is gemeten.
+
+📏 `U+FE00–FE0F` (variatieselectors) en `U+E0100–E01EF` (supplement) staan **niet**
+in de randenlijst van `schone_naam()`. Naast een **niet-ASCII** letter komen ze aan
+beide randen langs alle vijf de CHECKs:
+
+| geval | passeert |
+|---|---|
+| VS aan de voorrand van `می` | **256 van 256** |
+| VS aan de achterrand van `می` | **256 van 256** |
+| VS aan de achterrand van `Jan` (ASCII-buur) | 0 van 256 |
+| controle: `U+200C` vóór `می` | 0 van 1 — deze migratie sluit hem wél |
+
+Dus: `می` en `می` + `U+FE0F` zijn twee opslaanbare waarden die pixel-identiek
+renderen en naar twee verschillende leden wijzen. Dezelfde vector als in het
+issue, met een andere tekenklasse.
+
+⚠️ **De naïeve fix is fout.** Zet je `FE00–FE0F` in de randenlijst, dan breekt elke
+naam die eindigt op een emoji met tekstpresentatie-selector. 📏 Gemeten: `☺️` is
+`U+263A U+FE0F` en passeert vandaag; met die fix zou hij stil in `☺` veranderen.
+Dat is precies de reden die de kop van `schone_naam()` al geeft om VS'en er níet in
+te zetten. Dit vraagt een contextregel — zoals `zonder_onzichtbaar_tussen_letters`
+er een heeft — en geen langere lijst.
+
+Staat als rij in `docs/ENGINEER-REVIEW.md`, met de meting en de voorwaarde.
 
 ## Buiten scope, met opzet
 
