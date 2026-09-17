@@ -140,29 +140,46 @@ jobs:
   # ⚠️ **Er zijn hier geen secrets, en dat hoort zo te blijven.** Komt er ooit een
   #    `secrets.` in deze job, dan is de reden daarvoor het opschrijven waard —
   #    want dan draait CI weer tegen iets echts.
-  # ⚠️⚠️ **15 blijft 15, en dat is een ingetrokken verhoging — QS8-451.**
-  #    `naamnormalisatie.test.ts` doet per omgeving in `CONTEXTEN` een volledige
-  #    veeg over `generate_series(1, 1114111)` met `schone_naam()` erop, en
-  #    QS8-451 zette er twee bij. Dat plafond is toen op 25 gezet met als reden
-  #    📏 een lokale meting van **317,97 s → 471,46 s** (+48%) op dit bestand.
+  # ⚠️⚠️ **25 sinds 17-09-2026 (QS8-518), en dit is de derde stand van dit
+  #    getal in één dag. Die geschiedenis staat hier omdat ze het instrument
+  #    uitlegt en niet omdat ze leuk is.**
   #
-  #    **Die meting was onbruikbaar en de verhoging is teruggedraaid.** De 471 s
-  #    is gemeten terwijl er vier andere controles op dezelfde machine liepen;
-  #    de 317 s niet. Dat is geen vergelijking maar twee verschillende
-  #    belastingen. 📏 Wat CI ervan maakte, op dezelfde dag en dezelfde suite:
-  #    **719 s vóór** de wijziging (run 35142664428) en **680 s erná**
-  #    (run 35153440786) — de job werd níét langzamer.
+  #    📏 De `RLS-policies`-job, uit de GitHub-API, over één etmaal:
   #
-  # ⚠️ **De les is niet "het viel mee" maar dat een timeout een gemeten grens
-  #    hoort te zijn.** Een plafond dat omhooggaat op een getal dat de volgende
-  #    meting niet terugvindt, is precies de drift waar dit project elders voor
-  #    waarschuwt — en het kost je de melding die je ervoor terugkreeg.
-  #    Twee metingen per kant is bovendien dun: wie hier iets aan verandert,
-  #    meet in CI en niet naast een draaiende poort.
+  #      11:59 (719 s)  vóór QS8-451            run 35142664428  success
+  #      11:20 (680 s)  QS8-451, gemergd        run 35153440786  success
+  #      13:38 (818 s)  QS8-451 na terugdraai   run 35154830279  success
+  #      14:41 (881 s)  QS8-433 push            run 35181198664  success
+  #      15:02 (902 s)  QS8-433 PR, poging 1    run 35181533537  AFGEKAPT
+  #      15:04 (904 s)  QS8-433 PR, poging 2    run 35181533537  AFGEKAPT
+  #
+  #    Een job die op `timeout-minutes` loopt komt terug als `cancelled`, en de
+  #    samenvattende job *Alles groen* wordt daar rood van. Elke PR was dus rood
+  #    op iets dat niets over de code zegt.
+  #
+  # ⚠️ **Twee eerdere standen, allebei op te dunne grond.** 15 → 25 (79132af8)
+  #    rustte op een lokale meting van 317,97 s → 471,46 s die niets vergeleek:
+  #    de tweede liep terwijl er vier andere controles op dezelfde machine
+  #    draaiden. 25 → 15 (b49c0e77) rustte op de eerste twee regels hierboven —
+  #    juist gemeten, maar **twee** metingen op één moment, en daaruit is
+  #    *"de job werd niet langzamer"* geconcludeerd voor de toekomst. Bij die
+  #    terugdraai stond er zelf bij dat twee metingen per kant dun is; dat had
+  #    een reden moeten zijn om niet te verlagen.
+  #
+  # ⚠️⚠️ **De les is niet dat dit plafond omhoog moet, maar dat het een gemeten
+  #    grens is die je hérmeet.** Eén momentopname is te weinig — om hem te
+  #    verhogen én om hem te verlagen. En de rem van hiervoor blijft staan: een
+  #    timeout die meegroeit met elke run die uitloopt, meet niets meer. De
+  #    suite ging in één dag van ~12 naar ~15 minuten, en dat is niet één
+  #    oorzaak — QS8-451 zette twee volledige codepuntvegen bij, QS8-506 bracht
+  #    dertien CHECKs plus 301 regels test. Loopt dit richting 20, dan is de
+  #    vraag waaróm de suite blijft groeien en niet hoeveel hoger dit getal kan.
+  #    Een veeg per omgeving in `CONTEXTEN` schaalt lineair, en dat aantal hoort
+  #    een besluit te zijn.
   rls:
     name: RLS-policies
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 25
 
     services:
       # Postgres 16, gelijk aan waar het schema tegen gebouwd en vergeleken is.

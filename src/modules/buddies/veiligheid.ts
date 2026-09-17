@@ -2,6 +2,7 @@ import { reportError } from '../../lib/observability';
 import { supabase } from '../../lib/supabase';
 import { type Resultaat } from '../../shared/api';
 import { t, type Sleutel } from '../../shared/i18n';
+import { schoneVrijeTekst } from '../../shared/tekst';
 
 import { type Meldreden } from './veiligheid-schemas';
 
@@ -89,7 +90,19 @@ async function stuurMelding(argumenten: {
   p_reden: Meldreden;
   p_toelichting: string | null;
 }): Promise<Resultaat<true>> {
-  const { data, error } = await supabase().rpc('meld', argumenten);
+  // ⚠️ Zelfde reden als in `beslisDeadlineVerzoek()`: `reports.toelichting`
+  //    draagt sinds 0284 de twee regels en deze route kent geen Zod-schema.
+  //    QS8-507.
+  //
+  // ⚠️ **`p_reden` gaat er met opzet niet langs**, en `bericht_kopie` evenmin:
+  //    de eerste is een enum en de tweede zet `meld()` zelf uit
+  //    `chat_messages.body`. Allebei staan ze mét hun meting in de kop van 0284.
+  const schoneToelichting = schoneVrijeTekst(argumenten.p_toelichting ?? '');
+
+  const { data, error } = await supabase().rpc('meld', {
+    ...argumenten,
+    p_toelichting: schoneToelichting === '' ? null : schoneToelichting,
+  });
 
   if (error) {
     // ⚠️ Geen `subject_id` in de context. Een melding is stil, en een sink is

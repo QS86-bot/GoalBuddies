@@ -52,13 +52,20 @@ const beschikbaar = stackBeschikbaarOfFaal(
 const BEREIK = 'from generate_series(1, 1114111) cp where (cp < 55296 or cp > 57343) ';
 
 /**
- * De dertien kolommen die 0283 raakt, als paren tabel/kolom.
+ * Elke kolom die een van de twee regels draagt, als paar tabel/kolom.
+ *
+ * ⚠️ **Twee migraties, twee criteria, één lijst.** 0283 (QS8-506) koos *tekst
+ *    vlak vóór een handeling die iets toestaat*; 0284 (QS8-507) koos *vrije
+ *    tekst die een ánder dan de schrijver kan lezen*. Ze staan hier bij elkaar
+ *    omdat de tóets dezelfde is — niet omdat de scope dat is. Wie er een kolom
+ *    bij zet, schrijft in de migratiekop op langs wélk criterium hij erin kwam.
  *
  * ⚠️ **Deze lijst is de scope van het issue en niet van de regel.** Wat er
  *    buiten valt en waarom staat in de kop van 0283 en in QS8-507; die twee
  *    dragen de meting, dit bestand draagt de toets.
  */
 const KOLOMMEN: readonly (readonly [string, string])[] = [
+  // De dertien van 0283 (QS8-506).
   ['groups', 'name'],
   ['groups', 'icon'],
   ['groups', 'omschrijving'],
@@ -72,6 +79,22 @@ const KOLOMMEN: readonly (readonly [string, string])[] = [
   ['completions', 'note'],
   ['deadline_requests', 'reason'],
   ['group_join_requests', 'bericht'],
+  // ⚠️ De twaalf van 0284 (QS8-507). Zelfde twee regels, ander criterium: niet
+  //    *"tekst vlak vóór een knop"* maar *"vrije tekst die een ánder dan de
+  //    schrijver kan lezen"*. Welke kolommen daar wél en niet in vallen, staat
+  //    met de meting per kolom in de kop van 0284.
+  ['milestones', 'title'],
+  ['milestones', 'description'],
+  ['goals', 'description'],
+  ['daily_moves', 'body'],
+  ['todo_items', 'body'],
+  ['week_reviews', 'did_text'],
+  ['week_reviews', 'blocked_text'],
+  ['week_reviews', 'next_text'],
+  ['week_review_replies', 'body'],
+  ['commitments', 'body'],
+  ['deadline_requests', 'decision_note'],
+  ['reports', 'toelichting'],
 ];
 
 /**
@@ -252,8 +275,8 @@ describe.runIf(beschikbaar)('wat de client oplevert, neemt de database aan', () 
   });
 });
 
-describe.runIf(beschikbaar)('de dertien kolommen dragen allebei de CHECKs', () => {
-  it('elk van de dertien noemt zowel de bidi- als de nul-pixelregel', () => {
+describe.runIf(beschikbaar)('elke groepszichtbare tekstkolom draagt allebei de CHECKs', () => {
+  it('elke kolom in `KOLOMMEN` noemt zowel de bidi- als de nul-pixelregel', () => {
     const uit = viaPsql(
       "select c.relname || '.' || a.attname || ' ' || " +
         "  (case when exists (select 1 from pg_constraint k where k.conrelid = c.oid " +
@@ -272,6 +295,77 @@ describe.runIf(beschikbaar)('de dertien kolommen dragen allebei de CHECKs', () =
 
     expect(rijen).toHaveLength(KOLOMMEN.length);
     expect(rijen.filter((r) => !r.endsWith(' bidi nulpixel'))).toEqual([]);
+  });
+});
+
+/**
+ * De acht kolommen waarvan het invoerveld eenregelig is — 0285 (QS8-507).
+ *
+ * ⚠️ **Een ándere regel dan de twee hierboven**, en met opzet een eigen lijst:
+ *    *"een naam is één regel"* lifte tot 0285 mee op de nul-pixelregel, doordat
+ *    TAB, LF en CR toevallig in het C0-bereik zaten. Nu die eruit zijn, draagt
+ *    deze lijst die belofte met zoveel woorden.
+ *
+ * ⚠️ `weekly_goals.ceiling_text` en `.floor_text` staan er met opzet **niet** bij,
+ *    hoewel hun veld eenregelig is: hun bron in `weekly_plan_steps` is
+ *    `multiline` en wordt er ongewijzigd naartoe gekopieerd. Zie de kop van 0285.
+ */
+const EENREGELIG: readonly (readonly [string, string])[] = [
+  ['profiles', 'display_name'],
+  ['groups', 'name'],
+  ['groups', 'icon'],
+  ['goals', 'title'],
+  ['milestones', 'title'],
+  ['weekly_goals', 'title'],
+  ['weekly_plan_steps', 'title'],
+  ['commitments', 'body'],
+];
+
+describe.runIf(beschikbaar)('de eenregelige kolommen weigeren een regelovergang', () => {
+  it('elk van de acht draagt `_een_regel`', () => {
+    const uit = viaPsql(
+      "select c.relname || '.' || a.attname || ' ' || " +
+        "  (case when exists (select 1 from pg_constraint k where k.conrelid = c.oid " +
+        "     and pg_get_constraintdef(k.oid) like '%zonder_regelovergang%' " +
+        "     and pg_get_constraintdef(k.oid) like '%' || a.attname || '%') then 'ja' else '-' end) " +
+        'from pg_attribute a join pg_class c on c.oid = a.attrelid ' +
+        "join pg_namespace n on n.oid = c.relnamespace where n.nspname = 'public' " +
+        `and (c.relname, a.attname) in (${EENREGELIG.map(([t, k]) => `('${t}','${k}')`).join(',')}) ` +
+        'order by 1;',
+    );
+
+    const rijen = uit.split('\n').filter((r) => r.trim() !== '');
+
+    expect(rijen).toHaveLength(EENREGELIG.length);
+    expect(rijen.filter((r) => !r.endsWith(' ja'))).toEqual([]);
+  });
+
+  /**
+   * ⚠️ En de tegenhanger: de kolommen waar proza in hoort, dragen hem **niet**.
+   *    Zonder deze toets zou "zet hem overal op" groen zijn, en dan is elk
+   *    multiline-veld weer zijn alinea's kwijt — de fout die 0285 repareert.
+   */
+  it('en de prozakolommen dragen hem juist níet', () => {
+    const proza: readonly (readonly [string, string])[] = [
+      ['groups', 'omschrijving'],
+      ['completions', 'note'],
+      ['week_reviews', 'did_text'],
+      ['reports', 'toelichting'],
+      ['weekly_plan_steps', 'ceiling_text'],
+      ['weekly_goals', 'ceiling_text'],
+    ];
+
+    const uit = viaPsql(
+      "select c.relname || '.' || a.attname " +
+        'from pg_attribute a join pg_class c on c.oid = a.attrelid ' +
+        "join pg_namespace n on n.oid = c.relnamespace where n.nspname = 'public' " +
+        `and (c.relname, a.attname) in (${proza.map(([t, k]) => `('${t}','${k}')`).join(',')}) ` +
+        'and exists (select 1 from pg_constraint k where k.conrelid = c.oid ' +
+        "  and pg_get_constraintdef(k.oid) like '%zonder_regelovergang%' " +
+        "  and pg_get_constraintdef(k.oid) like '%' || a.attname || '%') order by 1;",
+    );
+
+    expect(uit.split('\n').filter((r) => r.trim() !== '')).toEqual([]);
   });
 });
 

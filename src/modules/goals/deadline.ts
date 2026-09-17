@@ -2,6 +2,7 @@ import type { Tables } from '../../lib/database.types';
 import { reportError } from '../../lib/observability';
 import { supabase } from '../../lib/supabase';
 import { t } from '../../shared/i18n';
+import { schoneVrijeTekst } from '../../shared/tekst';
 import type { IsoDate } from '../../shared/time';
 import { invoerfout, type Resultaat } from '../../shared/api';
 
@@ -138,7 +139,17 @@ export async function beslisDeadlineVerzoek(
   akkoord: boolean,
   opmerking: string | null,
 ): Promise<Resultaat<boolean>> {
-  const schoon = opmerking?.trim() ?? '';
+  // ⚠️⚠️ **Een RPC-argument zonder schema, en dat is de vorm die QS8-506 duur
+  //    betaald heeft.** `deadline_requests.decision_note` draagt sinds migratie
+  //    0284 de bidi- en de nul-pixelregel; deze route gaat langs geen enkel Zod-
+  //    schema, dus zonder deze regel loopt een geplakte opmerking vast op een
+  //    CHECK en krijgt de beslisser een melding die hij niet kan oplossen.
+  //    *Een schema hoort bij een formulier en niet bij een kolom.*
+  //
+  // ⚠️ Strijken vóór de leegtoets: een opmerking van louter onzichtbare tekens
+  //    is ná het strijken leeg en hoort dan wég te blijven, niet als lege string
+  //    mee te gaan.
+  const schoon = schoneVrijeTekst(opmerking ?? '');
 
   const { data, error } = await supabase().rpc('beslis_deadline_verzoek', {
     p_request_id: verzoekId,
