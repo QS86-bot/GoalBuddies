@@ -149,6 +149,13 @@ function meldingen(): Readonly<Record<string, string>> {
     // create_group
     name_too_short: t('groep.naam_kort'),
     name_too_long: t('groep.naam_lang'),
+    // ⚠️ QS8-515, migratie 0287. `create_group()` strijkt de naam tot een vast
+    //    punt; weigert een CHECK op `groups.name` hem dán nog, dan komt deze
+    //    reden terug in plaats van een kale 23514. Via de app is dat onbereikbaar
+    //    — `groepSchema` strijkt dezelfde naam client-side — maar een
+    //    rechtstreekse RPC-aanroep hoort een leesbare melding te krijgen en geen
+    //    constraintnaam.
+    name_invalid: t('groep.naam_ongeldig'),
     bad_huddle_day: t('groep.slechte_huddledag'),
     daily_limit: t('groep.daglimiet'),
 

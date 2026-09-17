@@ -161,9 +161,20 @@ describe.skipIf(!rlsTestsConfigured)('de rand van een naam', () => {
  */
 describe.skipIf(!rlsTestsConfigured)('de rand van een groepsnaam', () => {
   let beheerder: TestUser;
+  let groupId: string;
 
   beforeAll(async () => {
     beheerder = await createTestUser('randgroep-beheerder');
+
+    const groep = await beheerder.db.rpc('create_group', {
+      group_name: 'De donderdagclub',
+      huddle_day: 1,
+      tz: 'Europe/Amsterdam',
+    });
+    const gd = groep.data as unknown as { ok?: boolean; group?: { id: string } };
+    if (gd.ok !== true || !gd.group) throw new Error(`groep: ${JSON.stringify(groep.data)}`);
+    groupId = gd.group.id;
+    registreerGroep(groupId);
   }, TEST_TIMEOUT);
 
   afterAll(async () => {
@@ -171,46 +182,117 @@ describe.skipIf(!rlsTestsConfigured)('de rand van een groepsnaam', () => {
   }, TEST_TIMEOUT);
 
   /**
-   * ⚠️ **Via `create_group()` en niet via een PATCH**, want dat is de route
-   *    waarlangs een groepsnaam ontstaat. Die functie is `security definer`, dus
-   *    de CHECK draait daar met de rechten van de eigenaar — precies de meting
-   *    uit `groepsnaam-keert-niet-om.test.ts`, en de reden dat een CHECK meer
-   *    waard is dan een grant.
+   * Dezelfde vorm als `magNietLanden()` hierboven: anker, poging, nalezen.
+   *
+   * ⚠️⚠️ **Deze helft stond er tot QS8-515 niet, en dat was geen omissie maar
+   *    een afhankelijkheid.** Tot migratie 0287 wérd `groups_name_schoon` hier
+   *    aangetoond door `create_group()`: die functie streek met `btrim()`, liet
+   *    een niet-ASCII rand door, en viel dan om op deze CHECK. 0287 laat die
+   *    route met `schone_naam()` strijken — terecht, want een RPC-aanroeper
+   *    hoort een reden terug te krijgen en geen `23514` — en daarmee zou de
+   *    enige toets die deze constraintnaam noemde verdwijnen.
+   *
+   *    De CHECK zelf verdwijnt niet en mag dat ook niet: `authenticated` mag
+   *    `groups.name` rechtstreeks patchen (📏 `has_column_privilege` is `t`) en
+   *    díé schrijver normaliseert niets. Deze helper is die schrijver.
    */
-  it('weigert een groepsnaam van alleen onzichtbare tekens', async () => {
-    const { data, error } = await beheerder.db.rpc('create_group', {
-      group_name: '  ',
-      huddle_day: 1,
-      tz: 'Europe/Amsterdam',
-    });
+  async function magNietLandenAlsGroepsnaam(naam: string): Promise<void> {
+    const anker = `Anker${Math.random().toString(36).slice(2, 8)}`;
+    const opstelling = await beheerder.db.from('groups').update({ name: anker }).eq('id', groupId);
+    expect(opstelling.error, 'de opstelling zelf mislukte').toBeNull();
 
-    const mislukt = error !== null || (data as unknown as { ok?: boolean } | null)?.ok !== true;
-    expect(mislukt, 'create_group() maakte een groep met een onzichtbare naam aan').toBe(true);
+    const poging = await beheerder.db.from('groups').update({ name: naam }).eq('id', groupId);
+
     expect(
-      `${error?.message ?? ''}`,
-      'create_group() mislukte, maar niet op de CHECK die deze toets bewaakt',
+      poging.error?.code,
+      `\`${JSON.stringify(naam)}\` landde als groepsnaam — aan de rand staat de normalisatie dan nergens afgedwongen`,
+    ).toBe('23514');
+    expect(
+      poging.error?.message ?? '',
+      'een CHECK weigerde dit, maar niet degene die deze toets bewaakt',
     ).toContain('groups_name_schoon');
+
+    const na = await adminDb().from('groups').select('name').eq('id', groupId).single();
+    expect((na.data as { name: string }).name, 'de rij is onveranderd').toBe(anker);
+  }
+
+  it('weigert een nul-pixelteken aan de rand van een groepsnaam via een PATCH', async () => {
+    await magNietLandenAlsGroepsnaam(`\u200c${MI}`);
+    await magNietLandenAlsGroepsnaam(`${MI}\u200c`);
   }, TEST_TIMEOUT);
 
-  it('weigert een groepsnaam met een nul-pixelteken aan de rand', async () => {
+  it('weigert een groepsnaam van alleen onzichtbare tekens via een PATCH', async () => {
+    await magNietLandenAlsGroepsnaam('\u00a0\u00a0');
+  }, TEST_TIMEOUT);
+
+  /**
+   * ⚠️⚠️ **Deze twee eisten tot 0287 een weigering van `create_group()`, en dat
+   *    was een eigenschap van het onderdeel en niet de belofte** — QS8-515. De
+   *    belofte van deze suite is *er landt geen naam met een onzichtbare rand*.
+   *    Weigeren en strijken houden die allebei; sinds 0287 strijkt deze route,
+   *    en de gestructureerde reden die er dan uit komt is wat `api.ts` kan
+   *    vertalen. Wat hier nu staat is de belofte zelf, plus de eis dat er een
+   *    ántwoord komt — een kale `23514` uit deze route is een bevinding op zich
+   *    en staat in `tests/rls/create_group-antwoordt-gestructureerd.test.ts`.
+   */
+  it('laat via create_group() geen naam van alleen onzichtbare tekens ontstaan', async () => {
     const { data, error } = await beheerder.db.rpc('create_group', {
-      group_name: `‌${MI}`,
+      group_name: '\u00a0\u00a0',
       huddle_day: 1,
       tz: 'Europe/Amsterdam',
     });
 
-    const mislukt = error !== null || (data as unknown as { ok?: boolean } | null)?.ok !== true;
-    expect(mislukt, 'create_group() maakte een groep met een rand-teken aan').toBe(true);
     expect(
-      `${error?.message ?? ''}`,
-      'create_group() mislukte, maar niet op de CHECK die deze toets bewaakt',
-    ).toContain('groups_name_schoon');
+      error === null ? null : `${error.code} ${error.message}`,
+      'create_group() viel om op de database in plaats van een reden terug te geven',
+    ).toBeNull();
+
+    const antwoord = data as unknown as { ok?: boolean; reason?: string } | null;
+    expect(antwoord?.ok, 'create_group() maakte een groep met een onzichtbare naam aan').toBe(false);
+    expect(antwoord?.reason, 'create_group() weigerde met een andere reden dan verwacht').toBe(
+      'name_too_short',
+    );
+  }, TEST_TIMEOUT);
+
+  it('laat via create_group() geen nul-pixelteken aan de rand van een naam landen', async () => {
+    const { data, error } = await beheerder.db.rpc('create_group', {
+      group_name: `\u200c${MI}`,
+      huddle_day: 1,
+      tz: 'Europe/Amsterdam',
+    });
+
+    expect(
+      error === null ? null : `${error.code} ${error.message}`,
+      'create_group() viel om op de database in plaats van een reden terug te geven',
+    ).toBeNull();
+
+    const antwoord = data as unknown as {
+      ok?: boolean;
+      reason?: string;
+      group?: { id: string };
+    } | null;
+    if (antwoord?.group?.id) registreerGroep(antwoord.group.id);
+
+    // ⚠️ Niet *of* hij geweigerd is, maar *wat er staat*: geen groep van deze
+    //    beheerder draagt het teken nog. Dat blijft waar of de route weigert of
+    //    strijkt, en het wordt onwaar zodra er één landt.
+    const alle = await adminDb().from('groups').select('name').eq('created_by', beheerder.id);
+
+    expect(alle.error, 'de groepen van deze beheerder waren niet terug te lezen').toBeNull();
+    expect(
+      (alle.data ?? []).filter((g) => g.name.includes('\u200c')).map((g) => g.name),
+      'er staat een groep met een nul-pixelteken aan de rand van zijn naam',
+    ).toEqual([]);
+    expect(
+      (alle.data ?? []).length,
+      'er stond geen enkele groep van deze beheerder — de terugleesregel meet niets',
+    ).toBeGreaterThanOrEqual(1);
   }, TEST_TIMEOUT);
 
   /** ⚠️ De must-allow-helft: een gewone groepsnaam moet gewoon kunnen. */
   it('laat een gewone groepsnaam gewoon landen', async () => {
     const { data, error } = await beheerder.db.rpc('create_group', {
-      group_name: 'De donderdagclub',
+      group_name: 'De vrijdagclub',
       huddle_day: 1,
       tz: 'Europe/Amsterdam',
     });
