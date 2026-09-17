@@ -16,10 +16,26 @@
 --
 -- 📏 **Gemeten op 16-09-2026 op de lokale stack.** `v_op_tijd` rekende met
 --    `eigenaarsdatum(owner)` = `(now() at time zone profiles.tz)::date`, en `tz`
---    staat in de UPDATE-kolomgrant van `authenticated`. De spreiding over álle
---    zones in `pg_timezone_names` is op elk moment **precies twee datums** —
---    nagemeten, niet aangenomen — dus een westelijke zone kocht **één** extra
---    dag: `v_op_tijd` bleef waar tot `target_date + 2`.
+--    staat in de UPDATE-kolomgrant van `authenticated`. De uiterste offsets in
+--    `pg_timezone_names` liggen **26 uur** uit elkaar, dus een westelijke zone
+--    kocht ten hoogste `ceil(26 / 24)` = **twee** extra dagen: `v_op_tijd` bleef
+--    waar tot `target_date + 3`.
+--
+-- ⚠️⚠️ **Hier stond "één extra dag", en dat is op 17-09-2026 gecorrigeerd**
+--    (QS8-530). De meting eronder was *"de spreiding over álle zones is op elk
+--    moment precies twee datums"*, en die was echt gedaan — alleen op **één
+--    moment**. 📏 Een venster van 26 uur is langer dan een etmaal, dus het bevat
+--    twee middernachten gedurende 26 − 24 = twee uur per dag: van 10:00 t/m
+--    11:59 UTC zijn het er drie. De toets die deze aanname vastlegde stond
+--    daardoor elke dag twee uur rood op `main`.
+--
+--    ⚠️ De tegenspraak stond al in de repo: `0134` draagt in zijn kop een tabel
+--    die UTC−8 nul dagen respijt geeft en UTC+10 twee — dat ís een spreiding van
+--    twee dagen tussen de uitersten.
+--
+--    ⚠️ **Wat er niet verandert is deze migratie zelf.** Hij bevriest `tz` bij
+--    het aangaan, dus de straftak is dicht of de bovengrens nu één dag is of
+--    twee. Alleen het getal in deze uitleg was fout.
 --
 -- ⚠️ **Dit was geen nieuwe bug maar een nieuwe consequentie.** 0057 koos die
 --    coulante toets bewust, met als motivering dat *"de fout zo altijd de goede

@@ -164,7 +164,8 @@ niet"*. De RPC sprak die belofte tegen.
 
 ⚠️ **Twee bevindingen uit dezelfde ronde zijn níet gerepareerd maar weggezet**,
 allebei met hun terugkeervoorwaarde in `docs/ENGINEER-REVIEW.md`: `v_op_tijd`
-rekent met een tijdzone die de gestrafte zelf mag zetten (één extra dag), en §3
+rekent met een tijdzone die de gestrafte zelf mag zetten (ten hoogste twee extra
+dagen — hier stond "één", gecorrigeerd door QS8-530), en §3
 weigert sinds deze migratie ook een straf op een gearchiveerd doel — strenger dan
 de kop beweert.
 
