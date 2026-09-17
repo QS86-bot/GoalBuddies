@@ -29,6 +29,15 @@
 --    migratie de klok bevriest maakt de bovengrens onbelangrijk, maar de zin niet
 --    juist — en de toets die haar bewaakte maakte CI twee uur per dag rood.
 --
+-- ⚠️⚠️ **"De bovengrens is onbelangrijk" geldt over deze migratie en niet over
+--    de codebase** — nagemeten op 17-09-2026 (QS8-530). `eigenaarsdatum()` heeft
+--    meer aanroepers dan `wikkel_commitments_af()`, en twee ervan lezen de
+--    **levende** `profiles.tz`: de verlooppoort van `beslis_deadline_verzoek()`
+--    (QS8-531) en het zevendaagse schild in `maak_straffen_verschuldigd()`
+--    (QS8-533). Daar is het getal wél dragend, en daar is de klok níet bevroren.
+--    Uitleg en de metingen in
+--    `docs/decisions/2026-09-17-geen-gat-in-0280-is-niet-geen-gat.md`.
+--
 -- ⚠️ **Dit was geen nieuwe bug maar een nieuwe consequentie.** 0057 koos die
 --    coulante toets bewust, met als motivering dat *"de fout zo altijd de goede
 --    kant op valt — een beloning is iets dat je jezelf hebt beloofd"*. Dat

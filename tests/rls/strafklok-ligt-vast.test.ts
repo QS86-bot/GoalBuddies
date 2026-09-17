@@ -30,6 +30,22 @@ import { psqlMetInvoer, stackBeschikbaarOfFaal } from './psql-stack';
  *    verzet en de beloningstak woordelijk laat staan; de laatste test hieronder
  *    bewaakt dat die helft níet meebewogen is.
  *
+ * ⚠️⚠️ **"De bovengrens is onbelangrijk" geldt over 0280 en niet over de
+ *    codebase** — nagemeten op 17-09-2026 in de security-ronde van QS8-530.
+ *    `eigenaarsdatum()` heeft meer aanroepers dan `wikkel_commitments_af()`, en
+ *    twee ervan lezen de **levende** `profiles.tz`: de verlooppoort van
+ *    `beslis_deadline_verzoek()` (QS8-531 — een westelijke zone zet daar een al
+ *    verschuldigde straf terug op `set`) en het zevendaagse schild in
+ *    `maak_straffen_verschuldigd()` (QS8-533). Daar ís het getal dragend. De
+ *    metingen staan als rij van 17-09-2026 in `docs/ENGINEER-REVIEW.md` en in
+ *    `docs/decisions/2026-09-17-geen-gat-in-0280-is-niet-geen-gat.md`.
+ *
+ * ⚠️ **En "de beloningstak valt de goede kant op" is te kort door de bocht.**
+ *    📏 Nagemeten: een vrijgespeelde beloning boekt geen punten en raakt geen
+ *    reeks, maar `meld_commitment()` plaatst wél `commitment_unlocked` in élke
+ *    groep waaraan het doel hangt. Geen punt en geen reeks dus, maar wel een
+ *    positief groepssignaal dat een dag of twee te vroeg komt.
+ *
  * ⚠️ **Besluit van Quinten (16-09-2026): bevriezen, niet UTC.** Dat is de enige
  *    optie die niemands belofte verandert — je houdt de coulance die je had toen
  *    je je vastlegde, en kunt hem achteraf niet verschuiven. Afweging in
