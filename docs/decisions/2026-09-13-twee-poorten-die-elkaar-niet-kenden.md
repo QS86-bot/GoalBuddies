@@ -229,7 +229,10 @@ project is een kopie van de vorige, dus een onjuiste reden reist mee.
   Eigen issue.
 - **U+200C (ZWNJ) aan de rand.** In het Perzisch is dat een betekenisdragend
   teken; aan de rand heeft hij niets om te scheiden, dus hij gaat weg. Afweging
-  opgeschreven, eigen issue.
+  opgeschreven, eigen issue. ✅ **Besloten op 16-09-2026 (QS8-451): het blijft
+  zoals het is**, en er staat nu een toets op die het besluit draagt — de oude
+  suite bleef 📏 twintig van de twintig groen toen de belofte gebroken werd. Zie
+  `docs/decisions/2026-09-16-een-zwnj-aan-de-rand-heeft-niets-te-scheiden.md`.
 - **Bestaande profielen op productie.** 0256 is niet gedeployd (productie staat
   op `0221`). De constraint komt als `not valid` binnen en wordt in dezelfde
   migratie gevalideerd; zit er een bestaand profiel met een onzichtbare naam, dan

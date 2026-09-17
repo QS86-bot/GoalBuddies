@@ -171,6 +171,20 @@ function alsHex(waarde: string): string {
  *    `Jan<ZWNJ> Jansen` landde ongehinderd naast `Jan Jansen`, en dat is de vorm
  *    van vrijwel elke echte naam. Alle veertien toetsen in dit bestand bleven er
  *    groen onder. Dat is regel 18 vraag 3 in zijn zuiverste vorm.
+ *
+ * ⚠️⚠️ **De laatste twee kwamen er met QS8-451 bij, en hun afwezigheid was
+ *    dezelfde blinde vlek een maat kleiner.** Elke omgeving hierboven zet het
+ *    codepunt tússen twee dingen; geen ervan zet het aan de **rand** van een
+ *    woord in een schrift dat het teken nodig heeft. De randstap had daarmee
+ *    precies één meting — `RANDVRAAG`, die het codepunt in zijn eentje
+ *    aanbiedt — en dáár is elke uitkomst `''`.
+ *
+ *    📏 Het gevolg is gemeten (16-09-2026, lokale stack): `U+200C` uit
+ *    `ONZICHTBARE_BEREIKEN` én uit de randenlijst van `schone_naam()` halen —
+ *    de ruil die QS8-451 voorlegt — liet **alle twintig** toetsen in dit
+ *    bestand groen. De twee talen bleven het immers eens; wat verdween was de
+ *    **belofte**, niet de overeenstemming. Regel 18 vraag 3: een toets die
+ *    groen blijft terwijl de belofte breekt, bewaakt niets.
  */
 const CONTEXTEN: readonly { readonly naam: string; readonly voor: string; readonly na: string }[] = [
   { naam: 'tussen ASCII-letters', voor: 'a', na: 'b' },
@@ -179,6 +193,8 @@ const CONTEXTEN: readonly { readonly naam: string; readonly voor: string; readon
   { naam: 'tussen Arabische letters', voor: 'م', na: 'خ' },
   { naam: 'tussen emoji', voor: '\u{1F468}', na: '\u{1F469}' },
   { naam: 'na de vlagbasis', voor: '\u{1F3F4}', na: '' },
+  { naam: 'vóór een Arabische letter', voor: '', na: 'م' },
+  { naam: 'ná een Arabische letter', voor: 'م', na: '' },
 ];
 
 /** De naam van de omgeving waarin de oudere vegen hun vraag stelden. */
@@ -770,6 +786,67 @@ describe.runIf(beschikbaar)('de twee talen oordelen in élke context hetzelfde',
       ['vlag', vlag],
     ] as const) {
       expect(verzameling.has(0x4a), `${naam}: de letter J hoort nergens weg`).toBe(false);
+    }
+  });
+
+  /**
+   * ⚠️⚠️ **Het besluit van QS8-451, en het is alleen aan de rand te zien.**
+   *    De vraag daar was of de randstap `U+200C` mag strijken, omdat dat teken
+   *    in het Perzisch betekenisdragend is. Het antwoord is ja, en het rust op
+   *    het verschil dat deze toets vasthoudt: **aan de rand heeft een ZWNJ
+   *    niets te scheiden.** Hij verhindert een verbinding tussen twee letters;
+   *    aan het begin van een naam staat er links geen letter, aan het eind
+   *    rechts niet. De letter die overblijft stond daar al in dezelfde vorm.
+   *
+   *    Wat hij daar wél is, is een collisievector: `می` en `<ZWNJ>می` zijn twee
+   *    waarden die identiek renderen. Dat is de klasse van QS8-495, en die
+   *    weegt zwaarder dan een teken dat op die plek niets doet.
+   *
+   * ⚠️ **Midden in het woord is het omgekeerde waar**, en die must-allow staat
+   *    hierboven al. Ze horen bij elkaar: zonder de rand is "ZWNJ blijft staan"
+   *    ook waar als de randstap hem nergens meer raakt, en dán is de
+   *    collisievector terug zonder dat één toets rood wordt. 📏 Precies dat is
+   *    gemeten — zie de ijking in
+   *    `docs/decisions/2026-09-16-een-zwnj-aan-de-rand-heeft-niets-te-scheiden.md`.
+   *
+   * ⚠️ **Wat deze toets níét bewijst** is dat de database zo'n naam wéígert.
+   *    Geen enkele CHECK op `profiles` eist gelijkheid met `schone_naam()`, dus
+   *    de randstap staat in geen enkele constraint — QS8-508. Deze toets gaat
+   *    over wat `schone_naam()` belooft, niet over waar die belofte afgedwongen
+   *    wordt.
+   */
+  it('strijkt de ZWNJ aan de rand van een Perzisch woord en laat hem ertussen staan', () => {
+    const db = veegDatabase();
+
+    const voorrand = inContext(db, 'vóór een Arabische letter');
+    const achterrand = inContext(db, 'ná een Arabische letter');
+    const midden = inContext(db, 'tussen Arabische letters');
+
+    expect(voorrand.has(0x200c), 'aan de voorrand scheidt de ZWNJ niets').toBe(true);
+    expect(achterrand.has(0x200c), 'aan de achterrand evenmin').toBe(true);
+    expect(midden.has(0x200c), 'ertussen is hij orthografisch verplicht').toBe(false);
+
+    // ⚠️ Dezelfde drie voor de ZWJ. Hij zit in hetzelfde bereik en draagt
+    //    hetzelfde risico; zonder dit geval bewaakt de toets één codepunt in
+    //    plaats van de regel eronder.
+    expect(voorrand.has(0x200d), 'de ZWJ aan de voorrand lijmt niets').toBe(true);
+    expect(achterrand.has(0x200d), 'aan de achterrand evenmin').toBe(true);
+    expect(midden.has(0x200d), 'ertussen laat de contextregel hem staan').toBe(false);
+
+    // ⚠️⚠️ **De prijs van de andere keuze, en die is hier te meten.** Haal je
+    //    `U+200C` uit de randenlijst, dan is `schone_naam()` van een losse ZWNJ
+    //    niet meer leeg — en `profiles_display_name_zichtbaar` laat dan een
+    //    groepszichtbaar lid zonder naam door. Dát is wat QS8-448 sloot.
+    expect(db.rand.has(0x200c), 'een naam van alleen een ZWNJ wordt leeg').toBe(true);
+
+    // De must-allow: de Perzische letters zelf blijven in elke omgeving staan.
+    for (const [naam, verzameling] of [
+      ['voorrand', voorrand],
+      ['achterrand', achterrand],
+      ['midden', midden],
+    ] as const) {
+      expect(verzameling.has(0x0645), `${naam}: de letter م hoort nergens weg`).toBe(false);
+      expect(verzameling.has(0x06cc), `${naam}: de letter ی hoort nergens weg`).toBe(false);
     }
   });
 });
