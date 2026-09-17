@@ -349,6 +349,20 @@ npm run types:db
 schema klopt, en het register loopt achter. `register:controle --streng` is de
 enige die dat ziet.
 
+⚠️⚠️ **Stap 5 schrijft sinds 17-09-2026 (QS8-517) ook `supabase/uitgerold.json`**
+— de gemeten lijn, het aantal registerrijen, de datum en de bron. Commit dat
+bestand mee; dat is het hele punt ervan. Dit is de enige plek waar de sleutel er
+per definitie is, en daarmee de enige plek waar die meting gratis is.
+
+Elke sessie daarna leest hem **zonder sleutel** met `npm run uitrolstand:controle`
+— in de poort, in CI en in een cloudsessie. Die controle bewijst niet wat
+productie draait (dat kan alleen stap 5), maar wel dat het opgeschreven getal
+intern klopt met de map, en hij zegt hoe oud het is. 📏 De aanleiding is dat de
+stand hiervóór alleen als met de hand overgetypt proza in `docs/WERKVOORRAAD.md`
+stond, en de drift daardoor tot 52 bestanden groeide zonder dat er iets rood
+werd (QS8-505). Afweging in
+`docs/decisions/2026-09-17-de-uitrolstand-is-een-gegeven-en-geen-alinea.md`.
+
 ⚠️ **De volgorde is niet vrij.** Latere migraties herschrijven functies uit
 eerdere; door elkaar afspelen zet een oudere definitie terug.
 
