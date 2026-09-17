@@ -32,9 +32,10 @@ export type AfrondInvoer = z.infer<typeof afrondSchema>;
 export const dagzetSchema = z.object({
   body: z
     .string()
-    .trim()
-    .min(1, { error: () => t('validatie.dagzet_leeg') })
-    .max(2000, { error: () => t('validatie.notitie_lang') }),
+    // ⚠️ Zichtbaar voor de groep zodra `visibility = 'group'` — QS8-507, 0284.
+    .transform(schoneVrijeTekst)
+    .refine((v) => telTekens(v) >= 1, { error: () => t('validatie.dagzet_leeg') })
+    .refine((v) => telTekens(v) <= 2000, { error: () => t('validatie.notitie_lang') }),
   weekly_goal_id: z.uuid().nullable(),
   visibility: z.enum(['private', 'group']),
 });

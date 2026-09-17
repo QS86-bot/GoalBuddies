@@ -230,7 +230,18 @@ export async function zetTekst(id: string, tekst: string): Promise<Resultaat<Taa
   //    doet `.trim()` vóór het tellen, dus wat gemeten is en wat opgeslagen
   //    wordt, moeten dezelfde string zijn. Anders keurt de client een taak van
   //    501 tekens met een spatie erachter goed en weigert de CHECK hem.
-  const schoon = gevalideerd.data.body ?? tekst.trim();
+  // ⚠️⚠️ **Hier stond een terugval naar `tekst.trim()`, en die is weg** —
+  //    gevonden in de security-review op QS8-507. `taakPatchSchema` is
+  //    `.partial()`, dus `body` is in het **type** optioneel; deze functie stuurt
+  //    hem altijd mee, dus in de **praktijk** was die terugval onbereikbaar.
+  //
+  //    Maar hij stond er als een pad dat rauwe invoer naar een gegrendelde kolom
+  //    schrijft, en wie `body` ooit werkelijk optioneel maakt activeert hem
+  //    zonder dat er iets rood wordt. Hard falen is hier de goedkoopste vorm: het
+  //    kan niet gebeuren, en gebeurt het tóch, dan is het een storing en geen
+  //    stille ongestreken schrijfactie naar `todo_items.body`.
+  const schoon = gevalideerd.data.body;
+  if (schoon === undefined) return { ok: false, melding: t('lijst.invoer') };
 
   const { data, error } = await supabase()
     .from('todo_items')

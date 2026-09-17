@@ -236,6 +236,16 @@ describe('MIDDENIN_BEREIKEN is afgeleid en niet met de hand bedacht', () => {
    *    `MIDDENIN_BEREIKEN` hierboven en in
    *    `docs/decisions/2026-09-14-onzichtbaar-in-het-midden.md` §3.
    *
+   * ⚠️⚠️ **Er staan er sinds 16-09-2026 elf, en de drie die erbij kwamen zijn
+   *    van een ándere soort** (QS8-507, migratie 0285). De acht zijn tekens die
+   *    wél als nul pixels renderen en tóch moeten blijven, omdat ze werk doen in
+   *    een schrift. TAB, LF en CR renderen **niet** als nul pixels — ze zijn
+   *    lay-out, en ze zaten hier alleen in omdat de afleiding "stuurteken" als
+   *    benadering van "rendert als niets" gebruikte. Dat is een correctie van de
+   *    afleiding en geen negende, tiende en elfde uitzondering.
+   *
+   *    Waar in deze kop "de acht" staat, gaat het dus over die eerste soort.
+   *
    * ⚠️⚠️ **En sinds QS8-499 betekent "mag blijven" hier niet meer "blijft
    *    overal", en dat verschil hoort in deze kop te staan.** Deze lijst gaat
    *    over `isOnzichtbaarMiddenin()`, en die is per codepunt en dus
@@ -250,6 +260,26 @@ describe('MIDDENIN_BEREIKEN is afgeleid en niet met de hand bedacht', () => {
    *    `docs/decisions/2026-09-16-de-plek-is-het-probleem-en-niet-het-teken.md`.
    */
   const MAG_BLIJVEN: readonly (readonly [number, number])[] = [
+    // ⚠️⚠️ **TAB, LF en CR staan hier sinds 16-09-2026 (QS8-507, migratie 0285),
+    //    en dat is geen verruiming maar een correctie.** Ze zijn stuurtekens, dus
+    //    de afleiding hierboven trok ze binnen — maar deze lijst draagt de
+    //    belofte *"een teken dat als nul pixels rendert is nooit inhoud"*, en een
+    //    regelovergang rendert als lay-out.
+    //
+    //    📏 Gemeten vóór de correctie: de nul-pixelregel weigerde élke tekst met
+    //    een alinea erin, op tien van de twaalf kolommen van 0284 en vier van de
+    //    dertien van 0283 — allemaal achter een `multiline`-veld.
+    //
+    // ⚠️ **Dat maakt de afleiding niet zwakker maar preciezer.** "Stuurteken" was
+    //    hier een benadering van "rendert als niets", en voor drie codepunten
+    //    klopte die benadering niet. `U+000B` en `U+000C` blijven er wél in: geen
+    //    lay-out die iemand typt.
+    //
+    // ⚠️ Voor de belofte *"dit veld is één regel"* is er `zonderRegelovergang()`,
+    //    met eigen CHECKs op de acht eenregelige kolommen. Zie de kop van 0285.
+    [0x0009, 0x0009], // TAB
+    [0x000a, 0x000a], // LF
+    [0x000d, 0x000d], // CR
     [0x034f, 0x034f], // combining grapheme joiner
     [0x061c, 0x061c], // arabic letter mark
     [0x180b, 0x180f], // mongoolse variatieselectors, MVS en FVS4
@@ -263,7 +293,7 @@ describe('MIDDENIN_BEREIKEN is afgeleid en niet met de hand bedacht', () => {
   const inBereik = (cp: number, bereiken: readonly (readonly [number, number])[]): boolean =>
     bereiken.some(([van, tot]) => cp >= van && cp <= tot);
 
-  it('dekt precies `Default_Ignorable` plus de stuurtekens, min de acht uitzonderingen', () => {
+  it('dekt precies `Default_Ignorable` plus de stuurtekens, min de uitzonderingen', () => {
     const teveel: string[] = [];
     const tekort: string[] = [];
 
@@ -286,7 +316,7 @@ describe('MIDDENIN_BEREIKEN is afgeleid en niet met de hand bedacht', () => {
     expect(teveel.slice(0, 20), 'deze staan erin zonder dat de property ze noemt').toEqual([]);
   });
 
-  it('en de acht uitzonderingen zitten niet in de onvoorwaardelijke lijst', () => {
+  it('en de uitzonderingen zitten niet in de onvoorwaardelijke lijst', () => {
     // ⚠️ De must-allow, en die weegt hier zwaarder dan de weigering — zie
     //    acceptatiecriterium 2 van QS8-495. ⚠️ Maar hij gaat over déze lijst en
     //    niet over `schoneNaam()`: sinds QS8-499 gaan zeven van de acht alsnog

@@ -1,7 +1,7 @@
 import { z } from 'zod';
 
 import { t } from '../../shared/i18n';
-import { telTekens, schoneVrijeTekst } from '../../shared/tekst';
+import { schoneEneRegel, schoneVrijeTekst, telTekens } from '../../shared/tekst';
 
 import { MAX_DAGEN_PER_WEEK } from './schemas';
 
@@ -26,7 +26,7 @@ export const weekdoelSchema = z.object({
   title: z
     .string()
     // ⚠️ Eerst schoonmaken, dán oordelen — QS8-506. Zie `schoneVrijeTekst()`.
-    .transform(schoneVrijeTekst)
+    .transform(schoneEneRegel)
     .refine((v) => telTekens(v) >= 3, { error: () => t('validatie.weekdoeltitel') })
     .refine((v) => telTekens(v) <= 200, { error: () => t('validatie.weekdoeltitel_lang') }),
   /**

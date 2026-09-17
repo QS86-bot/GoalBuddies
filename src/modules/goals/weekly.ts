@@ -6,6 +6,7 @@ import { supabase } from '../../lib/supabase';
 import { type Gebruikerscyclus, type UserClock } from '../../shared/time';
 import { invoerfout, type Resultaat } from '../../shared/api';
 
+import { kiesLaatsteCyclus, mogelijkeCyclusstarts } from './cyclusgrens';
 import { huidigeCyclus } from './cycles';
 
 import { weekdoelSchema, type WeekdoelInvoer } from './weekly-schemas';
@@ -33,6 +34,11 @@ export type Weekdoel = Tables<'weekly_goals'>;
  *
  * Eén query met een join op `goals`, want het scherm "Vandaag" toont ze door
  * elkaar en niet per doel gegroepeerd.
+ *
+ * ⚠️ **Geen exacte match op de berekende cyclus** — zie
+ *    `mogelijkeCyclusstarts()`. Staan er rijen in beide cycli, dan wint de
+ *    látere: dat is de cyclus waar de gebruiker zijn weekdoelen in heeft staan,
+ *    en niet de cyclus die zijn apparaat er op dit moment van maakt.
  */
 export async function fetchWeekdoelen(
   userId: string,
@@ -42,7 +48,7 @@ export async function fetchWeekdoelen(
     .from('weekly_goals')
     .select('*, goals!inner(owner_id)')
     .eq('goals.owner_id', userId)
-    .eq('cycle_start_date', cyclus.startDate)
+    .in('cycle_start_date', mogelijkeCyclusstarts(cyclus))
     .order('created_at', { ascending: true })
     .limit(100);
 
@@ -51,7 +57,7 @@ export async function fetchWeekdoelen(
     throw new Error(t('weekdoel.laden_mislukt'));
   }
 
-  return (data ?? []) as unknown as Weekdoel[];
+  return kiesLaatsteCyclus((data ?? []) as unknown as Weekdoel[]);
 }
 
 /**
