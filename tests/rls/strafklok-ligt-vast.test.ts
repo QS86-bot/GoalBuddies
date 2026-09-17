@@ -8,9 +8,20 @@ import { psqlMetInvoer, stackBeschikbaarOfFaal } from './psql-stack';
  * ⚠️⚠️ **Wat er mis was.** `wikkel_commitments_af()` besliste over een straf met
  *    `eigenaarsdatum(owner)` = `(now() at time zone profiles.tz)::date`, en `tz`
  *    staat in de UPDATE-kolomgrant van `authenticated`. De gestrafte zette dus
- *    zelf de klok die bepaalt of hij op tijd was. 📏 De spreiding over álle zones
- *    in `pg_timezone_names` is op elk moment **precies twee datums** — hier
- *    nagemeten en niet aangenomen — dus een westelijke zone kocht één extra dag.
+ *    zelf de klok die bepaalt of hij op tijd was, en kocht daarmee een extra dag.
+ *
+ * ⚠️⚠️ **Hier stond dat de spreiding over álle zones "op elk moment precies twee
+ *    datums" is, dus één extra dag. Dat klopte niet — rechtgezet 17-09-2026
+ *    (QS8-529).** 📏 De offsets in `pg_timezone_names` lopen van −12:00 tot
+ *    +14:00: **26 uur** spreiding, en 26 past niet in 24. Van **10:00 tot 12:00
+ *    UTC** bestaan er drie datums tegelijk en koopt een zonesprong **twee**
+ *    dagen. De toets die de oude zin bewaakte telde de datums op het moment van
+ *    draaien en eiste er twee; die viel er twee uur per dag uit en maakte op
+ *    17-09 om 10:05 UTC CI rood op een PR die alleen documentatie wijzigde.
+ *
+ * ⚠️ **De twee toetsen hieronder hangen daarom niet meer van de wandklok af.**
+ *    De bovengrens volgt uit de **spanwijdte** en niet uit een telling op één
+ *    moment; het venster wordt op vier vaste UTC-tijden gemeten.
  *
  * ⚠️ **Dit was geen nieuwe bug maar een nieuwe consequentie.** 0057 koos de
  *    coulante toets bewust: *"de fout valt zo altijd de goede kant op — een
@@ -37,8 +48,14 @@ const beschikbaar = stackBeschikbaarOfFaal(
  *
  * ⚠️ `target_date` wordt afgeleid van de **westelijke** zone, zodat
  *    `target_date + 1` daar vandaag is en in de oostelijke zone gisteren. Zo
- *    valt de respijtdag aan weerszijden van de twee datums die er op elk moment
- *    zijn, en meet deze opstelling het verschil dat hij wil meten.
+ *    valt de respijtdag tussen de twee datums in die deze opstelling gebruikt,
+ *    en meet ze het verschil dat ze wil meten.
+ *
+ * ⚠️ **Dat werkt op elk moment van de dag**, en dat is hier geen aanname maar
+ *    rekenwerk: Midway is `UTC−11` en Kiritimati `UTC+14`, dus **25 uur** uit
+ *    elkaar, en twee zones die meer dan 24 uur uit elkaar liggen staan nooit op
+ *    dezelfde datum. Het venster uit de toets hierboven raakt deze opstelling
+ *    dus niet.
  */
 function opzet(zoneBijAangaan: string, zoneDaarna: string): string {
   return `
@@ -75,14 +92,35 @@ function na(sql: string): string {
 }
 
 describe.skipIf(!beschikbaar)('de klok onder een straf', () => {
-  it('staat op precies twee datums tegelijk — de aanname onder deze hele rij', () => {
-    // ⚠️ Gaat dit ooit naar drie, dan koopt een zonesprong twee dagen en is
-    //    "één dag" geen bovengrens meer. Deze toets zegt dat hardop.
+  it('spant zesentwintig uur — daar komt de bovengrens onder deze hele rij vandaan', () => {
+    // ⚠️ **Dit is de toets die de bovengrens draagt, en hij telt geen datums.**
+    //    Met een spanwijdte S bestaan er op elk moment floor(S/24)+1 of +2
+    //    datums tegelijk, dus koopt een zonesprong hoogstens ceil(S/24) dagen.
+    //    Bij 26 uur is dat er twee. Groeit de spanwijdte ooit voorbij 48 uur,
+    //    dan worden het er drie — en dán is dat het nieuws.
     const uit = na(
-      "select 'datums=' || count(distinct (now() at time zone name)::date) from pg_timezone_names;",
+      "select 'spanwijdte=' || (max(utc_offset) - min(utc_offset))::text from pg_timezone_names;",
     );
 
-    expect(uit).toContain('datums=2');
+    expect(uit).toContain('spanwijdte=26:00:00');
+  });
+
+  it('laat tussen 10:00 en 12:00 UTC drie datums tegelijk bestaan, daarbuiten twee', () => {
+    // ⚠️ **Vier vaste UTC-tijden en niet `now()`.** De voorganger van deze toets
+    //    telde op het moment van draaien en eiste er twee; dat is 22 uur per dag
+    //    waar en maakt CI de andere twee uur rood. Een toets die van de wandklok
+    //    afhangt, meet de wandklok.
+    const uit = na(`
+      select 'venster=' || string_agg(u || ':' || n::text, ' ' order by u)
+      from (
+        select u,
+               (select count(distinct ((current_date + (u || ':00')::time)
+                                        at time zone 'UTC' at time zone name)::date)
+                  from pg_timezone_names) as n
+        from (values ('09:00'), ('10:00'), ('11:00'), ('12:00')) as t(u)
+      ) x;`);
+
+    expect(uit).toContain('venster=09:00:2 10:00:3 11:00:3 12:00:2');
   });
 
   it('wordt bij het aangaan vastgelegd uit het profiel van de eigenaar', () => {
