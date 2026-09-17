@@ -8,9 +8,28 @@ import { psqlMetInvoer, stackBeschikbaarOfFaal } from './psql-stack';
  * ⚠️⚠️ **Wat er mis was.** `wikkel_commitments_af()` besliste over een straf met
  *    `eigenaarsdatum(owner)` = `(now() at time zone profiles.tz)::date`, en `tz`
  *    staat in de UPDATE-kolomgrant van `authenticated`. De gestrafte zette dus
- *    zelf de klok die bepaalt of hij op tijd was. 📏 De spreiding over álle zones
- *    in `pg_timezone_names` is op elk moment **precies twee datums** — hier
- *    nagemeten en niet aangenomen — dus een westelijke zone kocht één extra dag.
+ *    zelf de klok die bepaalt of hij op tijd was. 📏 Het offsetbereik van
+ *    `pg_timezone_names` is **26:00:00** — `[-12, +14]` — dus twee waarnemers
+ *    verschillen tot 26 uur en hun lokale datums tot **twee kalenderdagen**. Een
+ *    westelijke zone kocht dus tot twee dagen.
+ *
+ * ⚠️⚠️ **Dat getal stond hier tot 17-09-2026 als "precies twee datums, dus één
+ *    extra dag", en dat was onjuist (QS8-525).** De toets eronder pinde het
+ *    aantal **verschillende datums** vast op 2, en dat aantal beweegt met de
+ *    klok mee: 📏 per uur nagemeten is het er 3 tussen 10:00 en 12:00 UTC en 2
+ *    de overige tweeëntwintig uur. Deze suite was daardoor elke dag twee uur
+ *    lang rood, en dat is nooit opgevallen omdat er in dat venster niets liep.
+ *
+ *    De les is niet "beter meten" maar **wát je vastpint**: het aantal datums is
+ *    een waarneming, de spreiding is de belofte. `max - min` is wat de
+ *    redenering draagt en verandert niet met het uur. Een toets op een getal dat
+ *    met de klok meebeweegt, is een toets die op een willekeurig moment omvalt
+ *    zonder dat er iets veranderd is — de klasse die dit project bij `rls:dekking`
+ *    al een keer betaald heeft.
+ *
+ * ⚠️ De reparatie van 0280 verandert hier niet door: het bevriezen van
+ *    `commitments.tz` haalt de manipulatie helemaal weg, of het er nu één dag of
+ *    twee waren. Wat er verandert is de **omvang** van het gat dat gedicht is.
  *
  * ⚠️ **Dit was geen nieuwe bug maar een nieuwe consequentie.** 0057 koos de
  *    coulante toets bewust: *"de fout valt zo altijd de goede kant op — een
@@ -37,8 +56,11 @@ const beschikbaar = stackBeschikbaarOfFaal(
  *
  * ⚠️ `target_date` wordt afgeleid van de **westelijke** zone, zodat
  *    `target_date + 1` daar vandaag is en in de oostelijke zone gisteren. Zo
- *    valt de respijtdag aan weerszijden van de twee datums die er op elk moment
- *    zijn, en meet deze opstelling het verschil dat hij wil meten.
+ *    valt de respijtdag aan weerszijden van de datumgrens die er op elk moment
+ *    is, en meet deze opstelling het verschil dat hij wil meten. Het aantal
+ *    verschillende datums over álle zones doet er hier niet toe — dat is er 2 of
+ *    3 afhankelijk van het uur; wat telt is dat deze twee zones aan
+ *    weerszijden liggen.
  */
 function opzet(zoneBijAangaan: string, zoneDaarna: string): string {
   return `
@@ -75,14 +97,49 @@ function na(sql: string): string {
 }
 
 describe.skipIf(!beschikbaar)('de klok onder een straf', () => {
-  it('staat op precies twee datums tegelijk — de aanname onder deze hele rij', () => {
-    // ⚠️ Gaat dit ooit naar drie, dan koopt een zonesprong twee dagen en is
-    //    "één dag" geen bovengrens meer. Deze toets zegt dat hardop.
+  it('spant hoogstens twee kalenderdagen — de aanname onder deze hele rij', () => {
+    // ⚠️⚠️ Dit toetst de **spreiding** en niet het aantal verschillende datums.
+    //    Dat aantal is 2 of 3 afhankelijk van het uur (zie de kop), dus een
+    //    toets daarop valt elke dag twee uur lang om zonder dat er iets
+    //    veranderd is. `max - min` verandert niet met de klok.
+    //
+    //    Gaat dit ooit naar drie dagen, dan koopt een zonesprong er drie en is
+    //    de redenering onder 0280 aan herziening toe. Deze toets zegt dat hardop.
     const uit = na(
-      "select 'datums=' || count(distinct (now() at time zone name)::date) from pg_timezone_names;",
+      "select 'spreiding=' || (max(d) - min(d)) from " +
+        '(select (now() at time zone name)::date d from pg_timezone_names) x;',
     );
 
-    expect(uit).toContain('datums=2');
+    expect(uit).toMatch(/spreiding=[12]\b/);
+  });
+
+  it('spant die twee dagen op élk uur van de dag, niet alleen nu', () => {
+    // ⚠️⚠️ **Dit is de ijking, en hij staat in de suite en niet in een
+    //    sessielogboek.** De vorige toets was groen omdat hij toevallig buiten
+    //    het venster van 10:00–12:00 UTC draaide; een toets die van het uur
+    //    afhangt, bewijst niets over de andere drieëntwintig. Deze rekent alle
+    //    24 uur door en pakt de zwaarste.
+    const uit = na(
+      "select 'ergste=' || max(sp) from (select max(d) - min(d) sp from (" +
+        "select u.t, (u.t at time zone 'UTC' at time zone z.name)::date d from " +
+        "generate_series(date_trunc('day', now()), " +
+        "date_trunc('day', now()) + interval '23 hours', interval '1 hour') u(t), " +
+        'pg_timezone_names z) y group by t) x;',
+    );
+
+    expect(uit).toContain('ergste=2');
+  });
+
+  it('leunt op een offsetbereik van 26 uur, en zegt dat met zoveel woorden', () => {
+    // ⚠️ De structurele grond onder allebei de toetsen hierboven: `[-12, +14]`.
+    //    Dit is een eigenschap van tzdata en niet van vandaag, dus hij geldt ook
+    //    op een dag waarop de zomertijd ergens verspringt. Komt er ooit een zone
+    //    buiten dat bereik, dan is dit de eerste die het meldt.
+    const uit = na(
+      "select 'bereik=' || (max(utc_offset) - min(utc_offset)) from pg_timezone_names;",
+    );
+
+    expect(uit).toContain('bereik=26:00:00');
   });
 
   it('wordt bij het aangaan vastgelegd uit het profiel van de eigenaar', () => {

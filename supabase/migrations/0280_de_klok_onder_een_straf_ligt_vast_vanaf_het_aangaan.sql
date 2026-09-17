@@ -16,10 +16,22 @@
 --
 -- 📏 **Gemeten op 16-09-2026 op de lokale stack.** `v_op_tijd` rekende met
 --    `eigenaarsdatum(owner)` = `(now() at time zone profiles.tz)::date`, en `tz`
---    staat in de UPDATE-kolomgrant van `authenticated`. De spreiding over álle
---    zones in `pg_timezone_names` is op elk moment **precies twee datums** —
---    nagemeten, niet aangenomen — dus een westelijke zone kocht **één** extra
---    dag: `v_op_tijd` bleef waar tot `target_date + 2`.
+--    staat in de UPDATE-kolomgrant van `authenticated`. Het offsetbereik van
+--    `pg_timezone_names` is **26:00:00** (`[-12, +14]`), dus twee waarnemers
+--    verschillen tot 26 uur en hun lokale datums tot **twee** kalenderdagen: een
+--    westelijke zone kocht tot twee dagen.
+--
+-- ⚠️⚠️ **Hier stond tot 17-09-2026 "precies twee datums, dus één extra dag", en
+--    dat was onjuist (QS8-525).** Het áántal verschillende datums beweegt met de
+--    klok mee — 📏 per uur nagemeten is het er 3 tussen 10:00 en 12:00 UTC en 2
+--    de overige tweeëntwintig uur — en de **spreiding** is 1 of 2 dagen. De
+--    toets die dit bewaakte pinde het aantal vast op 2 en was daardoor elke dag
+--    twee uur lang rood.
+--
+--    Alleen deze regels zijn gecorrigeerd; er is niets aan het schema veranderd.
+--    Het gat dat hieronder gedicht wordt is dus **groter** dan er eerst stond,
+--    niet kleiner, en de reparatie blijft dezelfde: bevriezen haalt de
+--    manipulatie helemaal weg, of het er nu één dag of twee waren.
 --
 -- ⚠️ **Dit was geen nieuwe bug maar een nieuwe consequentie.** 0057 koos die
 --    coulante toets bewust, met als motivering dat *"de fout zo altijd de goede

@@ -16,9 +16,13 @@ v_op_tijd := v_vandaag <= v_doel.target_date + 1;
 de UPDATE-kolomgrant van `authenticated`. **De gestrafte zette dus zelf de klok
 die bepaalde of hij op tijd was.**
 
-📏 Gemeten, niet aangenomen: de spreiding over álle zones in
-`pg_timezone_names` is op elk moment **precies twee datums**. Een westelijke zone
-kocht daarmee exact één extra dag — `v_op_tijd` bleef waar tot `target_date + 2`.
+📏 Gemeten, niet aangenomen: het offsetbereik van `pg_timezone_names` is
+**26:00:00** — `[-12, +14]`. Twee waarnemers verschillen dus tot 26 uur en hun
+lokale datums tot **twee** kalenderdagen. Een westelijke zone kocht daarmee tot
+twee extra dagen; `v_op_tijd` bleef waar tot `target_date + 2`.
+
+⚠️⚠️ **Hier stond tot 17-09-2026 "precies twee datums, dus exact één extra dag",
+en dat was onjuist — zie de naschrift-sectie onderaan (QS8-525).**
 
 📏 En end to end gemeten, met dezelfde opstelling en alleen de klok verschillend:
 
@@ -131,7 +135,50 @@ een tabel die hem wél heeft. Dezelfde ratel als bij `regel15:controle`.
 
 ## Grendel
 
-`tests/rls/strafklok-ligt-vast.test.ts`, zeven tests, waaronder de must-allow
-(de straf vervalt wél als je in de bevroren zone op tijd bent) en een toets op de
-aanname eronder: de spreiding over alle zones is twee datums. Gaat die ooit naar
-drie, dan koopt een zonesprong twee dagen en is "één dag" geen bovengrens meer.
+`tests/rls/strafklok-ligt-vast.test.ts`, negen tests, waaronder de must-allow
+(de straf vervalt wél als je in de bevroren zone op tijd bent) en drie toetsen op
+de aanname eronder: de **spreiding** over alle zones is hoogstens twee dagen, dat
+geldt op élk uur van de dag, en het offsetbereik is 26 uur. Gaat de spreiding
+ooit naar drie dagen, dan is de redenering hierboven aan herziening toe.
+
+## Naschrift 17-09-2026 — de aanname eronder klopte niet (QS8-525)
+
+Dit document zei dat de spreiding over alle zones *"op elk moment precies twee
+datums"* is, en daaruit dat een westelijke zone **exact één** extra dag kocht.
+Allebei onjuist.
+
+📏 **Gemeten op 17-09-2026, per uur over een hele dag:**
+
+| UTC-uur | verschillende datums | spreiding `max − min` |
+| -- | -- | -- |
+| 00:00–09:00 | 2 | 1 dag |
+| **10:00–11:00** | **3** | **2 dagen** |
+| 12:00–23:00 | 2 | 1 dag |
+
+Om 10:04 UTC staat UTC−12 op de 16e en UTC+14 al op de 18e. Het offsetbereik is
+`[-12, +14]` = **26:00:00**, dus twee waarnemers verschillen tot 26 uur en hun
+lokale datums tot **twee** kalenderdagen.
+
+⚠️⚠️ **De toets die dit bewaakte, pinde het áántal datums vast op 2** — en dat
+aantal beweegt met de klok mee. Die test was daarmee elke dag twee uur lang rood,
+en dat was niet opgevallen omdat er in dat venster nooit iets gedraaid had. Hij
+is gevonden doordat een poort toevallig om 10:04 UTC liep.
+
+**De les is niet "beter meten" maar wát je vastpint.** Het aantal datums is een
+waarneming; de spreiding is de belofte waar de redenering op leunt. `max − min`
+verandert niet met het uur. Een toets op een getal dat met de klok meebeweegt,
+valt op een willekeurig moment om zonder dat er iets veranderd is — dezelfde
+klasse als de drift die `rls:dekking` op 10-09-2026 een omgekeerde uitslag kostte.
+
+⚠️ **En de nieuwe toets wacht niet op het venster om zichzelf te bewijzen.** Er
+staat een tweede test naast die alle 24 uur doorrekent en de zwaarste pakt. Een
+ijking die afhangt van het moment waarop je hem draait, bewijst niets over de
+andere drieëntwintig uur.
+
+### Wat dit aan het besluit verandert
+
+Niets aan de reparatie: `commitments.tz` bevriezen bij het aangaan haalt de
+manipulatie helemaal weg, of het er nu één dag of twee waren. Wat er verandert is
+de **omvang van het gat dat gedicht is** — die was groter dan hier stond. En dat
+telt, want een uitgeschreven onderbouwing leest de volgende persoon als een reden
+om er niet aan te twijfelen.
