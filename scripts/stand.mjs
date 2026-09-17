@@ -15,9 +15,18 @@
  *    allebei regenereren, schrijven letterlijk dezelfde regels: geen conflict.
  *
  * ⚠️ **Alleen wat uit de repo te meten valt.** Wélke migraties op productie
- *    staan is géén eigenschap van de map, en dat blijft dus met de hand
- *    geschreven proza eronder — met `register:controle` als grendel. Een
- *    generator die dat erbij verzint, is een kopie met extra stappen.
+ *    staan is géén eigenschap van de map. Een generator die dat erbij verzint,
+ *    is een kopie met extra stappen.
+ *
+ * ⚠️⚠️ **En dat stond hier tot 17-09-2026 als "dus blijft dat proza eronder, met
+ *    `register:controle` als grendel" — precies de zin die QS8-517 onderuit
+ *    haalde.** Die grendel kan niet draaien op de plek waar dat proza geschreven
+ *    wordt: hij vraagt de productiesleutel en die zit niet in een cloudsessie.
+ *    De uitrolstand stond daardoor als enige getal in dit project met de hand
+ *    overgetypt zonder dat iets het naleest, en 📏 groeide de drift tot 52
+ *    bestanden. Hij staat nu als gegeven in `supabase/uitgerold.json`, geschreven
+ *    door `register:controle` en sleutelloos nagelezen door
+ *    `uitrolstand:controle`.
  *
  * Draaien: `npm run stand` schrijft het blok. `npm run stand -- --controle`
  * zegt alleen of het achterloopt, en die vorm draait mee in `docs:controle`.

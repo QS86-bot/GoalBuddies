@@ -10,20 +10,29 @@
 **Laatst bijgewerkt:** 16-09-2026 (na QS8-451 — het besluit over `U+200C` aan de rand van een naam, met QS8-508 als bijvangst; daarvóór QS8-500; daarvóór QS8-505 — productie stond 58 migraties achter en staat nu gelijk aan de map; daarvóór QS8-499, migratie 0282; daarvóór QS8-450, QS8-482 en QS8-494 uit deze sessie, en QS8-493, QS8-495, QS8-496, QS8-498, QS8-501, QS8-502, QS8-503 en QS8-504 uit de parallelle; daarvóór QS8-488; daarvóór QS8-471; daarvóór QS8-485; daarvóór QS8-484 en QS8-483; daarvóór QS8-480; daarvóór QS8-479; daarvóór QS8-467; daarvóór QS8-465, QS8-463, QS8-462 en QS8-460; daarvóór QS8-449; daarvóór QS8-448 uit de parallelle sessie; daarvóór QS8-447, QS8-446, QS8-439 en QS8-182; daarvóór QS8-441; daarvóór QS8-443; daarvóór QS8-445; daarvóór QS8-438; daarvóór QS8-434, QS8-435, QS8-431, QS8-416 en QS8-432; diezelfde dag QS8-419, QS8-420, QS8-423, QS8-425, QS8-426, QS8-427, QS8-428, QS8-430 en QS8-432 uit deze sessie en QS8-262 ronde 9, QS8-421 en QS8-422 uit de parallelle; daarvóór de hele novemberronde, alle tien — QS8-180, QS8-181, QS8-183, QS8-184, QS8-189 en QS8-194 uit deze sessie, QS8-179, QS8-182, QS8-187 en QS8-204 uit de parallelle; daarvóór QS8-24; daarvóór QS8-92; daarvóór QS8-392 en QS8-393; daarvóór QS8-396 en QS8-402; daarvóór QS8-404, QS8-399, QS8-400 en QS8-401; daarvóór QS8-403, QS8-140 en QS8-320; daarvóór QS8-243 en QS8-220; daarvóór QS8-314; daarvóór QS8-147, QS8-174, QS8-191, QS8-297, QS8-298, QS8-299, QS8-303 en QS8-304; daarvóór QS8-287, QS8-288, QS8-289 en QS8-291;daarvóór QS8-266, QS8-202 en QS8-196, en het toepassen van `0139` t/m `0149` op
 productie in twee rondes)
 
-⚠️ **Productie staat op `0282`.** 📏 Gemeten op 16-09-2026, direct na de uitrol
-van QS8-505, met `migratieregister()` tegen `wehgocadxehottiiyvsc`: **285
-registerrijen**, `0001` t/m `0282` aaneengesloten, inclusief de drie
-letterversies, en **nul** rijen die nog een tijdstempel als versie dragen.
+⚠️ **De uitrolstand staat sinds 17-09-2026 (QS8-517) in
+`supabase/uitgerold.json` en niet meer als getal in deze alinea.** Draai
+`npm run uitrolstand:controle` en je krijgt de lijn, het gat met de map en de
+leeftijd van de meting — zonder sleutel, dus ook in een cloudsessie. Het bestand
+wordt geschreven door `register:controle`, de kant die de productiesleutel wél
+heeft.
 
-⚠️⚠️ **En "gelijk aan de map" was het één merge lang.** 📏 Nageteld op
-17-09-2026 ná QS8-508: de map telt er **289** — `0283` t/m `0286` staan
-erin en niet op productie. Het gat is daarmee **vier bestanden**.
+⚠️⚠️ **Waarom het getal hier weg is.** Het stond hier met de hand overgetypt,
+terwijl de enige grendel erop (`register:controle`) niet kan draaien op de plek
+waar dat gebeurt. 📏 Zo groeide de drift tot 52 bestanden zonder dat er iets
+rood werd, en werd de zin *"gelijk aan de map"* binnen één dag onwaar. Een gat
+tussen map en productie is geen achterstand maar de normale toestand tussen twee
+uitrollen; het getal eromheen hoort alleen geen kopie te zijn. Afweging in
+`docs/decisions/2026-09-17-de-uitrolstand-is-een-gegeven-en-geen-alinea.md`.
 
-Dat is geen achterstand maar de normale toestand tussen twee uitrollen, en het
-staat hier omdat de zin erboven binnen één dag onwaar werd: hij is gelijk-op-het-
-moment-van-schrijven, en dat is precies het venster van QS8-318. **Lees de lijn
-nooit als getal maar meet hem** — de regel hieronder zegt hetzelfde en gold al
-voor deze zin.
+📏 **En het merge-conflict waarmee dit landde, is het bewijs erbij.** Deze alinea
+zei op 17-09-2026 om 07:30 UTC dat het gat **drie** bestanden was; een uur later
+stond er in `main` **vier**, met de hand bijgewerkt na QS8-508. Twee sessies
+onderhielden dus dezelfde kopie, en de tweede moest hem overtypen om hem te laten
+kloppen. `npm run uitrolstand:controle` rekent hem nu uit.
+
+**Lees de lijn nooit als getal maar meet hem** — de regel hieronder zegt hetzelfde
+en gold al voor de zin die hier stond.
 
 ⚠️⚠️ **En dat "gelijk" is binnen één ronde al een keer verlopen.** 📏 Toen
 `0225` t/m `0279` toegepast waren, was `main` doorgelopen naar `0282`: QS8-499
@@ -213,8 +222,8 @@ staat er iets bij dat uitleg nodig heeft, dan hoort die uitleg in §2, §3b of �
    **Meet ze dus, tel ze niet op:** bij het samengaan met `main` is het antwoord
    `npm run poort` of `npm run tellers`, nooit het hoogste van twee getallen.
 <!-- POORTSTAND:BEGIN — gegenereerd door `npm run poortstand` -->
-Typecheck, lint en alle 63 controlescripts groen;
-`npm run poort` meldt 67 stappen.
+Typecheck, lint en alle 64 controlescripts groen;
+`npm run poort` meldt 68 stappen.
 <!-- POORTSTAND:EINDE -->
    ⚠️ **Vier ervan meten niets zonder de credentials van het échte project**
    (`adviseur`, `functies`, `register`, `wachtwoord`), en de poort noemt dat
