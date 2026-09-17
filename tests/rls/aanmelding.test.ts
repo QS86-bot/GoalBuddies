@@ -310,7 +310,38 @@ describe.skipIf(!beschikbaar)('een aanmelding wordt een profiel', () => {
         'de aanmelding is mislukt op `profiles_display_name_len` — een lange naam ' +
           'mag nooit een account kosten',
       ).not.toBeNull();
-      expect(codepunten(uit?.naam ?? ''), 'de naam is niet afgekapt op 80 codepunten').toBe(80);
+      // ⚠️⚠️ **`toBeLessThanOrEqual` en niet `toBe(80)`, en dat is een
+      //    verruiming met een reden** — QS8-508, migratie 0286. Deze naam is
+      //    `'Naam '.repeat(25).trim()`, en codepunt 80 daarvan ís de spatie na de
+      //    zestiende `Naam`. Sinds 0286 normaliseert de trigger **ná** het
+      //    afkappen, dus die afkapspatie gaat eraf en er staan er 79.
+      //
+      //    📏 Vóór die reparatie kostte deze naam de hele aanmelding: `left()`
+      //    maakte een nieuwe rand en `profiles_display_name_schoon` weigerde hem,
+      //    waarop de insert op `auth.users` mee terugrolde. Deze toets stond daar
+      //    rood van, en dat was terecht.
+      //
+      // ⚠️ De belofte is *afgekapt op codepunten en niet op bytes*, en die staat
+      //    hieronder en in de emoji-toets. Exact 80 was een eigenschap van de
+      //    implementatie, geen belofte — en hij zat de reparatie in de weg.
+      expect(
+        codepunten(uit?.naam ?? ''),
+        'de naam is niet afgekapt op 80 codepunten',
+      ).toBeLessThanOrEqual(80);
+      expect(codepunten(uit?.naam ?? ''), 'de naam is verder afgekapt dan nodig').toBeGreaterThan(
+        70,
+      );
+
+      // ⚠️ **De nieuwe belofte, en die hoort hier en niet alleen in
+      //    `de-rand-van-een-naam.test.ts`.** Die toetst de PATCH-route; dít is de
+      //    aanmeldroute, en dat is een andere schrijver van dezelfde kolom. Een
+      //    naam die de trigger oplevert moet `profiles_display_name_schoon`
+      //    halen — anders is een geslaagde aanmelding een rij die zijn eigen
+      //    CHECK niet zou overleven bij de volgende schrijfactie.
+      expect(
+        (uit?.naam ?? '').trimEnd(),
+        'de trigger levert een naam met een onzichtbare rand — dat weigert de CHECK van 0286',
+      ).toBe(uit?.naam ?? '');
     },
     TEST_TIMEOUT,
   );
