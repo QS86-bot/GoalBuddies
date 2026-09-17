@@ -1,4 +1,4 @@
--- 0284_de_randstap_staat_in_een_check_en_niet_alleen_in_een_trigger.sql — de
+-- 0286_de_randstap_staat_in_een_check_en_niet_alleen_in_een_trigger.sql — de
 -- randstap van `schone_naam()` stond in geen enkele constraint (QS8-508)
 --
 -- ROLLBACK-PAD:
@@ -169,7 +169,7 @@ comment on constraint profiles_display_name_schoon on public.profiles is
   'De naam is al genormaliseerd, inclusief de randen — QS8-508. De vier '
   'gelijkheden ernaast (bidi, middenin, tussen letters, losse tags) zijn hier '
   'logisch door geimpliceerd en blijven staan omdat vier RLS-toetsen hun '
-  'constraintnaam pinnen; zie de kop van migratie 0284.';
+  'constraintnaam pinnen; zie de kop van migratie 0286.';
 
 alter table public.groups drop constraint if exists groups_name_schoon;
 
@@ -243,7 +243,7 @@ begin
     --
     -- ⚠️ Er zijn **vier** CHECKs op de kolommen die deze trigger schrijft:
     --    `profiles_display_name_len`, `profiles_display_name_zichtbaar`,
-    --    `profiles_avatar_url_len` en sinds 0284
+    --    `profiles_avatar_url_len` en sinds 0286
     --    `profiles_display_name_schoon`. Die laatste stond er niet in toen deze
     --    kop "drie" zei — een telling in een comment veroudert stil.
     coalesce(

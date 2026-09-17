@@ -311,9 +311,9 @@ describe.skipIf(!beschikbaar)('een aanmelding wordt een profiel', () => {
           'mag nooit een account kosten',
       ).not.toBeNull();
       // ⚠️⚠️ **`toBeLessThanOrEqual` en niet `toBe(80)`, en dat is een
-      //    verruiming met een reden** — QS8-508, migratie 0284. Deze naam is
+      //    verruiming met een reden** — QS8-508, migratie 0286. Deze naam is
       //    `'Naam '.repeat(25).trim()`, en codepunt 80 daarvan ís de spatie na de
-      //    zestiende `Naam`. Sinds 0284 normaliseert de trigger **ná** het
+      //    zestiende `Naam`. Sinds 0286 normaliseert de trigger **ná** het
       //    afkappen, dus die afkapspatie gaat eraf en er staan er 79.
       //
       //    📏 Vóór die reparatie kostte deze naam de hele aanmelding: `left()`
@@ -340,7 +340,7 @@ describe.skipIf(!beschikbaar)('een aanmelding wordt een profiel', () => {
       //    CHECK niet zou overleven bij de volgende schrijfactie.
       expect(
         (uit?.naam ?? '').trimEnd(),
-        'de trigger levert een naam met een onzichtbare rand — dat weigert de CHECK van 0284',
+        'de trigger levert een naam met een onzichtbare rand — dat weigert de CHECK van 0286',
       ).toBe(uit?.naam ?? '');
     },
     TEST_TIMEOUT,

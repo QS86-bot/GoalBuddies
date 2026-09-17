@@ -1,6 +1,6 @@
 # De rand van een naam staat in een CHECK, en de vier oude blijven staan
 
-**Datum:** 16-09-2026 · **Issue:** QS8-508 · **Migratie:** 0284
+**Datum:** 16-09-2026 · **Issue:** QS8-508 · **Migratie:** 0286
 
 ## Wat er stuk was
 
@@ -59,7 +59,7 @@ regels — met de meting hierboven al gedaan.
 📏 Gemeten op de lokale stack, stand 0283, met de vier CHECK-expressies letterlijk
 nagerekend naast `v = schone_naam(v)`:
 
-| geval | komt er nu langs | na 0284 |
+| geval | komt er nu langs | na 0286 |
 |---|---|---|
 | `Quinten` | ja | ja |
 | `' Quinten'` (spatie vóór) | ja | **nee** |
@@ -87,7 +87,7 @@ een spatie, faalt de nieuwe CHECK, en de insert op `auth.users` rolt mee terug �
 Gevonden door de security-reviewer op deze PR en daarna zelf nagemeten.
 `tests/rls/aanmelding.test.ts` stond er toen al rood van: dat bestand toetst sinds
 QS8-448 dat *een lange naam nooit een account mag kosten*, en die grendel dééd zijn
-werk. De trigger normaliseert nu **ná** het afkappen (0284, zelfde migratie).
+werk. De trigger normaliseert nu **ná** het afkappen (0286, zelfde migratie).
 
 ⚠️ En dat die zin hier stond is het duurste deel ervan. CLAUDE.md waarschuwt er
 met zoveel woorden voor: een uitgeschreven argument leest de volgende persoon als
@@ -99,7 +99,7 @@ Die kolom heeft geen tegenhanger van `profiles_display_name_zichtbaar`, dus
 `groups_name_len` (`char_length >= 1`) was er de enige ondergrens.
 
 📏 Een groepsnaam van **alleen NBSP** haalde die lengte én alle vier de
-gelijkheden. Na 0284 niet meer: `schone_naam()` strijkt hem tot de lege string en
+gelijkheden. Na 0286 niet meer: `schone_naam()` strijkt hem tot de lege string en
 dan is de gelijkheid weg.
 
 ## De grendel, en de ijking
@@ -137,7 +137,7 @@ overeind en laat precies één toets omvallen. Dat is wat een ijking hoort te do
 
 ## ⚠️⚠️ Wat hiermee **niet** gesloten is — 256 codepunten aan de rand
 
-Dit document suggereerde dat de naamkolommen na 0284 dicht zijn voor de
+Dit document suggereerde dat de naamkolommen na 0286 dicht zijn voor de
 nul-pixelklasse. Dat is niet zo, en het is gemeten.
 
 📏 `U+FE00–FE0F` (variatieselectors) en `U+E0100–E01EF` (supplement) staan **niet**

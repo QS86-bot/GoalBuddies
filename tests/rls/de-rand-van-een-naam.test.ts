@@ -11,7 +11,7 @@ import {
 
 /**
  * De **rand** van een naam wordt genormaliseerd afgedwongen — QS8-508,
- * migratie 0284.
+ * migratie 0286.
  *
  * ⚠️⚠️ **Dit toetst de weigering en niet de functie, en dat is het hele punt van
  *    dit issue.** `schone_naam()` streek deze tekens altijd al weg; wat ontbrak
@@ -39,7 +39,7 @@ const TEST_TIMEOUT = 30_000;
 
 /**
  * De tien codepunten uit de meting van QS8-508 die als **nul pixels** renderen
- * en die vóór 0284 aan de rand door álle vijf CHECKs heen kwamen.
+ * en die vóór 0286 aan de rand door álle vijf CHECKs heen kwamen.
  *
  * ⚠️ De twintig witruimte-codepunten uit diezelfde meting staan hier niet: die
  *    hébben breedte, dus `<spatie>Jan` en `Jan` zien er niet identiek uit. Ze
@@ -156,7 +156,7 @@ describe.skipIf(!rlsTestsConfigured)('de rand van een naam', () => {
  * ⚠️ `groups.name` heeft geen tegenhanger van `profiles_display_name_zichtbaar`,
  *    dus `groups_name_len` (`char_length >= 1`) was er de enige ondergrens. 📏
  *    Gemeten: een naam van alleen NBSP haalde die lengte én alle vier de
- *    gelijkheden. Na 0284 niet meer — `schone_naam()` strijkt hem tot de lege
+ *    gelijkheden. Na 0286 niet meer — `schone_naam()` strijkt hem tot de lege
  *    string en dan is de gelijkheid weg.
  */
 describe.skipIf(!rlsTestsConfigured)('de rand van een groepsnaam', () => {

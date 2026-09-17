@@ -154,7 +154,7 @@ describe.skipIf(!rlsTestsConfigured)('Je eigen profiel opslaan', () => {
       { naam: 'alleen spaties', waarde: '   ' },
       { naam: 'newline en tab', waarde: '\n\t' },
       // ⚠️⚠️ **Verhuisd uit de must-allow-lijst hieronder op 16-09-2026**
-      //    (QS8-508, migratie 0284). Tot die migratie was ` Jan ` toegestaan: de
+      //    (QS8-508, migratie 0286). Tot die migratie was ` Jan ` toegestaan: de
       //    vier gelijkheids-CHECKs keken naar bidi, nul-pixels, losse tags en
       //    tekens tussen letters, en geen van vieren naar de **rand**. Sinds
       //    `profiles_display_name_schoon` moet een naam gelijk zijn aan
