@@ -30,9 +30,8 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import { adminDb, createTestUser, removeTestUsers, rlsTestsConfigured, type TestUser } from './harness';
-import { proefCode } from './proefid';
+import { proefCode, proefId } from './proefid';
 import { psql, stackBeschikbaarOfFaal } from './psql-stack';
-import { proefId } from './proefid';
 
 const SETUP_TIMEOUT = 240_000;
 const TEST_TIMEOUT = 60_000;

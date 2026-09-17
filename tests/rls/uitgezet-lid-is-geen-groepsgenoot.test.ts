@@ -1,8 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import { psql, stackBeschikbaarOfFaal } from './psql-stack';
-import { proefCode } from './proefid';
-import { proefId } from './proefid';
+import { proefCode, proefId } from './proefid';
 
 /**
  * Een uitgezet lid is geen groepsgenoot meer — QS8-146, migratie 0160.

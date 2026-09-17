@@ -2,8 +2,7 @@
 import { describe, expect, it } from 'vitest';
 
 import { psql, psqlMetInvoer, stackBeschikbaarOfFaal } from './psql-stack';
-import { proefCode } from './proefid';
-import { proefId } from './proefid';
+import { proefCode, proefId } from './proefid';
 
 const SCHADUW_EEN = proefId(1);
 const SCHADUW_TWEE = proefId(2);

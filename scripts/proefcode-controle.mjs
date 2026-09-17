@@ -32,6 +32,7 @@
 import { readFileSync, readdirSync, statSync } from 'node:fs';
 import { join, relative } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
+import { metSchuineStrepen } from './paden.mjs';
 
 const WORTEL = fileURLToPath(new URL('..', import.meta.url));
 
@@ -144,7 +145,7 @@ export function beoordeel(alle, register = ZONDER_PROEFCODE) {
 /** @returns {number} De exitcode. */
 export function hoofd() {
   const alle = bestanden(join(WORTEL, 'tests'))
-    .map((pad) => ({ pad, kort: relative(WORTEL, pad).replaceAll('\\', '/') }))
+    .map((pad) => ({ pad, kort: metSchuineStrepen(relative(WORTEL, pad)) }))
     .filter(({ kort }) => kort !== VOEDT_DEZE_CONTROLE)
     .flatMap(({ pad, kort }) => vondsten(readFileSync(pad, 'utf8'), kort));
   const { gemeld, verdwenen } = beoordeel(alle);

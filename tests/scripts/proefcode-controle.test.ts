@@ -82,9 +82,14 @@ describe('het register', () => {
   });
 
   it('geeft bij elke vrijbrief een meting en niet alleen een mening', () => {
+    // ⚠️ Opzettelijk verbreed: `Object.keys()` geeft `string[]`, en de letterlijke
+    //    sleuteltypes van `REDENEN` zouden een ontbrekende rij hier een
+    //    typefout maken in plaats van een rode test. Juist het rood is de belofte.
+    const redenen: Record<string, string | undefined> = REDENEN;
+
     for (const pad of Object.keys(ZONDER_PROEFCODE)) {
-      expect(REDENEN[pad], `${pad} heeft geen reden`).toBeDefined();
-      expect(REDENEN[pad], `${pad} noemt geen meting`).toContain('📏');
+      expect(redenen[pad], `${pad} heeft geen reden`).toBeDefined();
+      expect(redenen[pad], `${pad} noemt geen meting`).toContain('📏');
     }
   });
 });
