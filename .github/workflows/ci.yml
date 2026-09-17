@@ -140,6 +140,25 @@ jobs:
   # ⚠️ **Er zijn hier geen secrets, en dat hoort zo te blijven.** Komt er ooit een
   #    `secrets.` in deze job, dan is de reden daarvoor het opschrijven waard —
   #    want dan draait CI weer tegen iets echts.
+  # ⚠️⚠️ **15 blijft 15, en dat is een ingetrokken verhoging — QS8-451.**
+  #    `naamnormalisatie.test.ts` doet per omgeving in `CONTEXTEN` een volledige
+  #    veeg over `generate_series(1, 1114111)` met `schone_naam()` erop, en
+  #    QS8-451 zette er twee bij. Dat plafond is toen op 25 gezet met als reden
+  #    📏 een lokale meting van **317,97 s → 471,46 s** (+48%) op dit bestand.
+  #
+  #    **Die meting was onbruikbaar en de verhoging is teruggedraaid.** De 471 s
+  #    is gemeten terwijl er vier andere controles op dezelfde machine liepen;
+  #    de 317 s niet. Dat is geen vergelijking maar twee verschillende
+  #    belastingen. 📏 Wat CI ervan maakte, op dezelfde dag en dezelfde suite:
+  #    **719 s vóór** de wijziging (run 35142664428) en **680 s erná**
+  #    (run 35153440786) — de job werd níét langzamer.
+  #
+  # ⚠️ **De les is niet "het viel mee" maar dat een timeout een gemeten grens
+  #    hoort te zijn.** Een plafond dat omhooggaat op een getal dat de volgende
+  #    meting niet terugvindt, is precies de drift waar dit project elders voor
+  #    waarschuwt — en het kost je de melding die je ervoor terugkreeg.
+  #    Twee metingen per kant is bovendien dun: wie hier iets aan verandert,
+  #    meet in CI en niet naast een draaiende poort.
   rls:
     name: RLS-policies
     runs-on: ubuntu-latest
