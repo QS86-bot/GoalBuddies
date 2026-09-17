@@ -8,47 +8,20 @@ import { psqlMetInvoer, stackBeschikbaarOfFaal } from './psql-stack';
  * ⚠️⚠️ **Wat er mis was.** `wikkel_commitments_af()` besliste over een straf met
  *    `eigenaarsdatum(owner)` = `(now() at time zone profiles.tz)::date`, en `tz`
  *    staat in de UPDATE-kolomgrant van `authenticated`. De gestrafte zette dus
- *    zelf de klok die bepaalt of hij op tijd was. 📏 De uiterste offsets in
- *    `pg_timezone_names` liggen **26 uur** uit elkaar (`Etc/GMT+12` tot
- *    `Pacific/Kiritimati`), dus een westelijke zone kocht ten hoogste
- *    `ceil(26 / 24)` = **twee** extra dagen.
+ *    zelf de klok die bepaalt of hij op tijd was, en kocht daarmee een extra dag.
  *
- * ⚠️⚠️ **Hier stond tot 17-09-2026 "één dag", en die grens was gemeten en tóch
- *    onwaar** (QS8-530). De meting eronder was *"de spreiding over álle zones is
- *    op elk moment precies twee datums"*, en die klopte op het moment dat hij
- *    gedaan werd — alleen niet op elk moment. 📏 Een venster van 26 uur is
- *    langer dan een etmaal, dus het bevat **twee** middernachten gedurende
- *    26 − 24 = twee uur per dag: van **10:00 t/m 11:59 UTC** zijn het er drie.
- *    De toets hieronder stond daardoor elke dag twee uur rood op `main`.
+ * ⚠️⚠️ **Hier stond dat de spreiding over álle zones "op elk moment precies twee
+ *    datums" is, dus één extra dag. Dat klopte niet — rechtgezet 17-09-2026
+ *    (QS8-529).** 📏 De offsets in `pg_timezone_names` lopen van −12:00 tot
+ *    +14:00: **26 uur** spreiding, en 26 past niet in 24. Van **10:00 tot 12:00
+ *    UTC** bestaan er drie datums tegelijk en koopt een zonesprong **twee**
+ *    dagen. De toets die de oude zin bewaakte telde de datums op het moment van
+ *    draaien en eiste er twee; die viel er twee uur per dag uit en maakte op
+ *    17-09 om 10:05 UTC CI rood op een PR die alleen documentatie wijzigde.
  *
- *    ⚠️ **En de tegenspraak stond al in de repo.** `0134` draagt in zijn kop een
- *    tabel die UTC−8 nul dagen respijt geeft en UTC+10 twee — dat ís een
- *    spreiding van twee dagen tussen de uitersten. 0280 schreef er anderhalve
- *    week later één van, mét een meting erbij.
- *
- *    De les is niet "beter meten" maar *wat* je meet: het aantal datums is een
- *    eigenschap van de **klok**, de spanwijdte een eigenschap van de
- *    **tz-database**. De redenering leunt op de tweede, dus toetst de eerste
- *    toets hieronder die — en het aantal datums alleen nog op zijn bovengrens.
- *
- * ⚠️ **Wat dit níet raakt: de grendel van 0280 zelf.** Die bevriest
- *    `commitments.tz` bij het aangaan, dus de straftak is dicht of de bovengrens
- *    nu één dag is of twee.
- *
- *    ⚠️ **De beloningstak houdt bewust `eigenaarsdatum()`, en "valt de goede
- *    kant op" is daar te kort door de bocht.** 📏 Nagemeten: een vrijgespeelde
- *    beloning boekt geen punten en raakt geen reeks, maar `meld_commitment()`
- *    plaatst wél `commitment_unlocked` in élke groep waaraan het doel hangt.
- *    Netto koopt een zonesprong daar dus geen punt en geen reeks, maar wel een
- *    positief groepssignaal dat een dag of twee te vroeg komt. Dat is een
- *    andere afweging dan 0057 opschreef, en geen reden om iets te sluiten —
- *    maar wel om het niet af te doen met "de goede kant op".
- *
- *    ⚠️ **En wat dit wél raakt staat buiten dit bestand.** Twee andere plekken
- *    beslissen op de **levende** `profiles.tz`: de verlooppoort van
- *    `beslis_deadline_verzoek()` en het zevendaagse schild in
- *    `maak_straffen_verschuldigd()`. Daar is de bovengrens wél dragend.
- *    Gemeten, met rijen, in de rij van 17-09-2026 in `docs/ENGINEER-REVIEW.md`.
+ * ⚠️ **De twee toetsen hieronder hangen daarom niet meer van de wandklok af.**
+ *    De bovengrens volgt uit de **spanwijdte** en niet uit een telling op één
+ *    moment; het venster wordt op vier vaste UTC-tijden gemeten.
  *
  * ⚠️ **Dit was geen nieuwe bug maar een nieuwe consequentie.** 0057 koos de
  *    coulante toets bewust: *"de fout valt zo altijd de goede kant op — een
@@ -56,6 +29,22 @@ import { psqlMetInvoer, stackBeschikbaarOfFaal } from './psql-stack';
  *    beloning en draait om voor een straf. Vandaar dat 0280 alléén de straftak
  *    verzet en de beloningstak woordelijk laat staan; de laatste test hieronder
  *    bewaakt dat die helft níet meebewogen is.
+ *
+ * ⚠️⚠️ **"De bovengrens is onbelangrijk" geldt over 0280 en niet over de
+ *    codebase** — nagemeten op 17-09-2026 in de security-ronde van QS8-530.
+ *    `eigenaarsdatum()` heeft meer aanroepers dan `wikkel_commitments_af()`, en
+ *    twee ervan lezen de **levende** `profiles.tz`: de verlooppoort van
+ *    `beslis_deadline_verzoek()` (QS8-531 — een westelijke zone zet daar een al
+ *    verschuldigde straf terug op `set`) en het zevendaagse schild in
+ *    `maak_straffen_verschuldigd()` (QS8-533). Daar ís het getal dragend. De
+ *    metingen staan als rij van 17-09-2026 in `docs/ENGINEER-REVIEW.md` en in
+ *    `docs/decisions/2026-09-17-geen-gat-in-0280-is-niet-geen-gat.md`.
+ *
+ * ⚠️ **En "de beloningstak valt de goede kant op" is te kort door de bocht.**
+ *    📏 Nagemeten: een vrijgespeelde beloning boekt geen punten en raakt geen
+ *    reeks, maar `meld_commitment()` plaatst wél `commitment_unlocked` in élke
+ *    groep waaraan het doel hangt. Geen punt en geen reeks dus, maar wel een
+ *    positief groepssignaal dat een dag of twee te vroeg komt.
  *
  * ⚠️ **Besluit van Quinten (16-09-2026): bevriezen, niet UTC.** Dat is de enige
  *    optie die niemands belofte verandert — je houdt de coulance die je had toen
@@ -74,17 +63,15 @@ const beschikbaar = stackBeschikbaarOfFaal(
  * precies tussen de twee uiterste zones in valt.
  *
  * ⚠️ `target_date` wordt afgeleid van de **westelijke** zone, zodat
- *    `target_date + 1` daar vandaag is en in de oostelijke zone al voorbij. Zo
- *    valt de respijtdag aan weerszijden van het verschil tussen de twee zones,
- *    en meet deze opstelling het verschil dat hij wil meten.
+ *    `target_date + 1` daar vandaag is en in de oostelijke zone gisteren. Zo
+ *    valt de respijtdag tussen de twee datums in die deze opstelling gebruikt,
+ *    en meet ze het verschil dat ze wil meten.
  *
- * ⚠️ **Deze opstelling is met opzet niet klokafhankelijk, en dat is nagerekend
- *    en niet aangenomen** (QS8-530). Midway (−11) en Kiritimati (+14) liggen
- *    25 uur uit elkaar, dus hun lokale datums schelen één dag — behalve van
- *    10:00 t/m 10:59 UTC, dan twee. Beide takken houden in allebei de gevallen:
- *    bij de straftak is `v_vandaag` ofwel `target_date + 2` ofwel
- *    `target_date + 3` en daarmee sowieso te laat, en bij de must-allow is
- *    `v_vandaag` per constructie `target_date + 1` en daarmee sowieso op tijd.
+ * ⚠️ **Dat werkt op elk moment van de dag**, en dat is hier geen aanname maar
+ *    rekenwerk: Midway is `UTC−11` en Kiritimati `UTC+14`, dus **25 uur** uit
+ *    elkaar, en twee zones die meer dan 24 uur uit elkaar liggen staan nooit op
+ *    dezelfde datum. Het venster uit de toets hierboven raakt deze opstelling
+ *    dus niet.
  */
 function opzet(zoneBijAangaan: string, zoneDaarna: string): string {
   return `
@@ -121,36 +108,35 @@ function na(sql: string): string {
 }
 
 describe.skipIf(!beschikbaar)('de klok onder een straf', () => {
-  it('spant zesentwintig uur — en dát draagt de bovengrens, niet het aantal datums', () => {
-    // ⚠️ De spanwijdte is de grootheid waar de redenering op leunt: hij hangt
-    //    aan de tz-database en niet aan de klok, en hij wordt rood zodra er een
-    //    extremere zone bij komt — precies het geval dat bewaakt hoort te
-    //    worden. Het aantal datums is de afgeleide, en die wisselt per uur.
-    //
-    // ⚠️ **Hij wordt ook rood als de spanwijdte krímpt**, en dat is met opzet
-    //    geen ongelijkheid: een zone die verdwijnt maakt de bovengrens kleiner,
-    //    dus de veilige kant — maar dan klopt het getal in vijf documenten niet
-    //    meer. Rood is daar het goede antwoord. Verzacht dit dus niet naar
-    //    `>=` "omdat het toch de veilige richting is".
-    //
-    // ⚠️ `dagen=2` is een zwakke tripwire in zijn eentje: `ceil(x / 24)` blijft
-    //    2 tot de spanwijdte boven 48 uur komt. Hij staat er voor de fórmule —
-    //    `ceil` naar `floor` maakt hem rood — en de spanwijdte doet het werk.
+  it('spant zesentwintig uur — daar komt de bovengrens onder deze hele rij vandaan', () => {
+    // ⚠️ **Dit is de toets die de bovengrens draagt, en hij telt geen datums.**
+    //    Met een spanwijdte S bestaan er op elk moment floor(S/24)+1 of +2
+    //    datums tegelijk, dus koopt een zonesprong hoogstens ceil(S/24) dagen.
+    //    Bij 26 uur is dat er twee. Groeit de spanwijdte ooit voorbij 48 uur,
+    //    dan worden het er drie — en dán is dat het nieuws.
     const uit = na(
-      "select 'spanwijdte=' || (max(utc_offset) - min(utc_offset))::text || ';' ||" +
-        " 'dagen=' || ceil(extract(epoch from (max(utc_offset) - min(utc_offset))) / 86400)::int || ';' ||" +
-        " 'datums=' || (select count(distinct (now() at time zone name)::date) from pg_timezone_names)" +
-        " from pg_timezone_names;",
+      "select 'spanwijdte=' || (max(utc_offset) - min(utc_offset))::text from pg_timezone_names;",
     );
 
     expect(uit).toContain('spanwijdte=26:00:00');
-    expect(uit).toContain('dagen=2');
+  });
 
-    // ⚠️ Het aantal datums is klokafhankelijk — twee, en van 10:00 t/m 11:59 UTC
-    //    drie. Alleen de bovengrens is een belofte, en die is `dagen + 1`.
-    const datums = Number(/datums=(\d+)/.exec(uit)?.[1]);
-    expect(datums).toBeGreaterThanOrEqual(2);
-    expect(datums).toBeLessThanOrEqual(3);
+  it('laat tussen 10:00 en 12:00 UTC drie datums tegelijk bestaan, daarbuiten twee', () => {
+    // ⚠️ **Vier vaste UTC-tijden en niet `now()`.** De voorganger van deze toets
+    //    telde op het moment van draaien en eiste er twee; dat is 22 uur per dag
+    //    waar en maakt CI de andere twee uur rood. Een toets die van de wandklok
+    //    afhangt, meet de wandklok.
+    const uit = na(`
+      select 'venster=' || string_agg(u || ':' || n::text, ' ' order by u)
+      from (
+        select u,
+               (select count(distinct ((current_date + (u || ':00')::time)
+                                        at time zone 'UTC' at time zone name)::date)
+                  from pg_timezone_names) as n
+        from (values ('09:00'), ('10:00'), ('11:00'), ('12:00')) as t(u)
+      ) x;`);
+
+    expect(uit).toContain('venster=09:00:2 10:00:3 11:00:3 12:00:2');
   });
 
   it('wordt bij het aangaan vastgelegd uit het profiel van de eigenaar', () => {

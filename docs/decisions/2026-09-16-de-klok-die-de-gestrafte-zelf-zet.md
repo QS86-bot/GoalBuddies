@@ -16,29 +16,20 @@ v_op_tijd := v_vandaag <= v_doel.target_date + 1;
 de UPDATE-kolomgrant van `authenticated`. **De gestrafte zette dus zelf de klok
 die bepaalde of hij op tijd was.**
 
-📏 Gemeten: de uiterste offsets in `pg_timezone_names` liggen **26 uur** uit
-elkaar — `Etc/GMT+12` tot `Pacific/Kiritimati`. Een westelijke zone kocht daarmee
-ten hoogste `ceil(26 / 24)` = **twee** extra dagen — `v_op_tijd` bleef waar tot
-`target_date + 3`.
+📏 Gemeten: een westelijke zone kocht daarmee een extra dag — `v_op_tijd` bleef
+waar tot `target_date + 2`.
 
-⚠️⚠️ **Hier stond "precies twee datums, dus exact één extra dag", en dat is op
-17-09-2026 gecorrigeerd** (QS8-530). De meting was echt gedaan en tóch onwaar,
-want hij is op **één moment** gedaan: 📏 een venster van 26 uur is langer dan een
-etmaal, dus het bevat twee middernachten gedurende 26 − 24 = twee uur per dag.
-Van **10:00 t/m 11:59 UTC** zijn het drie datums, de rest van de dag twee. De
-grendel die deze aanname vastlegde stond daardoor elke dag twee uur rood op
-`main`.
+⚠️⚠️ **Hier stond *"de spreiding over álle zones is op elk moment precies twee
+datums, dus exact één extra dag"*, met *"gemeten, niet aangenomen"* ervoor. Dat
+klopte niet; rechtgezet op 17-09-2026 (QS8-529).** 📏 De offsets in
+`pg_timezone_names` lopen van −12:00 tot +14:00 — **26 uur** spreiding — en van
+**10:00 tot 12:00 UTC** bestaan er drie datums tegelijk. In dat venster kocht een
+zonesprong **twee** dagen.
 
-De les is niet *beter meten* maar **wat** je meet: het aantal datums is een
-eigenschap van de klok, de spanwijdte een eigenschap van de tz-database. Dit
-document leunt op de tweede. ⚠️ En de tegenspraak stond al in de repo —
-`0134` geeft in zijn kop UTC−8 nul dagen respijt en UTC+10 twee, wat een
-spreiding van twee dagen tussen de uitersten ís.
-
-⚠️ **Het besluit hieronder verandert er niet van.** 0280 bevriest `tz` bij het
-aangaan, dus de straftak is dicht of de bovengrens nu één dag is of twee; alleen
-het getal in deze uitleg was fout. En de afweging tussen bevriezen en UTC hing
-nooit aan dat getal, maar aan wiens belofte er verschuift.
+De meting klopte op het moment dat hij gedaan werd. Wat er misging is dat *"nu
+twee"* is opgeschreven als *"op elk moment twee"* — en anders dan bij de andere
+verlopen metingen van deze week was hier geen tweede meting nodig: 26 uur past
+niet in 24, en de offsets stonden in dezelfde tabel als de telling.
 
 📏 En end to end gemeten, met dezelfde opstelling en alleen de klok verschillend:
 
@@ -92,6 +83,16 @@ Quinten koos de eerste, op 16-09-2026.
   daarmee het argument van 0057. Een migratie die allebei verzet, verandert meer
   dan de bevinding vraagt — en dan weet je achteraf niet meer welke helft je
   gemeten hebt.
+
+⚠️⚠️ **Wat dit besluit níet dekt, en dat is op 17-09-2026 nagemeten** (QS8-530).
+Bevriezen sluit `wikkel_commitments_af()`. Maar `eigenaarsdatum()` heeft meer
+aanroepers, en twee ervan lezen de **levende** `profiles.tz`: de verlooppoort van
+`beslis_deadline_verzoek()` (QS8-531) en het zevendaagse schild in
+`maak_straffen_verschuldigd()` (QS8-533). Daar is de bovengrens wél dragend — bij
+de eerste zelfs vierentwintig uur per dag, want de eendaagse variant werkt buiten
+het drie-datumsvenster gewoon. Allebei zijn het commitment devices en dus grens 1;
+de metingen en de drie richtingen staan in
+`docs/decisions/2026-09-17-geen-gat-in-0280-is-niet-geen-gat.md`.
 
 ## ⚠️ Twee dingen die bij het schrijven misgingen, en allebei zijn ze een klasse
 
@@ -151,14 +152,17 @@ een tabel die hem wél heeft. Dezelfde ratel als bij `regel15:controle`.
 
 ## Grendel
 
-`tests/rls/strafklok-ligt-vast.test.ts`, zeven tests, waaronder de must-allow
-(de straf vervalt wél als je in de bevroren zone op tijd bent) en een toets op de
-aanname eronder: de spanwijdte over alle zones is 26 uur, dus ten hoogste twee
-dagen. Groeit die ooit, dan is "twee dagen" geen bovengrens meer.
+`tests/rls/strafklok-ligt-vast.test.ts`, **acht** tests, waaronder de must-allow
+(de straf vervalt wél als je in de bevroren zone op tijd bent) en twee toetsen op
+de aanname eronder.
 
-⚠️ Die toets vroeg tot 17-09-2026 het **aantal datums** in plaats van de
-spanwijdte, en was daarmee klokafhankelijk: hij stond twee uur per dag rood.
-Sinds QS8-530 vraagt hij de spanwijdte (klokonafhankelijk) en van het aantal
-datums alleen nog de bovengrens. 📏 Alle drie de grendels zijn los geijkt — een
-extremere zone maakt de spanwijdte rood, `ceil` naar `floor` het dagental, en een
-opgehoogde telling de bovengrens.
+⚠️ Die twee vervangen sinds 17-09-2026 (QS8-529) één toets die telde hoeveel
+datums er op het moment van draaien waren en er **twee** eiste. Die viel er twee
+uur per dag uit: op 17-09 om 10:05 UTC maakte hij CI rood op een PR die alleen
+documentatie wijzigde. De vervanging toetst de **spanwijdte** (26 uur, waaruit de
+bovengrens van twee dagen volgt) en het **venster** op vier vaste UTC-tijden, en
+hangt dus niet meer van de wandklok af.
+
+📏 Allebei apart geijkt, één mutatie per grendel: een uur bij de spanwijdte
+opgeteld maakt precies de eerste rood, een van de vier UTC-tijden verschuiven
+precies de tweede. Daarna weer acht groen.

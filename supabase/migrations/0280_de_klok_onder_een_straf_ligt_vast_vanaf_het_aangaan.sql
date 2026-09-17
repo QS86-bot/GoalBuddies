@@ -16,26 +16,27 @@
 --
 -- 📏 **Gemeten op 16-09-2026 op de lokale stack.** `v_op_tijd` rekende met
 --    `eigenaarsdatum(owner)` = `(now() at time zone profiles.tz)::date`, en `tz`
---    staat in de UPDATE-kolomgrant van `authenticated`. De uiterste offsets in
---    `pg_timezone_names` liggen **26 uur** uit elkaar, dus een westelijke zone
---    kocht ten hoogste `ceil(26 / 24)` = **twee** extra dagen: `v_op_tijd` bleef
---    waar tot `target_date + 3`.
+--    staat in de UPDATE-kolomgrant van `authenticated`. Een westelijke zone kocht
+--    daarmee een extra dag: `v_op_tijd` bleef waar tot `target_date + 2`.
 --
--- ⚠️⚠️ **Hier stond "één extra dag", en dat is op 17-09-2026 gecorrigeerd**
---    (QS8-530). De meting eronder was *"de spreiding over álle zones is op elk
---    moment precies twee datums"*, en die was echt gedaan — alleen op **één
---    moment**. 📏 Een venster van 26 uur is langer dan een etmaal, dus het bevat
---    twee middernachten gedurende 26 − 24 = twee uur per dag: van 10:00 t/m
---    11:59 UTC zijn het er drie. De toets die deze aanname vastlegde stond
---    daardoor elke dag twee uur rood op `main`.
+-- ⚠️⚠️ **Hier stond dat de spreiding over álle zones "op elk moment precies twee
+--    datums" is en dus één extra dag — rechtgezet op 17-09-2026 (QS8-529).** De
+--    offsets in `pg_timezone_names` lopen van −12:00 tot +14:00: 📏 **26 uur**
+--    spreiding, en 26 past niet in 24. Van **10:00 tot 12:00 UTC** bestaan er
+--    drie datums tegelijk, en in dat venster kocht een zonesprong **twee** dagen.
+--    De meting van 16-09 klopte op haar moment en is opgeschreven als een
+--    eigenschap van élk moment; de tegenmeting stond in dezelfde tabel. Dat deze
+--    migratie de klok bevriest maakt de bovengrens onbelangrijk, maar de zin niet
+--    juist — en de toets die haar bewaakte maakte CI twee uur per dag rood.
 --
---    ⚠️ De tegenspraak stond al in de repo: `0134` draagt in zijn kop een tabel
---    die UTC−8 nul dagen respijt geeft en UTC+10 twee — dat ís een spreiding van
---    twee dagen tussen de uitersten.
---
---    ⚠️ **Wat er niet verandert is deze migratie zelf.** Hij bevriest `tz` bij
---    het aangaan, dus de straftak is dicht of de bovengrens nu één dag is of
---    twee. Alleen het getal in deze uitleg was fout.
+-- ⚠️⚠️ **"De bovengrens is onbelangrijk" geldt over deze migratie en niet over
+--    de codebase** — nagemeten op 17-09-2026 (QS8-530). `eigenaarsdatum()` heeft
+--    meer aanroepers dan `wikkel_commitments_af()`, en twee ervan lezen de
+--    **levende** `profiles.tz`: de verlooppoort van `beslis_deadline_verzoek()`
+--    (QS8-531) en het zevendaagse schild in `maak_straffen_verschuldigd()`
+--    (QS8-533). Daar is het getal wél dragend, en daar is de klok níet bevroren.
+--    Uitleg en de metingen in
+--    `docs/decisions/2026-09-17-geen-gat-in-0280-is-niet-geen-gat.md`.
 --
 -- ⚠️ **Dit was geen nieuwe bug maar een nieuwe consequentie.** 0057 koos die
 --    coulante toets bewust, met als motivering dat *"de fout zo altijd de goede
