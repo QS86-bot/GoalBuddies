@@ -1,7 +1,7 @@
 import { z } from 'zod';
 
 import { t } from '../../shared/i18n';
-import { telTekens } from '../../shared/tekst';
+import { schoneVrijeTekst, telTekens } from '../../shared/tekst';
 
 /**
  * De invoerregels van De Lijst — QS8-379, migratie 0246.
@@ -48,7 +48,10 @@ export const VOLGORDE_MAX = 1_000_000;
  */
 const taakTekst = z
   .string()
-  .trim()
+  // ⚠️ Zichtbaar voor de groep zodra `visibility = 'group'` — QS8-507, 0284.
+  //    `schoneVrijeTekst()` trimt zelf, en in die volgorde: `.trim()` vóór het
+  //    strijken laat witruimte terugkomen die achter een `U+200B` schuilging.
+  .transform(schoneVrijeTekst)
   .refine((tekst) => telTekens(tekst) >= TAAK_MIN, {
     error: () => t('lijst.taak_leeg'),
   })

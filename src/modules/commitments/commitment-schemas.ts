@@ -1,6 +1,6 @@
 import { z } from 'zod';
 
-import { telTekens } from '../../shared/tekst';
+import { schoneEneRegel, telTekens } from '../../shared/tekst';
 import { t } from '../../shared/i18n';
 
 /**
@@ -31,7 +31,10 @@ export const COMMITMENT_MAX = 500;
 export const commitmentSchema = z.object({
   body: z
     .string()
-    .trim()
+    // ⚠️ De begunstigde groep leest dit zodra de straf `unlocked`, `due` of
+    //    `resolved` is — QS8-507, migratie 0284. `schoneVrijeTekst()` trimt zelf
+    //    en doet dat ná het strijken; zie zijn kop voor waarom die volgorde telt.
+    .transform(schoneEneRegel)
     .refine((tekst) => telTekens(tekst) >= COMMITMENT_MIN, {
       error: () => t('validatie.commitment_kort'),
     })
