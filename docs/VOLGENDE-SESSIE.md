@@ -3,8 +3,15 @@
 > Kopieer alles onder de streep in een nieuwe chat. Werk dit bestand bij aan het
 > eind van elke sessie — het is de overdracht, niet een archief.
 >
-> **Laatst bijgewerkt:** 17-09-2026, na PR #526. De lessen van deze ronde staan
-> als punt AL, AM en AN hieronder.
+> **Laatst bijgewerkt:** 17-09-2026 om 17:35 UTC, **t/m PR #527**. De lessen van
+> deze ronde staan als punt AL, AM en AN hieronder.
+>
+> ⚠️ **Die afkapping is met opzet een nummer en geen "alles".** Terwijl deze
+> bijwerking geschreven werd landden er drie PR's bij — de teller ging van
+> achttien naar negentien naar tweeëntwintig. Een tabel die zegt *alles van
+> vandaag* is onwaar zodra iemand anders merget; een tabel met een genoemde
+> bovengrens blijft kloppen. **Begin de volgende bijwerking dus bij het nummer
+> dat hier staat**, niet bij een datum.
 >
 > 📏 **Bij dit bijwerken stond dit bestand negentien PR-merges achter**, allemaal
 > van 17-09 en geen ervan hier genoemd. Dat is de op één na grootste achterstand
@@ -13,23 +20,26 @@
 > Er is met reden geen controle die dit afdwingt (zie de lijn verderop), maar het
 > patroon is inmiddels vijf metingen lang en het loopt niet de goede kant op.
 >
-> ⚠️ **Het waren er achttien toen deze bijwerking begon en negentien toen hij
-> landde** — #526 merde ertussenin. Dat is geen anekdote maar de reden dat dit
-> bestand achterloopt: het is de enige plek in de repo waar één sessie een
-> uitspraak doet over wat álle sessies gedaan hebben, en dat getal verandert
-> terwijl je het opschrijft. Tel dus vlak vóór het pushen opnieuw, net als bij
-> een migratienummer (QS8-318).
+> ⚠️ **Het waren er achttien toen deze bijwerking begon, negentien toen hij landde
+> en tweeëntwintig een halfuur later** — #526, en daarna #529 en #527. Dat is geen
+> anekdote maar de reden dat dit bestand achterloopt: het is de enige plek in de
+> repo waar één sessie een uitspraak doet over wat álle sessies gedaan hebben, en
+> dat getal verandert terwijl je het opschrijft. Zelfde venster als QS8-318, andere
+> grootheid. **Tel vlak vóór het pushen opnieuw, en schrijf op tot welk PR-nummer
+> je geteld hebt** — dat laatste is de enige vorm die niet veroudert.
 >
 > ⚠️ **Twee issues staan Urgent/High open en wachten op een besluit van Quinten —
 > QS8-531 en QS8-533.** Allebei grens 1 (commitment device), allebei gemeten
 > tegen de gedeployde functies, allebei niet gerepareerd. Zie punt AM.
 >
-> ⚠️ **En Linear was vanaf ongeveer 11:30 UTC niet bereikbaar** vanuit de
+> ⚠️ **Linear was van ongeveer 11:30 tot 17:10 UTC niet bereikbaar** vanuit de
 > bouwsessie — de MCP-verbinding verloor zijn autorisatie. QS8-524 en QS8-530 zijn
-> dus gemerged terwijl ze in Linear nog op **In Progress** staan, en het
-> statuscommentaar op QS8-530 is niet geplaatst. **Loop dat na voordat je iets
-> claimt**: de standtabellen in `docs/WERKVOORRAAD.md` zeggen hier iets anders dan
-> Linear, en dat is precies de klasse die QS8-524 zelf opruimde.
+> daardoor gemerged terwijl ze in Linear nog op In Progress stonden. ✅ Dat is bij
+> het terugkeren rechtgezet: allebei staan op Done met hun PR eraan, QS8-538 draagt
+> achteraf PR #528, en QS8-539 corrigeert punt AN. **Er staat hier dus niets meer
+> open** — dit blok blijft staan omdat de storing zelf de aanleiding was voor punt
+> AN, en omdat het laat zien wat een sessie doet als de administratie wegvalt:
+> doorbouwen, de afwijking zichtbaar opschrijven, en bijwerken zodra het kan.
 >
 > **Wat er op 17-09-2026 geland is**, in volgorde van merge:
 >
@@ -54,6 +64,9 @@
 > | #525 | QS8-524 — de standtabel van het heldenepic zegt wat Linear zegt |
 > | #519 | QS8-522 — `rem:controle` bewaakt de klasse en niet de instanties |
 > | #526 | QS8-534 — drie dossierrijen die een migratie heeft ingehaald |
+> | #528 | QS8-538 — deze bijwerking zelf, zonder issuenummer omdat Linear wegviel |
+> | #529 | QS8-535 — drie dossierrijen over de code-sleutel |
+> | #527 | QS8-537 — agentsturing naar risico in de grondwet |
 >
 > **Daarvóór:** 16-09-2026, na QS8-505: productie stond 58 migraties
 > achter en staat nu gelijk aan de map (`0282`). ⚠️ Tijdens die uitrol landde
@@ -758,11 +771,48 @@
 > een randgeval. Uitleg in
 > `docs/decisions/2026-09-17-geen-gat-in-0280-is-niet-geen-gat.md`.
 >
-> **17-09, punt AN: de claim ziet één issuenummer, niet één bevinding.** QS8-529 en
-> QS8-530 zijn allebei geopend nadat de poort rood liep op de test van punt AL —
-> geclaimd om 10:18 en om 11:02 UTC, en allebei helemaal afgebouwd. `npm run claim`
-> heeft precies gedaan wat hij belooft: hij leest branchnamen en gelande PR's per
-> **issuenummer**, en er was geen branch en geen PR voor QS8-530.
+> **17-09, punt AN: de claim ziet één issuenummer, niet één bevinding.** 📏 **Drie**
+> sessies openden binnen 72 minuten een eigen issue voor dezelfde bevinding, nadat
+> hun poort rood liep op de test van punt AL:
+>
+> | issue | aangemaakt / geclaimd (UTC) | uitkomst |
+> |---|---|---|
+> | QS8-529 | geclaimd 10:18 | gebouwd, PR #520 |
+> | QS8-530 | aangemaakt 10:43, geclaimd 11:02 | gebouwd, PR #524 |
+> | QS8-532 | aangemaakt 11:30:58 | **Canceled om 11:41:04** |
+>
+> `npm run claim` heeft precies gedaan wat hij belooft: hij leest branchnamen en
+> gelande PR's per **issuenummer**, en er was geen branch en geen PR voor QS8-530.
+> Drie nummers voor één bevinding kan geen enkele controle op nummers vinden.
+>
+> ⚠️ **De vorm is voorspelbaar, en dat is het bruikbare deel:** hij ontstaat als een
+> **rode poort** meerdere sessies tegelijk naar dezelfde regel stuurt. Dat is geen
+> zeldzaam samenlopen maar het normale gevolg van parallel werken aan één `main` —
+> en het is een ándere oorzaak dan QS8-287/QS8-286/QS8-214, waar het hetzelfde
+> nummer was.
+>
+> ⚠️⚠️ **QS8-532 is de goedkoopste van de drie en de enige die het goed deed.** Die
+> sessie schreef het issue en keek dáárna of het al bestond — vóór de eerste regel
+> code. Elf minuten later stond het op Canceled. De andere twee zijn allebei
+> helemaal afgebouwd.
+>
+> **Aanmaken en claimen zijn twee momenten, en tussen die twee zit de enige plek
+> waar dit nog gratis te vinden is.** De claim dekt het tweede moment en kan het
+> eerste per constructie niet zien, dus: zoek vóór het claimen in Linear op wat je
+> nét beschreven hebt, niet op je eigen nummer.
+>
+> ⚠️ **Wat wél werkte is de afhandeling** — wie als tweede merget neemt de éérste
+> over. De toets, de migratiekop en het beslisdocument van QS8-529 zijn ongewijzigd
+> van `main` overgenomen (hun tweede grendel, het venster op vier vaste UTC-tijden,
+> was sterker), en wat overbleef was alleen het deel dat zij niet hadden: de
+> security-ronde van punt AM. **Zoek bij een botsing wat er van jouw kant
+> overblijft in plaats van te kiezen tussen twee takken.**
+>
+> 📏 **Dit punt zei tot 17-09 17:15 UTC "twee sessies"** (QS8-539). Bij het
+> schrijven ervan waren er twee zichtbaar; QS8-532 stond er al en was onzichtbaar,
+> omdat Linear op dat moment onbereikbaar was. Dat is punt AL in het klein: een
+> bewering opgeschreven op het moment dat hij waar leek, over een grootheid die
+> ondertussen doorliep.
 >
 > ⚠️ Dat is een andere oorzaak dan QS8-287/QS8-286/QS8-214, waar het hetzelfde
 > nummer was. **Hier waren het twee nummers voor één bevinding**, en dat kan geen
