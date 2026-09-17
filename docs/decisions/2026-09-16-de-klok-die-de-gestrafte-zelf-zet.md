@@ -16,9 +16,20 @@ v_op_tijd := v_vandaag <= v_doel.target_date + 1;
 de UPDATE-kolomgrant van `authenticated`. **De gestrafte zette dus zelf de klok
 die bepaalde of hij op tijd was.**
 
-📏 Gemeten, niet aangenomen: de spreiding over álle zones in
-`pg_timezone_names` is op elk moment **precies twee datums**. Een westelijke zone
-kocht daarmee exact één extra dag — `v_op_tijd` bleef waar tot `target_date + 2`.
+📏 Gemeten: een westelijke zone kocht daarmee een extra dag — `v_op_tijd` bleef
+waar tot `target_date + 2`.
+
+⚠️⚠️ **Hier stond *"de spreiding over álle zones is op elk moment precies twee
+datums, dus exact één extra dag"*, met *"gemeten, niet aangenomen"* ervoor. Dat
+klopte niet; rechtgezet op 17-09-2026 (QS8-529).** 📏 De offsets in
+`pg_timezone_names` lopen van −12:00 tot +14:00 — **26 uur** spreiding — en van
+**10:00 tot 12:00 UTC** bestaan er drie datums tegelijk. In dat venster kocht een
+zonesprong **twee** dagen.
+
+De meting klopte op het moment dat hij gedaan werd. Wat er misging is dat *"nu
+twee"* is opgeschreven als *"op elk moment twee"* — en anders dan bij de andere
+verlopen metingen van deze week was hier geen tweede meting nodig: 26 uur past
+niet in 24, en de offsets stonden in dezelfde tabel als de telling.
 
 📏 En end to end gemeten, met dezelfde opstelling en alleen de klok verschillend:
 
@@ -131,7 +142,17 @@ een tabel die hem wél heeft. Dezelfde ratel als bij `regel15:controle`.
 
 ## Grendel
 
-`tests/rls/strafklok-ligt-vast.test.ts`, zeven tests, waaronder de must-allow
-(de straf vervalt wél als je in de bevroren zone op tijd bent) en een toets op de
-aanname eronder: de spreiding over alle zones is twee datums. Gaat die ooit naar
-drie, dan koopt een zonesprong twee dagen en is "één dag" geen bovengrens meer.
+`tests/rls/strafklok-ligt-vast.test.ts`, **acht** tests, waaronder de must-allow
+(de straf vervalt wél als je in de bevroren zone op tijd bent) en twee toetsen op
+de aanname eronder.
+
+⚠️ Die twee vervangen sinds 17-09-2026 (QS8-529) één toets die telde hoeveel
+datums er op het moment van draaien waren en er **twee** eiste. Die viel er twee
+uur per dag uit: op 17-09 om 10:05 UTC maakte hij CI rood op een PR die alleen
+documentatie wijzigde. De vervanging toetst de **spanwijdte** (26 uur, waaruit de
+bovengrens van twee dagen volgt) en het **venster** op vier vaste UTC-tijden, en
+hangt dus niet meer van de wandklok af.
+
+📏 Allebei apart geijkt, één mutatie per grendel: een uur bij de spanwijdte
+opgeteld maakt precies de eerste rood, een van de vier UTC-tijden verschuiven
+precies de tweede. Daarna weer acht groen.

@@ -16,10 +16,18 @@
 --
 -- 📏 **Gemeten op 16-09-2026 op de lokale stack.** `v_op_tijd` rekende met
 --    `eigenaarsdatum(owner)` = `(now() at time zone profiles.tz)::date`, en `tz`
---    staat in de UPDATE-kolomgrant van `authenticated`. De spreiding over álle
---    zones in `pg_timezone_names` is op elk moment **precies twee datums** —
---    nagemeten, niet aangenomen — dus een westelijke zone kocht **één** extra
---    dag: `v_op_tijd` bleef waar tot `target_date + 2`.
+--    staat in de UPDATE-kolomgrant van `authenticated`. Een westelijke zone kocht
+--    daarmee een extra dag: `v_op_tijd` bleef waar tot `target_date + 2`.
+--
+-- ⚠️⚠️ **Hier stond dat de spreiding over álle zones "op elk moment precies twee
+--    datums" is en dus één extra dag — rechtgezet op 17-09-2026 (QS8-529).** De
+--    offsets in `pg_timezone_names` lopen van −12:00 tot +14:00: 📏 **26 uur**
+--    spreiding, en 26 past niet in 24. Van **10:00 tot 12:00 UTC** bestaan er
+--    drie datums tegelijk, en in dat venster kocht een zonesprong **twee** dagen.
+--    De meting van 16-09 klopte op haar moment en is opgeschreven als een
+--    eigenschap van élk moment; de tegenmeting stond in dezelfde tabel. Dat deze
+--    migratie de klok bevriest maakt de bovengrens onbelangrijk, maar de zin niet
+--    juist — en de toets die haar bewaakte maakte CI twee uur per dag rood.
 --
 -- ⚠️ **Dit was geen nieuwe bug maar een nieuwe consequentie.** 0057 koos die
 --    coulante toets bewust, met als motivering dat *"de fout zo altijd de goede
