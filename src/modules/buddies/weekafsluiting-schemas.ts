@@ -1,7 +1,7 @@
 import { z } from 'zod';
 
 import { t, type Sleutel } from '../../shared/i18n';
-import { kapAf } from '../../shared/tekst';
+import { kapAf, schoneVrijeTekst, telTekens } from '../../shared/tekst';
 
 import { voegOplopendSamen } from './merge';
 
@@ -58,8 +58,12 @@ export type AntwoordVeld = (typeof VELDEN)[number];
 
 const antwoordTekst = z
   .string()
-  .trim()
-  .max(ANTWOORD_MAX, { error: `Maximaal ${ANTWOORD_MAX} tekens.` });
+  // ⚠️ De drie antwoorden zijn groepszichtbaar via `mag_groep_lezen()` —
+  //    QS8-507, migratie 0284. Zie `schoneVrijeTekst()` voor de trimvolgorde.
+  .transform(schoneVrijeTekst)
+  .refine((v) => telTekens(v) <= ANTWOORD_MAX, {
+    error: `Maximaal ${ANTWOORD_MAX} tekens.`,
+  });
 
 /**
  * ⚠️ De `refine` is de tegenhanger van `week_reviews_iets_ingevuld` uit migratie
@@ -85,9 +89,11 @@ export type WeekafsluitingInvoer = z.infer<typeof weekafsluitingSchema>;
 export const reactieSchema = z.object({
   body: z
     .string()
-    .trim()
-    .min(1, { error: () => t('weekafsluiting.reactie_leeg') })
-    .max(REACTIE_MAX, { error: `Maximaal ${REACTIE_MAX} tekens.` }),
+    .transform(schoneVrijeTekst)
+    .refine((v) => telTekens(v) >= 1, { error: () => t('weekafsluiting.reactie_leeg') })
+    .refine((v) => telTekens(v) <= REACTIE_MAX, {
+      error: `Maximaal ${REACTIE_MAX} tekens.`,
+    }),
 });
 
 // ---------------------------------------------------------------------------
