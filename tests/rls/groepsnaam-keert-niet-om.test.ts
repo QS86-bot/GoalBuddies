@@ -142,45 +142,59 @@ describe.skipIf(!rlsTestsConfigured)('een groepsnaam keert de tekens eromheen ni
    *    `create_group()` is `security definer` en zet `name` bij het aanmaken. Zat
    *    de grens in een policy of een kolomgrant in plaats van in een CHECK, dan
    *    kwam hij hier ongehinderd langs — een definer-functie draait met de
-   *    rechten van de eigenaar. Een CHECK geldt voor élke schrijver, en dát is de
-   *    reden dat het er een is.
+   *    rechten van de eigenaar.
+   *
+   * ⚠️⚠️ **Deze toets eiste tot 0287 een wéígering, en dat was een eigenschap van
+   *    het onderdeel en niet de belofte** — QS8-515. `create_group()` streek de
+   *    naam met `btrim()` en liet de CHECK het werk doen; sinds 0287 strijkt hij
+   *    met `public.schone_naam()` en komt de override er niet eens meer aan.
+   *    Allebei de vormen houden de belofte van deze suite — *er landt geen
+   *    groepsnaam die als een ándere groep rendert* — en een toets die op de
+   *    weigering staat, wordt rood van een reparatie.
+   *
+   *    Wat hier nu staat is die belofte zelf: ná de aanroep draagt geen enkele
+   *    groep van deze beheerder een override in zijn naam. Dat blijft waar of de
+   *    route nu weigert of strijkt, en het wordt onwaar zodra er één landt.
+   *
+   * ⚠️ **De constraintnaam is hier dus wég, en dat is geen verlies.** Hij hing
+   *    aan het mechanisme, niet aan de belofte, en hij staat onverkort op de
+   *    PATCH-route hierboven — de schrijver waar weigeren het enige juiste
+   *    antwoord is. De gestructureerde uitkomst van de aanmaakroute staat in
+   *    `tests/rls/create_group-antwoordt-gestructureerd.test.ts`.
    */
   it(
-    'weigert een groepsnaam met een override ook bij het aanmaken',
+    'laat bij het aanmaken geen groepsnaam met een override achter',
     async () => {
-      const { data, error } = await beheerder.db.rpc('create_group', {
+      const { data } = await beheerder.db.rpc('create_group', {
         group_name: `Just${RLO}kcart`,
         huddle_day: 1,
         tz: 'Europe/Amsterdam',
       });
 
-      const mislukt =
-        error !== null || (data as unknown as { ok?: boolean } | null)?.ok !== true;
+      const nieuweId = (data as unknown as { ok?: boolean; group?: { id: string } } | null)?.group
+        ?.id;
+      if (nieuweId) registreerGroep(nieuweId);
 
-      expect(
-        mislukt,
-        'create_group() maakte een groep met een omgekeerde naam aan — de CHECK ' +
-          'geldt niet voor deze route',
-      ).toBe(true);
+      // ⚠️ **Over álle groepen van deze beheerder en niet alleen de nieuwe.**
+      //    Kwam er geen groep terug, dan is `nieuweId` leeg en zou een toets op
+      //    die ene rij niets lezen — en dus groen zijn om de verkeerde reden.
+      const alle = await adminDb()
+        .from('groups')
+        .select('id, name')
+        .eq('created_by', beheerder.id);
 
-      // ⚠️⚠️ **De reden erbij, en niet alleen dát het mislukte.** Een toets die
-      //    alleen "het mislukte" eist, leest een dichte deur als een veilige
-      //    deur — de les uit de security-ronde op QS8-450.
-      //
-      //    📏 **En wat die mutatie hier laat zien, is precies andersom dan ik
-      //    eerst opschreef.** Met `grant execute on zonder_bidi` ingetrokken
-      //    vallen elf van de twaalf toetsen om; deze blijft groen, en hij blijft
-      //    groen op de **CHECK** (`23514` mét de constraintnaam) en niet op
-      //    `permission denied`. `create_group()` is `security definer` en
-      //    eigendom van `postgres`, dus de aanroep van `zonder_bidi()` binnen de
-      //    CHECK draait daar met de rechten van de eigenaar. Nagemeten in een
-      //    geïsoleerde database, alle vier de combinaties.
-      //
-      //    **De grant beschermt dus alleen de directe PATCH-route.**
+      expect(alle.error, 'de groepen van deze beheerder waren niet terug te lezen').toBeNull();
       expect(
-        `${error?.message ?? ''}`,
-        'create_group() mislukte, maar niet op de CHECK die deze toets bewaakt',
-      ).toContain('groups_name_geen_bidi');
+        (alle.data ?? []).filter((g) => g.name.includes(RLO)).map((g) => g.name),
+        'er staat een groep met een omgekeerde naam — de aanmaakroute liet hem landen',
+      ).toEqual([]);
+
+      // ⚠️ De ankerregel: zonder deze zou de filter hierboven ook leeg zijn als
+      //    de query niets teruggaf, en dan bewaakt hij niets.
+      expect(
+        (alle.data ?? []).length,
+        'er stond geen enkele groep van deze beheerder — de terugleesregel meet niets',
+      ).toBeGreaterThanOrEqual(1);
     },
     TEST_TIMEOUT,
   );

@@ -1191,6 +1191,9 @@ export const nl = {
   'groep.te_veel_groepen': 'Je zit al in tien groepen. Verlaat er een om ruimte te maken.',
   'groep.naam_kort': 'Geef je groep een naam van minstens twee tekens.',
   'groep.naam_lang': 'Die naam is te lang. Maximaal 60 tekens.',
+  // Onbereikbaar via de app — `groepSchema` strijkt de naam al — maar wel via
+  // een rechtstreekse RPC. Zie migratie 0287 (QS8-515).
+  'groep.naam_ongeldig': 'Die naam bevat tekens die niet kunnen. Probeer hem zonder onzichtbare of opmaaktekens.',
   'groep.slechte_huddledag': 'Kies een dag van de week voor de huddle.',
   'groep.daglimiet': 'Je hebt vandaag al tien groepen aangemaakt. Morgen kan het weer.',
   'groep.geen_beheerder': 'Alleen een beheerder van deze groep kan dit doen.',

@@ -846,6 +846,7 @@ export const en: Record<Sleutel, string> = {
   'groep.te_veel_groepen': 'You are already in ten groups. Leave one to make room.',
   'groep.naam_kort': 'Give your group a name of at least two characters.',
   'groep.naam_lang': 'That name is too long. At most 60 characters.',
+  'groep.naam_ongeldig': 'That name contains characters that will not work. Try it without invisible or formatting characters.',
   'groep.slechte_huddledag': 'Choose a day of the week for the huddle.',
   'groep.daglimiet': 'You have already created ten groups today. Tomorrow it works again.',
   'groep.geen_beheerder': 'Only an admin of this group can do this.',
