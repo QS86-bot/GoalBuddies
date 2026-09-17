@@ -147,6 +147,107 @@ Er is niemand die jouw werk nakijkt.
 3. Documenteer elke niet-vanzelfsprekende keuze in `docs/decisions/NNN-titel.md`.
 4. Houd `docs/ENGINEER-REVIEW.md` bij als agenda voor november.
 
+## Agentsturing naar risico — vastgelegd 17-09-2026
+
+> Overgenomen uit de *Installed agents guidance* van het Linear-project, zodat
+> hij ook geldt voor een sessie die Linear niet leest.
+
+⚠️⚠️ **Eén zin uit die guidance is hier níet overgenomen, en dat is met opzet.**
+De aanhef beschrijft een project in *"vroege bouwfase, codebase moet nog
+grotendeels ontstaan"*. 📏 Gemeten op 17-09-2026: **290** migraties, **65**
+controles, **208** beslisdocumenten, **443** testbestanden, **350**
+bronbestanden, productie live op `0282`, en dit bestand zelf telt er **1062**.
+
+Dat verschil is geen muggenzifterij. Wie deze sectie over een half jaar leest en
+er *"greenfield, snelheid gaat voor"* uit meeneemt, leest de rest van dit bestand
+met de verkeerde bril — en dit project heeft op 17-09 tweemaal betaald voor een
+kop die een gemeten onwaarheid droeg (QS8-525 en QS8-529). **De prioriteiten
+hieronder gelden onverkort; de toestandsbeschrijving eromheen is vervangen door
+de meting.**
+
+⚠️ **De snelheidsafweging leest hier dus als een verhouding en niet als een
+vrijbrief.** "Lichter" betekent: lichter dan de drie strenge gebieden hieronder —
+niet lichter dan de onwrikbare regels, die geen risicoschaal kennen.
+
+### 1. Modelkeuze naar risico
+
+| werk | model |
+| -- | -- |
+| scaffolding, UI-schermen, gamification | het lichtste dat het aankan |
+| **datamodel, AI-decompositielaag, commitment-device en penalty's, auth** | het zwaarste |
+| uitvoering nádat die keuze gemaakt is | weer het lichtste |
+
+⚠️ Het zware model is voor de **keuze**, niet voor het typen dat erop volgt. Een
+migratie uitschrijven waarvan de vorm al vastligt, is uitvoering.
+
+⚠️ **Vermijd `Auto` als standaard.** Dat gold vanaf "meer dan een paar bestanden"
+en is hier dus allang voorbij.
+
+### 2. Eén ronde per issue
+
+**Schrijf vóór delegatie op wat "klaar" betekent.** Dat is hier geen nieuwe
+regel maar de acceptatiecriteria die elk issue in dit project al draagt; nieuw is
+dat het ook geldt voor klein werk.
+
+⚠️ **Eén afgebakend issue per feature, niet één sessie op een heel
+PRD-hoofdstuk.** Dat sluit aan op de regel die er al staat: één branch per
+Linear-issue, en raakt je werk meerdere issues, dan zijn het meerdere branches en
+meerdere PR's — zie *Versiebeheer*.
+
+### 3. Review in verhouding tot risico
+
+| wat | review |
+| -- | -- |
+| UI, gamification, cosmetisch | één lichte controle volstaat |
+| **geld en penalty's** | volledige, kritische review |
+| **gebruikersdata tussen leden van een buddy-groep** | idem |
+| **de AI-decompositielogica** | idem |
+
+⚠️ **Dit versoepelt onwrikbare regel 19 niet, het bevestigt hem.** Die deelt de
+reviewagents al naar risico in: `security-reviewer` direct bij alles wat auth,
+RLS, punten, goedkeuring, commitments of een nieuw groepszichtbaar oppervlak
+raakt; `code-critic` en `critical-user` één keer per milestone. De drie strenge
+gebieden hierboven vallen alle drie onder die eerste categorie.
+
+⚠️ **"Automatische tests vanaf de eerste sprint"** is hier al onwrikbare regel 18
+en de Solo-fase-regel *tests zijn de enige review die bestaat*. Het lichte pad
+van rij 1 gaat over de **review**, nooit over de tests.
+
+### 4. Sandboxtijd
+
+**Rapporteer een aanname expliciet in plaats van door te blijven verifiëren in
+een omgeving die het antwoord niet kan geven.** Een integratie die nog niet
+bestaat, een productiesleutel die er niet is, een platform dat hier niet draait —
+dat zijn geen dingen om op door te meten.
+
+⚠️⚠️ **Maar "ik kan het niet meten" is iets anders dan "het is in orde", en dat
+verschil is hier een grendel.** De poort houdt *ongemeten* en *groen* uit elkaar
+en faalt op allebei; acht controles staan om deze reden standaard op ongemeten in
+een cloudsessie. Een aanname rapporteren betekent hem **als aanname** opschrijven,
+met wat je wél gemeten hebt ernaast.
+
+### 5. Wat nooit versoepelt
+
+1. **Penalty- en betaallogica: geen ongeteste code richting een branch die naar
+   productie kan.** Sluit aan op domeinregel 5 en 11, en op grens 1 van de
+   *Beslisbevoegdheid* — een commitment device is precies "wat een gebruiker als
+   consequentie beloofd is", en dat is een beslissing voor Quinten.
+2. **Privacy tussen buddy-groepen: nooit aannemen dat toegang afgeschermd is —
+   altijd expliciet toetsen.** Dat is domeinregel 7 met zijn twee vragen, plus de
+   les die dit project betaald heeft: **de regel is pas afgedwongen als de
+   dátabase hem afdwingt**, en RLS kan geen kolommen beperken.
+3. **Nieuwe architecturale keuzes in een besluitenlog.** `docs/decisions/NNN-*.md`,
+   vanaf de eerste dag en nog steeds.
+
+### 6. Rapporteren
+
+Kort, en in deze volgorde: **wat gebouwd, wat getest, wat een aanname is, wat de
+volgende afgebakende stap is.**
+
+⚠️ Het derde punt is het punt. Een verslag dat alleen zegt wat er gebouwd en
+getest is, laat de lezer raden welk deel gemeten is en welk deel aangenomen —
+en dat is de klasse fout waar dit hele bestand over gaat.
+
 ## ⚠️ Greenfield — de eerste beslissingen zijn de duurste
 Voordat er één feature gebouwd wordt:
 1. **Datamodel eerst, volledig, met RLS.** Doelen, buddy-groepen, lidmaatschappen,
