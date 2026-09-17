@@ -57,6 +57,21 @@ import { psqlArgumenten, verbindingsmelding } from './psql.mjs';
  */
 export const REGISTER = new Map([
   [
+    'doeldatum :: current_date',
+    'Geen grens maar de terugval áchter de terugval — QS8-531, migratie 0288. ' +
+      '`doeldatum()` geeft de dag waaraan een streefdatum gemeten wordt: de ' +
+      'bevroren `commitments.tz` van de levende straf, anders ' +
+      '`eigenaarsdatum(p_eigenaar)`, en pas als die allebei niets geven ' +
+      '`current_date`. ⚠️ Die laatste tak is onbereikbaar zolang de rij bestaat: ' +
+      '📏 `profiles.tz` is NOT NULL (gemeten in `information_schema.columns`) en ' +
+      '`deadline_requests.requester_id` cascadeert op `profiles`, dus ' +
+      '`eigenaarsdatum()` geeft een datum zodra het profiel er is. ⚠️ En hij ' +
+      'draagt wél gewicht als dat verandert: `current_date` is de dag van de ' +
+      'server, en die staat op deze database op `Etc/UTC` — 📏 gemeten met ' +
+      '`show timezone`, met lege `rolconfig` op alle rollen. Dat is een GUC en ' +
+      'geen constante, dus wie hem verzet, verzet deze terugval mee.',
+  ],
+  [
     'plan_adempauze :: v_vandaag := coalesce(eigenaarsdatum(v_uid), current_date);',
     'Geen grens maar een terugval, en dezelfde vorm als in `weekdoel_cyclus_klopt` — ' +
       'QS8-373, migratie 0216. Het venster waarbinnen een adempauze mag beginnen ' +
