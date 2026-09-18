@@ -567,3 +567,19 @@ export function beeldmelding({ sinds, nu = new Date(), drempel = VERS_DREMPEL_MS
     '    het niet uit, voor wat je over het werk van een ander beweert wel.',
   ];
 }
+
+/**
+ * Wat is de uitslag: groen, een waarschuwing, of rood? — QS8-552
+ *
+ * ⚠️ **Geëxporteerd omdat een controle die je niet kunt voeden, niet te ijken
+ *    is** (CLAUDE.md, regel 18). De drie takken hieronder zijn met de hand
+ *    end-to-end nagemeten — een gat, een duplicaat, een migratie zonder
+ *    rollback-pad en een CLI-tegenspraak geven elk exitcode 1, en de echte
+ *    stand met alleen een branchbevinding geeft 0 — maar een handmeting van één
+ *    dag is geen grendel, en dit wel.
+ */
+export function uitslag({ fouten, branchfouten }) {
+  if (fouten.length > 0) return 'rood';
+  if (branchfouten.length > 0) return 'waarschuwing';
+  return 'groen';
+}
