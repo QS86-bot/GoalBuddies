@@ -215,6 +215,36 @@ function treffersVoor(rij, perObject) {
 }
 
 /**
+ * Heeft deze kloon genoeg geschiedenis om migraties uit elkaar te houden?
+ *
+ * ⚠️⚠️ **Dit is de gevaarlijkste vorm die deze controle kan aannemen, en hij is
+ *    met een echte `--depth=1` kloon gemeten en niet bedacht.**
+ *    `actions/checkout@v4` haalt standaard één commit op. `git log -- <pad>`
+ *    geeft dan voor **élke** migratie de datum van díe ene commit — vandaag —
+ *    dus elke migratie lijkt jonger dan elke dossierrij. 📏 Gemeten in zo'n
+ *    kloon: **6 verzonnen bevindingen**, met aanrakingen als
+ *    `maak_straffen_verschuldigd → 0057 (2026-09-18)` terwijl `0057` van 04-09 is.
+ *
+ * ⚠️ Hij faalt daar **dicht** en niet open, wat de goede kant is — maar zes
+ *    verzonnen bevindingen zijn nog steeds een controle die liegt, en dat is de
+ *    soort die je leert wegklikken. Een controle zonder meetinstrument hoort
+ *    **ongemeten** te zeggen, niet te raden.
+ *
+ * ⚠️⚠️ **Niet `git rev-parse --is-shallow-repository`, en dat is een gemeten
+ *    correctie.** Die vlag blijft `true` nadat een kloon verdiept is — 📏 de
+ *    werkboom hier meldt `true` met 1571 commits en 13 verschillende
+ *    migratiedatums. Die grendel had de controle dus overál overgeslagen, en een
+ *    controle die nooit meet is precies wat dit project *ongemeten* noemt. Wat
+ *    wél discrimineert is de **uitkomst**: 📏 in de `--depth=1` kloon deelden
+ *    alle 292 migraties één datum, hier zijn het er 13. Geen drempel nodig —
+ *    dit ís het faalgeval.
+ */
+export function genoegGeschiedenis(migraties) {
+  if (migraties.length <= 1) return true;
+  return new Set(migraties.map((m) => m.datum)).size > 1;
+}
+
+/**
  * De datum waarop dit pad voor het eerst in de geschiedenis voorkomt.
  *
  * ⚠️⚠️ **Met opzet zónder `--diff-filter=A`, en dat is met de hand gemeten.**
@@ -289,6 +319,16 @@ function main() {
   if (migraties.length === 0) {
     console.error(`dossierdrift-controle: geen enkele migratie gelezen uit ${MIGRATIES}/.`);
     process.exit(1);
+  }
+
+  if (!genoegGeschiedenis(migraties)) {
+    console.log(
+      `dossierdrift-controle: OVERGESLAGEN — alle ${migraties.length} migraties dragen\n` +
+        '  dezelfde datum, dus deze kloon heeft niet genoeg geschiedenis om ze uit\n' +
+        '  elkaar te houden. Elke rij zou vuren. Dat is ongemeten en niet groen —\n' +
+        '  zet `fetch-depth: 0` op de checkout om hem te laten meten.',
+    );
+    process.exit(0);
   }
 
   const bevindingen = controleer(regels, migraties);

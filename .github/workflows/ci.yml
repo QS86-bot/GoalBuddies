@@ -53,6 +53,14 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
+        with:
+          # ⚠️ Volledige geschiedenis: `dossierdrift:controle` leest de
+          #    aanmaakdatum van elke migratie uit `git log`. Met de standaard
+          #    ondiepe kloon krijgt élke migratie de datum van die ene commit,
+          #    en dan lijkt elke dossierrij achterhaald. 📏 Gemeten in een
+          #    `--depth=1` kloon: 6 verzonnen bevindingen. De controle slaat
+          #    zichzelf daar over, dus zonder dit regeltje meet CI hem nooit.
+          fetch-depth: 0
 
       - uses: actions/setup-node@v4
         with:

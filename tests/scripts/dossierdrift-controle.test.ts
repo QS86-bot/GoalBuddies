@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 // ⚠️ Een `.mjs` zonder eigen typings — zelfde patroon als `review-controle.test.ts`.
 import {
   controleer,
+  genoegGeschiedenis,
   eigenMigraties,
   komtInAanmerking,
   objectenInTitel,
@@ -224,5 +225,37 @@ describe('de hulpstukken los', () => {
     expect(komtInAanmerking({ ...basis, risico: '~~Middel~~' })).toBe(false);
     expect(komtInAanmerking({ ...basis, risico: 'Laag' })).toBe(false);
     expect(komtInAanmerking({ ...basis, romp: 'geen meting' })).toBe(false);
+  });
+});
+
+/**
+ * ⚠️⚠️ De grendel die voorkomt dat deze controle gaat raden.
+ *
+ * 📏 In een `--depth=1` kloon geeft `git log -- <pad>` élke migratie de datum
+ *    van die ene commit, en dan meldde de controle **6 rijen** die met volledige
+ *    geschiedenis geen van alle vuren.
+ *
+ * ⚠️ De eerste versie toetste `git rev-parse --is-shallow-repository`, en dat is
+ *    het verkeerde signaal: die vlag blijft `true` nadat een kloon verdiept is.
+ *    📏 De werkboom hier meldt `true` met 1571 commits en 13 verschillende
+ *    migratiedatums — die grendel sloeg de controle dus overál over, en een
+ *    controle die nooit meet is erger dan geen controle. Wat wél discrimineert
+ *    is de uitkomst: één datum voor alles tegen 13.
+ */
+describe('genoegGeschiedenis', () => {
+  const m = (datum: string) => ({ datum });
+
+  it('één datum voor alle migraties is niet genoeg', () => {
+    expect(genoegGeschiedenis([m('2026-09-18'), m('2026-09-18'), m('2026-09-18')])).toBe(false);
+  });
+
+  it('twee verschillende datums is genoeg', () => {
+    expect(genoegGeschiedenis([m('2026-09-04'), m('2026-09-18')])).toBe(true);
+  });
+
+  /** ⚠️ Eén migratie kan per definitie maar één datum hebben; dat is geen
+   *    afgekapte geschiedenis en mag de controle niet stilzetten. */
+  it('één enkele migratie telt als genoeg', () => {
+    expect(genoegGeschiedenis([m('2026-09-18')])).toBe(true);
   });
 });
