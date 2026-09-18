@@ -89,6 +89,7 @@ import {
   type TestUser,
 } from './harness';
 import { psql, stackBeschikbaarOfFaal } from './psql-stack';
+import { proefCode } from './proefid';
 
 const SETUP_TIMEOUT = 240_000;
 const TEST_TIMEOUT = 240_000;
@@ -751,7 +752,7 @@ describe.skipIf(!stackErbij)('visibility is voor geen enkele client schrijfbaar 
         --    deze opstelling realistischer en niet losser: zo ziet een gedeelde
         --    taak er in productie uit.
         insert into groups (id, name, created_by, status, invite_code)
-          select grp, 'Bewerkbaar', eig, 'active', 'BEWERKB1' from t;
+          select grp, 'Bewerkbaar', eig, 'active', '${proefCode('bewerkb1', 1)}' from t;
         insert into group_members (group_id, user_id, role, status)
           select grp, eig, 'admin', 'active' from t;
         -- Alleen een bevoorrechte schrijver komt hier vandaag aan; 0248 maakt er

@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import { psqlMetInvoer, stackBeschikbaarOfFaal } from './psql-stack';
+import { proefCode } from './proefid';
 
 /**
  * Wat er gebeurt als je `completion_approvals` terugzet — reviewrij 15-09-2026.
@@ -63,7 +64,7 @@ begin
   v_alice := public.shim_maak_gebruiker('alice-terugzet@x.nl','Alice');
   v_bob   := public.shim_maak_gebruiker('bob-terugzet@x.nl','Bob');
   insert into public.groups (name, created_by, approval_rule, approval_quorum, invite_code, evidence_policy)
-    values ('Terugzetgroep', v_alice, 'quorum', 2, 'TERUG1', 'optional') returning id into v_grp;
+    values ('Terugzetgroep', v_alice, 'quorum', 2, '${proefCode('terug1', 1)}', 'optional') returning id into v_grp;
   insert into public.group_members (group_id, user_id, role)
     values (v_grp, v_alice, 'admin'), (v_grp, v_bob, 'member');
   insert into public.goals (owner_id, title, target_date)
