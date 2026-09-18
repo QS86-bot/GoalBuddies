@@ -435,3 +435,99 @@ describe.skipIf(!beschikbaar)('een aanmelding wordt een profiel', () => {
     TEST_TIMEOUT,
   );
 });
+
+/**
+ * De bovengrens op wat er genormaliseerd wordt — QS8-546, migratie 0290.
+ *
+ * `schone_naam()` liep op `raw_user_meta_data` zónder bovengrens, in een
+ * `security definer`-trigger op een pad dat voor niet-ingelogde gebruikers
+ * openstaat. 📏 Gemeten door deze trigger heen, met 262.144 losse tags
+ * (`U+E0020`) — het maximum dat in GoTrue's 1 MB verzoeklichaam past:
+ * **350,6 ms** zonder grens tegen **25,2 ms** met.
+ *
+ * ⚠️⚠️ **Deze toets meet gedrag en geen tijd.** Een drempel op milliseconden is
+ *    op een gedeelde runner een gok, en hij wordt rood om redenen die niets met
+ *    de belofte te maken hebben. Wat de grens wél deterministisch verandert is
+ *    *waar hij knipt*: precies op codepunt 1000. Twee gevallen aan weerszijden
+ *    van die grens leggen hem vast, en ze zijn ook echt aan beide kanten gemeten.
+ *
+ * ⚠️ De grens kapt af en weigert niet, anders dan `create_group()` (0287). De
+ *    reden staat in de kop van 0290: dit is een trigger, weigeren is werpen, en
+ *    dan mislukt de aanmelding. Migratie `0154` bestaat omdat juist dát een keer
+ *    gebeurd is.
+ */
+describe.skipIf(!beschikbaar)('handle_new_user begrenst wat hij normaliseert', () => {
+  /** Duizend onzichtbare tekens, gevolgd door een gewone naam. */
+  const onzichtbaar = (aantal: number): string => '​'.repeat(aantal);
+
+  it(
+    'kapt af op 1000 codepunten: wat dáárna komt telt niet meer mee',
+    () => {
+      // 1000 zero-width spaces + 'Jan' — de grens knipt vóór de J, er blijft
+      // alleen onzichtbaars over, dat normaliseert naar leeg, en de terugval
+      // pakt het deel vóór de `@`.
+      const profiel = meldAan(
+        ID(60),
+        'grensgeval@voorbeeld.nl',
+        JSON.stringify({ full_name: `${onzichtbaar(1000)}Jan` }),
+      );
+
+      expect(profiel).not.toBeNull();
+      expect(profiel?.naam).toBe('grensgeval');
+      // ⚠️ De assertie die rood wordt zodra de grens weggaat: zónder hem vindt
+      //    `schone_naam()` de 'Jan' die erachter staat.
+      expect(profiel?.naam).not.toBe('Jan');
+    },
+    TEST_TIMEOUT,
+  );
+
+  it(
+    'laat een naam die nét binnen de grens valt ongemoeid',
+    () => {
+      // 997 + 3 = precies 1000 codepunten, dus 'Jan' haalt het net.
+      const profiel = meldAan(
+        ID(61),
+        'netbinnen@voorbeeld.nl',
+        JSON.stringify({ full_name: `${onzichtbaar(997)}Jan` }),
+      );
+
+      expect(profiel?.naam).toBe('Jan');
+    },
+    TEST_TIMEOUT,
+  );
+
+  /**
+   * ⚠️ `coalesce` kortsluit, dus normaal wordt alleen `full_name` genormaliseerd.
+   *    Een `full_name` die naar leeg normaliseert dwingt `name` er alsnog bij —
+   *    en dan telt het werk op. Beide bronnen dragen daarom de grens, en deze
+   *    toets is de enige die de tweede aanraakt.
+   */
+  it(
+    'begrenst ook `name`, de tweede bron van de coalesce',
+    () => {
+      const profiel = meldAan(
+        ID(62),
+        'tweedebron@voorbeeld.nl',
+        JSON.stringify({ full_name: onzichtbaar(10), name: `${onzichtbaar(1000)}Piet` }),
+      );
+
+      expect(profiel?.naam).toBe('tweedebron');
+      expect(profiel?.naam).not.toBe('Piet');
+    },
+    TEST_TIMEOUT,
+  );
+
+  it(
+    'een gewone naam merkt er niets van',
+    () => {
+      const profiel = meldAan(
+        ID(63),
+        'gewoon@voorbeeld.nl',
+        JSON.stringify({ full_name: 'Siobhan O’Brien' }),
+      );
+
+      expect(profiel?.naam).toBe('Siobhan O’Brien');
+    },
+    TEST_TIMEOUT,
+  );
+});
