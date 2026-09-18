@@ -167,10 +167,16 @@
  *    draagt het schild eromheen. De kop van deze migratie zegt waarom de eerste
  *    daar nog staat en onder welk issue hij openstaat (QS8-548).
  *
- * ⚠️ De `cross join lateral` staat er om `doeldatum()` één keer per doel te
- *    berekenen in plaats van twee keer per rij — en, belangrijker, om er één
- *    naam voor te hebben. Twee losse aanroepen van dezelfde functie zijn twee
- *    regels die iemand apart kan verzetten.
+ * ⚠️ **De `cross join lateral` staat er om de vraag één naam te geven.** Twee
+ *    losse aanroepen van `doeldatum()` in dezelfde `where` zijn twee regels die
+ *    iemand apart kan verzetten, en dat is precies de fout die deze migratie
+ *    repareert — één laag kleiner. Of de planner hem ook één keer uitrekent in
+ *    plaats van twee is hier niet gemeten en niet de reden.
+ *
+ * ⚠️ Hij kan geen rijen laten vallen of vermenigvuldigen: een `select` zonder
+ *    `from` geeft altijd precies één rij. 📏 Nagemeten met drie doelen van
+ *    dezelfde eigenaar, elk met een straf in een andere bevroren zone —
+ *    `verschuldigd = 3`, zoals vóór deze migratie.
  */
 create or replace function public.maak_straffen_verschuldigd(p_owner_id uuid, p_vandaag date)
 returns integer
