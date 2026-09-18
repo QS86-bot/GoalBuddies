@@ -47,9 +47,29 @@ fout.** Er stond dat Kiritimati↔Midway in het drie-datumsvenster van QS8-530
 alleen van **10:00 tot 10:59** twee dagen uit elkaar. Voor het hele venster heb
 je `Etc/GMT+12` als westpool nodig (26 uur in plaats van 25). De bovengrens van
 twee dagen klopt dus, de duur was een factor twee overdreven, en een aanvaller
-zou `Etc/GMT+12` kiezen en geen Midway. De toetsen leunen hier niet op: die
-claimen alleen dat twee zones méér dan 24 uur uit elkaar nooit op dezelfde datum
-staan, en dat is waar.
+zou `Etc/GMT+12` kiezen en geen Midway.
+
+⚠️⚠️ **Hier stond erachter: "de toetsen leunen hier niet op." Dat was onjuist, en
+het is twee uur later rood geworden.** De redenering die erbij hoorde — *twee
+zones méér dan 24 uur uit elkaar staan nooit op dezelfde datum* — is waar en
+niet genoeg. Twee toetsen in deze suite tellen niet **óf** de datums
+verschillen maar **hoeveel**, en bij 25 uur is dat één dag óf twee, afhankelijk
+van het uur. 📏 De suite viel om in precies het venster dat de meting hierboven
+noemt: twee toetsen rood om 10:35 UTC, groen om 09:00.
+
+**Het paar is daarom vervangen door Kiritimati (`UTC+14`) en Honolulu
+(`UTC−10`): exact 24 uur, dus op élk moment precies één dag verschil.** 📏
+Gemeten over twee jaar, uur voor uur: 17.521 metingen, minimum 1 en maximum 1.
+Geen van beide zones kent zomertijd.
+
+⚠️⚠️ **De les is niet "kies betere zones" maar hoe die correctie verwerkt werd.**
+De meting die het probleem zichtbaar maakte stónd er al — ze kwam uit de
+security-ronde, is in de kop van `0290` en hier opgeschreven, en kreeg een zin
+mee die de gevolgen voor de toetsen afwees zónder ze na te rekenen. Dezelfde vorm
+als QS8-529: een eigenschap van één moment opgeschreven als een eigenschap van
+elk moment. **Een correctie is pas verwerkt als je nagaat wat er nog meer op de
+oude versie leunde** — en dat is bij een meting over tijd bijna altijd meer dan
+de zin waarin ze stond.
 
 ## De tweede helft is een naad die `0288` zelf openliet
 

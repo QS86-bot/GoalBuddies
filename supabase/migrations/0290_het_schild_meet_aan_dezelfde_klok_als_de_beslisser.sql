@@ -67,6 +67,16 @@
 --    duur was een factor twee overdreven, en een aanvaller zou `Etc/GMT+12`
 --    kiezen en geen Midway.
 --
+-- ⚠️⚠️ **En die correctie kreeg er een zin bij die onjuist was: "de toetsen
+--    leunen hier niet op".** Twee toetsen in
+--    `tests/rls/het-schild-meet-aan-de-bevroren-strafklok.test.ts` tellen niet
+--    óf de datums verschillen maar **hoeveel**, en die zijn twee uur later rood
+--    geworden in precies het venster dat deze meting noemt. Het paar daar is
+--    daarom Kiritimati/Honolulu (`UTC+14` en `UTC−10`): **exact** 24 uur, 📏 over
+--    twee jaar uur voor uur gemeten altijd precies één dag verschil. **Een
+--    correctie is pas verwerkt als je nagaat wat er nog meer op de oude versie
+--    leunde.**
+--
 -- ---------------------------------------------------------------------------
 -- ⚠️⚠️ De tweede helft is een naad die 0288 zelf openliet
 -- ---------------------------------------------------------------------------

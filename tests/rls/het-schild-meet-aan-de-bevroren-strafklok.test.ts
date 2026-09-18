@@ -39,17 +39,27 @@ import { psqlMetInvoer, stackBeschikbaarOfFaal } from './psql-stack';
  *    toerekeningsgevallen hieronder meten dat verschil expliciet, zodat een
  *    latere lezer niet hoeft te raden welke van de twee clausules groen is.
  *
- * ⚠️⚠️ **Geen enkele toets hier hangt van het uur van de dag af, en dat is met
- *    opzet.** Kiritimati is `UTC+14` en Midway `UTC−11`: **25 uur** uit elkaar,
- *    en twee zones die meer dan 24 uur uit elkaar liggen staan nooit op dezelfde
- *    datum. De voorganger van dit soort toetsen telde datums op het moment van
- *    draaien en maakte CI twee uur per dag rood (QS8-529).
+ * ⚠️⚠️ **Geen enkele toets hier hangt van het uur van de dag af, en het paar
+ *    zones hieronder is de enige reden dat dat waar is.** Kiritimati is `UTC+14`
+ *    en Honolulu `UTC−10`: **exact 24 uur** uit elkaar, dus hun datums
+ *    verschillen op élk moment precies één dag. 📏 Gemeten over twee jaar, uur
+ *    voor uur: 17.521 metingen, minimum 1 en maximum 1. Geen van beide zones
+ *    kent zomertijd.
  *
- * ⚠️ Wat dit paar **niet** kan is het tweedagenvenster. 📏 Uur voor uur gemeten:
- *    Kiritimati − Midway is twee dagen van 10:00 tot 10:59 UTC en verder één;
- *    voor het hele drie-datumsvenster van QS8-530 (10:00–11:59) heb je
- *    `Etc/GMT+12` als westpool nodig. Elke toets hier meet dus één dag, en dat is
- *    genoeg om de klok te identificeren.
+ * ⚠️⚠️ **Hier stond eerst Midway (`UTC−11`), en dat maakte deze suite twee van
+ *    de vierentwintig uur rood.** De redenering erbij was *"25 uur uit elkaar,
+ *    dus nooit op dezelfde datum"* — waar, en niet genoeg. Twee toetsen tellen
+ *    niet óf de datums verschillen maar **hoeveel**, en dat is bij 25 uur één
+ *    dag óf twee, afhankelijk van het uur. 📏 Kiritimati − Midway is twee dagen
+ *    van 10:00 tot 10:59 UTC en verder één; de suite viel om in dat venster.
+ *
+ *    ⚠️ **En de meting die dat zichtbaar maakte stond er al.** Ze kwam uit de
+ *    security-ronde op deze branch, werd in de kop van `0290` en in het
+ *    beslisdocument verwerkt, en kreeg daar de zin *"de toetsen leunen hier niet
+ *    op"* mee — zonder ze na te rekenen. Een uur later waren ze rood. Dezelfde
+ *    vorm als QS8-529: een eigenschap van één moment opgeschreven als een
+ *    eigenschap van elk moment. **Een correctie is pas verwerkt als je nagaat
+ *    wat er nog meer op de oude versie leunde.**
  */
 
 const beschikbaar = stackBeschikbaarOfFaal(
@@ -59,8 +69,14 @@ const beschikbaar = stackBeschikbaarOfFaal(
 
 /** `UTC+14`. De datum hier is altijd die van {@link WEST} plus één. */
 const OOST = 'Pacific/Kiritimati';
-/** `UTC−11`. */
-const WEST = 'Pacific/Midway';
+/**
+ * `UTC−10`, en **exact** 24 uur achter {@link OOST}.
+ *
+ * ⚠️ Dat "exact" draagt deze hele suite: bij precies 24 uur verschil is het
+ *    datumverschil op élk moment één, en pas dan mag een toets in dagen tellen.
+ *    Zie de kop voor wat er met een zone van 25 uur misging.
+ */
+const WEST = 'Pacific/Honolulu';
 
 interface Opstelling {
   /** De zone van het profiel op het moment dat de straf wordt aangegaan. */
