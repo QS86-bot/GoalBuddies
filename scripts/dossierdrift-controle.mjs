@@ -32,6 +32,20 @@
  *   | C "de gemeten objecten zijn aangeraakt" | 19/43  (44%) |
  *   | **C met de twee verfijningen hieronder**|  **4/43 (9%)** |
  *
+ * ⚠️⚠️ **Het getal 4/43 hierboven hoort opnieuw gemeten te worden, en dat is
+ *    zelf een meting** (QS8-551). 📏 Op 18-09-2026 gaf deze controle **4**
+ *    bevindingen in een afgekapte kloon en **0** in dezelfde werkboom na
+ *    `git fetch --unshallow` — want in die eerste droegen 255 van de 292
+ *    migraties de horizon van de kloon als datum. De vier die er toen uit
+ *    kwamen (r537, r587, r588, r653) waren alle vier verzonnen.
+ *
+ *    Of het getal hierboven uit zo'n kloon komt, is hier **niet** vast te
+ *    stellen — het dossier is sindsdien ook veranderd. Wat wél vaststaat is dat
+ *    het niet reproduceert op een volledige kloon, en dat een percentage dat de
+ *    keuze voor deze regel draagt, tegen de juiste datums hoort te staan.
+ *    ⚠️ De grendel hieronder maakt de fout onmogelijk; hij maakt het getal niet
+ *    met terugwerkende kracht waar.
+
  * ⚠️⚠️ **En regel C valt op een ándere as dan A en B, wat de reden is dat hij
  *    het wél haalt.** Regel B bleek te meten hoe goed een rij ONDERHOUDEN werd:
  *    hij vlagde de rijen die net waren bijgewerkt, want een vervolgissue noemen
@@ -81,7 +95,7 @@
  *
  * Dat zijn grenzen en geen gebreken: de controle zegt wat hij meet.
  */
-import { readFileSync, readdirSync } from 'node:fs';
+import { existsSync, readFileSync, readdirSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
 import { pathToFileURL } from 'node:url';
 import { cellenVanRij } from './review-controle.mjs';
@@ -245,6 +259,56 @@ export function genoegGeschiedenis(migraties) {
 }
 
 /**
+ * Waarom kan deze kloon niet gemeten worden? `null` als hij dat wél kan.
+ *
+ * ⚠️⚠️ **`genoegGeschiedenis()` vangt `--depth=1` en verder niets, en dat is
+ *    met een echte kloon gemeten** (QS8-551). Die toets vraagt of er méér dan
+ *    één datum is; de belofte is of de geschiedenis vérder terugreikt dan de
+ *    oudste migratie. Dat is een eigenschap van het geheel, getoetst op een
+ *    eigenschap van een onderdeel — en daartussen past precies de kloon die je
+ *    in de praktijk krijgt.
+ *
+ *    📏 Gemeten op 18-09-2026 in een cloudsessie: 1014 commits, horizon
+ *    2026-09-07. **255 van de 292** migraties (0001 t/m 0252) droegen dezelfde
+ *    datum 2026-09-10 — de horizon, niet hun schrijfdatum. Zeven verschillende
+ *    datums dus, ruim meer dan één, en `genoegGeschiedenis()` zei "genoeg".
+ *    De controle meldde **4 verdachte rijen**; na `git fetch --unshallow`
+ *    (2402 commits, horizon 2026-08-15, 30 datums) waren het er **0**.
+ *    Alle vier waren verzonnen, en alle vier noemden een migratie ≤ 0252.
+ *
+ * ⚠️ **Daarom kijkt deze toets naar de kloon zelf en niet naar de spreiding van
+ *    de uitkomst.** Een afgekapte kloon is een ontbrekend meetinstrument; hoe
+ *    het antwoord er dan uitziet, is geen bewijs in welke richting dan ook.
+ *
+ * ⚠️ `afgekapt` komt als argument binnen en wordt hier niet zelf opgezocht,
+ *    zodat beide takken los te voeden zijn — een controle die je niet kunt
+ *    voeden, kun je niet ijken (CLAUDE.md, regel 18).
+ */
+export function waaromOngemeten(migraties, afgekapt) {
+  if (afgekapt) return 'afgekapt';
+  if (!genoegGeschiedenis(migraties)) return 'eendatum';
+  return null;
+}
+
+/**
+ * Is de git-geschiedenis van deze werkboom afgekapt?
+ *
+ * ⚠️ **Het bestaan van `.git/shallow` en niet `git rev-parse
+ *    --is-shallow-repository`.** De kop van `genoegGeschiedenis()` schreef over
+ *    die vlag dat hij `true` blijft nadat een kloon verdiept is. 📏 Dat
+ *    reproduceerde op 18-09-2026 niet: na `git fetch --unshallow` meldt hij
+ *    hier `false`, en `.git/shallow` is dan weg. Mogelijk gold die eerdere
+ *    meting voor een gedeeltelijke verdieping (`--depth=N`); dat is niet
+ *    nagemeten. Het bestand is hoe dan ook de directe vorm van de vraag — git
+ *    schrijft er de afgekapte punten in en verwijdert het zodra er geen meer
+ *    zijn — dus die lezen we, en de vlag laten we met rust.
+ */
+function kloonIsAfgekapt() {
+  const uit = execFileSync('git', ['rev-parse', '--git-dir'], { encoding: 'utf8' }).trim();
+  return existsSync(`${uit}/shallow`);
+}
+
+/**
  * De datum waarop dit pad voor het eerst in de geschiedenis voorkomt.
  *
  * ⚠️⚠️ **Met opzet zónder `--diff-filter=A`, en dat is met de hand gemeten.**
@@ -321,12 +385,19 @@ function main() {
     process.exit(1);
   }
 
-  if (!genoegGeschiedenis(migraties)) {
+  const ongemeten = waaromOngemeten(migraties, kloonIsAfgekapt());
+  if (ongemeten !== null) {
+    const waarom =
+      ongemeten === 'afgekapt'
+        ? 'de git-geschiedenis van deze werkboom is afgekapt, dus de datum van een\n' +
+          '  migratie is de horizon van de kloon en niet zijn schrijfdatum'
+        : `alle ${migraties.length} migraties dragen dezelfde datum, dus deze kloon\n` +
+          '  heeft niet genoeg geschiedenis om ze uit elkaar te houden';
+
     console.log(
-      `dossierdrift-controle: OVERGESLAGEN — alle ${migraties.length} migraties dragen\n` +
-        '  dezelfde datum, dus deze kloon heeft niet genoeg geschiedenis om ze uit\n' +
-        '  elkaar te houden. Elke rij zou vuren. Dat is ongemeten en niet groen —\n' +
-        '  zet `fetch-depth: 0` op de checkout om hem te laten meten.',
+      `dossierdrift-controle: OVERGESLAGEN — ${waarom}.\n` +
+        '  Dat is ongemeten en niet groen — draai `git fetch --unshallow`, of zet\n' +
+        '  `fetch-depth: 0` op de checkout, om hem te laten meten.',
     );
     process.exit(0);
   }

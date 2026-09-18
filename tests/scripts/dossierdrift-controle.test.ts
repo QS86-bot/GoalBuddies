@@ -4,6 +4,7 @@ import { describe, expect, it } from 'vitest';
 import {
   controleer,
   genoegGeschiedenis,
+  waaromOngemeten,
   eigenMigraties,
   komtInAanmerking,
   objectenInTitel,
@@ -242,6 +243,69 @@ describe('de hulpstukken los', () => {
  *    controle die nooit meet is erger dan geen controle. Wat wél discrimineert
  *    is de uitkomst: één datum voor alles tegen 13.
  */
+/**
+ * ⚠️⚠️ **De grendel die een onmeetbare kloon herkent** — QS8-551.
+ *
+ *    `genoegGeschiedenis()` vangt `--depth=1` en verder niets. 📏 Gemeten op
+ *    18-09-2026 in een cloudsessie: 1014 commits, horizon 2026-09-07, en
+ *    **255 van de 292** migraties (0001 t/m 0252) droegen dezelfde datum
+ *    2026-09-10 — de horizon van de kloon, niet hun schrijfdatum. Zeven
+ *    verschillende datums dus, ruim meer dan één, dus die toets zei "genoeg".
+ *    De controle meldde **4 verdachte rijen** (r537, r587, r588, r653); na
+ *    `git fetch --unshallow` waren het er **0**. Alle vier verzonnen, en alle
+ *    vier noemden een migratie ≤ 0252.
+ *
+ *    De belofte is *"reikt de geschiedenis verder terug dan de oudste
+ *    migratie"*; de oude toets vroeg *"is er meer dan één datum"*. Een
+ *    eigenschap van het geheel, getoetst op een eigenschap van een onderdeel —
+ *    en daartussen past precies de kloon die je in de praktijk krijgt.
+ *
+ * IJKING — met de hand gedraaid op 18-09-2026, één mutatie per grendel:
+ *
+ *   N  de `afgekapt`-tak uit `waaromOngemeten()` halen
+ *      -> **2 rood**: 'een afgekapte kloon is ongemeten, hoeveel datums hij ook
+ *         heeft' + 'afgekapt wint van eendatum, want verdiepen is de handeling'
+ *   O  `waaromOngemeten()` altijd `'afgekapt'` laten teruggeven
+ *      -> **2 rood**: 'een volledige kloon met spreiding wordt gewoon gemeten'
+ *         + 'en zonder spreiding blijft de oude reden staan'
+ *
+ * ⚠️ O is de helft die het zwaarst weegt: een controle die na deze wijziging
+ *    álles overslaat, is ook groen. Zonder dat geval bewaakt N niets.
+ */
+describe('waaromOngemeten kent het verschil tussen ongemeten en groen', () => {
+  const m = (datum: string) => ({ datum });
+  const spreiding = [m('2026-08-15'), m('2026-09-07'), m('2026-09-17')];
+
+  it('een afgekapte kloon is ongemeten, hoeveel datums hij ook heeft', () => {
+    expect(
+      waaromOngemeten(spreiding, true),
+      'een afgekapte kloon werd gemeten alsof zijn datums kloppen',
+    ).toBe('afgekapt');
+  });
+
+  it('een volledige kloon met spreiding wordt gewoon gemeten', () => {
+    expect(
+      waaromOngemeten(spreiding, false),
+      'een kloon die wél te meten is werd overgeslagen',
+    ).toBeNull();
+  });
+
+  it('en zonder spreiding blijft de oude reden staan', () => {
+    const eenDatum = [m('2026-09-18'), m('2026-09-18')];
+    expect(waaromOngemeten(eenDatum, false)).toBe('eendatum');
+  });
+
+  /**
+   * ⚠️ De twee redenen vragen om verschillende handelingen — verdiepen tegen
+   *    een volledige checkout — dus ze mogen niet op één tekst uitkomen. Zelfde
+   *    reden als bij `migratie:nieuw`, waar één zin voor "van net" en "van
+   *    eergisteren" als disclaimer leest.
+   */
+  it('afgekapt wint van eendatum, want verdiepen is de handeling', () => {
+    expect(waaromOngemeten([m('2026-09-18'), m('2026-09-18')], true)).toBe('afgekapt');
+  });
+});
+
 describe('genoegGeschiedenis', () => {
   const m = (datum: string) => ({ datum });
 
