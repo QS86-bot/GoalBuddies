@@ -18,6 +18,9 @@ import {
   ontleedPolicies,
   oordeel,
   verzwakSql,
+  conjunctenVan,
+  ontleedEenheid,
+  helftenVan,
 } from '../../scripts/rls-dekking.mjs';
 
 /**
@@ -111,6 +114,95 @@ describe('ontleedPolicies', () => {
   });
 });
 
+describe('conjunctenVan', () => {
+  /** ⚠️ De vorm die dit hele issue opleverde — QS8-550. */
+  it('splitst een top-level conjunctie', () => {
+    expect(conjunctenVan('(sender_id = auth.uid()) AND is_group_member(group_id)')).toEqual([
+      '(sender_id = auth.uid())',
+      'is_group_member(group_id)',
+    ]);
+  });
+
+  it('splitst er ook drie', () => {
+    expect(conjunctenVan('(a) AND (b) AND (c)')).toEqual(['(a)', '(b)', '(c)']);
+  });
+
+  /**
+   * ⚠️⚠️ **De helft die hij met rust moet laten, en die is hier de moeilijkste.**
+   *    📏 Een naïeve `split(' AND ')` telde in dit schema **50** conjuncties waar
+   *    er **35** zijn: elke `exists (… where a AND b)` en elke join-voorwaarde
+   *    telde mee. Zo'n `and` is geen aparte grendel maar een deel van één
+   *    uitdrukking, en los openzetten zou een SQL-fout geven in plaats van een
+   *    meting.
+   */
+  it('splitst niet binnen een subquery', () => {
+    const e = 'EXISTS ( SELECT 1 FROM goals g WHERE ((g.id = c.goal_id) AND (g.owner_id = auth.uid())))';
+
+    expect(conjunctenVan(e)).toEqual([e]);
+  });
+
+  /**
+   * ⚠️ **Hier stond eerst `((a AND b))` met `['a AND b']` als verwachting, en
+   *    die was fout — niet de code.** Na het wegstrijken van het omhulsel ís dat
+   *    gewoon een top-level conjunctie. Het geval dat de bedoeling wél dekt is
+   *    een `and` binnen een functieaanroep: die is geen aparte grendel.
+   */
+  it('splitst niet binnen een functieaanroep', () => {
+    expect(conjunctenVan('mag_lezen(a AND b)')).toEqual(['mag_lezen(a AND b)']);
+  });
+
+  /** ⚠️ Een enkelvoudige uitdrukking is één conjunct, geen nul. */
+  it('geeft een enkelvoudige uitdrukking als één deel terug', () => {
+    expect(conjunctenVan('is_group_member(group_id)')).toEqual(['is_group_member(group_id)']);
+  });
+
+  /**
+   * ⚠️ **`(a) AND (b)` begint en eindigt met een haakje, maar die twee horen
+   *    niet bij elkaar.** Blind strippen maakt er `a) AND (b` van.
+   */
+  it('strijkt alleen haakjes weg die de héle uitdrukking omsluiten', () => {
+    expect(conjunctenVan('((a) AND (b))')).toEqual(['(a)', '(b)']);
+  });
+
+  /** ⚠️ Een `OR` is geen conjunct: daar dekt het geheel niet af wat een deel doet. */
+  it('splitst niet op OR', () => {
+    expect(conjunctenVan('(a) OR (b)')).toEqual(['(a) OR (b)']);
+  });
+});
+
+describe('ontleedEenheid', () => {
+  it('leest een kale helft', () => {
+    expect(ontleedEenheid('using')).toEqual({ helft: 'using', index: null });
+  });
+
+  it('leest een helft met conjunctnummer', () => {
+    expect(ontleedEenheid('check#2')).toEqual({ helft: 'check', index: 2 });
+  });
+});
+
+describe('helftenVan met conjuncten', () => {
+  /**
+   * ⚠️ **Een helft met één conjunct houdt zijn kale naam**, zodat de
+   *    registersleutels van zulke rijen niet verschuiven. 📏 Van de negen rijen
+   *    in `NIET_PER_HELFT_TE_METEN` is er precies **één** een conjunctie.
+   */
+  it('laat een enkelvoudige helft ongemoeid', () => {
+    expect(helftenVan({ qual: 'owner_id = x', wcheck: '' })).toEqual(['using']);
+  });
+
+  it('nummert de conjuncten van een samengestelde helft', () => {
+    expect(helftenVan({ qual: '(a) AND (b)', wcheck: '' })).toEqual(['using#0', 'using#1']);
+  });
+
+  it('doet dat per helft apart', () => {
+    expect(helftenVan({ qual: 'a', wcheck: '(b) AND (c)' })).toEqual([
+      'using',
+      'check#0',
+      'check#1',
+    ]);
+  });
+});
+
 describe('verzwakSql', () => {
   it('zet een using-policy wagenwijd open', () => {
     expect(verzwakSql({ tabel: 'goals', naam: 'g_select', qual: 'owner_id = x', wcheck: '' })).toBe(
@@ -130,6 +222,31 @@ describe('verzwakSql', () => {
 
     expect(sql).toContain('using (true)');
     expect(sql).toContain('with check (true)');
+  });
+
+  /**
+   * ⚠️⚠️ **Dit is de mutatie die QS8-550 blootlegde.** Alleen de eigenaarshelft
+   *    op `true`, de rest blijft staan — en dát liet 2094 tests groen terwijl
+   *    elk groepslid het bericht van elk ander kon wissen. Wagenwijd openzetten
+   *    vond het gat níét, want dan valt ook het archiefdeel weg en dát is wel
+   *    getoetst.
+   */
+  it('vervangt één conjunct en laat de rest staan', () => {
+    const policy = { tabel: 'chat_messages', naam: 'cm_delete', qual: '(sender_id = u) AND is_lid(g)', wcheck: '' };
+
+    expect(verzwakSql(policy, 'using#0')).toBe(
+      'alter policy "cm_delete" on public."chat_messages" using (true AND is_lid(g));',
+    );
+    expect(verzwakSql(policy, 'using#1')).toBe(
+      'alter policy "cm_delete" on public."chat_messages" using ((sender_id = u) AND true);',
+    );
+  });
+
+  /** ⚠️ Een nummer dat niet bestaat is een fout in de aanroeper, geen stille no-op. */
+  it('werpt op een conjunct die niet bestaat', () => {
+    expect(() =>
+      verzwakSql({ tabel: 't', naam: 'p', qual: '(a) AND (b)', wcheck: '' }, 'using#5'),
+    ).toThrow(/conjunct 5 bestaat niet/);
   });
 
   /** ⚠️ Een policy zonder uitdrukking valt niet te verzwakken — en dat is geen fout. */

@@ -130,11 +130,128 @@ export function ontleedPolicies(uitvoer) {
   return ruw;
 }
 
-/** De ALTER die deze policy wagenwijd openzet, of `null` als er niets te openen valt. */
-export function verzwakSql(policy, helft) {
+/**
+ * De conjuncten waar een policyhelft op het hoogste niveau uit bestaat.
+ *
+ * ⚠️⚠️ **Waarom dit bestaat — QS8-550.** Deze meting beantwoordde tot 18-09-2026
+ *    *"wordt er iets rood als ik deze helft wagenwijd openzet"*, en dat is niet
+ *    dezelfde vraag als *"is elke voorwaarde in deze helft getoetst"*. Bij een
+ *    `and` vallen die twee uit elkaar: één getoetste conjunct maakt het geheel
+ *    `bewaakt`, en de andere kan stil verdwijnen.
+ *
+ *    📏 Gemeten op `chat_messages_delete`, dat
+ *    `(sender_id = auth.uid()) and is_group_member(group_id)` draagt. Het
+ *    rapport meldde `bewaakt`, met `archief-leesbaar.test.ts` als getuige — en
+ *    dat klopte, want wagenwijd open laat óók het archiefdeel vallen. Maar
+ *    alleen de eigenaarshelft weghalen liet **180 bestanden en 2094 tests groen**
+ *    staan terwijl elk groepslid het bericht van elk ander kon wissen.
+ *
+ * ⚠️ **De kosten zijn gemeten en niet geschat.** 📏 Van de **133** policyhelften
+ *    zijn er **35** een top-level conjunctie, samen **106** conjuncten. Per
+ *    conjunct meten kost dus 133 − 35 + 106 = **204** runs in plaats van 133,
+ *    een groei van **1,53×**. Dit rapport draait met opzet niet in de poort en
+ *    duurt toch al uren; die anderhalf is de prijs van een getal dat betekent
+ *    wat het zegt.
+ *
+ * ⚠️ **Splitsen doet hij alleen op diepte nul.** Een `and` binnen een subquery,
+ *    een join of een `exists` is geen aparte grendel maar een deel van één
+ *    uitdrukking; die staan er in dit schema volop in. Een naïeve
+ *    `split(' AND ')` telde er 50 waar er 35 zijn.
+ */
+export function conjunctenVan(uitdrukking) {
+  const kern = zonderBuitensteHaakjes(uitdrukking);
+  const delen = [];
+  let diepte = 0;
+  let start = 0;
+
+  for (let i = 0; i < kern.length; i += 1) {
+    const teken = kern[i];
+    if (teken === '(') diepte += 1;
+    else if (teken === ')') diepte -= 1;
+    else if (diepte === 0 && kern.startsWith(' AND ', i)) {
+      delen.push(kern.slice(start, i));
+      start = i + ' AND '.length;
+      i += ' AND '.length - 1;
+    }
+  }
+
+  delen.push(kern.slice(start));
+  return delen.map((d) => d.trim()).filter((d) => d !== '');
+}
+
+/**
+ * Haalt haakjes weg die de héle uitdrukking omsluiten.
+ *
+ * ⚠️ `(a) AND (b)` begint en eindigt óók met een haakje, maar die twee horen
+ *    niet bij elkaar. Daarom telt hij de diepte mee in plaats van blind te
+ *    strippen — anders wordt `a) AND (b` de kern en klopt er niets meer.
+ */
+function zonderBuitensteHaakjes(uitdrukking) {
+  let e = uitdrukking.trim();
+
+  while (e.startsWith('(') && e.endsWith(')') && isEenOmhulsel(e)) {
+    e = e.slice(1, -1).trim();
+  }
+
+  return e;
+}
+
+/** Sluit het eerste haakje van `e` pas helemaal aan het eind? */
+function isEenOmhulsel(e) {
+  let diepte = 0;
+
+  for (let i = 0; i < e.length; i += 1) {
+    if (e[i] === '(') diepte += 1;
+    else if (e[i] === ')') diepte -= 1;
+    if (diepte === 0) return i === e.length - 1;
+  }
+
+  return false;
+}
+
+/** De uitdrukking van een helft, of `''` als die helft er niet is. */
+function uitdrukkingVan(policy, helft) {
+  return helft === 'check' ? policy.wcheck : policy.qual;
+}
+
+/**
+ * Knipt een eenheid uit `helftenVan()` uiteen in zijn helft en zijn
+ * conjunctnummer. `using` geeft `{ helft: 'using', index: null }`,
+ * `using#1` geeft `{ helft: 'using', index: 1 }`.
+ */
+export function ontleedEenheid(eenheid) {
+  const streep = eenheid.indexOf('#');
+  if (streep === -1) return { helft: eenheid, index: null };
+
+  return { helft: eenheid.slice(0, streep), index: Number(eenheid.slice(streep + 1)) };
+}
+
+/**
+ * De ALTER die deze eenheid openzet, of `null` als er niets te openen valt.
+ *
+ * Zonder conjunctnummer zet hij de hele helft op `true`; mét nummer vervangt hij
+ * alléén die conjunct door `true` en laat de rest staan. Dat tweede is wat een
+ * `and` los te breken maakt.
+ */
+export function verzwakSql(policy, eenheid = 'beide') {
+  // ⚠️ Zonder eenheid betekent dit "allebei de helften wagenwijd open", zoals
+  //    vóór QS8-550. Die aanroep bestaat nog en hoort niet te werpen.
+  const { helft, index } = ontleedEenheid(eenheid);
   const stukken = [];
-  if (policy.qual !== '' && helft !== 'check') stukken.push('using (true)');
-  if (policy.wcheck !== '' && helft !== 'using') stukken.push('with check (true)');
+
+  const open = (h) => {
+    const bron = uitdrukkingVan(policy, h);
+    if (index === null) return 'true';
+
+    const delen = conjunctenVan(bron);
+    if (index < 0 || index >= delen.length) {
+      throw new Error(`conjunct ${index} bestaat niet in ${policy.tabel}.${policy.naam}.${h}`);
+    }
+    return delen.map((d, i) => (i === index ? 'true' : d)).join(' AND ');
+  };
+
+  if (policy.qual !== '' && helft !== 'check') stukken.push(`using (${open('using')})`);
+  if (policy.wcheck !== '' && helft !== 'using') stukken.push(`with check (${open('check')})`);
   if (stukken.length === 0) return null;
 
   return `alter policy ${kwoot(policy.naam)} on public.${kwoot(policy.tabel)} ${stukken.join(' ')};`;
@@ -152,8 +269,23 @@ export function verzwakSql(policy, helft) {
  */
 export function helftenVan(policy) {
   const uit = [];
-  if (policy.qual !== '') uit.push('using');
-  if (policy.wcheck !== '') uit.push('check');
+
+  // ⚠️⚠️ **En sinds QS8-550 gaat dat argument één niveau dieper.** Een helft die
+  //    op het hoogste niveau uit meerdere conjuncten bestaat, is net zo goed
+  //    meerdere grendels — en dan betekende "bewaakt" hier opnieuw *minstens
+  //    één*. Zie `conjunctenVan()` voor de meting die dat blootlegde.
+  //
+  // ⚠️ Een helft met precies één conjunct houdt zijn kale naam (`using`), zodat
+  //    de registersleutels van zulke rijen niet verschuiven. Alleen de 35
+  //    helften die écht een conjunctie zijn, krijgen `#0`, `#1`, …
+  for (const [helft, uitdrukking] of [['using', policy.qual], ['check', policy.wcheck]]) {
+    if (uitdrukking === '') continue;
+
+    const delen = conjunctenVan(uitdrukking);
+    if (delen.length < 2) uit.push(helft);
+    else for (let i = 0; i < delen.length; i += 1) uit.push(`${helft}#${i}`);
+  }
+
   return uit;
 }
 
