@@ -38,8 +38,48 @@
  *    een vierde type hoort hier ook niet binnen te komen.
  */
 
-/** De drie types die beide emmers toestaan. Alles daarbuiten weigeren we. */
-const GEKEND = new Set(['image/jpeg', 'image/png', 'image/webp']);
+/**
+ * De drie types die beide emmers toestaan. Alles daarbuiten weigeren we.
+ *
+ * ⚠️ **Dit is een unie en geen `string`**, om dezelfde reden als bij de
+ *    foutsleutels van `kiesFoto()`: een vierde type erbij hoort een typefout te
+ *    zijn en geen stil doorgelaten waarde.
+ */
+export type Formaat = 'image/jpeg' | 'image/png' | 'image/webp';
+
+/** Dezelfde drie, als verzameling voor de toets op een meegegeven mime. */
+const GEKEND = new Set<string>(['image/jpeg', 'image/png', 'image/webp'] satisfies Formaat[]);
+
+/**
+ * Welk formaat dragen déze bytes? `null` als het er geen van de drie is.
+ *
+ * ⚠️⚠️ **Waarom dit bestaat, en waarom het op de bytes kijkt** — QS8-547.
+ *    `expo-image-picker` geeft een `mimeType` terug die het **bestand op schijf**
+ *    beschrijft, terwijl `base64: true` daarnaast een **JPEG** teruggeeft. Die
+ *    twee zijn niet hetzelfde bestand. 📏 Gelezen in de bron van 57.0.14: op de
+ *    PHPicker-route geeft `ImageUtils.swift` voor HEIC, TIFF, AVIF, WEBP en BMP
+ *    de **originele** bytes terug (`case UTType.heic.identifier: return
+ *    (rawData, ".heic")`), terwijl `MediaHandler.swift` de base64 altijd via
+ *    `readJpegBase64From(image:compressionQuality:)` maakt.
+ *
+ *    Gevolg: een gewone iPhone-foto kwam hier binnen als `image/heic` met
+ *    JPEG-bytes, viel buiten `GEKEND`, en de gebruiker kreeg
+ *    `chatfoto.kiezen_mislukt` terwijl er niets mis was met zijn foto.
+ *
+ * ⚠️ **De les is niet "die mime was fout" maar "die mime was een bewering van
+ *    een ander over een ander bestand".** De kop hierboven zegt al dat dit
+ *    bestand zijn werk op de bytes doet; het formaat hoorde daar ook bij. Een
+ *    aanroeper die een platformwaarde doorgeeft, geeft door wat hij niet weet.
+ *
+ * ⚠️ Geëxporteerd zodat hij los te voeden is (regel 18), mét de vormen die hij
+ *    met rust moet laten — zie `src/shared/afbeelding/index.test.ts`.
+ */
+export function herkenFormaat(bytes: Uint8Array): Formaat | null {
+  if (isJpeg(bytes)) return 'image/jpeg';
+  if (isPng(bytes)) return 'image/png';
+  if (isWebp(bytes)) return 'image/webp';
+  return null;
+}
 
 export type Uitkomst =
   | { readonly ok: true; readonly data: Uint8Array }
@@ -118,9 +158,18 @@ interface Gelezen<T> {
 }
 
 /** Loopt de segmenten af tot aan `SOS` (`0xDA`) of `EOI` (`0xD9`). */
+/**
+ * De SOI-merker. ⚠️ Eén plek, want `herkenFormaat()` en `jpegSegmenten()` moeten
+ * per definitie hetzelfde bedoelen met "dit is een JPEG" — twee koppen over
+ * hetzelfde begrip lopen uiteen, en dan is de vraag welke de waarheid is.
+ */
+function isJpeg(bytes: Uint8Array): boolean {
+  return bytes.length >= 4 && bytes[0] === 0xff && bytes[1] === 0xd8;
+}
+
 function jpegSegmenten(bytes: Uint8Array): Gelezen<Segment> {
   const leeg = { delen: [], volledig: false } as const;
-  if (bytes.length < 4 || bytes[0] !== 0xff || bytes[1] !== 0xd8) return leeg;
+  if (!isJpeg(bytes)) return leeg;
 
   const delen: Segment[] = [];
   let i = 2;
@@ -191,8 +240,13 @@ interface Chunk {
   readonly tot: number;
 }
 
+/** Zelfde reden als `isJpeg()`: één kop per formaat. */
+function isPng(bytes: Uint8Array): boolean {
+  return bytes.length >= 8 && PNG_KOP.every((b, n) => bytes[n] === b);
+}
+
 function pngChunks(bytes: Uint8Array): Gelezen<Chunk> {
-  if (bytes.length < 8 || PNG_KOP.some((b, n) => bytes[n] !== b)) return { delen: [], volledig: false };
+  if (!isPng(bytes)) return { delen: [], volledig: false };
 
   const delen: Chunk[] = [];
   let i = 8;
@@ -229,9 +283,14 @@ function knipPng(bytes: Uint8Array): Uint8Array | null {
 //    van als een maatregel.
 const WEG_WEBP = new Set(['EXIF', 'XMP ']);
 
+/** Zelfde reden als `isJpeg()`: één kop per formaat. */
+function isWebp(bytes: Uint8Array): boolean {
+  return bytes.length >= 12 && leesVier(bytes, 0) === 'RIFF' && leesVier(bytes, 8) === 'WEBP';
+}
+
 function webpChunks(bytes: Uint8Array): Gelezen<Chunk> {
   const leeg = { delen: [], volledig: false } as const;
-  if (bytes.length < 12 || leesVier(bytes, 0) !== 'RIFF' || leesVier(bytes, 8) !== 'WEBP') return leeg;
+  if (!isWebp(bytes)) return leeg;
 
   const delen: Chunk[] = [];
   let i = 12;

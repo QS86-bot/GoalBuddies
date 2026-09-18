@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { draagtMetadata, ontdoeVanMetadata } from './index';
+import { draagtMetadata, herkenFormaat, ontdoeVanMetadata } from './index';
 
 /**
  * Metadata uit een afbeelding knippen — QS8-395, deel 1 van QS8-394.
@@ -287,5 +287,106 @@ describe('draagtMetadata is los te voeden', () => {
   it('ziet eXIf in een png en EXIF in een webp', () => {
     expect(draagtMetadata(pngMetGps(), 'image/png')).toBe(true);
     expect(draagtMetadata(webpMetGps(), 'image/webp')).toBe(true);
+  });
+});
+
+/**
+ * ⚠️ **De vormen die hij moet vinden én de vormen die hij met rust moet laten** —
+ *    QS8-547. Een herkenner die bij twijfel maar `image/jpeg` teruggeeft, haalt
+ *    de eerste helft hieronder groen en levert een emmer vol bestanden waarvan
+ *    niemand het formaat kent.
+ *
+ * IJKING — met de hand gedraaid op 18-09-2026, één mutatie per grendel:
+ *
+ *   H  `isJpeg()` altijd `true` laten teruggeven
+ *      -> 3 rood: 'een png blijft een png', 'een webp blijft een webp',
+ *         'wat geen afbeelding is, krijgt geen formaat'
+ *   I  de lengte-eis uit `isWebp()` halen
+ *      -> **0 rood**, en dat is geen gat in deze suite. Zie hieronder.
+ *   J  `herkenFormaat()` `image/jpeg` laten teruggeven in plaats van `null`
+ *      -> 1 rood: 'wat geen afbeelding is, krijgt geen formaat'
+ *   K  de lengte-eis uit `isJpeg()` halen
+ *      -> 1 rood: 'wat geen afbeelding is, krijgt geen formaat'
+ *
+ * ⚠️⚠️ **I is opgeschreven omdat hij niets deed, en niet ondanks dat.** Mijn
+ *    voorspelling was één rode test; 📏 gemeten waren het er nul op eenentwintig.
+ *    De reden is `leesVier()`: die leest met `subarray()`, en dat klemt af op de
+ *    lengte. `leesVier(b, 8) === 'WEBP'` kán dus alleen waar zijn als er
+ *    werkelijk twaalf bytes staan — de lengte-eis ervóór is een tweede grendel
+ *    op dezelfde deur.
+ *
+ *    Dat is precies de vorm waar CLAUDE.md voor waarschuwt: *"een ijking die
+ *    zijn geval door een pad voert dat een éérdere grendel al afvangt, bewaakt
+ *    niets van wat hij belooft"*. De eis blijft staan — hij is gratis en zegt wat
+ *    de functie bedoelt — maar wie hier ooit een test onder hangt met het idee
+ *    dát hij die eis bewaakt, bewaakt `leesVier()`.
+ *
+ *    ⚠️ Voor `isJpeg()` ligt het ánders en dat is het verschil dat telt: die
+ *    leest `bytes[0]` en `bytes[1]` los, dus een invoer van twee bytes
+ *    (`FF D8`) haalt de merkertoets wél en de lengte-eis níet.
+ *
+ *    ⚠️⚠️ **Maar dat verschil was hier eerst ook niet te zien**, en dat is de
+ *    tweede helft van dezelfde les. Toen I niets deed, schreef ik erbij dat de
+ *    eis bij `isJpeg()` *wel* draagt — en die zin was op dat moment een
+ *    redenering en geen meting: er stond geen geval in deze suite dat hem raakte.
+ *    Daarom staat `FF D8` er nu als eigen invoer, en pas daarmee wordt K rood.
+ *    **Een grendel waarvan je uitlegt dat hij draagt, zonder een geval dat hem
+ *    raakt, is dezelfde aanname als een grendel die nooit rood is geweest.**
+ */
+describe('herkenFormaat leest het formaat van de bytes', () => {
+  it('een jpeg blijft een jpeg, wat het platform er ook van zegt', () => {
+    expect(herkenFormaat(jpegMetGps())).toBe('image/jpeg');
+  });
+
+  it('een png blijft een png', () => {
+    expect(herkenFormaat(pngMetGps())).toBe('image/png');
+  });
+
+  it('een webp blijft een webp', () => {
+    expect(herkenFormaat(webpMetGps())).toBe('image/webp');
+  });
+
+  it('wat geen afbeelding is, krijgt geen formaat', () => {
+    // ⚠️ De HEIC-kop uit het geval van QS8-547: als deze bytes ooit wél binnen
+    //    zouden komen, hoort er een dichte deur te staan en geen gok.
+    const heic = new Uint8Array([
+      0, 0, 0, 0x18, ...[...'ftypheic'].map((c) => c.charCodeAt(0)), 0, 0, 0, 0,
+    ]);
+    expect(herkenFormaat(heic), 'een heic kreeg een formaat dat hij niet heeft').toBeNull();
+    expect(herkenFormaat(new Uint8Array()), 'niets kreeg een formaat').toBeNull();
+    expect(herkenFormaat(new Uint8Array([0xff]))).toBeNull();
+    expect(herkenFormaat(new Uint8Array([...'RIFF'].map((c) => c.charCodeAt(0))))).toBeNull();
+    // ⚠️ Twee bytes SOI en verder niets. Dit geval staat er om de lengte-eis in
+    //    `isJpeg()` te dragen — zonder hem heet dit `image/jpeg`. Zie I in de kop.
+    expect(herkenFormaat(new Uint8Array([0xff, 0xd8])), 'twee bytes werden een jpeg').toBeNull();
+  });
+});
+
+/**
+ * ⚠️⚠️ **De naad tussen `herkenFormaat()` en `GEKEND`** — regel 18, vraag 1.
+ *    Het zijn twee lijstjes van dezelfde drie types, en ze staan los van elkaar:
+ *    `herkenFormaat()` kent koppen, `GEKEND` kent namen. Allebei zijn ze op
+ *    zichzelf te toetsen en allebei zouden ze kloppen terwijl de kéten breekt —
+ *    een formaat dat de herkenner teruggeeft en `ontdoeVanMetadata()` daarna
+ *    weigert, is een foto die de gebruiker niet kwijt kan.
+ *
+ *    📏 Dat is precies de vorm die QS8-547 opleverde, één laag hoger: daar
+ *    kwamen het formaat en de bytes uit verschillende bronnen. Deze toets zorgt
+ *    dat ze binnen dit bestand niet uit elkaar kunnen lopen.
+ */
+describe('wat herkenFormaat teruggeeft, accepteert ontdoeVanMetadata ook', () => {
+  it.each([
+    ['jpeg', jpegMetGps],
+    ['png', pngMetGps],
+    ['webp', webpMetGps],
+  ])('%s: de herkende naam komt door de toets heen', (_naam, maak) => {
+    const bytes = maak();
+    const formaat = herkenFormaat(bytes);
+
+    expect(formaat, 'de herkenner kent dit formaat niet').not.toBeNull();
+    expect(
+      ontdoeVanMetadata(bytes, formaat as string),
+      `${formaat} werd herkend maar daarna geweigerd — de twee lijstjes lopen uiteen`,
+    ).toMatchObject({ ok: true });
   });
 });
