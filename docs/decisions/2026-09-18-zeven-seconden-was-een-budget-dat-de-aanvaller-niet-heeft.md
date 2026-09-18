@@ -20,7 +20,8 @@ meting halveert de bevinding niet, ze deelt hem door achttien.
 ## De hermeting, op het budget dat er wél is
 
 📏 1 MB ruwe bytes, dus per tekenklasse een ánder aantal codepunten.
-`octet_length` is per geval nagerekend — alle vier precies 1.048.576:
+`octet_length` per geval nagerekend: `U+E0020`, `U+1BCA0` en `a` komen op precies
+1.048.576, `U+FFF3` en `U+200B` op 1.048.575 (349.525 × 3).
 
 | klasse | codepunten | zonder grens | met grens |
 |---|---:|---:|---:|
@@ -34,11 +35,20 @@ En door de échte trigger heen, met een teruggerolde `insert into auth.users`:
 📏 **350,6 ms** zonder grens tegen **25,2 ms** met.
 
 ⚠️⚠️ **Het budget moest van codepunten naar bytes, en dat verandert wie er wint.**
-Per codepunt is de losse tag het duurst (0,91 µs). Per **byte** ook — hij kost er
-vier in UTF-8, wat hem op 0,2275 µs/byte zet tegen 0,125 voor `U+FFF3` en 0,045
-voor `a`. Dat de winnaar dezelfde bleef is hier toeval en geen wet: een klasse die
-per codepunt duur is maar één byte kost, had de rangorde omgedraaid. **Een
-meting in de verkeerde eenheid geeft het goede antwoord alleen per ongeluk.**
+Uit de tabel hierboven: de losse tag kost **1,495 µs/codepunt** (392 ms / 262.144)
+en vier bytes in UTF-8, dus **0,374 µs/byte**; `U+FFF3` 0,466 µs/cp over drie bytes
+is 0,155; `a` is 0,0525 voor allebei. De losse tag wint op beide assen.
+
+⚠️⚠️ **Die µs-cijfers stonden hier eerst fout, en de fout is leerzamer dan het
+getal.** Er stond 0,91 µs/codepunt — dat is 7146 ms / 8.000.000, teruggerekend uit
+precies de meting die dit document verwerpt. Ik had een kengetal overgenomen uit de
+run die ik aan het weerleggen was. De security-ronde heeft het gevonden; de
+conclusie bleef overeind, de onderbouwing niet. **Een verworpen meting laat zijn
+afgeleiden achter.**
+
+Dat de winnaar dezelfde bleef is bovendien toeval en geen wet: een klasse die per
+codepunt duur is maar één byte kost, had de rangorde omgedraaid. **Een meting in de
+verkeerde eenheid geeft het goede antwoord alleen per ongeluk.**
 
 ## Wat er dan nog over is
 
@@ -48,9 +58,23 @@ te houden op een open pad, en `max_connections` is **60** voor de héle database
 op de gratis tier.
 
 ⚠️ **De reden om het tóch te begrenzen is niet de 392 ms maar de vorm.** Zonder
-grens schaalt het werk met wat een vreemde opstuurt; met grens niet. Die
-eigenschap blijft waar als GoTrue zijn 1 MB ooit verruimt — en dat is precies
-het soort verandering dat niemand hier ziet gebeuren.
+grens schaalt het **normalisatiewerk** met wat een vreemde opstuurt; met grens
+niet. Die eigenschap blijft waar als GoTrue zijn 1 MB ooit verruimt — en dat is
+precies het soort verandering dat niemand hier ziet gebeuren.
+
+⚠️⚠️ **Het is "het normalisatiewerk is begrensd" en niet "de kosten hangen niet
+meer van de invoer af".** Die tweede zin stond hier, in de migratiekop en in de
+reviewrij, en ze is te sterk — de security-ronde heeft haar weerlegd en ik heb het
+nagemeten. 📏 Een aanmelding met leeg metadata-lichaam kost ~13 ms, met 1 MB ~24 ms.
+Maar 1 MB in een sleutel die de trigger **nooit leest** (`junk`) kost ~21–33 ms, en
+1 MB in `avatar_url` ~28 ms: statistisch hetzelfde. Wat overblijft is het opslaan
+van de jsonb in `auth.users`, niet iets wat deze trigger doet.
+
+**Waarom dat verschil ertoe doet en niet muggenzifterij is:** die zin zou in
+november gelezen worden door iemand zonder de meting ernaast, en wie er een vijfde
+ruwe bron bij bouwt met *"de kosten hangen toch niet van de invoer af"* in zijn
+hoofd, bouwt hem zonder grens. Exact de klasse fout waar dit issue over ging — een
+bewering die blijft staan nadat ze niet meer klopt.
 
 ⚠️ **Die 1 MB is een aanname en staat als zodanig in de migratiekop.** Hij is
 gelezen uit de bron van `master`, niet uit de gedeployde versie van dít project;
@@ -82,16 +106,28 @@ en dan op `'Naamloos'` — waar hij daarvóór de zichtbare tekens ná die duize
 gevonden had. 📏 Gemeten aan beide kanten van de grens: 1000 zero-widths + `Jan`
 geeft de e-mailterugval, 997 + `Jan` geeft `Jan`.
 
+⚠️ **Er is een tweede, mildere gedragsverandering en die stond hier eerst niet.**
+Een *gedeeltelijke* afkapping: 📏 `950 × U+200B + 100 × 'a'` gaf vóór 0290 een naam
+van 80 tekens en geeft er nu 50. Geen CHECK-schending, geen terugval — alleen een
+kortere naam. Even adversarieel van vorm, maar de zin hierboven dekte dat geval niet.
+
 Zo'n naam is adversarieel van vorm — duizend onzichtbare tekens vóór je naam — en
 de terugval is niet stuk maar milder. De keuze staat hier opgeschreven in plaats
 van gekopieerd, zoals het issue vroeg.
 
 ## De grens staat om de bínnenste aanroepen
 
-Drie bronnen dragen hem, niet één. `coalesce` kortsluit, dus normaal wordt alleen
+**Vier** bronnen dragen hem, niet één. `coalesce` kortsluit, dus normaal wordt alleen
 `full_name` genormaliseerd — maar een `full_name` die naar leeg normaliseert
 dwingt `name` er alsnog bij, en dan telt het werk op. Het totaal mag niet van de
 invoer afhangen, dus alle drie.
+
+⚠️ **De vierde is `avatar_url`, en die ontbrak in de eerste versie.** Die
+begrensde er drie en beweerde in dezelfde kop dat álle bronnen begrensd waren — de
+security-ronde vond het. 📏 De regex erop kost 2,11 ms per MB, dus verwaarloosbaar;
+het punt is dat de bewering anders onwaar is. Geen gedragswijziging: een pad dat aan
+`profiles_avatar_url_eigen_pad` voldoet is hoogstens 237 codepunten, en afkappen kan
+een niet-match geen match máken.
 
 De `left(…, 80)` blijft staan en doet ander werk: 1000 begrenst wat er
 genormaliseerd wordt, 80 wat er opgeslagen wordt. De buitenste `schone_naam()`

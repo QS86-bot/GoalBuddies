@@ -26,7 +26,8 @@
 --
 -- 📏 Hermeten op 18-09-2026 op het bedrag dat een aanvaller wérkelijk heeft —
 --    1 MB ruwe bytes, dus per tekenklasse een ander aantal codepunten
---    (`octet_length` nagerekend, alle vier precies 1048576):
+--    (`octet_length` nagerekend: `U+E0020`, `U+1BCA0` en `a` komen op precies
+--    1.048.576, `U+FFF3` en `U+200B` op 1.048.575 — 349.525 x 3):
 --
 --   | klasse                   | codepunten | zonder grens | met grens |
 --   |--------------------------|-----------:|-------------:|----------:|
@@ -42,9 +43,16 @@
 -- wel een goedkope manier om connecties bezet te houden op een open pad, en
 -- `max_connections` is **60** voor de héle database op de gratis tier.
 --
--- ⚠️ De bovengrens maakt de kosten bovendien **onafhankelijk van de invoer**, en
---    dat is de eigenschap die hier telt. Zonder hem schaalt het werk met wat een
---    vreemde opstuurt; met hem niet. Dat blijft waar als GoTrue zijn 1 MB ooit
+-- ⚠️⚠️ **Het begrenst het normalisatiewerk, en niet "de kosten".** Die eerste
+--    formulering stond hier en was te sterk; de security-ronde heeft hem
+--    weerlegd en ik heb het nagemeten. 📏 Een aanmelding met een leeg
+--    metadata-lichaam kost ~13 ms, met 1 MB ~24 ms — maar 1 MB in een sleutel
+--    die deze trigger **nooit leest** (`junk`) kost ~21-33 ms, statistisch
+--    hetzelfde. Wat er overblijft is het opslaan van de jsonb in `auth.users`
+--    en niet iets wat `handle_new_user()` doet.
+--
+-- ⚠️ De eigenschap die hier wél telt: zonder grens schaalt het **normalisatie**werk
+--    met wat een vreemde opstuurt; met grens niet. Dat blijft waar als GoTrue zijn 1 MB ooit
 --    verruimt — en die 1 MB is gelezen uit de bron van `master`, niet uit de
 --    gedeployde versie van dít project. Dat is een **aanname**: de gemeten
 --    bescherming hieronder hangt er niet van af, de omvang van het gat wél.
@@ -110,17 +118,24 @@ begin
     --    (QS8-448). Buiten: `left(…, 80)` maakt een nieuwe rand, en
     --    `profiles_display_name_schoon` weigert die. Zie de kop.
     --
-    -- ⚠️ Er zijn **vier** CHECKs op de kolommen die deze trigger schrijft:
-    --    `profiles_display_name_len`, `profiles_display_name_zichtbaar`,
-    --    `profiles_avatar_url_len` en sinds 0286
-    --    `profiles_display_name_schoon`. Die laatste stond er niet in toen deze
-    --    kop "drie" zei — een telling in een comment veroudert stil.
+    -- ⚠️⚠️ Er zijn **tien** CHECKs op de kolommen die deze trigger schrijft.
+    --    📏 Geteld uit `pg_constraint` op 18-09-2026: `display_name` draagt er
+    --    **acht** (`_len`, `_zichtbaar`, `_schoon`, `_een_regel`, `_geen_bidi`,
+    --    `_geen_losse_tag`, `_geen_onzichtbaar_middenin`,
+    --    `_geen_onzichtbaar_tussen_letters`) en `avatar_url` **twee** (`_len`,
+    --    `_eigen_pad`).
+    --
+    --    Deze comment zei eerst "drie", werd naar "vier" gecorrigeerd met de
+    --    waarschuwing *"een telling in een comment veroudert stil"* eronder — en
+    --    was toen alwéér onjuist. Hij is nu geteld en niet bijgewerkt, en de
+    --    waarschuwing blijft staan omdat ze twee keer haar eigen gelijk heeft
+    --    gehaald.
     --
     -- ⚠️⚠️ **`left(…, c_ruwe_grens)` om elk van de drie ruwe bronnen (QS8-546).**
     --    `coalesce` kortsluit, dus normaal wordt alleen de eerste genormaliseerd —
     --    maar een `full_name` die naar leeg normaliseert dwingt `name` er
-    --    alsnog bij, en dan telt het werk op. Alle drie begrensd, zodat het
-    --    totaal niet van de invoer afhangt.
+    --    alsnog bij, en dan telt het werk op. Alle **vier** de ruwe bronnen
+    --    dragen de grens — deze drie plus `avatar_url` hieronder.
     coalesce(
       nullif(
         schone_naam(
@@ -141,9 +156,22 @@ begin
     -- ⚠️ Alleen een pad dat aan `profiles_avatar_url_eigen_pad` voldoet. Een
     --    provider stuurt hier een `https://`-URL, en die hoort niet in deze
     --    kolom. Alles wat niet past, wordt `null`.
+    -- ⚠️⚠️ **`avatar_url` draagt de grens óók, en dat is de vierde bron.**
+    --    Gevonden in de security-ronde op dit issue: de eerste versie begrensde
+    --    er drie en beweerde in dezelfde kop dat álle bronnen begrensd waren.
+    --    📏 De regex kost 2,11 ms per MB — verwaarloosbaar — maar zolang deze
+    --    bron geen grens draagt is die bewering onwaar, en dat is precies het
+    --    argument waarmee deze migratie zichzelf verantwoordt.
+    --
+    -- ⚠️ **Geen gedragswijziging, en dat is geen aanname.** Een pad dat aan
+    --    `profiles_avatar_url_eigen_pad` voldoet is hoogstens 36 + 1 + 200 =
+    --    237 codepunten, dus `left(…, 1000)` raakt een geldige waarde nooit.
+    --    Afkappen kan een niet-match ook geen match máken: het patroon eist `$`
+    --    aan het eind en begrenst het segment op 200.
     case
-      when new.raw_user_meta_data ->> 'avatar_url' ~ ('^' || new.id::text || '/[A-Za-z0-9._-]{1,200}$')
-        then new.raw_user_meta_data ->> 'avatar_url'
+      when left(new.raw_user_meta_data ->> 'avatar_url', c_ruwe_grens)
+             ~ ('^' || new.id::text || '/[A-Za-z0-9._-]{1,200}$')
+        then left(new.raw_user_meta_data ->> 'avatar_url', c_ruwe_grens)
       else null
     end
   )
