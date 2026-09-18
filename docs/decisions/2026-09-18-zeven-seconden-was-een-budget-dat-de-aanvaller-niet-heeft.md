@@ -1,6 +1,6 @@
 # Zeven seconden was een budget dat de aanvaller niet heeft
 
-**18-09-2026 · QS8-546 · migratie 0290**
+**18-09-2026 · QS8-546 · migratie 0291**
 
 ## De bevinding, en wat er niet aan klopte
 
@@ -107,7 +107,7 @@ gevonden had. 📏 Gemeten aan beide kanten van de grens: 1000 zero-widths + `Ja
 geeft de e-mailterugval, 997 + `Jan` geeft `Jan`.
 
 ⚠️ **Er is een tweede, mildere gedragsverandering en die stond hier eerst niet.**
-Een *gedeeltelijke* afkapping: 📏 `950 × U+200B + 100 × 'a'` gaf vóór 0290 een naam
+Een *gedeeltelijke* afkapping: 📏 `950 × U+200B + 100 × 'a'` gaf vóór 0291 een naam
 van 80 tekens en geeft er nu 50. Geen CHECK-schending, geen terugval — alleen een
 kortere naam. Even adversarieel van vorm, maar de zin hierboven dekte dat geval niet.
 

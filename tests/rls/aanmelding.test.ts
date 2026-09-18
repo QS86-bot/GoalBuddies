@@ -437,7 +437,7 @@ describe.skipIf(!beschikbaar)('een aanmelding wordt een profiel', () => {
 });
 
 /**
- * De bovengrens op wat er genormaliseerd wordt — QS8-546, migratie 0290.
+ * De bovengrens op wat er genormaliseerd wordt — QS8-546, migratie 0291.
  *
  * `schone_naam()` liep op `raw_user_meta_data` zónder bovengrens, in een
  * `security definer`-trigger op een pad dat voor niet-ingelogde gebruikers
@@ -452,7 +452,7 @@ describe.skipIf(!beschikbaar)('een aanmelding wordt een profiel', () => {
  *    van die grens leggen hem vast, en ze zijn ook echt aan beide kanten gemeten.
  *
  * ⚠️ De grens kapt af en weigert niet, anders dan `create_group()` (0287). De
- *    reden staat in de kop van 0290: dit is een trigger, weigeren is werpen, en
+ *    reden staat in de kop van 0291: dit is een trigger, weigeren is werpen, en
  *    dan mislukt de aanmelding. Migratie `0154` bestaat omdat juist dát een keer
  *    gebeurd is.
  */

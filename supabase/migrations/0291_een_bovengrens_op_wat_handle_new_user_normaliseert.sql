@@ -1,4 +1,4 @@
--- 0290_een_bovengrens_op_wat_handle_new_user_normaliseert.sql — `handle_new_user()`
+-- 0291_een_bovengrens_op_wat_handle_new_user_normaliseert.sql — `handle_new_user()`
 -- normaliseerde `raw_user_meta_data` zonder bovengrens (QS8-546)
 --
 -- ROLLBACK-PAD:
