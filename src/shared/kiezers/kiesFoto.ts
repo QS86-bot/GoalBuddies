@@ -1,6 +1,6 @@
 import * as ImagePicker from 'expo-image-picker';
 
-import { base64NaarBytes, ontdoeVanMetadata } from '../afbeelding';
+import { base64NaarBytes, herkenFormaat, ontdoeVanMetadata } from '../afbeelding';
 
 /**
  * Een foto kiezen — QS8-71 (groepschat) en QS8-391 (bewijs bij een voltooiing).
@@ -90,7 +90,14 @@ export async function kiesFoto(sleutel: Fotofoutsleutel): Promise<Fotokeuze> {
   const bytes = base64 === null ? null : base64NaarBytes(base64);
   if (bytes === null) return { soort: 'fout', sleutel };
 
-  const mime = gekozen.mimeType ?? 'image/jpeg';
+  // ⚠️⚠️ **Het formaat komt uit de bytes en niet uit `gekozen.mimeType`** —
+  //    QS8-547. Die eigenschap beschrijft het bestand dat de picker op schijf
+  //    zette; `base64` hierboven is een JPEG die daar los van staat. Op een
+  //    iPhone liepen die twee uit elkaar bij élke HEIC-foto — de standaard —
+  //    en dan weigerde `ontdoeVanMetadata()` een formaat dat er niet in zat.
+  const mime = herkenFormaat(bytes);
+  if (mime === null) return { soort: 'fout', sleutel };
+
   const schoon = ontdoeVanMetadata(bytes, mime);
   if (!schoon.ok) return { soort: 'fout', sleutel };
 

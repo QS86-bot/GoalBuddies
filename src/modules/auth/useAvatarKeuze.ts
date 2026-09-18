@@ -3,7 +3,7 @@ import { useState } from 'react';
 
 import { t } from '../../shared/i18n';
 
-import { base64NaarBytes, ontdoeVanMetadata } from '../../shared/afbeelding';
+import { base64NaarBytes, herkenFormaat, ontdoeVanMetadata } from '../../shared/afbeelding';
 
 import { uploadAvatar, verwijderAvatar } from './avatar';
 import { fetchProfiel, type Profiel } from './profile';
@@ -78,7 +78,17 @@ async function kiesAfbeelding(): Promise<Afbeeldingkeuze> {
   //    dezelfde coördinaten naar dezelfde mensen als een chatfoto — en hij staat
   //    al live. Zelfde helper, geen tweede kopie: twee knippers over hetzelfde
   //    begrip lopen uiteen, en dan is de vraag welke de waarheid is (QS8-395).
-  const mime = gekozen.mimeType ?? 'image/jpeg';
+  // ⚠️ **Het formaat komt uit de bytes** — zelfde reden en zelfde helper als in
+  //    `kiesFoto()` (QS8-547). 📏 Deze kiezer stáát vandaag niet op het pad dat
+  //    daar omviel: `allowsEditing: true` stuurt iOS naar de legacy picker, en
+  //    diens tak in `ImageUtils.swift` kent geen HEIC-geval, dus een HEIC valt
+  //    daar door naar `default` en wordt JPEG. **Dat is precies waarom het hier
+  //    ook zo hoort:** die veiligheid hangt aan een optie die over bijsnijden
+  //    gaat en niets belooft over formaten. Wie ooit het bijsnijden weghaalt,
+  //    verplaatst deze kiezer naar de route die omviel.
+  const mime = herkenFormaat(bytes);
+  if (mime === null) return { soort: 'fout', sleutel: 'avatar.uploaden_mislukt' };
+
   const schoon = ontdoeVanMetadata(bytes, mime);
   if (!schoon.ok) return { soort: 'fout', sleutel: 'avatar.uploaden_mislukt' };
 
