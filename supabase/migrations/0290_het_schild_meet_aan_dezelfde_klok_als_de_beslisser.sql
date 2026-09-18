@@ -57,8 +57,15 @@
 --    Zónder verzoek wordt diezelfde straf op `vandaag - 7` gewoon verschuldigd,
 --    ook in de aanvalsopstelling. Het is dus écht de schildclausule en niets
 --    anders. Kiritimati (`UTC+14`) en Midway (`UTC−11`) liggen 25 uur uit
---    elkaar: precies één dag. In het drie-datumsvenster van QS8-530
---    (10:00–11:59 UTC) zijn het er twee.
+--    elkaar: precies één dag.
+--
+-- ⚠️ **Hier stond dat dit paar in het drie-datumsvenster van QS8-530
+--    (10:00–11:59 UTC) twee dagen scheelt. 📏 Dat is uur voor uur nagemeten en
+--    het klopt niet:** Kiritimati↔Midway is alleen van 10:00 tot 10:59 twee
+--    dagen uit elkaar. Voor het hele venster heb je `Etc/GMT+12` als westpool
+--    nodig — 26 uur in plaats van 25. De bovengrens van twee dagen klopt dus, de
+--    duur was een factor twee overdreven, en een aanvaller zou `Etc/GMT+12`
+--    kiezen en geen Midway.
 --
 -- ---------------------------------------------------------------------------
 -- ⚠️⚠️ De tweede helft is een naad die 0288 zelf openliet
@@ -101,6 +108,64 @@
 --    naadmeting hierboven geeft `verschuldigd = 1` met de straf op `due` —
 --    terwijl de buddy nog steeds `verzoek_verlopen` krijgt. Die twee zeggen nu
 --    hetzelfde over hetzelfde verzoek.
+--
+-- ---------------------------------------------------------------------------
+-- ⚠️⚠️ Wat er nog bij gerepareerd wordt, en wat het kost
+-- ---------------------------------------------------------------------------
+--
+-- Allebei de kanten van die ene dag zijn gemeten, en allebei horen ze erbij —
+-- niet alleen de kant die goed uitkomt.
+--
+-- 📏 **Erbij gerepareerd: een straf die te vroeg afging.** Eerlijke verhuizing
+--    naar het **oosten** (straf aangegaan in Midway, profiel nu Kiritimati),
+--    streefdatum zes dagen terug, geldig open uitstelverzoek:
+--
+--      zonder 0290   verschuldigd=1, straf `due`, één `commitment_due`
+--      met    0290   verschuldigd=0, straf `set`, geen bericht
+--
+--    Die persoon deed niets fout en kreeg zijn straf verschuldigd terwijl zijn
+--    schild in de bevroren zone nog liep. *Te vroeg* is volgens
+--    `rollover/index.ts` zelf het enige dat hier niet mag. Dit stond niet in de
+--    bevinding.
+--
+-- 📏 **De prijs: hetzelfde bericht, één dag eerder, voor de spiegelbeeldige
+--    verhuizer.** Eerlijke verhuizing naar het **westen**, streefdatum zeven
+--    dagen terug in de bevroren zone, geldig open verzoek:
+--
+--      zonder 0290   verschuldigd=0, straf `set`, 0 berichten
+--      met    0290   verschuldigd=1, straf `due`, 1 bericht
+--                    -> buddy keurt goed: straf terug op `set`, bericht blijft
+--
+-- ⚠️⚠️ **Het bericht is de prijs en niet de status.** `meld_commitment()` plaatst
+--    bij `set -> due` een `commitment_due` in de begunstigde groep, en dat blijft
+--    staan ook nadat de buddy toewijst en de straf terugvalt — een
+--    onveranderlijke kopie die de autorisatie overleeft waaronder hij gemaakt is
+--    (domeinregel 7 §3). De ruil is dus niet "één dag coulance" maar "één dag
+--    coulance plus een permanent groepszichtbaar bericht". ⚠️ Nog steeds
+--    verdedigbaar — 📏 een eerlijke niet-verhuizer krijgt op dag zeven exact
+--    hetzelfde bericht, gemeten — maar het hoort in de afweging en niet erbuiten.
+--
+-- ---------------------------------------------------------------------------
+-- ⚠️⚠️ De route die blijft, en de zin die hier niet komt te staan
+-- ---------------------------------------------------------------------------
+--
+-- **`0290` hangt een tweede beslissing aan de bevroren zone.** Tot nu droeg
+-- `commitments.tz` alleen de verlooppoort van `beslis_deadline_verzoek()`; nu
+-- draagt hij óók dit schild. Daarmee verdubbelt het oppervlak van **QS8-536**:
+-- de bevroren zone van een bestáánde straf is niet te verzetten, maar een straf
+-- is te **annuleren en opnieuw aan te gaan**, en dan wordt hij opnieuw bevroren.
+-- 📏 Nagemeten tegen dít schild: precies één dag, en op dag acht valt de straf
+-- alsnog om.
+--
+-- ⚠️⚠️ **Daarom staat er hier níet "en je kunt hem achteraf niet meer
+--    verschuiven".** Die zin is op 17-09 twee keer doorgestreept — in de kop van
+--    `0288` en in het beslisdocument ernaast — en stond in de eerste versie van
+--    de artefacten van déze migratie opnieuw. Een geruststelling die niet klopt
+--    leest de volgende persoon als een reden om er niet aan te twijfelen.
+--
+-- ⚠️ Geen verruiming, wel een verplaatsing: vóór `0290` kocht diezelfde dag met
+--    één `PATCH` op `profiles.tz`, zonder voorbereiding en zonder spoor. Nu kost
+--    hij een annulering, en die staat in `commitment_events`.
 --
 -- ⚠️ **De aanval slaat hierna de andere kant op**, en dat volgt uit diezelfde
 --    tabel: het schild rekent door op de zone waarin de straf is aangegaan, en

@@ -41,6 +41,16 @@ De rechterkolom is de toerekening en is zelf gemeten — zonder verzoek wordt
 diezelfde straf op `vandaag − 7` gewoon verschuldigd, ook in de
 aanvalsopstelling. Het is dus écht de schildclausule en niets anders.
 
+⚠️ **Eén dag met dit paar, twee met een ander — en die nuance stond hier eerst
+fout.** Er stond dat Kiritimati↔Midway in het drie-datumsvenster van QS8-530
+(10:00–11:59 UTC) twee dagen scheelt. 📏 Uur voor uur nagemeten: dat paar is
+alleen van **10:00 tot 10:59** twee dagen uit elkaar. Voor het hele venster heb
+je `Etc/GMT+12` als westpool nodig (26 uur in plaats van 25). De bovengrens van
+twee dagen klopt dus, de duur was een factor twee overdreven, en een aanvaller
+zou `Etc/GMT+12` kiezen en geen Midway. De toetsen leunen hier niet op: die
+claimen alleen dat twee zones méér dan 24 uur uit elkaar nooit op dezelfde datum
+staan, en dat is waar.
+
 ## De tweede helft is een naad die `0288` zelf openliet
 
 `0288` verzette de verlooppoort van `beslis_deadline_verzoek()` naar
@@ -76,10 +86,38 @@ schrijver maar dat de vraag één naam heeft. Sinds `0290` heeft ze die:
 
 ⚠️ **Grens 1 — besluit van Quinten (17-09-2026): bevriezen op `commitments.tz`.**
 Hetzelfde besluit als bij `0280` en `0288`, en met dezelfde motivering: het is de
-enige van de drie opties die niemands belofte verandert. Je houdt precies de
-coulance die je had toen je je vastlegde, en je kunt hem achteraf niet meer
-verschuiven. Quinten koos er tegelijk voor QS8-531 en QS8-533 **apart** te laten
-landen.
+enige van de drie opties die niemands belofte verandert — je houdt precies de
+coulance die je had toen je je vastlegde. Quinten koos er tegelijk voor QS8-531
+en QS8-533 **apart** te laten landen.
+
+⚠️⚠️ **Hier stond eerst "en je kunt hem achteraf niet meer verschuiven", en die
+zin is op 17-09 al twee keer doorgestreept** — in de kop van `0288` en in
+`docs/decisions/2026-09-17-de-poort-en-de-klok-eronder.md`. Hij stond hier
+opnieuw, in de eerste versie van dít document, en de security-ronde op deze
+branch haalde hem er weer uit. **Dat is precies de vorm waar CLAUDE.md voor
+waarschuwt: een afwijking die je onderbouwt is duurder dan een die je vergeet.**
+Een geruststelling die niet klopt leest de volgende persoon als een reden om er
+niet aan te twijfelen — en de volgende persoon kan ik over een maand zelf zijn.
+
+Wat er werkelijk geldt: de bevroren zone van een **bestaande** straf is niet te
+verzetten, maar een straf is te **annuleren en opnieuw aan te gaan**, en dan
+wordt de zone opnieuw bevroren. Dat is **QS8-536**.
+
+⚠️⚠️ **En `0290` hangt een tweede beslissing aan die bevroren zone.** Tot deze
+migratie droeg `commitments.tz` alleen de verlooppoort van
+`beslis_deadline_verzoek()`; nu draagt hij óók het zevendaagse schild. Het
+oppervlak van QS8-536 is daarmee verdubbeld, en dat staat in zijn rij in
+`docs/ENGINEER-REVIEW.md`. 📏 Nagemeten tegen het **nieuwe** schild: de wissel
+koopt precies één dag, en op dag acht valt de straf alsnog om.
+
+⚠️ **Geen verruiming, wel een verplaatsing.** Vóór `0290` kocht diezelfde dag met
+één `PATCH` op `profiles.tz` — zonder voorbereiding en zonder spoor. Nu kost hij
+een annulering, en die staat als `cancelled` plus `confirmed` in
+`commitment_events`. `0290` maakt de goedkope route duur en laat de dure staan.
+De route staat als toets in
+`tests/rls/het-schild-meet-aan-de-bevroren-strafklok.test.ts`, met dezelfde
+faalmelding als de QS8-548-toets: wordt hij rood, dan is het issue af en hoort
+hij omgedraaid te worden.
 
 Beide clausules gaan daarom naar `doeldatum(g.id, g.owner_id)`.
 
@@ -95,6 +133,47 @@ aanname dat stil verschuift.
 zone waarin de straf is aangegaan, en die staat na een westwaartse sprong
 oostelijker dan de levende. De straf die op `vandaag − 7` afgaat, gaat daarmee af
 op `levende dag − 6`. Dat volgt uit de tabel hierboven en is geen tweede meting.
+
+## Wat deze migratie erbij repareert, en wat ze kost
+
+Allebei de kanten van die ene dag zijn gemeten, en allebei horen ze bij het
+besluit — niet alleen de kant die goed uitkomt.
+
+**Erbij gerepareerd: een straf die te vroeg afging.** 📏 Eerlijke verhuizing naar
+het **oosten** (straf aangegaan in Midway, profiel nu Kiritimati), streefdatum
+zes dagen terug, geldig open uitstelverzoek:
+
+| | `verschuldigd` | straf | `commitment_due` in de groep |
+| --- | --- | --- | --- |
+| zonder `0290` | 1 | `due` | **1** |
+| met `0290` | 0 | `set` | 0 |
+
+Die persoon deed niets fout en kreeg zijn straf verschuldigd terwijl zijn schild
+in de bevroren zone nog liep. Dat is *te vroeg*, en dat is volgens
+`rollover/index.ts` zelf het enige dat hier niet mag. Het stond niet in de
+bevinding en is winst.
+
+**De prijs: hetzelfde bericht, één dag eerder, voor de spiegelbeeldige
+verhuizer.** 📏 Eerlijke verhuizing naar het **westen**, streefdatum zeven dagen
+terug in de bevroren zone, geldig open verzoek:
+
+| | `verschuldigd` | straf | `commitment_due` | ná goedkeuring door de buddy |
+| --- | --- | --- | --- | --- |
+| zonder `0290` | 0 | `set` | 0 | straf `set`, 0 berichten |
+| met `0290` | 1 | `due` | **1** | straf terug op `set`, **1** bericht |
+
+⚠️⚠️ **Het bericht is de prijs en niet de status.** `meld_commitment()` plaatst
+bij `set → due` een `commitment_due` in de begunstigde groep, en dat blijft staan
+ook nadat de buddy het verzoek toewijst en de straf terugvalt op `set` — een
+onveranderlijke kopie die de autorisatie overleeft waaronder hij gemaakt is
+(domeinregel 7 §3). De QS8-531-rij noteerde dat al: *"de teruggang naar `set` is
+stil, en dan is de groep het enige dat het verschil zag."*
+
+De ruil is dus niet "één dag coulance" maar "één dag coulance plus een permanent
+groepszichtbaar bericht dat er een straf verschuldigd werd". ⚠️ Dat is nog steeds
+verdedigbaar — 📏 een eerlijke niet-verhuizer krijgt op dag zeven exact hetzelfde
+bericht, gemeten — maar het hoort in de afweging te staan en niet erbuiten, want
+het is een groepszichtbaar gevolg van een besluit over een commitment device.
 
 ## Wat er bewust blijft staan: QS8-548
 
@@ -164,12 +243,23 @@ erna, en daarna teruggezet:
 
 | mutatie | de toets die rood werd |
 | --- | --- |
-| `g.target_date > d.vandaag - 7` → `p_vandaag - 7` | *laat het schild vervallen op de zone waarin de straf is aangegaan* |
+| `g.target_date > d.vandaag - 7` → `p_vandaag - 7` | *laat het schild vervallen op de zone waarin de straf is aangegaan*, plus *laat het schild staan voor wie eerlijk naar het oosten verhuisd is* en de QS8-536-toets |
 | `r.new_date >= d.vandaag` → `p_vandaag` | *laat een verzoek dat de beslisser verlopen noemt geen straf afschermen* |
-| `doeldatum()` zonder `'set'` in zijn statuslijst | *neemt `set` mee in de statussen waar `doeldatum()` zijn zone uit haalt* (plus de twee gedragstoetsen) |
+| `doeldatum()` zonder `'set'` in zijn statuslijst | *neemt `set` mee in de statussen waar `doeldatum()` zijn zone uit haalt* (plus de gedragstoetsen) |
+| `doeldatum()` geeft `null` | *houdt `doeldatum()` onvoorwaardelijk niet-null* (plus zes gedragstoetsen — het schild verdwijnt volledig) |
+| `doeldatum()` negeert de bevroren zone | *laat het schild vervallen…*, *laat het schild staan voor wie eerlijk naar het oosten verhuisd is* en de QS8-536-toets |
 | `commitments.tz` nullable | *houdt `commitments.tz` NOT NULL* |
 | het hele schild weggehaald | *houdt de straf tegen zolang het schild loopt* en *schermt de straf wél af zolang de beslisser het verzoek kan toewijzen* |
 | `g.target_date < p_vandaag` → `d.vandaag` | *stelt het verschuldigd worden zélf nog wél uit — QS8-548* |
+
+⚠️⚠️ **De vierde rij is de belangrijkste en stond er pas na de security-ronde.**
+📏 Geeft `doeldatum()` `null`, dan wordt `r.new_date >= null` niet onwaar maar
+**onbekend**, levert de `not exists` geen rij op, wordt `not exists` dus `true` —
+en verdwijnt het hele schild. Gemeten: `verschuldigd=1`, de straf op `due`, en
+een `commitment_due` in de groep. Dat is **fail-open richting de straf**, de
+enige richting die hier niet mag. Wat hem dichthoudt is de `current_date`-staart
+van `doeldatum()`, en die staat in het register van `klokgrens:controle`
+beschreven als *onbereikbaar* — precies het soort tak dat iemand opruimt.
 
 ⚠️ De laatste rij is de ijking van het gat en niet van de reparatie: hij toont dat
 de QS8-548-toets werkelijk aan díe clausule hangt en niet toevallig groen is.

@@ -3,8 +3,18 @@ import { describe, expect, it } from 'vitest';
 import { psqlMetInvoer, stackBeschikbaarOfFaal } from './psql-stack';
 
 /**
- * De belofte: **het zevendaagse schild rond een straf is niet op te rekken door
- * je eigen tijdzone te verzetten** — QS8-533, migratie 0290.
+ * De belofte: **het zevendaagse schild rond een straf meet aan de zone die bij
+ * het aangaan bevroren is, en niet aan de `profiles.tz` die de gestrafte vandaag
+ * kan verzetten** — QS8-533, migratie 0290.
+ *
+ * ⚠️⚠️ **Hier stond "niet op te rekken door je eigen tijdzone te verzetten", en
+ *    dat is te sterk.** Eén route blijft over en is hier gemeten: een straf
+ *    **annuleren en opnieuw aangaan** bevriest de zone opnieuw, en koopt dan
+ *    precies één dag schild (QS8-536, de toets onderaan). Dezelfde zin is op
+ *    17-09 al eens teruggenomen in `0288` en in
+ *    `docs/decisions/2026-09-17-de-poort-en-de-klok-eronder.md`; hij stond hier
+ *    opnieuw. **Een geruststelling die niet klopt kost meer dan een ontbrekende,
+ *    omdat niemand er nog aan twijfelt.**
  *
  * ⚠️⚠️ **Wat er mis was.** `maak_straffen_verschuldigd()` hield een straf op
  *    `set` zolang er een open, beslisbaar uitstelverzoek lag en
@@ -34,6 +44,12 @@ import { psqlMetInvoer, stackBeschikbaarOfFaal } from './psql-stack';
  *    en twee zones die meer dan 24 uur uit elkaar liggen staan nooit op dezelfde
  *    datum. De voorganger van dit soort toetsen telde datums op het moment van
  *    draaien en maakte CI twee uur per dag rood (QS8-529).
+ *
+ * ⚠️ Wat dit paar **niet** kan is het tweedagenvenster. 📏 Uur voor uur gemeten:
+ *    Kiritimati − Midway is twee dagen van 10:00 tot 10:59 UTC en verder één;
+ *    voor het hele drie-datumsvenster van QS8-530 (10:00–11:59) heb je
+ *    `Etc/GMT+12` als westpool nodig. Elke toets hier meet dus één dag, en dat is
+ *    genoeg om de klok te identificeren.
  */
 
 const beschikbaar = stackBeschikbaarOfFaal(
@@ -415,9 +431,164 @@ describe.skipIf(!beschikbaar)('het schild meet aan de bevroren strafklok', () =>
     TIMEOUT,
   );
 
+  /**
+   * ⚠️⚠️ **De terugval áchter de terugval is hier een dragende grendel, en dat is
+   *    gemeten.** Zou `doeldatum()` ooit `null` geven, dan wordt `r.new_date >=
+   *    null` niet waar maar **onbekend**, levert de `not exists` geen rij op,
+   *    wordt `not exists` dus `true` — en verdwijnt het hele schild.
+   *
+   *    📏 Nagemeten door `doeldatum()` tijdelijk `null::date` te laten geven:
+   *    `verschuldigd=1`, de straf op `due`, en een `commitment_due` in de groep.
+   *    Dat is fail-open richting de straf, en dat is precies de richting die hier
+   *    niet mag. Wat hem vandaag dichthoudt is de `current_date`-staart in
+   *    `doeldatum()` — een tak die in het register van `klokgrens:controle` als
+   *    onbereikbaar beschreven staat, en die iemand daarom kan opruimen.
+   */
+  it(
+    'houdt `doeldatum()` onvoorwaardelijk niet-null',
+    () => {
+      const uit = psqlMetInvoer(
+        `select 'nooit_null=' || (public.doeldatum(gen_random_uuid(), gen_random_uuid()) is not null);`,
+      );
+
+      expect(
+        uit,
+        '`doeldatum()` kan null geven; dan valt het schild weg en gaat de straf te vroeg af',
+      ).toContain('nooit_null=t');
+    },
+    TIMEOUT,
+  );
+
+  /**
+   * ⚠️⚠️ **Dit geval was vóór 0290 een straf die te vroeg afging, en dat stond
+   *    niet in de bevinding.** Een eerlijke verhuizer naar het **oosten** — straf
+   *    aangegaan in Midway, profiel nu Kiritimati — kreeg zijn straf verschuldigd
+   *    terwijl zijn schild in de bevroren zone nog liep.
+   *
+   *    📏 Gemeten, streefdatum zes dagen terug in de bevroren zone, geldig open
+   *    verzoek:
+   *
+   *      zonder 0290   verschuldigd=1, straf `due`, één `commitment_due` in de groep
+   *      met    0290   verschuldigd=0, straf `set`, geen bericht
+   *
+   *    ⚠️ Dat bericht is het punt en niet de status: `meld_commitment()` plaatst
+   *    bij `set → due` een systeembericht in de begunstigde groep, en dat blijft
+   *    staan ook nadat de buddy het verzoek toewijst en de straf terugvalt op
+   *    `set` — een onveranderlijke kopie (domeinregel 7 §3).
+   */
+  it(
+    'laat het schild staan voor wie eerlijk naar het oosten verhuisd is',
+    () => {
+      const uit = rollover({
+        bijAangaan: WEST,
+        daarna: OOST,
+        dagenTerug: 6,
+        nieuweDatum: RUIM_IN_DE_TOEKOMST,
+      });
+
+      expect(
+        uit,
+        'de straf ging af terwijl het schild in de bevroren zone nog liep — te vroeg, en dat is het enige dat hier niet mag',
+      ).toContain('verschuldigd=0');
+      expect(uit).toContain('straf=set');
+    },
+    TIMEOUT,
+  );
+
   // -------------------------------------------------------------------------
-  // Wat hier bewust nog openstaat — QS8-548
+  // Wat hier bewust nog openstaat — QS8-536 en QS8-548
   // -------------------------------------------------------------------------
+
+  /**
+   * ⚠️⚠️ **De route die overblijft, en de reden dat de kop van deze suite is
+   *    bijgesteld.** De bevroren zone van een bestáánde straf is niet te
+   *    verzetten — `update commitments set tz = …` geeft `42501` en
+   *    `bevries_commitmentzone()` werpt — maar een straf is te **annuleren en
+   *    opnieuw aan te gaan**, en dan wordt de zone opnieuw bevroren. Dat is
+   *    **QS8-536**, gevonden in de security-ronde op QS8-531, en sinds `0290`
+   *    draagt diezelfde bevroren zone een tweede beslissing: ook het schild.
+   *
+   *    📏 Gemeten met deze opstelling: precies één dag extra schild, en op dag
+   *    acht valt hij alsnog om.
+   *
+   * ⚠️ **Geen verruiming door `0290`.** Vóór `0290` kocht diezelfde dag met één
+   *    `PATCH` op `profiles.tz` — zonder voorbereiding en zonder spoor. Nu kost
+   *    hij een annulering, en die staat als `cancelled` plus `confirmed` in
+   *    `commitment_events`.
+   *
+   * ⚠️ Het verstrijken van de tijd wordt hier als `postgres` gezet
+   *    (`created_at` dertig dagen terug, want `0171` houdt een verse straf
+   *    vierentwintig uur tegen); de wissel zelf loopt zoals een client hem doet.
+   */
+  it(
+    'koopt met annuleren en opnieuw aangaan nog één dag schild — QS8-536',
+    () => {
+      const meting = (metWissel: boolean, dagenTerug: number): string =>
+        psqlMetInvoer(`
+begin;
+do $$
+declare
+  v_a uuid := gen_random_uuid();
+  v_b uuid := gen_random_uuid();
+  v_grp uuid := gen_random_uuid();
+  v_g uuid;
+  v_t date;
+  v_n integer;
+begin
+  insert into auth.users (id, email) values (v_a, v_a || '@zz.test'), (v_b, v_b || '@zz.test');
+  update profiles set tz = '${OOST}' where id = v_a;
+  update profiles set tz = 'UTC'     where id = v_b;
+  insert into groups (id, name, created_by, invite_code, huddle_day, tz)
+    values (v_grp, 'Proefgroep', v_a, 'ZZ' || substr(md5(random()::text), 1, 10), 1, 'UTC');
+  insert into group_members (group_id, user_id, role, status)
+    values (v_grp, v_a, 'admin', 'active'), (v_grp, v_b, 'member', 'active');
+
+  v_t := (now() at time zone '${OOST}')::date - ${dagenTerug};
+  insert into goals (owner_id, title, target_date)
+    values (v_a, 'Doel met een streefdatum', v_t) returning id into v_g;
+  insert into commitments (goal_id, type, body, confirmed_at, beneficiary_group_id, status, created_at)
+    values (v_g, 'penalty', 'Ik doneer vijftig euro aan een goed doel', now(), v_grp, 'set',
+            now() - interval '30 days');
+
+  if ${metWissel} then
+    update profiles set tz = '${WEST}' where id = v_a;
+    update commitments set status = 'cancelled' where goal_id = v_g and type = 'penalty';
+    insert into commitments (goal_id, type, body, confirmed_at, beneficiary_group_id, status, created_at)
+      values (v_g, 'penalty', 'Ik doneer vijftig euro aan een goed doel', now(), v_grp, 'set',
+              now() - interval '30 days');
+    update profiles set tz = '${OOST}' where id = v_a;
+  end if;
+
+  insert into deadline_requests (goal_id, group_id, requester_id, old_date, new_date, reason, status)
+    values (v_g, v_grp, v_a, v_t, (now() at time zone '${OOST}')::date + 30,
+            'Ik had meer tijd nodig', 'open');
+
+  v_n := public.maak_straffen_verschuldigd(
+           v_a, (now() at time zone (select tz from profiles where id = v_a))::date);
+
+  create temp table uitslag (regel text);
+  insert into uitslag values ('zone=' ||
+    (select c.tz from commitments c where c.goal_id = v_g and c.status = 'set'));
+  insert into uitslag values ('verschuldigd=' || v_n);
+end $$;
+select regel from uitslag;
+rollback;`);
+
+      expect(meting(false, 7), 'zonder wissel hoort het schild op dag zeven om te vallen').toContain(
+        'verschuldigd=1',
+      );
+      expect(
+        meting(true, 7),
+        'QS8-536 is dicht — draai deze toets om in plaats van hem weg te halen',
+      ).toContain('verschuldigd=0');
+      expect(meting(true, 7), 'de wissel bevroor de zone niet opnieuw').toContain(`zone=${WEST}`);
+      expect(meting(true, 8), 'de wissel koopt meer dan één dag; dat is erger dan QS8-536 zegt').toContain(
+        'verschuldigd=1',
+      );
+    },
+    TIMEOUT,
+  );
+
 
   /**
    * ⚠️⚠️ **Deze toets legt een gat vast in plaats van een belofte, en dat is met
