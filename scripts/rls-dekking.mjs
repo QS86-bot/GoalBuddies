@@ -508,33 +508,65 @@ export const NIET_PER_HELFT_TE_METEN = {
       'in zijn eentje de grendel.',
     staatIn: 'tests/rls/eigenaarschap.test.ts',
   },
-  'weekly_plan_steps.weekly_plan_steps_update.check': {
+  // ⚠️⚠️ **Deze rij was er één en is er sinds QS8-550 vier.** Hij dekte de hele
+  //    `check`-helft, en die valt uiteen in drie conjuncten met drie
+  //    verschillende redenen; de `using`-helft heeft er bovendien een die
+  //    dezelfde bescherming deelt. De metingen eronder zijn die van ronde 9,
+  //    aangevuld met een eigen paarmeting per conjunct op 18-09-2026.
+  'weekly_plan_steps.weekly_plan_steps_update.check#0': {
     reden:
-      '⚠️ **Hier zijn de twee helften níet gelijk, en tóch is alleen de check niet te ' +
-      'isoleren.** De `check` draagt één conjunct extra — `weekly_goal_id is null` — bovenop de ' +
-      'eigenaarstoets en `activated_cycle is null` die ook in de `using` staan. Geen van die ' +
-      'drie kolommen staat in de UPDATE-kolomgrant (📏 gemeten: alleen `title`, `floor_text` en ' +
-      '`ceiling_text`), dus een client kan ze niet zetten. ' +
-      '⚠️⚠️ **Maar dát is niet de hele grendel, en die correctie komt uit de security-ronde.** ' +
-      'Voor `activated_cycle` volstaat de kolomgrant; voor `weekly_goal_id` niet, want de ' +
-      '`using`-helft toetst die kolom helemaal niet — "de using al gepasseerd" zegt er dus ' +
-      'niets over. De onderscheidende rij is `activated_cycle is null and weekly_goal_id is ' +
-      'not null`, en die is onbereikbaar door een **invariant** en niet door de policy: ' +
-      '`weekly_goal_id` staat ook niet in de INSERT-grant, en de énige schrijver ervan — ' +
-      '`weekplanstap_naar_weekdoel()` — zet hem altijd samen met `activated_cycle` in dezelfde ' +
-      'UPDATE. Die invariant leeft in één functielichaam en staat in geen enkele CHECK. ' +
-      '📏 Gemeten op 10-09-2026 (ronde 9): `using` los = **bewaakt**, `check` los = nul rood, ' +
-      'béíde tegelijk = 2 rood (*een geactiveerde stap is niet meer te wijzigen* in ' +
-      '`tests/rls/schrijfgrenzen.test.ts` en *laat de stap van Alice ongemoeid bij een ' +
-      'ongefilterde update van Bob* in `tests/rls/planstapgrens.test.ts`).',
+      'De eigenaarstoets staat lééterlijk in béíde helften, dus alleen de check openzetten ' +
+      'laat de `using` de rij nog steeds wegfilteren. Bovendien staat `goal_id` níet in de ' +
+      'UPDATE-kolomgrant (📏 gemeten: alleen `title`, `floor_text` en `ceiling_text`). ' +
+      '📏 Hermeten per conjunct op 18-09-2026: deze conjunct in béíde helften tegelijk open ' +
+      'geeft **1 rood** — *laat de stap van Alice ongemoeid bij een ongefilterde update van ' +
+      'Bob* in `tests/rls/planstapgrens.test.ts`. De grendel is het paar.',
     wordtToetsbaarAls:
-      '`weekly_goal_id`, `activated_cycle` of `goal_id` in de UPDATE-kolomgrant komt, **of ' +
-      'zodra er een tweede schrijver van `weekly_goal_id` bijkomt die hem zet zonder ' +
-      '`activated_cycle`** — een "ontkoppel dit weekdoel maar hou de stap verbruikt"-actie, ' +
-      'bijvoorbeeld. Die tweede route was de eerste keer vergeten, en hij is de enige die ' +
-      'realistisch is: de invariant leeft in een functielichaam en niet in een constraint.',
+      '`goal_id` in de UPDATE-kolomgrant komt, of als de twee helften uit elkaar gaan lopen.',
+    staatIn: 'tests/rls/planstapgrens.test.ts',
+  },
+
+  'weekly_plan_steps.weekly_plan_steps_update.check#1': {
+    reden:
+      '`activated_cycle is null` staat óók in béíde helften, en `activated_cycle` staat niet ' +
+      'in de UPDATE-kolomgrant. Voor déze conjunct volstaat die kolomgrant als grendel — dat ' +
+      'is het verschil met `check#2` hieronder. ' +
+      '📏 Hermeten per conjunct op 18-09-2026: deze conjunct in béíde helften tegelijk open ' +
+      'geeft **1 rood** in `tests/rls/planstapgrens.test.ts`.',
+    wordtToetsbaarAls: '`activated_cycle` in de UPDATE-kolomgrant komt.',
     staatIn: 'tests/rls/schrijfgrenzen.test.ts',
   },
+
+  'weekly_plan_steps.weekly_plan_steps_update.using#1': {
+    reden:
+      'De spiegelzijde van `check#1`: dezelfde uitdrukking, dezelfde kolomgrant, dezelfde ' +
+      'paarmeting. 📏 18-09-2026: béíde helften van deze conjunct open geeft **1 rood**.',
+    wordtToetsbaarAls: 'idem `check#1`.',
+    staatIn: 'tests/rls/planstapgrens.test.ts',
+  },
+
+  'weekly_plan_steps.weekly_plan_steps_update.check#2': {
+    reden:
+      '⚠️⚠️ **Deze is de enige van de drie zonder tegenhanger in de `using`, en juist daarom ' +
+      'niet door de policy beschermd maar door een invariant.** De `using`-helft toetst ' +
+      '`weekly_goal_id` helemaal niet, dus "de using al gepasseerd" zegt er niets over. De ' +
+      'onderscheidende rij is `activated_cycle is null and weekly_goal_id is not null`, en die ' +
+      'is onbereikbaar omdat `weekly_goal_id` ook niet in de INSERT-grant staat en de énige ' +
+      'schrijver ervan — `weekplanstap_naar_weekdoel()` — hem altijd samen met ' +
+      '`activated_cycle` in dezelfde UPDATE zet. ' +
+      '⚠️ Die invariant leeft in één functielichaam en staat in geen enkele CHECK. ' +
+      '📏 Gemeten in ronde 9: `using` los = bewaakt, `check` los = nul rood, béíde tegelijk = ' +
+      '2 rood (*een geactiveerde stap is niet meer te wijzigen* in `schrijfgrenzen.test.ts` en ' +
+      '*laat de stap van Alice ongemoeid* in `planstapgrens.test.ts`).',
+    wordtToetsbaarAls:
+      '`weekly_goal_id` in de UPDATE-kolomgrant komt, **of zodra er een tweede schrijver van ' +
+      '`weekly_goal_id` bijkomt die hem zet zonder `activated_cycle`** — een "ontkoppel dit ' +
+      'weekdoel maar hou de stap verbruikt"-actie, bijvoorbeeld. Die tweede route was de eerste ' +
+      'keer vergeten, en hij is de enige die realistisch is: de invariant leeft in een ' +
+      'functielichaam en niet in een constraint.',
+    staatIn: 'tests/rls/schrijfgrenzen.test.ts',
+  },
+
   'groups.groups_update.check': {
     reden:
       '`using` en `with check` zijn letterlijk dezelfde uitdrukking — `is_group_admin(id)` — ' +
