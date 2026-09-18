@@ -60,6 +60,24 @@ jobs:
           #    en dan lijkt elke dossierrij achterhaald. 📏 Gemeten in een
           #    `--depth=1` kloon: 6 verzonnen bevindingen. De controle slaat
           #    zichzelf daar over, dus zonder dit regeltje meet CI hem nooit.
+          #
+          # ⚠️⚠️ **Deze vlag doet twee dingen, en het tweede is bijvangst.**
+          #    Naast de geschiedenis haalt hij `refs/remotes/origin/*` van
+          #    **alle** branches binnen, waar de standaardcheckout er één
+          #    ophaalt. 📏 Gemeten: 57 refs in plaats van 1. Dat zette `main`
+          #    één merge later rood — `migraties:controle` leest die refs en
+          #    meldde dat een onafgemaakte branch van iemand anders een
+          #    migratienummer droeg (run 35327749178, QS8-553).
+          #
+          #    Dat is opgelost in QS8-552: een branchbevinding is daar geen
+          #    fout meer maar een notitie. 📏 Nagemeten in een kloon mét alle
+          #    refs: exitcode 0. En `migraties:controle` is de énige controle
+          #    in de CI-lus die deze refs leest — `branches-controle.mjs` heet
+          #    `branches:stand` en draait hier niet.
+          #
+          # ⚠️ **Wie hier een controle bij zet die** `refs/remotes/origin/*`
+          #    **leest, moet weten dat die in CI ánders is dan lokaal.** Dat is
+          #    de val die deze vlag stilletjes opende.
           fetch-depth: 0
 
       - uses: actions/setup-node@v4
