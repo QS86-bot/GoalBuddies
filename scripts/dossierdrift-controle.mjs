@@ -93,7 +93,36 @@
  * ⚠️ Alleen risico Kritiek/Hoog/Middel. De Laag-rijen zijn er ~280 en die
  *    hebben hun eigen grendel (`review:controle` op *"Wordt zwaarder als"*).
  *
+ * ⚠️⚠️ **Alleen objecten uit de TITEL, en dat kost meer dan het lijkt.** De
+ *    rompkolom wordt met opzet genegeerd (zie verfijning 1 hierboven), maar een
+ *    rij veroudert net zo vaak door een object dat hij alléén in zijn romp
+ *    noemt. 📏 Twee van de drie gevallen van 18-09-2026: r653 verouderde door
+ *    `group_members` en r764 door `groep_helden()`, en geen van beide staat in
+ *    de titel van zijn eigen rij.
+ *
+ * ⚠️ **Alleen objectnamen, geen kolomnamen.** `objectenVanMigratie()` vangt
+ *    functies, constraints, policies, triggers en indexen. 📏 De titel van r764
+ *    levert `hero_key` en `trigger` op — allebei kolommen, dus nooit een
+ *    treffer, hoe vaak een migratie die kolommen ook herschrijft.
+ *
+ * ⚠️⚠️ **Alleen herschrijvingen, geen toevoegingen.** De vraag is *"is het
+ *    object dat deze rij meet sindsdien herschreven"*, niet *"is er iets
+ *    bijgekomen dat deze rij weerlegt"*. 📏 r653 verouderde doordat er twee
+ *    DELETE-triggers **bij** kwamen op een tabel. Dat tweede is niet op te
+ *    lossen met een breder patroon — het vraagt kennis van wat de rij beweert.
+ *
+ * 📏 **Het getal dat daarbij hoort, en dat hier hoort te staan:** op 18-09-2026
+ *    gaf deze controle **0** bevindingen op een volledige kloon, op precies de
+ *    dag dat er **drie** rijen met de hand achterhaald bleken (QS8-549, QS8-554,
+ *    QS8-555). Alle drie vielen buiten de grenzen hierboven.
+ *
  * Dat zijn grenzen en geen gebreken: de controle zegt wat hij meet.
+ *
+ * ⚠️ **Maar lees de groene regel dan ook zoals hij er staat.** *"Geen enkele
+ *    zware open dossierrij meet een object dat sindsdien herschreven is"* is een
+ *    veel smallere uitspraak dan *"het dossier is actueel"*, en de eerste leest
+ *    als de tweede. Een grendel die minder bewaakt dan zijn naam suggereert is
+ *    gevaarlijker dan geen grendel, want je stopt met zelf kijken.
  */
 import { existsSync, readFileSync, readdirSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
