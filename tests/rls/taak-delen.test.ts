@@ -9,6 +9,7 @@ import {
   type TestUser,
 } from './harness';
 import { psql, stackBeschikbaarOfFaal } from './psql-stack';
+import { proefCode } from './proefid';
 
 /**
  * Een taak deel je per stuk, en met één gekozen groep — QS8-381, migratie 0248.
@@ -509,7 +510,7 @@ function metKolomgrant(schrijf: string): string {
     grant select on t to authenticated;
     insert into auth.users (id, email) select eig, 'delen-pin@x.nl' from t;
     insert into groups (id, name, created_by, status, invite_code)
-      select grp, 'Pin', eig, 'active', 'PINCODE1' from t;
+      select grp, 'Pin', eig, 'active', '${proefCode('pin', 1)}' from t;
     insert into group_members (group_id, user_id, role, status)
       select grp, eig, 'admin', 'active' from t;
     insert into todo_items (id, user_id, body) select tid, eig, 'eerste' from t;
@@ -561,7 +562,7 @@ describe.skipIf(!stackErbij)('waar de policy op leunt', () => {
       create temp table t as select gen_random_uuid() eig, gen_random_uuid() grp;
       insert into auth.users (id, email) select eig, 'delen-check@x.nl' from t;
       insert into groups (id, name, created_by, status, invite_code)
-        select grp, 'Check', eig, 'active', 'CHECKCD1' from t;
+        select grp, 'Check', eig, 'active', '${proefCode('checkcd1', 1)}' from t;
       do $proef$
       declare v_eig uuid; v_grp uuid;
       begin
@@ -795,7 +796,7 @@ describe.skipIf(!stackErbij)('de pin laat alleen de RPC door', () => {
           select gen_random_uuid() eig, gen_random_uuid() grp, gen_random_uuid() tid;
         insert into auth.users (id, email) select eig, 'delen-weg@x.nl' from t;
         insert into groups (id, name, created_by, status, invite_code)
-          select grp, 'Weg', eig, 'active', 'WEGCODE1' from t;
+          select grp, 'Weg', eig, 'active', '${proefCode('wegcode1', 3)}' from t;
         insert into group_members (group_id, user_id, role, status)
           select grp, eig, 'admin', 'active' from t;
         insert into todo_items (id, user_id, body, visibility, shared_group_id)
@@ -845,7 +846,7 @@ describe.skipIf(!stackErbij)('de pin laat alleen de RPC door', () => {
         insert into auth.users (id, email) select eig, 'delen-wees@x.nl' from t;
         insert into auth.users (id, email) select kijker, 'delen-kijker@x.nl' from t;
         insert into groups (id, name, created_by, status, invite_code)
-          select grp, 'Wees', eig, 'active', 'WEESCODE' from t;
+          select grp, 'Wees', eig, 'active', '${proefCode('weescode', 2)}' from t;
         insert into group_members (group_id, user_id, role, status)
           select grp, eig, 'admin', 'active' from t;
         insert into group_members (group_id, user_id, role, status)

@@ -23,6 +23,7 @@ import {
   type TestUser,
 } from './harness';
 import { psql } from './psql-stack';
+import { proefCode } from './proefid';
 
 const SETUP_TIMEOUT = 180_000;
 const TEST_TIMEOUT = 60_000;
@@ -382,7 +383,7 @@ describe.skipIf(!rlsTestsConfigured)('0265 — het archief weigert hoorbaar', ()
       insert into profiles (id, display_name) select eig, 'Archivaris' from a
         on conflict (id) do nothing;
       insert into groups (id, name, created_by, status, invite_code, tz)
-        select grp, 'Arch264', eig, 'archived', 'ARCH2640', 'Europe/Amsterdam' from a;
+        select grp, 'Arch264', eig, 'archived', '${proefCode('arch2640', 1)}', 'Europe/Amsterdam' from a;
       insert into group_members (group_id, user_id, role, status)
         select grp, eig, 'admin', 'active' from a;
 

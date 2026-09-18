@@ -2,7 +2,7 @@
 import { describe, expect, it } from 'vitest';
 
 import { psql, psqlMetInvoer, stackBeschikbaarOfFaal } from './psql-stack';
-import { proefId } from './proefid';
+import { proefCode, proefId } from './proefid';
 
 const SCHADUW_EEN = proefId(1);
 const SCHADUW_TWEE = proefId(2);
@@ -161,7 +161,7 @@ describe.skipIf(!beschikbaar)('een tijdelijke tabel stuurt geen enkele functie',
           values ('${SCHADUW_TWEE}', 'schaduw2@voorbeeld.test', '{}'::jsonb);
         insert into groups (id, name, created_by, invite_code, tz)
           values ('${SCHADUW_GROEP}', 'Schaduwgroep',
-                  '${SCHADUW_TWEE}', 'SCHAD1', 'UTC');
+                  '${SCHADUW_TWEE}', '${proefCode('schad1', 1)}', 'UTC');
 
         create temp table groups (id uuid, tz text);
         insert into groups values
