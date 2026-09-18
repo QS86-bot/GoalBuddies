@@ -79,6 +79,8 @@ const TEST_TIMEOUT = 30_000;
 
 interface Wereld {
   alice: TestUser;
+  /** Groepsgenoot van Alice. Bestaat om de eigenaarshelft te kunnen breken. */
+  bob: TestUser;
   groupId: string;
   berichtId: string;
 }
@@ -89,9 +91,14 @@ describe.skipIf(!rlsTestsConfigured)('chat_messages — bewerken bestaat niet', 
   beforeAll(async () => {
     const alice = await createTestUser('venster-alice');
 
+    const bob = await createTestUser('venster-bob');
+
     const groep = await alice.db.rpc('create_group', { group_name: 'Venstergroep' });
-    const gd = groep.data as unknown as { ok?: boolean; group?: { id: string } };
+    const gd = groep.data as unknown as { ok?: boolean; group?: { id: string; invite_code: string } };
     if (gd.ok !== true || !gd.group) throw new Error(`groep: ${JSON.stringify(groep.data)}`);
+
+    const erbij = await bob.db.rpc('join_group_with_code', { code: gd.group.invite_code });
+    if (erbij.error) throw new Error(`bob erbij: ${erbij.error.message}`);
 
     const bericht = await alice.db
       .from('chat_messages')
@@ -100,7 +107,7 @@ describe.skipIf(!rlsTestsConfigured)('chat_messages — bewerken bestaat niet', 
       .single();
     if (bericht.error) throw new Error(`bericht: ${bericht.error.message}`);
 
-    w = { alice, groupId: gd.group.id, berichtId: bericht.data.id };
+    w = { alice, bob, groupId: gd.group.id, berichtId: bericht.data.id };
   }, SETUP_TIMEOUT);
 
   afterAll(async () => {
@@ -171,6 +178,104 @@ describe.skipIf(!rlsTestsConfigured)('chat_messages — bewerken bestaat niet', 
 
       expect(poging.error).toBeNull();
       expect(poging.data ?? []).toHaveLength(1);
+    },
+    TEST_TIMEOUT,
+  );
+
+  it(
+    'een groepsgenoot haalt jouw bericht niet weg',
+    async () => {
+      // ⚠️⚠️ **Deze toets bestaat omdat het dekkingsrapport zei dat hij er al
+      //    was** — QS8-550. `chat_messages_delete` is
+      //    `(sender_id = auth.uid()) and is_group_member(group_id)`, en
+      //    `npm run rls:dekking -- chat_messages` meldde hem als **bewaakt**,
+      //    met `archief-leesbaar.test.ts` als getuige. Dat klopt voor de vraag
+      //    die dat script stelt: het zet de policy hélemaal open, en dan valt
+      //    ook het archiefdeel weg — en dát is wel getoetst.
+      //
+      //    📏 Maar alleen de eigenaarshelft weghalen liet **180 bestanden en
+      //    2094 tests groen** staan, terwijl elk groepslid het bericht van elk
+      //    ander groepslid kon wissen:
+      //
+      //      alter policy chat_messages_delete on chat_messages
+      //        using (is_group_member(group_id));
+      //
+      //    Eén getoetste conjunct dekt bij een `and` de andere af. *Wordt er
+      //    iets rood* is niet hetzelfde als *is elke voorwaarde getoetst* —
+      //    regel 18 vraag 2, toegepast op het meetinstrument zelf.
+      //
+      // ⚠️ **Een DELETE die de `using` wegfiltert raakt nul rijen en geeft geen
+      //    fout.** Daarom telt hier alleen of de rij er nog staat; op `error`
+      //    afgaan zou dit stille pad juist missen — de vorm van QS8-314.
+      const weg = await w.bob.db
+        .from('chat_messages')
+        .delete()
+        .eq('id', w.berichtId)
+        .select('id');
+
+      expect(weg.error, 'de weigering is stil, geen fout').toBeNull();
+      expect(weg.data ?? [], 'bob raakte een rij').toHaveLength(0);
+
+      const nog = await adminDb().from('chat_messages').select('id').eq('id', w.berichtId);
+      expect(nog.data ?? [], 'het bericht van alice hoort er nog te staan').toHaveLength(1);
+    },
+    TEST_TIMEOUT,
+  );
+
+  it(
+    'een lid plaatst geen bericht namens een ander',
+    async () => {
+      // ⚠️⚠️ **Gevonden door het instrument dat dit issue repareerde** — QS8-550.
+      //    `chat_messages_insert` draagt vijf conjuncten, en tot de meting per
+      //    conjunct ging telde hij als bewaakt omdat er van die vijf twee
+      //    getoetst waren. 📏 Deze — `sender_id = auth.uid()` — was een van de
+      //    drie die niemand miste.
+      //
+      // ⚠️ Een `with check` weigert luid, anders dan de `using` hierboven: een
+      //    rij die er niet door komt is een `42501` en geen stille nul.
+      const namensAlice = await w.bob.db
+        .from('chat_messages')
+        .insert({ group_id: w.groupId, sender_id: w.alice.id, type: 'text', body: 'NIET VAN ALICE' })
+        .select('id');
+
+      expect(namensAlice.error, 'bob mocht een bericht van alice plaatsen').not.toBeNull();
+      expect(namensAlice.data ?? []).toHaveLength(0);
+    },
+    TEST_TIMEOUT,
+  );
+
+  it(
+    'een lid plaatst geen bericht dat zich als systeembericht voordoet',
+    async () => {
+      // ⚠️⚠️ **Deze belofte hangt aan een páár, en dat is met de hand gemeten**
+      //    — QS8-550. `epic7.test.ts` toetst `system_event is null` (conjunct 3
+      //    van `chat_messages_insert`), maar zet daarbij geen `type = 'system'`.
+      //    Deze vorm — een bericht dat op het scherm een systeembericht ís,
+      //    met het `system_event`-veld leeg — stond nergens.
+      //
+      // ⚠️⚠️ **Maar hij bewaakt conjunct 2 níet alleen, en dat scheelde een
+      //    onware kop.** 📏 Gemeten, elk apart:
+      //
+      //      conjunct 2 (`type <> 'system'`) op `true`   → deze toets blijft groen
+      //      `chat_messages_sender_required` gedropt      → deze toets blijft groen
+      //      allebei weg                                  → **rood**
+      //
+      //    Elk van de twee volstaat afzonderlijk voor deze vorm: de CHECK eist
+      //    `sender_id is null` bij een systeembericht, en de conjunct weigert
+      //    `type = 'system'` ronduit. Conjunct 2 staat daarom als
+      //    *niet los te meten* in het register van `rls-dekking.mjs`, met deze
+      //    meting erbij — dezelfde vorm als `day_checkins_delete.using`.
+      //
+      //    📏 En dat de twee sámen de grendel zijn is geen redenering maar een
+      //    meting: met conjunct 0 én conjunct 2 open landde
+      //    `insert … (sender_id, type) values (null, 'system')` gewoon.
+      const alsSysteem = await w.bob.db
+        .from('chat_messages')
+        .insert({ group_id: w.groupId, sender_id: w.bob.id, type: 'system', body: 'ALSOF' })
+        .select('id');
+
+      expect(alsSysteem.error, 'bob mocht een systeembericht plaatsen').not.toBeNull();
+      expect(alsSysteem.data ?? []).toHaveLength(0);
     },
     TEST_TIMEOUT,
   );

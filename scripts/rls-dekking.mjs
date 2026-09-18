@@ -551,6 +551,24 @@ export const NIET_PER_HELFT_TE_METEN = {
       'zijn eentje de grendel.',
     staatIn: 'tests/rls/lidmaatschapsgrens.test.ts',
   },
+  'chat_messages.chat_messages_insert.check#2': {
+    reden:
+      'De conjunct is `type <> \'system\'`, en naast hem staat de CHECK ' +
+      '`chat_messages_sender_required` (`type <> \'system\' or sender_id is null`). ' +
+      'Elk van de twee volstaat afzonderlijk om een vervalst systeembericht tegen te ' +
+      'houden, dus geen van beide is los te breken. 📏 Gemeten met de toets uit ' +
+      '`bewerkvenster.test.ts`: alleen deze conjunct op `true` = groen, alleen de CHECK ' +
+      'gedropt = groen, allebei weg = 1 rood en het is de juiste test. ' +
+      '📏 En dat het paar écht de grendel is, is apart gemeten: met conjunct 0 én ' +
+      'conjunct 2 open landde `insert … (sender_id, type) values (null, \'system\')` gewoon. ' +
+      'De grendel is dus het paar — zelfde vorm als `day_checkins_delete.using`.',
+    wordtToetsbaarAls:
+      'de CHECK `chat_messages_sender_required` verdwijnt of versmalt, of als een ' +
+      'systeembericht ooit een `sender_id` mag dragen. Dan staat deze conjunct er alleen ' +
+      'voor en is hij wél los te breken.',
+    staatIn: 'tests/rls/bewerkvenster.test.ts',
+  },
+
   'user_blocks.user_blocks_delete.using': {
     reden:
       'PostgREST stuurt een DELETE als `DELETE … RETURNING`, en met een RETURNING moet ' +
@@ -580,9 +598,15 @@ export function registervormKlachten(register) {
       uit.push(`\`${sleutel}\` is geen \`tabel.policy.helft\``);
       continue;
     }
-    const helft = sleutel.split('.')[2];
+    // ⚠️ Sinds QS8-550 mag een sleutel ook een conjunct noemen — `check#2`. Het
+    //    nummer moet dan wél een getal zijn: `check#x` is een typefout die
+    //    anders stil een rij zou registreren die nooit gevonden wordt.
+    const eenheid = sleutel.split('.')[2];
+    const { helft, index } = ontleedEenheid(eenheid);
     if (helft !== 'using' && helft !== 'check') {
       uit.push(`\`${sleutel}\` noemt helft \`${helft}\` en niet \`using\` of \`check\``);
+    } else if (index !== null && !Number.isInteger(index)) {
+      uit.push(`\`${sleutel}\` noemt conjunct \`${eenheid.split('#')[1]}\`, en dat is geen getal`);
     }
     for (const veld of ['reden', 'wordtToetsbaarAls', 'staatIn']) {
       if (typeof rij?.[veld] !== 'string' || rij[veld].trim() === '') {

@@ -114,6 +114,27 @@ describe('ontleedPolicies', () => {
   });
 });
 
+describe('registervormKlachten met conjuncten', () => {
+  const rij = { reden: 'r', wordtToetsbaarAls: 'w', staatIn: 's' };
+
+  it('laat een sleutel met een conjunctnummer toe', () => {
+    expect(registervormKlachten({ 't.p.check#2': rij })).toEqual([]);
+  });
+
+  /** ⚠️ `check#x` zou anders stil een rij registreren die nooit gevonden wordt. */
+  it('klaagt over een conjunctnummer dat geen getal is', () => {
+    expect(registervormKlachten({ 't.p.check#x': rij })).toEqual([
+      '`t.p.check#x` noemt conjunct `x`, en dat is geen getal',
+    ]);
+  });
+
+  it('klaagt nog steeds over een helft die niet bestaat', () => {
+    expect(registervormKlachten({ 't.p.wat#1': rij })).toEqual([
+      '`t.p.wat#1` noemt helft `wat` en niet `using` of `check`',
+    ]);
+  });
+});
+
 describe('conjunctenVan', () => {
   /** ⚠️ De vorm die dit hele issue opleverde — QS8-550. */
   it('splitst een top-level conjunctie', () => {
