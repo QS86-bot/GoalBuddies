@@ -1040,3 +1040,249 @@ describe('de zero-width joiner blijft in het midden staan', () => {
     expect(schoneNaam('  Jan  Jansen  ')).toBe('Jan  Jansen');
   });
 });
+
+// ---------------------------------------------------------------------------
+
+/**
+ * Idempotentie, en waarom dit blok met **paren** voedt — QS8-526, migratie 0289.
+ *
+ * ⚠️⚠️ **De rest van dit bestand veegt per codepunt, en dat is precies waarom
+ *    het defect er doorheen kwam.** 📏 Het hele codepuntbereik in enkelvoudige
+ *    vormen (`a<c>b`, `<c>ab`, `ab<c>`) geeft **nul** niet-idempotente gevallen.
+ *    Met twee tekens zijn het er **256** van 1.136.356. Een veeg per codepunt kán
+ *    deze klasse niet vinden: er zijn er twee nodig, want het ene teken moet het
+ *    andere ergens naartoe schuiven.
+ *
+ * ⚠️ **De ruimte hieronder is niet willekeurig maar gericht op de naad.** Alle
+ *    256 gevallen zaten op `zonder_onzichtbaar_tussen_letters()`, en de vorm is
+ *    altijd dezelfde: een **randteken** ervoor dat weggaat, waarna een
+ *    **contextteken** aan het begin komt te staan en alsnog strijkbaar wordt.
+ *    Dus kruisen we die twee verzamelingen in plaats van een steekproef over
+ *    alles te nemen — minder gevallen, en ze liggen allemaal op de plek waar het
+ *    misgaat.
+ *
+ * ⚠️⚠️ **Twee families, want de twee randstappen falen op verschillende invoer —
+ *    en dat is met een ijking gevonden en niet bedacht.** Met alleen familie A
+ *    bleef deze suite **groen** toen de randstap ná de pijplijn eruit gehaald
+ *    werd: die klasse heeft een teken nodig dat de pijplijn weghaalt en dat zélf
+ *    geen randteken is (`U+FFF3`), met een randteken erachter dat daardoor aan de
+ *    buitenkant komt. Eén familie per randstap, anders bewaakt de helft niets.
+ */
+function paarGevallen(): { readonly links: number; readonly rechts: number }[] {
+  // ⚠️ De drie verzamelingen komen uit **expliciete bereiken** en niet uit een
+  //    regex over `generate_series(1, 1114111)`. 📏 Die tweede vorm kost ruim
+  //    vijf minuten — per codepunt een regex — en dat is de hele looptijd van
+  //    dit bestand. De bereiken hieronder zijn woordelijk dezelfde als in de
+  //    functies; wijkt er ooit een af, dan valt de veeg leeg of te groot uit en
+  //    daar is de eerste toets van dit blok op.
+  const uit = execFileSync('psql', [...psqlBasisArgumenten(), '-tA'], {
+    env: PSQL_OMGEVING,
+    encoding: 'utf8',
+    input: `
+      with randbereik(van, tot) as (values
+        (1,32),(127,160),(173,173),(847,847),(1564,1564),(4447,4448),(5760,5760),
+        (6068,6069),(6155,6158),(8192,8207),(8232,8239),(8287,8292),(8294,8303),
+        (10240,10240),(12288,12288),(12644,12644),(65279,65279),(65440,65440),
+        (65529,65531),(917504,917535)),
+      ctxbereik(van, tot) as (values
+        (847,847),(1564,1564),(6155,6159),(8204,8207),(65024,65039),(917760,917999)),
+      midbereik(van, tot) as (values
+        (1,8),(11,12),(14,31),(127,159),(173,173),(4447,4448),(6068,6069),(8203,8203),
+        (8234,8238),(8288,8303),(12644,12644),(65279,65279),(65440,65440),(65520,65531),
+        (113824,113827),(119155,119162),(917504,917535),(917632,917759),(918000,921599)),
+      r as (select cp, row_number() over (order by cp) rn
+            from randbereik, generate_series(van, tot) cp),
+      c as (select cp, row_number() over (order by cp) rn
+            from ctxbereik, generate_series(van, tot) cp),
+      m as (select cp, row_number() over (order by cp) rn
+            from (select cp from midbereik, generate_series(van, tot) cp
+                  except select cp from randbereik, generate_series(van, tot) cp) t)
+      select r.cp || ' ' || c.cp from r join c on true where r.rn % 12 = 1 and c.rn % 3 = 1
+      union all
+      select m.cp || ' ' || r.cp from m join r on true where m.rn % 16 = 1 and r.rn % 48 = 1;`,
+  });
+
+  const gevonden = uit
+    .split('\n')
+    .filter((regel) => regel.trim() !== '')
+    .map((regel) => {
+      const [links, rechts] = regel.trim().split(' ').map(Number);
+      return { links: links as number, rechts: rechts as number };
+    });
+
+  // ⚠️⚠️ **De twee gemeten tegenvoorbeelden staan er hoe dan ook in, en dat is
+  //    met een ijking afgedwongen.** Een steekproef met een modulo erin bevat
+  //    niet noodzakelijk het geval dat de klasse voortbracht: 📏 met alleen de
+  //    veeg hierboven bleef deze suite **groen** toen de randstap ná de pijplijn
+  //    eruit gehaald werd, want `U+2001` viel net buiten de steekproef. Een
+  //    grendel hoort het geval te dragen dat hem nodig maakte.
+  return [
+    { links: 0x2001, rechts: 0xfe05 }, // A: de randstap legt een context bloot
+    { links: 0xfff3, rechts: 0x2001 }, // B: de pijplijn legt een rand bloot
+    ...gevonden,
+  ];
+}
+
+/**
+ * De viertekenklasse, en waarom die er apart bij staat — QS8-526.
+ *
+ * ⚠️⚠️ **Hier stond eerst dat de randstap aan beide kanten het probleem oploste,
+ *    met een gemeten `0` erbij. Dat was onwaar** en is door de security-review
+ *    gevonden. De `0` kwam uit een ruimte van tekenpáren, en met de randstap aan
+ *    beide kanten heeft het defect er **vier** nodig:
+ *
+ *      `a` + `U+180F` + `U+1680` + `U+1BCA0`
+ *        1. `U+1BCA0` is geen randteken, dus de voorste trim komt niet bij `U+1680`
+ *        2. de pijplijn haalt `U+1BCA0` weg
+ *        3. `U+180F` overleeft: zijn rechterbuur `U+1680` is niet-ASCII
+ *        4. de áchterste trim haalt `U+1680` weg en legt `U+180F` bloot
+ *        5. pas een volgende aanroep strijkt die
+ *
+ *    Elke eindige keten heeft dit opnieuw, één laag dieper — vandaar dat
+ *    `schone_naam()` nu tot een vast punt herhaalt in plaats van een vaste keten
+ *    te zijn. **Een ruimte van paren kan een viertekenklasse per constructie niet
+ *    vinden; de reparatie tilde de ariteit op en de veeg bleef op twee zoeken.**
+ */
+const SCHILDEN = [0x1bca0, 0xfff3, 0xe0020, 0xe0067, 0xe007f] as const;
+const CONTEXTTEKENS = [0x180f, 0xfe00, 0xfe0f, 0xe0100] as const;
+const RANDNA = [0x1680, 0x2001, 0x3000, 0x2028] as const;
+
+function vierGevallen(): string[] {
+  const uit: string[] = [];
+  for (const ctx of CONTEXTTEKENS) {
+    for (const randteken of RANDNA) {
+      for (const schild of SCHILDEN) {
+        const staart =
+          String.fromCodePoint(ctx) + String.fromCodePoint(randteken) + String.fromCodePoint(schild);
+        uit.push(`a${staart}`, `ab${staart}`, `${staart}a`, `a${staart}b`);
+      }
+    }
+  }
+  return uit;
+}
+
+function schoneNaamViaStdin(waarden: readonly string[]): string[] {
+  // ⚠️⚠️ **In brokken, en met een telling erachteraan — allebei geijkt.** 📏 Eén
+  //    `values`-lijst van dertigduizend rijen geeft niet alle rijen terug, en met
+  //    een kale `slice(0, n)` schuift dan élke vergelijking erna één op. Dat is
+  //    exact de fout die `alsHex()` hierboven beschrijft, een laag dieper: niet
+  //    de vórm van een regel maar het áántal regels. De suite werd er rood van
+  //    terwijl dezelfde veeg in kaal SQL nul afwijkingen gaf.
+  const BROK = 2000;
+  const uit: string[] = [];
+
+  for (let start = 0; start < waarden.length; start += BROK) {
+    const brok = waarden.slice(start, start + BROK);
+    const rijen = brok.map((w, i) => `(${i}, decode('${alsHex(w)}','hex'))`).join(',');
+
+    const antwoord = execFileSync('psql', [...psqlBasisArgumenten(), '-tA'], {
+      env: PSQL_OMGEVING,
+      encoding: 'utf8',
+      maxBuffer: 256 * 1024 * 1024,
+      input:
+        `with invoer(i, x) as (values ${rijen}) ` +
+        `select encode(convert_to(public.schone_naam(convert_from(x,'UTF8')),'UTF8'),'hex') ` +
+        `from invoer order by i;`,
+    })
+      .split('\n')
+      .slice(0, brok.length);
+
+    expect(
+      antwoord.length,
+      `psql gaf ${antwoord.length} rijen terug op ${brok.length} gevallen — elke vergelijking hierna zou opschuiven`,
+    ).toBe(brok.length);
+
+    uit.push(...antwoord);
+  }
+
+  return uit;
+}
+
+/** De vier vormen waarin een paar kan staan. */
+function vormen(links: number, rechts: number): string[] {
+  const l = String.fromCodePoint(links);
+  const r = String.fromCodePoint(rechts);
+  return [`${l}${r}ab`, `a${l}${r}b`, `ab${l}${r}`, `${l}ab${r}`];
+}
+
+describe.runIf(beschikbaar)('schone_naam is idempotent, ook op tekenparen', () => {
+  let gevallen: string[] = [];
+
+  beforeAll(() => {
+    gevallen = [
+      ...paarGevallen().flatMap(({ links, rechts }) => vormen(links, rechts)),
+      ...vierGevallen(),
+    ];
+  }, 60_000);
+
+  it('de ruimte is niet leeg — anders bewaakt alles hieronder niets', () => {
+    expect(gevallen.length).toBeGreaterThan(500);
+  });
+
+  it('de client is idempotent op elk paar', () => {
+    const stuk = gevallen.filter((x) => schoneNaam(schoneNaam(x)) !== schoneNaam(x));
+
+    expect(
+      stuk.slice(0, 5).map((x) => Array.from(x).map((t) => alsHexCodepunt(t.codePointAt(0) ?? 0))),
+      `${stuk.length} van ${gevallen.length} paren zijn niet idempotent in TypeScript`,
+    ).toEqual([]);
+  });
+
+  it('de database is idempotent op elk paar', { timeout: 120_000 }, () => {
+    const eenmaal = schoneNaamViaStdin(gevallen);
+    const tweemaal = schoneNaamViaStdin(
+      eenmaal.map((hex) => Buffer.from(hex, 'hex').toString('utf8')),
+    );
+
+    expect(tweemaal, 'de database geeft een andere uitkomst bij de tweede aanroep').toEqual(eenmaal);
+  });
+
+  it('en de twee talen geven op elk paar hetzelfde antwoord', { timeout: 120_000 }, () => {
+    expect(schoneNaamViaStdin(gevallen)).toEqual(gevallen.map((x) => alsHex(schoneNaam(x))));
+  });
+});
+
+describe('de twee klassen die de vorm van 0289 bepaalden', () => {
+  /**
+   * ⚠️ Het geval uit QS8-526: de randstap haalt de EM QUAD weg en schuift de
+   *    variatieselector naar het begin, waar hij alsnog strijkbaar is.
+   */
+  it('een randteken dat een contextteken blootlegt, gaat in één aanroep weg', () => {
+    const ruw = ` ︅ab`;
+
+    expect(schoneNaam(ruw)).toBe('ab');
+    expect(schoneNaam(schoneNaam(ruw))).toBe('ab');
+  });
+
+  /**
+   * ⚠️⚠️ **Zonder dit geval was "zet de randstap vooraan" de reparatie geweest,
+   *    en die is vijftien keer erger** (3840 tegen 256). De twee fouten zijn
+   *    elkaars spiegelbeeld: hierboven legt de **randstap** een nieuwe context
+   *    bloot, hier legt de **pijplijn** een nieuwe rand bloot.
+   *
+   *    📏 `U+FFF3` wordt door stap 2 weggehaald en is zelf geen randteken. Staat
+   *    er een `U+2001` achter, dan komt die na stap 2 aan de buitenkant te staan
+   *    — en zonder randstap na de pijplijn blijft hij staan.
+   */
+  it('een teken dat de pijplijn weghaalt, legt geen rand bloot', () => {
+    const ruw = '\uFFF3\u2001ab';
+
+    expect(schoneNaam(ruw)).toBe('ab');
+    expect(schoneNaam(schoneNaam(ruw))).toBe('ab');
+  });
+
+  /**
+   * ⚠️⚠️ **Lees deze tekens in hex en niet van je scherm.** `U+2028` is
+   *    LINE SEPARATOR en een terminal toont hem als witruimte, dus
+   *    `schone_naam()` erop ziet eruit als `'a b'` terwijl er `61 e280a8 62`
+   *    staat — het teken is onaangeraakt. Tijdens QS8-526 is op die vergissing
+   *    eerst een verkeerde verklaring gebouwd; `alsHex()` in dit bestand draagt
+   *    dezelfde les al in zijn kop.
+   */
+  it('U+2028 blijft in het midden staan en gaat alleen aan de rand weg', () => {
+    expect(Array.from(schoneNaam('a\u2028b')).length).toBe(3);
+    expect(schoneNaam('a\u2028b')).toBe('a\u2028b');
+    expect(schoneNaam('a\u2028')).toBe('a');
+    expect(schoneNaam('\u2028a')).toBe('a');
+  });
+});
