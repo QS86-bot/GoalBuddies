@@ -699,7 +699,8 @@ export function schoneNaam(ruw: string): string {
   //      2b. regelovergangen weg                (QS8-507)
   //      3. losse tags weg, vlaggen heel        (QS8-499)
   //      4. de zeven tussen twee ASCII-letters  (QS8-499)
-  //      5. de randen                           (QS8-448)
+  //      5. de randen, vóór én na de rest       (QS8-448)
+  //      en dat geheel tot een vast punt        (QS8-526)
   //
   // ⚠️⚠️ **Stap 2b is er sinds 0285 en hij houdt een belofte overeind die tot
   //    dan toe meelifte.** TAB, LF en CR zaten in de tekenklasse van stap 2, dus
@@ -714,23 +715,53 @@ export function schoneNaam(ruw: string): string {
   //    vuurt alleen tussen ASCII-buren. 📏 `a<U+E0067><U+200C>b` wordt zo `ab`;
   //    omgekeerd blijft `a<ZWNJ>b` over. Uitleg en meting in de kop van
   //    migratie 0282.
-  const tekens = Array.from(
-    zonderOnzichtbaarTussenLetters(
-      zonderLosseTags(zonderRegelovergang(zonderOnzichtbaarMiddenin(zonderBidi(ruw)))),
-    ),
-  );
+  // ⚠️⚠️ **Een vast punt en niet een vaste keten — QS8-526, migratie `0289`.**
+  //    Elke eindige keten van strijkers heeft hetzelfde probleem, één laag
+  //    dieper: wat de láátste stap weghaalt, legt een positie bloot die een
+  //    éérdere stap al gehad heeft. 📏 Met stap 5 alléén achteraan waren er
+  //    **256** van 1.136.356 tekenparen niet idempotent; met stap 5 aan beide
+  //    kanten waren de paren schoon maar bleef `a` + `U+180F` + `U+1680` +
+  //    `U+1BCA0` over — vier tekens, dus buiten elke paarveeg. De randstap
+  //    verdubbelen verschuift de grens, hij haalt hem niet weg.
+  //
+  //    ⚠️ Daarom herhaalt deze functie tot de uitvoer niet meer verandert. Het
+  //    plafond is een rem en geen verwachting: 📏 gemeten diepte 1 voor de
+  //    tweetekengevallen en 2 voor het viertekengeval, en stapelen maakt hem
+  //    niet dieper — elke pas haalt álles weg wat op dat niveau weg kan.
+  //
+  //    ⚠️ De randstap staat binnen de pas nog steeds aan **beide** kanten. Dat
+  //    is geen restant: het scheelt de lus een ronde op de tweetekenklassen, en
+  //    het gooit een lange reeks randtekens weg vóór de vijf regexen eroverheen
+  //    gaan.
+  const rand = (invoer: string): string => {
+    const stuk = Array.from(invoer);
+    let begin = 0;
+    let eind = stuk.length;
+    const onzichtbaar = (index: number): boolean =>
+      isOnzichtbaar((stuk[index] as string).codePointAt(0) ?? 0);
 
-  let begin = 0;
-  let eind = tekens.length;
+    while (begin < eind && onzichtbaar(begin)) begin += 1;
+    while (eind > begin && onzichtbaar(eind - 1)) eind -= 1;
+    return stuk.slice(begin, eind).join('');
+  };
 
-  const onzichtbaar = (index: number): boolean =>
-    isOnzichtbaar((tekens[index] as string).codePointAt(0) ?? 0);
+  const pas = (invoer: string): string =>
+    rand(
+      zonderOnzichtbaarTussenLetters(
+        zonderLosseTags(zonderRegelovergang(zonderOnzichtbaarMiddenin(zonderBidi(rand(invoer))))),
+      ),
+    );
 
-  while (begin < eind && onzichtbaar(begin)) begin += 1;
-  while (eind > begin && onzichtbaar(eind - 1)) eind -= 1;
+  let nu = ruw;
+  for (let ronde = 0; ronde < 8; ronde += 1) {
+    const volgende = pas(nu);
+    if (volgende === nu) return nu;
+    nu = volgende;
+  }
 
-  return tekens.slice(begin, eind).join('');
+  return nu;
 }
+
 
 /**
  * De letter in een avatar, uit een weergavenaam.
