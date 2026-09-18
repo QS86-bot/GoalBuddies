@@ -853,6 +853,23 @@ async function wikkelStraffenAf(db: Db, profiel: Profiel, nu: Date): Promise<num
   //    zelf `current_date` gebruiken, dan gaat de straf voor iemand in Auckland
   //    een dag te vroeg af — en te vroeg is precies het enige dat hier niet mag.
   //
+  // ⚠️⚠️ **Die reden draagt sinds migratie 0290 nog één regel van die functie en
+  //    niet meer de functie** — QS8-533. `p_vandaag` beantwoordt daar alleen nog
+  //    *is de streefdatum verstreken*. Het zevendaagse schild eromheen — houdt
+  //    een open uitstelverzoek deze straf nog tegen — meet in SQL aan
+  //    `doeldatum()`, de zone die bij het aangaan bevroren is (`commitments.tz`,
+  //    0280). Dat is met opzet een andere klok: 📏 `profiles.tz` staat in de
+  //    UPDATE-kolomgrant van `authenticated`, dus een schild dat aan déze datum
+  //    meet, wordt opgerekt door degene die het beschermt.
+  //
+  // ⚠️ **En de regel die overblijft heeft dezelfde vraag openstaan** als
+  //    **QS8-548**, mét meting: een sprong naar het westen stelt het verschuldigd
+  //    worden zelf een dag uit. De reden hierboven is daar een argument tégen —
+  //    "te vroeg is precies het enige dat hier niet mag" — maar hij gaat over een
+  //    sprong naar het oosten en zwijgt over een naar het westen. Dat is grens 1
+  //    van de *Beslisbevoegdheid* en dus een besluit van Quinten, niet iets om en
+  //    passant mee te nemen.
+  //
   // ⚠️ **Staat vóór het weekdoelenwerk en is er volledig los van.** Domeinregel
   //    11 en QS8-84 criterium 2: geen enkele gemiste week zet een straf in
   //    werking. Deze aanroep kijkt niet naar `weekly_goals` en hoort daarom ook
