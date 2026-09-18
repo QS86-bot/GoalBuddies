@@ -89,6 +89,13 @@ export function topniveauDml(sql) {
  *    de hele tekst kopieert, rot bij de eerste herformattering — en dan
  *    herschrijft iemand het register in plaats van de vraag opnieuw te stellen.
  *    Het fragment moet wél onderscheidend zijn binnen zijn bestand.
+ *
+ * ⚠️ De `@type` is er zodat TypeScript hier een **record** ziet en niet de
+ *    letterlijke sleutels van vandaag. Zonder die annotatie kan een toets geen
+ *    ander register meegeven — en dan is de controle niet te ijken, wat precies
+ *    de eigenschap is die dit project van elke grendel eist.
+ *
+ * @type {Record<string, { bevat: string, reden: string }[]>}
  */
 export const DML_MET_REDEN = {
   '0033': [

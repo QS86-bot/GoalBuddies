@@ -111,7 +111,7 @@ describe('het register', () => {
   it('een niet-geregistreerd statement is een bevinding', () => {
     const uit = beoordeel(perMigratie, {});
     expect(uit.ongeregistreerd).toHaveLength(1);
-    expect(uit.ongeregistreerd[0].naam).toBe('0001_x.sql');
+    expect(uit.ongeregistreerd[0]?.naam).toBe('0001_x.sql');
   });
 
   /**
@@ -129,7 +129,7 @@ describe('het register', () => {
     });
     expect(uit.ongeregistreerd).toEqual([]);
     expect(uit.verweesd).toHaveLength(1);
-    expect(uit.verweesd[0].bevat).toBe('delete from allang_weg');
+    expect(uit.verweesd[0]?.bevat).toBe('delete from allang_weg');
   });
 
   it('een register voor een migratie die geen DML meer heeft, is ook verweesd', () => {
