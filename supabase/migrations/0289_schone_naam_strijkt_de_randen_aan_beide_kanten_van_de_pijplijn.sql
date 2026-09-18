@@ -60,12 +60,44 @@
 -- dezelfde ruimte** — de 4.261 codepunten waar `schone_naam()` iets aan doet,
 -- elk achtste daarvan, alle paren in vier vormen, 1.136.356 gevallen:
 --
---   | vorm                                   | niet-idempotent |
---   |----------------------------------------|-----------------|
---   | A  huidig: pijplijn → rand             |             256 |
---   | B  rand → pijplijn                     |            3840 |
---   | C  rand → pijplijn → rand  (deze)      |               0 |
---   | D  huidige vorm tot een vast punt      |               0 |
+--   | vorm                                   | niet-idempotent (paren) |
+--   |----------------------------------------|-------------------------|
+--   | A  huidig: pijplijn → rand             |                     256 |
+--   | B  rand → pijplijn                     |                    3840 |
+--   | C  rand → pijplijn → rand              |                       0 |
+--   | D  tot een vast punt         (deze)    |                       0 |
+--
+-- ⚠️⚠️ **Die twee nullen betekenen niet hetzelfde, en dat is de duurste les van
+--    dit issue.** De ruimte hierboven bestaat uit tekenpáren. Vorm C scoort daar
+--    nul omdat hij de tweetekenklassen dekt — maar hij tilt de ariteit van het
+--    defect op in plaats van het weg te nemen. 📏 De security-review vond met
+--    **vier** tekens een tegenvoorbeeld dat C alsnog breekt:
+--
+--      `a` + `U+180F` + `U+1680` + `U+1BCA0`
+--        1. `U+1BCA0` is géén randteken, dus de voorste trim komt niet bij `U+1680`
+--        2. de pijplijn haalt `U+1BCA0` weg
+--        3. `U+180F` overleeft: zijn rechterbuur `U+1680` is niet-ASCII
+--        4. de áchterste trim haalt `U+1680` weg en legt `U+180F` bloot
+--        5. pas een vólgende aanroep strijkt hem  ->  `a`
+--
+--    Dat is faalvorm A opnieuw, met één teken ervoor als schild tegen de nieuwe
+--    voorste trim. 📏 Werkende schilden: `U+1BCA0`, `U+FFF3`, `U+E0020`,
+--    `U+E0067`, `U+E007F`. **De veeg die de nul opleverde zocht op twee tekens
+--    terwijl de reparatie de klasse naar vier tilde** — en het beslisdocument
+--    schreef die aanname zelfs letterlijk op (*"er zijn er twee nodig"*), waar
+--    hij vóór de reparatie waar was en erna niet meer.
+--
+-- ⚠️ **Vandaar D en niet C.** Elke eindige keten van strijkers heeft dit
+--    probleem opnieuw, één laag dieper: wat de laatste stap weghaalt kan een
+--    positie blootleggen die een eerdere stap al gehad heeft. Een derde randstap
+--    erbij plakken verschuift de grens naar zes tekens. Een vast punt is de enige
+--    vorm waarin de eigenschap uit de constructie volgt in plaats van uit een
+--    steekproef: de uitvoer is per definitie een vast punt van de pas, dus een
+--    tweede aanroep verandert niets.
+--
+-- ⚠️ **En de pas binnenin blijft C.** Dat is geen restant: hij dekt de
+--    tweetekenklassen in één ronde, zodat de lus er zelden een tweede nodig
+--    heeft, en hij gooit een lange reeks randtekens weg vóór de vijf regexen.
 --
 -- ⚠️⚠️ **De voor de hand liggende reparatie is vijftien keer erger, en de twee
 --    fouten zijn elkaars spiegelbeeld.** Beide vormen laten één van de twee
@@ -84,8 +116,13 @@
 --            weg, en dan staat `U+2001` vooraan zonder dat er nog een randstap
 --            komt.
 --
---    Vandaar dat de randstap aan **beide** kanten moet en niet verhuizen: elke
---    kant dekt precies de blootlegging die de andere veroorzaakt.
+--    Vandaar dat de randstap aan **beide** kanten hoort en niet verhuist.
+--
+--    ⚠️⚠️ **Hier stond "elke kant dekt precies de blootlegging die de andere
+--    veroorzaakt", en dat was de fout.** Niets dekt de blootlegging die de
+--    áchterste randstap zélf maakt — die staat nog steeds als laatste. Zie de
+--    viertekenvondst hieronder; dat is de reden dat deze migratie tot een vast
+--    punt herhaalt in plaats van de keten te verlengen.
 --
 -- ⚠️ **Geen enkele stap voegt tekens toe** — 📏 alle vijf vervangen door `''` of
 --    door hun eigen capture (`zonder_losse_tags` houdt een wélgevormde vlagreeks
@@ -121,12 +158,23 @@
 --   | `btrim()`   |   85 ms |
 --
 -- De reden is dezelfde als de reparatie: de eerste randstap gooit die vijf
--- miljoen tekens weg vóórdat de vijf regexen eroverheen gaan. `handle_new_user()`
--- draait `schone_naam()` op ongefilterde `raw_user_meta_data` en heeft geen
--- bovengrens — met deze vorm is dat geen bezwaar meer, en een aparte grens is
--- daarmee niet nodig. Dat is met opzet gemeten en niet gekopieerd van
--- `create_group()`, die zijn grens van duizend codepunten om een andere reden
--- heeft (0287).
+-- miljoen tekens weg vóórdat de vijf regexen eroverheen gaan.
+--
+-- ⚠️⚠️ **Hier stond dat een bovengrens op `handle_new_user()` daarmee niet nodig
+--    is. Dat is te breed, en de security-review heeft het weerlegd.** De
+--    versnelling geldt alléén voor tekens in de **randklasse** — die gooit de
+--    voorste trim weg. Voor alles daarbuiten is deze vorm juist iets trager,
+--    want er staan twee regexen bij. 📏 Gemeten op 5M codepunten: `U+1BCA0`
+--    (middenin, géén randteken) 1795 → 1917 ms, en `U+E0020` (losse tag)
+--    4372 → 4549 ms. Dat schaalt lineair; op 8M is het ruim zeven seconden in een
+--    `security definer`-trigger die bij élke aanmelding draait, op een tier met
+--    `max_connections = 60`.
+--
+--    De grens is in deze migratie **niet** toegevoegd — dat is een eigen
+--    wijziging aan `handle_new_user()` met een eigen afweging (hoeveel ruwe
+--    codepunten mag een naam hebben voordat we hem afkappen), en hij hoort niet
+--    als bijvangst in een migratie over idempotentie. Hij staat als eigen issue
+--    met deze meting erbij.
 --
 -- ⚠️ D is als plpgsql-lus geschreven en zou de functie uit `language sql` halen.
 --    Dat weegt mee maar was niet doorslaggevend: C wint al op alle drie de
@@ -135,44 +183,80 @@
 -- ---------------------------------------------------------------------------
 -- 1. De functie
 -- ---------------------------------------------------------------------------
+--
+-- ⚠️⚠️ **De randklasse staat als lokale constante en niet als eigen functie, en
+--    dat is een grendel en geen smaak.** De eerste versie van deze migratie zette
+--    hem in een eigen functie `public.randtekens()`. 📏 `volatiliteit:controle`
+--    werd daar rood op:
+--    een `immutable` functie zónder argumenten kan Postgres wegvouwen uit het
+--    plan, en PostgREST hergebruikt dat plan per poolverbinding — dan komt de
+--    EXECUTE-toets er nooit meer aan te pas. Zie QS8-433 en migratie `0254`.
+--
+--    Hem `stable` maken zou dat oplossen, maar `schone_naam()` moet `immutable`
+--    blijven (hij staat in CHECKs), en een `immutable` functie die een `stable`
+--    aanroept is een belofte die niet klopt. Een lokale constante heeft het
+--    probleem niet: geen plan, geen grant, geen tweede plek om te vergeten.
+
 
 create or replace function public.schone_naam(p_ruw text)
-returns text language sql immutable
+returns text language plpgsql immutable
 set search_path to 'pg_catalog', 'pg_temp'
 as $fn$
-  -- ⚠️ De randstap staat er twee keer, en allebei de keren dragen ze werk:
-  --      vooraf  — zodat de contextstap de échte rand van de naam ziet, en
-  --                zodat vijf miljoen onzichtbare tekens niet door vijf regexen
-  --                heen hoeven;
-  --      achteraf — omdat de pijplijn tekens weghaalt die géén randteken zijn
-  --                (`U+FFF3` bijvoorbeeld) en daarmee een nieuw randteken aan de
-  --                buitenkant kan blootleggen.
-  --    Eén van de twee weglaten geeft een niet-idempotente functie; welke je
-  --    weglaat bepaalt alleen of het de 256 of de 3840 gevallen worden.
-  select regexp_replace(
-    regexp_replace(
-      public.zonder_onzichtbaar_tussen_letters(
-        public.zonder_losse_tags(
-          public.zonder_regelovergang(
-            public.zonder_onzichtbaar_middenin(
-              public.zonder_bidi(
-                -- de randstap vooraf
-                regexp_replace(
-                  regexp_replace(coalesce(p_ruw, ''), '^[' || rand || ']+', ''),
-                  '[' || rand || ']+$', ''
+declare
+  -- Dezelfde klasse als vóór deze migratie, woordelijk overgenomen uit 0286.
+  c_rand  constant text := U&'\0001-\0020\007F-\00A0\00AD\034F\061C\115F-\1160\1680\17B4-\17B5\180B-\180E\2000-\200F\2028-\202F\205F-\2064\2066-\206F\2800\3000\3164\FEFF\FFA0\FFF9-\FFFB\+0E0000-\+0E001F';
+  v_vorig text;
+  v_nu    text := coalesce(p_ruw, '');
+  i       int;
+begin
+  -- ⚠️⚠️ **Een vast punt en niet een vaste keten, en dat is de hele les van dit
+  --    issue.** Elke eindige keten van strijkers heeft het probleem opnieuw, één
+  --    laag dieper: wat de láátste stap weghaalt, kan een positie blootleggen die
+  --    een éérdere stap al gehad heeft. De randstap aan beide kanten zetten
+  --    verschuift die grens van twee tekens naar vier — het lost hem niet op.
+  --
+  -- ⚠️ Het plafond is een veiligheidsrem en geen verwachting. 📏 Gemeten diepte:
+  --    1 voor de tweetekengevallen, 2 voor het viertekengeval, en **stapelen
+  --    maakt hem niet dieper** — `a` + (`U+180F U+1680 U+1BCA0`) × n geeft voor
+  --    n = 1..6 de dieptes 2, 1, 1, 1, 1, 1. Elke pas haalt álles weg wat op dat
+  --    niveau weg kan, dus een cascade groeit niet mee met de lengte.
+  --
+  --    Wordt het plafond tóch gehaald, dan is de uitvoer geen vast punt en
+  --    weigert de CHECK de rij. Dat faalt dicht, net als de lus in `create_group()`
+  --    (0287) — een naam die niet convergeert wordt niet opgeslagen in plaats van
+  --    half genormaliseerd.
+  for i in 1..8 loop
+    v_vorig := v_nu;
+
+    -- Eén pas: de randstap vóór én na de pijplijn. Die twee dekken de
+    -- tweetekenklassen in één keer, zodat de lus er zelden een tweede nodig heeft
+    -- en vijf miljoen randtekens niet door vijf regexen hoeven.
+    v_nu := regexp_replace(
+      regexp_replace(
+        public.zonder_onzichtbaar_tussen_letters(
+          public.zonder_losse_tags(
+            public.zonder_regelovergang(
+              public.zonder_onzichtbaar_middenin(
+                public.zonder_bidi(
+                  regexp_replace(
+                    regexp_replace(v_nu, '^[' || c_rand || ']+', ''),
+                    '[' || c_rand || ']+$', ''
+                  )
                 )
               )
             )
           )
-        )
+        ),
+        '^[' || c_rand || ']+', ''
       ),
-      '^[' || rand || ']+', ''
-    ),
-    '[' || rand || ']+$', ''
-  )
-  from (
-    select U&'\0001-\0020\007F-\00A0\00AD\034F\061C\115F-\1160\1680\17B4-\17B5\180B-\180E\2000-\200F\2028-\202F\205F-\2064\2066-\206F\2800\3000\3164\FEFF\FFA0\FFF9-\FFFB\+0E0000-\+0E001F' as rand
-  ) s;
+      '[' || c_rand || ']+$', ''
+    );
+
+    exit when v_nu = v_vorig;
+  end loop;
+
+  return v_nu;
+end;
 $fn$;
 
 revoke all on function public.schone_naam(text) from public, anon, authenticated;

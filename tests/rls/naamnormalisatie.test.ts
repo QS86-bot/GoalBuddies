@@ -1123,6 +1123,44 @@ function paarGevallen(): { readonly links: number; readonly rechts: number }[] {
   ];
 }
 
+/**
+ * De viertekenklasse, en waarom die er apart bij staat — QS8-526.
+ *
+ * ⚠️⚠️ **Hier stond eerst dat de randstap aan beide kanten het probleem oploste,
+ *    met een gemeten `0` erbij. Dat was onwaar** en is door de security-review
+ *    gevonden. De `0` kwam uit een ruimte van tekenpáren, en met de randstap aan
+ *    beide kanten heeft het defect er **vier** nodig:
+ *
+ *      `a` + `U+180F` + `U+1680` + `U+1BCA0`
+ *        1. `U+1BCA0` is geen randteken, dus de voorste trim komt niet bij `U+1680`
+ *        2. de pijplijn haalt `U+1BCA0` weg
+ *        3. `U+180F` overleeft: zijn rechterbuur `U+1680` is niet-ASCII
+ *        4. de áchterste trim haalt `U+1680` weg en legt `U+180F` bloot
+ *        5. pas een volgende aanroep strijkt die
+ *
+ *    Elke eindige keten heeft dit opnieuw, één laag dieper — vandaar dat
+ *    `schone_naam()` nu tot een vast punt herhaalt in plaats van een vaste keten
+ *    te zijn. **Een ruimte van paren kan een viertekenklasse per constructie niet
+ *    vinden; de reparatie tilde de ariteit op en de veeg bleef op twee zoeken.**
+ */
+const SCHILDEN = [0x1bca0, 0xfff3, 0xe0020, 0xe0067, 0xe007f] as const;
+const CONTEXTTEKENS = [0x180f, 0xfe00, 0xfe0f, 0xe0100] as const;
+const RANDNA = [0x1680, 0x2001, 0x3000, 0x2028] as const;
+
+function vierGevallen(): string[] {
+  const uit: string[] = [];
+  for (const ctx of CONTEXTTEKENS) {
+    for (const randteken of RANDNA) {
+      for (const schild of SCHILDEN) {
+        const staart =
+          String.fromCodePoint(ctx) + String.fromCodePoint(randteken) + String.fromCodePoint(schild);
+        uit.push(`a${staart}`, `ab${staart}`, `${staart}a`, `a${staart}b`);
+      }
+    }
+  }
+  return uit;
+}
+
 function schoneNaamViaStdin(waarden: readonly string[]): string[] {
   // ⚠️⚠️ **In brokken, en met een telling erachteraan — allebei geijkt.** 📏 Eén
   //    `values`-lijst van dertigduizend rijen geeft niet alle rijen terug, en met
@@ -1171,7 +1209,10 @@ describe.runIf(beschikbaar)('schone_naam is idempotent, ook op tekenparen', () =
   let gevallen: string[] = [];
 
   beforeAll(() => {
-    gevallen = paarGevallen().flatMap(({ links, rechts }) => vormen(links, rechts));
+    gevallen = [
+      ...paarGevallen().flatMap(({ links, rechts }) => vormen(links, rechts)),
+      ...vierGevallen(),
+    ];
   }, 60_000);
 
   it('de ruimte is niet leeg — anders bewaakt alles hieronder niets', () => {

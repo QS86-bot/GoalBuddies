@@ -1,4 +1,4 @@
-# De randstap hoort aan beide kanten van de pijplijn
+# Een vast punt, niet een langere keten
 
 **Datum:** 17-09-2026 · **Issue:** QS8-526 · **Migratie:** `0289`
 **Raakt:** `public.schone_naam()`, `schoneNaam()` in `src/shared/tekst`,
@@ -42,15 +42,38 @@ groen had gezien, was hier gestopt.
 QS8-526 noemde twee richtingen en vroeg te **meten** welke klopt in plaats van te
 kiezen. Dat was terecht, want de voor de hand liggende is vijftien keer erger.
 
-| vorm | niet-idempotent |
+| vorm | niet-idempotent (paren) |
 |---|---|
 | A huidig: pijplijn → rand | 256 |
 | B rand → pijplijn | **3840** |
-| C rand → pijplijn → rand | **0** |
-| D huidige vorm tot een vast punt | **0** |
+| C rand → pijplijn → rand | 0 |
+| **D tot een vast punt** | **0** |
 
 Gemeten op de ruimte uit het issue: de 4.261 codepunten waar `schone_naam()` iets
 aan doet, elk achtste daarvan, alle paren in vier vormen — 1.136.356 gevallen.
+
+⚠️⚠️ **Die twee nullen betekenen niet hetzelfde, en op dat verschil is dit
+document eerst de mist in gegaan.** Deze ruimte bestaat uit **paren**. C scoort er
+nul omdat hij de tweetekenklassen dekt; hij tilt het defect naar vier tekens in
+plaats van het weg te nemen. De security-review op deze branch vond het
+tegenvoorbeeld:
+
+```
+a  U+180F  U+1680  U+1BCA0
+ 1  U+1BCA0 is géén randteken -> de voorste trim komt niet bij U+1680
+ 2  de pijplijn haalt U+1BCA0 weg
+ 3  U+180F overleeft: rechterbuur U+1680 is niet-ASCII
+ 4  de áchterste trim haalt U+1680 weg en legt U+180F bloot
+ 5  pas een vólgende aanroep strijkt hem   ->   a
+```
+
+📏 Zelf nagemeten op de gedeployde functie: `1x = 61 e1a08f`, `2x = 61`. Werkende
+schilden: `U+1BCA0`, `U+FFF3`, `U+E0020`, `U+E0067`, `U+E007F`.
+
+**Dat is faalvorm A opnieuw, met een schild ervoor.** De zin die hieronder stond —
+*"elke kant dekt precies de blootlegging die de andere veroorzaakt"* — was de
+fout: niets dekt de blootlegging die de áchterste randstap zélf maakt, want die
+staat nog steeds als laatste.
 
 De twee falende vormen doen hetzelfde, van twee kanten:
 
@@ -65,8 +88,20 @@ De twee falende vormen doen hetzelfde, van twee kanten:
   haalt hem weg en `U+2001` komt aan de buitenkant — zonder dat er nog een
   randstap komt.
 
-Elke kant dekt precies de blootlegging die de andere veroorzaakt. Vandaar C, en
-vandaar dat verplaatsen niet werkt.
+Verplaatsen werkt dus niet, en verdubbelen ook niet: **elke eindige keten heeft
+dit probleem opnieuw, één laag dieper.** Een derde randstap verschuift de grens
+naar zes tekens. Vandaar D — een vast punt — want daar volgt de eigenschap uit de
+constructie in plaats van uit een steekproef: de uitvoer ís een vast punt van de
+pas, dus een tweede aanroep verandert niets. De pas binnenin blijft C, omdat die
+de tweetekenklassen in één ronde dekt en een lange reeks randtekens weggooit vóór
+de vijf regexen.
+
+📏 Diepte gemeten: 1 voor de tweetekengevallen, 2 voor het viertekengeval, en
+**stapelen maakt hem niet dieper** — `a` + (`U+180F U+1680 U+1BCA0`) × n geeft
+voor n = 1..6 de dieptes 2, 1, 1, 1, 1, 1. Elke pas haalt álles weg wat op dat
+niveau weg kan, dus een cascade groeit niet mee met de lengte. Het plafond van
+acht is een rem, geen verwachting; wordt het gehaald, dan is de uitvoer geen vast
+punt en weigert de CHECK de rij — dicht falen, net als `create_group()`.
 
 📏 Op een **onafhankelijke** ruimte hergemeten — 17.044 drietallen, dus niet de
 ruimte die het defect voortbracht: A 15, C 0, D 0. **En C en D geven op elk van
@@ -108,8 +143,16 @@ gegarandeerd — het argument klopte, de tegenmeting niet.
 
 `tests/rls/naamnormalisatie.test.ts` veegde per codepunt. 📏 Dat kán deze klasse
 niet vinden: het hele codepuntbereik in enkelvoudige vormen geeft **nul**
-niet-idempotente gevallen. Er zijn er twee nodig — het ene teken moet het andere
+niet-idempotente gevallen. Er waren er twee nodig — het ene teken moest het andere
 ergens naartoe schuiven.
+
+⚠️⚠️ **En precies die zin is de val geweest.** Hij was waar vóór de reparatie.
+Vorm C tilde de ariteit naar vier, en de veeg bleef op twee zoeken — dus de `0`
+die eruit kwam was een eigenschap van de zoekruimte en niet van de functie.
+**Vraagt een reparatie meer tekens dan het defect, dan is de ruimte die het defect
+vond te klein geworden om de reparatie te toetsen.** De veeg draagt daarom nu ook
+een viertekenfamilie, en de grendel is de lus: 📏 het plafond op 1 zetten maakt
+twee toetsen rood.
 
 De nieuwe veeg kruist daarom twee verzamelingen per randstap: randteken × context
 (klasse A) en pijplijn-maar-geen-randteken × randteken (klasse B).
