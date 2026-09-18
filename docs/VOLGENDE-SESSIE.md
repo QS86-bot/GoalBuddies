@@ -28,9 +28,12 @@
 > grootheid. **Tel vlak vóór het pushen opnieuw, en schrijf op tot welk PR-nummer
 > je geteld hebt** — dat laatste is de enige vorm die niet veroudert.
 >
-> ⚠️ **Twee issues staan Urgent/High open en wachten op een besluit van Quinten —
-> QS8-531 en QS8-533.** Allebei grens 1 (commitment device), allebei gemeten
-> tegen de gedeployde functies, allebei niet gerepareerd. Zie punt AM.
+> ✅ **Die twee zijn beslist en gebouwd** — Quinten koos bevriezen op
+> `commitments.tz`, apart geland: QS8-531 in migratie `0288` en QS8-533 in
+> `0290`. ⚠️ Er staat wél een **derde** clausule van dezelfde klasse open, in
+> dezelfde functie en één regel hoger: `g.target_date < p_vandaag` in
+> `maak_straffen_verschuldigd()`. Dat is **QS8-548**, gemeten, en opnieuw grens 1.
+> Zie punt AM.
 >
 > ⚠️ **Linear was van ongeveer 11:30 tot 17:10 UTC niet bereikbaar** vanuit de
 > bouwsessie — de MCP-verbinding verloor zijn autorisatie. QS8-524 en QS8-530 zijn
@@ -759,8 +762,22 @@
 > verlooppoort van `beslis_deadline_verzoek()` zet met zone `Etc/GMT+12` een al
 > verschuldigde straf terug van `due` op `set` (**QS8-531**), en het zevendaagse
 > schild in `maak_straffen_verschuldigd()` rekt op dezelfde manier mee
-> (**QS8-533**). Allebei grens 1, allebei niet gerepareerd, allebei met hun meting
-> als rij van 17-09 in `docs/ENGINEER-REVIEW.md`.
+> (**QS8-533**). Allebei grens 1, allebei met hun meting als rij van 17-09 in
+> `docs/ENGINEER-REVIEW.md`, en allebei inmiddels gerepareerd — `0288` en `0290`.
+>
+> ⚠️⚠️ **En de tel klopte nóg niet: het waren er drie.** Bij het bouwen van
+> QS8-533 kwam de derde boven, in dezelfde functie en één regel hoger:
+> `g.target_date < p_vandaag` stelt het verschuldigd worden zélf een dag uit,
+> **zonder dat er een uitstelverzoek aan te pas komt**. 📏 Gemeten,
+> `UTC → UTC` geeft `verschuldigd=1` en `Kiritimati → Midway` geeft `0`. Dat is
+> **QS8-548**, en hij staat bewust open: hij verandert wanneer élke bestaande
+> straf afgaat en is daarmee grens 1.
+>
+> ⚠️ **De vraag van hierboven één slag scherper.** "Hoeveel aanroepers heeft het
+> ding waar ik dit over zeg" vond twee van de drie. De derde zat niet in een
+> ándere functie maar in dezelfde `where`-clausule, drie regels van de bevinding
+> vandaan — en die vind je niet met een `grep` op de functienaam maar door de
+> hele expressie te lezen waarin het verdachte getal voorkomt.
 >
 > ⚠️ **Vraag bij elke afsluitende zin in een beslisdocument: hoeveel aanroepers
 > heeft het ding waar ik dit over zeg?** Dat was hier met één `grep` te zien.

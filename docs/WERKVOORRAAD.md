@@ -879,9 +879,13 @@ niet kon, staat in `docs/VOLGENDE-SESSIE.md` bij punt 0.
   harnas tekent ze sinds 23-08 zelf en logt niet meer in
 - `npm run typecheck` en `lint` staan groen; het aantal tests staat in §0 en
   niet hier — twee tellers die elkaar tegenspreken zijn precies waarom die regel
-  bestaat. 📏 `tests/rls` telt **167** testbestanden (`ls tests/rls/*.test.ts`,
-  hermeten 11-09-2026; hier stond **140** met 10-09 erbij, en dat getal was
-  gedrift — het is met de hand geteld en niet overgenomen). Zonder
+  bestaat. 📏 `tests/rls` telt **181** testbestanden (`ls tests/rls/*.test.ts`,
+  hermeten 18-09-2026; hier stond **167** van 11-09, en daarvóór **140** van
+  10-09 — elke keer met de hand geteld en niet overgenomen). ⚠️ Dat is **veertien
+  bestanden drift in een week**, en dat is het eigenlijke signaal: een getal in
+  proza dat niemand rood maakt, loopt hier ongeveer twee bestanden per dag achter.
+  Wie het nodig heeft, telt het zelf; wie het hier leest, leest een momentopname
+  met een datum erbij. Zonder
   credentials én zonder lokale stack slaan ze over — zie §3b, en let op het
   verschil tussen *overgeslagen* en *groen*
 
