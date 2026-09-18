@@ -500,7 +500,15 @@ describe('QS8-435 — een branchbevinding noemt de leeftijd van zijn beeld', () 
     expect(uit, uit).toContain('FETCH_HEAD');
     expect(uit, uit).toContain('verse checkout');
     expect(uit, uit).not.toContain('git fetch --all');
-    expect(code, uit).toBe(1);
+    // ⚠️ **Deze regel stond op `1` en is bewust op `0` gezet** — QS8-552. Een
+    //    branchbevinding is sinds dat issue een waarschuwing en geen fout, want
+    //    een branch die nog niet geland is, zegt niets over déze map. De belofte
+    //    van dit geval is de léeftijdstekst hierboven en die is ongewijzigd; het
+    //    exitgetal was hier altijd bijvangst. Dat het een fout bleef, maakte
+    //    `main` structureel rood zodra iemand aan een migratie werkte.
+    //    De twee `toBe(1)`-gevallen verderop gaan over een **gat** en zijn
+    //    onaangeroerd: die horen fataal te blijven en zijn dat ook.
+    expect(code, uit).toBe(0);
   });
 
   it('noemt een vers beeld met zijn echte tijd en zonder voorbehoud', () => {

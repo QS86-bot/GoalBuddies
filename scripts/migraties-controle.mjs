@@ -80,6 +80,7 @@ import {
   nummersPerBranch,
   nummersUit,
   ontbrekendPerBranch,
+  uitslag,
 } from './migratiebranches.mjs';
 // ⚠️ Eén definitie van "wat is de kopregel", gedeeld met de herschrijver.
 //    Zou deze controle een eigen versie hebben, dan kunnen die twee het oneens
@@ -347,10 +348,56 @@ try {
 
 // ---------------------------------------------------------------------------
 
-if (fouten.length === 0 && branchfouten.length === 0) {
+if (uitslag({ fouten, branchfouten }) === 'groen') {
   console.log(
     `migraties-controle: ${bestanden.length} migraties, aaneengesloten en elk met een rollback-pad.` +
       (perBranch === null ? '' : ' Geen branch draagt een nummer dat hier ontbreekt.'),
+  );
+  process.exit(0);
+}
+
+// ---------------------------------------------------------------------------
+// Een branchbevinding is een afspraak en geen fout — QS8-552
+// ---------------------------------------------------------------------------
+//
+// ⚠️⚠️ **Dit stond hier fataal en dat maakte `main` structureel rood.** QS8-452
+//    zette `fetch-depth: 0` op de CI-checkout omdat `dossierdrift:controle` de
+//    volledige geschiedenis nodig heeft. Die vlag haalt niet alleen alle
+//    commits op maar ook **alle remote branches** — en deze controle loopt elke
+//    `origin/*`-ref af. 📏 Gevolg op 18-09-2026: `main` stond rood omdat
+//    `origin/…qs8-533` migratie `0290` droeg terwijl `main` op `0289` stond.
+//    Dat is de normale toestand van werk dat nog niet geland is, dus het zou
+//    bij élke migratiebranch opnieuw gebeuren.
+//
+// ⚠️ **En een rood dat altijd aan staat, betekent niets meer.** Dat is precies
+//    wat `hoofdrun:controle` en
+//    `docs/decisions/2026-09-09-twee-groene-prs-samen-rood.md` proberen te
+//    beschermen: rood op `main` hoort werk-nu te betekenen.
+//
+// ⚠️ **De weging komt niet van mij maar uit CLAUDE.md**, die de drie signalen
+//    van deze controle zelf uitschrijft: het nummer, *"de branches die datzelfde
+//    nummer dragen (**een afspraak, geen fout**)"*, en — apart, want dit is de
+//    énige echte fout — dat `origin/main` vóórloopt.
+//
+// ⚠️ **Wat hiermee níét verdwijnt, en dat is nagelopen en niet aangenomen.** Een
+//    gat in de eigen nummering, een duplicaat, een ontbrekend rollback-pad en de
+//    CLI-tegenspraak zitten allemaal in `fouten` en blijven onverkort fataal.
+//    Twee PR's met hetzelfde nummer worden ná de merge een **duplicaat**, en dát
+//    is de grendel die QS8-318 beschrijft. De branchtak waarschuwt vooraf; hij
+//    bewijst niets over de map zoals hij nu is.
+if (uitslag({ fouten, branchfouten }) === 'waarschuwing') {
+  console.log(
+    `migraties-controle: ${bestanden.length} migraties, aaneengesloten en elk met een\n` +
+      '  rollback-pad. Wel een melding over een ándere branch:\n',
+  );
+  for (const f of branchfouten) console.log(`  · ${f}`);
+  console.log('');
+  for (const regel of beeldmelding({ sinds: laatsteFetch() })) console.log(regel);
+  console.log(
+    '\n⚠️ Dit is een afspraak en geen fout: die branch is nog niet geland, en deze\n' +
+      '  map is op zichzelf in orde. Land die branch, of hernummer als jij de tweede\n' +
+      '  bent die merget (QS8-318). Een gat of een duplicaat in déze map is wél\n' +
+      '  fataal en staat hierboven.',
   );
   process.exit(0);
 }
