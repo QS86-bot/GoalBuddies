@@ -175,9 +175,9 @@ describe.skipIf(!beschikbaar)('de naam van een vertrokken lid staat niet in de b
     // opduikt. Hoe de naam er zou komen doet er niet toe — via `weergavenaam()`,
     // via een eigen select of via een derde manier die nog niet bedacht is.
     //
-    // ⚠️ **Wat dit níét dekt, en dat hoort erbij:** `commitment_due`,
-    //    `commitment_unlocked` en `deadline_requested`. Die vragen een commitment-
-    //    of deadline-opstelling; ze staan als rij in `docs/ENGINEER-REVIEW.md`.
+    // ⚠️ **De andere drie staan in de test hieronder** — `commitment_due`,
+    //    `commitment_unlocked` en `deadline_requested` vragen een commitment- of
+    //    deadline-opstelling, en die is duur genoeg om apart te houden (QS8-545).
     //    De andere zeven gebeurtenissen uit de CHECK dragen geen persoon.
     const gevonden = laatsteRegel(
       psql(`
@@ -241,6 +241,109 @@ describe.skipIf(!beschikbaar)('de naam van een vertrokken lid staat niet in de b
     //    gevonden" opleveren, en dan bewaakt deze test niets.
     const aantal = Number(gevonden.split(' ')[0]);
     expect(aantal, `er zijn geen systeemberichten geplaatst: ${gevonden}`).toBeGreaterThanOrEqual(4);
+    expect(gevonden, `de naam staat in een body: ${gevonden}`).toContain('in 0 ervan');
+  }, 120_000);
+
+  // ⚠️⚠️ **Een aparte test en niet drie regels erbij hierboven, en dat is geen
+  //    netheid.** De vijf hierboven komen van een voltooiings- en mijlpaalroute;
+  //    deze drie vragen een commitment- of deadline-opstelling die drie keer zo
+  //    lang is en op heel andere voorwaarden valt. In één transactie zouden ze
+  //    elkaars opbouw kunnen breken zonder dat de melding zegt welke.
+  //
+  // ⚠️⚠️ **En de assertie is hier per gebeurtenis, niet op een totaal.** 📏 Dat
+  //    is de les van de teller hierboven: `>= 4` blijft groen zodra er vier van
+  //    de vijf geplaatst zijn, dus een gebeurtenis die stil ophoudt te vuren
+  //    verdwijnt uit de bewaking zonder iets rood te maken. Bij deze drie is dat
+  //    geen theorie — elk van de drie valt op een eigen voorwaarde die stuk kan:
+  //    `commitment_unlocked` op `type = 'reward'`, `commitment_due` op een
+  //    `beneficiary_group_id`, en `deadline_requested` op zes controles in
+  //    `vraag_deadline_verschuiving()` plus een dagteller van vijf.
+  //
+  // ⚠️⚠️ **Dat laatste is bovendien de enige route hier die dicht faalt.** De
+  //    plaatsing van `deadline_requested` staat in een
+  //    `begin … exception when others then raise warning`: mislukt hij, dan
+  //    geeft de RPC gewoon `ok` terug. Een toets die op dat antwoord afgaat, kan
+  //    dus groen blijven terwijl de belofte breekt — regel 18 vraag 3. Daarom
+  //    telt deze test de rijen in `chat_messages` en leest hij de RPC niet.
+  it('en de drie die een commitment of deadline vragen, elk apart geteld', () => {
+    const gevonden = laatsteRegel(
+      psql(`
+        begin;
+        create temp table r (alice uuid, bob uuid, gid uuid, goal uuid);
+        grant select, insert, update on r to authenticated;
+        insert into r (alice, bob) values (
+          shim_maak_gebruiker('drie-alice@proef.test', '${NAAM}'),
+          shim_maak_gebruiker('drie-bob@proef.test', 'Bob'));
+
+        select set_config('request.jwt.claims',
+          json_build_object('sub', (select bob from r), 'role', 'authenticated')::text, true);
+        set local role authenticated;
+        update r set gid = ((create_group('Driegroep', 0::smallint) -> 'group' ->> 'id'))::uuid;
+        reset role;
+
+        -- Alice is lid én eigenaar; Bob blijft over als beslisser, anders
+        -- weigert de RPC hieronder met 'geen_beslisser'.
+        insert into group_members (group_id, user_id, role, status)
+          select gid, alice, 'member', 'active' from r;
+
+        insert into goals (owner_id, title, target_date)
+          select alice, 'Doel van Alice', current_date + 90 from r;
+        update r set goal = (select id from goals where owner_id = (select alice from r) limit 1);
+        insert into goal_group_links (goal_id, group_id) select goal, gid from r;
+
+        -- 1. commitment_unlocked — naar de doelgroepen.
+        insert into commitments (goal_id, type, body, status, confirmed_at, tz)
+          select goal, 'reward', 'Een dag vrij nemen als dit lukt.', 'set', now(),
+                 'Europe/Amsterdam' from r;
+        update commitments set status = 'unlocked'
+          where goal_id = (select goal from r) and type = 'reward';
+
+        -- 2. commitment_due — naar de begunstigde groep. Hier is dat dezelfde
+        --    groep, wat de telling eenvoudig houdt; de aanwezigheidsassertie
+        --    hieronder wordt rood zodra hij ergens anders heen zou gaan.
+        insert into commitments
+          (goal_id, type, body, status, confirmed_at, tz, beneficiary_group_id)
+          select goal, 'penalty', 'Ik trakteer de groep op taart.', 'set', now(),
+                 'Europe/Amsterdam', gid from r;
+        update commitments set status = 'due'
+          where goal_id = (select goal from r) and type = 'penalty';
+
+        -- 3. deadline_requested — als de eigenaar, en het antwoord van de RPC
+        --    doet er niet toe: wat telt is of de rij er staat.
+        select set_config('request.jwt.claims',
+          json_build_object('sub', (select alice from r), 'role', 'authenticated')::text, true);
+        set local role authenticated;
+        select vraag_deadline_verschuiving(
+          (select goal from r), (select gid from r), current_date + 120,
+          'Ik heb meer tijd nodig dan ik dacht bij het opstellen.');
+        reset role;
+
+        select (select count(*) from chat_messages
+                 where group_id = (select gid from r) and system_event = 'commitment_unlocked')
+               || ' unlocked, ' ||
+               (select count(*) from chat_messages
+                 where group_id = (select gid from r) and system_event = 'commitment_due')
+               || ' due, ' ||
+               (select count(*) from chat_messages
+                 where group_id = (select gid from r) and system_event = 'deadline_requested')
+               || ' requested, naam gevonden in ' ||
+               (select count(*) from chat_messages
+                 where group_id = (select gid from r)
+                   and system_event in ('commitment_unlocked', 'commitment_due',
+                                        'deadline_requested')
+                   and body like '%${NAAM}%')
+               || ' ervan';
+        rollback;
+      `),
+    );
+
+    // ⚠️ Eerst dat elk van de drie er daadwerkelijk is. Zonder deze drie
+    //    asserties zou 'naam gevonden in 0 ervan' ook waar zijn als er niets
+    //    geplaatst was — en dan bewaakt deze test niets.
+    expect(gevonden, `commitment_unlocked is niet geplaatst: ${gevonden}`).toContain('1 unlocked');
+    expect(gevonden, `commitment_due is niet geplaatst: ${gevonden}`).toContain('1 due');
+    expect(gevonden, `deadline_requested is niet geplaatst: ${gevonden}`).toContain('1 requested');
+
     expect(gevonden, `de naam staat in een body: ${gevonden}`).toContain('in 0 ervan');
   }, 120_000);
 });
