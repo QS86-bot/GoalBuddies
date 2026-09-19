@@ -2917,7 +2917,7 @@ export type Database = {
       }
       maak_seizoensrecaps: { Args: { p_op?: string }; Returns: Json }
       maak_straffen_verschuldigd: {
-        Args: { p_owner_id: string; p_vandaag: string }
+        Args: { p_owner_id: string }
         Returns: number
       }
       migratieregister: {

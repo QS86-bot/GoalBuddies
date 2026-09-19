@@ -144,11 +144,19 @@ async function strafstand(doelId: string): Promise<string | null> {
   return (r.data?.status as string | undefined) ?? null;
 }
 
-/** De job die straffen verschuldigd maakt, zoals de rollover hem draait. */
+/**
+ * De job die straffen verschuldigd maakt, zoals de rollover hem draait.
+ *
+ * ⚠️ **Sinds 0293 is dat zónder datum** (QS8-548). Hier stond `p_vandaag:
+ *    w.vandaag`, en die parameter bestaat niet meer op de functie die het werk
+ *    doet: de dag komt uit `doeldatum()`, dus uit de zone die bij het aangaan
+ *    van de straf bevroren is. Deze helper hoort de échte aanroep te zijn en
+ *    niet een gunstige — bleef hij een datum sturen, dan liep hij via de
+ *    afgeschreven wrapper en zou hij zwijgend iets anders meten dan hij zegt.
+ */
 async function draaiDeJob(): Promise<number> {
   const r = await adminDb().rpc('maak_straffen_verschuldigd', {
     p_owner_id: w.alice.id,
-    p_vandaag: w.vandaag,
   });
   if (r.error) throw new Error(`job: ${r.error.message}`);
   return (r.data ?? 0) as number;
