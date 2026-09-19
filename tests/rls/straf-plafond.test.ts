@@ -507,7 +507,12 @@ describe.skipIf(!rlsTestsConfigured)('het plafond op straffen', () => {
         const oost = await w.alice.db.from('profiles').update({ tz: 'Etc/GMT-14' }).eq('id', w.alice.id);
         expect(oost.error, `tz naar oost: ${oost.error?.message}`).toBeNull();
 
-        const oostDatum = await adminDb().rpc('eigenaarsdatum', { uid: w.alice.id });
+        // ⚠️ **Hier stond `p_vandaag: eigenaarsdatum(alice)` — de dag in de
+        //    oostelijke zone waar ze net naartoe gesprongen was. Dat argument
+        //    bestaat sinds 0292 niet meer** (QS8-548): de functie leest de dag
+        //    uit `doeldatum()`, dus uit de zone die bij het aangaan bevroren is.
+        //    De aanval hoeft daarmee niet minder scherp te zijn — hij is
+        //    scherper, want de sprong is nu het énige dat nog verschilt.
         const uitkomst = await adminDb().rpc('maak_straffen_verschuldigd', {
           p_owner_id: w.alice.id,
         });

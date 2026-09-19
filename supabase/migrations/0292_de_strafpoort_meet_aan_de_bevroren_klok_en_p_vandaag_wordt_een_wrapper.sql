@@ -32,8 +32,16 @@
 --    streefdatum één dag vóór de dag van het aangaan, en als énige variabele de
 --    zone ná het aangaan:
 --
---      UTC        -> UTC      (eerlijk)   verschuldigd = 1
---      Kiritimati -> Midway   (aanval)    verschuldigd = 0
+--      UTC        -> UTC        (eerlijk)   verschuldigd = 1
+--      Kiritimati -> Honolulu   (aanval)    verschuldigd = 0
+--
+-- ⚠️ **Kiritimati/Honolulu en niet Kiritimati/Midway**, hoewel het issue dat
+--    laatste paar noemt. Midway (`UTC−11`) scheelt 25 uur en dus één dag óf
+--    twee, afhankelijk van het uur; Honolulu (`UTC−10`) scheelt er exact 24 en
+--    dus altijd precies één. 📏 Dat verschil maakte de suite van `0290` twee van
+--    de vierentwintig uur rood (zie zijn kop). De uitslag hierboven is met béide
+--    paren gemeten en identiek; alleen het paar dat niet van het uur afhangt
+--    hoort in een meting die iemand later overdoet.
 --
 -- ⚠️ Dit is de eenvoudigste van de drie routes uit deze familie: er komt geen
 --    uitstelverzoek aan te pas, alleen een `PATCH` op je eigen profiel.
@@ -92,6 +100,23 @@
 -- Dit is woordelijk de vorm van `0186` / QS8-324, die om dezelfde reden bestaat:
 -- *dan is de deploy weer een gewone deploy in plaats van een race die je
 -- verliest zonder het te merken.*
+--
+-- ⚠️⚠️ **Maar hij neemt de eis maar in één richting weg, en dat is in de
+--    security-ronde op deze branch boven gekomen.** De wrapper dekt *migratie
+--    vóór deploy*: de bundel die er nu draait blijft werken. Hij dekt **niet**
+--    *deploy vóór migratie*: `rollover/index.ts` roept vanaf deze commit de
+--    eenargumentsvorm aan, en die bestaat op productie pas als dit bestand daar
+--    gelandt is. 📏 En dat is geen randgeval — `supabase/uitgerold.json` zegt
+--    `0282`, dus de migratie ligt er gegarandeerd nog niet.
+--
+--    Wordt er eerder gedeployd, dan geeft PostgREST `PGRST202`,
+--    `wikkelStraffenAf()` logt naar `console.error` en telt nul, de rollover
+--    loopt door met een 200 — en er wordt voor **niemand** nog een straf
+--    verschuldigd, zonder dat iets rood wordt. Domeinregel 11 valt dan stil.
+--
+--    **De regel is dus: migratie eerst, deploy daarna.** De wrapper maakt alleen
+--    dat je tussen die twee mag ademen. `docs/DEPLOY.md` §2.3a draagt dezelfde
+--    zin, want daar stond hij ook maar in één richting.
 --
 -- ⚠️⚠️ **En de wrapper is hier méér dan compatibiliteit: hij past de reparatie
 --    ook toe op de gedeployde rollover.** Hij gooit `p_vandaag` weg en roept de
@@ -215,6 +240,16 @@ grant execute on function public.maak_straffen_verschuldigd(uuid) to service_rol
  *    Die datum kwam uit de levende `profiles.tz` en is precies wat dit issue
  *    weghaalt. De gedeployde rollover blijft hem meesturen tot hij opnieuw
  *    uitgerold is; hier gaat hij de prullenbak in.
+ *
+ * ⚠️⚠️ **Eén gedragswijziging die niet in de bevinding stond: de null-poort op
+ *    `p_vandaag` is vervallen.** Vóór 0292 gaf `(owner, null)` nul terug —
+ *    *weten we de dag niet, dan doen we niets*. 📏 Gemeten met deze wrapper:
+ *    `null::date` verandert niets meer en de straf gaat gewoon af. Dat is de
+ *    bedoeling van dit issue — de dag komt niet meer van de beller — maar het
+ *    raakt óók de gedeployde rollover. 📏 Die tak is daar onbereikbaar, en dat
+ *    is uit de bron gelezen en niet aangenomen: `draaiRollover` doet
+ *    `if (afsluitbaar === null) { overgeslagen += 1; continue; }` vóór de
+ *    aanroep, dus een profiel met een onbruikbare zone komt hier nooit.
  */
 create or replace function public.maak_straffen_verschuldigd(p_owner_id uuid, p_vandaag date)
 returns integer
@@ -225,6 +260,16 @@ as $$
   select public.maak_straffen_verschuldigd(p_owner_id);
 $$;
 
+-- ⚠️ **Deze revoke is vandaag een no-op, en staat er tóch.** `create or replace`
+--    behoudt de bestaande ACL, en die was al dicht sinds 0057/0174/0175 — 📏
+--    nagemeten in een teruggedraaide transactie: zónder deze regel blijft
+--    `anon=f auth=f service=t` staan. De revoke op de **eenarguments**vorm
+--    hierboven is wél dragend, want dat is een vérse `create`: 📏 `pg_default_acl`
+--    in deze database gunt `anon`, `authenticated` én `service_role` EXECUTE op
+--    elke nieuwe functie in `public`, en zonder die revoke had iedere ingelogde
+--    gebruiker de straf van een willekeurige `p_owner_id` kunnen laten afgaan.
+--    Dat verschil is de les van 0186 en het staat hier omdat de volgende lezer
+--    anders moet raden welke van de twee het werk doet.
 revoke all on function public.maak_straffen_verschuldigd(uuid, date) from public, anon, authenticated;
 grant execute on function public.maak_straffen_verschuldigd(uuid, date) to service_role;
 

@@ -116,7 +116,7 @@ describe.skipIf(!beschikbaar)('de afgeschreven wrapper', () => {
   it(
     'geeft door beide deuren hetzelfde antwoord',
     () => {
-      const gevallen: ReadonlyArray<readonly [string, string, string, number, string]> = [
+      const gevallen: readonly (readonly [string, string, string, number, string])[] = [
         ['eerlijk, streefdatum gisteren', 'UTC', 'UTC', 1, `(now() at time zone 'UTC')::date`],
         ['de aanval: zone westwaarts', OOST, WEST, 1, `(now() at time zone '${WEST}')::date`],
         ['streefdatum vandaag: nog niet verstreken', 'UTC', 'UTC', 0, `(now() at time zone 'UTC')::date`],

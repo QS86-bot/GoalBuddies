@@ -420,6 +420,24 @@ wrapper zelf het gat. `npm run edge:gedeployd`
 ziet het achteraf, en alleen met een `SUPABASE_ACCESS_TOKEN` — dat is een
 controle, geen volgordegarantie.
 
+⚠️⚠️ **Maar die wrapper neemt de eis maar in één richting weg, en dat stond hier
+niet — gevonden in de security-ronde op QS8-548, 19-09-2026.** Hij dekt
+*migratie vóór deploy*: de oude bundel blijft werken omdat de oude handtekening
+er nog is. Hij dekt **niet** *deploy vóór migratie*: de nieuwe bundel roept de
+**nieuwe** handtekening aan, en die bestaat op productie pas als de migratie
+gelandt is. Wie dus `npx supabase functions deploy` draait terwijl de migratie
+nog niet is toegepast, krijgt exact hetzelfde stille faalbeeld — `PGRST202`, een
+`console.error`, een 200 en een telling van nul.
+
+📏 Bij `0292` is dat geen randgeval: `supabase/uitgerold.json` zegt dat productie
+op `0282` staat (gemeten 17-09-2026) terwijl de map veel verder is, dus de
+migratie ligt daar gegarandeerd nog niet.
+
+**De regel die hier dus geldt is: migratie eerst, deploy daarna — altijd.** De
+wrapper maakt alleen dat je tussen die twee mag ádemen; hij maakt de volgorde
+niet vrij. Draai `npm run uitrolstand:controle` vóór een deploy om te zien of de
+map vóórloopt, en land eerst de migraties.
+
 ### 2.4 Volgorde van de bestaande migraties
 
 | Bestand | Wat | Toegepast |

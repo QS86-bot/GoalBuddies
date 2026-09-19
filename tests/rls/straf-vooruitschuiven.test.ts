@@ -158,7 +158,6 @@ describe.skipIf(!rlsTestsConfigured)('een openstaande straf en de streefdatum', 
 
         const job = await adminDb().rpc('maak_straffen_verschuldigd', {
           p_owner_id: w.alice.id,
-          p_vandaag: w.vandaag,
         });
         expect(job.error, `job: ${job.error?.message}`).toBeNull();
         expect(await standVan(strafId)).toBe('due');
@@ -243,7 +242,6 @@ describe.skipIf(!rlsTestsConfigured)('een openstaande straf en de streefdatum', 
 
         const job = await adminDb().rpc('maak_straffen_verschuldigd', {
           p_owner_id: w.alice.id,
-          p_vandaag: w.vandaag,
         });
         expect(job.error, `job: ${job.error?.message}`).toBeNull();
         expect(await standVan(strafId)).toBe('due');

@@ -136,16 +136,59 @@ Twee dingen die niemand had opgeschreven en die de gereedschappen vonden:
 nergens meer gelezen wordt is de haak waar de volgende schrijver een datum aan
 hangt — precies de val die criterium 3 beschrijft, één laag hoger.
 
-⚠️ **En de generated types dragen bewust alleen de eenargumentsvorm.**
-`src/lib/database.types.ts` typt `Args: { p_owner_id: string }`. Daarmee is een
-nieuwe aanroep van de tweeargumentsvorm uit deze repo een `tsc`-fout in plaats
-van iets dat pas bij de dropmigratie opvalt. Dat is geen omissie in de
-typegeneratie maar de grendel die hoort bij *"zolang de oude vorm bestaat, blijft
-een aanroeper die hem gebruikt onzichtbaar"*.
+### ⚠️⚠️ Een net dat er niet was, en het net dat er wél is
+
+`src/lib/database.types.ts` typt `Args: { p_owner_id: string }` — alleen de
+eenargumentsvorm. **Hier stond dat een nieuwe aanroep van de tweeargumentsvorm
+daarmee een `tsc`-fout geeft. Dat is gemeten onwaar**, en het kwam boven in de
+security-ronde op deze branch.
+
+📏 Twee onafhankelijke metingen: er stonden op dat moment **drie** aanroepen met
+`p_vandaag` in de boom (`tests/rls/straf-vooruitschuiven.test.ts` tweemaal en
+`tests/rls/straf-blijft-bij-te-laat.test.ts` eenmaal) en `npm run typecheck`
+meldde over geen van de drie iets — terwijl hij in hetzelfde mapje wél een
+ongebruikte variabele meldde, dus hij had ze gelezen. En los nagespeeld komt ook
+een volstrekt verzonnen sleutel erdoorheen.
+
+⚠️⚠️ **Dit project wist dat al, en dat maakt het erger dan een vergissing.**
+`scripts/rpc-argumenten-controle.mjs` draagt de meting van 28-08-2026 met zoveel
+woorden — *"een parameter die niet bestaat → komt erdoor"* — mét de reden: het
+`Args`-type van de generator maakt alle sleutels optioneel, dus de
+excess-property-toets slaat niet aan. Het is dezelfde klasse als de zin die de
+vorige security-ronde uit `0290` haalde: **een geruststelling die niet klopt kost
+meer dan een ontbrekende, omdat niemand er nog aan twijfelt** — en hier zou hij
+precies het argument ondergraven waarop QS8-559 de wrapper gaat droppen
+(*"niemand roept hem meer aan"*).
+
+**Wat er wél is, en waarom dat genoeg is voor dit risico.**
+`npm run rpc:controle` vergelijkt elke `.rpc()`-aanroep met `supabase/migrations/`
+in plaats van met de types. Vandaag vindt hij niets — de tweeargumentsvorm
+bestáát — maar hij wordt **rood op het moment dat de dropmigratie van QS8-559
+landt**, en dat is precies het moment waarop een vergeten aanroeper zou breken.
+Het net vangt dus niet bij het schrijven maar bij het droppen, op iemands laptop
+in plaats van op productie.
+
+⚠️ Wat er tussen nu en dat moment níet gedekt is: een nieuwe aanroeper van de
+oude vorm blijft onzichtbaar. Daarom staat het niet als geruststelling maar als
+criterium in QS8-559: vóór de drop met een `grep` nameten dat er geen enkele meer
+is, en niet aannemen. De drie die dit issue vond zijn allemaal omgezet — 📏 de
+grep die ze ophaalde stond de eerste keer onder een `| head` en gaf daardoor een
+afgekapte lijst die als volledig gelezen is.
 
 ## De toetsen
 
-Tien aanroepen in vier bestaande suites gingen mee naar de eenargumentsvorm. Twee
+Vijftien aanroepen in zes bestaande suites gingen mee naar de eenargumentsvorm,
+plus die van de rollover zelf. 📏 Geteld zonder afkapping: dertien `.rpc()`-
+aanroepen in vijf suites (`beslisbaar-verzoek` 1, `straf-plafond` 4, `epic9` 5,
+`straf-vooruitschuiven` 2, `straf-blijft-bij-te-laat` 1) en twee SQL-aanroepen in
+`het-schild-meet-aan-de-bevroren-strafklok`.
+
+⚠️ **Hier stond eerst *"tien in vier"*, en dat was fout.** De grep die de
+aanroepen ophaalde liep onder een `| head`; de uitvoer werd afgekapt en als
+volledig gelezen, en drie aanroepen bleven staan. De security-ronde vond ze. **Een
+telling uit een afgekapte uitvoer is geen telling** — en wat het hier duur maakte
+is dat er een tweede bewering op leunde: *"alle aanroepen zijn om"*, waaruit
+*"een nieuwe zou opvallen"* volgde. Twee
 nieuwe dingen staan onder toets:
 
 **`tests/rls/de-afgeschreven-wrapper.test.ts`** (vijf toetsen) bewaakt de naad:
