@@ -878,14 +878,25 @@ function HerinneringInstelling({
  *    de toestemming per RFC uit een echte klik moet komen.
  */
 /**
- * De tekstsleutel per soort.
+ * De tekstsleutel per soort die een eigen schakelaar heeft.
  *
- * ⚠️ **Exhaustief getypeerd over `Melding` mínus `nudge`, en dat is met opzet
- *    geen losse lijst.** Komt er een zesde soort bij, dan is een ontbrekende rij
- *    hier een typefout en geen scherm dat er stilletjes één mist. Zelfde
- *    gedachte als `VOORKEUR_PER_SOORT`, één laag hoger.
+ * ⚠️ **Exhaustief getypeerd en met opzet geen losse lijst.** Komt er een soort
+ *    bij mét een eigen schakelaar, dan is een ontbrekende rij hier een typefout
+ *    en geen scherm dat er stilletjes één mist. Zelfde gedachte als
+ *    `VOORKEUR_PER_SOORT`, één laag hoger.
+ *
+ * ⚠️⚠️ **`commitment_reverted` staat hier met reden níet** (QS8-321). Die soort
+ *    deelt `notify_commitment_witness` met `commitment_witness`, dus een rij
+ *    hier zou een tweede schakelaar tonen voor dezelfde kolom — twee knoppen die
+ *    elkaar overschrijven, en een gebruiker die niet kan zien welke telt.
+ *    Daarom `Zichtbaar` en niet `Exclude<Melding, 'nudge'>`: dat de uitsluiting
+ *    in het type staat, is precies waarom `tsc` hierover moest klagen toen de
+ *    zesde soort erbij kwam. Die klacht was terecht en dit is het antwoord
+ *    erop — niet een rij erbij.
  */
-const MELDINGSOORT_TEKST: Readonly<Record<Exclude<Melding, 'nudge'>, Sleutel>> = {
+type Zichtbaar = Exclude<Melding, 'nudge' | 'commitment_reverted'>;
+
+const MELDINGSOORT_TEKST: Readonly<Record<Zichtbaar, Sleutel>> = {
   approval_request: 'meldingsoort.approval_request',
   approval_received: 'meldingsoort.approval_received',
   cycle_summary: 'meldingsoort.cycle_summary',
@@ -1033,7 +1044,11 @@ function MeldingsoortenInstelling({
       <Subheading>{t('meldingsoort.titel')}</Subheading>
       <Body muted>{t('meldingsoort.uitleg')}</Body>
 
-      {MELDINGSOORTEN.filter((s): s is Exclude<Melding, 'nudge'> => s !== 'nudge').map((soort) => {
+      {/* ⚠️ `commitment_reverted` valt hier ook af: hij deelt zijn kolom met
+          `commitment_witness`, en twee schakelaars voor één kolom overschrijven
+          elkaar (QS8-321). De uitsluiting staat in `Zichtbaar` hierboven, zodat
+          `tsc` klaagt zodra iemand hem tóch als eigen soort wil tonen. */}
+      {MELDINGSOORTEN.filter((s): s is Zichtbaar => s !== 'nudge' && s !== 'commitment_reverted').map((soort) => {
         const kolom = VOORKEUR_PER_SOORT[soort];
         return (
           <MeldingsoortRij

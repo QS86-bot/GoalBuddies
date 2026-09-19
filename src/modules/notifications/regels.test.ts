@@ -210,11 +210,20 @@ describe('de teksten', () => {
    *    nieuwe soort vanzelf meegroeit, en dan meldt hij niets meer. Wie er een
    *    toevoegt, komt hier langs — en dat is de bedoeling.
    */
-  it('kent precies vijf soorten, en maar één ervan gaat over een ander', () => {
-    expect(MELDINGSOORTEN).toHaveLength(5);
+  it('kent precies zes soorten, en twee ervan gaan over een ander', () => {
+    // ⚠️ **Vijf werd zes met QS8-321**, en deze test deed precies waarvoor hij
+    //    bestaat: hij werd rood en dwong de toevoeger hierlangs.
+    //
+    // ⚠️⚠️ **Dat er nu twéé over een ander gaan, is de regel die hier telt.**
+    //    `commitment_reverted` leunt op dezelfde grond als `commitment_witness`
+    //    — de straf die de gebruiker zelf vooraf instelde — en op geen nieuwe.
+    //    Hij meldt bovendien alleen aan wie de heenweg al gehoord heeft; die
+    //    grendel staat in `teruggedraaide_straffen_voor()` (0293) en onder toets
+    //    in `tests/rls/straf-niet-meer-verschuldigd.test.ts`.
+    expect(MELDINGSOORTEN).toHaveLength(6);
 
-    const overEenAnder: Melding[] = ['commitment_witness'];
-    expect(overEenAnder).toHaveLength(1);
+    const overEenAnder: Melding[] = ['commitment_witness', 'commitment_reverted'];
+    expect(overEenAnder).toHaveLength(2);
 
     for (const verboden of ['missed_week', 'buddy_missed', 'streak_broken', 'behind']) {
       expect(MELDINGSOORTEN as readonly string[]).not.toContain(verboden);
@@ -600,8 +609,21 @@ describe('meldingPoortReden', () => {
    * ⚠️ Elke soort apart, en niet één steekproef: de map is de enige plek waar de
    *    koppeling staat, en een omgewisseld paar valt alleen op als je ze allemaal
    *    langsloopt.
+   *
+   * ⚠️⚠️ **De belofte is "precies de soorten van díe kolom" en niet "precies die
+   *    ene soort", en dat verschil is met QS8-321 ontstaan.** Sindsdien delen
+   *    `commitment_witness` en `commitment_reverted` één schakelaar, met opzet:
+   *    wie hoort dát een straf verschuldigd werd en niet dat het niet meer zo
+   *    is, houdt de helft van een verhaal over. Deze test werd daar terecht rood
+   *    op, en hij is verbreed naar de regel die er nu geldt in plaats van
+   *    uitgezet.
+   *
+   *    Wat hij blijft bewaken is de gevaarlijke kant: een kolom uitzetten mag
+   *    nooit een soort tegenhouden die er niet aan hangt. Een schakelaar die
+   *    méér stilzet dan zijn label belooft, is precies waar de test eronder over
+   *    gaat.
    */
-  it('houdt precies die ene soort tegen die uit staat', () => {
+  it('houdt precies de soorten tegen die aan de uitgezette kolom hangen', () => {
     for (const soort of MELDINGSOORTEN) {
       const kolom = VOORKEUR_PER_SOORT[soort];
       const uit: Meldingsvoorkeuren = { ...ALLES_AAN, [kolom]: false };
@@ -609,7 +631,13 @@ describe('meldingPoortReden', () => {
       expect(meldingPoortReden(soort, uit)).toContain(kolom);
 
       for (const ander of MELDINGSOORTEN.filter((s) => s !== soort)) {
-        expect(meldingPoortReden(ander, uit)).toBeNull();
+        const verwacht = VOORKEUR_PER_SOORT[ander] === kolom ? kolom : null;
+
+        if (verwacht === null) {
+          expect(meldingPoortReden(ander, uit), `${ander} hangt niet aan ${kolom}`).toBeNull();
+        } else {
+          expect(meldingPoortReden(ander, uit), `${ander} deelt ${kolom}`).toContain(kolom);
+        }
       }
     }
   });
