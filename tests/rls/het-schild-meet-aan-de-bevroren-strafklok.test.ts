@@ -34,7 +34,7 @@ import { psqlMetInvoer, stackBeschikbaarOfFaal } from './psql-stack';
  *
  * ✅ **Hier stond dat de regel erboven — `g.target_date < p_vandaag` — nog aan
  *    de levende klok mat, als bewust opengelaten gat. Dat is gesloten met
- *    migratie 0293** (QS8-548, besluit van Quinten op 19-09-2026). De toets die
+ *    migratie 0294** (QS8-548, besluit van Quinten op 19-09-2026). De toets die
  *    dat gat vastlegde staat er nog en is **omgedraaid** in plaats van
  *    weggehaald, zoals zijn eigen faalmelding voorschreef.
  *
@@ -68,7 +68,7 @@ import { psqlMetInvoer, stackBeschikbaarOfFaal } from './psql-stack';
 
 /**
  * ⚠️ **De proef telt de eenargumentsvorm en niet de naam.** Hij deed dat laatste
- *    tot 0293, en toen die migratie de afgeschreven wrapper toevoegde, gaf
+ *    tot 0294, en toen die migratie de afgeschreven wrapper toevoegde, gaf
  *    `count(*)` er **twee** — waarop deze suite zichzelf terecht als
  *    *schema loopt achter* afwees. Een beschikbaarheidsproef die op een naam
  *    telt, breekt bij elke overload; hij hoort te vragen of de database kent wat
@@ -173,7 +173,7 @@ end $$;`;
 /**
  * Draait de rollover zoals `supabase/functions/rollover/index.ts` hem draait.
  *
- * ⚠️⚠️ **Sinds migratie 0293 is dat zónder datum** — QS8-548. Deze helper gaf
+ * ⚠️⚠️ **Sinds migratie 0294 is dat zónder datum** — QS8-548. Deze helper gaf
  *    hier `p_vandaag = localDateIn(profiel.tz, nu)` mee, met de **levende**
  *    zone, precies zoals de rollover toen deed. Die parameter bestaat niet meer
  *    op de functie die het werk doet; wat ervan over is, is een afgeschreven
@@ -625,15 +625,15 @@ rollback;`);
 
   /**
    * ⚠️⚠️ **Deze toets legde een gat vast en is op 19-09-2026 omgedraaid** —
-   *    QS8-548, migratie 0293. Er stond: *"stelt het verschuldigd worden zélf
+   *    QS8-548, migratie 0294. Er stond: *"stelt het verschuldigd worden zélf
    *    nog wél uit — en dat is nog geen belofte"*, met in de faalmelding dat hij
    *    omgedraaid hoorde te worden zodra iemand die regel verzette. Dat is
    *    gebeurd, en dit is dezelfde opstelling met de verwachting omgekeerd.
    *
    *    📏 Gemeten met precies deze opstelling:
    *
-   *      zonder 0293   eerlijk=1   aanval=0
-   *      met    0293   eerlijk=1   aanval=1
+   *      zonder 0294   eerlijk=1   aanval=0
+   *      met    0294   eerlijk=1   aanval=1
    *
    * ⚠️ **Dit is het geval zonder uitstelverzoek**, en dat is de hele reden dat
    *    het een aparte toets is: het schild speelt hier geen rol, dus wat hier

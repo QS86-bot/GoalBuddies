@@ -1,4 +1,4 @@
--- 0293_de_strafpoort_meet_aan_de_bevroren_klok_en_p_vandaag_wordt_een_wrapper.sql
+-- 0294_de_strafpoort_meet_aan_de_bevroren_klok_en_p_vandaag_wordt_een_wrapper.sql
 -- — de verlooppoort van `maak_straffen_verschuldigd()` mat aan de levende
 -- `profiles.tz`, en dat is de klok die de gestrafte zelf zet (QS8-548)
 --
@@ -94,7 +94,7 @@
 -- pas achteraf en alleen met een access token.
 --
 -- 📏 En de afstand is hier echt: `supabase/uitgerold.json` zegt dat productie op
---    **0282** staat (gemeten 17-09-2026), terwijl de map op `0293` staat. De
+--    **0282** staat (gemeten 17-09-2026), terwijl de map op `0294` staat. De
 --    gedeployde rollover is van 09-09 en roept de tweearguments vorm aan.
 --
 -- Dit is woordelijk de vorm van `0186` / QS8-324, die om dezelfde reden bestaat:
@@ -242,7 +242,7 @@ grant execute on function public.maak_straffen_verschuldigd(uuid) to service_rol
  *    uitgerold is; hier gaat hij de prullenbak in.
  *
  * ⚠️⚠️ **Eén gedragswijziging die niet in de bevinding stond: de null-poort op
- *    `p_vandaag` is vervallen.** Vóór 0293 gaf `(owner, null)` nul terug —
+ *    `p_vandaag` is vervallen.** Vóór 0294 gaf `(owner, null)` nul terug —
  *    *weten we de dag niet, dan doen we niets*. 📏 Gemeten met deze wrapper:
  *    `null::date` verandert niets meer en de straf gaat gewoon af. Dat is de
  *    bedoeling van dit issue — de dag komt niet meer van de beller — maar het
@@ -274,7 +274,7 @@ revoke all on function public.maak_straffen_verschuldigd(uuid, date) from public
 grant execute on function public.maak_straffen_verschuldigd(uuid, date) to service_role;
 
 comment on function public.maak_straffen_verschuldigd(uuid, date) is
-  'Afgeschreven sinds 0293 (QS8-548): negeert p_vandaag en roept '
+  'Afgeschreven sinds 0294 (QS8-548): negeert p_vandaag en roept '
   'maak_straffen_verschuldigd(uuid) aan. Bestaat alleen voor de gedeployde '
   'rollover, die de tweearguments vorm nog aanroept. Mag weg zodra '
   '`npx supabase functions deploy rollover` gedraaid heeft EN er tegen de '

@@ -845,7 +845,7 @@ async function wikkelStraffenAf(db: Db, profiel: Profiel): Promise<number> {
   // -----------------------------------------------------------------------
   //
   // ⚠️⚠️ **Hier stond: "hier, en niet in SQL, omdat de datum van de gebruiker
-  //    is". Die regel is met migratie 0293 vervallen** — QS8-548. Deze aanroep
+  //    is". Die regel is met migratie 0294 vervallen** — QS8-548. Deze aanroep
   //    stuurt geen datum meer mee, en dat is het hele issue.
   //
   //    De oude redenering was: een straf treedt in werking zodra zijn
@@ -864,7 +864,7 @@ async function wikkelStraffenAf(db: Db, profiel: Profiel): Promise<number> {
   //    straf aanging (`commitments.tz`, 0280). De datum is dus nog steeds van de
   //    gebruiker; hij is alleen niet meer achteraf te verzetten.
   //
-  // ⚠️ **De prijs staat in migratie 0293 en is gemeten, niet weggeschreven:**
+  // ⚠️ **De prijs staat in migratie 0294 en is gemeten, niet weggeschreven:**
   //    wie eerlijk naar het westen verhuist krijgt zijn straf tot een dag eerder
   //    dan zijn nieuwe kalender zegt. Besluit van Quinten (grens 1), 19-09-2026.
   //

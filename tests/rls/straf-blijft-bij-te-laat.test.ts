@@ -147,7 +147,7 @@ async function strafstand(doelId: string): Promise<string | null> {
 /**
  * De job die straffen verschuldigd maakt, zoals de rollover hem draait.
  *
- * ⚠️ **Sinds 0293 is dat zónder datum** (QS8-548). Hier stond `p_vandaag:
+ * ⚠️ **Sinds 0294 is dat zónder datum** (QS8-548). Hier stond `p_vandaag:
  *    w.vandaag`, en die parameter bestaat niet meer op de functie die het werk
  *    doet: de dag komt uit `doeldatum()`, dus uit de zone die bij het aangaan
  *    van de straf bevroren is. Deze helper hoort de échte aanroep te zijn en
