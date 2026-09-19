@@ -182,10 +182,20 @@ export const BEWAAKT_BUITEN_DE_APP = {
     'Meldt ook als de CHECK niet meer de verwachte vorm heeft: onherkenbaar ' +
     'moet een alarm zijn en geen stilte.',
   tijdstempel_bewaking:
-    'Kolommen van type timestamptz met een now()-default die anon of ' +
-    'authenticated mag schrijven (0173). Elke teller en elk venster dat op zo\'n ' +
-    'kolom rekent is dan te omzeilen. Aanroeper is `tests/rls/tijdstempels.test.ts`. ' +
-    'Bewust niet voor `authenticated`: de uitkomst is een kaart van het schema.',
+    'Kolommen van type timestamptz die de server bij het invoegen zet en die ' +
+    'anon of authenticated mag schrijven (0173, sinds 0292 gemeten aan de ' +
+    'parseboom in plaats van aan het woord `now()`). Elke teller en elk venster ' +
+    'dat op zo\'n kolom rekent is dan te omzeilen. Aanroeper is ' +
+    '`tests/rls/tijdstempels.test.ts`. Bewust niet voor `authenticated`: de ' +
+    'uitkomst is een kaart van het schema.',
+  dagplafondvenster_bewaking:
+    'Zoekt per *_dagplafond-trigger de kolom op waar zijn etmaalvenster op rust ' +
+    'en meldt het zodra anon of authenticated die kan schrijven (0292). De ' +
+    'belofte van rij 603 van docs/ENGINEER-REVIEW.md, die daarvóór met de hand ' +
+    'nagekeken werd — en dan op het woord `created_at`, terwijl twee van de ' +
+    'achttien vensters op `submitted_at` en `linked_at` rusten. Aanroeper is ' +
+    '`tests/rls/dagplafondvenster.test.ts`. Bewust niet voor `authenticated`: ' +
+    'de uitkomst wijst aan waar een plafond het dunst is.',
   volgorde_bewaking:
     'De volgordesleutel van een auditspoor: bestaat de kolom, is hij ' +
     '`generated always as identity`, staat de unieke sorteerindex er nog, en ' +
