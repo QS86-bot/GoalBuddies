@@ -20,9 +20,17 @@ import { psql, stackBeschikbaarOfFaal } from './psql-stack';
  */
 
 /** De kolomnamen die de code van `profiles` verwacht, zonder `reminder_enabled`. */
-const NOTIFY_KOLOMMEN = MELDINGSOORTEN.map((s) => VOORKEUR_PER_SOORT[s]).filter(
-  (k) => k !== 'reminder_enabled',
-);
+/**
+ * ⚠️⚠️ **Ontdubbeld, en dat is sinds QS8-321 nodig.** `commitment_witness` en
+ *    `commitment_reverted` delen met opzet één kolom — wie hoort dát een straf
+ *    verschuldigd werd en niet dat het niet meer zo is, houdt de helft van een
+ *    verhaal over. Zonder `Set` telt deze lijst die kolom twee keer, en dan
+ *    meet het getal hieronder het aantal **soorten** terwijl de belofte over
+ *    het aantal **kolommen** gaat.
+ */
+const NOTIFY_KOLOMMEN = [
+  ...new Set(MELDINGSOORTEN.map((s) => VOORKEUR_PER_SOORT[s])),
+].filter((k) => k !== 'reminder_enabled');
 
 function kolommenVan(tabel: string): string[] {
   return psql(
@@ -55,7 +63,9 @@ const beschikbaar = stackBeschikbaarOfFaal(
 describe.skipIf(!beschikbaar)('meldingsvoorkeuren', () => {
 
   it('heeft voor elke dempbare soort een kolom op `profiles`', () => {
-    expect(NOTIFY_KOLOMMEN.length).toBe(4);
+    // ⚠️ Vier kolommen voor vijf dempbare soorten, en dat verschil is de
+    //    gedeelde schakelaar van QS8-321 en geen ontbrekende kolom.
+    expect(NOTIFY_KOLOMMEN.length, 'het aantal kolommen, niet het aantal soorten').toBe(4);
     const kolommen = kolommenVan('profiles');
     for (const kolom of NOTIFY_KOLOMMEN) {
       expect(kolommen).toContain(kolom);

@@ -47,7 +47,8 @@ export type Melding =
   | 'approval_request'
   | 'approval_received'
   | 'cycle_summary'
-  | 'commitment_witness';
+  | 'commitment_witness'
+  | 'commitment_reverted';
 
 /**
  * De soorten, als waarde — zodat een test ze kan opsommen zonder ze over te
@@ -60,6 +61,7 @@ export const MELDINGSOORTEN: readonly Melding[] = [
   'approval_received',
   'cycle_summary',
   'commitment_witness',
+  'commitment_reverted',
 ] as const;
 
 /** Zoals `profiles.reminder_tone`. */
@@ -305,6 +307,17 @@ const SOORTEN: Readonly<Record<Taalcode, Readonly<Record<Tekstsleutel, SoortTeks
       zonderNaam: 'Een inzet waarvan jij getuige bent, is verschuldigd geworden.',
       pad: '/',
     },
+    // ⚠️ **Deze zin zegt wát er veranderd is en niet waaróm** (QS8-321). De weg
+    //    terug van `due` naar `set` loopt vandaag via een ingewilligd
+    //    uitstelverzoek, en dát is precies de tegenslag die domeinregel 7 uit
+    //    andermans blikveld houdt. "De streefdatum is verschoven" zou hier dus
+    //    niet mogen staan, ook al is het de aanleiding.
+    commitment_reverted: {
+      titel: 'Die inzet staat weer open',
+      metNaam: (naam) => `De inzet van ${naam} waarvan jij getuige bent, is niet meer verschuldigd.`,
+      zonderNaam: 'Een inzet waarvan jij getuige bent, is niet meer verschuldigd.',
+      pad: '/',
+    },
   },
   en: {
     approval_request: {
@@ -335,6 +348,12 @@ const SOORTEN: Readonly<Record<Taalcode, Readonly<Record<Tekstsleutel, SoortTeks
       titel: 'You are a witness',
       metNaam: (naam) => `The stake ${naam} set for themselves has come due.`,
       zonderNaam: 'A stake you are a witness to has come due.',
+      pad: '/',
+    },
+    commitment_reverted: {
+      titel: 'That stake is open again',
+      metNaam: (naam) => `The stake ${naam} set, which you witness, is no longer due.`,
+      zonderNaam: 'A stake you are a witness to is no longer due.',
       pad: '/',
     },
   },
@@ -601,6 +620,12 @@ export const VOORKEUR_PER_SOORT: Readonly<Record<Melding, keyof Meldingsvoorkeur
   approval_received: 'notify_approval_received',
   cycle_summary: 'notify_cycle_summary',
   commitment_witness: 'notify_commitment_witness',
+  // ⚠️ **Dezelfde schakelaar als de heenweg, en dat is een keuze** (QS8-321).
+  //    Een eigen `notify_commitment_reverted` laat iemand aanzetten dat hij
+  //    hoort dát een straf verschuldigd werd, en uitzetten dat hij hoort dat
+  //    het niet meer zo is — de helft van een verhaal, en juist de helft die
+  //    hem geruststelt. Wie de ene wil, wil de andere.
+  commitment_reverted: 'notify_commitment_witness',
 } as const;
 
 /**
@@ -661,6 +686,11 @@ export function meldingsoortVelden(
     case 'cycle_summary':
       return { notify_cycle_summary: aan };
     case 'commitment_witness':
+    // ⚠️ **Dezelfde kolom als de heenweg, en hij valt daarom in dezelfde tak**
+    //    (QS8-321). Zie `VOORKEUR_PER_SOORT` voor waarom er geen zesde
+    //    schakelaar is: wie hoort dát een straf verschuldigd werd en niet dat
+    //    het niet meer zo is, houdt de helft van een verhaal over.
+    case 'commitment_reverted':
       return { notify_commitment_witness: aan };
   }
 }
