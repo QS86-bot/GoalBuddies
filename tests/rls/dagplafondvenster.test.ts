@@ -45,6 +45,9 @@ import { psql, stackBeschikbaarOfFaal } from './psql-stack';
  *   H  een blijvende `*_dagplafond`-trigger met geen van beide vormen
  *      -> **2 rood**: 'geen dagplafond rust op…' én 'elk dagplafond valt in
  *         precies één van de twee vormen'
+ *   I  tak 2 uit de bewaking (venster op een kolom van een ándere tabel)
+ *      -> **1 rood**: 'een venster op een kolom die niet op de eigen tabel
+ *         staat, is een bezwaar'
  *
  * ⚠️⚠️ **A en B voorspelde ik als 1 rood en ze waren allebei 2, en dát is de
  *    leerzame uitslag.** `todo_items.created_at` en `completions.submitted_at`
@@ -107,6 +110,38 @@ describe.skipIf(!beschikbaar)('het venster van een dagplafond staat niet open', 
       `);
 
       expect(uit.trim(), 'een onleesbaar dagplafond kwam er stil doorheen').toBe('1');
+    },
+    TEST_TIMEOUT,
+  );
+
+  it(
+    'een venster op een kolom die niet op de eigen tabel staat, is een bezwaar',
+    async () => {
+      // ⚠️⚠️ **Deze tak is er zowel om iets te melden als om niet om te vallen.**
+      //    `has_column_privilege(rol, tabel, 'naam', recht)` wérpt zodra die naam
+      //    niet op die tabel staat (📏 `ERROR: column "…" of relation "…" does
+      //    not exist`) — precies de vorm die deze tak hoort te melden. De
+      //    bewaking geeft daarom het kolom**nummer** door, dat uit een join komt.
+      //
+      // ⚠️ **En de eerlijke meting erbij:** de vorm met de kolomnaam plus een
+      //    `where`-guard ernaast is hierop uitgeprobeerd en gaf géén fout — de
+      //    planner evalueerde de guard eerst. Dit bewaakt dus geen gemeten
+      //    omval maar een afhankelijkheid van iets dat SQL niet belooft.
+      const uit = psql(`
+        begin;
+        create table public.proef_elders (id int);
+        create function public.begrens_proef_elders() returns trigger language plpgsql as $f$
+          begin perform 1 from public.goals g where g.created_at > now() - interval '1 day'; return null; end $f$;
+        create trigger proef_elders_dagplafond after insert on public.proef_elders
+          for each statement execute function public.begrens_proef_elders();
+        select coalesce(string_agg(venster || ': ' || bezwaar, ' | '), 'NIETS')
+          from dagplafondvenster_bewaking() where tabel = 'proef_elders';
+        rollback;
+      `);
+
+      expect(uit.trim(), 'een venster op een andere tabel kwam er stil doorheen').toBe(
+        'created_at: vensterkolom staat niet op de tabel van deze trigger — niet na te meten',
+      );
     },
     TEST_TIMEOUT,
   );

@@ -233,13 +233,32 @@ as $$
       and t.tgname like '%dagplafond%'
   ),
   bestaat as (
-    select p.*,
-           exists (
-             select 1 from pg_attribute a
-             where a.attrelid = p.tabeloid and a.attname = p.kolom
-               and a.attnum > 0 and not a.attisdropped
-           ) as kolom_bestaat
+    -- ⚠️⚠️ **Het kolomnúmmer en niet de kolomnaam.**
+    --    `has_column_privilege(rol, tabel, 'naam', recht)` **werpt** een fout
+    --    zodra die naam niet op die tabel staat: 📏 `ERROR: column "bestaat_niet"
+    --    of relation "t" does not exist`. Tak 2 hieronder bestaat juist voor dat
+    --    geval, dus een bewaking die de naam doorgeeft kan omvallen op precies
+    --    de vorm die ze hoort te melden.
+    --
+    -- ⚠️ **En hier hoort de meting bij te staan in plaats van de stelligheid.**
+    --    📏 De vorm met de naam plus een `kolom_bestaat`-voorwaarde ernaast is
+    --    hierop uitgeprobeerd — een `*_dagplafond`-trigger op een tabel zonder
+    --    de kolom waar zijn venster op staat — en die **gaf geen fout**: nul
+    --    rijen, netjes. De planner evalueerde de guard eerst. Dit is dus geen
+    --    reparatie van een gemeten omval maar het weghalen van een afhankelijkheid
+    --    van iets dat SQL niet belooft: de volgorde van `where`-clausules ligt
+    --    niet vast, en een grendel die op de planner van vandaag steunt, is een
+    --    grendel waarvan niemand merkt wanneer hij losraakt.
+    --
+    --    Met de overload op `attnum` is de vraag niet meer te stellen: dat nummer
+    --    komt uit deze join, dus er wordt nooit naar een kolom gevraagd die er
+    --    niet is. 📏 Geijkt: dezelfde trigger geeft nu 'vensterkolom staat niet
+    --    op de tabel van deze trigger'.
+    select p.*, a.attnum as kolomnummer
     from plafonds p
+    left join pg_attribute a
+      on a.attrelid = p.tabeloid and a.attname = p.kolom
+     and a.attnum > 0 and not a.attisdropped
   )
   -- 1. Onleesbare vorm: geen vensterkolom en geen tellertabel.
   select b.tabel, b.trig, b.fn, '-',
@@ -253,7 +272,7 @@ as $$
   select b.tabel, b.trig, b.fn, b.kolom,
          'vensterkolom staat niet op de tabel van deze trigger — niet na te meten'
   from bestaat b
-  where b.kolom is not null and not b.kolom_bestaat
+  where b.kolom is not null and b.kolomnummer is null
 
   union all
 
@@ -263,9 +282,8 @@ as $$
   from bestaat b
   cross join (values ('anon'), ('authenticated')) as rol(naam)
   cross join (values ('INSERT'), ('UPDATE')) as r(recht)
-  where b.kolom is not null
-    and b.kolom_bestaat
-    and has_column_privilege(rol.naam, b.tabeloid, b.kolom, r.recht)
+  where b.kolomnummer is not null
+    and has_column_privilege(rol.naam, b.tabeloid, b.kolomnummer, r.recht)
 
   union all
 
