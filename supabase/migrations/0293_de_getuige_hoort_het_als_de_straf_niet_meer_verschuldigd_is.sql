@@ -42,11 +42,24 @@
 -- Wat er wél overbleef, en dat is smaller
 -- ---------------------------------------------------------------------------
 --
--- 📏 Drie functies kunnen een straf van `due` terugzetten naar `set`:
--- `beslis_deadline_verzoek()`, `guard_group_member_update()` en
--- `maak_straffen_verschuldigd()`. Gebeurt dat, dan is de getuige wél ingelicht
+-- 📏 **Er is precies één functie die een straf van `due` terugzet naar `set`:**
+-- `beslis_deadline_verzoek()`. Gebeurt dat, dan is de getuige wél ingelicht
 -- geweest en verliest die kennis stil haar geldigheid — en daarna kan de straf
 -- via de gewone intrekknop verdwijnen zonder dat er ooit iets rechtgezet is.
+--
+-- ⚠️⚠️ **Hier stond eerst "drie functies", mét een 📏 erbij, en dat was onwaar.**
+--    De andere twee kwamen uit een zoekopdracht die een `where`-predicaat en een
+--    commentaarregel niet van een `set`-clausule onderscheidde:
+--    `maak_straffen_verschuldigd()` schrijft alleen `due` en noemt `'set'` in
+--    zijn `where`, en `guard_group_member_update()` noemde het in een comment.
+--    📏 Hermeten met `code_zonder_commentaar()` uit 0292: één regel in het hele
+--    schema luidt `set status = 'set'`, en die staat in
+--    `beslis_deadline_verzoek()`.
+--
+--    **Dat verschil is niet cosmetisch.** Met drie oorzaken leest deze melding
+--    als vaag; met één is ze eenduidig — `commitment_reverted` zegt dan
+--    onvermijdelijk *"er is een uitstelverzoek ingewilligd"*, ook al noemt de
+--    tekst dat niet. Zie de rij van 19-09-2026 in `docs/ENGINEER-REVIEW.md`.
 --
 -- Rij 165 van `docs/ENGINEER-REVIEW.md` merkt die teruggang al op: *"vandaag is
 -- de teruggang naar `set` stil, en dan is de groep het enige dat het verschil
@@ -143,6 +156,40 @@ as $$
         and eigenaar.status  <> 'inactive'
         and getuige.user_id   = p_user_id
         and getuige.status   <> 'inactive'
+    )
+    -- ⚠️⚠️ **En hij moet in een groep zitten waar dít doel aan hangt. Die eis
+    --    staat hier ná de security-ronde en is een besluit van Quinten
+    --    (19-09-2026), geen afronding.**
+    --
+    --    📏 Zonder haar bereikt deze melding iemand buiten de kring die QS8-370
+    --    heeft afgebakend. End to end nagespeeld: alice zit in G1 (met bob) en
+    --    G2 (met dave), haar doel hangt **alleen** aan G2, en haar getuige is
+    --    **bob uit G1**. Dave willigt het uitstel in →
+    --    `teruggedraaide_straffen_voor(bob)` gaf **1 rij**. Bob hoorde dus iets
+    --    over een uitstel in een groep waar hij niet in zit.
+    --
+    --    Dat kan omdat `commitments_insert` alleen `shares_group_with_user()`
+    --    eist: een getuige deelt één of andere groep met de eigenaar, niet per
+    --    se de groep waar het doel aan hangt.
+    --
+    -- ⚠️⚠️ **Waarom dit ertoe doet, en dat hangt aan de gecorrigeerde meting
+    --    hierboven:** er is maar één oorzaak van een teruggang, dus deze melding
+    --    zegt onvermijdelijk *"er is een uitstelverzoek ingewilligd"*, hoe
+    --    neutraal de woorden ook zijn. Met drie oorzaken leek ze vaag; met één
+    --    is ze eenduidig. De bewoording beschermt niets als de gevolgtrekking
+    --    maar één kant op kan.
+    --
+    -- ⚠️ **Dit is nog steeds een verruiming van QS8-370 en niet een gelijkmaking.**
+    --    Die verruiming gaat over de gevráágde groep; hier mag óók een lid van
+    --    een andere gekoppelde groep het horen. Besluit van Quinten, en het
+    --    staat als eigen rij in `docs/decisions/002-domeinregel7-oppervlakken.md`.
+    and exists (
+      select 1
+      from goal_group_links l
+      join group_members m on m.group_id = l.group_id
+      where l.goal_id  = g.id
+        and m.user_id  = p_user_id
+        and m.status  <> 'inactive'
     )
     -- ⚠️ De anti-join, zonder welke het venster niet opschuift.
     --

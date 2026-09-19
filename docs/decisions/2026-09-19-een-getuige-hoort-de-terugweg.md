@@ -34,11 +34,26 @@ wordt één keer ingelicht, op het enige moment dat de regel toestaat.
 
 ## Wat er wél overbleef
 
-📏 Drie functies kunnen een straf van `due` terugzetten naar `set`:
-`beslis_deadline_verzoek()`, `guard_group_member_update()` en
-`maak_straffen_verschuldigd()`. Gebeurt dat, dan **is** de getuige ingelicht
+📏 **Er is precies één functie die een straf van `due` terugzet naar `set`:**
+`beslis_deadline_verzoek()`. Gebeurt dat, dan **is** de getuige ingelicht
 geweest, verliest die kennis stil haar geldigheid, en kan de straf daarna via de
 gewone intrekknop verdwijnen zonder dat er ooit iets rechtgezet is.
+
+⚠️⚠️ **Hier stond eerst "drie functies", mét een 📏, en dat was onwaar.** De
+andere twee kwamen uit een zoekopdracht die een `where`-predicaat en een
+commentaarregel niet van een `set`-clausule onderscheidde. 📏 Hermeten met
+`code_zonder_commentaar()` uit 0292: precies één regel in het hele schema luidt
+`set status = 'set'`. Gevonden in de security-ronde op dit issue.
+
+⚠️ **Het is dezelfde fout die 0292 één dag eerder repareerde**, en dat maakt hem
+leerzaam in plaats van alleen gênant: daar las een bewaking commentaar als code,
+hier las ík dat. Een 📏 betekent in dit project *dit is gemeten*; een grep is
+geen meting zolang hij commentaar en predicaten meetelt.
+
+⚠️⚠️ **En het verschil draagt de hele scope.** Met drie oorzaken leest
+`commitment_reverted` als vaag; met één is hij eenduidig — de melding zegt dan
+onvermijdelijk *"er is een uitstelverzoek ingewilligd"*, hoe neutraal de woorden
+ook zijn. Zie §"Wat er alsnog open ligt".
 
 Rij 165 van `docs/ENGINEER-REVIEW.md` merkt die teruggang al op: *"vandaag is de
 teruggang naar `set` stil, en dan is de groep het enige dat het verschil zag."*
@@ -127,3 +142,75 @@ een straf die twee keer heen en weer gaat, meldt één keer. Dat geldt net zo go
 voor `commitment_witness` zelf sinds 0178 — de tweede keer verschuldigd worden is
 daar ook stil. Die eigenschap is hier overgenomen en niet opgelost; doorbreken
 vraagt een andere sleutel dan `ref_id` en raakt beide soorten.
+
+---
+
+## Wat de security-ronde vond, en wat er daarna is veranderd
+
+De `security-reviewer` (onwrikbare regel 19) noemde de wijziging blokkerend. Drie
+dingen daaruit zijn zelf nagemeten en verwerkt; de rest staat als rij in
+`docs/ENGINEER-REVIEW.md`.
+
+### 1. Het bereik ging verder dan het besluit — en dat lag aan de foute meting
+
+📏 **End to end nagespeeld:** alice zit in G1 (met bob) en G2 (met dave), haar
+doel hangt **alleen** aan G2, en haar persoon-getuige is **bob uit G1**. Dave
+willigt het uitstel in → `teruggedraaide_straffen_voor(bob)` gaf **1 rij**.
+
+Bob hoorde dus iets over een uitstel in een groep waar hij niet in zit. Dat kan
+doordat `commitments_insert` alleen `shares_group_with_user()` eist: een getuige
+deelt *een of andere* groep met de eigenaar, niet per se de groep waar het doel
+aan hangt.
+
+⚠️⚠️ **En dit was alleen te zien mét de gecorrigeerde meting.** Met "drie
+mogelijke oorzaken" leest de melding als vaag genoeg; met één oorzaak is ze
+eenduidig, en dan is de vraag *wie hoort dit* ineens een vraag over domeinregel
+7. **De foute 📏 was niet naast de bevinding — hij verborg haar.**
+
+**Besluit van Quinten (19-09-2026): beperken tot een gekoppelde groep.** De
+getuige krijgt de melding alleen als hij lid is van een groep waar het doel aan
+hangt. Dat sluit bob uit, en het houdt de melding binnen de kring die het doel
+al kent.
+
+⚠️ **Dit blijft een verruiming van rij 31 en geen gelijkmaking.** Rij 31 (QS8-370)
+gaat over de **gevraagde** groep; hier mag óók een lid van een ándere gekoppelde
+groep het horen. Bewust zo besloten, en het staat als **rij 40** in
+`docs/decisions/002-domeinregel7-oppervlakken.md`.
+
+### 2. De must-denies bewezen niets zonder positieve controle
+
+📏 `teruggedraaide_straffen_voor()` op een willekeurige uuid geeft óók `''`. Elke
+stille mislukking in de opstelling — een straf die niet aangemaakt werd, een
+`heenEnTerug` zonder effect, een ontbrekend lidmaatschap — liet de must-denies
+dus groen staan zonder iets te bewijzen.
+
+Beide structurele must-denies dragen nu een positieve controle: dezelfde
+opstelling met één conjunct omgedraaid moet de rij **wél** teruggeven. Pas dan is
+het lege antwoord een eigenschap van de grendel en niet van een dode fixture.
+
+⚠️ Dit is dezelfde les als bij mutatie A hierboven, één laag hoger: daar was de
+*mutatie* niet scherp genoeg, hier de *opstelling*.
+
+## Wat er alsnog open ligt
+
+Drie dingen zijn gemeten en bewust niet in dit issue gerepareerd; ze staan met
+datum 19-09-2026 in `docs/ENGINEER-REVIEW.md`:
+
+1. **Wordt de straf ná de teruggang ingetrokken vóór de job draait, dan hoort de
+   getuige nooit meer iets.** 📏 Gemeten. Dit is precies het gat dat QS8-321
+   wilde dichten, en het blijft open.
+
+   ⚠️ **En de reden die er in dit document voor stond, is te breed.** "Een
+   bericht bij intrekken kan niet zonder domeinregel 11 te schenden" geldt voor
+   een getuige die niets weet — niet voor een die al een `commitment_witness`
+   draagt. Voor hém zou dezelfde conjunct het dekken. Het besluit mag hetzelfde
+   blijven; de grond moet kloppen.
+
+2. **Ná de terugmelding is een tweede keer `due` stil**, door de unieke index op
+   `(user_id, kind, ref_id)`. Vóór 0293 verouderde de kennis van de getuige de
+   veilige kant op; erna kan hij te horen hebben gekregen dat de straf niet meer
+   verschuldigd is terwijl hij dat wél is. Dit document noemde die eenmaligheid
+   *symmetrisch overgenomen van `commitment_witness`*, en symmetrisch is ze niet.
+
+3. **`refTypeVoor()` heeft nog steeds geen test**, terwijl zijn eigen kop de
+   klasse beschrijft waar hij ooit fout stond.

@@ -692,6 +692,11 @@ export function meldingsoortVelden(
     case 'cycle_summary':
       return { notify_cycle_summary: aan };
     case 'commitment_witness':
+    // ⚠️ **Dezelfde kolom als de heenweg, en hij valt daarom in dezelfde tak**
+    //    (QS8-321). Zie `VOORKEUR_PER_SOORT` voor waarom er geen zesde
+    //    schakelaar is: wie hoort dát een straf verschuldigd werd en niet dat
+    //    het niet meer zo is, houdt de helft van een verhaal over.
+    case 'commitment_reverted':
       return { notify_commitment_witness: aan };
   }
 }

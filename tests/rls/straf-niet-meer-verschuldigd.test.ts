@@ -1,5 +1,6 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
+import { proefId } from './proefid';
 import { psql, stackBeschikbaarOfFaal } from './psql-stack';
 
 /**
@@ -58,14 +59,19 @@ import { psql, stackBeschikbaarOfFaal } from './psql-stack';
 
 const TEST_TIMEOUT = 30_000;
 
-const ALICE = '00000000-0000-4000-8000-000000000321';
-const BOB = '00000000-0000-4000-8000-000000000322';
-const CAROL = '00000000-0000-4000-8000-000000000323';
-const GROEP = '00000000-0000-4000-8000-000000000324';
-const DOEL = '00000000-0000-4000-8000-000000000325';
-const STRAF = '00000000-0000-4000-8000-000000000326';
-const DOEL2 = '00000000-0000-4000-8000-000000000327';
-const STRAF2 = '00000000-0000-4000-8000-000000000328';
+
+const ALICE = proefId(1);
+const BOB = proefId(2);
+const CAROL = proefId(3);
+const GROEP = proefId(4);
+const DOEL = proefId(5);
+const DOEL2 = proefId(6);
+const STRAF = proefId(7);
+const STRAF2 = proefId(8);
+const GROEP2 = proefId(9);
+const DAVE = proefId(10);
+const DOEL3 = proefId(11);
+const STRAF3 = proefId(12);
 
 const beschikbaar = stackBeschikbaarOfFaal(
   "select count(*) from pg_proc where proname = 'teruggedraaide_straffen_voor'",
@@ -74,9 +80,9 @@ const beschikbaar = stackBeschikbaarOfFaal(
 
 function opruimen(): void {
   psql(`delete from commitments where id in ('${STRAF}', '${STRAF2}')`);
-  psql(`delete from goals where id in ('${DOEL}', '${DOEL2}')`);
-  psql(`delete from groups where id = '${GROEP}'`);
-  psql(`delete from auth.users where id in ('${ALICE}', '${BOB}', '${CAROL}')`);
+  psql(`delete from goals where id in ('${DOEL}', '${DOEL2}', '${DOEL3}')`);
+  psql(`delete from groups where id in ('${GROEP}', '${GROEP2}')`);
+  psql(`delete from auth.users where id in ('${ALICE}', '${BOB}', '${CAROL}', '${DAVE}')`);
 }
 
 /** Zet een straf op `due` en weer terug, zodat het spoor een `reverted` draagt. */
@@ -107,11 +113,14 @@ describe.skipIf(!beschikbaar)('een teruggedraaide straf bereikt alleen wie hem k
       `insert into auth.users (id, email) values ` +
         `('${ALICE}', 'qs321-alice@example.test'), ` +
         `('${BOB}', 'qs321-bob@example.test'), ` +
-        `('${CAROL}', 'qs321-carol@example.test')`,
+        `('${CAROL}', 'qs321-carol@example.test'), ` +
+        `('${DAVE}', 'qs321-dave@example.test')`,
     );
     psql(
-      `insert into groups (id, name, invite_code, created_by) ` +
-        `values ('${GROEP}', 'QS321', generate_invite_code(), '${ALICE}')`,
+      `insert into groups (id, name, invite_code, created_by) values ` +
+        `('${GROEP}', 'QS321', generate_invite_code(), '${ALICE}'), ` +
+        // ⚠️ Een tweede groep waar het doel NIET aan hangt — daar zit dave.
+        `('${GROEP2}', 'QS321-twee', generate_invite_code(), '${ALICE}')`,
     );
     // ⚠️ Carol zit er met opzet óók in: de groepsband mag niet de enige reden
     //    zijn dat bob iets krijgt en zij niet.
@@ -119,7 +128,9 @@ describe.skipIf(!beschikbaar)('een teruggedraaide straf bereikt alleen wie hem k
       `insert into group_members (group_id, user_id, role, status) values ` +
         `('${GROEP}', '${ALICE}', 'admin', 'active'), ` +
         `('${GROEP}', '${BOB}', 'member', 'active'), ` +
-        `('${GROEP}', '${CAROL}', 'member', 'active') ` +
+        `('${GROEP}', '${CAROL}', 'member', 'active'), ` +
+        `('${GROEP2}', '${ALICE}', 'admin', 'active'), ` +
+        `('${GROEP2}', '${DAVE}', 'member', 'active') ` +
         `on conflict do nothing`,
     );
     psql(
@@ -133,12 +144,27 @@ describe.skipIf(!beschikbaar)('een teruggedraaide straf bereikt alleen wie hem k
         `values ('${DOEL2}', '${ALICE}', 'QS321-doel-twee', '2033-01-01')`,
     );
     psql(
+      `insert into goals (id, owner_id, title, target_date) ` +
+        `values ('${DOEL3}', '${ALICE}', 'QS321-doel-drie', '2033-01-01')`,
+    );
+    // ⚠️⚠️ **Alle drie de doelen hangen aan GROEP en niet aan GROEP2**, en dat
+    //    is de kern van de must-deny hieronder: dave is wél getuige en wél
+    //    ingelicht, maar zit alleen in GROEP2.
+    psql(
+      `insert into goal_group_links (goal_id, group_id) values ` +
+        `('${DOEL}', '${GROEP}'), ('${DOEL2}', '${GROEP}'), ('${DOEL3}', '${GROEP}')`,
+    );
+    psql(
       `insert into commitments (id, goal_id, type, body, beneficiary_user_id, status, confirmed_at) ` +
         `values ('${STRAF}', '${DOEL}', 'penalty', 'QS321 inzet', '${BOB}', 'set', now())`,
     );
     psql(
       `insert into commitments (id, goal_id, type, body, beneficiary_user_id, status, confirmed_at) ` +
         `values ('${STRAF2}', '${DOEL2}', 'penalty', 'QS321 tweede', '${CAROL}', 'set', now())`,
+    );
+    psql(
+      `insert into commitments (id, goal_id, type, body, beneficiary_user_id, status, confirmed_at) ` +
+        `values ('${STRAF3}', '${DOEL3}', 'penalty', 'QS321 derde', '${DAVE}', 'set', now())`,
     );
   });
 
@@ -171,6 +197,59 @@ describe.skipIf(!beschikbaar)('een teruggedraaide straf bereikt alleen wie hem k
         teruggedraaidVoor(CAROL),
         'een set-straf werd onthuld aan iemand die er nooit van gehoord had',
       ).toBe('');
+
+      // ⚠️⚠️ **De positieve controle, en zonder haar bewijst het lege antwoord
+      //    hierboven niets.** 📏 `teruggedraaide_straffen_voor()` op een
+      //    willekeurige uuid geeft óók `''`, dus élke stille mislukking in de
+      //    opstelling — straf niet aangemaakt, `heenEnTerug` zonder effect,
+      //    carol geen groepslid — zou deze toets groen laten staan. Pas als
+      //    dezelfde opstelling mét de heenweg-melding wél iets teruggeeft, is
+      //    het lege antwoord een eigenschap van de grendel en niet van een dode
+      //    fixture. Gevonden in de security-ronde op dit issue.
+      heenwegGemeld(CAROL, STRAF2);
+      const metHeenweg = teruggedraaidVoor(CAROL);
+      psql(`delete from notifications_sent where user_id = '${CAROL}'`);
+
+      expect(metHeenweg, 'de opstelling leeft niet — het lege antwoord bewees niets').toBe(
+        STRAF2,
+      );
+    },
+    TEST_TIMEOUT,
+  );
+
+  it(
+    'een getuige buiten elke gekoppelde groep hoort niets, ook al is hij ingelicht',
+    () => {
+      // ⚠️⚠️ **Dit geval komt uit de security-ronde en het is een besluit van
+      //    Quinten, geen afronding.** Dave is getuige van een straf op een doel
+      //    dat aan GROEP hangt, maar hij zit alleen in GROEP2 — mogelijk omdat
+      //    `commitments_insert` alleen `shares_group_with_user()` eist en niet
+      //    dat de getuige de gekoppelde groep deelt.
+      //
+      //    📏 Zonder de gekoppelde-groep-eis gaf deze opstelling 1 rij, en dan
+      //    hoort dave iets over een uitstel in een groep waar hij niet in zit —
+      //    buiten de kring die QS8-370 heeft afgebakend. Dat het bericht het
+      //    woord "uitstel" niet noemt helpt niet: er is maar één oorzaak van een
+      //    teruggang, dus de gevolgtrekking kan maar één kant op.
+      heenEnTerug(STRAF3);
+      heenwegGemeld(DAVE, STRAF3);
+
+      expect(
+        teruggedraaidVoor(DAVE),
+        'een getuige buiten de gekoppelde groepen kreeg de melding toch',
+      ).toBe('');
+
+      // ⚠️ Dezelfde positieve controle als hierboven: alleen de groepsband
+      //    verandert, en dan hóórt hij hem wél te krijgen. Zonder dit bewijst
+      //    het lege antwoord alleen dat er iets in de opstelling stuk is.
+      psql(
+        `insert into group_members (group_id, user_id, role, status) ` +
+          `values ('${GROEP}', '${DAVE}', 'member', 'active') on conflict do nothing`,
+      );
+      const metBand = teruggedraaidVoor(DAVE);
+      psql(`delete from group_members where group_id = '${GROEP}' and user_id = '${DAVE}'`);
+
+      expect(metBand, 'de opstelling leeft niet — het lege antwoord bewees niets').toBe(STRAF3);
     },
     TEST_TIMEOUT,
   );

@@ -410,6 +410,7 @@ async function meldEenProfiel(
   await stuurCyclusoverzicht(ronde);
 
   await stuurGetuigenissen(ronde);
+  await stuurTeruggedraaideStraffen(ronde);
 
   return 'gedaan';
 }
@@ -895,38 +896,36 @@ async function stuurGetuigenissen(ronde: Meldronde): Promise<void> {
     tel(stand);
   }
 
-  await sectieTeruggedraaid(db, profiel, apparaten, { inStilte, nu, ronde, lokaleDatum, tel });
 }
 
 /**
  * Sectie 6 — de straf van iemand anders is niet meer verschuldigd (QS8-321).
  *
- * ⚠️⚠️ **Dit is de tweede soort die over een ander gaat, en hij leunt op
- *    dezelfde grond als sectie 5 en niet op een nieuwe.** De ontvanger is al
- *    ingelicht dat deze straf verschuldigd wás — dat is de uitzondering die
- *    domeinregel 7 bij name noemt. Wat hier bijkomt is het rechtzetten van die
- *    mededeling, en dat is smaller dan haar doen.
+ * ⚠️⚠️ **De tweede soort die over een ander gaat, en hij leunt op dezelfde grond
+ *    als sectie 5 en niet op een nieuwe.** De ontvanger is al ingelicht dat deze
+ *    straf verschuldigd wás — dat is de uitzondering die domeinregel 7 bij name
+ *    noemt. Wat hier bijkomt is het rechtzetten van die mededeling, en dat is
+ *    smaller dan haar doen.
+ *
+ * ⚠️⚠️ **De grendel zit in de RPC en niet hier**, en dat is de hele wijziging:
+ *    `teruggedraaide_straffen_voor()` meldt alleen aan wie eerder een
+ *    `commitment_witness`-rij kreeg. Zonder die eis onthult deze sectie een
+ *    `set`-straf aan iemand voor wie die per domeinregel 11 niet bestaat — het
+ *    geval is echt, want de rollover kan een straf verschuldigd maken en
+ *    `beslis_deadline_verzoek()` kan hem terugzetten bínnen hetzelfde venster
+ *    waarin deze job nog niet gedraaid heeft.
  *
  * ⚠️ **En de zin zegt niet waaróm.** De weg terug loopt vandaag via een
  *    ingewilligd uitstelverzoek, en dát is tegenslag van iemand anders. Zie de
  *    tekst in `_shared/notificaties/regels.ts`.
  */
-async function sectieTeruggedraaid(
-  db: Db,
-  profiel: Profiel,
-  apparaten: Apparaat[],
-  ctx: {
-    inStilte: boolean;
-    nu: Date;
-    ronde: number;
-    lokaleDatum: string;
-    tel: (stand: Verzendstand) => void;
-  },
-): Promise<void> {
+async function stuurTeruggedraaideStraffen(ronde: Meldronde): Promise<void> {
+  const { db, profiel, apparaten, inStilte, nu, lokaleDatum, tel } = ronde;
+
   const teruggedraaid = await openTeruggedraaid(db, profiel.id);
 
   for (const rij of teruggedraaid) {
-    if (await alVerstuurd(db, profiel.id, 'commitment_reverted', ctx.lokaleDatum, rij.commitmentId)) {
+    if (await alVerstuurd(db, profiel.id, 'commitment_reverted', lokaleDatum, rij.commitmentId)) {
       continue;
     }
 
@@ -934,20 +933,20 @@ async function sectieTeruggedraaid(
       userId: profiel.id,
       apparaten,
       voorkeuren: profiel,
-      inStilte: ctx.inStilte,
-      nu: ctx.nu,
+      inStilte,
+      nu,
       soort: 'commitment_reverted',
       bericht: () =>
         metHeldenstem(
-          ctx.ronde,
+          ronde,
           'commitment_reverted',
           berichtVoor('commitment_reverted', { naam: rij.naam }, taalVan(profiel)),
           null,
         ),
-      lokaleDatum: ctx.lokaleDatum,
+      lokaleDatum,
       refId: rij.commitmentId,
     });
-    ctx.tel(stand);
+    tel(stand);
   }
 }
 
