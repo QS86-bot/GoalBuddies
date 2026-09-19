@@ -222,8 +222,8 @@ staat er iets bij dat uitleg nodig heeft, dan hoort die uitleg in §2, §3b of �
    **Meet ze dus, tel ze niet op:** bij het samengaan met `main` is het antwoord
    `npm run poort` of `npm run tellers`, nooit het hoogste van twee getallen.
 <!-- POORTSTAND:BEGIN — gegenereerd door `npm run poortstand` -->
-Typecheck, lint en alle 66 controlescripts groen;
-`npm run poort` meldt 70 stappen.
+Typecheck, lint en alle 67 controlescripts groen;
+`npm run poort` meldt 71 stappen.
 <!-- POORTSTAND:EINDE -->
    ⚠️ **Vier ervan meten niets zonder de credentials van het échte project**
    (`adviseur`, `functies`, `register`, `wachtwoord`), en de poort noemt dat
@@ -307,7 +307,7 @@ schemaname = 'public'` gaf `41|41`. Vraag het aan de database en niet aan deze
 regel — net als bij het aantal migraties in §0.
 
 <!-- STAND:BEGIN — gegenereerd door `npm run stand` -->
-Migraties `0001` t/m `0289` staan in de map: **292 bestanden**,
+Migraties `0001` t/m `0291` staan in de map: **294 bestanden**,
 waarvan 3 met een letter-achtervoegsel (`0039a`, `0041a`, `0052a`).
 De nummering is aaneengesloten.
 <!-- STAND:EINDE -->
@@ -879,9 +879,13 @@ niet kon, staat in `docs/VOLGENDE-SESSIE.md` bij punt 0.
   harnas tekent ze sinds 23-08 zelf en logt niet meer in
 - `npm run typecheck` en `lint` staan groen; het aantal tests staat in §0 en
   niet hier — twee tellers die elkaar tegenspreken zijn precies waarom die regel
-  bestaat. 📏 `tests/rls` telt **167** testbestanden (`ls tests/rls/*.test.ts`,
-  hermeten 11-09-2026; hier stond **140** met 10-09 erbij, en dat getal was
-  gedrift — het is met de hand geteld en niet overgenomen). Zonder
+  bestaat. 📏 `tests/rls` telt **181** testbestanden (`ls tests/rls/*.test.ts`,
+  hermeten 18-09-2026; hier stond **167** van 11-09, en daarvóór **140** van
+  10-09 — elke keer met de hand geteld en niet overgenomen). ⚠️ Dat is **veertien
+  bestanden drift in een week**, en dat is het eigenlijke signaal: een getal in
+  proza dat niemand rood maakt, loopt hier ongeveer twee bestanden per dag achter.
+  Wie het nodig heeft, telt het zelf; wie het hier leest, leest een momentopname
+  met een datum erbij. Zonder
   credentials én zonder lokale stack slaan ze over — zie §3b, en let op het
   verschil tussen *overgeslagen* en *groen*
 
