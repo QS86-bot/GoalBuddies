@@ -73,6 +73,7 @@
  */
 import { existsSync, readFileSync } from 'node:fs';
 import { spawnSync } from 'node:child_process';
+import { pathToFileURL } from 'node:url';
 import process from 'node:process';
 
 const TYPESBESTAND = 'src/lib/database.types.ts';
@@ -238,12 +239,19 @@ export function rapport(uitslag, bron) {
   return regels;
 }
 
-function hoofd() {
+/**
+ * ⚠️ Geeft een exitcode terug in plaats van hem te zetten — dezelfde vorm als
+ *    `dml-controle` en `audit-controle`. Zo is de uitslag ook in een toets te
+ *    lezen zonder het proces te beëindigen.
+ *
+ * @returns {number} 0 als er niets te melden is of niets te meten viel, 1 bij drift
+ */
+export function hoofd() {
   const bron = kiesBron();
   if (bron.soort === 'geen') {
     console.log(`typesdrift-controle: OVERGESLAGEN — ${bron.reden}.`);
     console.log('  Dat is ongemeten en niet groen.');
-    process.exit(0);
+    return 0;
   }
 
   const huidig = readFileSync(TYPESBESTAND, 'utf8');
@@ -251,13 +259,17 @@ function hoofd() {
 
   if (uitslag.totaal === 0) {
     console.log(`typesdrift-controle: ${TYPESBESTAND} kent dezelfde namen als het schema (bron: ${bron.bron}).`);
-    process.exit(0);
+    return 0;
   }
 
   console.error(`✗ typesdrift-controle: ${uitslag.totaal} naam/namen verschillen.\n`);
   for (const r of rapport(uitslag, bron.bron ?? '?')) console.error(r);
   console.error('\n  Hergenereer met `npm run types:db`, of leg per naam vast waarom hij afwijkt.');
-  process.exit(1);
+  return 1;
 }
 
-if (process.argv[1] !== undefined && process.argv[1].endsWith('typesdrift-controle.mjs')) hoofd();
+// ⚠️ `pathToFileURL` en niet `endsWith`: op Windows draait een script met
+//    backslashes in `process.argv[1]`, en een padvergelijking op tekst gaat daar
+//    stuk. `tests/scripts/padvormen.test.ts` bewaakt deze vorm — en hij vond
+//    hier de naïeve variant.
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) process.exit(hoofd());
