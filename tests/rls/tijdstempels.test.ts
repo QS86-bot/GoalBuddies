@@ -26,6 +26,25 @@ import { psql, stackBeschikbaarOfFaal } from './psql-stack';
  *
  * ⚠️ Zonder die tweede is "niemand mag dit meer" ook te halen met een tabel die
  *    voor niemand meer schrijfbaar is.
+ *
+ * ## De derde bewaakt waar de bewaking naar kíjkt — QS8-558
+ *
+ * ⚠️⚠️ **Tot 0292 selecteerde `tijdstempel_bewaking()` op `column_default like
+ *    '%now()%'`, en dat is de spelling en niet de eigenschap.** 📏 Gemeten op een
+ *    wegwerptabel: `CURRENT_TIMESTAMP`, `transaction_timestamp()`,
+ *    `statement_timestamp()`, `clock_timestamp()` en een eigen `stable`-functie
+ *    kwamen er alle vijf onveranderd langs.
+ *
+ *    En dat is geen randgeval: 📏 `select now() = transaction_timestamp()` geeft
+ *    `t`. `now()` **ís** `transaction_timestamp()`, en `CURRENT_TIMESTAMP` is de
+ *    SQL-standaardspelling van datzelfde. De bewaking meldde dan nul bezwaren
+ *    omdat ze niet gekeken had.
+ *
+ * ⚠️ **Deze derde test kost vandaag niets en dat hoort erbij.** 📏 Alle 49
+ *    serverklok-kolommen in dit schema spellen hem `now()`, dus de oude vorm gaf
+ *    nul bezwaren en de nieuwe ook. Wat hij bewaakt is de spelling die nog
+ *    niemand getypt heeft — en `0176` stelt `clock_timestamp()` als default in
+ *    zijn eigen kop al voor, dus dat is geen verzonnen toekomst.
  */
 
 const TEST_TIMEOUT = 30_000;
@@ -85,6 +104,48 @@ describe.skipIf(!beschikbaar)('de client zet geen servertijdstempel', () => {
       `);
 
       expect(uit.trim(), 'deze drie horen open te blijven').toBe('true true true');
+    },
+    TEST_TIMEOUT,
+  );
+
+  it(
+    'herkent een serverklok ook als hij niet `now()` heet',
+    async () => {
+      // ⚠️ **De must-allow staat in dezelfde tabel en dat is met opzet.** Een
+      //    bewaking die álle timestamptz-kolommen meldt, haalt de vijf gevallen
+      //    hierboven ook — en leert je hem uitzetten. `constante` moet er
+      //    dus juist níet uit komen.
+      //
+      // ⚠️⚠️ **De `grant` hieronder is overbodig en staat er met die reden.**
+      //    Hier stond dat hij nodig was omdat de bewaking twee eisen stelt. Dat
+      //    is onwaar en het is nagemeten: `pg_default_acl` geeft `authenticated`
+      //    op élke nieuwe tabel in `public` al `arwdx`, dus een verse tabel is
+      //    meteen schrijfbaar en de bewaking meldt hem ook zónder deze regel.
+      //    Gevonden in de security-ronde op QS8-558. Hij blijft staan zodat de
+      //    opstelling niet stil verandert als die standaardrechten ooit smaller
+      //    worden — maar wie het oude commentaar geloofde, dacht dat een verse
+      //    tabel dicht stond, en dat is de gevaarlijke kant.
+      const uit = psql(`
+        begin;
+        create table public.proef_serverklok (
+          via_now        timestamptz not null default now(),
+          via_current    timestamptz not null default current_timestamp,
+          via_transactie timestamptz not null default transaction_timestamp(),
+          via_statement  timestamptz not null default statement_timestamp(),
+          via_clock      timestamptz not null default clock_timestamp(),
+          via_utc        timestamptz not null default timezone('utc', now()),
+          constante      timestamptz not null default '2020-01-01T00:00:00Z'
+        );
+        grant insert on public.proef_serverklok to authenticated;
+        select string_agg(distinct kolom, ' ' order by kolom)
+          from tijdstempel_bewaking() where tabel = 'proef_serverklok';
+        rollback;
+      `);
+
+      expect(
+        uit.trim(),
+        'een servertijdstempel onder een andere naam kwam er onveranderd langs',
+      ).toBe('via_clock via_current via_now via_statement via_transactie via_utc');
     },
     TEST_TIMEOUT,
   );
