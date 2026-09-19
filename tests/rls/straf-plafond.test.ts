@@ -509,7 +509,7 @@ describe.skipIf(!rlsTestsConfigured)('het plafond op straffen', () => {
 
         // ⚠️ **Hier stond `p_vandaag: eigenaarsdatum(alice)` — de dag in de
         //    oostelijke zone waar ze net naartoe gesprongen was. Dat argument
-        //    bestaat sinds 0292 niet meer** (QS8-548): de functie leest de dag
+        //    bestaat sinds 0293 niet meer** (QS8-548): de functie leest de dag
         //    uit `doeldatum()`, dus uit de zone die bij het aangaan bevroren is.
         //    De aanval hoeft daarmee niet minder scherp te zijn — hij is
         //    scherper, want de sprong is nu het énige dat nog verschilt.

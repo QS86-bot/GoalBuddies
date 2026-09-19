@@ -1,7 +1,7 @@
 # De laatste klok onder een straf — en een parameter die niets meer te doen had
 
 **Datum:** 19-09-2026
-**Issue:** QS8-548 · **Migratie:** `0292` · **Vervolg:** QS8-559
+**Issue:** QS8-548 · **Migratie:** `0293` · **Vervolg:** QS8-559
 **Status:** besloten en gebouwd
 
 ## Wat er mis was
@@ -36,7 +36,7 @@ uitstelverzoek aan te pas, alleen een `PATCH` op je eigen profiel.
 | `0280` | `wikkel_commitments_af()` — laat afronden een straf vervallen | QS8-322 |
 | `0288` | de verlooppoort van `beslis_deadline_verzoek()` | QS8-531 |
 | `0290` | het zevendaagse schild in `maak_straffen_verschuldigd()` | QS8-533 |
-| `0292` | de verlooppoort in diezelfde functie | QS8-548 |
+| `0293` | de verlooppoort in diezelfde functie | QS8-548 |
 
 ⚠️ **Alle vier zijn gevonden door achter één bevinding aan te lopen, niet door één
 sweep.** `0280` sloot zijn eigen geval en schreef erbij dat de bovengrens
@@ -95,7 +95,7 @@ Hij verdwijnt. `maak_straffen_verschuldigd(uuid)` doet vanaf nu het werk.
 ### Waarom de oude handtekening blijft staan
 
 📏 `supabase/uitgerold.json` zegt dat productie op **0282** staat (gemeten
-17-09-2026) terwijl de map op `0292` staat, en de gedeployde rollover is van
+17-09-2026) terwijl de map op `0293` staat, en de gedeployde rollover is van
 09-09. Een migratie die een RPC-handtekening dropt maakt een deploy tot een harde
 volgorde-eis, en die eis is hier nergens afdwingbaar: er is geen deploy-workflow
 in `.github/workflows/`, en `npm run edge:gedeployd` ziet het pas achteraf en
@@ -107,7 +107,7 @@ zonder het te merken.*
 
 ⚠️⚠️ **Eén verschil met `0186`, en het is het belangrijkste: deze wrapper past de
 reparatie óók toe op de gedeployde rollover.** Hij gooit `p_vandaag` weg en roept
-de eenargumentsvorm aan, dus het gat gaat dicht zodra `0292` op productie draait
+de eenargumentsvorm aan, dus het gat gaat dicht zodra `0293` op productie draait
 — zonder dat er iets gedeployd hoeft te worden. Bij `0186` behield de wrapper
 alleen gedrag; hier repareert hij het.
 
@@ -207,8 +207,8 @@ verschuldigd worden zélf nog wél uit — QS8-548, en dat is nog geen belofte"*
 in de faalmelding dat hij omgedraaid hoorde te worden zodra iemand die regel
 verzette. Dat is gebeurd; dezelfde opstelling, de verwachting omgekeerd.
 
-📏 Gemeten met precies die opstelling: zonder `0292` `eerlijk=1 aanval=0`, met
-`0292` `eerlijk=1 aanval=1`.
+📏 Gemeten met precies die opstelling: zonder `0293` `eerlijk=1 aanval=0`, met
+`0293` `eerlijk=1 aanval=1`.
 
 ## De ijking
 
@@ -233,7 +233,7 @@ het risico.
 
 ⚠️⚠️ De beschikbaarheidsproef van de zustersuite telde
 `count(*) from pg_proc where proname = 'maak_straffen_verschuldigd'` en
-verwachtte **1**. Zodra `0292` de wrapper toevoegde werd dat **2**, en wees de
+verwachtte **1**. Zodra `0293` de wrapper toevoegde werd dat **2**, en wees de
 suite zichzelf af als *schema loopt achter* — precies zoals `stackBeschikbaarOfFaal`
 hoort te doen (QS8-270: stil overslaan zou hier als groen tellen).
 

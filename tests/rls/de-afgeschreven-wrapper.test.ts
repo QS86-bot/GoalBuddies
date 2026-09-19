@@ -5,9 +5,9 @@ import { psqlMetInvoer, stackBeschikbaarOfFaal } from './psql-stack';
 /**
  * De belofte: **`maak_straffen_verschuldigd(uuid, date)` is geen tweede
  * implementatie maar een doorgeefluik, en de datum die hij krijgt doet niets** —
- * QS8-548, migratie 0292.
+ * QS8-548, migratie 0293.
  *
- * ⚠️⚠️ **Waarom die wrapper bestaat.** `0292` haalde `p_vandaag` van de functie
+ * ⚠️⚠️ **Waarom die wrapper bestaat.** `0293` haalde `p_vandaag` van de functie
  *    die het werk doet: die datum kwam uit de levende `profiles.tz` en was
  *    precies het gat van dit issue. De **gedeployde** rollover stuurt hem nog
  *    mee — 📏 `supabase/uitgerold.json` zegt dat productie op `0282` staat
@@ -108,7 +108,7 @@ describe.skipIf(!beschikbaar)('de afgeschreven wrapper', () => {
   /**
    * ⚠️⚠️ **Dit is de toets die de belofte draagt.** Vier opstellingen, en in elke
    *    moeten de twee handtekeningen hetzelfde antwoord geven — inclusief de
-   *    aanval waarvoor `0292` gemaakt is. Gaat iemand het lichaam kopiëren in
+   *    aanval waarvoor `0293` gemaakt is. Gaat iemand het lichaam kopiëren in
    *    plaats van door te geven, dan lopen ze hier uiteen.
    *
    *    📏 Gemeten op 19-09-2026, in alle vier de gevallen gelijk.

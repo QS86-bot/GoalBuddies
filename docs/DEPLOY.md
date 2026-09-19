@@ -429,7 +429,7 @@ gelandt is. Wie dus `npx supabase functions deploy` draait terwijl de migratie
 nog niet is toegepast, krijgt exact hetzelfde stille faalbeeld — `PGRST202`, een
 `console.error`, een 200 en een telling van nul.
 
-📏 Bij `0292` is dat geen randgeval: `supabase/uitgerold.json` zegt dat productie
+📏 Bij `0293` is dat geen randgeval: `supabase/uitgerold.json` zegt dat productie
 op `0282` staat (gemeten 17-09-2026) terwijl de map veel verder is, dus de
 migratie ligt daar gegarandeerd nog niet.
 
