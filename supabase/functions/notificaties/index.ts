@@ -894,6 +894,61 @@ async function stuurGetuigenissen(ronde: Meldronde): Promise<void> {
     });
     tel(stand);
   }
+
+  await sectieTeruggedraaid(db, profiel, apparaten, { inStilte, nu, ronde, lokaleDatum, tel });
+}
+
+/**
+ * Sectie 6 — de straf van iemand anders is niet meer verschuldigd (QS8-321).
+ *
+ * ⚠️⚠️ **Dit is de tweede soort die over een ander gaat, en hij leunt op
+ *    dezelfde grond als sectie 5 en niet op een nieuwe.** De ontvanger is al
+ *    ingelicht dat deze straf verschuldigd wás — dat is de uitzondering die
+ *    domeinregel 7 bij name noemt. Wat hier bijkomt is het rechtzetten van die
+ *    mededeling, en dat is smaller dan haar doen.
+ *
+ * ⚠️ **En de zin zegt niet waaróm.** De weg terug loopt vandaag via een
+ *    ingewilligd uitstelverzoek, en dát is tegenslag van iemand anders. Zie de
+ *    tekst in `_shared/notificaties/regels.ts`.
+ */
+async function sectieTeruggedraaid(
+  db: Db,
+  profiel: Profiel,
+  apparaten: Apparaat[],
+  ctx: {
+    inStilte: boolean;
+    nu: Date;
+    ronde: number;
+    lokaleDatum: string;
+    tel: (stand: Verzendstand) => void;
+  },
+): Promise<void> {
+  const teruggedraaid = await openTeruggedraaid(db, profiel.id);
+
+  for (const rij of teruggedraaid) {
+    if (await alVerstuurd(db, profiel.id, 'commitment_reverted', ctx.lokaleDatum, rij.commitmentId)) {
+      continue;
+    }
+
+    const stand = await stuur(db, {
+      userId: profiel.id,
+      apparaten,
+      voorkeuren: profiel,
+      inStilte: ctx.inStilte,
+      nu: ctx.nu,
+      soort: 'commitment_reverted',
+      bericht: () =>
+        metHeldenstem(
+          ctx.ronde,
+          'commitment_reverted',
+          berichtVoor('commitment_reverted', { naam: rij.naam }, taalVan(profiel)),
+          null,
+        ),
+      lokaleDatum: ctx.lokaleDatum,
+      refId: rij.commitmentId,
+    });
+    ctx.tel(stand);
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -1264,6 +1319,34 @@ async function openGetuigenissen(
 }
 
 /**
+ * De straffen waarvan deze persoon getuige is en die niet meer verschuldigd
+ * zijn — QS8-321.
+ *
+ * ⚠️ **De grendel zit in de RPC en niet hier**, en dat is met opzet: alleen wie
+ *    eerder een `commitment_witness`-melding kreeg, hoort de terugweg. Zonder
+ *    die eis onthult dit een `set`-straf aan iemand voor wie die per
+ *    domeinregel 11 niet bestaat. Zie `teruggedraaide_straffen_voor()` in 0293.
+ */
+async function openTeruggedraaid(
+  db: Db,
+  userId: string,
+): Promise<{ commitmentId: string; naam: string }[]> {
+  const { data, error } = await db.rpc('teruggedraaide_straffen_voor', { p_user_id: userId });
+
+  if (error) {
+    console.error(`teruggedraaide straffen ophalen mislukte voor een gebruiker: ${error.message}`);
+    return [];
+  }
+
+  const gevonden = (data ?? []) as unknown as {
+    commitment_id: string;
+    eigenaar_naam: string | null;
+  }[];
+
+  return gevonden.map((r) => ({ commitmentId: r.commitment_id, naam: r.eigenaar_naam ?? '' }));
+}
+
+/**
  * Waar `ref_id` naar wijst — QS8-298.
  *
  * ⚠️ **Hier stond `'completion'` voor élke soort met een `ref_id`.** Voor
@@ -1279,6 +1362,7 @@ function refTypeVoor(soort: Melding, refId: string | null): string | null {
   if (soort === 'approval_request') return 'completion';
   if (soort === 'approval_received') return 'approval';
   if (soort === 'commitment_witness') return 'commitment';
+  if (soort === 'commitment_reverted') return 'commitment';
   return null;
 }
 
