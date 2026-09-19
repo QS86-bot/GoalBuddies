@@ -130,11 +130,128 @@ export function ontleedPolicies(uitvoer) {
   return ruw;
 }
 
-/** De ALTER die deze policy wagenwijd openzet, of `null` als er niets te openen valt. */
-export function verzwakSql(policy, helft) {
+/**
+ * De conjuncten waar een policyhelft op het hoogste niveau uit bestaat.
+ *
+ * ⚠️⚠️ **Waarom dit bestaat — QS8-550.** Deze meting beantwoordde tot 18-09-2026
+ *    *"wordt er iets rood als ik deze helft wagenwijd openzet"*, en dat is niet
+ *    dezelfde vraag als *"is elke voorwaarde in deze helft getoetst"*. Bij een
+ *    `and` vallen die twee uit elkaar: één getoetste conjunct maakt het geheel
+ *    `bewaakt`, en de andere kan stil verdwijnen.
+ *
+ *    📏 Gemeten op `chat_messages_delete`, dat
+ *    `(sender_id = auth.uid()) and is_group_member(group_id)` draagt. Het
+ *    rapport meldde `bewaakt`, met `archief-leesbaar.test.ts` als getuige — en
+ *    dat klopte, want wagenwijd open laat óók het archiefdeel vallen. Maar
+ *    alleen de eigenaarshelft weghalen liet **180 bestanden en 2094 tests groen**
+ *    staan terwijl elk groepslid het bericht van elk ander kon wissen.
+ *
+ * ⚠️ **De kosten zijn gemeten en niet geschat.** 📏 Van de **133** policyhelften
+ *    zijn er **35** een top-level conjunctie, samen **106** conjuncten. Per
+ *    conjunct meten kost dus 133 − 35 + 106 = **204** runs in plaats van 133,
+ *    een groei van **1,53×**. Dit rapport draait met opzet niet in de poort en
+ *    duurt toch al uren; die anderhalf is de prijs van een getal dat betekent
+ *    wat het zegt.
+ *
+ * ⚠️ **Splitsen doet hij alleen op diepte nul.** Een `and` binnen een subquery,
+ *    een join of een `exists` is geen aparte grendel maar een deel van één
+ *    uitdrukking; die staan er in dit schema volop in. Een naïeve
+ *    `split(' AND ')` telde er 50 waar er 35 zijn.
+ */
+export function conjunctenVan(uitdrukking) {
+  const kern = zonderBuitensteHaakjes(uitdrukking);
+  const delen = [];
+  let diepte = 0;
+  let start = 0;
+
+  for (let i = 0; i < kern.length; i += 1) {
+    const teken = kern[i];
+    if (teken === '(') diepte += 1;
+    else if (teken === ')') diepte -= 1;
+    else if (diepte === 0 && kern.startsWith(' AND ', i)) {
+      delen.push(kern.slice(start, i));
+      start = i + ' AND '.length;
+      i += ' AND '.length - 1;
+    }
+  }
+
+  delen.push(kern.slice(start));
+  return delen.map((d) => d.trim()).filter((d) => d !== '');
+}
+
+/**
+ * Haalt haakjes weg die de héle uitdrukking omsluiten.
+ *
+ * ⚠️ `(a) AND (b)` begint en eindigt óók met een haakje, maar die twee horen
+ *    niet bij elkaar. Daarom telt hij de diepte mee in plaats van blind te
+ *    strippen — anders wordt `a) AND (b` de kern en klopt er niets meer.
+ */
+function zonderBuitensteHaakjes(uitdrukking) {
+  let e = uitdrukking.trim();
+
+  while (e.startsWith('(') && e.endsWith(')') && isEenOmhulsel(e)) {
+    e = e.slice(1, -1).trim();
+  }
+
+  return e;
+}
+
+/** Sluit het eerste haakje van `e` pas helemaal aan het eind? */
+function isEenOmhulsel(e) {
+  let diepte = 0;
+
+  for (let i = 0; i < e.length; i += 1) {
+    if (e[i] === '(') diepte += 1;
+    else if (e[i] === ')') diepte -= 1;
+    if (diepte === 0) return i === e.length - 1;
+  }
+
+  return false;
+}
+
+/** De uitdrukking van een helft, of `''` als die helft er niet is. */
+function uitdrukkingVan(policy, helft) {
+  return helft === 'check' ? policy.wcheck : policy.qual;
+}
+
+/**
+ * Knipt een eenheid uit `helftenVan()` uiteen in zijn helft en zijn
+ * conjunctnummer. `using` geeft `{ helft: 'using', index: null }`,
+ * `using#1` geeft `{ helft: 'using', index: 1 }`.
+ */
+export function ontleedEenheid(eenheid) {
+  const streep = eenheid.indexOf('#');
+  if (streep === -1) return { helft: eenheid, index: null };
+
+  return { helft: eenheid.slice(0, streep), index: Number(eenheid.slice(streep + 1)) };
+}
+
+/**
+ * De ALTER die deze eenheid openzet, of `null` als er niets te openen valt.
+ *
+ * Zonder conjunctnummer zet hij de hele helft op `true`; mét nummer vervangt hij
+ * alléén die conjunct door `true` en laat de rest staan. Dat tweede is wat een
+ * `and` los te breken maakt.
+ */
+export function verzwakSql(policy, eenheid = 'beide') {
+  // ⚠️ Zonder eenheid betekent dit "allebei de helften wagenwijd open", zoals
+  //    vóór QS8-550. Die aanroep bestaat nog en hoort niet te werpen.
+  const { helft, index } = ontleedEenheid(eenheid);
   const stukken = [];
-  if (policy.qual !== '' && helft !== 'check') stukken.push('using (true)');
-  if (policy.wcheck !== '' && helft !== 'using') stukken.push('with check (true)');
+
+  const open = (h) => {
+    const bron = uitdrukkingVan(policy, h);
+    if (index === null) return 'true';
+
+    const delen = conjunctenVan(bron);
+    if (index < 0 || index >= delen.length) {
+      throw new Error(`conjunct ${index} bestaat niet in ${policy.tabel}.${policy.naam}.${h}`);
+    }
+    return delen.map((d, i) => (i === index ? 'true' : d)).join(' AND ');
+  };
+
+  if (policy.qual !== '' && helft !== 'check') stukken.push(`using (${open('using')})`);
+  if (policy.wcheck !== '' && helft !== 'using') stukken.push(`with check (${open('check')})`);
   if (stukken.length === 0) return null;
 
   return `alter policy ${kwoot(policy.naam)} on public.${kwoot(policy.tabel)} ${stukken.join(' ')};`;
@@ -152,8 +269,23 @@ export function verzwakSql(policy, helft) {
  */
 export function helftenVan(policy) {
   const uit = [];
-  if (policy.qual !== '') uit.push('using');
-  if (policy.wcheck !== '') uit.push('check');
+
+  // ⚠️⚠️ **En sinds QS8-550 gaat dat argument één niveau dieper.** Een helft die
+  //    op het hoogste niveau uit meerdere conjuncten bestaat, is net zo goed
+  //    meerdere grendels — en dan betekende "bewaakt" hier opnieuw *minstens
+  //    één*. Zie `conjunctenVan()` voor de meting die dat blootlegde.
+  //
+  // ⚠️ Een helft met precies één conjunct houdt zijn kale naam (`using`), zodat
+  //    de registersleutels van zulke rijen niet verschuiven. Alleen de 35
+  //    helften die écht een conjunctie zijn, krijgen `#0`, `#1`, …
+  for (const [helft, uitdrukking] of [['using', policy.qual], ['check', policy.wcheck]]) {
+    if (uitdrukking === '') continue;
+
+    const delen = conjunctenVan(uitdrukking);
+    if (delen.length < 2) uit.push(helft);
+    else for (let i = 0; i < delen.length; i += 1) uit.push(`${helft}#${i}`);
+  }
+
   return uit;
 }
 
@@ -376,33 +508,65 @@ export const NIET_PER_HELFT_TE_METEN = {
       'in zijn eentje de grendel.',
     staatIn: 'tests/rls/eigenaarschap.test.ts',
   },
-  'weekly_plan_steps.weekly_plan_steps_update.check': {
+  // ⚠️⚠️ **Deze rij was er één en is er sinds QS8-550 vier.** Hij dekte de hele
+  //    `check`-helft, en die valt uiteen in drie conjuncten met drie
+  //    verschillende redenen; de `using`-helft heeft er bovendien een die
+  //    dezelfde bescherming deelt. De metingen eronder zijn die van ronde 9,
+  //    aangevuld met een eigen paarmeting per conjunct op 18-09-2026.
+  'weekly_plan_steps.weekly_plan_steps_update.check#0': {
     reden:
-      '⚠️ **Hier zijn de twee helften níet gelijk, en tóch is alleen de check niet te ' +
-      'isoleren.** De `check` draagt één conjunct extra — `weekly_goal_id is null` — bovenop de ' +
-      'eigenaarstoets en `activated_cycle is null` die ook in de `using` staan. Geen van die ' +
-      'drie kolommen staat in de UPDATE-kolomgrant (📏 gemeten: alleen `title`, `floor_text` en ' +
-      '`ceiling_text`), dus een client kan ze niet zetten. ' +
-      '⚠️⚠️ **Maar dát is niet de hele grendel, en die correctie komt uit de security-ronde.** ' +
-      'Voor `activated_cycle` volstaat de kolomgrant; voor `weekly_goal_id` niet, want de ' +
-      '`using`-helft toetst die kolom helemaal niet — "de using al gepasseerd" zegt er dus ' +
-      'niets over. De onderscheidende rij is `activated_cycle is null and weekly_goal_id is ' +
-      'not null`, en die is onbereikbaar door een **invariant** en niet door de policy: ' +
-      '`weekly_goal_id` staat ook niet in de INSERT-grant, en de énige schrijver ervan — ' +
-      '`weekplanstap_naar_weekdoel()` — zet hem altijd samen met `activated_cycle` in dezelfde ' +
-      'UPDATE. Die invariant leeft in één functielichaam en staat in geen enkele CHECK. ' +
-      '📏 Gemeten op 10-09-2026 (ronde 9): `using` los = **bewaakt**, `check` los = nul rood, ' +
-      'béíde tegelijk = 2 rood (*een geactiveerde stap is niet meer te wijzigen* in ' +
-      '`tests/rls/schrijfgrenzen.test.ts` en *laat de stap van Alice ongemoeid bij een ' +
-      'ongefilterde update van Bob* in `tests/rls/planstapgrens.test.ts`).',
+      'De eigenaarstoets staat lééterlijk in béíde helften, dus alleen de check openzetten ' +
+      'laat de `using` de rij nog steeds wegfilteren. Bovendien staat `goal_id` níet in de ' +
+      'UPDATE-kolomgrant (📏 gemeten: alleen `title`, `floor_text` en `ceiling_text`). ' +
+      '📏 Hermeten per conjunct op 18-09-2026: deze conjunct in béíde helften tegelijk open ' +
+      'geeft **1 rood** — *laat de stap van Alice ongemoeid bij een ongefilterde update van ' +
+      'Bob* in `tests/rls/planstapgrens.test.ts`. De grendel is het paar.',
     wordtToetsbaarAls:
-      '`weekly_goal_id`, `activated_cycle` of `goal_id` in de UPDATE-kolomgrant komt, **of ' +
-      'zodra er een tweede schrijver van `weekly_goal_id` bijkomt die hem zet zonder ' +
-      '`activated_cycle`** — een "ontkoppel dit weekdoel maar hou de stap verbruikt"-actie, ' +
-      'bijvoorbeeld. Die tweede route was de eerste keer vergeten, en hij is de enige die ' +
-      'realistisch is: de invariant leeft in een functielichaam en niet in een constraint.',
+      '`goal_id` in de UPDATE-kolomgrant komt, of als de twee helften uit elkaar gaan lopen.',
+    staatIn: 'tests/rls/planstapgrens.test.ts',
+  },
+
+  'weekly_plan_steps.weekly_plan_steps_update.check#1': {
+    reden:
+      '`activated_cycle is null` staat óók in béíde helften, en `activated_cycle` staat niet ' +
+      'in de UPDATE-kolomgrant. Voor déze conjunct volstaat die kolomgrant als grendel — dat ' +
+      'is het verschil met `check#2` hieronder. ' +
+      '📏 Hermeten per conjunct op 18-09-2026: deze conjunct in béíde helften tegelijk open ' +
+      'geeft **1 rood** in `tests/rls/planstapgrens.test.ts`.',
+    wordtToetsbaarAls: '`activated_cycle` in de UPDATE-kolomgrant komt.',
     staatIn: 'tests/rls/schrijfgrenzen.test.ts',
   },
+
+  'weekly_plan_steps.weekly_plan_steps_update.using#1': {
+    reden:
+      'De spiegelzijde van `check#1`: dezelfde uitdrukking, dezelfde kolomgrant, dezelfde ' +
+      'paarmeting. 📏 18-09-2026: béíde helften van deze conjunct open geeft **1 rood**.',
+    wordtToetsbaarAls: 'idem `check#1`.',
+    staatIn: 'tests/rls/planstapgrens.test.ts',
+  },
+
+  'weekly_plan_steps.weekly_plan_steps_update.check#2': {
+    reden:
+      '⚠️⚠️ **Deze is de enige van de drie zonder tegenhanger in de `using`, en juist daarom ' +
+      'niet door de policy beschermd maar door een invariant.** De `using`-helft toetst ' +
+      '`weekly_goal_id` helemaal niet, dus "de using al gepasseerd" zegt er niets over. De ' +
+      'onderscheidende rij is `activated_cycle is null and weekly_goal_id is not null`, en die ' +
+      'is onbereikbaar omdat `weekly_goal_id` ook niet in de INSERT-grant staat en de énige ' +
+      'schrijver ervan — `weekplanstap_naar_weekdoel()` — hem altijd samen met ' +
+      '`activated_cycle` in dezelfde UPDATE zet. ' +
+      '⚠️ Die invariant leeft in één functielichaam en staat in geen enkele CHECK. ' +
+      '📏 Gemeten in ronde 9: `using` los = bewaakt, `check` los = nul rood, béíde tegelijk = ' +
+      '2 rood (*een geactiveerde stap is niet meer te wijzigen* in `schrijfgrenzen.test.ts` en ' +
+      '*laat de stap van Alice ongemoeid* in `planstapgrens.test.ts`).',
+    wordtToetsbaarAls:
+      '`weekly_goal_id` in de UPDATE-kolomgrant komt, **of zodra er een tweede schrijver van ' +
+      '`weekly_goal_id` bijkomt die hem zet zonder `activated_cycle`** — een "ontkoppel dit ' +
+      'weekdoel maar hou de stap verbruikt"-actie, bijvoorbeeld. Die tweede route was de eerste ' +
+      'keer vergeten, en hij is de enige die realistisch is: de invariant leeft in een ' +
+      'functielichaam en niet in een constraint.',
+    staatIn: 'tests/rls/schrijfgrenzen.test.ts',
+  },
+
   'groups.groups_update.check': {
     reden:
       '`using` en `with check` zijn letterlijk dezelfde uitdrukking — `is_group_admin(id)` — ' +
@@ -419,6 +583,24 @@ export const NIET_PER_HELFT_TE_METEN = {
       'zijn eentje de grendel.',
     staatIn: 'tests/rls/lidmaatschapsgrens.test.ts',
   },
+  'chat_messages.chat_messages_insert.check#2': {
+    reden:
+      'De conjunct is `type <> \'system\'`, en naast hem staat de CHECK ' +
+      '`chat_messages_sender_required` (`type <> \'system\' or sender_id is null`). ' +
+      'Elk van de twee volstaat afzonderlijk om een vervalst systeembericht tegen te ' +
+      'houden, dus geen van beide is los te breken. 📏 Gemeten met de toets uit ' +
+      '`bewerkvenster.test.ts`: alleen deze conjunct op `true` = groen, alleen de CHECK ' +
+      'gedropt = groen, allebei weg = 1 rood en het is de juiste test. ' +
+      '📏 En dat het paar écht de grendel is, is apart gemeten: met conjunct 0 én ' +
+      'conjunct 2 open landde `insert … (sender_id, type) values (null, \'system\')` gewoon. ' +
+      'De grendel is dus het paar — zelfde vorm als `day_checkins_delete.using`.',
+    wordtToetsbaarAls:
+      'de CHECK `chat_messages_sender_required` verdwijnt of versmalt, of als een ' +
+      'systeembericht ooit een `sender_id` mag dragen. Dan staat deze conjunct er alleen ' +
+      'voor en is hij wél los te breken.',
+    staatIn: 'tests/rls/bewerkvenster.test.ts',
+  },
+
   'user_blocks.user_blocks_delete.using': {
     reden:
       'PostgREST stuurt een DELETE als `DELETE … RETURNING`, en met een RETURNING moet ' +
@@ -448,9 +630,15 @@ export function registervormKlachten(register) {
       uit.push(`\`${sleutel}\` is geen \`tabel.policy.helft\``);
       continue;
     }
-    const helft = sleutel.split('.')[2];
+    // ⚠️ Sinds QS8-550 mag een sleutel ook een conjunct noemen — `check#2`. Het
+    //    nummer moet dan wél een getal zijn: `check#x` is een typefout die
+    //    anders stil een rij zou registreren die nooit gevonden wordt.
+    const eenheid = sleutel.split('.')[2];
+    const { helft, index } = ontleedEenheid(eenheid);
     if (helft !== 'using' && helft !== 'check') {
       uit.push(`\`${sleutel}\` noemt helft \`${helft}\` en niet \`using\` of \`check\``);
+    } else if (index !== null && !Number.isInteger(index)) {
+      uit.push(`\`${sleutel}\` noemt conjunct \`${eenheid.split('#')[1]}\`, en dat is geen getal`);
     }
     for (const veld of ['reden', 'wordtToetsbaarAls', 'staatIn']) {
       if (typeof rij?.[veld] !== 'string' || rij[veld].trim() === '') {
