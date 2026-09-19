@@ -62,6 +62,20 @@ const AANVALSBATCH = 10_000;
 /** Het dagplafond op `goals` uit 0192. */
 const DOELEN_PLAFOND = 200;
 
+/** Het dagplafond op `weekly_plan_steps` uit 0192 — `weekplanstappen_plafond()`. */
+const WEEKPLANSTAPPEN_PLAFOND = 200;
+
+/**
+ * De noodgrens van 0200 is `> plafond * 2`, dus een verzoek van precies zoveel
+ * rijen glipt er langs. Dat is met opzet de maat hier: het is het grootste
+ * verzoek dat de rem níet tegenhoudt, en dus wat één geweigerd verzoek maximaal
+ * kan kosten als de policy-conjunct weg is.
+ */
+const REMGRENS = WEEKPLANSTAPPEN_PLAFOND * 2;
+
+/** Genoeg herhalingen om het signaal ruim boven de ruis van de parallelle suite te tillen. */
+const GEWEIGERDE_RONDES = 10;
+
 
 let alice: TestUser;
 let cyclus: IsoDate;
@@ -249,6 +263,96 @@ describe.skipIf(!rlsTestsConfigured)('een geweigerde bulk-POST schrijft eerst', 
         `de handhaver van 0192 hoort dit te weigeren en het aantal uit dit verzoek te noemen; ` +
           `kreeg "${error?.message}"`,
       ).toContain('erbij');
+    },
+    TEST_TIMEOUT,
+  );
+
+  it(
+    'wie al op het dagplafond zit, laat de tabel niet groeien met geweigerde verzoeken',
+    async () => {
+      // ⚠️⚠️ **Deze toets bewaakt `weekly_plan_steps_insert.check#1` — de conjunct
+      //    `weekplanstappen_over() > 0` — en hij bestaat omdat QS8-557 die
+      //    conjunct wagenwijd openzette zonder dat één test rood werd.
+      //
+      //    De verleiding is een toets op "de stap boven het plafond wordt
+      //    geweigerd". 📏 Die blijft gróen als je de conjunct weghaalt: de
+      //    handhaver van 0192 weigert hem dan ook, één rij later. De conjunct en
+      //    `begrens_weekplanstappen()` liggen namelijk op dezelfde drempel —
+      //    gemeten 19-09-2026, C=199 mag, C=200 niet, aan allebei de kanten.
+      //
+      // ⚠️⚠️ **Wat de conjunct wél in zijn eentje doet, is de rij niet
+      //    schrijven.** De handhaver van 0192 is `after insert`: die weigert
+      //    nadat de rijen op schijf staan. De rem van 0200 begrenst dat op
+      //    tweemaal het plafond — `v_n > 400` — dus een verzoek van precies 400
+      //    rijen glipt er langs en kost zijn volle omvang.
+      //
+      // 📏 Gemeten op 19-09-2026, tien geweigerde verzoeken van 400 rijen door
+      //    een gebruiker die al op 200 zat:
+      //
+      //      conjunct intact -> 42501, tabel groeide 0 bytes
+      //      conjunct open   -> 23514, tabel groeide 401.408 bytes
+      //
+      //    Allebei de keren geweigerd; alleen de tweede kost schijf, en hij kost
+      //    hem opnieuw bij elk volgend verzoek.
+      const dave = await createTestUser('bulk-dave');
+      const doel = await adminDb()
+        .from('goals')
+        .insert({ owner_id: dave.id, title: 'BULK-PLAFOND', target_date: streefdatum })
+        .select('id')
+        .single();
+      if (doel.error || doel.data === null) throw new Error(`doel: ${doel.error?.message}`);
+
+      // Dave op het plafond zetten. Dit gaat langs `adminDb()` en telt tóch mee:
+      // `weekplanstappen_over()` telt het venster van de eigenaar, niet van de
+      // schrijver — dezelfde eigenschap als in de venstertoets hierboven.
+      const opvulling = Array.from({ length: WEEKPLANSTAPPEN_PLAFOND }, (_, i) => ({
+        goal_id: doel.data.id,
+        title: `opvulling ${i}`,
+        order_index: 1 + (i % 52),
+      }));
+      const gevuld = await adminDb().from('weekly_plan_steps').insert(opvulling);
+      expect(gevuld.error, `opvullen tot het plafond: ${gevuld.error?.message}`).toBeNull();
+
+      const vooraf = tabelbytes('weekly_plan_steps');
+
+      const codes: (string | undefined)[] = [];
+      for (let ronde = 0; ronde < GEWEIGERDE_RONDES; ronde += 1) {
+        const rijen = Array.from({ length: REMGRENS }, (_, i) => ({
+          goal_id: doel.data.id,
+          title: `poging ${ronde}-${i}`,
+          order_index: 1 + (i % 52),
+        }));
+        const { error } = await dave.db.from('weekly_plan_steps').insert(rijen);
+        codes.push(error?.code);
+      }
+
+      // Assertie 1 — blijft groen als de conjunct weg is, en dat is met opzet
+      // zichtbaar: de weigering is niet wat deze conjunct levert.
+      expect(
+        codes.every((c) => c !== undefined),
+        'elk verzoek boven het dagplafond hoort geweigerd te worden',
+      ).toBe(true);
+
+      // ⚠️⚠️ **Assertie 2 is de belofte en staat daarom vóór de foutcode.**
+      //    Andersom is deze toets niet te ijken: de mutatie flipt óók de code,
+      //    die assertie gooit dan als eerste, en de schijfmeting — het enige dat
+      //    de belófte raakt — wordt nooit uitgevoerd. Dat is precies de val uit
+      //    CLAUDE.md: een ijking die zijn geval door een eerdere grendel voert,
+      //    bewaakt niets van wat hij belooft.
+      const groei = tabelbytes('weekly_plan_steps') - vooraf;
+      expect(
+        groei,
+        `de tabel groeide met ${Math.round(groei / 1024)} kB na ${GEWEIGERDE_RONDES} geweigerde ` +
+          `verzoeken; met de conjunct hoort dat nul te zijn (📏 zonder hem: 392 kB heap)`,
+      ).toBeLessThan(150 * 1024);
+
+      // Assertie 3 — de diagnose ernaast: wélke grendel sprak. 23514 betekent
+      // dat 0192 het overnam, en dan stonden de rijen al op schijf.
+      expect(
+        [...new Set(codes)],
+        `42501 is de policy die vóór het schrijven weigert; 23514 is de handhaver van 0192 ` +
+          `die ná het schrijven weigert — dan is de conjunct weg`,
+      ).toEqual(['42501']);
     },
     TEST_TIMEOUT,
   );
