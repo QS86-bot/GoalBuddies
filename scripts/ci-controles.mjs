@@ -67,6 +67,12 @@ export const ZONDER_CI = {
   'wachtwoord:controle':
     'Leest `password_min_length` uit het Supabase-dashboard van het echte ' +
     'project. Vraagt de productiesleutel.',
+  'typesdrift:controle':
+    'Legt `src/lib/database.types.ts` naast een generatie van het schema. Een ' +
+    'generatie vanaf de map vraagt `supabase gen types --db-url`, en dat start ' +
+    'een Docker-container; een generatie vanaf productie vraagt de ' +
+    'productiesleutel. CI heeft geen van beide, dus hij zou daar altijd ' +
+    'OVERGESLAGEN printen — en een stap die nooit meet, hoort niet in de baan.',
   'bundel:controle':
     'Vraagt het npm-register naar de gepubliceerde bundelgroottes. Een ' +
     'netwerkaanroep maakt de uitslag afhankelijk van bereikbaarheid.',

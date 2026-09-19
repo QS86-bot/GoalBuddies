@@ -30,6 +30,7 @@
     "auth:urls:zet": "node scripts/auth-urls.mjs --zet",
     "vapid:genereer": "node scripts/vapid-genereer.mjs",
     "dml:controle": "node scripts/dml-controle.mjs",
+    "typesdrift:controle": "node scripts/typesdrift-controle.mjs",
     "docs:controle": "node scripts/docs-controle.mjs",
     "emoji:controle": "node scripts/emoji-controle.mjs",
     "hoofdrun:controle": "node scripts/hoofdrun-controle.mjs",
