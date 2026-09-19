@@ -32,12 +32,16 @@ import { psqlMetInvoer, stackBeschikbaarOfFaal } from './psql-stack';
  *    afwijzen. Dat is precies wat migratie 0175 verbiedt: *een verzoek dat
  *    niemand kan beslissen is geen verzoek*.
  *
- * ⚠️ **Wat deze suite níet bewaakt, en dat is een keuze.** De regel erboven,
- *    `g.target_date < p_vandaag`, meet nog steeds aan de levende klok. Dat is
- *    een gat van dezelfde klasse en het staat als **QS8-548** open, mét meting;
- *    het is grens 1 van de *Beslisbevoegdheid* en dus niet van deze branch. De
- *    toerekeningsgevallen hieronder meten dat verschil expliciet, zodat een
- *    latere lezer niet hoeft te raden welke van de twee clausules groen is.
+ * ✅ **Hier stond dat de regel erboven — `g.target_date < p_vandaag` — nog aan
+ *    de levende klok mat, als bewust opengelaten gat. Dat is gesloten met
+ *    migratie 0292** (QS8-548, besluit van Quinten op 19-09-2026). De toets die
+ *    dat gat vastlegde staat er nog en is **omgedraaid** in plaats van
+ *    weggehaald, zoals zijn eigen faalmelding voorschreef.
+ *
+ * ⚠️ De toerekeningsgevallen hieronder blijven staan en zijn er nu méér waard,
+ *    niet minder: ze meten dat het schild en de verlooppoort twee verschillende
+ *    clausules zijn. Nu ze allebei aan dezelfde klok meten, is dat verschil
+ *    alleen nog in gedrag te zien en niet meer in de brontekst.
  *
  * ⚠️⚠️ **Geen enkele toets hier hangt van het uur van de dag af, en het paar
  *    zones hieronder is de enige reden dat dat waar is.** Kiritimati is `UTC+14`
@@ -62,8 +66,20 @@ import { psqlMetInvoer, stackBeschikbaarOfFaal } from './psql-stack';
  *    wat er nog meer op de oude versie leunde.**
  */
 
+/**
+ * ⚠️ **De proef telt de eenargumentsvorm en niet de naam.** Hij deed dat laatste
+ *    tot 0292, en toen die migratie de afgeschreven wrapper toevoegde, gaf
+ *    `count(*)` er **twee** — waarop deze suite zichzelf terecht als
+ *    *schema loopt achter* afwees. Een beschikbaarheidsproef die op een naam
+ *    telt, breekt bij elke overload; hij hoort te vragen of de database kent wat
+ *    dit bestand toetst.
+ */
 const beschikbaar = stackBeschikbaarOfFaal(
-  "select count(*) from pg_proc where proname = 'maak_straffen_verschuldigd'",
+  `select count(*) from pg_proc p
+     join pg_namespace n on n.oid = p.pronamespace
+    where n.nspname = 'public'
+      and p.proname = 'maak_straffen_verschuldigd'
+      and p.pronargs = 1`,
   import.meta.url,
 );
 
@@ -155,21 +171,23 @@ end $$;`;
 }
 
 /**
- * Draait de rollover precies zoals `supabase/functions/rollover/index.ts` hem
- * draait: `p_vandaag = localDateIn(profiel.tz, nu)`, met de **levende** zone.
+ * Draait de rollover zoals `supabase/functions/rollover/index.ts` hem draait.
  *
- * ⚠️ Zou deze helper de bevroren zone meegeven, dan meet de suite haar eigen
- *    aanname in plaats van de functie. De aanroepkant hoort hier onveranderd te
- *    zijn; alleen de SQL eronder verandert.
+ * ⚠️⚠️ **Sinds migratie 0292 is dat zónder datum** — QS8-548. Deze helper gaf
+ *    hier `p_vandaag = localDateIn(profiel.tz, nu)` mee, met de **levende**
+ *    zone, precies zoals de rollover toen deed. Die parameter bestaat niet meer
+ *    op de functie die het werk doet; wat ervan over is, is een afgeschreven
+ *    wrapper voor de gedéployde rollover, en die heeft zijn eigen toets.
+ *
+ * ⚠️ De aanroepkant hoort hier de echte te zijn en niet een gunstige: zou deze
+ *    helper de bevroren zone opzoeken en meegeven, dan meet de suite haar eigen
+ *    aanname in plaats van de functie.
  */
 const ROLLOVER = `
 do $$
 declare v_n integer;
 begin
-  select public.maak_straffen_verschuldigd(
-           (select eigenaar from proef),
-           (now() at time zone (select tz from profiles where id = (select eigenaar from proef)))::date)
-    into v_n;
+  select public.maak_straffen_verschuldigd((select eigenaar from proef)) into v_n;
   create temp table uitslag (regel text);
   insert into uitslag values ('verschuldigd=' || v_n);
   insert into uitslag
@@ -579,8 +597,7 @@ begin
     values (v_g, v_grp, v_a, v_t, (now() at time zone '${OOST}')::date + 30,
             'Ik had meer tijd nodig', 'open');
 
-  v_n := public.maak_straffen_verschuldigd(
-           v_a, (now() at time zone (select tz from profiles where id = v_a))::date);
+  v_n := public.maak_straffen_verschuldigd(v_a);
 
   create temp table uitslag (regel text);
   insert into uitslag values ('zone=' ||
@@ -607,18 +624,23 @@ rollback;`);
 
 
   /**
-   * ⚠️⚠️ **Deze toets legt een gat vast in plaats van een belofte, en dat is met
-   *    opzet.** `g.target_date < p_vandaag` meet nog aan de levende klok: een
-   *    sprong naar het westen stelt het verschuldigd worden een dag uit, zónder
-   *    uitstelverzoek. Dat is grens 1 van de *Beslisbevoegdheid* en staat als
-   *    **QS8-548** open.
+   * ⚠️⚠️ **Deze toets legde een gat vast en is op 19-09-2026 omgedraaid** —
+   *    QS8-548, migratie 0292. Er stond: *"stelt het verschuldigd worden zélf
+   *    nog wél uit — en dat is nog geen belofte"*, met in de faalmelding dat hij
+   *    omgedraaid hoorde te worden zodra iemand die regel verzette. Dat is
+   *    gebeurd, en dit is dezelfde opstelling met de verwachting omgekeerd.
    *
-   *    Hij staat hier om twee redenen. Hij houdt de meting vast waarop dat issue
-   *    berust, en hij wordt **rood zodra iemand die regel verzet** — dan is het
-   *    issue af en hoort deze toets omgedraaid te worden, niet weggehaald.
+   *    📏 Gemeten met precies deze opstelling:
+   *
+   *      zonder 0292   eerlijk=1   aanval=0
+   *      met    0292   eerlijk=1   aanval=1
+   *
+   * ⚠️ **Dit is het geval zonder uitstelverzoek**, en dat is de hele reden dat
+   *    het een aparte toets is: het schild speelt hier geen rol, dus wat hier
+   *    rood wordt is de verlooppoort en niets anders.
    */
   it(
-    'stelt het verschuldigd worden zélf nog wél uit — QS8-548, en dat is nog geen belofte',
+    'stelt het verschuldigd worden zélf ook niet meer uit — QS8-548',
     () => {
       const eerlijk = rollover({
         bijAangaan: 'UTC',
@@ -631,8 +653,8 @@ rollback;`);
       expect(eerlijk).toContain('verschuldigd=1');
       expect(
         verzet,
-        'QS8-548 is gerepareerd — draai deze toets om in plaats van hem weg te halen',
-      ).toContain('verschuldigd=0');
+        'een sprong naar het westen kocht een dag uitstel op de straf, zonder uitstelverzoek',
+      ).toContain('verschuldigd=1');
     },
     TIMEOUT,
   );

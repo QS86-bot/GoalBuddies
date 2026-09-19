@@ -436,7 +436,6 @@ describe.skipIf(!rlsTestsConfigured)('het plafond op straffen', () => {
 
         const uitkomst = await adminDb().rpc('maak_straffen_verschuldigd', {
           p_owner_id: w.alice.id,
-          p_vandaag: addDays(w.vandaag, 1),
         });
         expect(uitkomst.error, `rollover: ${uitkomst.error?.message}`).toBeNull();
         expect(uitkomst.data, 'een verse straf is verschuldigd geworden').toBe(0);
@@ -460,7 +459,6 @@ describe.skipIf(!rlsTestsConfigured)('het plafond op straffen', () => {
 
         const uitkomst = await adminDb().rpc('maak_straffen_verschuldigd', {
           p_owner_id: w.alice.id,
-          p_vandaag: addDays(w.vandaag, 1),
         });
         expect(uitkomst.data, 'een straf van gisteren gaat niet meer af').toBe(1);
         expect(await standVan(strafId)).toBe('due');
@@ -512,7 +510,6 @@ describe.skipIf(!rlsTestsConfigured)('het plafond op straffen', () => {
         const oostDatum = await adminDb().rpc('eigenaarsdatum', { uid: w.alice.id });
         const uitkomst = await adminDb().rpc('maak_straffen_verschuldigd', {
           p_owner_id: w.alice.id,
-          p_vandaag: oostDatum.data as string,
         });
         expect(uitkomst.data, 'de tijdzonetruc heeft een straf laten afgaan').toBe(0);
         expect(await standVan(straf.data.id as string)).toBe('set');
@@ -1024,7 +1021,6 @@ describe.skipIf(!rlsTestsConfigured)('het plafond op straffen', () => {
     async function rollover(): Promise<void> {
       const uitkomst = await adminDb().rpc('maak_straffen_verschuldigd', {
         p_owner_id: w.alice.id,
-        p_vandaag: w.vandaag,
       });
       if (uitkomst.error) throw new Error(`rollover: ${uitkomst.error.message}`);
     }
