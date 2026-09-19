@@ -45,6 +45,7 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 import { psqlArgumenten, verbindingsmelding } from './psql.mjs';
 
 import { metSchuineStrepen } from './paden.mjs';
+import { zonderCommentaar } from './zonder-commentaar.mjs';
 
 const WORTEL = join(dirname(fileURLToPath(import.meta.url)), '..');
 
@@ -478,9 +479,21 @@ export function zodSchemas(inhoud) {
  *
  *     const rijen = gevalideerd.data.map((stap, i) => ({ goal_id: goalId, … }));
  *
+ * ⚠️⚠️ **Eerst knippen, en dat is een gerepareerde valse groene (QS8-567).** De
+ *    match is niet-globaal: hij pakt de **eerste** `const <naam> =` in het
+ *    bestand. 📏 Gemeten met `/* voorbeeld: const velden = { onschuldig: 1 } *\/`
+ *    bóven de echte declaratie — `velduitLokaal` gaf `['onschuldig']` in plaats
+ *    van `['titel','notitie']`.
+ *
+ *    Dat weegt hier zwaarder dan ruis: deze controle meet welke kolommen `src/`
+ *    en `app/` terugvragen, en domeinregel 7 zegt dat **RLS geen kolommen kan
+ *    beperken** — dit is de enige plek waar die grens geteld wordt. Een comment
+ *    die de kolomlijst vervangt, vervangt de meting.
+ *
  * @returns de kolomnamen, of `null` als de variabele hier niet te lezen is.
  */
-export function velduitLokaal(inhoud, naam) {
+export function velduitLokaal(ruweInhoud, naam) {
+  const inhoud = zonderCommentaar(ruweInhoud);
   const m = new RegExp(`\\bconst ${naam}\\b[^=\\n]*=`).exec(inhoud);
   if (m === null) return null;
 

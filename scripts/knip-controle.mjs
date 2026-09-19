@@ -127,6 +127,74 @@ export const MET_REDEN = {
 };
 
 /**
+ * De bronlezers die géén knip hebben, en de reden waarom dat hier klopt.
+ *
+ * ⚠️⚠️ **Dit is de andere helft van deze controle en hij kwam er later bij
+ *    (QS8-567).** Het register hierboven bewaakt de knip die er **ís**: wie er
+ *    een schrijft, gebruikt de gedeelde of legt uit waarom niet. Wat niemand
+ *    bewaakte is de knip die er **niet** is — en dat is de gevaarlijker helft,
+ *    want een ontbrekende knip ziet er precies zo uit als een controle die
+ *    niets te knippen heeft. Zelfde vorm als bij `padverwijzing:controle`: een
+ *    ontbrekende test valt op, een test waarvan in de bron staat dát hij er is
+ *    niet.
+ *
+ * 📏 **Geteld op 19-09-2026:** 48 lezende controles, waarvan 11 knipten en 37
+ *    niet. Acht daarvan bouwden een dynamische regex uit een naam — de vorm
+ *    waarin een commentaarregel als code gelezen wordt. **Drie waren een echte
+ *    instantie en faalden alle drie open:**
+ *
+ *    | controle | gemeten vóór de knip |
+ *    | -- | -- |
+ *    | `foutsleutel-controle.mjs` | een vormtoets in een comment telde als vormtoets; een voorbeeld-allowlist in een comment verving de echte |
+ *    | `kolomrechten-controle.mjs` | `const velden = { onschuldig: 1 }` in een comment verving de echte kolomlijst |
+ *    | `aansluiting-controle.mjs` | een naam die alléén in een comment stond, maakte een dode keten levend |
+ *
+ * ⚠️⚠️ **Wat deze helft wél en níet belooft, en dat verschil is de hele reden
+ *    dat dit issue bestond.** Hij belooft: **een nieuwe bronlezende controle
+ *    wordt geclassificeerd** — knipt, of staat hier met een reden. Hij belooft
+ *    **niet** dat elke bronlezer correct knipt.
+ *
+ *    Die tweede belofte is niet te maken met dit gereedschap, en hem tóch
+ *    opschrijven zou de fout herhalen die dit issue vond. "Importeert dit
+ *    bestand de knip" is een **neveneffect** van de reparatie, geen eigenschap
+ *    van het werk: `foutsleutel-controle.mjs` importeert hem en leest zijn derde
+ *    helft nog steeds ruw, met reden. Een grendel die op de import afgaat, zou
+ *    dat groen noemen — en dan meet hij precies wat hij zegt te bewaken niet.
+ *    Wat elke bronlezer echt doet, blijft handwerk en een ijkingstest.
+ */
+export const ZONDER_KNIP = {
+  'scripts/migratie-hernummer.mjs':
+    'herschrijft verwijzingen naar een migratienummer, en een verwijzing ín commentaar ' +
+    'hóórt mee te gaan — CLAUDE.md: hij "neemt de verwijzingen mee; de kale die hij niet ' +
+    'aanraakt print hij". Knippen zou hier juist een verwijzing laten staan die verkeerd wordt',
+  'scripts/tekst-controle.mjs':
+    'houdt zijn eigen commentaarzeef op regelindex (`commentaarregels()`), want hij meldt ' +
+    'regelnummers — 📏 gemeten: een `label="…"` op een `//`- of ` * `-regel geeft nul treffers',
+  'scripts/catalogus-controle.mjs':
+    'toetst een catalogussleutel, geen bronbestand; er zit geen commentaar in een sleutelnaam',
+  'scripts/ci-controles.mjs':
+    'leest YAML-workflows, en de gedeelde knip is een JS-knip — een `#` haalt hij niet weg. ' +
+    '📏 Gemeten: een uitgecommentarieerde `# - run: npm run x` telt mee. Dat faalt **dicht** ' +
+    '(een handmatige stap melden die er niet is), dus het is ruis en geen gat',
+  'scripts/dode-keten-controle.mjs':
+    'leest SQL-migraties; daar hoort een SQL-knip bij en niet deze. Zijn commentaargevoeligheid ' +
+    'staat als eigen rij in docs/ENGINEER-REVIEW.md — hij faalt **dicht** (0292 meldde een ' +
+    '`klok_fout()` die alleen in een comment stond)',
+};
+
+/** Leest dit bestand bronbestanden én bouwt het een regex uit een naam? */
+export function leestBronMetNaampatroon(bron) {
+  const schoon = zonderCommentaar(bron);
+  return /readFileSync\(|readFile\(/.test(schoon) && /new RegExp\(`[^`]*\$\{/.test(schoon);
+}
+
+/** Knipt dit bestand — gedeeld, of met een eigen knip die in MET_REDEN staat? */
+export function knipt(bron, pad) {
+  if (/from '\.\/zonder-commentaar\.mjs'/.test(zonderCommentaar(bron))) return true;
+  return Object.keys(MET_REDEN).some((sleutel) => sleutel.startsWith(`${pad}:`));
+}
+
+/**
  * Elke definitie in deze bron, als `functienaam`.
  *
  * ⚠️⚠️ **Hij knipt eerst het commentaar weg, en hij doet dat met de gedeelde
@@ -148,13 +216,29 @@ export function definitiesIn(bron) {
 export function klachten(bron, pad) {
   if (pad === GEDEELD || pad.startsWith(`${ZONDER_TOETS}/`)) return [];
 
-  return definitiesIn(bron)
+  const uit = definitiesIn(bron)
     .filter((naam) => MET_REDEN[`${pad}:${naam}`] === undefined)
     .map(
       (naam) =>
         `${pad}: \`${naam}\` is een eigen knip — importeer \`${GEDEELD}\`, of zet hem ` +
         'met zijn reden in MET_REDEN.',
     );
+
+  // ⚠️ De tweede helft: een bronlezer zónder knip is een keuze of een gat, en
+  //    die twee zien er hetzelfde uit tot iemand het opschrijft (QS8-567).
+  if (
+    pad.startsWith('scripts/') &&
+    leestBronMetNaampatroon(bron) &&
+    !knipt(bron, pad) &&
+    ZONDER_KNIP[pad] === undefined
+  ) {
+    uit.push(
+      `${pad}: leest bron en bouwt een regex uit een naam, maar knipt geen commentaar — ` +
+        `importeer \`${GEDEELD}\`, of zet hem met een gemeten reden in ZONDER_KNIP.`,
+    );
+  }
+
+  return uit;
 }
 
 function bestanden(map) {
@@ -176,25 +260,50 @@ export function verweesdeRedenen(gevonden) {
   return Object.keys(MET_REDEN).filter((sleutel) => !gevonden.has(sleutel));
 }
 
+/**
+ * Rijen in `ZONDER_KNIP` die hun reden kwijt zijn.
+ *
+ * ⚠️ **Twee kanten, net als bij `verweesdeRedenen`.** Een bestand dat niet meer
+ *    bestaat, én een bestand dat inmiddels wél knipt: dan is de vrijstelling een
+ *    rij die niets meer vrijstelt, en die leest de volgende persoon als een
+ *    reden om er niet aan te twijfelen.
+ */
+export function verweesdeVrijstellingen(bronnen) {
+  return Object.keys(ZONDER_KNIP).filter((pad) => {
+    const bron = bronnen.get(pad);
+    if (bron === undefined) return true;
+    return !leestBronMetNaampatroon(bron) || knipt(bron, pad);
+  });
+}
+
 export function hoofd() {
   const paden = MAPPEN.flatMap((map) => bestanden(map));
   const gevonden = new Set();
+  const bronnen = new Map();
   const uit = [];
 
   for (const pad of paden) {
     if (pad.startsWith(`${ZONDER_TOETS}/`)) continue;
     const bron = readFileSync(join(WORTEL, pad), 'utf8');
+    bronnen.set(relative('.', pad), bron);
     for (const naam of definitiesIn(bron)) gevonden.add(`${pad}:${naam}`);
     uit.push(...klachten(bron, relative('.', pad)));
   }
 
   const verweesd = verweesdeRedenen(gevonden);
+  const losseVrijstellingen = verweesdeVrijstellingen(bronnen);
 
-  if (uit.length > 0 || verweesd.length > 0) {
+  if (uit.length > 0 || verweesd.length > 0 || losseVrijstellingen.length > 0) {
     console.error('knip-controle: er staat een knip buiten de gedeelde bron.\n');
     for (const regel of uit) console.error(`  ${regel}`);
     for (const sleutel of verweesd) {
       console.error(`  ${sleutel} staat in MET_REDEN maar bestaat niet meer — haal de rij weg.`);
+    }
+    for (const pad of losseVrijstellingen) {
+      console.error(
+        `  ${pad} staat in ZONDER_KNIP maar heeft die vrijstelling niet meer nodig — ` +
+          'haal de rij weg.',
+      );
     }
     console.error(
       `\n  De gedeelde knip is \`${GEDEELD}\`, en hij is geijkt in\n` +
@@ -204,9 +313,14 @@ export function hoofd() {
     return 1;
   }
 
+  // ⚠️ Beide helften noemen, want een controle die alleen zijn oude helft meldt,
+  //    laat de lezer denken dat de nieuwe er niet is (QS8-567).
+  const lezers = [...bronnen].filter(([pad, bron]) => leestBronMetNaampatroon(bron) && pad.startsWith('scripts/'));
   console.log(
     `knip-controle: ${Object.keys(MET_REDEN).length} knippen met een reden, de rest deelt er één ` +
-      `(${paden.length} bestanden).`,
+      `(${paden.length} bestanden). ` +
+      `${lezers.length} bronlezers met een naampatroon, waarvan ` +
+      `${Object.keys(ZONDER_KNIP).length} met reden zonder knip.`,
   );
   return 0;
 }

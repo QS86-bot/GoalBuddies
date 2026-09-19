@@ -444,6 +444,30 @@ describe('velduitLokaal', () => {
   ])('geeft null bij %s', (_naam, bron) => {
     expect(velduitLokaal(bron, 'patch')).toBeNull();
   });
+
+  /**
+   * ⚠️⚠️ **Een voorbeeld in commentaar is geen declaratie (QS8-567).** De match
+   *    is niet-globaal en pakt de **eerste** `const <naam> =`. 📏 Gemeten vóór
+   *    de knip: met `/* voorbeeld: const velden = { onschuldig: 1 } *\/` erboven
+   *    gaf `velduitLokaal` `['onschuldig']` in plaats van `['titel','notitie']`.
+   *
+   * ⚠️ **Dit weegt zwaarder dan ruis.** Deze controle telt welke kolommen `src/`
+   *    en `app/` terugvragen, en domeinregel 7 zegt dat **RLS geen kolommen kan
+   *    beperken** — dit is de enige plek waar die grens geteld wordt. Een
+   *    comment die de kolomlijst verving, verving de meting zelf.
+   */
+  it('leest de échte declaratie, niet een voorbeeld in een blokcommentaar erboven', () => {
+    const bron =
+      '/* voorbeeld: const velden = { onschuldig: 1 } */\n' +
+      'const velden = { titel: 1, notitie: 2 };\n';
+    expect(velduitLokaal(bron, 'velden')?.sort()).toEqual(['notitie', 'titel']);
+  });
+
+  it('leest de échte declaratie, niet een voorbeeld op een regelcommentaar erboven', () => {
+    const bron =
+      '// ooit: const velden = { onschuldig: 1 }\n' + 'const velden = { titel: 1, notitie: 2 };\n';
+    expect(velduitLokaal(bron, 'velden')?.sort()).toEqual(['notitie', 'titel']);
+  });
 });
 
 describe('losSpreadOp', () => {

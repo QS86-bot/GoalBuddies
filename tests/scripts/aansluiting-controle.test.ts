@@ -98,6 +98,35 @@ describe('wordtAangesloten', () => {
     const bestanden = [punt, bestand('app/y.tsx', 'zetAlles();')];
     expect(wordtAangesloten('zetA', bestanden, punt.pad)).toBe(false);
   });
+
+  /**
+   * ⚠️⚠️ **Commentaar is geen aansluiting (QS8-567).** 📏 Gemeten vóór de knip:
+   *    allebei de vormen hieronder gaven `true`, en dat faalt **open** — deze
+   *    controle bestaat juist om een functie zónder aanroeper te vinden.
+   *
+   * ⚠️ En het is hier waarschijnlijker dan elders: een dode functie wordt in dit
+   *    project zelden stil weggehaald. Er komt een regel uitleg bij die zijn
+   *    naam noemt — precies de vorm die de controle blind maakte.
+   */
+  it('telt een aanroep in een regelcommentaar niet mee', () => {
+    const bestanden = [punt, bestand('app/y.tsx', '// ooit riep dit zetA() aan\nconst x = 1;')];
+    expect(wordtAangesloten('zetA', bestanden, punt.pad)).toBe(false);
+  });
+
+  it('telt een aanroep in een JSDoc-blok niet mee', () => {
+    const bestanden = [punt, bestand('app/y.tsx', '/**\n * Zie zetA() voor de vorm.\n */\nconst x = 1;')];
+    expect(wordtAangesloten('zetA', bestanden, punt.pad)).toBe(false);
+  });
+
+  /**
+   * ⚠️ **De tweede helft: de knip mag de echte aanroep niet opeten.** Een
+   *    coderegel mét een áchterlopend comment blijft een aanroep — de gedeelde
+   *    knip snijdt niet midden in een regel, en dat is hier precies goed.
+   */
+  it('ziet een aanroep op een regel met een achterlopend commentaar wél', () => {
+    const bestanden = [punt, bestand('app/y.tsx', 'zetA(); // aansluiten bij het opstarten')];
+    expect(wordtAangesloten('zetA', bestanden, punt.pad)).toBe(true);
+  });
 });
 
 describe('beoordeel — de drie uitkomsten', () => {
