@@ -244,6 +244,13 @@ create or replace function public.code_zonder_commentaar(p_bron text)
 returns text
 language plpgsql
 immutable
+-- ⚠️ `set search_path` ook hier, al is dit geen `security definer`. De poort
+--    vroeg erom: `definer-aanroepertoets.test.ts` én `hulpfuncties.test.ts`
+--    werden allebei rood op het ontbreken ervan, onafhankelijk van elkaar. De
+--    regel is in dit project niet "definers hebben een search_path" maar "elke
+--    functie heeft er een" — en een functie zonder is een functie waarvan de
+--    aanroepcontext bepaalt welke `substr` hij krijgt.
+set search_path to 'public', 'pg_catalog', 'pg_temp'
 as $fn$
 declare
   v_uit  text := '';
