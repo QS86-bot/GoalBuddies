@@ -66,10 +66,14 @@ const DOELEN_PLAFOND = 200;
 const WEEKPLANSTAPPEN_PLAFOND = 200;
 
 /**
- * De noodgrens van 0200 is `> plafond * 2`, dus een verzoek van precies zoveel
- * rijen glipt er langs. Dat is met opzet de maat hier: het is het grootste
- * verzoek dat de rem níet tegenhoudt, en dus wat één geweigerd verzoek maximaal
- * kan kosten als de policy-conjunct weg is.
+ * De noodgrens van 0200 is `> plafond * 2`. Dat is met opzet de maat hier: het
+ * grootste verzoek dat de rem niet onderbreekt.
+ *
+ * ⚠️ **De rem maakt een geweigerd verzoek niet goedkoop, hij begrenst alleen wat
+ *    het kán kosten.** Hij is `before insert … for each row` en telt óp, dus bij
+ *    401 rijen vuurt hij op rij 401 — als de eerste 400 al geschreven zijn. En
+ *    hij zegt niets over het aantal verzoeken; dat staat als open risico Hoog in
+ *    rij 609 van `docs/ENGINEER-REVIEW.md`.
  */
 const REMGRENS = WEEKPLANSTAPPEN_PLAFOND * 2;
 
@@ -283,8 +287,9 @@ describe.skipIf(!rlsTestsConfigured)('een geweigerde bulk-POST schrijft eerst', 
       // ⚠️⚠️ **Wat de conjunct wél in zijn eentje doet, is de rij niet
       //    schrijven.** De handhaver van 0192 is `after insert`: die weigert
       //    nadat de rijen op schijf staan. De rem van 0200 begrenst dat op
-      //    tweemaal het plafond — `v_n > 400` — dus een verzoek van precies 400
-      //    rijen glipt er langs en kost zijn volle omvang.
+      //    tweemaal het plafond, maar hij telt óp en is `for each row`: bij 401
+      //    rijen vuurt hij op rij 401, als er al 400 staan. Hij begrenst dus wat
+      //    één verzoek kán kosten, niet dát het kost.
       //
       // 📏 Gemeten op 19-09-2026, tien geweigerde verzoeken van 400 rijen door
       //    een gebruiker die al op 200 zat:
@@ -294,6 +299,18 @@ describe.skipIf(!rlsTestsConfigured)('een geweigerde bulk-POST schrijft eerst', 
       //
       //    Allebei de keren geweigerd; alleen de tweede kost schijf, en hij kost
       //    hem opnieuw bij elk volgend verzoek.
+      //
+      // ⚠️⚠️ **Wat deze toets NIET is: een grendel tegen misbruik.** Een
+      //    aanvaller komt nooit in de toestand die hier getoetst wordt. Zijn
+      //    rijen worden geweigerd, dus ze committen nooit, dus zijn teller
+      //    blijft nul en `weekplanstappen_over()` geeft altijd het volle
+      //    plafond. 📏 Gemeten mét de conjunct intact: twintig verzoeken van
+      //    400 rijen vanaf een vers account lieten de tabel met 819.200 bytes
+      //    groeien en nul rijen achter. Dat gat staat als open risico Hoog in
+      //    rij 609 van `docs/ENGINEER-REVIEW.md` en wordt hier niet gedicht.
+      //
+      //    Wat de conjunct wél levert is de nette afhandeling van een
+      //    legitieme herhaling door wie zijn plafond echt gehaald heeft.
       const dave = await createTestUser('bulk-dave');
       const doel = await adminDb()
         .from('goals')
@@ -343,7 +360,8 @@ describe.skipIf(!rlsTestsConfigured)('een geweigerde bulk-POST schrijft eerst', 
       expect(
         groei,
         `de tabel groeide met ${Math.round(groei / 1024)} kB na ${GEWEIGERDE_RONDES} geweigerde ` +
-          `verzoeken; met de conjunct hoort dat nul te zijn (📏 zonder hem: 392 kB heap)`,
+          `verzoeken; met de conjunct hoort dat nul te zijn (📏 zonder hem: minstens 392 kB, ` +
+          `gemeten met dezelfde teller als hier — pg_total_relation_size, dus incl. indexen)`,
       ).toBeLessThan(150 * 1024);
 
       // Assertie 3 — de diagnose ernaast: wélke grendel sprak. 23514 betekent
