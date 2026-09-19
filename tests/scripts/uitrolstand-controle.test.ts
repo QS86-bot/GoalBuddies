@@ -24,6 +24,18 @@ import {
  *    laten.** Een controle die alles meldt, leer je te negeren. Het gat tussen
  *    map en productie is daarvan de belangrijkste — dat is tussen twee
  *    uitrollen de normale toestand.
+ *
+ * IJKING van de laatste toets, opnieuw gedraaid op 19-09-2026 nadat hij de
+ * échte dag ging gebruiken in plaats van `VANDAAG` — want een toets die je
+ * losser maakt, moet bewijzen dat hij niets verloren heeft:
+ *
+ *   A  `gemeten` op 2027-01-01 (in de echte toekomst)  -> **1 rood**
+ *   B  `registerrijen` op 999                          -> **1 rood**
+ *   C  `hoogste` op 0999 (boven de map)                -> **1 rood**
+ *
+ * Alle drie op het échte bestand en teruggerold. De datumtoets betekent dus nog
+ * steeds wat hij zegt; alleen het plafond dat een testconstante op een gemeten
+ * waarde legde, is weg.
  */
 
 /** De map zoals hij er bij deze tests uitziet: drie letterversies inbegrepen. */
@@ -207,8 +219,25 @@ describe('het bestand in deze repo', () => {
     // ⚠️ Dit is de enige test die de échte map leest. Hij dekt de naad tussen
     //    `versiesInMap()` en `beoordeel()`: de rest voert een handgemaakte lijst
     //    in en zou groen blijven als het uitlezen van de map zelf stukging.
+    //
+    // ⚠️⚠️ **De échte dag van vandaag en niet `VANDAAG`, en dat is met QS8-566
+    //    gerepareerd.** Die constante staat op `2026-09-17` en bestaat voor de
+    //    verzonnen standen hierboven: die mogen niet met de dag van uitslag
+    //    veranderen. Maar dit geval leest een **gemeten** bestand, en dan legt
+    //    die constante een plafond op de meting: 📏 een verse `register:controle`
+    //    op 19-09 maakte deze test rood met *"`gemeten` ligt in de toekomst"* —
+    //    niet omdat er iets mis was, maar omdat de meting jónger was dan een
+    //    getal in een testbestand.
+    //
+    //    Dat is de verkeerde kant op: het zou betekenen dat je na elke echte
+    //    uitrol een datum in een test moet bijwerken om de waarheid te mogen
+    //    opschrijven, en dat leert je de rode uitslag wegwerken in plaats van
+    //    te lezen. Met de echte dag blijft de uitslag stabiel — de andere twee
+    //    toetsen in `standfouten()` hangen niet van de datum af — en betekent
+    //    *in de toekomst* weer wat het zegt.
+    const vandaag = new Date().toISOString().slice(0, 10);
     const stand = JSON.parse(readFileSync(STANDBESTAND, 'utf8'));
-    const uitslag = beoordeel(stand, versiesInMap(process.cwd()), VANDAAG);
+    const uitslag = beoordeel(stand, versiesInMap(process.cwd()), vandaag);
     expect(uitslag.fouten).toEqual([]);
   });
 });
