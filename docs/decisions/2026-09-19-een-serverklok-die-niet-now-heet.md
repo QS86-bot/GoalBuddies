@@ -152,3 +152,111 @@ Geen ervan draagt vandaag een dagplafond-venster, dus er lekt niets, en
 `commitments.confirmed_at` bij het invoegen door de client gezet hoort te worden
 is een vraag over een commitment device — domeinregel 5, *Beslisbevoegdheid*
 grens 1 — en dus een eigen issue en geen bijvangst hiervan.
+
+---
+
+## Wat de security-ronde vond, en waarom die sectie er apart staat
+
+De `security-reviewer` (onwrikbare regel 19) vond drie dingen die de eerste versie
+van deze migratie stuk maakten. Twee ervan zijn erger dan het gat waar dit issue
+mee begon, en ze zijn alle drie zelf nagemeten voordat ze verwerkt zijn.
+
+### 1. De bewaking las commentaar als code
+
+`dagplafondvenster_bewaking()` haalde de vensterkolom met `regexp_match` uit
+`prosrc`, en `prosrc` bevat het commentaar. **De eerste treffer wint.**
+
+📏 Nagemeten met een tabel waarvan het échte venster `client_tijd` was — voor
+`authenticated` schrijfbaar — en met één regel erboven in de huisstijl van dit
+project:
+
+```
+-- Bij de meeste tabellen is dat created_at > now() - interval '1 day';
+```
+
+Uitslag vóór de reparatie: `dagplafondvenster_bewaking()` → **nul bezwaren**,
+`tijdstempel_bewaking()` → **nul bezwaren**, terwijl
+`has_column_privilege(authenticated, client_tijd, INSERT)` = `true`. Het
+dagplafond stond volledig open en beide grendels zeiden dat er niets aan de hand
+was.
+
+⚠️⚠️ **De kop van deze migratie waarschuwde daar al voor.** Er stond, over tak 1:
+*een grendel die groen staat omdat hij zijn invoer niet begreep, bewaakt niets.*
+Tak 1 dekte alleen *géén* treffer. De *verkeerde* treffer — het gevaarlijke geval
+— was niet gedekt, en de zin eronder las alsof hij dat wel was.
+
+📏 En dezelfde vorm zette tak 1 helemaal uit: een functie met
+*"We gebruiken hier bewust NIET tel_dagteller( )"* in commentaar telde als
+tellervorm, en een `*_dagplafond`-trigger die **geen enkel venster afdwingt** kwam
+er stil doorheen.
+
+**Dit is erger dan geen bewaking hebben**, want rij 603 van de engineer-agenda
+wordt op grond van deze bewaking afgevinkt — daarna kijkt er ook niemand meer
+met de hand.
+
+### 2. Wat er nu staat, en waarom het een scanner is en geen regex
+
+`code_zonder_commentaar()` knipt commentaar, stringliteralen en dollargeciteerde
+blokken weg vóór de match. Dat is een **scanner** en geen reguliere expressie,
+en dat is een keuze: een streepje-streepje in een string begint geen commentaar,
+en een aanhalingsteken in commentaar begint geen string. Met een regex is dat
+onderscheid niet te maken, en dan verplaats je het gat.
+
+⚠️ **De knip is daarmee zelf een grendel**, en dat is de les van QS8-412 — daar
+at een knip op regelcommentaar alles op ná de dubbele slash van een URL. Hij
+staat daarom los onder toets, met de zes gevallen die een regex niet uit elkaar
+houdt.
+
+Daarnaast: `regexp_matches(… 'g')` in plaats van `regexp_match`. Vindt de
+bewaking meer dan één vensterkolom, dan is dat een **bezwaar** en geen stille
+keuze voor de eerste — want precies dat stil kiezen wás het gat.
+
+📏 Nagemeten na de reparatie: hetzelfde geval geeft nu
+`client_tijd: client mag de vensterkolom schrijven (INSERT voor authenticated)`,
+en de lege rem geeft `vorm niet herkend`.
+
+⚠️ `pg_depend` was hier geen uitweg en dat is gemeten: een plpgsql-lichaam wordt
+bij het aanmaken niet ontleed, dus `begrens_pushtokens` → `tel_dagteller` geeft
+`false`. Tekst is de enige bron die er is; dan moet de tekst wel kloppen.
+
+### 3. Een tak die er was, werkte, en door niets bewaakt werd
+
+📏 Mutatie L zette tak 1b uit — de tak die meer dan één vensterkolom meldt — en
+**de suite bleef groen op elf tests**. Die grendel bewaakte niets.
+
+Dat is niet uit nadenken gekomen maar uit de mutatie, en het is precies waarom
+CLAUDE.md één mutatie per grendel eist in plaats van één mutatie voor de
+controle. De toets is er daarna bij geschreven; met die toets geeft L één rood.
+
+### 4. Drie vormen die `serverklok_default()` miste
+
+📏 `'now'::text::timestamptz` is een **echte klok per rij** — over drie
+transacties met pauzes ertussen drie verschillende waarden, gelijk aan `now()` —
+en komt als `COERCEVIAIO` de parseboom in, zónder `:funcid`. `'now'`, `'today'`,
+`'tomorrow'` en `'yesterday'` delen die vorm.
+
+⚠️ **De grensparagraaf hierboven noemde precies deze knoopvorm en schreef hem als
+veilig af.** Er stond dat `'2020-01-01'::text::timestamptz` "met rust gelaten"
+wordt, en dat klopt — maar het generaliseerde naar een klasse waarvan de
+gevaarlijke helft er ook in zit. **Een gemeten grens die de gevaarlijke helft van
+zijn eigen klasse niet noemt, leest als dekking.** Dat is dezelfde fout als de
+"nul bezwaren" hierboven, een laag hoger.
+
+`COERCEVIAIO` en `:opfuncid` staan er nu bij. De prijs is dat
+`'2020-01-01'::text::timestamptz` nu een vals alarm geeft — strenger dan nodig,
+en dat is de goede kant.
+
+⚠️ **Wat niet te repareren is en daarom als restklasse blijft staan:** een
+functie die liegt over zijn eigen vluchtigheid. Een wrapper met `immutable` erop
+die `clock_timestamp()` teruggeeft heeft `provolatile = 'i'`, en dat is precies
+wat deze functie als constante leest. Dat vangen vraagt het lichaam van elke
+functie volgen, en dat doet deze bewaking niet.
+
+### 5. En de rij die dit issue sloot, telde zelf verkeerd
+
+📏 Rij 603 zei "zes" client-schrijfbare `timestamptz`-kolommen en noemde er vijf.
+Gemeten zijn het er **vijf**: mijn oorspronkelijke meting gaf zeven *rijen*
+(kolom × recht) over vijf distinct kolommen, en ik las het aantal rijen als het
+aantal kolommen. `review:controle` en `docs:controle` vangen dat geen van beide.
+In een project waar 📏-getallen dragend zijn, is een foute telling in de rij die
+je sluit een defect en geen slordigheid.

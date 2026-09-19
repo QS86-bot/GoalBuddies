@@ -49,6 +49,37 @@ import { psql, stackBeschikbaarOfFaal } from './psql-stack';
  *      -> **1 rood**: 'een venster op een kolom die niet op de eigen tabel
  *         staat, is een bezwaar'
  *
+ * En na de security-ronde, die drie gaten vond die deze ijking niet raakte:
+ *
+ *   J  de bewaking leest `prosrc` rauw in plaats van via `code_zonder_commentaar()`
+ *      -> **2 rood**: 'een commentaarregel stuurt de vensterkolom niet' én 'een
+ *         comment dat `tel_dagteller` noemt maakt van een lege rem geen tellervorm'
+ *   K  de stringtak uit de knip
+ *      -> **1 rood**: 'de knip zelf klopt'
+ *   L  tak 1b eruit (meer dan één venster wordt weer een stille eerste-keuze)
+ *      -> **eerst 0 rood**, daarna 1: 'twee vensterkolommen in één rem zijn een
+ *         bezwaar en geen stille keuze'
+ *
+ * ⚠️⚠️ **L is de belangrijkste regel in dit blok.** Die tak was er, hij deed het,
+ *    en géén enkele test raakte hem — de suite bleef groen op elf tests met de
+ *    tak uitgezet. Dat is niet uit nadenken gekomen maar uit de mutatie, en het
+ *    is precies waarom CLAUDE.md één mutatie per grendel eist in plaats van één
+ *    mutatie voor de controle. De toets is er daarna bij geschreven.
+ *
+ * ⚠️⚠️ **En het gat dat J nu bewaakt was ernstiger dan het gat waar dit issue
+ *    mee begon.** De eerste versie van deze bewaking las `prosrc` als platte
+ *    tekst, dus inclusief commentaar. 📏 Gemeten door de security-ronde: één
+ *    regel in de huisstijl van dit project — die een ándere tabel als voorbeeld
+ *    noemt — liet haar `created_at` nakijken in plaats van `client_tijd`, vond
+ *    die dicht, en meldde **nul bezwaren** terwijl het dagplafond volledig
+ *    openstond. `tijdstempel_bewaking()` zei óók niets. Een bewaking die
+ *    groen staat op een open plafond is erger dan geen bewaking, want rij 603
+ *    van de engineer-agenda wordt op grond hiervan afgevinkt.
+ *
+ *    De kop van 0292 wáárschuwde daar al voor — *een grendel die groen staat
+ *    omdat hij zijn invoer niet begreep, bewaakt niets* — en tak 1 dekte alleen
+ *    "geen treffer", niet "de verkeerde treffer".
+ *
  * ⚠️⚠️ **A en B voorspelde ik als 1 rood en ze waren allebei 2, en dát is de
  *    leerzame uitslag.** `todo_items.created_at` en `completions.submitted_at`
  *    dragen allebei een `now()`-default, dus `tijdstempel_bewaking()` — de
@@ -115,6 +146,148 @@ describe.skipIf(!beschikbaar)('het venster van een dagplafond staat niet open', 
   );
 
   it(
+    'een commentaarregel stuurt de vensterkolom niet',
+    async () => {
+      // ⚠️⚠️ **Dit is het gat dat de security-ronde op QS8-558 vond, en het was
+      //    ernstiger dan het gat dat dit issue repareerde.** De bewaking las
+      //    `prosrc` als platte tekst, en `prosrc` bevat commentaar. Eén regel in
+      //    de huisstijl van dit project — die een ándere tabel als voorbeeld
+      //    noemt — liet haar de verkeerde kolom nakijken, en die stond dicht.
+      //    📏 Gemeten vóór de reparatie: **nul bezwaren**, van beide bewakingen,
+      //    terwijl `client_tijd` voor de client te schrijven was en het
+      //    dagplafond dus volledig openstond.
+      const uit = psql(`
+        begin;
+        create table public.proef_comm (id int, user_id uuid,
+          created_at timestamptz not null default now(),
+          client_tijd timestamptz not null);
+        revoke all on public.proef_comm from public, anon, authenticated;
+        grant insert (user_id, client_tijd) on public.proef_comm to authenticated;
+        create function public.begrens_proef_comm() returns trigger language plpgsql as $f$
+        declare n int; begin
+          -- Bij de meeste tabellen is dat created_at > now() - interval '1 day';
+          --    hier hangt het venster aan het tijdstip dat de client meestuurt.
+          select count(*) into n from public.proef_comm
+            where client_tijd > now() - interval '1 day';
+          return null; end $f$;
+        create trigger proef_comm_dagplafond after insert on public.proef_comm
+          for each statement execute function public.begrens_proef_comm();
+        select coalesce(string_agg(venster || ': ' || bezwaar, ' | '), 'NUL BEZWAREN')
+          from dagplafondvenster_bewaking() where tabel = 'proef_comm';
+        rollback;
+      `);
+
+      expect(uit.trim(), 'een comment koos de vensterkolom in plaats van de code').toBe(
+        'client_tijd: client mag de vensterkolom schrijven (INSERT voor authenticated)',
+      );
+    },
+    TEST_TIMEOUT,
+  );
+
+  it(
+    'een comment dat `tel_dagteller` noemt maakt van een lege rem geen tellervorm',
+    async () => {
+      // ⚠️ De spiegelzijde van de test hierboven, en gemeten dezelfde ronde: een
+      //    functie die in commentaar zegt `tel_dagteller()` juist **niet** te
+      //    gebruiken, telde als tellervorm — en dan vuurt tak 1 niet, terwijl er
+      //    helemaal geen venster afgedwongen wordt. 📏 Vóór de reparatie: nul
+      //    bezwaren.
+      const uit = psql(`
+        begin;
+        create table public.proef_teller (id int);
+        revoke all on public.proef_teller from public, anon, authenticated;
+        create function public.begrens_proef_teller() returns trigger language plpgsql as $f$
+        begin
+          -- We gebruiken hier bewust NIET tel_dagteller( ), want deze tabel
+          --    heeft een eigen venster nodig.
+          return null; end $f$;
+        create trigger proef_teller_dagplafond after insert on public.proef_teller
+          for each statement execute function public.begrens_proef_teller();
+        select coalesce(string_agg(bezwaar, ' | '), 'NUL BEZWAREN')
+          from dagplafondvenster_bewaking() where tabel = 'proef_teller';
+        rollback;
+      `);
+
+      expect(uit.trim(), 'een comment praatte een lege rem naar binnen als tellervorm').toBe(
+        'vorm niet herkend: geen vensterkolom en geen tel_dagteller() — niet na te meten',
+      );
+    },
+    TEST_TIMEOUT,
+  );
+
+  it(
+    'twee vensterkolommen in één rem zijn een bezwaar en geen stille keuze',
+    async () => {
+      // ⚠️⚠️ **Dit geval had géén toets en dat bleek uit de ijking, niet uit
+      //    nadenken.** Mutatie L zette deze tak uit en de suite bleef groen op
+      //    elf tests — een grendel die niets bewaakte. De tak bestaat omdat de
+      //    reparatie van het comment-gat anders half is: `regexp_matches(…'g')`
+      //    vindt nu álle treffers, en dan is "welke van de twee draagt het
+      //    plafond" een vraag die de bewaking niet mag beantwoorden door de
+      //    eerste te pakken. Precies dát stil kiezen was het oorspronkelijke gat.
+      const uit = psql(`
+        begin;
+        create table public.proef_twee (id int,
+          created_at timestamptz not null default now(),
+          client_tijd timestamptz not null);
+        revoke all on public.proef_twee from public, anon, authenticated;
+        create function public.begrens_proef_twee() returns trigger language plpgsql as $f$
+        declare n int; begin
+          select count(*) into n from public.proef_twee where created_at > now() - interval '1 day';
+          select count(*) into n from public.proef_twee where client_tijd > now() - interval '1 day';
+          return null; end $f$;
+        create trigger proef_twee_dagplafond after insert on public.proef_twee
+          for each statement execute function public.begrens_proef_twee();
+        select coalesce(string_agg(bezwaar, ' | '), 'NUL BEZWAREN')
+          from dagplafondvenster_bewaking() where tabel = 'proef_twee';
+        rollback;
+      `);
+
+      expect(uit.trim(), 'de bewaking koos stil één van twee vensterkolommen').toBe(
+        'meer dan één vensterkolom gevonden (2) — welke het plafond draagt is niet af te leiden',
+      );
+    },
+    TEST_TIMEOUT,
+  );
+
+  it(
+    'de knip zelf klopt: een string is geen commentaar en andersom',
+    async () => {
+      // ⚠️⚠️ **De knip die een controle scherp houdt, is zelf een grendel**
+      //    (QS8-412, waar een knip op regelcommentaar alles ná de dubbele slash
+      //    van een URL opat). Daarom staat hij hier los onder toets, met de
+      //    gevallen die een regex niet uit elkaar houdt: streepje-streepje
+      //    bínnen een string begint geen commentaar, een aanhalingsteken bínnen
+      //    commentaar begint geen string, en blokcommentaar mag in Postgres
+      //    nesten.
+      const uit = psql(`
+        select
+          -- code blijft staan
+          (public.code_zonder_commentaar('a.created_at > now()') ~ 'created_at')::text || ' ' ||
+          -- regelcommentaar gaat weg
+          (public.code_zonder_commentaar($x$-- x.created_at > now()$x$ || chr(10) || $x$b$x$)
+             ~ 'created_at')::text || ' ' ||
+          -- blokcommentaar gaat weg, ook genest
+          (public.code_zonder_commentaar('/* a /* b.created_at */ c */ d') ~ 'created_at')::text || ' ' ||
+          -- een string gaat weg
+          (public.code_zonder_commentaar($x$ 'p.created_at' $x$) ~ 'created_at')::text || ' ' ||
+          -- streepje-streepje bínnen een string begint geen commentaar: de code
+          -- erna hoort te blijven staan
+          (public.code_zonder_commentaar($x$ '-- ' || q.created_at $x$) ~ 'created_at')::text || ' ' ||
+          -- een aanhalingsteken in commentaar begint geen string: de regel erna blijft
+          (public.code_zonder_commentaar($x$-- het 'venster$x$ || chr(10) || $x$ r.created_at$x$)
+             ~ 'created_at')::text
+      `);
+
+      // code, comment, blok, string, string-met-streepjes, comment-met-quote
+      expect(uit.trim(), 'de knip haalt code weg of laat commentaar staan').toBe(
+        'true false false false true true',
+      );
+    },
+    TEST_TIMEOUT,
+  );
+
+  it(
     'een venster op een kolom die niet op de eigen tabel staat, is een bezwaar',
     async () => {
       // ⚠️⚠️ **Deze tak is er zowel om iets te melden als om niet om te vallen.**
@@ -176,22 +349,27 @@ describe.skipIf(!beschikbaar)('het venster van een dagplafond staat niet open', 
       //    maar twee triggers vindt ook groen staan op de test hierboven — en
       //    dat is de vorm waar dit hele bestand tegen bestaat.
       const uit = psql(`
-        select count(*) filter (where p.prosrc ~ 'now\\(\\) - interval')::text || ' ' ||
-               count(*) filter (where p.prosrc like '%tel_dagteller(%')::text || ' ' ||
-               count(*)::text
-        from pg_trigger t
-        join pg_class c on c.oid = t.tgrelid
-        join pg_proc p on p.oid = t.tgfoid
-        where c.relnamespace = 'public'::regnamespace
-          and not t.tgisinternal and t.tgname like '%dagplafond%'
+        with vorm as (
+          select (public.code_zonder_commentaar(p.prosrc) ~ 'now\\(\\) - interval') as heeft_venster,
+                 (public.code_zonder_commentaar(p.prosrc) like '%tel_dagteller(%') as heeft_teller
+          from pg_trigger t
+          join pg_class c on c.oid = t.tgrelid
+          join pg_proc p on p.oid = t.tgfoid
+          where c.relnamespace = 'public'::regnamespace
+            and not t.tgisinternal and t.tgname like '%dagplafond%'
+        )
+        select count(*) filter (where heeft_venster and heeft_teller)::text || ' ' ||
+               count(*) filter (where not heeft_venster and not heeft_teller)::text
+        from vorm
       `);
 
-      const getallen = uit.trim().split(' ').map(Number);
-      const venster = getallen.at(0) ?? -1;
-      const teller = getallen.at(1) ?? -1;
-      const totaal = getallen.at(2) ?? -1;
-
-      expect(venster + teller, `${venster} + ${teller} dekt niet alle ${totaal}`).toBe(totaal);
+      // ⚠️⚠️ **Een som is geen partitie, en dat verschil is gemeten.** Hier stond
+      //    `venster + teller === totaal`, en die middelt uit: één trigger die
+      //    béíde vormen draagt en één die geen van beide draagt geven samen
+      //    weer het totaal, en de test blijft groen op de naam die hij draagt.
+      //    Gevonden in de security-ronde op dit issue. Daarom telt hij nu de
+      //    triggers die in **precies één** vorm vallen.
+      expect(uit.trim(), 'niet elke dagplafond-trigger valt in precies één vorm').toBe('0 0');
     },
     TEST_TIMEOUT,
   );

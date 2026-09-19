@@ -188,12 +188,6 @@ export const BEWAAKT_BUITEN_DE_APP = {
     'dat op zo\'n kolom rekent is dan te omzeilen. Aanroeper is ' +
     '`tests/rls/tijdstempels.test.ts`. Bewust niet voor `authenticated`: de ' +
     'uitkomst is een kaart van het schema.',
-  serverklok_default:
-    'Bepaalt uit de parseboom van een kolomdefault of de server de waarde bij ' +
-    'het invoegen zet (0292). Aanroeper is `tijdstempel_bewaking()`; hij staat ' +
-    'apart omdat `CURRENT_TIMESTAMP` een eigen knooptype is en dus een andere ' +
-    'tak vraagt dan een functieaanroep — dat los toetsbaar houden was de helft ' +
-    'van QS8-558.',
   dagplafondvenster_bewaking:
     'Zoekt per *_dagplafond-trigger de kolom op waar zijn etmaalvenster op rust ' +
     'en meldt het zodra anon of authenticated die kan schrijven (0292). De ' +

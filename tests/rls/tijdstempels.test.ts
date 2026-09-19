@@ -116,9 +116,15 @@ describe.skipIf(!beschikbaar)('de client zet geen servertijdstempel', () => {
       //    hierboven ook — en leert je hem uitzetten. `constante` moet er
       //    dus juist níet uit komen.
       //
-      // ⚠️ De kolommen krijgen `authenticated` een INSERT-recht, want zonder dat
-      //    heeft de bewaking niets te melden: ze zoekt een serverklok die de
-      //    client kan schrijven, en dat zijn twee eisen.
+      // ⚠️⚠️ **De `grant` hieronder is overbodig en staat er met die reden.**
+      //    Hier stond dat hij nodig was omdat de bewaking twee eisen stelt. Dat
+      //    is onwaar en het is nagemeten: `pg_default_acl` geeft `authenticated`
+      //    op élke nieuwe tabel in `public` al `arwdx`, dus een verse tabel is
+      //    meteen schrijfbaar en de bewaking meldt hem ook zónder deze regel.
+      //    Gevonden in de security-ronde op QS8-558. Hij blijft staan zodat de
+      //    opstelling niet stil verandert als die standaardrechten ooit smaller
+      //    worden — maar wie het oude commentaar geloofde, dacht dat een verse
+      //    tabel dicht stond, en dat is de gevaarlijke kant.
       const uit = psql(`
         begin;
         create table public.proef_serverklok (

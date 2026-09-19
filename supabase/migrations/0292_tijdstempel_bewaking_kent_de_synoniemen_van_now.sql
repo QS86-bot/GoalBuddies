@@ -74,14 +74,31 @@ begin;
 --    default current_timestamp` er nog steeds doorheen — precies de kolom waar
 --    dit issue mee begon.
 --
--- ⚠️ **De gemeten grens van deze vorm, en hij valt de veilige kant op.**
---    📏 `(date '2020-01-01')::timestamptz` wordt hier als serverklok geteld,
---    want `date → timestamptz` is `stable`: de uitkomst hangt van `TimeZone` af.
---    Dat is een constant moment en geen klok, dus dit is een vals alarm. Het
---    eist dan dat die kolom voor de client dicht staat, en dat is strenger dan
---    nodig in plaats van losser. 📏 `'2020-01-01'::text::timestamptz` en
---    `'epoch'::timestamptz` worden wél met rust gelaten. Geen van de drie vormen
---    komt in dit schema voor.
+-- ⚠️ **De gemeten grenzen van deze vorm, en de meeste vallen de veilige kant op.**
+--    📏 `(date '2020-01-01')::timestamptz` en `'2020-01-01'::text::timestamptz`
+--    worden als serverklok geteld terwijl ze een constant moment zijn: de eerste
+--    omdat `date → timestamptz` `stable` is, de tweede omdat hij dezelfde
+--    `COERCEVIAIO`-vorm draagt als `'now'::text::timestamptz`. Dat zijn valse
+--    alarmen, en ze eisen dan dat zo'n kolom dicht staat — strenger dan nodig in
+--    plaats van losser. 📏 `'epoch'::timestamptz` wordt wél met rust gelaten
+--    (Postgres vouwt hem tot een constante). Geen van de drie komt in dit schema
+--    voor.
+--
+-- ⚠️⚠️ **En één gat valt de onveilige kant op, dus het staat hier en niet
+--    weggeschreven.** Een functie die liegt over zijn eigen vluchtigheid — een
+--    wrapper die als `immutable` gemarkeerd is maar `clock_timestamp()`
+--    teruggeeft — wordt **niet** gezien: 📏 `provolatile` is dan `i`, en dat is
+--    precies wat deze functie als "constante" leest. Dat is niet te repareren
+--    zonder het lichaam van elke functie te volgen, en het staat daarom als
+--    gemeten restklasse in het beslisdocument in plaats van als een belofte die
+--    deze functie niet waarmaakt.
+--
+--    ⚠️ Dat voorbeeld stond hier eerst als uitgeschreven `create function` in
+--    commentaar, en 📏 `keten:controle` las het als een échte functie en werd
+--    rood op een functie die nergens bestaat. Dat is dezelfde klasse als het gat
+--    dat de security-ronde in sectie 3a vond, één laag hoger: een controle die
+--    brontekst leest en commentaar niet wegknipt. Zie de rij van 19-09-2026 in
+--    `docs/ENGINEER-REVIEW.md`.
 create or replace function public.serverklok_default(p_tabel oid, p_kolomnummer smallint)
 returns boolean
 language sql
@@ -97,11 +114,20 @@ as $$
       and (
         -- CURRENT_TIMESTAMP en broers: een eigen knooptype, geen :funcid.
         d.adbin::text ~ 'SQLVALUEFUNCTION'
+        -- ⚠️ **`'now'::text::timestamptz` is een échte klok per rij** en komt als
+        --    `COERCEVIAIO` de boom in, zónder `:funcid`. 📏 Gemeten over drie
+        --    transacties met pauzes ertussen: drie verschillende waarden, gelijk
+        --    aan `now()`. `'now'`, `'today'`, `'tomorrow'` en `'yesterday'`
+        --    delen die knoopvorm. Dit is dus geen constante-cast maar de klasse
+        --    die deze migratie juist zegt te dichten.
+        or d.adbin::text ~ 'COERCEVIAIO'
         -- now(), transaction_timestamp(), clock_timestamp(), een eigen functie:
         -- alles wat niet immutable is, wordt bij het invoegen bepaald.
+        -- ⚠️ `:opfuncid` staat erbij omdat een operator zijn functie onder díe
+        --    veldnaam draagt; `:funcid` alleen ziet een volatiele operator niet.
         or exists (
           select 1
-          from regexp_matches(d.adbin::text, ':funcid (\d+)', 'g') m
+          from regexp_matches(d.adbin::text, ':(?:op)?funcid (\d+)', 'g') m
           join pg_proc p on p.oid = m[1]::oid
           where p.provolatile in ('s', 'v')
         )
@@ -180,7 +206,120 @@ comment on function public.tijdstempel_bewaking() is
 revoke execute on function public.tijdstempel_bewaking() from public, anon, authenticated;
 
 -- ---------------------------------------------------------------------------
--- 3. De belofte zelf: het venster van een dagplafond staat niet open
+-- 3a. Commentaar is geen code, en dat moest een grendel worden
+-- ---------------------------------------------------------------------------
+--
+-- ⚠️⚠️ **Dit is er bij gekomen na de security-ronde op dit issue, en het gat dat
+--    hij vond was ernstiger dan het gat dat dit issue repareerde.**
+--    `dagplafondvenster_bewaking()` las `prosrc` als platte tekst, en `prosrc`
+--    bevat het commentaar. 📏 Gemeten met een tabel waarvan het échte venster
+--    `client_tijd` was (voor de client schrijfbaar) en met één commentaarregel
+--    erboven in de huisstijl van dit project — *"Bij de meeste tabellen is dat
+--    created_at > now() - interval '1 day'"* — koos de bewaking `created_at`,
+--    vond die dicht, en meldde **nul bezwaren**. `tijdstempel_bewaking()` ook.
+--    Het dagplafond stond volledig open.
+--
+--    📏 En dezelfde vorm zette tak 1 uit: een functie met *"We gebruiken hier
+--    bewust NIET tel_dagteller( )"* in commentaar telde als tellervorm en kwam
+--    er stil doorheen, terwijl hij géén venster afdwong.
+--
+-- ⚠️ **Dat is precies waar de kop van deze migratie voor waarschuwt**, en het
+--    stond er al in: *een grendel die groen staat omdat hij zijn invoer niet
+--    begreep, bewaakt niets.* Tak 1 dekte "geen treffer" en niet "de verkeerde
+--    treffer", en dat tweede is het gevaarlijke geval.
+--
+-- ⚠️⚠️ **De knip die een controle scherp houdt, is zelf een grendel** (QS8-412,
+--    waar een knip op regelcommentaar alles ná de dubbele slash van een URL
+--    opat). Daarom is dit een scanner en geen reguliere expressie: een streepje-
+--    streepje in een string begint geen commentaar, en een aanhalingsteken in
+--    commentaar begint geen string. Met een regex is dat onderscheid niet te
+--    maken, en dan verplaats je het gat in plaats van het te dichten. Zijn eigen
+--    ijking staat in `tests/rls/dagplafondvenster.test.ts`.
+--
+-- ⚠️ **`pg_depend` is hier geen alternatief, en dat is nagemeten.** Een
+--    plpgsql-lichaam wordt bij het aanmaken niet ontleed, dus er staat geen
+--    afhankelijkheid vast. 📏 `begrens_pushtokens` → `tel_dagteller`: `false`.
+--    Tekst is de enige bron die er is; dan moet de tekst wel kloppen.
+create or replace function public.code_zonder_commentaar(p_bron text)
+returns text
+language plpgsql
+immutable
+as $fn$
+declare
+  v_uit  text := '';
+  v_i    integer := 1;
+  v_n    integer := length(p_bron);
+  v_twee text;
+  v_merk text;
+  v_eind integer;
+  v_diep integer;
+begin
+  while v_i <= v_n loop
+    v_twee := substr(p_bron, v_i, 2);
+
+    if v_twee = '--' then
+      -- regelcommentaar: tot de regelovergang, die zelf blijft staan
+      v_eind := position(E'\n' in substr(p_bron, v_i));
+      if v_eind = 0 then exit; end if;
+      v_uit := v_uit || ' ' || E'\n';
+      v_i := v_i + v_eind;
+
+    elsif v_twee = '/*' then
+      -- blokcommentaar, en in Postgres mag dat nesten
+      v_diep := 1;
+      v_i := v_i + 2;
+      while v_i <= v_n and v_diep > 0 loop
+        v_twee := substr(p_bron, v_i, 2);
+        if v_twee = '/*' then v_diep := v_diep + 1; v_i := v_i + 2;
+        elsif v_twee = '*/' then v_diep := v_diep - 1; v_i := v_i + 2;
+        else v_i := v_i + 1;
+        end if;
+      end loop;
+      v_uit := v_uit || ' ';
+
+    elsif substr(p_bron, v_i, 1) = $q$'$q$ then
+      -- string: twee aanhalingstekens is een ontsnapt teken en sluit hem niet
+      v_i := v_i + 1;
+      while v_i <= v_n loop
+        if substr(p_bron, v_i, 1) = $q$'$q$ then
+          if substr(p_bron, v_i + 1, 1) = $q$'$q$ then v_i := v_i + 2;
+          else v_i := v_i + 1; exit;
+          end if;
+        else v_i := v_i + 1;
+        end if;
+      end loop;
+      v_uit := v_uit || ' ';
+
+    else
+      -- dollarhaakjes: $$ of $naam$, tot dezelfde merker terugkomt
+      v_merk := (regexp_match(substr(p_bron, v_i), '^[$][A-Za-z_][A-Za-z0-9_]*[$]|^[$][$]'))[1];
+      if v_merk is not null then
+        v_eind := position(v_merk in substr(p_bron, v_i + length(v_merk)));
+        if v_eind = 0 then exit; end if;
+        v_uit := v_uit || ' ';
+        v_i := v_i + length(v_merk) + v_eind - 1 + length(v_merk);
+      else
+        v_uit := v_uit || substr(p_bron, v_i, 1);
+        v_i := v_i + 1;
+      end if;
+    end if;
+  end loop;
+
+  return v_uit;
+end
+$fn$;
+
+comment on function public.code_zonder_commentaar(text) is
+  'Haalt commentaar, stringliteralen en dollargeciteerde blokken uit een '
+  'functielichaam, zodat een controle die dat lichaam leest niet op een zin in '
+  'een comment afgaat. Een scanner en geen regex: streepje-streepje in een '
+  'string begint geen commentaar en een aanhalingsteken in commentaar begint '
+  'geen string (QS8-558, na de security-ronde).';
+
+revoke execute on function public.code_zonder_commentaar(text) from public, anon, authenticated;
+
+-- ---------------------------------------------------------------------------
+-- 3b. De belofte zelf: het venster van een dagplafond staat niet open
 -- ---------------------------------------------------------------------------
 --
 -- ⚠️⚠️ **Waarom dit naast `tijdstempel_bewaking()` staat en er niet in valt.**
@@ -221,16 +360,24 @@ as $$
            c.oid as tabeloid,
            t.tgname::text as trig,
            p.proname::text as fn,
-           -- ⚠️ De alias ervoor wordt weggeknipt: de functies schrijven `m.created_at`,
-           --    `c.submitted_at`, `l.linked_at`. Wat telt is de kolomnaam.
-           (regexp_match(p.prosrc, '(?:[A-Za-z0-9_]+\.)?([A-Za-z0-9_]+)\s*>\s*now\(\)\s*-\s*interval'))[1] as kolom,
-           (p.prosrc like '%tel_dagteller(%') as via_teller
+           public.code_zonder_commentaar(p.prosrc) as code
     from pg_trigger t
     join pg_class c on c.oid = t.tgrelid
     join pg_proc p on p.oid = t.tgfoid
     where c.relnamespace = 'public'::regnamespace
       and not t.tgisinternal
       and t.tgname like '%dagplafond%'
+  ),
+  vensters as (
+    -- ⚠️ `regexp_matches(… 'g')` en niet `regexp_match`: **alle** treffers, niet
+    --    de eerste. De alias ervoor wordt weggeknipt — de functies schrijven
+    --    `m.created_at`, `c.submitted_at`, `l.linked_at`.
+    select p.tabel, p.trig, count(distinct m[1]) as aantal, min(m[1]) as kolom
+    from plafonds p
+    cross join lateral regexp_matches(
+      p.code, '(?:[A-Za-z0-9_]+\.)?([A-Za-z0-9_]+)\s*>\s*now\(\)\s*-\s*interval', 'g'
+    ) m
+    group by p.tabel, p.trig
   ),
   bestaat as (
     -- ⚠️⚠️ **Het kolomnúmmer en niet de kolomnaam.**
@@ -241,38 +388,47 @@ as $$
     --    de vorm die ze hoort te melden.
     --
     -- ⚠️ **En hier hoort de meting bij te staan in plaats van de stelligheid.**
-    --    📏 De vorm met de naam plus een `kolom_bestaat`-voorwaarde ernaast is
-    --    hierop uitgeprobeerd — een `*_dagplafond`-trigger op een tabel zonder
-    --    de kolom waar zijn venster op staat — en die **gaf geen fout**: nul
-    --    rijen, netjes. De planner evalueerde de guard eerst. Dit is dus geen
-    --    reparatie van een gemeten omval maar het weghalen van een afhankelijkheid
-    --    van iets dat SQL niet belooft: de volgorde van `where`-clausules ligt
-    --    niet vast, en een grendel die op de planner van vandaag steunt, is een
-    --    grendel waarvan niemand merkt wanneer hij losraakt.
-    --
-    --    Met de overload op `attnum` is de vraag niet meer te stellen: dat nummer
-    --    komt uit deze join, dus er wordt nooit naar een kolom gevraagd die er
-    --    niet is. 📏 Geijkt: dezelfde trigger geeft nu 'vensterkolom staat niet
-    --    op de tabel van deze trigger'.
-    select p.*, a.attnum as kolomnummer
+    --    📏 De vorm met de naam plus een guard-voorwaarde ernaast is hierop
+    --    uitgeprobeerd en gaf **geen** fout: nul rijen, netjes. De planner
+    --    evalueerde de guard eerst. Dit is dus geen reparatie van een gemeten
+    --    omval maar het weghalen van een afhankelijkheid van iets dat SQL niet
+    --    belooft — de volgorde van `where`-clausules ligt niet vast, en een
+    --    grendel die op de planner van vandaag steunt is een grendel waarvan
+    --    niemand merkt wanneer hij losraakt.
+    select p.tabel, p.tabeloid, p.trig, p.fn,
+           v.kolom, coalesce(v.aantal, 0) as aantal_vensters,
+           (p.code like '%tel_dagteller(%') as via_teller,
+           a.attnum as kolomnummer
     from plafonds p
+    left join vensters v on v.tabel = p.tabel and v.trig = p.trig
     left join pg_attribute a
-      on a.attrelid = p.tabeloid and a.attname = p.kolom
+      on a.attrelid = p.tabeloid and a.attname = v.kolom
      and a.attnum > 0 and not a.attisdropped
   )
   -- 1. Onleesbare vorm: geen vensterkolom en geen tellertabel.
   select b.tabel, b.trig, b.fn, '-',
          'vorm niet herkend: geen vensterkolom en geen tel_dagteller() — niet na te meten'
   from bestaat b
-  where b.kolom is null and not b.via_teller
+  where b.aantal_vensters = 0 and not b.via_teller
 
   union all
 
-  -- 2. Wel een vensterkolom gevonden, maar niet op de tabel van de trigger.
+  -- 1b. Méér dan één vensterkolom: dan is "welke draagt het plafond" een keuze,
+  --     en een stille keuze voor de eerste is precies het gat van de
+  --     security-ronde. Dit is een bezwaar en geen sortering.
+  select b.tabel, b.trig, b.fn, b.kolom,
+         'meer dan één vensterkolom gevonden (' || b.aantal_vensters ||
+         ') — welke het plafond draagt is niet af te leiden'
+  from bestaat b
+  where b.aantal_vensters > 1
+
+  union all
+
+  -- 2. Wel één vensterkolom, maar niet op de tabel van de trigger.
   select b.tabel, b.trig, b.fn, b.kolom,
          'vensterkolom staat niet op de tabel van deze trigger — niet na te meten'
   from bestaat b
-  where b.kolom is not null and b.kolomnummer is null
+  where b.aantal_vensters = 1 and b.kolomnummer is null
 
   union all
 
@@ -282,7 +438,8 @@ as $$
   from bestaat b
   cross join (values ('anon'), ('authenticated')) as rol(naam)
   cross join (values ('INSERT'), ('UPDATE')) as r(recht)
-  where b.kolomnummer is not null
+  where b.aantal_vensters = 1
+    and b.kolomnummer is not null
     and has_column_privilege(rol.naam, b.tabeloid, b.kolomnummer, r.recht)
 
   union all
