@@ -6,7 +6,6 @@ import { createClient } from 'jsr:@supabase/supabase-js@2';
 //    de job 's nachts stilvalt.
 import { closableUserCycle, userCycle } from '../_shared/time/cycle.ts';
 import type { Weekday } from '../_shared/time/types.ts';
-import { localDateIn } from '../_shared/time/zoned.ts';
 import { meld } from '../_shared/melden.ts';
 import { rijen } from '../_shared/bladeren/index.ts';
 import { metCors } from '../_shared/cors.ts';
@@ -416,7 +415,7 @@ async function verwerkAlleProfielen(
       continue;
     }
 
-    verschuldigd += await wikkelStraffenAf(db, profiel, nu);
+    verschuldigd += await wikkelStraffenAf(db, profiel);
 
     const afgesloten = await sluitVerstrekenWekenAf(db, profiel, afsluitbaar.startDate);
     if (afgesloten === null) continue;
@@ -840,35 +839,41 @@ async function afsluitbareCyclus(profiel: Profiel, nu: Date) {
  *
  * ⚠️ Een mislukte aanroep telt nul en stopt de ronde niet, zoals hiervoor.
  */
-async function wikkelStraffenAf(db: Db, profiel: Profiel, nu: Date): Promise<number> {
+async function wikkelStraffenAf(db: Db, profiel: Profiel): Promise<number> {
   // -----------------------------------------------------------------------
   // Straffen die verschuldigd worden — QS8-84, migratie 0057
   // -----------------------------------------------------------------------
   //
-  // ⚠️ **Hier, en niet in SQL, omdat de datum van de gebruiker is.** Een straf
-  //    treedt in werking zodra zijn streefdatum verstreken is, en "verstreken"
-  //    is een uitspraak in de tijdzone van de eigenaar (domeinregel 2). De
-  //    functie in de database vergelijkt alleen; de datum komt uit
-  //    `shared/time` (correctheidsregel 7). Zou `maak_straffen_verschuldigd()`
-  //    zelf `current_date` gebruiken, dan gaat de straf voor iemand in Auckland
-  //    een dag te vroeg af — en te vroeg is precies het enige dat hier niet mag.
+  // ⚠️⚠️ **Hier stond: "hier, en niet in SQL, omdat de datum van de gebruiker
+  //    is". Die regel is met migratie 0294 vervallen** — QS8-548. Deze aanroep
+  //    stuurt geen datum meer mee, en dat is het hele issue.
   //
-  // ⚠️⚠️ **Die reden draagt sinds migratie 0290 nog één regel van die functie en
-  //    niet meer de functie** — QS8-533. `p_vandaag` beantwoordt daar alleen nog
-  //    *is de streefdatum verstreken*. Het zevendaagse schild eromheen — houdt
-  //    een open uitstelverzoek deze straf nog tegen — meet in SQL aan
-  //    `doeldatum()`, de zone die bij het aangaan bevroren is (`commitments.tz`,
-  //    0280). Dat is met opzet een andere klok: 📏 `profiles.tz` staat in de
-  //    UPDATE-kolomgrant van `authenticated`, dus een schild dat aan déze datum
-  //    meet, wordt opgerekt door degene die het beschermt.
+  //    De oude redenering was: een straf treedt in werking zodra zijn
+  //    streefdatum verstreken is, "verstreken" is een uitspraak in de tijdzone
+  //    van de eigenaar (domeinregel 2), dus de datum hoort uit `shared/time` te
+  //    komen en niet uit `current_date`. Wat daar overheen gekeken werd: 📏
+  //    `profiles.tz` staat in de UPDATE-kolomgrant van `authenticated`, dus dat
+  //    is niet alleen de tijdzone *van* de gebruiker maar ook een knop *voor* de
+  //    gebruiker. Gemeten: met de zone westwaarts kocht een `PATCH` een dag
+  //    uitstel op een straf, zonder uitstelverzoek.
   //
-  // ⚠️ **En de regel die overblijft heeft dezelfde vraag openstaan** als
-  //    **QS8-548**, mét meting: een sprong naar het westen stelt het verschuldigd
-  //    worden zelf een dag uit. De reden hierboven is daar een argument tégen —
-  //    "te vroeg is precies het enige dat hier niet mag" — maar hij gaat over een
-  //    sprong naar het oosten en zwijgt over een naar het westen. Dat is grens 1
-  //    van de *Beslisbevoegdheid* en dus een besluit van Quinten, niet iets om en
-  //    passant mee te nemen.
+  // ⚠️ **Wat er van de oude reden overeind blijft, en waarom dat geen tegenspraak
+  //    is.** "Te vroeg mag niet" gold tegenover `current_date` — de serverdatum
+  //    in UTC, die met niemand te maken heeft. `doeldatum()` is geen serverklok
+  //    maar de zone van de gebruiker zélf, bevroren op het moment dat hij zijn
+  //    straf aanging (`commitments.tz`, 0280). De datum is dus nog steeds van de
+  //    gebruiker; hij is alleen niet meer achteraf te verzetten.
+  //
+  // ⚠️ **De prijs staat in migratie 0294 en is gemeten, niet weggeschreven:**
+  //    wie eerlijk naar het westen verhuist krijgt zijn straf tot een dag eerder
+  //    dan zijn nieuwe kalender zegt. Besluit van Quinten (grens 1), 19-09-2026.
+  //
+  // ⚠️ **Gevolg: deze functie heeft `nu` niet meer nodig en draagt hem niet
+  //    meer, en `localDateIn` is uit de imports van dit bestand verdwenen.** Dat
+  //    is geen opruimwerk maar dezelfde grendel als het weghalen van
+  //    `p_vandaag`: een `nu` dat nergens meer gelezen wordt, is de haak waar de
+  //    volgende schrijver een datum aan hangt. 📏 `deno lint` meldde de
+  //    ongebruikte import binnen één run — `npm run edge:types:controle`.
   //
   // ⚠️ **Staat vóór het weekdoelenwerk en is er volledig los van.** Domeinregel
   //    11 en QS8-84 criterium 2: geen enkele gemiste week zet een straf in
@@ -883,7 +888,6 @@ async function wikkelStraffenAf(db: Db, profiel: Profiel, nu: Date): Promise<num
   //    tweede run op hetzelfde uur vindt niets meer.
   const { data: straffen, error: strafFout } = await db.rpc('maak_straffen_verschuldigd', {
     p_owner_id: profiel.id,
-    p_vandaag: localDateIn(profiel.tz, nu),
   });
 
   if (strafFout) {

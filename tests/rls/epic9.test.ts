@@ -392,7 +392,6 @@ describe.skipIf(!rlsTestsConfigured)('EPIC 9 — commitment device', () => {
 
         await adminDb().rpc('maak_straffen_verschuldigd', {
           p_owner_id: f.alice.id,
-          p_vandaag: vandaag(),
         });
 
         expect(await statusVan(f.strafOpTijdId)).toBe('set');
@@ -405,7 +404,6 @@ describe.skipIf(!rlsTestsConfigured)('EPIC 9 — commitment device', () => {
       async () => {
         const eerste = await adminDb().rpc('maak_straffen_verschuldigd', {
           p_owner_id: f.alice.id,
-          p_vandaag: vandaag(),
         });
         if (eerste.error) throw new Error(`verschuldigd maken: ${eerste.error.message}`);
 
@@ -415,7 +413,6 @@ describe.skipIf(!rlsTestsConfigured)('EPIC 9 — commitment device', () => {
         // rollover draait elk uur — verandert niets en plaatst geen tweede bericht.
         const tweede = await adminDb().rpc('maak_straffen_verschuldigd', {
           p_owner_id: f.alice.id,
-          p_vandaag: vandaag(),
         });
         if (tweede.error) throw new Error(`tweede run: ${tweede.error.message}`);
         expect(tweede.data).toBe(0);
@@ -715,7 +712,6 @@ describe.skipIf(!rlsTestsConfigured)('EPIC 9 — commitment device', () => {
 
         await adminDb().rpc('maak_straffen_verschuldigd', {
           p_owner_id: f.alice.id,
-          p_vandaag: vandaag(),
         });
 
         const laat = await f.alice.db.rpc('verwijder_doel', { p_goal_id: tweede.data.id });
@@ -740,7 +736,6 @@ describe.skipIf(!rlsTestsConfigured)('EPIC 9 — commitment device', () => {
 
         await adminDb().rpc('maak_straffen_verschuldigd', {
           p_owner_id: f.alice.id,
-          p_vandaag: vandaag(),
         });
 
         expect(await statusVan(f.strafOpTijdId)).toBe('cancelled');

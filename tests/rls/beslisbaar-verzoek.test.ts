@@ -332,7 +332,6 @@ describe.skipIf(!rlsTestsConfigured)('een verzoek dat niemand kan beslissen', ()
     async function rollover(): Promise<void> {
       const uitkomst = await adminDb().rpc('maak_straffen_verschuldigd', {
         p_owner_id: w.alice.id,
-        p_vandaag: w.vandaag,
       });
       if (uitkomst.error) throw new Error(`rollover: ${uitkomst.error.message}`);
     }

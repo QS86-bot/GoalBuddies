@@ -196,7 +196,13 @@ const REGISTER = new Map([
     'maak_straffen_verschuldigd',
     '`authenticated` mag hem niet aanroepen — gemeten: `anon=false auth=false service=true`. De ' +
       'grant ís hier de grendel, en die bewaakt `tests/rls/functiegrants.test.ts` (0115). Enige ' +
-      'aanroeper is de rollover-functie, die als `service_role` draait.',
+      'aanroeper is de rollover-functie, die als `service_role` draait. ' +
+      '⚠️ Sinds 0294 (QS8-548) zijn er twéé handtekeningen: `(uuid)` doet het werk en is de ' +
+      'definer, `(uuid, date)` is een afgeschreven `security invoker` wrapper voor de gedeployde ' +
+      'rollover — die roept juist die tweede aan tot hij opnieuw uitgerold is (QS8-559). Beide ' +
+      'dragen dezelfde grant, en `tests/rls/de-afgeschreven-wrapper.test.ts` legt dat vast. ' +
+      '⚠️ Dit register sleutelt op naam en niet op handtekening, dus een tweede vorm valt hier ' +
+      'niet vanzelf om; die zin staat er zodat de volgende lezer dat weet.',
   ],
   [
     'wikkel_commitments_af',
