@@ -156,13 +156,19 @@ describe('de verschijning wordt pas genoteerd als de melding de poort haalt', ()
   });
 
   it('roept metHeldenstem alleen vanuit een functie aan', () => {
-    // ⚠️ Vijf meldingsoorten, dus vijf thunks — plus de definitie. Elke aanroep
+    // ⚠️ Zes meldingsoorten, dus zes thunks — plus de definitie. Elke aanroep
     //    die niet in een `() =>` zit, staat weer vóór de poort.
+    //
+    // ⚠️⚠️ **Vijf werd zes met QS8-321** (`commitment_reverted`, sectie 6), en
+    //    deze toets deed precies waarvoor hij bestaat: het getal staat er met
+    //    opzet hard in, zodat een nieuwe soort hierlangs moet in plaats van
+    //    vanzelf mee te groeien. De verhouding is wat telt — élke aanroep op
+    //    één na zit in een thunk, en die ene is de definitie zelf.
     const aanroepen = JOB.match(/metHeldenstem\(/g) ?? [];
     const luie = JOB.match(/=>\s*\n?\s*metHeldenstem\(|=>\s*\{[\s\S]{0,400}?metHeldenstem\(/g) ?? [];
 
-    expect(aanroepen.length, 'gedefinieerd plus vijf soorten').toBe(6);
-    expect(luie.length, 'elke aanroep zit in een thunk').toBe(5);
+    expect(aanroepen.length, 'gedefinieerd plus zes soorten').toBe(7);
+    expect(luie.length, 'elke aanroep zit in een thunk').toBe(6);
   });
 
   it('laat stuur() de tekst pas na de poort maken', () => {
