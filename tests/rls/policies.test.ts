@@ -2185,7 +2185,12 @@ describe.skipIf(!rlsTestsConfigured)('RLS-policies met echte JWTs', () => {
             'activiteit terugzetten',
           );
 
-          mustOk(await admin.rpc('slaap_stille_groepen', { p_dagen: 30 }), 'groepen laten slapen');
+          // ⚠️ `p_group_ids` is geen versiering: zonder grens betekent NULL "alle
+          //    groepen", ook die van een suite die hiernaast draait (QS8-577).
+          mustOk(
+            await admin.rpc('slaap_stille_groepen', { p_dagen: 30, p_group_ids: [stille.id] }),
+            'groepen laten slapen',
+          );
 
           const geslapen = await admin
             .from('groups')
