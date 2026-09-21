@@ -218,13 +218,35 @@ function basisPatroon(basis) {
  *   nieuweBasis: string,
  *   gedeeld?: boolean,
  *   bekendeBases?: readonly string[],
+ *   dossier?: boolean,
  * }} opties
  *   `nummer` is het bronnummer in vier cijfers, `oudeBasis` en `nieuweBasis` zijn
  *   de volledige namen zonder `.sql`, `gedeeld` zegt of er meer migraties op dit
- *   nummer staan, en `bekendeBases` is de basis van élke migratie in de map.
+ *   nummer staan, `bekendeBases` is de basis van élke migratie in de map, en
+ *   `dossier` zegt dat dit `docs/ENGINEER-REVIEW.md` is.
+ *
+ * ⚠️⚠️ **`dossier` is een derde helft van de regel hierboven, en hij kwam uit
+ *    een reproductie** (QS8-580). Het incident van 07-09-2026 stond als *"een
+ *    blinde `sed` van een mens"* in het dossier. 📏 Nagespeeld op 21-09-2026 met
+ *    de echte rij van QS8-307 en een uniek nummer: dit script herschreef die rij
+ *    **zelf**, stil — `treffers: 2, gemeld: 0`. De `sed` was niet de oorzaak
+ *    maar een tweede weg naar dezelfde schade.
+ *
+ *    De reden is helft 2 hierboven: *"bij een uniek nummer valt er niets te
+ *    verwarren"*. Dat klopt voor code, want daar is de map de waarheid. In een
+ *    **historisch register** klopt het niet: daar gaat een rij over de stand van
+ *    toen, en het nummer dat vandaag uniek is kan gisteren van een ander zijn
+ *    geweest.
  */
 export function herschrijfVerwijzingen(tekst, opties) {
-  const { nummer, oudeBasis, nieuweBasis, gedeeld = false, bekendeBases = [] } = opties;
+  const {
+    nummer,
+    oudeBasis,
+    nieuweBasis,
+    gedeeld = false,
+    bekendeBases = [],
+    dossier = false,
+  } = opties;
   const naar = (nieuweBasis ?? '').slice(0, 4);
   const bekend = new Set(bekendeBases);
   const basis = basisPatroon(oudeBasis);
@@ -251,8 +273,14 @@ export function herschrijfVerwijzingen(tekst, opties) {
       const staart = /^(\d{4}[a-z]?_[a-z0-9_]+)/.exec(metBasis.slice(positie));
       if (staart !== null && bekend.has(staart[1])) return treffer;
 
-      if (gedeeld) {
-        gemeld.push({ regel: i + 1, fragment: regel.trim() });
+      // ⚠️ In het dossier is een kaal nummer nooit bewijs — ook niet als het
+      //    nummer uniek is. Zie de kop: dat register is historisch.
+      if (gedeeld || dossier) {
+        // ⚠️ `titel` staat er alleen als de regel een dossierrij ís. Hem altijd
+        //    meesturen zou de vorm van elke bestaande melding veranderen, en die
+        //    staat onder toets — een grendel verbouw je niet als bijvangst.
+        const titel = rijtitel(regel);
+        gemeld.push({ regel: i + 1, fragment: regel.trim(), ...(titel === null ? {} : { titel }) });
         return treffer;
       }
 
@@ -268,6 +296,52 @@ export function herschrijfVerwijzingen(tekst, opties) {
     regels: [...geraakt].sort((a, b) => a - b),
     gemeld,
   };
+}
+
+/**
+ * Het dossier: het enige bestand in deze repo waarin een kaal migratienummer van
+ * **iemand anders** kan zijn — QS8-580.
+ *
+ * ⚠️⚠️ **Waarom uitgerekend dit bestand, en niet elk `.md`-bestand.** Een
+ *    beslisdocument hoort bij één issue: een kaal nummer erin gaat over de
+ *    migratie van dát issue, en die hoort bij een hernummering gewoon mee te
+ *    verhuizen. `docs/ENGINEER-REVIEW.md` is het enige register van véle issues
+ *    tegelijk, en het is bovendien **historisch**: er staan rijen in over
+ *    migraties die dat nummer ooit droegen en sindsdien zelf hernummerd zijn.
+ *    Daar is een kaal nummer dus nooit bewijs, ook niet als het nummer vandaag
+ *    uniek is in de map.
+ *
+ * ⚠️ Beter zou zijn: elke dossierrij een eigen issuenummer geven, zodat een
+ *    hernummering erop kan filteren. 📏 Geteld op 21-09-2026 noemen **139**
+ *    rijen een migratie en dragen er **60** een `QS8-` in hun titelcel — 79 niet.
+ *    Dat is route 3 uit QS8-580 en het is een aparte klus; tot die er is, is
+ *    "nooit aanraken, altijd melden" de veilige kant.
+ *
+ * ⚠️ De prijs: ook je éígen dossierrij wordt gemeld in plaats van bijgewerkt.
+ *    Eén regel handwerk per hernummering, en het is de veilige kant op — een
+ *    vergeten eigen rij valt op bij het lezen, een stil herschreven rij van een
+ *    ander niet. Afweging in
+ *    `docs/decisions/2026-09-21-een-kaal-nummer-in-een-historisch-register.md`.
+ */
+export const DOSSIER = 'docs/ENGINEER-REVIEW.md';
+
+/** Is dit pad het dossier? Werkt met `/` en met `\\`. */
+export function isDossier(pad) {
+  return String(pad ?? '').replace(/\\/g, '/').endsWith(DOSSIER);
+}
+
+/**
+ * De titelcel van een dossierrij, zodat een melding zegt wiens rij het is.
+ *
+ * ⚠️ De tweede cel en niet de eerste: die eerste is de datum. Geeft de regel
+ *    geen tabelrij, dan is er geen titel en valt de melding terug op het
+ *    fragment.
+ */
+export function rijtitel(regel) {
+  const cellen = String(regel ?? '').split(/(?<!\\)\|/);
+  if (cellen.length < 4) return null;
+  const titel = (cellen[2] ?? '').trim();
+  return titel.length > 0 ? titel : null;
 }
 
 /**
@@ -417,6 +491,55 @@ export function beoordeelHernummering({ van, naar, aanwezig, perBranch, register
 // Vanaf hier: de CLI
 // ---------------------------------------------------------------------------
 
+/** Eén gemelde regel, met de titel van zijn dossierrij als die er is. */
+function meldRegel(g) {
+  if (g.titel === null || g.titel === undefined) {
+    console.log(`    regel ${g.regel}: ${g.fragment.slice(0, 100)}`);
+    return;
+  }
+  // ⚠️ De titel erbij, want dat is de hele vraag: is dit jouw rij of die van een
+  //    ander? Een fragment van honderd tekens begint met de datum en zegt dat niet.
+  console.log(`    regel ${g.regel}: ${g.titel.slice(0, 100)}`);
+  console.log(`      ${g.fragment.slice(0, 100)}`);
+}
+
+/**
+ * Het werk dat overblijft, onderaan en met naam.
+ *
+ * ⚠️ **Onderaan en niet vooraf.** Bij een gedeeld nummer — en in het dossier
+ *    altijd — kan het script deze regels niet bewijzen, en dan hoort het ze niet
+ *    te raden. Ze staan hier zodat een mens ze naloopt: geen disclaimer vooraf
+ *    maar een lijst achteraf.
+ */
+function meldNagelopen(nagelopen, { bronNummer, oudeBasis, naar }) {
+  if (nagelopen.length === 0) return;
+
+  const totaal = nagelopen.reduce((n, e) => n + e.gemeld.length, 0);
+  console.log(
+    `\n⚠️  ${totaal} kale verwijzing(en) naar ${bronNummer} niet aangeraakt, in ` +
+      `${nagelopen.length} bestand(en):`,
+  );
+  for (const e of nagelopen) {
+    console.log(`  ${relative(WORTEL, e.pad)}`);
+    for (const g of e.gemeld) meldRegel(g);
+  }
+
+  console.log(
+    `\n  Hoort zo'n regel bij ${oudeBasis}, zet hem dan met de hand op ${naar}.\n` +
+      `  Hoort hij bij de ándere migratie ${bronNummer}, laat hem staan.`,
+  );
+
+  if (!nagelopen.some((e) => isDossier(e.pad))) return;
+  console.log(
+    `\n  ⚠️  In ${DOSSIER} wordt een kaal nummer nóóit herschreven, ook niet\n` +
+      `      als ${bronNummer} uniek is in de map (QS8-580). Dat register is\n` +
+      `      historisch: er staan rijen in over een migratie die dat nummer ooit\n` +
+      `      droeg en sindsdien zelf hernummerd is.\n\n` +
+      `      Lees ze per rij — de titel staat erbij. Eén \`sed\` over de lijst is\n` +
+      `      precies wat er op 07-09-2026 misging.`,
+  );
+}
+
 function bestandenOnder(map) {
   const uit = [];
   const loop = (pad) => {
@@ -564,6 +687,7 @@ async function hoofd() {
         nieuweBasis,
         gedeeld: bron.gedeeld === true,
         bekendeBases,
+        dossier: isDossier(pad),
       });
 
       if (uit.gemeld.length > 0) nagelopen.push({ pad, gemeld: uit.gemeld });
@@ -578,27 +702,7 @@ async function hoofd() {
     console.log(`    ${e.treffers} verwijzing(en), regel ${e.regels.join(', ')}`);
   }
 
-  // ⚠️ **Onderaan en met naam, want dit is het werk dat overblijft.** Bij een
-  //    gedeeld nummer kan het script deze regels niet bewijzen, en dan hoort het
-  //    ze niet te raden. Ze staan hier zodat een mens ze naloopt — niet als
-  //    disclaimer vooraf maar als een lijst achteraf.
-  if (nagelopen.length > 0) {
-    const totaal = nagelopen.reduce((n, e) => n + e.gemeld.length, 0);
-    console.log(
-      `\n⚠️  ${totaal} kale verwijzing(en) naar ${bronNummer} niet aangeraakt, in ` +
-        `${nagelopen.length} bestand(en):`,
-    );
-    for (const e of nagelopen) {
-      console.log(`  ${relative(WORTEL, e.pad)}`);
-      for (const g of e.gemeld) {
-        console.log(`    regel ${g.regel}: ${g.fragment.slice(0, 100)}`);
-      }
-    }
-    console.log(
-      `\n  Hoort zo'n regel bij ${oudeBasis}, zet hem dan met de hand op ${naar}.\n` +
-        `  Hoort hij bij de ándere migratie ${bronNummer}, laat hem staan.`,
-    );
-  }
+  meldNagelopen(nagelopen, { bronNummer, oudeBasis, naar });
 
   if (droog) {
     console.log('\n(droog — er is niets gewijzigd)');
