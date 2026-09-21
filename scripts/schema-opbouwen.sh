@@ -48,7 +48,14 @@ done
 
 WORTEL="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 DB="${DB:-goalbuddies_opbouw}"
-PSQL=(psql --quiet --no-psqlrc -v ON_ERROR_STOP=1)
+# ⚠️ **`-w` staat er sinds QS8-562 bij, en dat is geen netheid.** Zonder die vlag
+#    vraagt psql interactief om een wachtwoord zodra de rol er een nodig heeft.
+#    📏 Gemeten op deze werkplek: `psql -h 127.0.0.1 -p 5433 -U postgres` drukt
+#    `Password for user postgres:` af. Deze opbouw draait onder
+#    `idempotent:controle` en dus in de poort en in CI, en daar is hangen erger
+#    dan falen — de uitslag is dan "nog bezig" en niet "fout". Dezelfde reden als
+#    in `scripts/psql.mjs`.
+PSQL=(psql --quiet --no-psqlrc -w -v ON_ERROR_STOP=1)
 
 if [[ -n "${PGHOST:-}" ]]; then PSQL+=(-h "$PGHOST"); fi
 PSQL+=(-p "${PGPORT:-5433}" -U "${PGUSER:-postgres}")
@@ -73,12 +80,43 @@ echo "→ ${DB} opnieuw aanmaken"
   "select pg_terminate_backend(pid) from pg_stat_activity where datname = '${DB}' and pid <> pg_backend_pid();" \
   >/dev/null 2>&1 || true
 
-if ! "${PSQL[@]}" -d postgres -c "drop database if exists ${DB};" >/dev/null 2>&1; then
-  echo "✗ ${DB} kon niet weg." >&2
-  "${PSQL[@]}" -d postgres -At -c \
-    "select '  nog verbonden: ' || count(*) || ' sessie(s), o.a. ' ||
-            coalesce(string_agg(distinct application_name, ', '), '(onbekend)')
-     from pg_stat_activity where datname = '${DB}';" >&2 2>/dev/null || true
+# ⚠️⚠️ **De stderr van psql wordt opgevangen en niet weggegooid — QS8-562.**
+#    Hier stond `>/dev/null 2>&1`, en wat overbleef was één vaste diagnose:
+#    *"${DB} kon niet weg"*, met de comment hierboven over PostgREST eronder.
+#    📏 Op 19-09-2026 kwam die melding terwijl de database **niet eens bestond**
+#    en er nul sessies waren; de echte oorzaak was peer-authenticatie op de
+#    unix-socket. Een `drop database if exists` op iets wat er niet is, kan per
+#    definitie niet op een verbinding stuklopen — en dát was de meting die het
+#    omdraaide, na drie rondes zoeken in de verkeerde hoek.
+#
+#    `2>&1 >/dev/null` in **deze** volgorde: eerst gaat fd2 naar de plek waar fd1
+#    nu heen wijst (de opvang), daarna gaat fd1 naar /dev/null. Andersom vangt hij
+#    stdout op en laat hij stderr lopen — precies verkeerd om.
+if ! fout="$("${PSQL[@]}" -d postgres -c "drop database if exists ${DB};" 2>&1 >/dev/null)"; then
+  # De duiding staat in `scripts/psql.mjs` naast die van de controles, en niet
+  # hier in bash: twee indelingen van dezelfde psql-melding lopen uit elkaar
+  # zodra iemand er één aanpast. Zelfde reden als in `ci-controle-draai.mjs`.
+  #
+  # ⚠️ Mislukt de duiding zélf, dan is de letterlijke fout nog steeds het
+  #    belangrijkste dat er staat. Zonder deze tak zou een kapotte node of een
+  #    verhuisd script de melding stiller maken dan hij vóór dit issue was.
+  if ! oordeel="$(printf '%s\n' "$fout" | node "$WORTEL/scripts/psql-drop-oordeel.mjs" "$DB")"; then
+    echo "✗ ${DB} kon niet weg, en de duiding zelf viel ook om." >&2
+    echo "psql zei letterlijk:" >&2
+    printf '%s\n' "$fout" >&2
+    exit 1
+  fi
+
+  # ⚠️ Alleen bij `bezet` zegt deze telling iets. Stond hij er onvoorwaardelijk,
+  #    dan drukte hij bij een geweigerde gebruiker "0 sessie(s)" af onder een
+  #    melding die juist zegt dat er niet verbonden is — een tweede plausibele
+  #    oorzaak naast de gemeten.
+  if [[ "$oordeel" == "bezet" ]]; then
+    "${PSQL[@]}" -d postgres -At -c \
+      "select '  nog verbonden: ' || count(*) || ' sessie(s), o.a. ' ||
+              coalesce(string_agg(distinct application_name, ', '), '(onbekend)')
+       from pg_stat_activity where datname = '${DB}';" >&2 2>/dev/null || true
+  fi
   exit 1
 fi
 
