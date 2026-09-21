@@ -222,8 +222,8 @@ staat er iets bij dat uitleg nodig heeft, dan hoort die uitleg in §2, §3b of �
    **Meet ze dus, tel ze niet op:** bij het samengaan met `main` is het antwoord
    `npm run poort` of `npm run tellers`, nooit het hoogste van twee getallen.
 <!-- POORTSTAND:BEGIN — gegenereerd door `npm run poortstand` -->
-Typecheck, lint en alle 71 controlescripts groen;
-`npm run poort` meldt 75 stappen.
+Typecheck, lint en alle 72 controlescripts groen;
+`npm run poort` meldt 76 stappen.
 <!-- POORTSTAND:EINDE -->
    ⚠️ **Vier ervan meten niets zonder de credentials van het échte project**
    (`adviseur`, `functies`, `register`, `wachtwoord`), en de poort noemt dat
@@ -1011,6 +1011,82 @@ die zijn 4,7 uur oud en mogelijk in de lucht.
 Drie keer dezelfde klasse, en hij keert terug omdat er geen signaal op staat maar
 alleen een gewoonte. Het signaal wordt gebouwd in **QS8-385**; dat issue is
 afgesplitst omdat de meting en het gereedschap twee dingen zijn.
+
+### De commentaarval in `tests/beloftes/` — gesloten op 21-09-2026 (QS8-574)
+
+✅ **Er staat een grendel op de vorm die QS8-568 vond.**
+`npm run belofteknip:controle` wordt rood zodra een belofte-test bevestigend
+toetst op ruwe bestandsinhoud — `expect(bron).toContain(…)` zonder knip op de
+leesplek. Die toets is ook waar als de aanroep uitgecommentarieerd is, en bij een
+tijdelijke uitschakeling blijft de naam juist ín de comment staan.
+
+📏 **Acht bestanden gemeten met elf eigen mutaties, en alle elf faalden open.**
+Alle acht zijn gerepareerd; het register van de controle is daarom **leeg**, en
+dat is een uitkomst en geen omissie. De tabel met de mutaties, de twee die iets
+anders maten dan ze leken te meten, en de afweging *eigen controle of tweede
+helft van `knip:controle`* staan in
+`docs/decisions/2026-09-21-het-mechanisme-onder-de-commentaarval.md`.
+
+⚠️ **Twee van de elf waren onwrikbare regel 3.** De toetsen die bewaken dat de
+storage-emmers `avatars` en `chatdocs` **privé** zijn, bleven groen met `public`
+op `true` — een openbare bucket omzeilt RLS volledig. Eén raakte domeinregel 2:
+met `<Tijdzonewacht />` uitgecommentarieerd verandert `profiles.tz` na de
+onboarding nergens meer.
+
+⚠️ **De SQL-knip is verhuisd en niet gekopieerd.** Hij stond in
+`scripts/sleutelvorm-controle.mjs`, waar `dml-controle.mjs` hem al uit
+importeerde, en heet nu `zonderCommentaarSql` in
+`scripts/zonder-sql-commentaar.mjs`. Er zijn dus twee gedeelde knippen — JS en
+SQL — en de derde blijft een keuze die je verantwoordt.
+
+⚠️ **Wat open blijft: vier knippen die `knip:controle` niet ziet**, omdat zijn
+`DEFINITIE` alleen namen matcht die met `zonderCommentaar` beginnen. Twee zijn
+nagemeten en falen dicht, twee zijn **ongemeten**. Dat staat als **QS8-579**.
+
+### De knip die anders heet — gesloten op 21-09-2026 (QS8-579)
+
+✅ **`knip:controle` vindt een knip nu ook aan zijn lichaam en niet alleen aan
+zijn naam.** `DEFINITIE` matchte `function zonderCommentaar\w*(`; 📏 **tien**
+knippen liepen daaromheen — vier in `tests/beloftes/`, zes in `scripts/` — en
+geen van tien stond in een register.
+
+📏 **Twee ervan faalden open, allebei met een tegenproef gemeten.**
+`ontdaanVanCommentaar()` in `datumopmaak.test.ts` liet een zelf-opgemaakte datum
+door zodra er een URL vóór stond op dezelfde regel, en `normaliseer()` in
+`edge-tijd-controle.mjs` verklaarde twee uiteenlopende kopieën van `shared/time`
+gelijk op precies diezelfde vorm. Die tweede is **correctheidsregel 7**: de
+rollover en de app zouden 's nachts met andere weekgrenzen rekenen. Allebei de
+blinde vorm van QS8-412.
+
+⚠️ **De reparatie is per geval verschillend, en dat is het punt.** `datumopmaak`
+en `onboarding` delen nu de gedeelde knip; `edge-tijd-controle` houdt zijn eigen
+en kreeg alleen de `(^|[^:])`-wacht erbij — die controle vergelijkt twee kopieën
+en commentaar mág daar verschillen. 📏 De eerste, bottere reparatie brak zijn
+ijking, en de poort ving dat. **"Deel de gedeelde knip" is niet het doel; het doel
+is dat elke knip een keuze is met een reden.**
+
+⚠️ **Een derde faalde dicht om de verkéérde reden.**
+`onboarding-schrijft-niets-over.test.ts` betoogde in zijn kop dat grendel 4 de
+URL-vorm opving; gemeten viel hij op grendel 2, via een accoladetelling die door
+de aanroep heen liep. Na de omzetting valt dezelfde mutatie op grendel 1, en dát
+is de belofte. **Tweede keer in twee issues dat een uitgeschreven verdediging
+half bleek te kloppen.**
+
+⚠️ **Er is een derde register bijgekomen: `GEEN_KNIP`.** Een vormdetector zonder
+plek voor zijn eigen valse treffers wordt een controle die je uitzet. Er staan er
+drie in, alle drie dezelfde vorm: ze **selecteren** commentaarregels in plaats van
+ze weg te gooien — de kop van een migratie ís commentaar.
+
+📏 **En `belofteknip:controle` uit QS8-574 ving bij de merge meteen een elfde
+instantie** — een belofte-test uit de parallelle sessie (QS8-436) die een pin op
+de bron van `expo-image-picker` ruw toetste. Gemeten: faalt open, gerepareerd,
+rood na de reparatie. Dat bestand importeerde de gedeelde knip al en gebruikte
+hem voor ónze bron maar niet voor de pin.
+
+⚠️ **Wat de rand is, staat in de kop van het script en als rij in
+`ENGINEER-REVIEW.md`:** een pijlfunctie, een methode, twee parameters en de
+teken-voor-teken-vorm ziet hij niet. Afweging in
+`docs/decisions/2026-09-21-een-knip-die-anders-heet.md`.
 
 ## 3. Wat een nieuwe sessie als eerste doet
 

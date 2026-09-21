@@ -57,6 +57,7 @@ import { execFileSync } from 'node:child_process';
 import { pathToFileURL } from 'node:url';
 
 import { psqlArgumenten, verbindingsmelding } from './psql.mjs';
+import { zonderCommentaarSql } from './zonder-sql-commentaar.mjs';
 
 /**
  * Scheidt de naam van het lichaam, en de functies onderling.
@@ -126,7 +127,7 @@ where n.nspname = 'public'
  * Het lichaam uit een `CREATE FUNCTION …` — alles binnen de buitenste
  * dollar-quote.
  *
- * ⚠️⚠️ **Dit moet eerst, anders slaat de knip hieronder het hele lichaam plat.**
+ * ⚠️⚠️ **Dit moet eerst, anders slaat `zonderCommentaarSql()` het hele lichaam plat.**
  *    `pg_get_functiondef()` verpakt de body in `$function$ … $function$`. Een
  *    lexer die élke dollar-quote als tekst ziet, ziet de complete functie als
  *    één string en vindt nul leesplekken — in élke functie.
@@ -138,103 +139,6 @@ export function lichaamVan(def) {
   return sluitend === -1 ? def : def.slice(m.index + m[0].length, sluitend);
 }
 
-/** De dollar-quote die op `i` begint, of `null`. */
-function dollarTag(src, i) {
-  if (src[i] !== '$') return null;
-  const m = /^\$([A-Za-z_0-9]*)\$/.exec(src.slice(i));
-  return m ? m[0] : null;
-}
-
-/** Een tekstliteral — enkel gequote of dollar-gequote — gaat ongemoeid mee. */
-function neemLetterlijk(src, i) {
-  const tag = dollarTag(src, i);
-  if (tag) {
-    const dicht = src.indexOf(tag, i + tag.length);
-    const eind = dicht === -1 ? src.length : dicht + tag.length;
-    return { uit: src.slice(i, eind), eind };
-  }
-
-  if (src[i] !== "'") return null;
-
-  let j = i + 1;
-  while (j < src.length) {
-    if (src[j] === "'" && src[j + 1] === "'") j += 2;
-    else if (src[j] === "'") return { uit: src.slice(i, j + 1), eind: j + 1 };
-    else j += 1;
-  }
-  return { uit: src.slice(i), eind: src.length };
-}
-
-/** Commentaar wordt een spatie; een blok telt zijn nesting, zoals Postgres. */
-function neemCommentaar(src, i) {
-  if (src[i] === '-' && src[i + 1] === '-') {
-    const nl = src.indexOf('\n', i);
-    return { uit: ' ', eind: nl === -1 ? src.length : nl };
-  }
-  if (src[i] !== '/' || src[i + 1] !== '*') return null;
-  return { uit: ' ', eind: naBlok(src, i) };
-}
-
-/** Het eind van een blokcommentaar op `i`, met nesting meegeteld. */
-function naBlok(src, i) {
-  let diepte = 0;
-  let j = i;
-  while (j < src.length) {
-    if (src[j] === '/' && src[j + 1] === '*') {
-      diepte += 1;
-      j += 2;
-    } else if (src[j] === '*' && src[j + 1] === '/') {
-      diepte -= 1;
-      j += 2;
-      if (diepte === 0) return j;
-    } else j += 1;
-  }
-  return src.length;
-}
-
-/**
- * Haalt SQL-commentaar weg zodat een uitgecommentarieerde vorm niet meetelt.
- *
- * ⚠️ **Dit is SQL en niet JS**, dus niet de gedeelde knip uit
- *    `scripts/zonder-commentaar.mjs`: die filtert regels die met `//` beginnen.
- *    De rij staat met die reden in `MET_REDEN` van `scripts/knip-controle.mjs`.
- *
- * ⚠️⚠️ **Hij loopt om quotes heen, en dat is gemeten en geen voorzorg.** 📏 De
- *    eerste versie knipte met één regex op `--`, en op
- *    `v_x := 'a--b' || nullif(current_setting('app.k', true), '') = old.id::text;`
- *    hield die `v_x := 'a` over: **nul** leesplekken waar er één hoort, dus een
- *    kale vergelijking die stil doorglipt. Dat is de richting die telt — een
- *    knip die te veel wegneemt houdt de controle groen terwijl de belofte breekt.
- *
- * ⚠️ **En de toets die dat had moeten vangen deed het niet.** Die zette de `--`
- *    en de leesplek op verschillende régels, en dan valt de vorm binnen de knip
- *    zijn eigen regelgrens — groen om een reden die niets met de belofte te
- *    maken heeft. Precies de val die CLAUDE.md bij regel 18 noemt.
- *
- * ⚠️⚠️ **Dollar-quotes en geneste blokken tellen mee, gevonden in de
- *    security-ronde op QS8-491.** 📏 Een knip die alleen om enkele quotes heen
- *    loopt, kapt op de `--` in `v_sql := $q$a--b$q$ || (nullif(…) = old.id)` en
- *    vindt nul leesplekken waar er één onveilige hoort. Postgres nest
- *    blokcommentaar bovendien, dus dat wordt geteld.
- */
-export function zonderCommentaar(bron) {
-  const src = String(bron);
-  let uit = '';
-  let i = 0;
-
-  while (i < src.length) {
-    const sprong = neemLetterlijk(src, i) ?? neemCommentaar(src, i);
-    if (sprong === null) {
-      uit += src[i];
-      i += 1;
-    } else {
-      uit += sprong.uit;
-      i = sprong.eind;
-    }
-  }
-
-  return uit;
-}
 
 /** De index van de `)` die hoort bij de `(` op `open`. */
 function sluit(src, open) {
@@ -373,7 +277,7 @@ function doorNullifHeen(src, start, eind) {
  *    hij met rust moet laten.
  */
 export function leesplekken(bron) {
-  const src = zonderCommentaar(bron);
+  const src = zonderCommentaarSql(bron);
   const plekken = [];
   const re = /current_setting\s*\(\s*'(app\.[^']+)'/gi;
 

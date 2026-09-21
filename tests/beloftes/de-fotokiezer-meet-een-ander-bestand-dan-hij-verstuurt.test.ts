@@ -87,6 +87,33 @@ function bron(pad: string): string {
   return readFileSync(join(PAKKET, pad), 'utf8');
 }
 
+/**
+ * Dezelfde bron, maar zonder commentaar — QS8-579.
+ *
+ * ⚠️⚠️ **Een pin op andermans bron heeft precies dezelfde zwakte als een pin op
+ *    de onze.** `expect(kt).toContain('fileSize = …')` is ook waar als upstream
+ *    die regel uitcommentarieert, en dan blijft deze test groen terwijl de tak
+ *    waarop `kiesFoto.ts` rust er niet meer is. 📏 Gemeten bij QS8-579: met
+ *    `// fileSize = fileData?.fileSize ?: outputFile.length()` in de Kotlin-bron
+ *    bleef dit bestand **5 van de 5** groen.
+ *
+ * ⚠️ **Kotlin en Swift kennen allebei dezelfde twee commentaarvormen als JS**,
+ *    dus de gedeelde knip past hier — dat is geen toeval maar de reden dat hij
+ *    op die vormen zit en niet op een taal.
+ *
+ * ⚠️ `bron()` blijft ernaast staan voor `package.json`: JSON kent geen
+ *    commentaar, en er doorheen knippen zou een versie stilzwijgend kunnen
+ *    veranderen.
+ *
+ * ⚠️⚠️ **Dit bestand importeerde de gedeelde knip al** — het gebruikte hem voor
+ *    `kiesFoto.ts`, onze eigen bron, en niet voor de pin op die van upstream.
+ *    Dat is de vorm waar de grendel voor bestaat: de kennis was er, en juist
+ *    de plek waar niemand hem verwachtte bleef ongeknipt.
+ */
+function code(pad: string): string {
+  return zonderCommentaar(bron(pad));
+}
+
 describe('de bron waarop deze keuze rust, staat er nog zoals hij gelezen is', () => {
   it(`is nog major ${GELEZEN_MAJOR}`, () => {
     const versie = JSON.parse(bron('package.json')) as { version: string };
@@ -101,21 +128,21 @@ describe('de bron waarop deze keuze rust, staat er nog zoals hij gelezen is', ()
   });
 
   it('leest op Android de grootte van de bron-URI en niet van het uitvoerbestand', () => {
-    const kt = bron('android/src/main/java/expo/modules/imagepicker/MediaHandler.kt');
+    const kt = code('android/src/main/java/expo/modules/imagepicker/MediaHandler.kt');
 
     expect(kt).toContain('fileSize = fileData?.fileSize ?: outputFile.length()');
     expect(kt).toContain('OpenableColumns.SIZE');
   });
 
   it('laat op iOS de heic-bytes ongemoeid, zodat quality daar niets doet', () => {
-    const swift = bron('ios/ImageUtils.swift');
+    const swift = code('ios/ImageUtils.swift');
 
     expect(swift).toContain('case UTType.heic.identifier:');
     expect(swift).toContain('return (rawData, ".heic")');
   });
 
   it('maakt base64 op iOS altijd als jpeg, los van wat er op schijf staat', () => {
-    expect(bron('ios/MediaHandler.swift')).toContain('readJpegBase64From');
+    expect(code('ios/MediaHandler.swift')).toContain('readJpegBase64From');
   });
 });
 
