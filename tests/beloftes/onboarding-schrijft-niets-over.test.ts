@@ -3,6 +3,8 @@ import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import { describe, expect, it } from 'vitest';
+// eslint-disable-next-line import/order -- de gedeelde knip is .mjs
+import { zonderCommentaar } from '../../scripts/zonder-commentaar.mjs';
 
 /**
  * De onboarding schrijft alleen wat ze vraagt — QS8-213.
@@ -126,8 +128,15 @@ function bestanden(map: string): string[] {
  *    vandaag ophoudt, is grendel 4: een stuk dat deze parser niet leest, is een
  *    rode test en geen stilte.
  */
+/**
+ * ⚠️⚠️ **Dit was een eigen knip met de vorm die QS8-412 al eens kostte.** Een
+ *    regel-commentaarregex zónder de `:`-wacht eet alles op ná de dubbele
+ *    schuine streep van een URL. 📏 De doelbestanden dragen er vandaag geen,
+ *    dus de fout was latent — hij stond er wel. Sinds QS8-576 gebruikt deze
+ *    toets de gedeelde knip, die de URL-vorm in zijn eigen ijking heeft staan.
+ */
 function ontdaanVanCommentaar(bron: string): string {
-  return bron.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/[^\n]*/g, '');
+  return zonderCommentaar(bron);
 }
 
 /**

@@ -12,12 +12,15 @@ import { describe, expect, it } from 'vitest';
 
 import {
   definitiesIn,
+  EIGEN_KNIP,
   GEDEELD,
+  knipvormenIn,
   klachten,
   knipt,
   leestBronMetNaampatroon,
   MET_REDEN,
   verweesdeRedenen,
+  verweesdeEigenKnippen,
   verweesdeVrijstellingen,
   ZONDER_KNIP,
   ZONDER_TOETS,
@@ -244,5 +247,91 @@ describe('verweesdeVrijstellingen', () => {
   it('zwijgt over een rij die zijn vrijstelling nog nodig heeft', () => {
     const bronnen = new Map(Object.keys(ZONDER_KNIP).map((p) => [p, LEZER]));
     expect(verweesdeVrijstellingen(bronnen)).toEqual([]);
+  });
+});
+
+// ---------------------------------------------------------------------------
+
+/**
+ * De derde helft: **een knip die niet `zonderCommentaar` heet** — QS8-576.
+ *
+ * 📏 **De meting die dit issue opleverde.** `DEFINITIE` zoekt op naam, en er
+ *    bleken **19** bestanden commentaar te knippen onder een andere naam —
+ *    tegenover **18** die de naamdetector ziet. Meer dan de helft van het veld
+ *    was onzichtbaar, voor béide bestaande helften, want de tweede draait
+ *    alleen op `scripts/`.
+ *
+ *    De aanleiding: een knip in `tests/migraties/idempotentie.ts` die
+ *    `schoneBron` heette. Identieke code, groen bij die naam, rood zodra hij
+ *    `zonderCommentaarEnTekst` ging heten. **Wat de grendel zag, hing af van de
+ *    naam** — en `schoneBron` was gewoon de betere naam.
+ *
+ * ⚠️⚠️ **De tweede helft van de ijking is hier de zwaarste.** 📏 Een ruwer
+ *    signaal meldde er 29, waarvan tien geen knip waren: het `--` van een
+ *    git-aanroep, een CLI-argument, `https://` in een URL-regex. Die vormen
+ *    staan hieronder als "met rust laten", want een register dat volloopt met
+ *    zulke rijen leert je hem te negeren.
+ */
+describe('knipvormenIn vindt een knip op gedrag', () => {
+  it.each([
+    ['een JS-blokknip', "bron.replace(/\\/\\*[\\s\\S]*?\\*\\//g, ' ')", 'blok'],
+    ['een SQL-regelknip met split', "regel.split('--')[0]", 'regel-sql'],
+    ['een SQL-regelknip met indexOf', "regel.indexOf('--')", 'regel-sql'],
+  ])('%s', (_naam, bron, vorm) => {
+    expect(knipvormenIn(bron)).toContain(vorm);
+  });
+
+  it.each([
+    ['het `--` van een git-aanroep', "git('diff', '--name-only', basis)"],
+    ['een CLI-argument', "argumenten.find((a) => !a.startsWith('--'))"],
+    ['een URL-regex', 'const M = /^https?:\\/\\/([^:@/]+)@/;'],
+  ])('laat %s met rust', (_naam, bron) => {
+    expect(knipvormenIn(bron)).toEqual([]);
+  });
+
+  /** ⚠️ Hij eet zijn eigen kost: de vorm in een comment telt niet mee. */
+  it('telt een knipvorm in commentaar niet mee', () => {
+    expect(knipvormenIn("// ooit: bron.replace(/\\/\\*[\\s\\S]*?\\*\\//g, ' ')")).toEqual([]);
+  });
+});
+
+describe('klachten over een knip zonder die naam', () => {
+  const KNIP = "regel.split('--')[0]";
+
+  it('meldt een ongeregistreerde knip', () => {
+    expect(klachten(KNIP, 'scripts/nieuw-controle.mjs')).toEqual([
+      expect.stringContaining('zonder hem `zonderCommentaar` te noemen'),
+    ]);
+  });
+
+  it('zwijgt over een bestand dat in EIGEN_KNIP staat', () => {
+    const pad = Object.keys(EIGEN_KNIP)[0] ?? '';
+    expect(klachten(KNIP, pad)).toEqual([]);
+  });
+
+  /** ⚠️ Buiten `scripts/` geldt hij óók — dat was juist het gat. */
+  it('geldt ook in tests/', () => {
+    expect(klachten(KNIP, 'tests/beloftes/nieuw.test.ts')).toEqual([
+      expect.stringContaining('zonder hem `zonderCommentaar` te noemen'),
+    ]);
+  });
+});
+
+describe('verweesdeEigenKnippen', () => {
+  const KNIP = "regel.split('--')[0]";
+
+  it('meldt een rij waarvan het bestand weg is', () => {
+    expect(verweesdeEigenKnippen(new Map())).toEqual(Object.keys(EIGEN_KNIP));
+  });
+
+  it('meldt een rij waarvan het bestand geen knip meer toepast', () => {
+    const paden = Object.keys(EIGEN_KNIP);
+    const eerste = paden[0] ?? '';
+    const bronnen = new Map(paden.map((p) => [p, p === eerste ? 'const x = 1;' : KNIP]));
+    expect(verweesdeEigenKnippen(bronnen)).toEqual([eerste]);
+  });
+
+  it('zwijgt over een rij die zijn reden nog nodig heeft', () => {
+    expect(verweesdeEigenKnippen(new Map(Object.keys(EIGEN_KNIP).map((p) => [p, KNIP])))).toEqual([]);
   });
 });

@@ -210,6 +210,94 @@ export const ZONDER_KNIP = {
  *    kapotte merge — maar dat staat nergens, en de teller onderschat het veld.
  *    De resterende vormen en die twee rijen staan als QS8-572.
  */
+/**
+ * Wélke knipvorm past dit bestand toe op bron? Leeg = geen.
+ *
+ * ⚠️⚠️ **Op gedrag en niet op naam, en dat is de hele reden dat QS8-576
+ *    bestaat.** `DEFINITIE` hieronder zoekt een functie die `zonderCommentaar`
+ *    héét. 📏 Gemeten: **19** bestanden knippen commentaar onder een andere
+ *    naam — tegenover **18** die de naamdetector ziet. Meer dan de helft van
+ *    het veld was onzichtbaar, voor béide helften, want de tweede helft draait
+ *    alleen op `scripts/`.
+ *
+ *    De aanleiding is een knip die tijdens QS8-570 in
+ *    `tests/migraties/idempotentie.ts` geschreven werd en `schoneBron` heette:
+ *    identieke code, groen bij die naam, rood zodra hij `zonderCommentaarEnTekst`
+ *    ging heten. **Wat de grendel zag, hing af van de naam** — en `schoneBron`
+ *    was gewoon de betere naam. Dit is de vorm die je per ongeluk bereikt.
+ *
+ * ⚠️ **Drie vormen, want een knip is niet één ding.** JS-blok, JS-regel en
+ *    SQL-regel worden apart gemeld, zodat een registerrij kan zeggen wélke hij
+ *    heeft — een SQL-knip is een andere belofte dan een JS-knip.
+ *
+ * ⚠️⚠️ **En hij is met opzet niet "alles".** 📏 Een ruwer signaal meldde er
+ *    **29**, waarvan tien geen knip waren: het `--` van een git-aanroep, een
+ *    CLI-argument, `https://` in een URL-regex, een regex die sterretjes uit
+ *    vetgedrukte tekst haalt. Een register dat volloopt met zulke rijen
+ *    leert je hem te negeren — dezelfde waarschuwing als bij `GEEN_FOUTCODE`
+ *    in `foutsleutel-controle.mjs`. Vandaar de eis dat een SQL-knip op iets
+ *    bron-achtigs werkt (`regel`, `bron`, `inhoud`, `sql`, …).
+ */
+export const KNIPVORM = {
+  blok: /\\\/\\\*|\\\*\\\//,
+  'regel-js': /\(\^\|\[\^:\]\)\\\/\\\/|\\\/\\\/(?:\[\^\\n\]|\.\*)/,
+  'regel-sql':
+    /(?:regel|bron|inhoud|sql|tekst|line|body|definitie|kop)\w*\s*(?:\.\w+\(\))?\s*\.(?:startsWith|split|indexOf)\(\s*'--'|\/\^\\s\*--|\|--\)/i,
+};
+
+/**
+ * De bestanden die een eigen knip toepassen zónder hem `zonderCommentaar` te
+ * noemen — mét de reden waarom die knip daar eigen is.
+ *
+ * ⚠️ Zelfde bedoeling als `MET_REDEN` hierboven, andere ingang: dáár staat een
+ *    knip op naam, hier op gedrag. Een bestand dat in `MET_REDEN` staat hoeft
+ *    hier niet nog eens.
+ */
+export const EIGEN_KNIP = {
+  'scripts/avatar-controle.mjs':
+    'per regel, en dekt ook de `*`-vervolgregel van een JSDoc — nodig omdat deze ' +
+    'controle per regel telt en de gedeelde knip een blok tot één spatie plet',
+  'scripts/edge-tijd-controle.mjs':
+    'blok én regel, in twee stappen over dezelfde bron; leest Deno-bron die hier ' +
+    'verder nergens langskomt',
+  'scripts/logboek-controle.mjs':
+    'loopt teken voor teken door SQL en kijkt op elke positie of er `--` staat — ' +
+    'een regelvorm zou de quote-afhandeling eromheen breken',
+  'scripts/migratie-hernummer.mjs':
+    'verzámelt de kopregels in plaats van ze weg te knippen: hij heeft de kop nodig, ' +
+    'niet de code eronder. Andere belofte dan een knip',
+  'scripts/migraties-controle.mjs': 'idem — verzamelt de kop om het rollback-pad te vinden',
+  'scripts/rollbackpad.mjs': 'idem — de kop ís hier het onderwerp',
+  'scripts/tijdzones-controle.mjs':
+    'één regelfilter over JS én SQL tegelijk, omdat hij beide bomen in dezelfde ' +
+    'pas langsloopt',
+  'tests/beloftes/aanmeldscherm.test.ts':
+    'blok plus een regelvorm mét `:`-wacht die óók een áchterlopend `//` weghaalt — ' +
+    'strenger dan de gedeelde knip, die alleen hele commentaarregels filtert',
+  'tests/beloftes/een-document-voert-niets-uit.test.ts': 'dezelfde vorm als aanmeldscherm',
+  'tests/beloftes/een-foto-is-getekend-of-niets.test.ts': 'dezelfde vorm als aanmeldscherm',
+  'tests/beloftes/tabbalk-bovenaan.test.ts': 'dezelfde vorm als aanmeldscherm',
+  'tests/beloftes/geen-foto-verlaat-de-app-met-metadata.test.ts':
+    'alleen blokken, met opzet: deze toets zoekt naar aanroepen en een ' +
+    'regelcommentaar kan er geen verbergen',
+  'tests/beloftes/pushdienst-allowlist.test.ts':
+    'SQL-regelfilter op een migratie; JS-commentaar komt er niet in voor',
+  'tests/migraties/bewaking-zonder-lijst.test.ts':
+    'SQL, regelbehoudend (`split` op `--`), zodat de regelindeling van de query heel blijft',
+  'tests/migraties/idempotentie.ts':
+    'SQL, regelbehoudend — deze grendel meldt regelnúmmers, en een knip die regels ' +
+    'samenvouwt laat elke melding naar de verkeerde regel wijzen (QS8-570)',
+  'tests/rls/functiegrants.test.ts':
+    'SQL, regelbehoudend (`split` op `--`) over een functiedefinitie uit de database',
+};
+
+export function knipvormenIn(bron) {
+  const schoon = zonderCommentaar(bron);
+  return Object.entries(KNIPVORM)
+    .filter(([, patroon]) => patroon.test(schoon))
+    .map(([naam]) => naam);
+}
+
 export function leestBronMetNaampatroon(bron) {
   const schoon = zonderCommentaar(bron);
   return /readFileSync\(|readFile\(/.test(schoon) && /new RegExp\(\s*`[^`]*\$\{/.test(schoon);
@@ -261,6 +349,21 @@ export function klachten(bron, ruwPad) {
         'met zijn reden in MET_REDEN.',
     );
 
+  // ⚠️ De derde helft: een knip die niet `zonderCommentaar` heet (QS8-576).
+  //    `definitiesIn()` hierboven zoekt op naam; dit zoekt op gedrag.
+  const vormen = knipvormenIn(bron);
+  if (
+    vormen.length > 0 &&
+    EIGEN_KNIP[pad] === undefined &&
+    !Object.keys(MET_REDEN).some((sleutel) => sleutel.startsWith(`${pad}:`))
+  ) {
+    uit.push(
+      `${pad}: past zelf een knip toe (${vormen.join(', ')}) zonder hem ` +
+        `\`zonderCommentaar\` te noemen — gebruik \`${GEDEELD}\`, of zet hem met ` +
+        'zijn reden in EIGEN_KNIP.',
+    );
+  }
+
   // ⚠️ De tweede helft: een bronlezer zónder knip is een keuze of een gat, en
   //    die twee zien er hetzelfde uit tot iemand het opschrijft (QS8-567).
   if (
@@ -298,6 +401,20 @@ export function verweesdeRedenen(gevonden) {
 }
 
 /**
+ * Rijen in `EIGEN_KNIP` waarvan het bestand geen knip meer toepast.
+ *
+ * ⚠️ Zelfde ratel als bij de andere twee registers: een vrijstelling die niets
+ *    meer vrijstelt, leest de volgende persoon als een reden om er niet aan te
+ *    twijfelen.
+ */
+export function verweesdeEigenKnippen(bronnen) {
+  return Object.keys(EIGEN_KNIP).filter((pad) => {
+    const bron = bronnen.get(metSchuineStrepen(pad));
+    return bron === undefined || knipvormenIn(bron).length === 0;
+  });
+}
+
+/**
  * Rijen in `ZONDER_KNIP` die hun reden kwijt zijn.
  *
  * ⚠️ **Twee kanten, net als bij `verweesdeRedenen`.** Een bestand dat niet meer
@@ -330,8 +447,14 @@ export function hoofd() {
 
   const verweesd = verweesdeRedenen(gevonden);
   const losseVrijstellingen = verweesdeVrijstellingen(bronnen);
+  const losseKnippen = verweesdeEigenKnippen(bronnen);
 
-  if (uit.length > 0 || verweesd.length > 0 || losseVrijstellingen.length > 0) {
+  if (
+    uit.length > 0 ||
+    verweesd.length > 0 ||
+    losseVrijstellingen.length > 0 ||
+    losseKnippen.length > 0
+  ) {
     console.error('knip-controle: er staat een knip buiten de gedeelde bron.\n');
     for (const regel of uit) console.error(`  ${regel}`);
     for (const sleutel of verweesd) {
@@ -342,6 +465,9 @@ export function hoofd() {
         `  ${pad} staat in ZONDER_KNIP maar heeft die vrijstelling niet meer nodig — ` +
           'haal de rij weg.',
       );
+    }
+    for (const pad of losseKnippen) {
+      console.error(`  ${pad} staat in EIGEN_KNIP maar past geen knip meer toe — haal de rij weg.`);
     }
     console.error(
       `\n  De gedeelde knip is \`${GEDEELD}\`, en hij is geijkt in\n` +
@@ -360,7 +486,8 @@ export function hoofd() {
     `knip-controle: ${Object.keys(MET_REDEN).length} knippen met een reden, de rest deelt er één ` +
       `(${paden.length} bestanden). ` +
       `${lezers.length} bronlezers met een naampatroon, waarvan ` +
-      `${Object.keys(ZONDER_KNIP).length} met reden zonder knip.`,
+      `${Object.keys(ZONDER_KNIP).length} met reden zonder knip. ` +
+      `${Object.keys(EIGEN_KNIP).length} knippen zonder die naam, elk met een reden.`,
   );
   return 0;
 }
