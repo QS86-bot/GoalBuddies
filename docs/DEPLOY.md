@@ -681,6 +681,32 @@ rechtstreeks op de database zit, draait als de databasegebruiker en heeft dus
 geen RLS boven zich; alles wat daar binnenkomt, moet zijn eigen autorisatie
 dragen. Dat is een andere afweging dan pooling en hij weegt zwaarder.
 
+### ⚠️ Wat er op deze laag staat te wachten
+
+Deze paragraaf gaat over pooling, maar de laag die hier beschreven wordt is ook
+de plek waar twee openstaande dossierrijen hun grendel krijgen. Ze staan hier bij
+naam zodat ze meekomen op de dag dat die server er is, en niet pas gevonden
+worden als iemand het dossier doorleest.
+
+1. **Het `copy`-eindpunt van de Storage-API** (rij van 11-09-2026, QS8-416 /
+   QS8-578). Een `copy` is een INSERT met een vrij gekozen doelnaam, dus hij
+   passeert alleen de INSERT-policy van de doelemmer en omzeilt
+   `file_size_limit` en `allowed_mime_types` van die emmer. 📏 De zwaarste
+   richting is `chatdocs` → een fotoemmer: 5242880 tegen 1048576 bytes, en een
+   `application/pdf` in een emmer die alleen `image/*` toestaat.
+
+   **Wat deze laag eraan verandert:** een langdraaiende server kan `copy`
+   afknijpen of helemaal niet doorgeven, omdat de client dan niet meer
+   rechtstreeks met `<ref>.supabase.co` hoeft te praten. Vandaag bestaat die plek
+   niet — Hostinger serveert alleen de statische bundel.
+
+2. **Een rate limit vóór PostgREST** (rij van 08-09-2026, QS8-347). Zelfde
+   blokkade en dezelfde oplossing: er is geen laag om hem in te zetten.
+
+⚠️ **Geen van beide is een reden om deze server te bouwen** — ze zijn allebei
+misbruik-op-schaal en geen rechtenverhoging. Ze staan hier als werk dat er
+gratis bij hoort zodra de laag er om een ándere reden komt.
+
 ---
 
 ## 2.8 Wat kost de Doelcoach?
