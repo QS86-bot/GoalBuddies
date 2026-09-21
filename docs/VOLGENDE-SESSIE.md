@@ -1838,6 +1838,24 @@ met de onderbouwing van de groene notities in `docs/GROENE-NOTITIES.md`.
 
 ## VALKUILEN die deze codebase al een keer gekost hebben
 
+- **⚠️⚠️ Een knip die niet `zonderCommentaar` heet, ontloopt zijn register — 21-09,
+  QS8-579.** `knip:controle` matchte op naam, en 📏 **tien** knippen liepen
+  daaromheen. Twee faalden open: één liet een zelf-opgemaakte datum door zodra er
+  een URL vóór stond, en één verklaarde twee uiteenlopende kopieën van
+  `shared/time` gelijk — correctheidsregel 7.
+
+  **De vorm om te herkennen:** één regex die vanaf een `//` tot het regeleinde
+  knipt. Die eet alles op ná de `//` van een URL. De gedeelde knip uit
+  `scripts/zonder-commentaar.mjs` gooit een regel weg die mét `//` begint en
+  heeft dat probleem niet. `knip:controle` kijkt nu naar het lichaam en meldt de
+  elfde vanzelf.
+
+  ⚠️ **En de les ernaast, voor de tweede keer in twee issues:** een testbestand
+  dat in zijn kop uitschrijft waaróm het geen knip nodig heeft, kan half gelijk
+  hebben. Eén kop noemde grendel 4 als vangnet; gemeten viel de mutatie op
+  grendel 2, via een parser die op hol sloeg. **Meet zo'n kop in plaats van hem
+  te geloven** — en kijk wélke test omvalt, niet dát er een omvalt.
+
 - **⚠️⚠️ Een bevestigende `toContain` op ruwe bron toetst het bestand en niet de
   belofte — 21-09, QS8-568 en QS8-574.** `expect(bron).toContain('koppel(')` is
   ook waar als die aanroep uitgecommentarieerd is, en bij een tijdelijke
