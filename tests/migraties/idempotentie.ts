@@ -37,12 +37,201 @@ export type Bezwaar = {
   readonly reden: string;
 };
 
-/** Haalt commentaar en tekst uit stringliteralen weg, met behoud van regelnummers. */
+/**
+ * Haalt commentaar en de tekst uit stringliteralen weg, met behoud van
+ * regelnummers.
+ *
+ * ⚠️⚠️ **Die zin stond hier al vóór QS8-570 en de code deed alleen de helft van
+ *    de eerste helft.** Er stond één regel — knip vanaf de eerste `--` — en dat
+ *    betekende drie dingen: blokcommentaar bleef staan, stringliteralen bleven
+ *    staan, en een `--` binnen een literal knipte juist wél. Dezelfde klasse als
+ *    QS8-466, waar een comment een transactie beloofde die de vlag niet leverde:
+ *    **een belofte in de kop leest als een eigenschap van de code.**
+ *
+ * ⚠️ **Wat het open liet.** `dropsVoor()` zoekt de `drop … if exists` die een
+ *    `create` vrijpleit. Stond die drop in een blokcommentaar, dan telde hij mee
+ *    en zweeg de grendel onder onwrikbare regel 20. 📏 Gemeten met vier vormen,
+ *    de controlerij eerst — zonder die had de nul van rij 3 niets bewezen:
+ *
+ *    ```
+ *    create zonder enige drop        -> 1 gemeld   (de controlerij)
+ *    met een échte drop ervoor       -> 0 gedekt   (correct)
+ *    met die drop in een blok        -> 0 gedekt   <- het gat
+ *    met die drop op een --regel     -> 1 gemeld   (correct)
+ *    ```
+ *
+ *    Het gat was nog niet geraakt: 📏 nul migraties dragen vandaag een
+ *    `drop … if exists` ín een blok. Wat het dichthield was een gewoonte —
+ *    de koppen van dit project staan in `--`-regels — en niet een grendel. En
+ *    juist die kop draagt het ROLLBACK-PAD, dat per definitie drops bevat: wie
+ *    ooit een kop als blok schrijft, pleit zijn eigen migratie vrij.
+ *
+ * ⚠️ **Waarom een scanner en niet een tweede knip.** Een tweede knip op blokcommentaar die
+ *    niets van quotes weet, verplaatst het gat alleen: dan knipt een blokopener in
+ *    een literal de rest van het bestand weg, en dat faalt **open** op alles wat
+ *    erna komt. Postgres nest blokcommentaar bovendien. Dit loopt daarom teken
+ *    voor teken, met dezelfde redenering als `code_zonder_commentaar()` in
+ *    migratie 0292 — die code is SQL en niet te hergebruiken, de redenering wel.
+ *
+ * ⚠️ De tekst ín een literal gaat eruit maar de quotes blijven staan: een
+ *    `create table` die als tekst in een string staat, wordt niet uitgevoerd en
+ *    hoort dus niet gemeld te worden. Aanhalingstekens rond een **identifier**
+ *    (`"..."`) blijven ongemoeid — dat is een objectnaam en die telt wél mee.
+ */
 function ontdaanVanRuis(inhoud: string): readonly string[] {
-  return inhoud.split('\n').map((regel) => {
-    const commentaar = regel.indexOf('--');
-    return commentaar === -1 ? regel : regel.slice(0, commentaar);
-  });
+  return zonderCommentaarEnTekst(inhoud).split('\n');
+}
+
+/**
+ * De bron met commentaar en literaalinhoud vervangen door spaties.
+ *
+ * ⚠️⚠️ **De naam begint met opzet met `zonderCommentaar`.** `knip:controle`
+ *    (QS8-567) zoekt knippen met het patroon `zonderCommentaar\\w*` en kijkt
+ *    daarbij óók in `tests/`. Een zeef die anders heet, is voor die grendel
+ *    onzichtbaar — 📏 gemeten: onder de naam `schoneBron` bleef hij groen op
+ *    813 bestanden zonder deze knip te tellen. **Dat is langs een grendel komen
+ *    door hoe je iets noemt**, en dat is precies de klasse waar dit bestand zelf
+ *    over gaat. De uitzondering staat nu met reden in `MET_REDEN` in
+ *    `scripts/knip-controle.mjs`.
+ *
+ *    ⚠️ Het achtervoegsel `EnTekst` volgt `scripts/uitgang-controle.mjs`: die
+ *    haalt óók stringliteralen weg, en dat is een andere belofte dan "zonder
+ *    commentaar".
+ *
+ * Geëxporteerd om los te kunnen voeden — CLAUDE.md regel 18: *een controle die
+ * je niet kunt voeden, kun je niet ijken*. Elke regel houdt zijn lengte en elke
+ * `\n` blijft staan, zodat de regelnummers in een bezwaar blijven kloppen.
+ */
+export function zonderCommentaarEnTekst(inhoud: string): string {
+  const uit: string[] = [];
+  let i = 0;
+
+  while (i < inhoud.length) {
+    const rest = inhoud.slice(i);
+
+    const dollar = /^\$([A-Za-z_][A-Za-z0-9_]*)?\$/.exec(rest);
+    if (dollar !== null) {
+      i = slaOver(inhoud, i, uit, dollar[0], dollar[0].length, dollar[0]);
+      continue;
+    }
+    if (inhoud.startsWith('--', i)) {
+      i = totEindeRegel(inhoud, i, uit);
+      continue;
+    }
+    if (inhoud.startsWith('/*', i)) {
+      i = blokWeg(inhoud, i, uit);
+      continue;
+    }
+    if (inhoud[i] === "'") {
+      i = slaOver(inhoud, i, uit, "'", 1, "'");
+      continue;
+    }
+    if (inhoud[i] === '"') {
+      i = identifierDoor(inhoud, i, uit);
+      continue;
+    }
+
+    uit.push(inhoud[i]!);
+    i += 1;
+  }
+
+  return uit.join('');
+}
+
+/** Een teken bewaren als spatie, of als zichzelf zodra het een regeleinde is. */
+function leeg(teken: string): string {
+  return teken === '\n' ? '\n' : ' ';
+}
+
+/** Vanaf `i` tot en met het regeleinde leegmaken. */
+function totEindeRegel(inhoud: string, i: number, uit: string[]): number {
+  let j = i;
+  while (j < inhoud.length && inhoud[j] !== '\n') {
+    uit.push(' ');
+    j += 1;
+  }
+  return j;
+}
+
+/**
+ * Blokcommentaar leegmaken.
+ *
+ * ⚠️ **Postgres nest blokcommentaar**, anders dan C. Een blokopener binnen een blok
+ *    opent een niveau erbij, en pas de bijbehorende sluiter sluit het. Tellen
+ *    tot de eerste sluiter zou hier een blok te vroeg sluiten en de rest van het
+ *    bestand als code lezen.
+ */
+function blokWeg(inhoud: string, i: number, uit: string[]): number {
+  let diepte = 0;
+  let j = i;
+  while (j < inhoud.length) {
+    if (inhoud.startsWith('/*', j)) {
+      diepte += 1;
+      uit.push(' ', ' ');
+      j += 2;
+      continue;
+    }
+    if (inhoud.startsWith('*/', j)) {
+      diepte -= 1;
+      uit.push(' ', ' ');
+      j += 2;
+      if (diepte === 0) return j;
+      continue;
+    }
+    uit.push(leeg(inhoud[j]!));
+    j += 1;
+  }
+  return j;
+}
+
+/**
+ * Een literal leegmaken: de begrenzers blijven, de inhoud wordt spatie.
+ *
+ * ⚠️ `''` binnen een enkelgequote string is een ontsnapt aanhalingsteken en geen
+ *    einde. Bij een dollar-quote bestaat die vorm niet — daar sluit alleen
+ *    dezelfde tag.
+ */
+function slaOver(
+  inhoud: string,
+  i: number,
+  uit: string[],
+  begin: string,
+  lengte: number,
+  eind: string,
+): number {
+  uit.push(begin);
+  let j = i + lengte;
+  while (j < inhoud.length) {
+    if (eind === "'" && inhoud.startsWith("''", j)) {
+      uit.push(' ', ' ');
+      j += 2;
+      continue;
+    }
+    if (inhoud.startsWith(eind, j)) {
+      uit.push(eind);
+      return j + eind.length;
+    }
+    uit.push(leeg(inhoud[j]!));
+    j += 1;
+  }
+  return j;
+}
+
+/** Een gequote identifier blijft staan — dat is een objectnaam, geen tekst. */
+function identifierDoor(inhoud: string, i: number, uit: string[]): number {
+  uit.push('"');
+  let j = i + 1;
+  while (j < inhoud.length) {
+    if (inhoud.startsWith('""', j)) {
+      uit.push('""');
+      j += 2;
+      continue;
+    }
+    uit.push(inhoud[j]!);
+    if (inhoud[j] === '"') return j + 1;
+    j += 1;
+  }
+  return j;
 }
 
 const TYPE_ALIAS: Record<string, string> = {
