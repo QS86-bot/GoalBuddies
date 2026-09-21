@@ -844,6 +844,35 @@
 > **Zoek bij een botsing wat er van jouw kant overblijft in plaats van te kiezen
 > tussen twee takken.**
 >
+> **21-09, punt AO: een regel die alleen in een comment staat, kost je veertien
+> regels bij de eerste keer dat iemand meet.** QS8-569 hergenereerde
+> `src/lib/database.types.ts` tegen productie. Wat er uit de naamvergelijking kwam
+> was bekend (57), wat er uit de **veld**vergelijking kwam niet: 📏 **veertien
+> handgeschreven correcties**, over acht functies en één view, in een bestand dat
+> `npm run types:db` in zijn geheel overschrijft — terwijl `src/modules/ai/jobs.ts`
+> sinds `0136` woordelijk opschrijft dat dat niet de manier is. Ze verdwenen bij de
+> hergeneratie zonder een woord.
+>
+> ⚠️ **Het handwerk had inhoudelijk gelijk**, en dat is wat het lastig maakt: de
+> generator kan drie dingen niet weten (een NOT NULL-kolom zonder `DEFAULT` die een
+> trigger vult, een argument dat NULL aanneemt, een `RETURNS TABLE`-kolom die NULL
+> kan zijn). Niet elke afwijking van een gegenereerd bestand is dus rommel — maar de
+> plek was fout. Ze staan nu in `src/lib/database.types.correcties.ts`, met per rij
+> de meting, en onder een tweezijdige toets die óók rood wordt als iemand de
+> correctie terugzet in het gegenereerde bestand.
+>
+> ⚠️⚠️ **De stilste van de drie klassen is de enige die niet compileerfout geeft.**
+> `zichtbare_reeksen_van_groep()` maskeert `best_streak` en `last_cycle_start` met
+> een `case … end` zónder `else` — domeinregel 7 in de functie zelf. De generator
+> typeert die twee als niet-nullable, en dan vertelt het type de schermlaag dat er
+> altijd een reeks is. Klasse 1 en 2 breken de build; deze breekt niets.
+>
+> ⚠️ **En bij het ijken ging de mutatie de eerste keer naar de verkeerde plek.**
+> 📏 `avatar_url: string` staat drie keer in dat bestand; de eerste poging raakte
+> `weekafsluiting_reacties` in plaats van `zoek_mensen` en gaf **nul** fouten — een
+> geslaagd ogende mutatie die niets bewees. *Breek de grendel die de ijking nóemt*,
+> en kijk wélke toets omvalt.
+
 > ⚠️⚠️ **11-09, punt P: een lintregel kan code laten buigen, en dan verplaats je
 > het probleem naar de lezer.** QS8-422 moest in de rollover een `if` in een `if`
 > vervangen door een ternair met twee guards, puur omdat dat blok toen ín twee

@@ -35,7 +35,21 @@ export type { Resultaat };
  *    kunt.
  */
 
-export type Commitment = Tables<'commitments'>;
+/**
+ * ⚠️ **`Omit<…, 'tz'>` en niet de hele rij, en dat volgt de kolomgrant.** Sinds
+ *    `0280` staat de SELECT-grant op `commitments` per kolom en ligt `tz`
+ *    erbuiten — 📏 gemeten op productie: `authenticated` leest
+ *    `beneficiary_group_id, beneficiary_user_id, body, confirmed_at, created_at,
+ *    goal_id, id, image_url, status, type` en verder niets. Elke `.select()`
+ *    hieronder noemt precies die lijst, want een `*` geeft `42501`.
+ *
+ * ⚠️ De generator spiegelt kólommen en geen kolomgrants (`ENGINEER-REVIEW.md`,
+ *    rij 09-09-2026), dus `Tables<'commitments'>` belooft een veld dat deze
+ *    client nooit binnenkrijgt. Dát verschil hoort hier en niet in
+ *    `database.types.correcties.ts`: daar staat wat de generator niet kán weten,
+ *    hier staat wat déze client mag.
+ */
+export type Commitment = Omit<Tables<'commitments'>, 'tz'>;
 export type CommitmentGebeurtenis = Tables<'commitment_events'>;
 
 

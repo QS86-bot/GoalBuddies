@@ -14,7 +14,7 @@ import { createHmac, randomUUID } from 'node:crypto';
 
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 
-import type { Database } from '../../src/lib/database.types';
+import type { Database } from '../../src/lib/database.types.correcties';
 import { beoordeelWezen, wezentekst, type VerseGroep } from './wezen';
 
 export type TestDb = SupabaseClient<Database>;
