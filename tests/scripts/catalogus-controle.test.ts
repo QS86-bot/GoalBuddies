@@ -1,7 +1,8 @@
-import { readFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
-import { describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
 // ⚠️ Een `.mjs` zonder eigen typings — zelfde patroon als `dsn-controle.test.ts`.
 import {
@@ -227,11 +228,15 @@ describe('de echte catalogus', () => {
   /**
    * ⚠️ **De ondergrens die zegt dat de controle nog iets dóet.** Zou de analyse
    *    ooit te ruim worden — een gat dat over punten heen loopt, bijvoorbeeld —
-   *    dan verklaart hij alles levend en meldt hij vrolijk niets. Zes is het
-   *    aantal dat op 01-09 met de hand is nagelopen; dit getal hoort omláág te
-   *    gaan als iemand ze aansluit, en dan gaat `overbodig` rood.
+   *    dan verklaart hij alles levend en meldt hij vrolijk niets. Zes was het
+   *    aantal dat op 01-09 met de hand is nagelopen; 📏 het werd er **zeven** bij
+   *    QS8-571, toen `projectbron()` commentaar ging wegknippen en
+   *    `groep.gearchiveerd` bleek te leven op de kop van `meldingen()` in
+   *    `src/modules/buddies/api.ts` — een comment dat juist uitlegt dat die
+   *    sleutel dáár niet gebruikt wordt. Dit getal hoort omláág te gaan als
+   *    iemand ze aansluit, en dan gaat `overbodig` rood.
    */
-  it('vindt nog steeds de zes gaten die met de hand geteld zijn', () => {
+  it('vindt nog steeds elk gat dat met de hand geteld is', () => {
     const uit = beoordeelCatalogus({
       sleutels,
       bron: projectbron(process.cwd()),
@@ -247,4 +252,79 @@ describe('de echte catalogus', () => {
       expect(reden.length).toBeGreaterThan(40);
     },
   );
+});
+
+// ---------------------------------------------------------------------------
+
+/**
+ * `projectbron()` knipt commentaar weg — QS8-571.
+ *
+ * ⚠️⚠️ **Dit toetst de échte leesplek en niet `beoordeelCatalogus()`.** De knip
+ *    zit in `projectbron()`, waar de bestanden gelezen worden; een toets die
+ *    `beoordeelCatalogus()` een kale string voert, loopt er langs en zou groen
+ *    blijven met de reparatie teruggedraaid. Vandaar een echte boom op schijf —
+ *    dezelfde vorm als de ijking van `schermingang:controle`.
+ *
+ * 📏 Het gemeten geval: `groep.gearchiveerd` leefde op de kop van `meldingen()`
+ *    in `src/modules/buddies/api.ts`, en dat comment legt juist uit dat de
+ *    sleutel dáár **niet** gebruikt wordt (een niet-lid dat een link volgt
+ *    krijgt `groep.link_gearchiveerd`). De uitleg waarom iets níet gebruikt
+ *    wordt, hield het levend. Over de hele boom: 6 → 7 dood.
+ */
+describe('projectbron knipt commentaar', () => {
+  let wortel: string;
+
+  beforeEach(() => {
+    wortel = mkdtempSync(join(tmpdir(), 'catalogus-'));
+    mkdirSync(join(wortel, 'src'), { recursive: true });
+  });
+
+  afterEach(() => {
+    rmSync(wortel, { recursive: true, force: true });
+  });
+
+  const schrijf = (naam: string, inhoud: string) =>
+    writeFileSync(join(wortel, 'src', naam), inhoud, 'utf8');
+
+  it('telt een échte aanroep als aanroeper', () => {
+    schrijf('a.ts', "export const x = t('groep.weg');");
+    expect(projectbron(wortel)).toContain("t('groep.weg')");
+  });
+
+  it('telt een aanroep op een regelcommentaar niet mee', () => {
+    schrijf('a.ts', "// ooit: t('groep.weg')\nexport const x = 1;");
+    expect(projectbron(wortel)).not.toContain('groep.weg');
+  });
+
+  it('telt een aanroep in een JSDoc-blok niet mee', () => {
+    schrijf('a.ts', "/**\n * Bewust niet `t('groep.weg')` hier.\n */\nexport const x = 1;");
+    expect(projectbron(wortel)).not.toContain('groep.weg');
+  });
+
+  /**
+   * ⚠️⚠️ **Per bestand knippen, niet ná het samenvoegen — en dit geval is met
+   *    een mutatie gevonden, niet bedacht.** De eerste versie van deze toets
+   *    voedde een **niet-afgesloten** `/*` en bleef groen mét de knip ná het
+   *    samenvoegen: 📏 0 rood op die mutatie. De reden is dat
+   *    `zonderCommentaar` een blok pas herkent als er een `*\/` tegenover
+   *    staat — een blok dat nooit sluit, matcht niets en eet dus ook niets op.
+   *    De toets bewaakte niets.
+   *
+   *    Er zijn **drie** bestanden voor nodig: één dat opent, één met de échte
+   *    aanroep ertussen, en één dat sluit. Samengevoegd loopt het blok over de
+   *    `\n`-grenzen heen en verdwijnt de aanroeper in het midden; per bestand
+   *    geknipt matcht geen van de drie en blijft hij staan.
+   *
+   * 📏 Gemeten: samengevoegd `"const x = 1;   const z = 3;"` — de aanroep weg;
+   *    per bestand blijft ze alle drie intact.
+   *
+   * ⚠️ De bestandsnamen bepalen de leesvolgorde (`readdirSync`), vandaar
+   *    `1-`, `2-`, `3-`.
+   */
+  it('laat een blok dat over twee bestanden loopt de aanroeper ertussen niet opeten', () => {
+    schrijf('1-opent.ts', 'const x = 1; /* dit blok opent hier');
+    schrijf('2-aanroep.ts', "export const y = t('groep.weg');");
+    schrijf('3-sluit.ts', '*/ const z = 3;');
+    expect(projectbron(wortel)).toContain("t('groep.weg')");
+  });
 });
