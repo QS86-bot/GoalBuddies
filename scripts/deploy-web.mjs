@@ -78,10 +78,25 @@ const DIST = 'dist';
 /** Waar de standaard-DSN vandaan komt — één waarheid, zie `standaardDsnUit()`. */
 const BRON_MET_DSN = join('src', 'lib', 'env.ts');
 
+/**
+ * Een bewust afgebroken deploy — al gemeld aan de lezer, geen stacktrace nodig.
+ *
+ * ⚠️ **Waarom een worp en geen `process.exit()`.** `upload()` en `zetLive()`
+ *    falen ná een `fetch`, en `fetch` (undici) houdt daarna keep-alive-sockets
+ *    open. Op Windows zijn dat precies de open async-handles waarop
+ *    `process.exit()` een libuv-assertie gaf — `!(handle->flags &
+ *    UV_HANDLE_CLOSING)`, `src\win\async.c` — waardoor de deploy afsloot met een
+ *    crash in plaats van een nette foutmelding. Door te wérpen loopt de stack
+ *    terug naar het entrypoint, dat alleen `process.exitCode` zet en de event
+ *    loop laat leeglopen; de sockets sluiten dan zelf en het proces eindigt
+ *    schoon. Zie docs/decisions/2026-09-10-hostinger-upload-api-verplaatst.md §2.
+ */
+class DeployAfgebroken extends Error {}
+
 function fail(bericht, hint) {
   console.error(`\n  ✗ ${bericht}\n`);
   if (hint) console.error(`    ${hint}\n`);
-  process.exit(1);
+  throw new DeployAfgebroken(bericht);
 }
 
 function stap(tekst) {
@@ -976,10 +991,30 @@ async function controleerPwa() {
     '\n    Zie docs/DEPLOY.md §3. Er gaat hierdoor niets zichtbaars stuk —\n' +
       '    alleen de meldingen werken niet, en dat merk je pas als iemand klaagt.\n',
   );
-  process.exit(1);
+  // ⚠️ Werpen en niet `process.exit()`: dit draait ná de fetches naar de live
+  //    site, dus met open keep-alive-sockets — zie `DeployAfgebroken`.
+  throw new DeployAfgebroken('pwa-paden');
 }
 
 // ⚠️ Alleen draaien als dit script zélf aangeroepen wordt. Zonder deze grens
 //    start een `import` van dit bestand de hele deploy — en dan kan geen enkele
 //    test een van zijn functies voeden. Zie `tests/scripts/deploy-htaccess.test.ts`.
-if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) await main();
+//
+// ⚠️ **`process.exitCode` en geen `process.exit()`, en dat is de andere helft van
+//    `DeployAfgebroken`.** Een afgebroken deploy is al aan de lezer gemeld; hier
+//    wordt alleen de exitcode gezet en verder niets gedaan, zodat de event loop
+//    leegloopt en de keep-alive-sockets van `fetch` zichzelf sluiten. Een
+//    `process.exit()` hier zou dezelfde libuv-crash op Windows teruggeven die de
+//    worp juist vermijdt. De vroege, pré-netwerk stops (de secret-scan, de
+//    source-map-controle, de DSN-controle) roepen nog wél `process.exit()` aan:
+//    daar staat nog geen socket open, dus daar valt niets te draineren.
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+  try {
+    await main();
+  } catch (fout) {
+    if (!(fout instanceof DeployAfgebroken)) {
+      console.error(`\n  ✗ Onverwachte fout tijdens de deploy:\n    ${fout?.stack ?? fout}\n`);
+    }
+    process.exitCode = 1;
+  }
+}
