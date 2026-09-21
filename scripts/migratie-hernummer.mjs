@@ -44,6 +44,7 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 
 import { haalRemoteOp, nummersPerBranch, versheidsmelding } from './migratiebranches.mjs';
 import { beoordeelOmgeving } from './migratieregister-omgeving.mjs';
+import { metSchuineStrepen } from './paden.mjs';
 
 const WORTEL = fileURLToPath(new URL('..', import.meta.url));
 const MAP = join(WORTEL, 'supabase', 'migrations');
@@ -325,9 +326,17 @@ export function herschrijfVerwijzingen(tekst, opties) {
  */
 export const DOSSIER = 'docs/ENGINEER-REVIEW.md';
 
-/** Is dit pad het dossier? Werkt met `/` en met `\\`. */
+/**
+ * Is dit pad het dossier?
+ *
+ * ⚠️ **Via `metSchuineStrepen()` en niet met een eigen `replace`.** Hier stond
+ *    eerst een zelfgeschreven normalisatie; `padvormen:controle` werd daar
+ *    terecht rood op (vorm C: een gebouwd pad naast een `/`-literaal, zonder de
+ *    gedeelde normalisatie). Zelfde klasse als de psql-aanroep en de knip —
+ *    **bouw je eigen versie niet van iets dat er al is.**
+ */
 export function isDossier(pad) {
-  return String(pad ?? '').replace(/\\/g, '/').endsWith(DOSSIER);
+  return metSchuineStrepen(String(pad ?? '')).endsWith(DOSSIER);
 }
 
 /**

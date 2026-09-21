@@ -107,3 +107,25 @@ gebruikt in plaats van de functie te voeden.
 
 ⚠️ `tests/scripts/migratie-hernummer-botsing.test.ts` bleef bij alle zes groen:
 de gedeeld-tak is niet verbouwd.
+
+## Twee dingen die de poort onderweg ving, en allebei het opschrijven waard
+
+📏 **`padvormen:controle` werd rood op vorm C.** De eerste versie van
+`isDossier()` normaliseerde het pad met een eigen `replace(/\\/g, '/')`, en dat
+is precies waar die controle voor staat: een gebouwd pad naast een
+`/`-padliteraal zonder de gedeelde normalisatie breekt op Windows. De reparatie
+is `metSchuineStrepen()` uit `scripts/paden.mjs`. ⚠️ Dit is dezelfde klasse als
+de psql-aanroep (QS8-414) en de knip (QS8-446): **bouw je eigen versie niet van
+iets dat er al is.** Drie keer dezelfde les, drie keer gevangen door een grendel
+die er om precies die reden staat.
+
+⚠️⚠️ **En een toets die niet kan starten, meldt vitest als *skipped* en niet als
+failed.** Nadat het script `paden.mjs` ging importeren, faalde de `beforeAll` van
+beide integratietests: de tijdelijke kloon kopieert alleen de scripts uit
+`HULPSCRIPTS`, en dat bestand stond er niet bij. 📏 De samenvattingsregel zei toen
+`74 passed | 13 skipped` — geen enkele rode. Wie op die regel afgaat, leest een
+groene run terwijl twee integratiesuites geen enkele assertie gedraaid hebben.
+
+Dat is dezelfde vorm als de OVERGESLAGEN-poort uit CLAUDE.md en als de RLS-suite
+van QS8-270: **ongemeten is niet groen.** `HULPSCRIPTS` draagt nu een comment dat
+zegt waarom `paden.mjs` erin hoort.
