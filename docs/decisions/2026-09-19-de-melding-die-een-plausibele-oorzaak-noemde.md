@@ -188,15 +188,23 @@ en staat nu los aangeboden, zelfde vorm als `regels()` in
 
 ## Wat dit niet oplost
 
-⚠️ **De bash-bomen hebben geen register.** `tests/scripts/psql-verbinding.test.ts`
-bewaakt dat `scripts/*.mjs` en `tests/**/*.ts` hun psql-aanroep niet zelf
-bouwen; `.sh` valt buiten allebei, en dat zijn precies de twee bestanden die het
-wél doen (`schema-opbouwen.sh` en `lokale-stack.sh`). Dat is vandaag geen
-toevalligheid maar een structureel verschil — bash kan `psqlArgumenten()` niet
-importeren — dus een derde register zou een uitzondering met twee rijen zijn en
-één bewaakte rij. 📏 Beide bestanden zijn met de hand nagelezen: ze noemen
-allebei `-U`, `-p` en `-h`-indien-`PGHOST`, gelijk aan `psqlArgumenten()`.
-Staat in `docs/ENGINEER-REVIEW.md`.
+⚠️ **De bash-boom heeft geen register.** `tests/scripts/psql-verbinding.test.ts`
+bewaakt dat `scripts/*.mjs` en `tests/**/*.ts` hun psql-aanroep niet zelf bouwen;
+`.sh` valt buiten allebei.
+
+📏 **Het gaat om precies één bestand, en dat is nagemeten en niet geschat.** Van
+de twee shellscripts roept alleen `scripts/schema-opbouwen.sh` psql aan;
+`scripts/lokale-stack.sh` bouwt er geen en delegeert naar dat eerste. Deze
+paragraaf zei eerst *"de twee bestanden die het wél doen"* en dat in allebei `-U`
+stond — geredeneerd uit de namen, en onwaar. **Dat is dezelfde fout als die
+waarover dit document gaat, in het document zelf**, en dat is precies waarom het
+antwoord hier meten is en niet zorgvuldiger nadenken.
+
+Een derde register zou dus één rij bewaken, en de reden is bovendien structureel
+en geen omissie: bash kan `psqlArgumenten()` niet importeren. 📏 Met de hand
+nagelezen: `schema-opbouwen.sh` noemt `-U`, `-p`, `-w` en `-h`-indien-`PGHOST`,
+op alle vier gelijk aan `psqlArgumenten()` — handwerk, geen eigenschap. Staat als
+rij in `docs/ENGINEER-REVIEW.md`.
 
 ⚠️ En de duiding geldt alleen voor de **drop**. De `create database` en de
 migratielus eronder tonen hun stderr wel (die dragen geen `2>&1`), maar zonder
