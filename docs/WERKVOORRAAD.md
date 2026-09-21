@@ -1077,6 +1077,12 @@ plek voor zijn eigen valse treffers wordt een controle die je uitzet. Er staan e
 drie in, alle drie dezelfde vorm: ze **selecteren** commentaarregels in plaats van
 ze weg te gooien — de kop van een migratie ís commentaar.
 
+📏 **En `belofteknip:controle` uit QS8-574 ving bij de merge meteen een elfde
+instantie** — een belofte-test uit de parallelle sessie (QS8-436) die een pin op
+de bron van `expo-image-picker` ruw toetste. Gemeten: faalt open, gerepareerd,
+rood na de reparatie. Dat bestand importeerde de gedeelde knip al en gebruikte
+hem voor ónze bron maar niet voor de pin.
+
 ⚠️ **Wat de rand is, staat in de kop van het script en als rij in
 `ENGINEER-REVIEW.md`:** een pijlfunctie, een methode, twee parameters en de
 teken-voor-teken-vorm ziet hij niet. Afweging in

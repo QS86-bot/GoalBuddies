@@ -183,6 +183,34 @@ vormen die de detector met rust moet laten: een `--name-only`-vlag, een
 URL-regex, een functie met twee parameters, een knip die alleen in commentaar
 staat.
 
+## 📏 De grendel van QS8-574 ving meteen een elfde, en dat is de meting die telt
+
+Deze branch stapelt op QS8-574, want `belofteknip:controle` leest
+`tests/beloftes/` en dit issue verbouwt de knippen die daar staan. Tijdens het
+werk landde op `main` een nieuw belofte-bestand uit de parallelle sessie:
+`de-fotokiezer-meet-een-ander-bestand-dan-hij-verstuurt.test.ts` (QS8-436).
+
+Bij de merge werd `belofteknip:controle` **rood**, op vier bevestigende toetsen.
+Dat is de eerste keer dat die grendel iets vindt dat niet uit zijn eigen meting
+kwam — geschreven ná de telling van 21-09, precies het scenario waarvoor CLAUDE.md
+zegt dat een reparatie zonder mechanisme teruggroeit.
+
+📏 Nagemeten volgens dezelfde methode: met
+`// fileSize = fileData?.fileSize ?: outputFile.length()` in de Kotlin-bron van
+`expo-image-picker` bleef het bestand **5 van de 5** groen. Na de knip op de
+leesplek gaat dezelfde mutatie rood, op *"leest op Android de grootte van de
+bron-URI en niet van het uitvoerbestand"*.
+
+⚠️⚠️ **En het scherpste detail: dat bestand importeerde de gedeelde knip al.** Het
+gebruikte hem voor `kiesFoto.ts` — onze eigen bron — en niet voor de pin op die
+van upstream. De kennis was er; juist de plek waar niemand hem verwachtte bleef
+ongeknipt. **Een pin op andermans bron heeft dezelfde zwakte als een pin op de
+onze**, en Kotlin en Swift kennen dezelfde twee commentaarvormen als JS.
+
+⚠️ `bron()` blijft daar met reden ruw naast `code()` staan: `package.json` is JSON
+en kent geen commentaar, en er doorheen knippen zou een versienummer stilzwijgend
+kunnen veranderen.
+
 ## Wat er níet in zit
 
 - **De zeven knippen die dicht falen zijn niet omgebouwd.** Ze staan in
