@@ -192,3 +192,61 @@ describe('het oordeel over een verzameling bestanden', () => {
     expect(uit.gemist).toEqual([]);
   });
 });
+
+// ---------------------------------------------------------------------------
+
+/**
+ * De knip op de bloktekst — QS8-567.
+ *
+ * ⚠️⚠️ **Dit is de tégenovergestelde richting van de toets hierboven**
+ *    (*"laat commentaar staan — ook als het de vorm letterlijk noemt"*), en dat
+ *    is precies waarom die toets deze reparatie niet dekte. Daar gaat het om de
+ *    **mappingdetectie**: een treffer in commentaar zou daar een mapping
+ *    *melden* die er niet is — ruis, en de eigen per-regel-zeef vangt hem.
+ *
+ *    Hier gaat het om `tekentVoor()`, en daar **pleit** een treffer juist
+ *    vrij: een blok dat tekent én de naam noemt, vouches voor het mappende
+ *    blok. Commentaar dat daar meetelt, verbergt een ongetekende mapping.
+ *
+ * 📏 Gemeten vóór de knip, op deze bron:
+ *
+ *      echte aanroep        kaal=[] tekent=true
+ *      alleen in // comment kaal=[] tekent=true     ← identiek: het gat
+ *      alleen in // comment kaal=[2] tekent=false   ← na de knip
+ */
+describe('een tekenend blok pleit alleen vrij met échte code', () => {
+  const bron = (regelInFetch: string) =>
+    [
+      'function naarLid(rij) {',
+      '  return { avatar_url: rij.avatar_url };',
+      '}',
+      '',
+      'function fetchIets() {',
+      `  ${regelInFetch}`,
+      '  return metGetekendeAvatars(x);',
+      '}',
+    ].join('\n');
+
+  it('een échte aanroep pleit de mapping vrij', () => {
+    expect(beoordeelBestand(bron('const x = naarLid(rij);'))?.kaal).toEqual([]);
+  });
+
+  it('een aanroep die alleen in commentaar staat, pleit niets vrij', () => {
+    expect(beoordeelBestand(bron('// ooit: const x = naarLid(rij);'))?.kaal).toEqual([2]);
+  });
+
+  /**
+   * ⚠️ De tweede grendel in hetzelfde pad: `TEKENT` leest uit dezelfde tekst.
+   *    Een comment die `metGetekendeAvatars` noemt, maakte van elk blok een
+   *    tekenend blok.
+   */
+  it('een tekenmarkering in commentaar maakt geen tekenend blok', () => {
+    const kaal = [
+      'function naarLid(rij) {',
+      '  return { avatar_url: rij.avatar_url };',
+      '  // hier zou metGetekendeAvatars(x) moeten komen',
+      '}',
+    ].join('\n');
+    expect(beoordeelBestand(kaal)?.kaal).toEqual([2]);
+  });
+});

@@ -451,10 +451,12 @@ describe('velduitLokaal', () => {
    *    de knip: met `/* voorbeeld: const velden = { onschuldig: 1 } *\/` erboven
    *    gaf `velduitLokaal` `['onschuldig']` in plaats van `['titel','notitie']`.
    *
-   * ⚠️ **Dit weegt zwaarder dan ruis.** Deze controle telt welke kolommen `src/`
-   *    en `app/` terugvragen, en domeinregel 7 zegt dat **RLS geen kolommen kan
-   *    beperken** — dit is de enige plek waar die grens geteld wordt. Een
-   *    comment die de kolomlijst verving, verving de meting zelf.
+   * ⚠️⚠️ **Wat dit raakt is de schrijfkant, niet de leeskant.**
+   *    `velduitLokaal()` hangt onder `schrijfIn()`; `selectiesIn()` leest nog
+   *    ruw. En de faalvorm is een **42501 in productie** (de 0089/0140-klasse),
+   *    geen stil datalek — de grant is de grendel, deze controle de
+   *    pre-flight-check. Een eerdere versie van deze kop riep domeinregel 7 aan
+   *    en hing die grond aan de helft die niet gewijzigd is.
    */
   it('leest de échte declaratie, niet een voorbeeld in een blokcommentaar erboven', () => {
     const bron =
@@ -1390,5 +1392,47 @@ describe('de vragen lezen het effectieve recht en niet de boekhouding — QS8-33
     ['de schrijfkant', SCHRIJFVRAAG],
   ])('%s filtert niet op een grantee-naam', (_naam, vraag) => {
     expect(vraag).not.toMatch(/grantee\s*=/);
+  });
+});
+
+// ---------------------------------------------------------------------------
+
+/**
+ * De leeskant knipt ook — QS8-567, en dit is een correctie op die reparatie zelf.
+ *
+ * ⚠️⚠️ **Waarom dit er later bij kwam.** De eerste versie knipte alleen in
+ *    `velduitLokaal()` (de schrijfkant). Daarmee gold dit bestand voor de nieuwe
+ *    helft van `knip:controle` als "knipt" — want die kijkt naar de import — en
+ *    de leeskant bleef ruw lezen met een pas die niet meer verliep.
+ *
+ *    Dat is exact het neveneffect-in-plaats-van-eigenschap waar QS8-567 over
+ *    gaat, nu in de reparatie van QS8-567. Aangewezen door de security-review,
+ *    zelf nagemeten.
+ *
+ * 📏 De gevaarlijke vorm, gemeten vóór de knip:
+ *
+ *      "// vroeger: .from('goals')\nconst r = await q.select('secret');"
+ *        → { tabel: 'goals', kolommen: ['secret'] }
+ *
+ *    De tabelnaam kwam uit een comment, de kolom uit échte code, en de selectie
+ *    werd tegen de grant van de **verkeerde tabel** gelegd. Dat faalt open.
+ *
+ * 📏 En de reparatie kost niets: 71 selecties en 33 schrijfacties, gelijk aan
+ *    `main`.
+ */
+describe('selectiesIn knipt commentaar weg', () => {
+  it('leest een échte selectie gewoon', () => {
+    expect(selectiesIn('x.ts', "const r = await sb.from('goals').select('title');")).toEqual([
+      { pad: 'x.ts', tabel: 'goals', kolommen: ['title'], alles: false },
+    ]);
+  });
+
+  it('telt een uitgecommentarieerde keten niet mee', () => {
+    expect(selectiesIn('x.ts', "// vroeger: .from('goals').select('*')")).toEqual([]);
+  });
+
+  it('plakt een kolom uit code niet aan een tabelnaam uit commentaar', () => {
+    const bron = "// vroeger: .from('goals')\nconst r = await q.select('secret');";
+    expect(selectiesIn('x.ts', bron)).toEqual([]);
   });
 });

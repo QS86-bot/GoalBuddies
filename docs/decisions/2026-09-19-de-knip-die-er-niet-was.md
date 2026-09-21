@@ -31,10 +31,55 @@ Vier bleken een echte instantie, en **alle vier faalden open**:
 | `aansluiting-controle.mjs` | een naam die alléén in een comment stond, maakte een dode keten levend |
 | `avatar-controle.mjs` | een comment in een tekenend blok pleitte een ongetekende mapping vrij — `kaal: []`, identiek aan een échte aanroep |
 
-`kolomrechten` weegt het zwaarst. Die controle telt welke kolommen `src/` en
-`app/` terugvragen, en domeinregel 7 zegt dat **RLS geen kolommen kan beperken**
-— dit is de enige plek waar die grens geteld wordt. Een comment die de kolomlijst
-verving, verving de meting.
+### ⚠️ Een correctie op mijn eigen weging, en die is het opschrijven waard
+
+De eerste versie van dit document noemde `kolomrechten` het zwaarst, met
+domeinregel 7 als grond: *RLS kan geen kolommen beperken.* De security-review
+wees aan dat die grond aan de verkeerde helft hing, en dat klopt — nagemeten:
+
+- `velduitLokaal()` wordt **alleen** vanuit `schrijfIn()` aangeroepen. Dit was
+  dus de **schrijf**kant; `selectiesIn()` — de leeskant — bleef eerst ruw lezen.
+  Dat is inmiddels ook gerepareerd, en waarom dat nodig was staat hieronder.
+- De faalvorm is in beide helften een **42501 in productie** (de
+  0089/0140-klasse), geen stil datalek. De kolomgrant zélf is de grendel; deze
+  controle is de pre-flight-check erop. PostgREST laat geen kolommen stilletjes
+  weg — dat staat met zoveel woorden in de kop van het script, als een aanname
+  die dit project al eens weerlegd heeft.
+
+Een gemiste kolom is dus **duur** (een storing die élke schrijfactie op die tabel
+omvergooit) maar het is **geen gemiste privacygrens**.
+
+📏 En de reparatie kost vandaag niets: `schrijfIn()` over de hele boom geeft oud
+en nieuw **33 schrijfacties, 0 verschillen**; `selectiesIn()` **71 selecties,
+byte-identiek**.
+
+### En de reparatie had dezelfde fout in zich
+
+De eerste versie knipte alleen in `velduitLokaal()`. Daarmee gold
+`kolomrechten-controle.mjs` voor de nieuwe helft van `knip:controle` als
+*"knipt"* — want `knipt()` kijkt naar de **import** — terwijl `selectiesIn()`
+ruw bleef lezen. De pas verliep niet meer.
+
+Dat is het neveneffect-in-plaats-van-eigenschap uit dit document, terug in de
+reparatie ervan. 📏 En de leeskant faalde open:
+
+    "// vroeger: .from('goals')\nconst r = await q.select('secret');"
+      →  { tabel: 'goals', kolommen: ['secret'] }
+
+De tabelnaam kwam uit een comment, de kolom uit échte code, en de selectie werd
+tegen de grant van de **verkeerde tabel** gelegd. Beide helften knippen nu.
+📏 Kosten: 71 selecties en 33 schrijfacties, gelijk aan `main`.
+
+⚠️ **Dit is meteen de scherpste grens van de nieuwe helft.** `knipt()` oordeelt
+per **bestand**; een bestand met twee leesplekken krijgt een pas zodra er één
+knipt. Dat staat in `ZONDER_KNIP`'s kop als belofte ("classificatie, geen
+juistheid") en hier als het geval dat het aantoont.
+
+**Dat ik dit fout had is precies de vorm waar dit document over gaat.** Een
+reden die het verkeerde mechanisme noemt is in dit project de dure variant — hij
+leest als onderbouwing, en de volgende persoon neemt hem over in plaats van hem
+na te meten. CLAUDE.md zegt het scherper: *een afwijking die je onderbouwt is
+duurder dan een die je vergeet.*
 
 ## Wat de nieuwe helft wél en niet belooft
 

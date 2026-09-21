@@ -41,6 +41,7 @@ import { readdirSync, readFileSync, statSync } from 'node:fs';
 import { join, relative } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 
+import { metSchuineStrepen } from './paden.mjs';
 import { zonderCommentaar } from './zonder-commentaar.mjs';
 
 const WORTEL = fileURLToPath(new URL('..', import.meta.url));
@@ -171,7 +172,10 @@ export const ZONDER_KNIP = {
     'houdt zijn eigen commentaarzeef op regelindex (`commentaarregels()`), want hij meldt ' +
     'regelnummers — 📏 gemeten: een `label="…"` op een `//`- of ` * `-regel geeft nul treffers',
   'scripts/catalogus-controle.mjs':
-    'toetst een catalogussleutel, geen bronbestand; er zit geen commentaar in een sleutelnaam',
+    'de vórmtoets (regel 157) leest een catalogussleutel en geen bronbestand — daar zit geen ' +
+    'commentaar in. ⚠️ Dekt NIET de levendheidstoets, die `projectbron()` ruw leest: 📏 een ' +
+    'sleutel die alleen in een comment staat geldt als levend, en dat verbergt vandaag één ' +
+    'echt dode sleutel (`groep.gearchiveerd`). Dat is QS8-571 en geen vrijstelling',
   'scripts/ci-controles.mjs':
     'leest YAML-workflows, en de gedeelde knip is een JS-knip — een `#` haalt hij niet weg. ' +
     '📏 Gemeten: een uitgecommentarieerde `# - run: npm run x` telt mee. Dat faalt **dicht** ' +
@@ -182,10 +186,37 @@ export const ZONDER_KNIP = {
     '`klok_fout()` die alleen in een comment stond)',
 };
 
-/** Leest dit bestand bronbestanden én bouwt het een regex uit een naam? */
+/**
+ * Leest dit bestand bronbestanden én bouwt het een regex uit een naam?
+ *
+ * ⚠️⚠️ **Wat hij ziet en wat niet — gemeten, niet geschat (QS8-567).** Dit is
+ *    een detector op vórm, en een vormdetector heeft altijd een rand. Die staat
+ *    hier zodat niemand de telling voor volledigheid aanziet:
+ *
+ *    | vorm | |
+ *    | -- | -- |
+ *    | `new RegExp(`…${naam}…`)`, ook met een newline of spatie ná de haak | gezien |
+ *    | `new RegExp('…' + naam)` — concatenatie | **gemist** |
+ *    | `RegExp(` zonder `new` | **gemist** |
+ *    | `bron.includes(`…${naam}…`)` | **gemist** |
+ *    | `bron.split(`const ${naam} =`)` | **gemist** |
+ *
+ *    📏 De whitespace-vorm is er later bij gekomen en kostte niets: nog steeds
+ *    11 bronlezers, 5 met reden zonder knip. Hij zat erin omdat prettier van
+ *    een lange regex precies die vorm maakt — de goedkoopste manier waarop de
+ *    vólgende grendel zich onzichtbaar maakt.
+ *
+ * ⚠️ **Twee bestanden lezen bron en matchen op naam in een gemiste vorm:**
+ *    `padverwijzing-controle.mjs` (concatenatie) en
+ *    `conflictmarkeringen-controle.mjs` (`startsWith(`${vorm} `)`). Allebei
+ *    **mogen** niet knippen — een pad ín een comment is daar juist het
+ *    onderwerp, en een conflictmarkering in een comment is nog steeds een
+ *    kapotte merge — maar dat staat nergens, en de teller onderschat het veld.
+ *    De resterende vormen en die twee rijen staan als QS8-572.
+ */
 export function leestBronMetNaampatroon(bron) {
   const schoon = zonderCommentaar(bron);
-  return /readFileSync\(|readFile\(/.test(schoon) && /new RegExp\(`[^`]*\$\{/.test(schoon);
+  return /readFileSync\(|readFile\(/.test(schoon) && /new RegExp\(\s*`[^`]*\$\{/.test(schoon);
 }
 
 /** Knipt dit bestand — gedeeld, of met een eigen knip die in MET_REDEN staat? */
@@ -213,7 +244,17 @@ export function definitiesIn(bron) {
 }
 
 /** Wat er mis is aan deze bron, als leesbare regels. */
-export function klachten(bron, pad) {
+export function klachten(bron, ruwPad) {
+  // ⚠️⚠️ **Normaliseren vóór élke padvergelijking (QS8-567).** Op Windows geeft
+  //    `relative()` `scripts\x.mjs`, en dan matcht `startsWith('scripts/')`
+  //    nooit — de nieuwe helft staat er dan uit zónder dat iets dat zegt, en de
+  //    oude meldt elke geregistreerde knip als onbekend. 📏 Gemeten: met een
+  //    backslash-pad gaf `klachten()` 0 klachten waar het er 1 moest zijn, en
+  //    `verweesdeVrijstellingen()` meldde 5 van de 5 rijen als verweesd.
+  //    Precies de vorm waar `scripts/paden.mjs` voor bestaat — zie de kop daar,
+  //    inclusief de zin dat een controle die onzin meldt geleerd wordt te
+  //    negeren.
+  const pad = metSchuineStrepen(ruwPad);
   if (pad === GEDEELD || pad.startsWith(`${ZONDER_TOETS}/`)) return [];
 
   const uit = definitiesIn(bron)
@@ -269,8 +310,9 @@ export function verweesdeRedenen(gevonden) {
  *    reden om er niet aan te twijfelen.
  */
 export function verweesdeVrijstellingen(bronnen) {
+  const genormaliseerd = new Map([...bronnen].map(([p, b]) => [metSchuineStrepen(p), b]));
   return Object.keys(ZONDER_KNIP).filter((pad) => {
-    const bron = bronnen.get(pad);
+    const bron = genormaliseerd.get(pad);
     if (bron === undefined) return true;
     return !leestBronMetNaampatroon(bron) || knipt(bron, pad);
   });
@@ -285,7 +327,7 @@ export function hoofd() {
   for (const pad of paden) {
     if (pad.startsWith(`${ZONDER_TOETS}/`)) continue;
     const bron = readFileSync(join(WORTEL, pad), 'utf8');
-    bronnen.set(relative('.', pad), bron);
+    bronnen.set(metSchuineStrepen(relative('.', pad)), bron);
     for (const naam of definitiesIn(bron)) gevonden.add(`${pad}:${naam}`);
     uit.push(...klachten(bron, relative('.', pad)));
   }
@@ -315,7 +357,9 @@ export function hoofd() {
 
   // ⚠️ Beide helften noemen, want een controle die alleen zijn oude helft meldt,
   //    laat de lezer denken dat de nieuwe er niet is (QS8-567).
-  const lezers = [...bronnen].filter(([pad, bron]) => leestBronMetNaampatroon(bron) && pad.startsWith('scripts/'));
+  const lezers = [...bronnen].filter(
+    ([pad, bron]) => leestBronMetNaampatroon(bron) && metSchuineStrepen(pad).startsWith('scripts/'),
+  );
   console.log(
     `knip-controle: ${Object.keys(MET_REDEN).length} knippen met een reden, de rest deelt er één ` +
       `(${paden.length} bestanden). ` +

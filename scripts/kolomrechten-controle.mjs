@@ -83,7 +83,22 @@ export function kolomNaam(stuk) {
  * @param inhoud de bestandsinhoud — als parameter zodat deze controle te voeden
  *   is zonder de codebase te wijzigen.
  */
-export function selectiesIn(pad, inhoud) {
+export function selectiesIn(pad, ruweInhoud) {
+  // ⚠️⚠️ **Ook de leeskant knipt (QS8-567).** Dit is hier later bijgekomen, en
+  //    de reden is een fout in mijn eigen reparatie: door de knip te importeren
+  //    voor `velduitLokaal()` gold dit bestand voor de nieuwe helft van
+  //    `knip:controle` als "knipt", terwijl déze helft ruw bleef lezen. Een pas
+  //    op grond van een import is precies het neveneffect-in-plaats-van-
+  //    eigenschap waar dat issue over gaat — nu in de reparatie zelf.
+  //
+  // 📏 Gemeten vóór de knip, en dit faalt **open**:
+  //      "// vroeger: .from('goals')\nconst r = await q.select('secret');"
+  //    gaf `{tabel: 'goals', kolommen: ['secret']}` — de tabelnaam kwam uit een
+  //    comment, de kolom uit echte code, en de selectie werd tegen de grant van
+  //    de verkeerde tabel gelegd.
+  //
+  // 📏 De reparatie kost niets: 71 selecties, oud en nieuw identiek.
+  const inhoud = zonderCommentaar(ruweInhoud);
   const uit = [];
   const stukken = inhoud.split(".from('");
 
@@ -485,10 +500,21 @@ export function zodSchemas(inhoud) {
  *    bóven de echte declaratie — `velduitLokaal` gaf `['onschuldig']` in plaats
  *    van `['titel','notitie']`.
  *
- *    Dat weegt hier zwaarder dan ruis: deze controle meet welke kolommen `src/`
- *    en `app/` terugvragen, en domeinregel 7 zegt dat **RLS geen kolommen kan
- *    beperken** — dit is de enige plek waar die grens geteld wordt. Een comment
- *    die de kolomlijst vervangt, vervangt de meting.
+ *    ⚠️⚠️ **Wat dit wél en níet raakt, en die grens is met opzet scherp.**
+ *    `velduitLokaal()` wordt alleen vanuit `schrijfIn()` aangeroepen: dit is de
+ *    **schrijf**kant. `selectiesIn()` — de leeskant — leest nog steeds ruw en is
+ *    door QS8-567 niet aangeraakt.
+ *
+ *    En de faalvorm is in beide helften een **42501 in productie** (de
+ *    0089/0140-klasse), geen stil datalek: de kolomgrant zelf is de grendel,
+ *    deze controle is de pre-flight-check erop. PostgREST laat geen kolommen
+ *    stilletjes weg — zie de kop van dit bestand. Een gemiste kolom is dus duur,
+ *    maar het is geen gemiste privacygrens.
+ *
+ *    Dat staat hier omdat de eerste versie van deze kop domeinregel 7 aanhaalde
+ *    (*"RLS kan geen kolommen beperken"*) en die grond aan de verkeerde helft
+ *    hing. **Een reden die het verkeerde mechanisme noemt, is in dit project de
+ *    dure vorm** — de volgende lezer neemt hem over.
  *
  * @returns de kolomnamen, of `null` als de variabele hier niet te lezen is.
  */
