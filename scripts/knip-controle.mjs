@@ -26,8 +26,22 @@
  * begint, staat in `MET_REDEN` — of hij bestaat niet en het bestand importeert
  * `scripts/zonder-commentaar.mjs`.
  *
+ * ⚠️⚠️ **Er zijn twee gedeelde knippen sinds QS8-574, en dat is geen
+ *    verwatering.** `zonder-commentaar.mjs` doet JS/TS en
+ *    `zonder-sql-commentaar.mjs` doet SQL; een JS-knip haalt een `--` niet weg
+ *    en een SQL-knip een `//` niet. Wat níet verandert is de regel eronder: de
+ *    **derde** gedeelde knip is een keuze die je verantwoordt, geen gewoonte.
+ *
+ * ⚠️⚠️ **En hij ziet alleen knippen die `zonderCommentaar` héten.** 📏 Gemeten
+ *    op 21-09-2026 staan er vier die dat niet doen en dus buiten dit register
+ *    vallen: `plat()` in `tests/beloftes/aanmeldscherm.test.ts`,
+ *    `ontdaanVanCommentaar()` in `datumopmaak.test.ts` en
+ *    `onboarding-schrijft-niets-over.test.ts`, en `bronZonderCommentaar()` in
+ *    `tabbalk-bovenaan.test.ts`. Alle vier knippen vandaag correct — nagemeten
+ *    bij QS8-574 — maar niets bewaakt dat. Dat gat staat als QS8-579.
+ *
  * ⚠️ **Het register is breed en dat is met opzet.** Niet elke knip is dezelfde
- *    knip: vier ervan halen **SQL**-commentaar weg (`--`), één haalt óók
+ *    knip: er staan er **SQL**-knippen in (`--`), één haalt óók
  *    stringliteralen weg, en één vervangt een blok door evenveel regeleindes
  *    omdat hij regelnúmmers meldt. Die verschillen zijn de reden dat ze
  *    bestaan, niet een teken dat ze vergeten zijn. Wat dit register toevoegt is
@@ -84,10 +98,12 @@ export const MET_REDEN = {
     'knipt SQL-commentaar (`--`) uit een migratie; JS-commentaar komt er niet in voor',
   'scripts/pinuitzonderingen-controle.mjs:zonderCommentaar':
     'knipt SQL-commentaar (`--`) uit een functiedefinitie; JS-commentaar komt er niet in voor',
-  'scripts/sleutelvorm-controle.mjs:zonderCommentaar':
-    'knipt SQL-commentaar uit een functiedefinitie: `--` én geneste `/* */`, om ' +
-    'enkele quotes én dollar-quotes heen — een streepje binnen een literal mag ' +
-    'de leesplek niet opeten (QS8-491)',
+  'scripts/zonder-sql-commentaar.mjs:zonderCommentaarSql':
+    'de **gedeelde SQL-knip**, de tegenhanger van de gedeelde JS-knip: `--` én ' +
+    'geneste `/* */`, om enkele quotes én dollar-quotes heen, met de literalen ' +
+    'intact — een streepje binnen een literal mag de leesplek niet opeten ' +
+    '(QS8-491). Stond tot QS8-574 in `sleutelvorm-controle.mjs`, waar ' +
+    '`dml-controle.mjs` hem al uit importeerde',
   'scripts/persoon-in-jsonb-controle.mjs:zonderCommentaar':
     'knipt SQL-commentaar per regel, zodat de regelindeling van de query heel blijft',
   'scripts/klokgrens-controle.mjs:zonderCommentaar':
