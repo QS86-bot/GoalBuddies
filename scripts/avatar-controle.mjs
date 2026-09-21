@@ -46,6 +46,8 @@ import { readFileSync, readdirSync, statSync } from 'node:fs';
 import { join, dirname, relative } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 
+import { zonderCommentaar } from './zonder-commentaar.mjs';
+
 const WORTEL = join(dirname(fileURLToPath(import.meta.url)), '..');
 
 /** Mappen waarin een ophaalpad als "productie" telt. */
@@ -123,8 +125,8 @@ export function beoordeelBestand(inhoud) {
 
   regels.forEach((regel, i) => {
     // Commentaar telt niet mee: de uitleg hierboven noemt zelf `avatar_url: rij.`
-    const zonderCommentaar = regel.replace(/^\s*(\/\/|\*|\/\*).*$/, '');
-    for (const m of zonderCommentaar.matchAll(MAPPING)) {
+    const codeDeel = regel.replace(/^\s*(\/\/|\*|\/\*).*$/, '');
+    for (const m of codeDeel.matchAll(MAPPING)) {
       if (AVATARSLEUTEL.test(m[1])) {
         mappings.push(i + 1);
         break;
@@ -134,10 +136,19 @@ export function beoordeelBestand(inhoud) {
 
   if (mappings.length === 0) return null;
 
+  // ⚠️⚠️ **`tekst` is geknipt, en dat is een gerepareerde valse groene
+  //    (QS8-567).** Hieronder pleit een treffer een mapping juist *vrij*: een
+  //    blok dat tekent én de naam noemt, vouches voor het mappende blok. 📏
+  //    Gemeten vóór de knip: met `// ooit: const x = naarLid(rij)` in een
+  //    tekenend blok gaf `beoordeelBestand` `kaal: []` — precies dezelfde
+  //    uitslag als met een échte aanroep. Dat faalt **open**.
+  //
+  // ⚠️ Ook `TEKENT` leest hieruit: een comment die `metGetekendeAvatars` noemt,
+  //    maakte van elk blok een tekenend blok.
   const blokken = blokkenVan(inhoud).map((b) => ({
     ...b,
     naam: naamVan(regels[b.van - 1] ?? ''),
-    tekst: regels.slice(b.van - 1, b.tot).join('\n'),
+    tekst: zonderCommentaar(regels.slice(b.van - 1, b.tot).join('\n')),
   }));
 
   /**
