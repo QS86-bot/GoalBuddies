@@ -73,7 +73,8 @@ const WEEKPLANSTAPPEN_PLAFOND = 200;
  *    het kán kosten.** Hij is `before insert … for each row` en telt óp, dus bij
  *    401 rijen vuurt hij op rij 401 — als de eerste 400 al geschreven zijn. En
  *    hij zegt niets over het aantal verzoeken; dat staat als open risico Hoog in
- *    rij 609 van `docs/ENGINEER-REVIEW.md`.
+ *    de rij *Er staat geen rate limit vóór PostgREST* (08-09-2026) van
+ *    `docs/ENGINEER-REVIEW.md`.
  */
 const REMGRENS = WEEKPLANSTAPPEN_PLAFOND * 2;
 
@@ -307,7 +308,8 @@ describe.skipIf(!rlsTestsConfigured)('een geweigerde bulk-POST schrijft eerst', 
       //    plafond. 📏 Gemeten mét de conjunct intact: twintig verzoeken van
       //    400 rijen vanaf een vers account lieten de tabel met 819.200 bytes
       //    groeien en nul rijen achter. Dat gat staat als open risico Hoog in
-      //    rij 609 van `docs/ENGINEER-REVIEW.md` en wordt hier niet gedicht.
+      //    de rij *Er staat geen rate limit vóór PostgREST* (08-09-2026) van
+      //    `docs/ENGINEER-REVIEW.md` en wordt hier niet gedicht.
       //
       //    Wat de conjunct wél levert is de nette afhandeling van een
       //    legitieme herhaling door wie zijn plafond echt gehaald heeft.
