@@ -222,8 +222,8 @@ staat er iets bij dat uitleg nodig heeft, dan hoort die uitleg in §2, §3b of �
    **Meet ze dus, tel ze niet op:** bij het samengaan met `main` is het antwoord
    `npm run poort` of `npm run tellers`, nooit het hoogste van twee getallen.
 <!-- POORTSTAND:BEGIN — gegenereerd door `npm run poortstand` -->
-Typecheck, lint en alle 71 controlescripts groen;
-`npm run poort` meldt 75 stappen.
+Typecheck, lint en alle 72 controlescripts groen;
+`npm run poort` meldt 76 stappen.
 <!-- POORTSTAND:EINDE -->
    ⚠️ **Vier ervan meten niets zonder de credentials van het échte project**
    (`adviseur`, `functies`, `register`, `wachtwoord`), en de poort noemt dat
@@ -1042,6 +1042,45 @@ SQL — en de derde blijft een keuze die je verantwoordt.
 ⚠️ **Wat open blijft: vier knippen die `knip:controle` niet ziet**, omdat zijn
 `DEFINITIE` alleen namen matcht die met `zonderCommentaar` beginnen. Twee zijn
 nagemeten en falen dicht, twee zijn **ongemeten**. Dat staat als **QS8-579**.
+
+### De knip die anders heet — gesloten op 21-09-2026 (QS8-579)
+
+✅ **`knip:controle` vindt een knip nu ook aan zijn lichaam en niet alleen aan
+zijn naam.** `DEFINITIE` matchte `function zonderCommentaar\w*(`; 📏 **tien**
+knippen liepen daaromheen — vier in `tests/beloftes/`, zes in `scripts/` — en
+geen van tien stond in een register.
+
+📏 **Twee ervan faalden open, allebei met een tegenproef gemeten.**
+`ontdaanVanCommentaar()` in `datumopmaak.test.ts` liet een zelf-opgemaakte datum
+door zodra er een URL vóór stond op dezelfde regel, en `normaliseer()` in
+`edge-tijd-controle.mjs` verklaarde twee uiteenlopende kopieën van `shared/time`
+gelijk op precies diezelfde vorm. Die tweede is **correctheidsregel 7**: de
+rollover en de app zouden 's nachts met andere weekgrenzen rekenen. Allebei de
+blinde vorm van QS8-412.
+
+⚠️ **De reparatie is per geval verschillend, en dat is het punt.** `datumopmaak`
+en `onboarding` delen nu de gedeelde knip; `edge-tijd-controle` houdt zijn eigen
+en kreeg alleen de `(^|[^:])`-wacht erbij — die controle vergelijkt twee kopieën
+en commentaar mág daar verschillen. 📏 De eerste, bottere reparatie brak zijn
+ijking, en de poort ving dat. **"Deel de gedeelde knip" is niet het doel; het doel
+is dat elke knip een keuze is met een reden.**
+
+⚠️ **Een derde faalde dicht om de verkéérde reden.**
+`onboarding-schrijft-niets-over.test.ts` betoogde in zijn kop dat grendel 4 de
+URL-vorm opving; gemeten viel hij op grendel 2, via een accoladetelling die door
+de aanroep heen liep. Na de omzetting valt dezelfde mutatie op grendel 1, en dát
+is de belofte. **Tweede keer in twee issues dat een uitgeschreven verdediging
+half bleek te kloppen.**
+
+⚠️ **Er is een derde register bijgekomen: `GEEN_KNIP`.** Een vormdetector zonder
+plek voor zijn eigen valse treffers wordt een controle die je uitzet. Er staan er
+drie in, alle drie dezelfde vorm: ze **selecteren** commentaarregels in plaats van
+ze weg te gooien — de kop van een migratie ís commentaar.
+
+⚠️ **Wat de rand is, staat in de kop van het script en als rij in
+`ENGINEER-REVIEW.md`:** een pijlfunctie, een methode, twee parameters en de
+teken-voor-teken-vorm ziet hij niet. Afweging in
+`docs/decisions/2026-09-21-een-knip-die-anders-heet.md`.
 
 ## 3. Wat een nieuwe sessie als eerste doet
 
