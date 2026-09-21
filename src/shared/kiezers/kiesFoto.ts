@@ -49,6 +49,44 @@ export type Fotokeuze =
  *    0222 en 0227). Dat is een gemak en geen grendel — de keuring in
  *    `keurChatfoto()` / `keurBewijsfoto()` en de buckets zelf zijn dat wél.
  *
+ * ⚠️⚠️ **En hier staat met opzet géén grootte-poort vóór het lezen, anders dan
+ *    in `kiesDocument()` — QS8-436.** Dat is geen omissie maar een meting.
+ *
+ *    `kiesDocument()` kreeg er bij QS8-431 wél een, omdat `leesBestand()` daar
+ *    in onze eigen code staat: er is een "ervóór". Hier maakt `base64: true` de
+ *    bytes bínnen de picker-aanroep, dus tegen de tijd dat wij het asset in
+ *    handen hebben is het geheugen al uitgegeven. Er is geen moment waarop een
+ *    poort iets kán voorkomen.
+ *
+ *    ⚠️⚠️ **Maar de échte reden is een andere, en die is zwaarder: `fileSize`
+ *       en de bytes die wij versturen gaan over verschillende bestanden.** 📏
+ *       Gelezen in de meegeleverde native bron van `expo-image-picker` 57.0.14:
+ *
+ *       - **Android** (`MediaHandler.kt`) zet `fileSize = fileData?.fileSize ?:
+ *         outputFile.length()`, en `fileData` komt uit een query op
+ *         `OpenableColumns.SIZE` van de **bron**-URI. Het gecomprimeerde
+ *         uitvoerbestand is alleen de terugval, dus in de praktijk is het altijd
+ *         de originele grootte.
+ *       - **iOS** (`ImageUtils.swift`) geeft voor HEIC, TIFF, AVIF, WEBP en BMP
+ *         de **rauwe** bytes terug — `quality` doet daar niets. Alleen de
+ *         `default`-tak hercodeert naar JPEG.
+ *       - En `base64`, wat wij lezen, is op beide platformen de gecomprimeerde
+ *         versie; op iOS altijd JPEG (`readJpegBase64From`, met een comment in
+ *         de bron erbij).
+ *
+ *       Bij een HEIC van 3 MB — de standaard op een iPhone — is `fileSize` dus
+ *       3 MB terwijl deze functie een JPEG van een paar honderd kB teruggeeft.
+ *       **Een poort daarop weigert een foto die ruim binnen de emmergrens valt:
+ *       een regressie voor de gewone gebruiker en geen bescherming.**
+ *
+ *    ⚠️ Die meting is gelezen uit één versie en kan bij een upgrade verlopen,
+ *       en daarom staat ze onder een grendel in plaats van alleen hier:
+ *       `tests/beloftes/de-fotokiezer-meet-een-ander-bestand-dan-hij-verstuurt.test.ts`
+ *       wordt rood zodra de major verschuift, zodra een van de drie gelezen
+ *       takken uit de bron verdwijnt, of zodra iemand hier `fileSize` uitleest.
+ *       De afweging staat in
+ *       `docs/decisions/2026-09-21-de-poort-die-er-met-reden-niet-staat.md`.
+ *
  * ⚠️ **De foutsleutel komt van de aanroeper**, want de melding hoort bij het
  *    scherm waar je staat en niet bij de kiezer. Alleen de sleutel verschilt;
  *    de vier uitgangen zijn identiek, en die zijn de reden dat dit een eigen
