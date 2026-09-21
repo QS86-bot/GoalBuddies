@@ -844,6 +844,26 @@
 > **Zoek bij een botsing wat er van jouw kant overblijft in plaats van te kiezen
 > tussen twee takken.**
 >
+> **21-09, punt AP: verbreed een vormdetector op precisie en niet op
+> volledigheid.** QS8-572 bood `leestBronMetNaampatroon()` zes vormen aan, elk
+> los gemeten. De twee regexvormen zijn overgenomen omdat ze goedkoop waren
+> (📏 0 en 1 nieuwe treffer). De vier stringmethode-vormen zijn **afgewezen met
+> een meting**: van de vijf treffers op `.includes`, `.split` en `.startsWith`
+> met een template is er **één** een échte bronscan — de rest zijn pad- en
+> sleutelvergelijkingen, waaronder twee in de controle zelf.
+>
+> ⚠️ **Eén op de vijf is precies de precisie waarmee je een controle leert
+> negeren**, en dat staat al in de kop van `scripts/paden.mjs`. De verleiding is
+> groot om een detector "even breder" te maken omdat de vorm verwant lijkt; het
+> verschil zit hier in de **ontvanger** (bron of pad), en dat ziet een
+> tekstpatroon niet.
+>
+> ⚠️ **Een handgeschreven register heeft een ratel die maar één kant op slaat, en
+> dat hoort opgeschreven.** `BEOORDEELD` meldt een rij die weg mág — het bestand
+> is er niet meer, het knipt inmiddels, of het wórdt inmiddels gedetecteerd. 📏
+> Geijkt door het leeg te maken: `knip:controle` bleef groen. Hij kan dus niet
+> zien dat er een rij **mist**, en dat is de prijs van zo'n register.
+
 > ⚠️⚠️ **11-09, punt P: een lintregel kan code laten buigen, en dan verplaats je
 > het probleem naar de lezer.** QS8-422 moest in de rollover een `if` in een `if`
 > vervangen door een ternair met twee guards, puur omdat dat blok toen ín twee

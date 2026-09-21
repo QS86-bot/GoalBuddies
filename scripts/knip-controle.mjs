@@ -182,40 +182,128 @@ export const ZONDER_KNIP = {
     'leest SQL-migraties; daar hoort een SQL-knip bij en niet deze. Zijn commentaargevoeligheid ' +
     'staat als eigen rij in docs/ENGINEER-REVIEW.md — hij faalt **dicht** (0292 meldde een ' +
     '`klok_fout()` die alleen in een comment stond)',
+  'scripts/padverwijzing-controle.mjs':
+    'een pad ín een comment is daar juist het onderwerp en niet de ruis — QS8-412 ontstond bij ' +
+    '`src/shared/ui/Foto.tsx`, dat in zijn eigen kop naar een toets wees die nooit geschreven is. ' +
+    'Knippen zou precies de klasse wegnemen waarvoor die controle bestaat. Hij bouwt zijn twee ' +
+    'regexen met concatenatie uit `EXTENSIES` en `SUBMAPPEN`, en die vorm ziet deze detector ' +
+    'sinds QS8-572',
 };
+
+/**
+ * Bestanden die bron lezen en op een naam matchen in een vorm die
+ * `leestBronMetNaampatroon()` **met opzet** niet ziet — QS8-572.
+ *
+ * ⚠️⚠️ **Dit register is met de hand bijgehouden, en dat is het verschil met
+ *    `ZONDER_KNIP`.** Dat register hangt aan de detector: wie erin staat, wordt
+ *    gevonden, en `verweesdeVrijstellingen()` gooit een rij eruit zodra hij niets
+ *    meer vrijstelt. Deze rijen vindt niemand automatisch — ze bestaan juist
+ *    omdát de detector ze niet ziet. Het register koopt dus één ding, en niet
+ *    meer: **de volgende lezer kan zien dát ze beoordeeld zijn** in plaats van
+ *    te moeten uitzoeken of hier iets lekt.
+ *
+ * ⚠️ **Waarom deze vorm niet gewoon meegedetecteerd wordt** staat gemeten in de
+ *    kop van `leestBronMetNaampatroon()`: van de vijf treffers op de
+ *    stringmethode-vormen is er één een échte bronscan. De andere vier zijn pad-
+ *    en sleutelvergelijkingen, waaronder twee in dit bestand zelf.
+ *
+ * ⚠️ Een rij hier mag nooit "gezien, komt goed" zeggen. De reden hoort te zeggen
+ *    wat er gemeten is en waarom de uitkomst geen gat is.
+ *
+ * ⚠️⚠️ **Wat deze ratel níet vangt, en dat is met de hand gemeten.**
+ *    `verweesdeBeoordelingen()` meldt een rij die weg **mag**; hij kan niet weten
+ *    dat er een rij **mist**. 📏 Geijkt door dit register leeg te maken:
+ *    `knip:controle` bleef groen (exitcode 0), en alleen de toetsen in
+ *    `tests/scripts/knip-controle.test.ts` werden rood — en die drie vallen om
+ *    omdat ze een echte sleutel nodig hebben, niet omdat ze de leegte bewaken.
+ *    Dat is de prijs van een handgeschreven register, en hij hoort hier te staan
+ *    in plaats van weggeredeneerd te worden: **wie een vorm tegenkomt die deze
+ *    detector niet ziet, is zelf de grendel.**
+ */
+export const BEOORDEELD = {
+  'scripts/conflictmarkeringen-controle.mjs':
+    'scant regels op een markering die uit een naam gebouwd wordt (`regel.startsWith(`${vorm} `)`), ' +
+    'en dat is een échte bronscan. Hij **mag** niet knippen: een conflictmarkering in een ' +
+    'uitgecommentarieerd blok is nog steeds een kapotte merge, en juist die is met het blote oog ' +
+    'het makkelijkst te missen. Faalt dus bewust **open** in de veilige richting',
+};
+
+/** Leest dit bestand überhaupt bronbestanden? */
+export const LEEST_BRON = /readFileSync\(|readFile\(/;
+
+/**
+ * Een regex die uit een naam gebouwd wordt.
+ *
+ * ⚠️ **`\\bRegExp\\(` en niet `new RegExp\\(`** — sinds QS8-572. `RegExp('x')` zonder
+ *    `new` doet in JavaScript precies hetzelfde, en een detector die het ene wel
+ *    ziet en het andere niet, laat de volgende grendel zich onzichtbaar maken met
+ *    een weggelaten sleutelwoord. 📏 Gemeten bij het verbreden: **0** nieuwe
+ *    treffers, dus dit is verzekering en geen opruiming. De `\\b` houdt
+ *    `XRegExp(` erbuiten.
+ *
+ * ⚠️ **En de concatenatievorm erbij.** `RegExp('…' + naam)` draagt hetzelfde
+ *    risico als de templatevorm — een treffer ín een comment telt als code — en
+ *    is de vorm die je schrijft zodra de regex zo lang wordt dat een template
+ *    onleesbaar is.
+ */
+export const NAAMPATROON = /\bRegExp\(\s*(?:`[^`]*\$\{|(?:'[^']*'|"[^"]*")\s*\+)/;
 
 /**
  * Leest dit bestand bronbestanden én bouwt het een regex uit een naam?
  *
- * ⚠️⚠️ **Wat hij ziet en wat niet — gemeten, niet geschat (QS8-567).** Dit is
- *    een detector op vórm, en een vormdetector heeft altijd een rand. Die staat
- *    hier zodat niemand de telling voor volledigheid aanziet:
+ * ⚠️⚠️ **Wat hij ziet en wat niet — gemeten, niet geschat (QS8-567, verbreed in
+ *    QS8-572).** Dit is een detector op vórm, en een vormdetector heeft altijd
+ *    een rand. Die staat hier zodat niemand de telling voor volledigheid aanziet:
  *
- *    | vorm | |
- *    | -- | -- |
- *    | `new RegExp(`…${naam}…`)`, ook met een newline of spatie ná de haak | gezien |
- *    | `new RegExp('…' + naam)` — concatenatie | **gemist** |
- *    | `RegExp(` zonder `new` | **gemist** |
- *    | `bron.includes(`…${naam}…`)` | **gemist** |
- *    | `bron.split(`const ${naam} =`)` | **gemist** |
+ *    | vorm | | sinds |
+ *    | -- | -- | -- |
+ *    | `new RegExp(`…${naam}…`)`, ook met een newline of spatie ná de haak | gezien | QS8-567 |
+ *    | `RegExp(` zonder `new` | gezien | QS8-572 |
+ *    | `RegExp('…' + naam)` — concatenatie | gezien | QS8-572 |
+ *    | `bron.includes(`…${naam}…`)` | **gemist**, met opzet | |
+ *    | `bron.split(`…${naam}…`)` | **gemist**, met opzet | |
+ *    | `regel.startsWith(`${naam} `)` | **gemist**, met opzet | |
  *
- *    📏 De whitespace-vorm is er later bij gekomen en kostte niets: nog steeds
- *    11 bronlezers, toen 5 met reden zonder knip (inmiddels 4 — `catalogus`
- *    knipt sinds QS8-571). Hij zat erin omdat prettier van
- *    een lange regex precies die vorm maakt — de goedkoopste manier waarop de
- *    vólgende grendel zich onzichtbaar maakt.
+ * 📏 **De twee verbredingen van QS8-572, elk vóór en ná gemeten.** `RegExp(`
+ *    zonder `new` kostte **0** nieuwe treffers; de concatenatievorm kostte er
+ *    **1**, en dat is `padverwijzing-controle.mjs` — een rij die dit issue
+ *    hoe dan ook wilde. Beide zijn dus gratis of goedkoop, en geen van beide
+ *    levert een haastige registerreden op.
  *
- * ⚠️ **Twee bestanden lezen bron en matchen op naam in een gemiste vorm:**
- *    `padverwijzing-controle.mjs` (concatenatie) en
- *    `conflictmarkeringen-controle.mjs` (`startsWith(`${vorm} `)`). Allebei
- *    **mogen** niet knippen — een pad ín een comment is daar juist het
- *    onderwerp, en een conflictmarkering in een comment is nog steeds een
- *    kapotte merge — maar dat staat nergens, en de teller onderschat het veld.
- *    De resterende vormen en die twee rijen staan als QS8-572.
+ * ⚠️⚠️ **De stringmethodes zijn gemeten en bewust níet overgenomen, en dat is
+ *    de vondst van QS8-572.** Ze zien er verwant uit — een naald uit een naam,
+ *    gezocht in tekst — maar de **ontvanger** verschilt, en die is met een
+ *    vormdetector niet te zien:
+ *
+ *    | vorm | treffers | daarvan een échte bronscan |
+ *    | -- | -- | -- |
+ *    | `.includes(`…${…}…`)` | 1 | **0** — `catalogus-controle.mjs` filtert er een **pad** mee |
+ *    | `.split(`…${…}…`)` | 0 | 0 |
+ *    | `.startsWith(`…${…}…`)` | 4 (3 nieuw) | **1** — `conflictmarkeringen-controle.mjs` |
+ *
+ *    De andere twee `startsWith`-treffers zijn pad- en sleutelvergelijkingen:
+ *    `padverwijzing-controle.mjs` doet `pad.startsWith(`${map}/`)` en **dit
+ *    bestand zelf** doet `sleutel.startsWith(`${pad}:`)`. Eén op de vijf dus.
+ *    Een controle die vier van de vijf keer iets meldt dat niet aan de hand is,
+ *    leer je uitzetten — dat staat in de kop van `scripts/paden.mjs` en het geldt
+ *    hier onverkort. **Wat er op stringmethodes ontbreekt is geen bredere regex
+ *    maar een ander soort signaal**, en dat is een eigen issue waard en niet een
+ *    oprekking van deze.
+ *
+ * ⚠️ **Een zesde vorm is onderweg gemeten en ook afgewezen: `RegExp(naam)` met
+ *    een kále variabele.** 📏 Eén nieuwe treffer,
+ *    `afstemgetal-controle.mjs` regel 102 — `new RegExp(patroon, 'iu')`, waar
+ *    `patroon` een héél patroon is en geen naam die ergens in gevlochten wordt.
+ *    Precisie 0 op 1, en het is dezelfde valse treffer die QS8-567 al een keer
+ *    corrigeerde. Daarom eist de concatenatietak een **stringliteraal** vóór de
+ *    `+`: dat is het teken dat er een naald omheen gebouwd wordt.
+ *
+ * ⚠️ De ene échte instantie uit die tabel staat daarom in `BEOORDEELD` hieronder,
+ *    en niet in `ZONDER_KNIP`: dat register hoort bij wat deze detector vindt.
  */
 export function leestBronMetNaampatroon(bron) {
   const schoon = zonderCommentaar(bron);
-  return /readFileSync\(|readFile\(/.test(schoon) && /new RegExp\(\s*`[^`]*\$\{/.test(schoon);
+  return LEEST_BRON.test(schoon) && NAAMPATROON.test(schoon);
 }
 
 /** Knipt dit bestand — gedeeld, of met een eigen knip die in MET_REDEN staat? */
@@ -317,7 +405,39 @@ export function verweesdeVrijstellingen(bronnen) {
   });
 }
 
-export function hoofd() {
+/**
+ * Rijen in `BEOORDEELD` die hun reden kwijt zijn — QS8-572.
+ *
+ * ⚠️⚠️ **Drie manieren waarop zo'n rij verloopt, en de derde is de interessante.**
+ *    Het bestand kan weg zijn, het kan zijn gaan knippen — en het kan **alsnog
+ *    gedetecteerd worden**, doordat iemand de vorm herschrijft of de detector
+ *    verbreedt. In dat laatste geval hoort de rij niet hier maar in
+ *    `ZONDER_KNIP`, waar hij aan de detector hangt in plaats van aan iemands
+ *    geheugen. Twee registers met dezelfde rij is precies de val die CLAUDE.md
+ *    bij twee gelijknamige controles beschrijft.
+ *
+ * ⚠️ Ook een bestand dat helemaal geen bron meer leest, verliest zijn reden:
+ *    dan gaat deze rij over een risico dat er niet meer is.
+ */
+export function verweesdeBeoordelingen(bronnen) {
+  const genormaliseerd = new Map([...bronnen].map(([p, b]) => [metSchuineStrepen(p), b]));
+  return Object.keys(BEOORDEELD).filter((pad) => {
+    const bron = genormaliseerd.get(pad);
+    if (bron === undefined) return true;
+    if (knipt(bron, pad)) return true;
+    if (leestBronMetNaampatroon(bron)) return true;
+    return !LEEST_BRON.test(zonderCommentaar(bron));
+  });
+}
+
+/**
+ * Elk bestand in de gescande mappen, met zijn bron en zijn definities.
+ *
+ * ⚠️ Losgetrokken uit `hoofd()` voor onwrikbare regel 15 — en dat is hier niet
+ *    alleen boekhouding: de drie stappen (verzamelen, fouten melden, de stand
+ *    melden) zijn los te lezen en de eerste is de enige die schijf aanraakt.
+ */
+function verzamel() {
   const paden = MAPPEN.flatMap((map) => bestanden(map));
   const gevonden = new Set();
   const bronnen = new Map();
@@ -331,40 +451,86 @@ export function hoofd() {
     uit.push(...klachten(bron, relative('.', pad)));
   }
 
-  const verweesd = verweesdeRedenen(gevonden);
-  const losseVrijstellingen = verweesdeVrijstellingen(bronnen);
+  return { paden, gevonden, bronnen, klachtenLijst: uit };
+}
 
-  if (uit.length > 0 || verweesd.length > 0 || losseVrijstellingen.length > 0) {
-    console.error('knip-controle: er staat een knip buiten de gedeelde bron.\n');
-    for (const regel of uit) console.error(`  ${regel}`);
-    for (const sleutel of verweesd) {
-      console.error(`  ${sleutel} staat in MET_REDEN maar bestaat niet meer — haal de rij weg.`);
-    }
-    for (const pad of losseVrijstellingen) {
-      console.error(
-        `  ${pad} staat in ZONDER_KNIP maar heeft die vrijstelling niet meer nodig — ` +
-          'haal de rij weg.',
-      );
-    }
-    console.error(
-      `\n  De gedeelde knip is \`${GEDEELD}\`, en hij is geijkt in\n` +
-        '  `tests/scripts/zonder-commentaar.test.ts` — mét de URL-vorm die dit\n' +
-        '  project een halve ijking kostte (QS8-412).',
-    );
-    return 1;
+/** De drie registers die stil kunnen verouderen, in één keer. */
+function verweesd({ gevonden, bronnen }) {
+  return {
+    redenen: verweesdeRedenen(gevonden),
+    vrijstellingen: verweesdeVrijstellingen(bronnen),
+    beoordelingen: verweesdeBeoordelingen(bronnen),
+  };
+}
+
+function meldFouten(klachtenLijst, los) {
+  console.error('knip-controle: er staat een knip buiten de gedeelde bron.\n');
+  for (const regel of klachtenLijst) console.error(`  ${regel}`);
+  for (const sleutel of los.redenen) {
+    console.error(`  ${sleutel} staat in MET_REDEN maar bestaat niet meer — haal de rij weg.`);
   }
-
-  // ⚠️ Beide helften noemen, want een controle die alleen zijn oude helft meldt,
-  //    laat de lezer denken dat de nieuwe er niet is (QS8-567).
-  const lezers = [...bronnen].filter(
-    ([pad, bron]) => leestBronMetNaampatroon(bron) && metSchuineStrepen(pad).startsWith('scripts/'),
+  for (const pad of los.vrijstellingen) {
+    console.error(
+      `  ${pad} staat in ZONDER_KNIP maar heeft die vrijstelling niet meer nodig — ` +
+        'haal de rij weg.',
+    );
+  }
+  for (const pad of los.beoordelingen) {
+    console.error(
+      `  ${pad} staat in BEOORDEELD maar hoort daar niet meer — hij knipt, of hij wordt ` +
+        'inmiddels gedetecteerd (dan is ZONDER_KNIP de plek), of hij leest geen bron meer.',
+    );
+  }
+  console.error(
+    `\n  De gedeelde knip is \`${GEDEELD}\`, en hij is geijkt in\n` +
+      '  `tests/scripts/zonder-commentaar.test.ts` — mét de URL-vorm die dit\n' +
+      '  project een halve ijking kostte (QS8-412).',
   );
+}
+
+/**
+ * De stand, met beide helften én hun noemer.
+ *
+ * ⚠️ Beide helften noemen, want een controle die alleen zijn oude helft meldt,
+ *    laat de lezer denken dat de nieuwe er niet is (QS8-567).
+ *
+ * ⚠️⚠️ **En sinds QS8-572 staat de noemer erbij.** Hier stond alleen het aantal
+ *    gedetecteerde bronlezers, en dat las als "zoveel bronlezers zijn er". 📏 Er
+ *    zijn er in `scripts/` veel meer die bron lezen; wat deze controle telt is de
+ *    deelverzameling die er een **patroon uit een naam** mee bouwt. Een getal
+ *    zonder zijn noemer is precies de vorm waarmee dit project eerder een
+ *    uitrolstand en een testteller verkeerd heeft gelezen.
+ */
+function meldStand(paden, bronnen) {
+  const inScripts = [...bronnen].filter(([pad]) => metSchuineStrepen(pad).startsWith('scripts/'));
+  const bronlezers = inScripts.filter(([, bron]) => LEEST_BRON.test(zonderCommentaar(bron)));
+  const lezers = inScripts.filter(([, bron]) => leestBronMetNaampatroon(bron));
+  const beoordeeld = Object.keys(BEOORDEELD).length;
   console.log(
     `knip-controle: ${Object.keys(MET_REDEN).length} knippen met een reden, de rest deelt er één ` +
       `(${paden.length} bestanden). ` +
-      `${lezers.length} bronlezers met een naampatroon, waarvan ` +
-      `${Object.keys(ZONDER_KNIP).length} met reden zonder knip.`,
+      `In scripts/ lezen ${bronlezers.length} bestanden bron; ${lezers.length} bouwen daar een ` +
+      `patroon uit een naam mee, waarvan ${Object.keys(ZONDER_KNIP).length} met reden zonder knip. ` +
+      `${beoordeeld} ${beoordeeld === 1 ? 'staat' : 'staan'} als beoordeeld in een vorm die deze ` +
+      'detector met opzet niet ziet.',
   );
+}
+
+export function hoofd() {
+  const { paden, gevonden, bronnen, klachtenLijst } = verzamel();
+  const los = verweesd({ gevonden, bronnen });
+
+  if (
+    klachtenLijst.length > 0 ||
+    los.redenen.length > 0 ||
+    los.vrijstellingen.length > 0 ||
+    los.beoordelingen.length > 0
+  ) {
+    meldFouten(klachtenLijst, los);
+    return 1;
+  }
+
+  meldStand(paden, bronnen);
   return 0;
 }
 

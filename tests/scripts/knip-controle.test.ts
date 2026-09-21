@@ -11,12 +11,14 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+  BEOORDEELD,
   definitiesIn,
   GEDEELD,
   klachten,
   knipt,
   leestBronMetNaampatroon,
   MET_REDEN,
+  verweesdeBeoordelingen,
   verweesdeRedenen,
   verweesdeVrijstellingen,
   ZONDER_KNIP,
@@ -244,5 +246,85 @@ describe('verweesdeVrijstellingen', () => {
   it('zwijgt over een rij die zijn vrijstelling nog nodig heeft', () => {
     const bronnen = new Map(Object.keys(ZONDER_KNIP).map((p) => [p, LEZER]));
     expect(verweesdeVrijstellingen(bronnen)).toEqual([]);
+  });
+});
+
+/**
+ * De verbreding van QS8-572 — elke vorm los aangeboden, in beide richtingen.
+ *
+ * ⚠️⚠️ **De tweede helft weegt hier het zwaarst.** De reden dat de
+ *    stringmethode-vormen er níet in zitten, is gemeten precisie: 📏 van de vijf
+ *    treffers op `.includes`, `.split` en `.startsWith` met een template is er
+ *    één een échte bronscan; de rest zijn pad- en sleutelvergelijkingen. Zou
+ *    iemand ze later alsnog toevoegen, dan horen deze vier toetsen rood te
+ *    worden — dat is het enige wat die meting vasthoudt.
+ */
+describe('leestBronMetNaampatroon — de vormen van QS8-572', () => {
+  const LEEST = 'readFileSync(p); ';
+
+  it.each([
+    ['new + template', 'const r = new RegExp(`\\b${naam}\\s*\\(`);'],
+    ['zonder new, met template', 'const r = RegExp(`\\b${naam}\\s*\\(`);'],
+    ['new + concatenatie met enkele quotes', "const r = new RegExp('`((?:' + MAPPEN + ')/x)`', 'g');"],
+    ['zonder new, concatenatie met dubbele quotes', 'const r = RegExp("^" + naam, "g");'],
+    ['een newline ná de haak', 'const r = new RegExp(\n  `${naam}`,\n);'],
+  ])('ziet %s', (_naam, vorm) => {
+    expect(leestBronMetNaampatroon(LEEST + vorm)).toBe(true);
+  });
+
+  it.each([
+    ['een includes op een template', 'if (bron.includes(`const ${naam} =`)) return true;'],
+    ['een split op een template', 'const delen = bron.split(`const ${naam} =`);'],
+    ['een startsWith op een template', 'if (regel.startsWith(`${vorm} `)) return true;'],
+    ['een concatenatie zonder stringliteraal ervoor', 'const r = new RegExp(naam + suffix);'],
+    ['een template zonder interpolatie', 'const r = new RegExp(`^\\s*const\\s+`, "u");'],
+    ['een naam die op RegExp eindigt', 'const r = XRegExp(`${naam}`);'],
+  ])('laat %s met rust', (_naam, vorm) => {
+    expect(leestBronMetNaampatroon(LEEST + vorm)).toBe(false);
+  });
+
+  it('eist nog steeds dat er bron gelezen wordt', () => {
+    expect(leestBronMetNaampatroon("const r = RegExp('^' + naam);")).toBe(false);
+  });
+
+  it('telt een verbrede vorm niet mee als hij alleen in commentaar staat', () => {
+    expect(leestBronMetNaampatroon("// readFileSync(p); RegExp('^' + naam)")).toBe(false);
+  });
+});
+
+/**
+ * `BEOORDEELD` is met de hand bijgehouden, dus zijn ratel is het enige wat hem
+ * eerlijk houdt — QS8-572.
+ */
+describe('verweesdeBeoordelingen', () => {
+  const PAD = Object.keys(BEOORDEELD)[0] ?? '';
+  const SCAN = "readFileSync(p); if (regel.startsWith(`${vorm} `)) return true;";
+
+  it('meldt een rij waarvan het bestand weg is', () => {
+    expect(verweesdeBeoordelingen(new Map())).toEqual(Object.keys(BEOORDEELD));
+  });
+
+  it('meldt een rij die inmiddels wél knipt', () => {
+    const bron = `import { zonderCommentaar } from './zonder-commentaar.mjs';\n${SCAN}`;
+    expect(verweesdeBeoordelingen(new Map([[PAD, bron]]))).toEqual([PAD]);
+  });
+
+  it('meldt een rij die inmiddels gedetecteerd wordt — die hoort in ZONDER_KNIP', () => {
+    const bron = 'readFileSync(p); const r = new RegExp(`${naam}`);';
+    expect(verweesdeBeoordelingen(new Map([[PAD, bron]]))).toEqual([PAD]);
+  });
+
+  it('meldt een rij waarvan het bestand geen bron meer leest', () => {
+    expect(verweesdeBeoordelingen(new Map([[PAD, 'const x = 1;']]))).toEqual([PAD]);
+  });
+
+  it('zwijgt over een rij die zijn beoordeling nog nodig heeft', () => {
+    expect(verweesdeBeoordelingen(new Map([[PAD, SCAN]]))).toEqual([]);
+  });
+
+  it('elke rij draagt een reden die iets uitlegt', () => {
+    for (const [pad, reden] of Object.entries(BEOORDEELD)) {
+      expect(reden.length, `${pad} heeft een te korte reden`).toBeGreaterThan(80);
+    }
   });
 });
