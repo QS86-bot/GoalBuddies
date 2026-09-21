@@ -431,7 +431,14 @@ export function verweesdeVrijstellingen(bronnen) {
   });
 }
 
-export function hoofd() {
+/**
+ * Leest de boom één keer en levert alles wat `hoofd()` erover moet zeggen.
+ *
+ * ⚠️ Apart van `hoofd()` omdat die anders over de vijftig regels gaat — zie
+ *    onwrikbare regel 15. De ratel in `regel15:controle` meldde dat bij QS8-576,
+ *    en het antwoord daarop is splitsen en niet het plafond verhogen.
+ */
+function neemOp() {
   const paden = MAPPEN.flatMap((map) => bestanden(map));
   const gevonden = new Set();
   const bronnen = new Map();
@@ -445,30 +452,37 @@ export function hoofd() {
     uit.push(...klachten(bron, relative('.', pad)));
   }
 
-  const verweesd = verweesdeRedenen(gevonden);
-  const losseVrijstellingen = verweesdeVrijstellingen(bronnen);
-  const losseKnippen = verweesdeEigenKnippen(bronnen);
+  return {
+    paden,
+    bronnen,
+    uit,
+    verweesd: verweesdeRedenen(gevonden),
+    losseVrijstellingen: verweesdeVrijstellingen(bronnen),
+    losseKnippen: verweesdeEigenKnippen(bronnen),
+  };
+}
 
-  if (
-    uit.length > 0 ||
-    verweesd.length > 0 ||
-    losseVrijstellingen.length > 0 ||
-    losseKnippen.length > 0
-  ) {
+/** Elke bevinding als leesbare regel, in de volgorde waarin ze gemeld worden. */
+function bevindingregels({ uit, verweesd, losseVrijstellingen, losseKnippen }) {
+  return [
+    ...uit,
+    ...verweesd.map((s) => `${s} staat in MET_REDEN maar bestaat niet meer — haal de rij weg.`),
+    ...losseVrijstellingen.map(
+      (p) => `${p} staat in ZONDER_KNIP maar heeft die vrijstelling niet meer nodig — haal de rij weg.`,
+    ),
+    ...losseKnippen.map(
+      (p) => `${p} staat in EIGEN_KNIP maar past geen knip meer toe — haal de rij weg.`,
+    ),
+  ];
+}
+
+export function hoofd() {
+  const opname = neemOp();
+  const bevindingen = bevindingregels(opname);
+
+  if (bevindingen.length > 0) {
     console.error('knip-controle: er staat een knip buiten de gedeelde bron.\n');
-    for (const regel of uit) console.error(`  ${regel}`);
-    for (const sleutel of verweesd) {
-      console.error(`  ${sleutel} staat in MET_REDEN maar bestaat niet meer — haal de rij weg.`);
-    }
-    for (const pad of losseVrijstellingen) {
-      console.error(
-        `  ${pad} staat in ZONDER_KNIP maar heeft die vrijstelling niet meer nodig — ` +
-          'haal de rij weg.',
-      );
-    }
-    for (const pad of losseKnippen) {
-      console.error(`  ${pad} staat in EIGEN_KNIP maar past geen knip meer toe — haal de rij weg.`);
-    }
+    for (const regel of bevindingen) console.error(`  ${regel}`);
     console.error(
       `\n  De gedeelde knip is \`${GEDEELD}\`, en hij is geijkt in\n` +
         '  `tests/scripts/zonder-commentaar.test.ts` — mét de URL-vorm die dit\n' +
@@ -477,14 +491,14 @@ export function hoofd() {
     return 1;
   }
 
-  // ⚠️ Beide helften noemen, want een controle die alleen zijn oude helft meldt,
-  //    laat de lezer denken dat de nieuwe er niet is (QS8-567).
-  const lezers = [...bronnen].filter(
+  // ⚠️ Alle drie de helften noemen, want een controle die er maar één meldt,
+  //    laat de lezer denken dat de andere er niet zijn (QS8-567, QS8-576).
+  const lezers = [...opname.bronnen].filter(
     ([pad, bron]) => leestBronMetNaampatroon(bron) && metSchuineStrepen(pad).startsWith('scripts/'),
   );
   console.log(
     `knip-controle: ${Object.keys(MET_REDEN).length} knippen met een reden, de rest deelt er één ` +
-      `(${paden.length} bestanden). ` +
+      `(${opname.paden.length} bestanden). ` +
       `${lezers.length} bronlezers met een naampatroon, waarvan ` +
       `${Object.keys(ZONDER_KNIP).length} met reden zonder knip. ` +
       `${Object.keys(EIGEN_KNIP).length} knippen zonder die naam, elk met een reden.`,

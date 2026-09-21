@@ -3,7 +3,6 @@ import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import { describe, expect, it } from 'vitest';
-// eslint-disable-next-line import/order -- de gedeelde knip is .mjs
 import { zonderCommentaar } from '../../scripts/zonder-commentaar.mjs';
 
 /**
