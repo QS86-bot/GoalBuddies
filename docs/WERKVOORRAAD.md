@@ -7,7 +7,7 @@
 > Bijwerken is onderdeel van het werk. Sluit je een issue af, werk dan ook dit
 > bestand bij — anders begint de volgende sessie met verouderde informatie.
 
-**Laatst bijgewerkt:** 21-09-2026 (na QS8-572 — de detector van `knip:controle` is op twee regexvormen verbreed en op vier stringmethode-vormen bewust niet, met de meting per vorm; daarvóór 17-09-2026 met QS8-531 — de verlooppoort van een uitstelverzoek meet aan de bevroren strafklok; daarvóór QS8-515 — `create_group()` stelt dezelfde vraag als de CHECK, met QS8-526 als gemeten bijvangst; daarvóór QS8-508; daarvóór QS8-451 — het besluit over `U+200C` aan de rand van een naam, met QS8-508 als bijvangst; daarvóór QS8-500; daarvóór QS8-505 — productie stond 58 migraties achter en staat nu gelijk aan de map; daarvóór QS8-499, migratie 0282; daarvóór QS8-450, QS8-482 en QS8-494 uit deze sessie, en QS8-493, QS8-495, QS8-496, QS8-498, QS8-501, QS8-502, QS8-503 en QS8-504 uit de parallelle; daarvóór QS8-488; daarvóór QS8-471; daarvóór QS8-485; daarvóór QS8-484 en QS8-483; daarvóór QS8-480; daarvóór QS8-479; daarvóór QS8-467; daarvóór QS8-465, QS8-463, QS8-462 en QS8-460; daarvóór QS8-449; daarvóór QS8-448 uit de parallelle sessie; daarvóór QS8-447, QS8-446, QS8-439 en QS8-182; daarvóór QS8-441; daarvóór QS8-443; daarvóór QS8-445; daarvóór QS8-438; daarvóór QS8-434, QS8-435, QS8-431, QS8-416 en QS8-432; diezelfde dag QS8-419, QS8-420, QS8-423, QS8-425, QS8-426, QS8-427, QS8-428, QS8-430 en QS8-432 uit deze sessie en QS8-262 ronde 9, QS8-421 en QS8-422 uit de parallelle; daarvóór de hele novemberronde, alle tien — QS8-180, QS8-181, QS8-183, QS8-184, QS8-189 en QS8-194 uit deze sessie, QS8-179, QS8-182, QS8-187 en QS8-204 uit de parallelle; daarvóór QS8-24; daarvóór QS8-92; daarvóór QS8-392 en QS8-393; daarvóór QS8-396 en QS8-402; daarvóór QS8-404, QS8-399, QS8-400 en QS8-401; daarvóór QS8-403, QS8-140 en QS8-320; daarvóór QS8-243 en QS8-220; daarvóór QS8-314; daarvóór QS8-147, QS8-174, QS8-191, QS8-297, QS8-298, QS8-299, QS8-303 en QS8-304; daarvóór QS8-287, QS8-288, QS8-289 en QS8-291;daarvóór QS8-266, QS8-202 en QS8-196, en het toepassen van `0139` t/m `0149` op
+**Laatst bijgewerkt:** 21-09-2026 (na QS8-572 — de detector van `knip:controle` is op twee regexvormen verbreed en op vier stringmethode-vormen bewust niet, met de meting per vorm; daarvóór QS8-569 — `src/lib/database.types.ts` is hergenereerd tegen productie en de handgeschreven correcties zijn naar een eigen laag verhuisd; daarvóór 17-09-2026 met QS8-531 — de verlooppoort van een uitstelverzoek meet aan de bevroren strafklok; daarvóór QS8-515 — `create_group()` stelt dezelfde vraag als de CHECK, met QS8-526 als gemeten bijvangst; daarvóór QS8-508; daarvóór QS8-451 — het besluit over `U+200C` aan de rand van een naam, met QS8-508 als bijvangst; daarvóór QS8-500; daarvóór QS8-505 — productie stond 58 migraties achter en staat nu gelijk aan de map; daarvóór QS8-499, migratie 0282; daarvóór QS8-450, QS8-482 en QS8-494 uit deze sessie, en QS8-493, QS8-495, QS8-496, QS8-498, QS8-501, QS8-502, QS8-503 en QS8-504 uit de parallelle; daarvóór QS8-488; daarvóór QS8-471; daarvóór QS8-485; daarvóór QS8-484 en QS8-483; daarvóór QS8-480; daarvóór QS8-479; daarvóór QS8-467; daarvóór QS8-465, QS8-463, QS8-462 en QS8-460; daarvóór QS8-449; daarvóór QS8-448 uit de parallelle sessie; daarvóór QS8-447, QS8-446, QS8-439 en QS8-182; daarvóór QS8-441; daarvóór QS8-443; daarvóór QS8-445; daarvóór QS8-438; daarvóór QS8-434, QS8-435, QS8-431, QS8-416 en QS8-432; diezelfde dag QS8-419, QS8-420, QS8-423, QS8-425, QS8-426, QS8-427, QS8-428, QS8-430 en QS8-432 uit deze sessie en QS8-262 ronde 9, QS8-421 en QS8-422 uit de parallelle; daarvóór de hele novemberronde, alle tien — QS8-180, QS8-181, QS8-183, QS8-184, QS8-189 en QS8-194 uit deze sessie, QS8-179, QS8-182, QS8-187 en QS8-204 uit de parallelle; daarvóór QS8-24; daarvóór QS8-92; daarvóór QS8-392 en QS8-393; daarvóór QS8-396 en QS8-402; daarvóór QS8-404, QS8-399, QS8-400 en QS8-401; daarvóór QS8-403, QS8-140 en QS8-320; daarvóór QS8-243 en QS8-220; daarvóór QS8-314; daarvóór QS8-147, QS8-174, QS8-191, QS8-297, QS8-298, QS8-299, QS8-303 en QS8-304; daarvóór QS8-287, QS8-288, QS8-289 en QS8-291;daarvóór QS8-266, QS8-202 en QS8-196, en het toepassen van `0139` t/m `0149` op
 productie in twee rondes)
 
 ⚠️ **De uitrolstand staat sinds 17-09-2026 (QS8-517) in
@@ -39,6 +39,20 @@ en gold al voor de zin die hier stond.
 landde tijdens de uitrol. Dat is het venster van QS8-318 — het getal was juist
 toen het opgeschreven werd — en het is precies waarom de regel hieronder staat.
 De drie zijn er in dezelfde ronde bij toegepast.
+
+⚠️ **En de types zijn een dérde lijn, met een eigen meetmoment — sinds
+21-09-2026 (QS8-569).** `src/lib/database.types.ts` is een afschrift van
+productie en staat daar vandaag gelijk aan; `typesdrift:controle` zegt het, maar
+alléén als je hem voedt, en in een cloudsessie doet niemand dat vanzelf. Het
+recept staat in de kop van `scripts/typesdrift-controle.mjs`: schrijf de uitvoer
+van de MCP-tool `generate_typescript_types` naar een bestand en zet
+`TYPES_GENERATIE` erop. **Doe dat in elke ronde waarin je de migratiemap of
+productie aanraakt.**
+
+⚠️ Correcties op dat afschrift horen sinds die datum in
+`src/lib/database.types.correcties.ts` en niet in het gegenereerde bestand; de
+regel staat in CLAUDE.md, de onderbouwing in
+`docs/decisions/2026-09-21-de-correcties-stonden-in-het-bestand-dat-overschreven-wordt.md`.
 
 ⚠️ **Lees dit nooit als getal maar meet het.** De lijn is op 09-09 twee keer op
 één dag verschoven en tussen 09-09 en 14-09 nog een keer, telkens doordat er
