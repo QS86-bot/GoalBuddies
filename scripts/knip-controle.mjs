@@ -94,6 +94,9 @@ export const MET_REDEN = {
     'SQL én stringliteralen, per regel — hij loopt teken voor teken om quotes heen',
   'scripts/uitgang-controle.mjs:zonderCommentaarEnTekst':
     'haalt óók stringliteralen weg; dat is een andere belofte dan "zonder commentaar"',
+  'tests/migraties/idempotentie.ts:zonderCommentaarEnTekst':
+    'knipt SQL en niet JS: geneste blokken, dollar-quotes en enkele quotes, met ' +
+    'behoud van regellengte omdat een bezwaar een regelnummer draagt (QS8-570)',
   'scripts/gedeelde-identiteit-controle.mjs:zonderCommentaar':
     'vervangt een blok door evenveel regeleindes, want deze controle meldt regelnummers — ' +
     'met de gedeelde knip zou hij naar de verkeerde regel wijzen',
@@ -171,11 +174,6 @@ export const ZONDER_KNIP = {
   'scripts/tekst-controle.mjs':
     'houdt zijn eigen commentaarzeef op regelindex (`commentaarregels()`), want hij meldt ' +
     'regelnummers — 📏 gemeten: een `label="…"` op een `//`- of ` * `-regel geeft nul treffers',
-  'scripts/catalogus-controle.mjs':
-    'de vórmtoets (regel 157) leest een catalogussleutel en geen bronbestand — daar zit geen ' +
-    'commentaar in. ⚠️ Dekt NIET de levendheidstoets, die `projectbron()` ruw leest: 📏 een ' +
-    'sleutel die alleen in een comment staat geldt als levend, en dat verbergt vandaag één ' +
-    'echt dode sleutel (`groep.gearchiveerd`). Dat is QS8-571 en geen vrijstelling',
   'scripts/ci-controles.mjs':
     'leest YAML-workflows, en de gedeelde knip is een JS-knip — een `#` haalt hij niet weg. ' +
     '📏 Gemeten: een uitgecommentarieerde `# - run: npm run x` telt mee. Dat faalt **dicht** ' +
@@ -202,7 +200,8 @@ export const ZONDER_KNIP = {
  *    | `bron.split(`const ${naam} =`)` | **gemist** |
  *
  *    📏 De whitespace-vorm is er later bij gekomen en kostte niets: nog steeds
- *    11 bronlezers, 5 met reden zonder knip. Hij zat erin omdat prettier van
+ *    11 bronlezers, toen 5 met reden zonder knip (inmiddels 4 — `catalogus`
+ *    knipt sinds QS8-571). Hij zat erin omdat prettier van
  *    een lange regex precies die vorm maakt — de goedkoopste manier waarop de
  *    vólgende grendel zich onzichtbaar maakt.
  *
