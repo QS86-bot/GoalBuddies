@@ -32,6 +32,14 @@
  *    📏 `avatar_url: string` staat op drie plekken in de generatie en
  *    `p_group_id: string` op meer dan tien.
  */
+import { readdirSync, readFileSync, statSync } from 'node:fs';
+import { join } from 'node:path';
+
+// ⚠️ De gedeelde knip, en niet een eigen kopie: hij staat sinds QS8-446 in
+//    `scripts/zonder-commentaar.mjs` en is met opzet `.mjs` zodat beide bomen
+//    hem kunnen importeren.
+import { zonderCommentaar } from '../../scripts/zonder-commentaar.mjs';
+
 import type { Database as Gegenereerd } from '../../src/lib/database.types';
 import type { Database as Gecorrigeerd } from '../../src/lib/database.types.correcties';
 
@@ -139,6 +147,39 @@ const CORRECTIES = {
     true satisfies Eis<CorFuncties['zet_taakzichtbaarheid']['Args']['p_group_id'], string | null>,
 
   // ── Klasse 3: een RETURNS TABLE-kolom die NULL kan zijn ───────────────────
+  'group_overview.closed_this_period — generator':
+    true satisfies Eis<Rij<GenFuncties['group_overview']>['closed_this_period'], boolean>,
+  'group_overview.closed_this_period — laag':
+    true satisfies Eis<Rij<CorFuncties['group_overview']>['closed_this_period'], boolean | null>,
+  'group_overview.best_streak — generator':
+    true satisfies Eis<Rij<GenFuncties['group_overview']>['best_streak'], number>,
+  'group_overview.best_streak — laag':
+    true satisfies Eis<Rij<CorFuncties['group_overview']>['best_streak'], number | null>,
+  'group_overview.current_streak — generator':
+    true satisfies Eis<Rij<GenFuncties['group_overview']>['current_streak'], number>,
+  'group_overview.current_streak — laag':
+    true satisfies Eis<Rij<CorFuncties['group_overview']>['current_streak'], number | null>,
+  'group_overview.last_cycle_start — generator':
+    true satisfies Eis<Rij<GenFuncties['group_overview']>['last_cycle_start'], string>,
+  'group_overview.last_cycle_start — laag':
+    true satisfies Eis<Rij<CorFuncties['group_overview']>['last_cycle_start'], string | null>,
+  'group_overview.avatar_url — generator':
+    true satisfies Eis<Rij<GenFuncties['group_overview']>['avatar_url'], string>,
+  'group_overview.avatar_url — laag':
+    true satisfies Eis<Rij<CorFuncties['group_overview']>['avatar_url'], string | null>,
+  'group_overview.goal_id — generator':
+    true satisfies Eis<Rij<GenFuncties['group_overview']>['goal_id'], string>,
+  'group_overview.goal_id — laag':
+    true satisfies Eis<Rij<CorFuncties['group_overview']>['goal_id'], string | null>,
+  'group_overview.goal_title — generator':
+    true satisfies Eis<Rij<GenFuncties['group_overview']>['goal_title'], string>,
+  'group_overview.goal_title — laag':
+    true satisfies Eis<Rij<CorFuncties['group_overview']>['goal_title'], string | null>,
+  'group_overview.goal_target_date — generator':
+    true satisfies Eis<Rij<GenFuncties['group_overview']>['goal_target_date'], string>,
+  'group_overview.goal_target_date — laag':
+    true satisfies Eis<Rij<CorFuncties['group_overview']>['goal_target_date'], string | null>,
+
   'verzoekers_eerder_lid.op — generator':
     true satisfies Eis<Rij<GenFuncties['verzoekers_eerder_lid']>['op'], string>,
   'verzoekers_eerder_lid.op — laag':
@@ -181,15 +222,152 @@ const ONGEMOEID = {
     true satisfies Eis<CorFuncties['meld']['Args']['p_group_id'], string>,
   'zoek_mensen.display_name blijft niet-nullable':
     true satisfies Eis<Rij<CorFuncties['zoek_mensen']>['display_name'], string>,
+  'group_overview.display_name blijft niet-nullable':
+    true satisfies Eis<Rij<CorFuncties['group_overview']>['display_name'], string>,
+  'group_overview.total_members blijft niet-nullable':
+    true satisfies Eis<Rij<CorFuncties['group_overview']>['total_members'], number>,
+
+  /**
+   * ⚠️ **En de laag laat geen tabel of functie vallen.** Drie steekproeven op
+   *    velden zeggen niets over de vorm van het gehéél, en `Omit<T, keyof V> & V`
+   *    is precies het soort typemachinerie waar een naam stil uit kan vallen —
+   *    één typefout in een sleutel en de correctie landt op een nieuwe naam
+   *    terwijl de oude blijft staan. Deze twee regels zijn de vorm van regel 18
+   *    vraag 1: ze toetsen de naad en niet de twee kanten ervan.
+   */
+  'de laag kent dezelfde tabelnamen als de generatie':
+    true satisfies Eis<keyof CorTabellen, keyof GenTabellen>,
+  'de laag kent dezelfde functienamen als de generatie':
+    true satisfies Eis<keyof CorFuncties, keyof GenFuncties>,
 } as const;
 
+/**
+ * Elke client wordt op de correctielaag gebouwd — QS8-569.
+ *
+ * ⚠️⚠️ **Deze toets bestaat omdat de laag het in een comment vraagt, en dit hele
+ *    issue erover gaat dat een comment geen grendel is.** Zet iemand er een
+ *    tweede client bij met `createClient<Database>` uit het gegenereerde bestand,
+ *    dan vallen álle correcties daar stil zonder dat er iets rood wordt:
+ *    `commitments.Insert.tz` wordt weer verplicht (en elke insert compileert dan
+ *    naar een gegarandeerde `42501`), en de drie `Returns`-correcties verdwijnen
+ *    zonder een woord.
+ *
+ * ⚠️ Hij leest de bron met de gedeelde knip uit `scripts/zonder-commentaar.mjs`,
+ *    want anders telt de regel in `src/lib/database.types.ts` mee die
+ *    `createClient<Database, …>` in een **comment** noemt — 📏 dat is de enige
+ *    andere plek in de boom waar die tekenreeks staat.
+ */
+const CLIENTBOUWERS = /(?:createClient|SupabaseClient)<\s*([A-Za-z_$][\w$]*)/g;
+const CORRECTIELAAG = 'database.types.correcties';
+
+/** De bomen waar een client op ons schema gebouwd kan worden. */
+const BOMEN = ['src', 'app', 'tests', 'scripts'];
+
+/**
+ * Wat de zeef overslaat, met de reden erbij.
+ *
+ * ⚠️ **Eén rij, en hij is onvermijdelijk: dit bestand zelf.** De ijking hieronder
+ *    voedt de zeef een bron waarin `createClient<Database>` uit het gegenereerde
+ *    bestand komt — dat is precies de vorm die hij moet vinden, en als
+ *    tekenreeks niet te onderscheiden van echte code. Een zeef die zijn eigen
+ *    proefmateriaal meldt, leer je uitzetten.
+ *
+ * ⚠️ **Dit register is smal bedoeld.** Een tweede rij is een besluit: zet erbij
+ *    wélke client daar gebouwd wordt en waaróm hij niet op de laag hoort.
+ */
+const ZONDER_TOETS = new Map<string, string>([
+  [
+    join('tests', 'beloftes', 'typecorrecties.test.ts'),
+    'draagt de ijkingsvormen van deze zeef als tekenreeks',
+  ],
+]);
+
+/**
+ * ⚠️ `supabase/functions/` staat er met reden niet bij: die draaien op Deno,
+ *    halen hun client met een `jsr:`-specifier en typeren hem niet op dit
+ *    schema. 📏 Nagemeten: geen enkel bestand daar noemt `createClient<` buiten
+ *    commentaar.
+ */
+function bronbestanden(map: string): string[] {
+  const uit: string[] = [];
+  for (const naam of readdirSync(map)) {
+    if (naam === 'node_modules' || naam.startsWith('.')) continue;
+    const pad = join(map, naam);
+    if (statSync(pad).isDirectory()) uit.push(...bronbestanden(pad));
+    else if (/\.tsx?$/.test(naam)) uit.push(pad);
+  }
+  return uit;
+}
+
+/** Per bestand: de typeargumenten waarmee er een Supabase-client gebouwd wordt. */
+export function clientbouwers(bron: string): string[] {
+  const code = zonderCommentaar(bron);
+  return [...code.matchAll(CLIENTBOUWERS)].map((m) => m[1] ?? '');
+}
+
+/**
+ * Waar een naam vandaan geïmporteerd wordt, of `null` als hij in dit bestand
+ * zelf gedeclareerd is.
+ */
+export function herkomst(bron: string, naam: string): string | null {
+  const code = zonderCommentaar(bron);
+  const re = new RegExp(`import\\s+type\\s*\\{[^}]*\\b${naam}\\b[^}]*\\}\\s*from\\s*['"]([^'"]+)['"]`);
+  return re.exec(code)?.[1] ?? null;
+}
+
 describe('de correcties op de gegenereerde types', () => {
-  it('telt vijftien correcties, elk twee kanten op', () => {
-    expect(Object.keys(CORRECTIES)).toHaveLength(30);
+  it('telt drieëntwintig correcties, elk twee kanten op', () => {
+    expect(Object.keys(CORRECTIES)).toHaveLength(46);
     expect(Object.values(CORRECTIES).every((waarde) => waarde === true)).toBe(true);
   });
 
-  it('laat de velden die er niet in staan met rust', () => {
+  it('laat de velden en de namen die er niet in staan met rust', () => {
     expect(Object.values(ONGEMOEID).every((waarde) => waarde === true)).toBe(true);
+  });
+});
+
+describe('elke Supabase-client wordt op de correctielaag gebouwd', () => {
+  const gevallen = BOMEN.flatMap((map) => bronbestanden(map))
+    .filter((pad) => !ZONDER_TOETS.has(pad))
+    .map((pad) => ({ pad, bron: readFileSync(pad, 'utf8') }))
+    .flatMap(({ pad, bron }) => clientbouwers(bron).map((naam) => ({ pad, bron, naam })));
+
+  it('vindt er minstens vijf — anders meet deze toets niets', () => {
+    expect(gevallen.length).toBeGreaterThanOrEqual(5);
+  });
+
+  it.each(gevallen.map((g) => [`${g.pad} → ${g.naam}`, g] as const))(
+    '%s komt uit de correctielaag',
+    (_naam, geval) => {
+      const vandaan = herkomst(geval.bron, geval.naam);
+      expect(vandaan, `${geval.pad} declareert ${geval.naam} zelf of importeert hem niet als type`)
+        .not.toBeNull();
+      expect(vandaan).toContain(CORRECTIELAAG);
+    },
+  );
+});
+
+describe('de zeef van die toets', () => {
+  it('ziet een client die op het gegenereerde bestand gebouwd is', () => {
+    const bron = [
+      "import type { Database } from './database.types';",
+      'export const db = createClient<Database>(url, key);',
+    ].join('\n');
+    expect(clientbouwers(bron)).toEqual(['Database']);
+    expect(herkomst(bron, 'Database')).toBe('./database.types');
+  });
+
+  it('laat een vermelding in commentaar met rust', () => {
+    const bron = '// createClient<Database, { PostgrestVersion: "14.5" }>(URL, KEY)\nconst x = 1;';
+    expect(clientbouwers(bron)).toEqual([]);
+  });
+
+  it('leest een naam die niet `Database` heet', () => {
+    const bron = [
+      "import type { Schema } from '../../src/lib/database.types.correcties';",
+      'export type TestDb = SupabaseClient<Schema>;',
+    ].join('\n');
+    expect(clientbouwers(bron)).toEqual(['Schema']);
+    expect(herkomst(bron, 'Schema')).toContain(CORRECTIELAAG);
   });
 });

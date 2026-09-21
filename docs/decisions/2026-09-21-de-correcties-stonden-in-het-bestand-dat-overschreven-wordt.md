@@ -30,6 +30,14 @@ tegen productie en gevoerd aan `TYPES_GENERATIE=<pad> npm run typesdrift:control
 Exact de 57 van QS8-569, twee dagen later opnieuw en op dezelfde stand. Na de
 hergeneratie: `src/lib/database.types.ts kent dezelfde namen als het schema`.
 
+⚠️ **Die tweede regel is op zichzelf een tautologie en hoort niet als bewijs
+gelezen te worden.** Het bestand in de repo ís sindsdien byte voor byte die
+generatie (zelfde `sha256`), dus hij vergelijkt iets met zichzelf. Wat er wél iets
+bewijst is de meting hiervóór — de 57 op het óude bestand — en de
+catalogusvergelijking hieronder. Dat onderscheid is de reden dat deze alinea er
+staat: wie deze uitslag over een maand terugziet, moet weten dat hij pas iets zegt
+zodra de generatie *opnieuw* opgehaald wordt.
+
 ⚠️ **De generatie is niet alleen tegen de MCP-uitvoer gecontroleerd maar ook
 tegen de catalogus**, want "het bestand is wat de tool zei" en "het bestand klopt
 met de database" zijn twee uitspraken. 📏 Namen uit het geschreven bestand
@@ -131,7 +139,7 @@ falen luid (de build breekt); klasse 3 faalt stil.
 **`src/lib/database.types.ts` blijft van de generator — woordelijk, zonder één
 handgeschreven regel.** De correcties staan in een eigen bestand,
 `src/lib/database.types.correcties.ts`, dat het gegenereerde schema leest en er
-vijftien velden overheen legt. `src/lib/supabase.ts` en `tests/rls/harness.ts`
+drieëntwintig velden overheen legt. `src/lib/supabase.ts` en `tests/rls/harness.ts`
 bouwen hun client op dát type.
 
 Waarom zo, en niet anders:
@@ -230,3 +238,72 @@ drie keer in het bestand.
 - **`typesdrift:controle` blijft in een cloudsessie ongemeten**, en dat is nu wél
   opgeschreven: de kop van het script noemt de reden, de 57 van 19-09 en de
   MCP-route die geen token vraagt.
+
+## 8. Wat de security-ronde erbij vond — en waarom die ronde het waard was
+
+Onwrikbare regel 19 stuurt de `security-reviewer` op alles wat commitments of een
+groepszichtbaar oppervlak raakt. Deze PR heeft geen migratie en geen policy, dus
+"het is maar typing" was een verdedigbare gedachte. Hij vond vier dingen, en het
+eerste is het soort fout dat een tweede paar ogen bestaat:
+
+**1. De correctie landde op de functie zónder afnemer.** 📏
+`zichtbare_reeksen_van_groep()` heeft **nul** aanroepers in `src/` en `app/`; het
+groepsscherm loopt via `group_overview()`, dat diezelfde maskering met een
+`left join` binnenhaalt. Die functie stond niet in de laag. En hij draagt de
+klasse in zijn scherpste vorm: 📏 `closed_this_period` is
+`case when not coalesce(…) then null else exists(…) end`, en `0208` schrijft in
+de migratiekop op waaróm die `null` er is — `false` zou een gemiste week van
+iemand anders tonen aan de groep. Een type dat `boolean` zegt maakt van *"geen
+antwoord"* vanzelf *"nee"* zodra iemand er een ternair op zet. Acht kolommen van
+`group_overview` staan nu in de laag, alle acht met hun oorzaak nagemeten op
+productie.
+
+⚠️ **Dat is dus precies de fout waar dit document over gaat, één laag hoger:** de
+correctie werd aangebracht waar de eigenschap *ontstaat*, niet waar hij
+*gelezen* wordt. Vandaag houdt `RpcRij<>` op één aanroepplek het gat dicht — een
+gewoonte, geen eigenschap.
+
+**2. "Bouw je client op de correctielaag" stond alleen in een comment.** Woordelijk
+de vorm die deze PR repareert. 📏 Er zijn zeven plekken waar een client op dit
+schema gebouwd wordt (twee in `src/lib/supabase.ts`, vijf in
+`tests/rls/harness.ts`) en ze waren alle zeven goed — maar niets hield een achtste
+tegen. `tests/beloftes/typecorrecties.test.ts` leest nu elke
+`createClient<…>`/`SupabaseClient<…>` in `src/`, `app/`, `tests/` en `scripts/` en
+eist dat het typeargument uit de correctielaag komt.
+
+⚠️ **De voorgestelde goedkopere fix is niet overgenomen**: de export in het
+gegenereerde bestand hernoemen zodat de verkeerde import niet meer compileert. Dat
+zou een handgeschreven regel in het gegenereerde bestand zijn — exact wat §5
+verbiedt — en de volgende `npm run types:db` gooit hem weg.
+
+**3. `Omit` is een uitsluiting waar de grant een opsomming is.** `Commitment` is nu
+een `Pick` van de tien kolommen die `authenticated` mag lezen. Komt er een kolom
+bij `commitments` die niet in de grant komt, dan krijgt het type hem er met een
+`Omit` stilzwijgend bij — niet-optioneel getypeerd en `undefined` op runtime.
+
+**4. Twee mechanismen voor klasse 3 zonder taakverdeling op papier.** `RpcRij<T>`
+in `src/shared/api` maakt élke kolom van een RPC-rij nullable, met een ándere
+reden: de types kúnnen achterlopen. De kop daar zegt nu wat het verschil is, zodat
+niemand `RpcRij` overslaat "want de correctielaag dekt dat".
+
+⚠️ **Eén bevinding is bewust blijven liggen en staat in `docs/ENGINEER-REVIEW.md`:**
+de laag is geen volledige doorlichting van de 199 functies. Wat erin staat is wat
+een aanroeper vandaag nodig heeft plus wat gemeten gevaarlijk is. 📏 Het voorbeeld
+dat dat concreet maakt staat in het bestand zelf: `group_overview.p_na_joined_at`
+en `.p_na_user_id` hebben `DEFAULT NULL` en zijn dus net zo nullable als
+`weekafsluiting_reacties.p_na_at` — alleen stuurt vandaag niemand er `null` heen.
+
+### De ijking van de drie nieuwe grendels
+
+📏 Opnieuw met "ervoor" gemeten: nul typecheck-fouten en nul rode tests.
+
+| mutatie | wat er rood werd | omvang |
+| -- | -- | -- |
+| `src/lib/supabase.ts` terug op `./database.types` | de twee cliëntrijen van dat bestand in de zeef, en verder niets | 2 tests |
+| de `group_overview`-correctie uit de laag | de acht `— laag`-asserties van `group_overview` | 8 typecheck-fouten |
+| een correctie op een functienaam met een typefout (`zoek_mensn`) | `de laag kent dezelfde functienamen als de generatie` | 1 typecheck-fout |
+
+⚠️ De zeef van bevinding 2 slaat één bestand over — zichzelf — omdat zijn eigen
+ijkingsvormen als tekenreeks niet van echte code te onderscheiden zijn. Die rij
+staat mét reden in `ZONDER_TOETS`, en de eerste run van de zeef meldde hem netjes
+voordat dat register er was.

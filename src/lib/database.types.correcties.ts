@@ -30,6 +30,17 @@
  *    op een migratie. Een handtekening die op een migratie wacht hoort hier niet:
  *    die komt vanzelf mee zodra de migratie uitgerold en opnieuw gegenereerd is.
  *
+ * ⚠️⚠️ **En dit is géén complete doorlichting van de 199 functies — dat hoort
+ *    erbij te staan.** Wat hier ligt is wat een aanroeper vandaag nodig heeft
+ *    (klasse 1 en 2, want die breken de build) plús wat gemeten gevaarlijk is
+ *    (klasse 3, die breekt niets). 📏 Een voorbeeld van wat er dus *niet* in
+ *    staat: `group_overview.p_na_joined_at` en `.p_na_user_id` hebben
+ *    `DEFAULT NULL` en zijn dus net zo goed nullable als `weekafsluiting_reacties`
+ *    hieronder — alleen stuurt vandaag niemand er `null` heen. Een volledige veeg
+ *    over alle `DEFAULT NULL`-argumenten is een eigen ronde met een eigen
+ *    ijking; hij staat in `docs/ENGINEER-REVIEW.md`. **Lees deze lijst dus als
+ *    "wat er gemeten is", niet als "wat er is".**
+ *
  * ⚠️ **Elke rij staat onder toets.** `tests/beloftes/typecorrecties.test.ts` legt per
  *    correctie vast dát de generator hem vandaag nog nodig heeft. Wordt een
  *    correctie overbodig — een `DEFAULT` erbij, een generator die triggers leest —
@@ -51,16 +62,19 @@
 import type { Database as Gegenereerd } from './database.types';
 
 /**
- * Maakt van een kruising weer één plat objecttype.
+ * `T`, met de velden uit `V` eroverheen.
  *
- * ⚠️ Zonder deze stap blijft `Omit<A, k> & B` een kruising, en dan krijgt de
- *    afleiding van `supabase-js` een vorm die hij bij `.insert()` en `.rpc()`
- *    anders behandelt dan het platte object dat de generator schrijft.
+ * ⚠️ **Hier stond een stap die de kruising weer platsloeg** (`{ [K in keyof T]: T[K] }`),
+ *    met het argument dat `supabase-js` een kruising bij `.insert()` en `.rpc()`
+ *    anders zou afleiden dan het platte object dat de generator schrijft. 📏 Dat
+ *    is gemeten en het maakt niets uit: mét en zonder die stap geeft
+ *    `npm run typecheck` nul fouten, en de ijking van `zet_taakzichtbaarheid`
+ *    geeft in béide vormen dezelfde drie fouten — de controle blijft dus even
+ *    streng. De stap is eruit, en deze regel staat er zodat niemand hem "voor de
+ *    zekerheid" terugzet: een onderbouwing zonder meting leest als een reden om
+ *    er niet aan te twijfelen.
  */
-type Plat<T> = { [K in keyof T]: T[K] } & {};
-
-/** `T`, met de velden uit `V` eroverheen. */
-type Met<T, V> = Plat<Omit<T, keyof V> & V>;
+type Met<T, V> = Omit<T, keyof V> & V;
 
 type Publiek = Gegenereerd['public'];
 type Tabellen = Publiek['Tables'];
@@ -123,6 +137,38 @@ type GecorrigeerdeTabellen = Met<
  * | `verzoekers_eerder_lid` | `op` | komt uit een `left join lateral`, dus leeg als de gebeurtenis ontbreekt |
  * | `zichtbare_reeksen_van_groep` | `best_streak`, `last_cycle_start` | `case when … then … end` **zonder `else`** — de maskering van `0078` |
  * | `zoek_mensen` | `avatar_url` | `profiles.avatar_url` is `is_nullable = YES` |
+ * | `group_overview` | acht kolommen, zie hieronder | drie oorzaken tegelijk |
+ *
+ * ⚠️⚠️ **`group_overview` is de rij die er bij de eerste ronde niet in stond, en
+ *    dat is de leerzame fout van dit bestand.** De correctie landde op
+ *    `zichtbare_reeksen_van_groep()` — die de maskering draagt en 📏 **nul**
+ *    aanroepers heeft in `src/` en `app/` — terwijl de functie die het
+ *    groepsscherm écht voedt ongecorrigeerd bleef. Gevonden door de
+ *    security-ronde op deze PR. 📏 Gemeten met `pg_get_functiondef()` op
+ *    productie, acht kolommen met drie oorzaken:
+ *
+ *      - `closed_this_period` — `case when not coalesce(…) then null else exists(…) end`.
+ *        `null` is hier met zoveel woorden *"hier geef ik geen antwoord op"*, en
+ *        `0208` schrijft erbij waaróm: `false` zou een gemiste week van iemand
+ *        anders tonen, zichtbaar voor de groep. **Dit is domeinregel 7 in een
+ *        kolom**, en een type dat `boolean` zegt maakt van "geen antwoord"
+ *        vanzelf "nee" zodra iemand er een ternair op zet.
+ *      - `current_streak`, `best_streak`, `last_cycle_start` — komen via
+ *        `left join zichtbare_reeksen_van_groep(…)`, dus leeg door de join én
+ *        door de maskering erin.
+ *      - `avatar_url` (`profiles.avatar_url` is nullable) en `goal_id`,
+ *        `goal_title`, `goal_target_date` (een `left join lateral` op het
+ *        actieve doel — een lid zonder doel geeft drie lege kolommen).
+ *
+ *    De andere acht kolommen blijven niet-nullable en dat is gemeten:
+ *    `user_id`, `role`, `member_status`, `joined_at` en `display_name` komen uit
+ *    `not null`-kolommen via een `join`, en `milestones_total`,
+ *    `milestones_done` en `total_members` zijn `coalesce(…, 0)` of `count(*)`.
+ *
+ * ⚠️ `RpcRij<>` uit `src/shared/api` dekt deze functie vandaag óók, op één
+ *    aanroepplek. Dat is een andere grendel met een andere reden — hij vangt een
+ *    kolom die ontbreekt omdat de types achterlopen — en hij werkt alleen waar
+ *    iemand eraan denkt. De correctie hier is een eigenschap van het type.
  *
  * ⚠️⚠️ **De rij van `zichtbare_reeksen_van_groep` is de zwaarste, en niet omdat
  *    hij compileert of niet.** Die twee kolommen zijn leeg voor wie ze niet mag
@@ -153,6 +199,19 @@ type GecorrigeerdeFuncties = Met<
       { p_na_at?: string | null; p_na_id?: string | null }
     >;
     zet_taakzichtbaarheid: MetArgs<'zet_taakzichtbaarheid', { p_group_id: string | null }>;
+    group_overview: MetRij<
+      'group_overview',
+      {
+        avatar_url: string | null;
+        goal_id: string | null;
+        goal_title: string | null;
+        goal_target_date: string | null;
+        current_streak: number | null;
+        best_streak: number | null;
+        last_cycle_start: string | null;
+        closed_this_period: boolean | null;
+      }
+    >;
     verzoekers_eerder_lid: MetRij<'verzoekers_eerder_lid', { op: string | null }>;
     zichtbare_reeksen_van_groep: MetRij<
       'zichtbare_reeksen_van_groep',
