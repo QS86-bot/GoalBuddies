@@ -91,12 +91,31 @@ export function functiesIn(bron) {
  * ⚠️ Commentaar mag verschillen — de Edge-kopie legt terecht andere dingen uit,
  *    zoals waarom hij `clock.ts` niet via `index.ts` importeert. Wat gelijk moet
  *    zijn is wat er rékent.
+ *
+ * ⚠️⚠️ **De `//`-knip draagt sinds QS8-579 de wacht van QS8-412, en dat was een
+ *    reparatie en geen opruiming.** Hier stond `r.replace(/\/\/.*$/, '')` per
+ *    regel: de blinde vorm die alles opeet ná de `//` van een URL. 📏 Gemeten
+ *    met een tegenproef: met `const doc = 'https://…'; const marge = 0;` in de
+ *    ene kopie en `marge = 7` in de andere bleef deze controle **groen** — twee
+ *    uiteenlopende exemplaren van `shared/time`, gelijk verklaard. Zonder die
+ *    URL ervoor ging hij wél rood. Dat is correctheidsregel 7, en CLAUDE.md
+ *    zegt erbij wat die kost: *een streak die om middernacht verkeerd breekt,
+ *    kost je een gebruiker.* De `(^|[^:])`-wacht ervoor lost precies dat op.
+ *
+ * ⚠️⚠️ **En hij blijft met reden een eigen knip — dat is gemeten en geen
+ *    voorkeur.** De gedeelde knip uit `scripts/zonder-commentaar.mjs` gooit een
+ *    regel weg die mét `//` begint en laat een **staartcommentaar** staan. Dat
+ *    is voor een zeef veilig, maar hier niet: deze controle vergelijkt twee
+ *    kopieën, en commentaar mág verschillen. 📏 Met de gedeelde knip viel
+ *    `tests/scripts/edge-tijd.test.ts` om op `const a = 1; // uitleg` — precies
+ *    het geval dat hier normaal is. Zie de rij in `MET_REDEN` van
+ *    `scripts/knip-controle.mjs`.
  */
 export function normaliseer(code) {
   return code
     .replace(/\/\*[\s\S]*?\*\//g, '')
     .split('\n')
-    .map((r) => r.replace(/\/\/.*$/, '').trim())
+    .map((r) => r.replace(/(^|[^:])\/\/.*$/, '$1').trim())
     .filter((r) => r !== '')
     .join('\n');
 }

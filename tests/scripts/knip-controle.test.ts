@@ -11,12 +11,17 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+  BEOORDEELD,
   definitiesIn,
+  GEEN_KNIP,
+  isKnipLichaam,
+  knipVormenIn,
   GEDEELD,
   klachten,
   knipt,
   leestBronMetNaampatroon,
   MET_REDEN,
+  verweesdeBeoordelingen,
   verweesdeRedenen,
   verweesdeVrijstellingen,
   ZONDER_KNIP,
@@ -244,5 +249,224 @@ describe('verweesdeVrijstellingen', () => {
   it('zwijgt over een rij die zijn vrijstelling nog nodig heeft', () => {
     const bronnen = new Map(Object.keys(ZONDER_KNIP).map((p) => [p, LEZER]));
     expect(verweesdeVrijstellingen(bronnen)).toEqual([]);
+  });
+});
+
+/**
+ * De verbreding van QS8-572 — elke vorm los aangeboden, in beide richtingen.
+ *
+ * ⚠️⚠️ **De tweede helft weegt hier het zwaarst.** De reden dat de
+ *    stringmethode-vormen er níet in zitten, is gemeten precisie: 📏 van de vijf
+ *    treffers op `.includes`, `.split` en `.startsWith` met een template is er
+ *    één een échte bronscan; de rest zijn pad- en sleutelvergelijkingen. Zou
+ *    iemand ze later alsnog toevoegen, dan horen deze vier toetsen rood te
+ *    worden — dat is het enige wat die meting vasthoudt.
+ */
+describe('leestBronMetNaampatroon — de vormen van QS8-572', () => {
+  const LEEST = 'readFileSync(p); ';
+
+  it.each([
+    ['new + template', 'const r = new RegExp(`\\b${naam}\\s*\\(`);'],
+    ['zonder new, met template', 'const r = RegExp(`\\b${naam}\\s*\\(`);'],
+    ['new + concatenatie met enkele quotes', "const r = new RegExp('`((?:' + MAPPEN + ')/x)`', 'g');"],
+    ['zonder new, concatenatie met dubbele quotes', 'const r = RegExp("^" + naam, "g");'],
+    ['een newline ná de haak', 'const r = new RegExp(\n  `${naam}`,\n);'],
+  ])('ziet %s', (_naam, vorm) => {
+    expect(leestBronMetNaampatroon(LEEST + vorm)).toBe(true);
+  });
+
+  it.each([
+    ['een includes op een template', 'if (bron.includes(`const ${naam} =`)) return true;'],
+    ['een split op een template', 'const delen = bron.split(`const ${naam} =`);'],
+    ['een startsWith op een template', 'if (regel.startsWith(`${vorm} `)) return true;'],
+    ['een concatenatie zonder stringliteraal ervoor', 'const r = new RegExp(naam + suffix);'],
+    ['een template zonder interpolatie', 'const r = new RegExp(`^\\s*const\\s+`, "u");'],
+    ['een naam die op RegExp eindigt', 'const r = XRegExp(`${naam}`);'],
+  ])('laat %s met rust', (_naam, vorm) => {
+    expect(leestBronMetNaampatroon(LEEST + vorm)).toBe(false);
+  });
+
+  it('eist nog steeds dat er bron gelezen wordt', () => {
+    expect(leestBronMetNaampatroon("const r = RegExp('^' + naam);")).toBe(false);
+  });
+
+  it('telt een verbrede vorm niet mee als hij alleen in commentaar staat', () => {
+    expect(leestBronMetNaampatroon("// readFileSync(p); RegExp('^' + naam)")).toBe(false);
+  });
+});
+
+/**
+ * `BEOORDEELD` is met de hand bijgehouden, dus zijn ratel is het enige wat hem
+ * eerlijk houdt — QS8-572.
+ */
+describe('verweesdeBeoordelingen', () => {
+  const PAD = Object.keys(BEOORDEELD)[0] ?? '';
+  const SCAN = "readFileSync(p); if (regel.startsWith(`${vorm} `)) return true;";
+
+  it('meldt een rij waarvan het bestand weg is', () => {
+    expect(verweesdeBeoordelingen(new Map())).toEqual(Object.keys(BEOORDEELD));
+  });
+
+  it('meldt een rij die inmiddels wél knipt', () => {
+    const bron = `import { zonderCommentaar } from './zonder-commentaar.mjs';\n${SCAN}`;
+    expect(verweesdeBeoordelingen(new Map([[PAD, bron]]))).toEqual([PAD]);
+  });
+
+  it('meldt een rij die inmiddels gedetecteerd wordt — die hoort in ZONDER_KNIP', () => {
+    const bron = 'readFileSync(p); const r = new RegExp(`${naam}`);';
+    expect(verweesdeBeoordelingen(new Map([[PAD, bron]]))).toEqual([PAD]);
+  });
+
+  it('meldt een rij waarvan het bestand geen bron meer leest', () => {
+    expect(verweesdeBeoordelingen(new Map([[PAD, 'const x = 1;']]))).toEqual([PAD]);
+  });
+
+  it('zwijgt over een rij die zijn beoordeling nog nodig heeft', () => {
+    expect(verweesdeBeoordelingen(new Map([[PAD, SCAN]]))).toEqual([]);
+  });
+
+  it('elke rij draagt een reden die iets uitlegt', () => {
+    for (const [pad, reden] of Object.entries(BEOORDEELD)) {
+      expect(reden.length, `${pad} heeft een te korte reden`).toBeGreaterThan(80);
+    }
+  });
+});
+
+// ---------------------------------------------------------------------------
+
+/**
+ * De derde helft: een knip die niet `zonderCommentaar` heet — QS8-579.
+ *
+ * ⚠️⚠️ **De tweede helft hieronder is hier de zwaarste.** Deze detector kijkt
+ *    naar een lichaamsvorm, en een vormdetector die te ruim staat meldt elke
+ *    `git('diff', '--name-only', …)` en elke URL-regex. 📏 Dat is precies wat
+ *    een eerdere versie deed. Een controle die je leert negeren, bewaakt de
+ *    échte elfde knip ook niet meer.
+ */
+describe('isKnipLichaam — de operatie, niet het teken', () => {
+  it.each([
+    "return bron.replace(/\\/\\*[\\s\\S]*?\\*\\//g, ' ');",
+    "return bron.replace(/\\/\\/[^\\n]*/g, '');",
+    "return sql.replace(/--[^\\n]*/g, ' ');",
+    "return bron.split('\\n').filter((r) => !r.trimStart().startsWith('//')).join('\\n');",
+  ])('herkent %s', (lichaam) => {
+    expect(isKnipLichaam(lichaam)).toBe(true);
+  });
+
+  /**
+   * ⚠️ **Een commentaarteken is geen knip.** Een CLI-vlag begint met `--` en een
+   *    URL bevat `//`; allebei zijn ze geen uitleg die weggeknipt hoort te
+   *    worden.
+   */
+  it.each([
+    "return git('diff', '--name-only', basis, naam);",
+    "return argv.filter((v) => v !== '--stil').join(' ');",
+    "return /https:\\/\\/[^\\s]+/.exec(bron)?.[0] ?? null;",
+    "return bron.toUpperCase();",
+    "const opener = '/*';",
+  ])('laat %s met rust', (lichaam) => {
+    expect(isKnipLichaam(lichaam)).toBe(false);
+  });
+});
+
+describe('knipVormenIn — welke functie knipt, ongeacht zijn naam', () => {
+  it('vindt een knip onder een willekeurige naam', () => {
+    const bron = "function plat(bron) {\n  return bron.replace(/\\/\\*[\\s\\S]*?\\*\\//g, ' ');\n}";
+
+    expect(knipVormenIn(bron)).toEqual(['plat']);
+  });
+
+  it('en ook een knip die middenin een grotere functie zit', () => {
+    const bron = [
+      'function beoordeel(inhoud) {',
+      "  const regels = inhoud.split('\\n');",
+      "  regels.forEach((r) => { const code = r.replace(/^\\s*(\\/\\/|\\*)/, ''); tel(code); });",
+      '  return regels.length;',
+      '}',
+    ].join('\n');
+
+    expect(knipVormenIn(bron)).toEqual(['beoordeel']);
+  });
+
+  /**
+   * ⚠️ **Eén parameter, en dat is een keuze die precisie koopt.** Een knip neemt
+   *    bron en geeft bron terug. De prijs staat in de randtabel van het script:
+   *    een knip met twee parameters ziet hij niet.
+   */
+  it('maar niet een functie met twee parameters', () => {
+    const bron = "function knip(bron, vlag) {\n  return bron.replace(/\\/\\/[^\\n]*/g, vlag);\n}";
+
+    expect(knipVormenIn(bron)).toEqual([]);
+  });
+
+  it('en niet een functie zonder parameters', () => {
+    const bron = "function knip() {\n  return X.replace(/\\/\\/[^\\n]*/g, '');\n}";
+
+    expect(knipVormenIn(bron)).toEqual([]);
+  });
+
+  /**
+   * ⚠️ De gedeelde knip loopt er eerst overheen: een knip die alléén in een
+   *    voorbeeld in commentaar staat, is er geen. Zelfde stap en zelfde reden
+   *    als in `definitiesIn()`.
+   */
+  it('en niet een vorm die alleen in commentaar staat', () => {
+    const bron = "// function plat(b) { return b.replace(/\\/\\*[\\s\\S]*?\\*\\//g, ' '); }";
+
+    expect(knipVormenIn(bron)).toEqual([]);
+  });
+});
+
+describe('de derde helft van klachten', () => {
+  const KNIP = "function plat(bron) {\n  return bron.replace(/\\/\\*[\\s\\S]*?\\*\\//g, ' ');\n}";
+
+  it('meldt een knip die niet zo heet', () => {
+    const uit = klachten(KNIP, 'scripts/nieuw-controle.mjs');
+
+    expect(uit).toHaveLength(1);
+    expect(uit[0]).toContain('`plat` knipt commentaar maar heet niet zo');
+  });
+
+  it('en doet dat ook in de testboom — daar zaten er vier', () => {
+    expect(klachten(KNIP, 'tests/beloftes/x.test.ts')).toHaveLength(1);
+  });
+
+  /**
+   * ⚠️ Een naam die `DEFINITIE` al vangt, hoort niet twee keer gemeld te worden:
+   *    dan staat er één knip met twee klachten en weet de lezer niet welke rij
+   *    hij moet zetten.
+   */
+  it('meldt een `zonderCommentaar`-knip precies één keer', () => {
+    const bron = "function zonderCommentaarX(bron) {\n  return bron.replace(/\\/\\/[^\\n]*/g, '');\n}";
+
+    expect(klachten(bron, 'scripts/nieuw-controle.mjs')).toHaveLength(1);
+  });
+
+  it('zwijgt over een vormtreffer die in GEEN_KNIP staat', () => {
+    const [sleutel] = Object.keys(GEEN_KNIP);
+    const [pad, naam] = (sleutel ?? ':').split(':');
+    const bron = `function ${naam}(bron) {\n  return bron.replace(/\\/\\*[\\s\\S]*?\\*\\//g, ' ');\n}`;
+
+    expect(klachten(bron, pad)).toEqual([]);
+  });
+
+  it('maar niet over diezelfde naam in een ánder bestand', () => {
+    const [sleutel] = Object.keys(GEEN_KNIP);
+    const naam = (sleutel ?? ':').split(':')[1];
+    const bron = `function ${naam}(bron) {\n  return bron.replace(/\\/\\*[\\s\\S]*?\\*\\//g, ' ');\n}`;
+
+    expect(klachten(bron, 'scripts/ergens-anders.mjs')).toHaveLength(1);
+  });
+
+  /**
+   * ⚠️⚠️ **Elke rij in `GEEN_KNIP` draagt een reden die iets uitlegt.** Een
+   *    register met lege rijen is de vorm die dit project elders afwijst — zie
+   *    de eis bij `dml:controle`.
+   */
+  it('en elke rij in GEEN_KNIP zegt waaróm het geen knip is', () => {
+    for (const [sleutel, reden] of Object.entries(GEEN_KNIP)) {
+      expect(sleutel, `${sleutel} mist een functienaam`).toMatch(/^[^:]+:[A-Za-z_$][\w$]*$/);
+      expect(reden.length, `${sleutel} staat er zonder reden`).toBeGreaterThan(30);
+    }
   });
 });

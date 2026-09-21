@@ -844,6 +844,55 @@
 > **Zoek bij een botsing wat er van jouw kant overblijft in plaats van te kiezen
 > tussen twee takken.**
 >
+> **21-09, punt AO: een regel die alleen in een comment staat, kost je veertien
+> regels bij de eerste keer dat iemand meet.** QS8-569 hergenereerde
+> `src/lib/database.types.ts` tegen productie. Wat er uit de naamvergelijking kwam
+> was bekend (57), wat er uit de **veld**vergelijking kwam niet: 📏 **veertien
+> handgeschreven correcties**, over acht functies en één view, in een bestand dat
+> `npm run types:db` in zijn geheel overschrijft — terwijl `src/modules/ai/jobs.ts`
+> sinds `0136` woordelijk opschrijft dat dat niet de manier is. Ze verdwenen bij de
+> hergeneratie zonder een woord.
+>
+> ⚠️ **Het handwerk had inhoudelijk gelijk**, en dat is wat het lastig maakt: de
+> generator kan drie dingen niet weten (een NOT NULL-kolom zonder `DEFAULT` die een
+> trigger vult, een argument dat NULL aanneemt, een `RETURNS TABLE`-kolom die NULL
+> kan zijn). Niet elke afwijking van een gegenereerd bestand is dus rommel — maar de
+> plek was fout. Ze staan nu in `src/lib/database.types.correcties.ts`, met per rij
+> de meting, en onder een tweezijdige toets die óók rood wordt als iemand de
+> correctie terugzet in het gegenereerde bestand.
+>
+> ⚠️⚠️ **De stilste van de drie klassen is de enige die niet compileerfout geeft.**
+> `zichtbare_reeksen_van_groep()` maskeert `best_streak` en `last_cycle_start` met
+> een `case … end` zónder `else` — domeinregel 7 in de functie zelf. De generator
+> typeert die twee als niet-nullable, en dan vertelt het type de schermlaag dat er
+> altijd een reeks is. Klasse 1 en 2 breken de build; deze breekt niets.
+>
+> ⚠️ **En bij het ijken ging de mutatie de eerste keer naar de verkeerde plek.**
+> 📏 `avatar_url: string` staat drie keer in dat bestand; de eerste poging raakte
+> `weekafsluiting_reacties` in plaats van `zoek_mensen` en gaf **nul** fouten — een
+> geslaagd ogende mutatie die niets bewees. *Breek de grendel die de ijking nóemt*,
+> en kijk wélke toets omvalt.
+>
+> **21-09, punt AP: verbreed een vormdetector op precisie en niet op
+> volledigheid.** QS8-572 bood `leestBronMetNaampatroon()` zes vormen aan, elk
+> los gemeten. De twee regexvormen zijn overgenomen omdat ze goedkoop waren
+> (📏 0 en 1 nieuwe treffer). De vier stringmethode-vormen zijn **afgewezen met
+> een meting**: van de vijf treffers op `.includes`, `.split` en `.startsWith`
+> met een template is er **één** een échte bronscan — de rest zijn pad- en
+> sleutelvergelijkingen, waaronder twee in de controle zelf.
+>
+> ⚠️ **Eén op de vijf is precies de precisie waarmee je een controle leert
+> negeren**, en dat staat al in de kop van `scripts/paden.mjs`. De verleiding is
+> groot om een detector "even breder" te maken omdat de vorm verwant lijkt; het
+> verschil zit hier in de **ontvanger** (bron of pad), en dat ziet een
+> tekstpatroon niet.
+>
+> ⚠️ **Een handgeschreven register heeft een ratel die maar één kant op slaat, en
+> dat hoort opgeschreven.** `BEOORDEELD` meldt een rij die weg mág — het bestand
+> is er niet meer, het knipt inmiddels, of het wórdt inmiddels gedetecteerd. 📏
+> Geijkt door het leeg te maken: `knip:controle` bleef groen. Hij kan dus niet
+> zien dat er een rij **mist**, en dat is de prijs van zo'n register.
+
 > ⚠️⚠️ **11-09, punt P: een lintregel kan code laten buigen, en dan verplaats je
 > het probleem naar de lezer.** QS8-422 moest in de rollover een `if` in een `if`
 > vervangen door een ternair met twee guards, puur omdat dat blok toen ín twee
@@ -1837,6 +1886,24 @@ met de onderbouwing van de groene notities in `docs/GROENE-NOTITIES.md`.
    `docs:controle` bewaakt precies dat. Verwijzen mag, herhalen niet.
 
 ## VALKUILEN die deze codebase al een keer gekost hebben
+
+- **⚠️⚠️ Een knip die niet `zonderCommentaar` heet, ontloopt zijn register — 21-09,
+  QS8-579.** `knip:controle` matchte op naam, en 📏 **tien** knippen liepen
+  daaromheen. Twee faalden open: één liet een zelf-opgemaakte datum door zodra er
+  een URL vóór stond, en één verklaarde twee uiteenlopende kopieën van
+  `shared/time` gelijk — correctheidsregel 7.
+
+  **De vorm om te herkennen:** één regex die vanaf een `//` tot het regeleinde
+  knipt. Die eet alles op ná de `//` van een URL. De gedeelde knip uit
+  `scripts/zonder-commentaar.mjs` gooit een regel weg die mét `//` begint en
+  heeft dat probleem niet. `knip:controle` kijkt nu naar het lichaam en meldt de
+  elfde vanzelf.
+
+  ⚠️ **En de les ernaast, voor de tweede keer in twee issues:** een testbestand
+  dat in zijn kop uitschrijft waaróm het geen knip nodig heeft, kan half gelijk
+  hebben. Eén kop noemde grendel 4 als vangnet; gemeten viel de mutatie op
+  grendel 2, via een parser die op hol sloeg. **Meet zo'n kop in plaats van hem
+  te geloven** — en kijk wélke test omvalt, niet dát er een omvalt.
 
 - **⚠️⚠️ Een bevestigende `toContain` op ruwe bron toetst het bestand en niet de
   belofte — 21-09, QS8-568 en QS8-574.** `expect(bron).toContain('koppel(')` is

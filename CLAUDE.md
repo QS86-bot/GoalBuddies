@@ -683,6 +683,25 @@ docs/decisions/
     vorm als `levend:controle`.
 16. Elke async view heeft loading-, error- én empty-state.
 
+⚠️⚠️ **Een gegenereerd bestand werk je niet met de hand bij — vastgelegd
+21-09-2026 (QS8-569).** `src/lib/database.types.ts` is een afschrift dat
+`npm run types:db` in zijn geheel overschrijft. Klopt het niet met de database,
+dan is de vraag wélke van twee dingen er aan de hand is:
+
+- **het loopt achter** → hergenereren, en verder niets;
+- **de generator kán het niet weten** — een NOT NULL-kolom zonder `DEFAULT` die
+  een trigger vult, een functieargument dat NULL aanneemt, een
+  `RETURNS TABLE`-kolom die NULL kan zijn → dan hoort de correctie in
+  `src/lib/database.types.correcties.ts`, met de meting erbij, en onder de
+  tweezijdige toets in `tests/beloftes/typecorrecties.test.ts`.
+
+⚠️ **En de reden dat dit een regel is en geen gewoonte:** hij stond sinds `0136`
+al in het commentaar van `src/modules/ai/jobs.ts`, woordelijk en juist. 📏 Er
+kwamen in dat bestand tóch **veertien** handgeschreven correcties bij, over acht
+functies en één view, en ze zijn bij de eerste hergeneratie allemaal verdwenen
+zonder dat er iets rood van werd. Uitleg in
+`docs/decisions/2026-09-21-de-correcties-stonden-in-het-bestand-dat-overschreven-wordt.md`.
+
 ### Proces
 17. Elke feature begint met `spec-planner`.
 18. Elke feature eindigt met tests die de acceptatiecriteria dekken — en
