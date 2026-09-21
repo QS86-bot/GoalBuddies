@@ -4,6 +4,8 @@ import { fileURLToPath } from 'node:url';
 
 import { describe, expect, it } from 'vitest';
 
+import { zonderCommentaar } from './roept-aan';
+
 /**
  * Een scherm dat op de coach wacht, laat zien dát het wacht — QS8-208.
  *
@@ -48,9 +50,22 @@ function bestanden(map: string): string[] {
   return gevonden;
 }
 
-/** Elk scherm dat op een AI-job staat te wachten. */
+/**
+ * Elk scherm dat op een AI-job staat te wachten.
+ *
+ * ⚠️⚠️ **De knip zit hier op twee plekken tegelijk, en dat is opzet — QS8-568.**
+ *    Hij bepaalt éérst wie er in de lijst komt: een scherm dat `fetchJob(`
+ *    alleen in een comment noemt, wacht nergens op, en die zou anders twee
+ *    grendels moeten halen die niet over hem gaan. En hij bepaalt daarna waar
+ *    de grendels op toetsen — een `<Wachtbalk` in een uitgecommentarieerd blok
+ *    is geen balk op het scherm.
+ *
+ *    📏 Gemeten op 21-09-2026: zonder de knip bleven alle toetsen groen terwijl
+ *    `voortgangsweergave(` en `wachtstand(` in `Wachtbalk.tsx` waren
+ *    uitgecommentarieerd.
+ */
 const WACHTERS = bestanden('app')
-  .map((pad) => ({ pad, bron: readFileSync(join(WORTEL, pad), 'utf8') }))
+  .map((pad) => ({ pad, bron: zonderCommentaar(readFileSync(join(WORTEL, pad), 'utf8')) }))
   .filter((s) => s.bron.includes('fetchJob('));
 
 describe('een scherm dat op de coach wacht, laat dat zien', () => {
@@ -93,7 +108,7 @@ describe('een scherm dat op de coach wacht, laat dat zien', () => {
  *    en meldt geen enkele test iets.
  */
 describe('de Wachtbalk leunt op de beslissingen en niet op zichzelf', () => {
-  const bron = readFileSync(join(WORTEL, WACHTBALK), 'utf8');
+  const bron = zonderCommentaar(readFileSync(join(WORTEL, WACHTBALK), 'utf8'));
 
   it('vraagt aan voortgangsweergave() wat er zichtbaar moet zijn', () => {
     expect(
