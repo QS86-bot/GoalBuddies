@@ -1867,6 +1867,28 @@ met de onderbouwing van de groene notities in `docs/GROENE-NOTITIES.md`.
 
 ## VALKUILEN die deze codebase al een keer gekost hebben
 
+- **⚠️⚠️ Een bevestigende `toContain` op ruwe bron toetst het bestand en niet de
+  belofte — 21-09, QS8-568 en QS8-574.** `expect(bron).toContain('koppel(')` is
+  ook waar als die aanroep uitgecommentarieerd is, en bij een tijdelijke
+  uitschakeling blijft de naam juist wél staan, in de comment. 📏 Acht
+  belofte-tests droegen die vorm en alle acht faalden open — waaronder de twee
+  die bewaken dat de storage-emmers **privé** zijn.
+
+  **Wat je doet:** knip op de leesplek en niet per `expect`, dan dekt hij ook de
+  toetsen die er later bij komen. `zonderCommentaar` uit `tests/beloftes/roept-aan`
+  voor JS/TS, `zonderCommentaarSql` uit `scripts/zonder-sql-commentaar.mjs` voor
+  een migratie. `npm run belofteknip:controle` wordt rood als je het vergeet.
+
+  ⚠️ **Een `.not.toContain()` hoeft niet** — die faalt dicht. Commentaar kan hem
+  alleen rood maken, nooit stil groen.
+
+  ⚠️⚠️ **En de val eronder is de duurdere: twee van deze acht bestanden hadden in
+  hun eigen kop uitgeschreven waaróm ze geen knip nodig hadden.** Het argument
+  was *"een patroon dat niet in proza kán voorkomen"* — en dat klopte voor proza
+  en niet voor een uitgecommentarieerde échte regel. CLAUDE.md zegt het:
+  **een afwijking die je onderbouwt is duurder dan een die je vergeet.** Kom je
+  zo'n kop tegen, meet hem dan in plaats van hem te geloven.
+
 - **⚠️⚠️ Twee blokken in `eslint.config.js` die dezelfde regelnaam zetten zijn
   niet allebei van kracht — 11-09, QS8-423.** Flat config **vervangt** de opties
   van een regel in plaats van ze samen te voegen: overlappen de `files` van twee

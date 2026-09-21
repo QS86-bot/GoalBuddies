@@ -4,6 +4,8 @@ import { fileURLToPath } from 'node:url';
 
 import { describe, expect, it } from 'vitest';
 
+import { zonderCommentaar } from './roept-aan';
+
 /**
  * Er is één keelpunt waar elke melding langs moet — QS8-92.
  *
@@ -85,13 +87,13 @@ describe('elke melding gaat langs de poort', () => {
    *    twee schrijvers; een test die bestanden telt ziet dat verschil niet.
    */
   it('schrijft `notifications_sent` op precies één plek in de hele boom', () => {
-    const totaal = alle.reduce((n, pad) => n + insertPosities(readFileSync(pad, 'utf8')).length, 0);
+    const totaal = alle.reduce((n, pad) => n + insertPosities(zonderCommentaar(readFileSync(pad, 'utf8'))).length, 0);
     expect(totaal).toBe(1);
   });
 
   it('doet dat in een bestand dat de poort aanroept', () => {
     for (const pad of alle) {
-      const bron = readFileSync(pad, 'utf8');
+      const bron = zonderCommentaar(readFileSync(pad, 'utf8'));
       if (insertPosities(bron).length === 0) continue;
       expect(bron, pad).toContain('meldingPoortReden(');
     }
@@ -104,7 +106,7 @@ describe('elke melding gaat langs de poort', () => {
    */
   it('roept de poort aan vóór élke rij die geschreven wordt', () => {
     for (const pad of alle) {
-      const bron = readFileSync(pad, 'utf8');
+      const bron = zonderCommentaar(readFileSync(pad, 'utf8'));
       const posities = insertPosities(bron);
       if (posities.length === 0) continue;
 
