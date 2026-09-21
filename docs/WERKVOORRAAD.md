@@ -222,8 +222,8 @@ staat er iets bij dat uitleg nodig heeft, dan hoort die uitleg in §2, §3b of �
    **Meet ze dus, tel ze niet op:** bij het samengaan met `main` is het antwoord
    `npm run poort` of `npm run tellers`, nooit het hoogste van twee getallen.
 <!-- POORTSTAND:BEGIN — gegenereerd door `npm run poortstand` -->
-Typecheck, lint en alle 71 controlescripts groen;
-`npm run poort` meldt 75 stappen.
+Typecheck, lint en alle 72 controlescripts groen;
+`npm run poort` meldt 76 stappen.
 <!-- POORTSTAND:EINDE -->
    ⚠️ **Vier ervan meten niets zonder de credentials van het échte project**
    (`adviseur`, `functies`, `register`, `wachtwoord`), en de poort noemt dat
@@ -1011,6 +1011,37 @@ die zijn 4,7 uur oud en mogelijk in de lucht.
 Drie keer dezelfde klasse, en hij keert terug omdat er geen signaal op staat maar
 alleen een gewoonte. Het signaal wordt gebouwd in **QS8-385**; dat issue is
 afgesplitst omdat de meting en het gereedschap twee dingen zijn.
+
+### De commentaarval in `tests/beloftes/` — gesloten op 21-09-2026 (QS8-574)
+
+✅ **Er staat een grendel op de vorm die QS8-568 vond.**
+`npm run belofteknip:controle` wordt rood zodra een belofte-test bevestigend
+toetst op ruwe bestandsinhoud — `expect(bron).toContain(…)` zonder knip op de
+leesplek. Die toets is ook waar als de aanroep uitgecommentarieerd is, en bij een
+tijdelijke uitschakeling blijft de naam juist ín de comment staan.
+
+📏 **Acht bestanden gemeten met elf eigen mutaties, en alle elf faalden open.**
+Alle acht zijn gerepareerd; het register van de controle is daarom **leeg**, en
+dat is een uitkomst en geen omissie. De tabel met de mutaties, de twee die iets
+anders maten dan ze leken te meten, en de afweging *eigen controle of tweede
+helft van `knip:controle`* staan in
+`docs/decisions/2026-09-21-het-mechanisme-onder-de-commentaarval.md`.
+
+⚠️ **Twee van de elf waren onwrikbare regel 3.** De toetsen die bewaken dat de
+storage-emmers `avatars` en `chatdocs` **privé** zijn, bleven groen met `public`
+op `true` — een openbare bucket omzeilt RLS volledig. Eén raakte domeinregel 2:
+met `<Tijdzonewacht />` uitgecommentarieerd verandert `profiles.tz` na de
+onboarding nergens meer.
+
+⚠️ **De SQL-knip is verhuisd en niet gekopieerd.** Hij stond in
+`scripts/sleutelvorm-controle.mjs`, waar `dml-controle.mjs` hem al uit
+importeerde, en heet nu `zonderCommentaarSql` in
+`scripts/zonder-sql-commentaar.mjs`. Er zijn dus twee gedeelde knippen — JS en
+SQL — en de derde blijft een keuze die je verantwoordt.
+
+⚠️ **Wat open blijft: vier knippen die `knip:controle` niet ziet**, omdat zijn
+`DEFINITIE` alleen namen matcht die met `zonderCommentaar` beginnen. Twee zijn
+nagemeten en falen dicht, twee zijn **ongemeten**. Dat staat als **QS8-579**.
 
 ## 3. Wat een nieuwe sessie als eerste doet
 

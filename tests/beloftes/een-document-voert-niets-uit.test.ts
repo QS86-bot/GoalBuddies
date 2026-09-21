@@ -40,6 +40,8 @@ import {
 import { CHATFOTO_TYPES } from '../../src/modules/buddies/chatfoto';
 import { soortBijlage } from '../../src/modules/buddies/chat-schemas';
 import { naarVerzending } from '../../src/shared/kiezers/verzendbijlage';
+import { zonderCommentaarSql } from '../../scripts/zonder-sql-commentaar.mjs';
+import { zonderCommentaar } from './roept-aan';
 
 /**
  * ⚠️ `src/lib/supabase` trekt react-native binnen en dat parst deze runner niet.
@@ -54,13 +56,30 @@ vi.mock('../../src/lib/supabase', () => ({
   },
 }));
 
-const M0240 = readFileSync('supabase/migrations/0240_een_document_hoort_bij_een_groep.sql', 'utf8');
-const M0236 = readFileSync(
-  'supabase/migrations/0242_een_bijlage_zegt_welke_soort_hij_is.sql',
-  'utf8',
+/**
+ * ⚠️⚠️ **De knippen staan op de leesplek — QS8-574.** Zonder hen toetst een
+ *    bevestigende `toMatch` *"die tekenreeks staat in het bestand"*, en een
+ *    toelichting die de oude vorm citeert stelt hem tevreden.
+ *
+ * 📏 **Twee metingen, allebei vóór de knip en allebei op dit bestand:**
+ *    met `public` van de emmer `chatdocs` op `true` gezet én de oude vorm
+ *    erboven als `-- Stond tot vandaag op: values ('chatdocs', 'chatdocs',
+ *    false, 5242880)` bleven alle **61** toetsen groen — een openbare emmer
+ *    omzeilt RLS volledig. En met de `<View … accessibilityRole="progressbar">`
+ *    in `Document.tsx` uitgecommentarieerd óók: **61 van de 61**.
+ *
+ * ⚠️ **SQL en JS zijn twee knippen**: een SQL-comment is `--` en een
+ *    JS-comment `//`. De SQL-knip laat tekstliteralen staan, want de toetsen
+ *    hieronder zoeken juist `'chatdocs'`.
+ */
+const M0240 = zonderCommentaarSql(
+  readFileSync('supabase/migrations/0240_een_document_hoort_bij_een_groep.sql', 'utf8'),
 );
-const CHATDOC_TS = readFileSync('src/modules/buddies/chatdoc.ts', 'utf8');
-const DOCUMENT_TSX = readFileSync('src/shared/ui/Document.tsx', 'utf8');
+const M0236 = zonderCommentaarSql(
+  readFileSync('supabase/migrations/0242_een_bijlage_zegt_welke_soort_hij_is.sql', 'utf8'),
+);
+const CHATDOC_TS = zonderCommentaar(readFileSync('src/modules/buddies/chatdoc.ts', 'utf8'));
+const DOCUMENT_TSX = zonderCommentaar(readFileSync('src/shared/ui/Document.tsx', 'utf8'));
 
 /**
  * Hetzelfde bestand zonder commentaar.
@@ -144,7 +163,9 @@ function emmersInDeMigratiemap(): ReadonlyMap<string, readonly string[]> {
          `scripts/storage-controle.mjs` draagt dezelfde regex; dáár valt het niet
          op omdat die alleen de naam gebruikt, en die staat vóór het commentaar.
     */
-    const sql = readFileSync(`supabase/migrations/${bestand}`, 'utf8').replace(/--[^\n]*/g, '');
+    // ⚠️ De gedeelde SQL-knip en niet meer een eigen `.replace(/--[^\n]*/g, '')`
+    //    (QS8-574): die at ook een `--` binnen een tekstliteral op.
+    const sql = zonderCommentaarSql(readFileSync(`supabase/migrations/${bestand}`, 'utf8'));
     for (const m of sql.matchAll(
       /insert\s+into\s+storage\.buckets[\s\S]*?values\s*\(\s*'([^']+)'[\s\S]*?;/gi,
     )) {
@@ -282,7 +303,7 @@ describe('schoneBestandsnaam maakt precies wat de CHECK toelaat', () => {
     expect(uitMigratie, 'geen tekenklasse in 0242').not.toBeNull();
 
     const uitApp = /\.replace\(\/(\[[^/]+\])\/g, ''\)/.exec(
-      readFileSync('src/modules/buddies/chatdoc.ts', 'utf8'),
+      zonderCommentaar(readFileSync('src/modules/buddies/chatdoc.ts', 'utf8')),
     );
     expect(uitApp, 'geen tekenklasse in schoneBestandsnaam()').not.toBeNull();
 
@@ -451,7 +472,7 @@ describe('een foto wordt nooit per ongeluk een document', () => {
     // ⚠️ Grijpt naar de bron omdat de keuze in `stuurBericht()` een netwerkronde
     //    diep zit. Verhuist die regel, dan hoort deze toets mee te verhuizen —
     //    de belofte staat in de kop van `naarVerzending()`.
-    const chat = readFileSync('src/modules/buddies/chat.ts', 'utf8');
+    const chat = zonderCommentaar(readFileSync('src/modules/buddies/chat.ts', 'utf8'));
     expect(chat).toMatch(/typeof bijlage\.naam === 'string'/);
   });
 });

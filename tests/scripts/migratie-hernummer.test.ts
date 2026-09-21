@@ -12,6 +12,8 @@ import {
   kopKlopt,
   kopNummer,
   herschrijfVerwijzingen,
+  isDossier,
+  rijtitel,
 } from '../../scripts/migratie-hernummer.mjs';
 
 /**
@@ -244,6 +246,128 @@ describe('herschrijfVerwijzingen — een gedeeld nummer', () => {
     const uit = gedeeld(`${ONS}.sql en nog eens ${ONS}.sql`);
     expect(uit.treffers).toBe(2);
     expect(uit.tekst).not.toContain(ONS);
+  });
+});
+
+/**
+ * ⚠️⚠️ **Het geval van 07-09-2026, nagespeeld** — QS8-580.
+ *
+ * De dossierrij schreef het incident op als *"een blinde `sed` van een mens"*.
+ * 📏 Nagemeten op 21-09-2026 tegen de vorm van vóór dit issue: dit script deed
+ * het **zelf**, en stil — `treffers: 2, gemeld: 0` op precies deze twee rijen.
+ * De `sed` was niet de oorzaak maar een tweede weg naar dezelfde schade.
+ *
+ * De reden zat in helft 2 van de regel: *"bij een uniek nummer valt er niets te
+ * verwarren"*. Voor code klopt dat — daar is de migratiemap de waarheid. Voor
+ * een **historisch register** niet: daar gaat een rij over de stand van toen, en
+ * het nummer dat vandaag uniek is kan gisteren van een ander zijn geweest.
+ */
+describe('herschrijfVerwijzingen — het dossier', () => {
+  const ONS = '0174_onze_migratie';
+  const NIEUW = '0182_onze_migratie';
+
+  /** De echte rij van QS8-307, zoals hij op 07-09 meeging. */
+  const VREEMD =
+    '| 2026-09-05 | De begunstigde van een straf beslist mee over het respijt (QS8-307) ' +
+    '| migratie 0174 zet er een `not exists` op | Middel |';
+  const EIGEN = '| 2026-09-06 | Onze eigen rij (QS8-999) | migratie 0174 doet iets | Laag |';
+
+  const inDossier = (tekst: string) =>
+    herschrijfVerwijzingen(tekst, {
+      nummer: '0174',
+      oudeBasis: ONS,
+      nieuweBasis: NIEUW,
+      gedeeld: false,
+      bekendeBases: [ONS],
+      dossier: true,
+    });
+
+  it('laat de rij van een ánder issue staan, ook al is het nummer uniek', () => {
+    const uit = inDossier(VREEMD);
+
+    expect(uit.tekst).toBe(VREEMD);
+    expect(uit.treffers).toBe(0);
+  });
+
+  /**
+   * ⚠️ **En ook de eigen rij blijft staan**, want het script kán ze niet uit
+   *    elkaar houden: 📏 van de 139 dossierrijen die een migratie noemen dragen
+   *    er 60 een `QS8-` in hun titelcel. Melden is dan eerlijker dan raden, en
+   *    het is de veilige kant — een vergeten eigen rij valt op bij het lezen,
+   *    een stil herschreven rij van een ander niet.
+   */
+  it('laat ook de eigen rij staan en meldt hem, in plaats van te raden', () => {
+    const uit = inDossier([VREEMD, EIGEN].join('\n'));
+
+    expect(uit.tekst).toBe([VREEMD, EIGEN].join('\n'));
+    expect(uit.gemeld.map((g) => g.regel)).toEqual([1, 2]);
+  });
+
+  it('zet de titel van de rij bij de melding, zodat je ziet van wie hij is', () => {
+    const uit = inDossier(VREEMD);
+
+    expect(uit.gemeld[0]?.titel).toBe(
+      'De begunstigde van een straf beslist mee over het respijt (QS8-307)',
+    );
+  });
+
+  /**
+   * ⚠️ **De tegenhelft, en zonder haar bewaakt de rest niets.** Een script dat
+   *    in het dossier helemáál niets meer doet, haalt de drie gevallen hierboven
+   *    ook groen — en laat dan een verwijzing met de volle naam verouderen.
+   */
+  it('herschrijft een verwijzing die de volle naam noemt wél', () => {
+    const rij = `| 2026-09-06 | Met volle naam | \`${ONS}.sql\` doet iets | Laag |`;
+    const uit = inDossier(rij);
+
+    expect(uit.tekst).toBe(`| 2026-09-06 | Met volle naam | \`${NIEUW}.sql\` doet iets | Laag |`);
+    expect(uit.treffers).toBe(1);
+  });
+
+  /**
+   * ⚠️ **En een gewone hernummering verandert niet**: buiten het dossier blijft
+   *    een kaal nummer bij een uniek nummer gewoon meegaan. Zonder dit geval zou
+   *    "melden in plaats van herschrijven" ook overal elders kunnen gaan gelden,
+   *    en dan verouderen álle verwijzingen in code en migraties.
+   */
+  it('raakt hetzelfde kale nummer buiten het dossier wél aan', () => {
+    const uit = herschrijfVerwijzingen('zie migratie 0174 voor de reden', {
+      nummer: '0174',
+      oudeBasis: ONS,
+      nieuweBasis: NIEUW,
+      gedeeld: false,
+      bekendeBases: [ONS],
+    });
+
+    expect(uit.tekst).toBe('zie migratie 0182 voor de reden');
+    expect(uit.treffers).toBe(1);
+    expect(uit.gemeld).toEqual([]);
+  });
+});
+
+describe('isDossier en rijtitel', () => {
+  it('herkent het dossier met een schuine streep en met een backslash', () => {
+    expect(isDossier('docs/ENGINEER-REVIEW.md')).toBe(true);
+    expect(isDossier('docs\\ENGINEER-REVIEW.md')).toBe(true);
+  });
+
+  /**
+   * ⚠️ **Een beslisdocument is géén dossier**, en dat is de grens die deze regel
+   *    smal houdt: zo'n document hoort bij één issue, dus een kaal nummer erin
+   *    gaat over de migratie van dát issue en hoort mee te verhuizen.
+   */
+  it('rekent een beslisdocument er niet toe', () => {
+    expect(isDossier('docs/decisions/2026-09-21-iets.md')).toBe(false);
+    expect(isDossier('supabase/migrations/0174_x.sql')).toBe(false);
+  });
+
+  it('leest de titelcel en niet de datum', () => {
+    expect(rijtitel('| 2026-09-05 | De titel | de uitleg | Middel |')).toBe('De titel');
+  });
+
+  it('geeft null als de regel geen tabelrij is', () => {
+    expect(rijtitel('gewoon een regel met migratie 0174 erin')).toBeNull();
+    expect(rijtitel('')).toBeNull();
   });
 });
 
