@@ -7,7 +7,7 @@ import { t } from '../i18n';
 import { radius, space, useTheme } from '../theme';
 
 import { focusRing } from './a11y';
-import { useBovenrandAlVerrekend, veiligeBovenrand } from './bovenrand';
+import { Taakbalk } from './Taakbalk';
 import { Eyebrow, Heading } from './Text';
 
 /**
@@ -107,13 +107,17 @@ export function Screen({ title, eyebrow, children, scroll = true, terug }: Props
   const theme = useTheme();
   const insets = useSafeAreaInsets();
 
-  // ⚠️ **De tabbalk staat sinds QS8-246 bovenaan en neemt de veilige zone zélf.**
-  //    Gemeten in de bronbestanden van de navigator: met `tabBarPosition: 'top'`
-  //    zet de balk `paddingTop: insets.top`. Er hier nóg een keer bij optellen
-  //    geeft op een toestel met een notch een dubbele marge — en dat is het
-  //    geval dat op een simulator zonder notch onzichtbaar blijft.
-  const bovenrandAl = useBovenrandAlVerrekend();
-  const bovenrand = veiligeBovenrand(insets.top, bovenrandAl);
+  // ⚠️⚠️ **Dit scherm is sinds QS8-437 de énige eigenaar van de bovenrand, en
+  //    dat is de reparatie en niet een bijwerking.** Tot dat issue namen er twee
+  //    dingen `insets.top`: de tabbalk van de navigator én `Screen`, en er stond
+  //    een context (`BovenrandAlVerrekend`) tussen om ze uit elkaar te houden.
+  //    Een context die twee tellers verzoent, is één teller te veel: hij moet
+  //    overal aanstaan waar de balk staat, en vergeet je hem, dan is het
+  //    verschil een notch die op een simulator zonder notch onzichtbaar is.
+  //    Nu telt alleen deze regel, op élk scherm, mét of zonder balk — en de
+  //    balk staat binnen die ruimte in plaats van ernaast.
+  //    De grendel staat in `tests/beloftes/tabbalk-bovenaan.test.ts`.
+  const bovenrand = insets.top;
 
   // ⚠️ `flex: 1` erbij zodra het scherm níét scrollt, en alleen dan. Dit blok is
   //    dan de enige hoogtehouder, en een View zonder flex krimpt in React Native
@@ -132,30 +136,37 @@ export function Screen({ title, eyebrow, children, scroll = true, terug }: Props
     </View>
   );
 
-  const buiten = [
-    styles.scherm,
-    { backgroundColor: theme.colors.bg, paddingTop: bovenrand + space.shell },
-  ];
+  const buiten = [styles.scherm, { backgroundColor: theme.colors.bg }];
 
-  if (!scroll) {
-    return <View style={buiten}>{inhoud}</View>;
-  }
-
-  return (
+  // ⚠️ **De balk staat buiten de ScrollView en de inhoud erbinnen.** Zou hij
+  //    meescrollen, dan is hij precies weg op het moment dat je hem nodig hebt:
+  //    onderaan een lang scherm. Vandaar dat de buitenste `View` de hoogtehouder
+  //    is en de scroll een laag dieper zit.
+  const romp = scroll ? (
     <ScrollView
-      style={buiten}
       contentContainerStyle={{ paddingBottom: insets.bottom + space.shell * 3 }}
       // Op web is dit de enige manier om een tik buiten een invoerveld het
       // toetsenbord te laten sluiten zonder dat knoppen twee tikken nodig hebben.
       keyboardShouldPersistTaps="handled"
     >
-      {inhoud}
+      <View style={styles.rand}>{inhoud}</View>
     </ScrollView>
+  ) : (
+    <View style={[styles.rand, styles.vult]}>{inhoud}</View>
+  );
+
+  return (
+    <View style={[...buiten, { paddingTop: bovenrand }]}>
+      <Taakbalk />
+      {romp}
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
   scherm: { flex: 1 },
+  // De ruimte tussen de balk (of de bovenrand) en de kop van het scherm.
+  rand: { paddingTop: space.shell },
   vult: { flex: 1 },
   inhoud: {
     paddingHorizontal: space.shell,

@@ -14,8 +14,11 @@
 
 export type {
   Cycle,
+  Gebruikerscyclus,
+  Groepsperiode,
   GroupClock,
   IsoDate,
+  Klok,
   TimeZone,
   UserClock,
   Weekday,
@@ -23,6 +26,8 @@ export type {
 export { GRACE_HOURS } from './types.ts';
 
 export { freezeNow, now, ouderDan, unfreezeNow } from './clock.ts';
+
+export { eersteLuideUur, inStilteVenster, verschovenUur } from './stilte.ts';
 
 export {
   closableUserCycle,

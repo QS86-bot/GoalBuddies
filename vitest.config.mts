@@ -121,6 +121,16 @@ export default defineConfig({
           ...gedeeld,
           name: 'rls',
           include: ['tests/rls/**/*.test.ts'],
+          /**
+           * ⚠️ **Eén vraag vóór de hele groep: staat de database op het niveau
+           *    van `supabase/migrations/`?** — QS8-426. 📏 Op 11-09-2026 stond
+           *    `goalbuddies_rls` op ~`0232` terwijl de map op `0252` stond, en
+           *    de suite werd daar groen op. `stackBeschikbaarOfFaal()` vangt dat
+           *    alleen als de proef van dát bestand het ontbrekende object
+           *    toevallig opvraagt; deze vraag gaat over het register en geldt
+           *    voor alle honderdveertig bestanden tegelijk.
+           */
+          globalSetup: ['tests/rls/globaal.ts'],
           // ⚠️ De hele reden dat deze groep bestaat. Hier stond "niet weghalen
           //    zonder de fixture-naamruimte hierboven", en die naamruimte is
           //    verworpen — zie de kop. Wat er nu geldt: niet weghalen zolang er

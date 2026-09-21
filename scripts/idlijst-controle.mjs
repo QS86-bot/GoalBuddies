@@ -59,6 +59,12 @@ export const GRENZEN = {
   'src/modules/goals/api.ts#id':
     '20 — `fetchDoelnamen()` kapt zelf af met `.slice(0, PER_PAGINA)`, ter ' +
     'plekke zichtbaar. Dit is het patroon om te kopiëren.',
+  'src/modules/goals/weekly.ts#cycle_start_date':
+    '2 — `mogelijkeCyclusstarts()` in `src/modules/goals/cyclusgrens.ts` geeft ' +
+    'er per definitie twee: de berekende cyclus en die van een week later. Geen ' +
+    'aanroeper voegt er iets aan toe, en de functie heeft geen parameter die ' +
+    'dat aantal stuurt. Een derde erbij is een wijziging in dát bestand, en ' +
+    'die hoort deze regel mee te veranderen.',
   'src/modules/goals/deadline.ts#status':
     '2 — een literal `[\'approved\', \'rejected\']` in `deadline.ts`. Kan per ' +
     'definitie niet groeien; er is geen aanroeper die er iets aan toevoegt.',

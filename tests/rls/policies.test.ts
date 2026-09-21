@@ -2185,7 +2185,12 @@ describe.skipIf(!rlsTestsConfigured)('RLS-policies met echte JWTs', () => {
             'activiteit terugzetten',
           );
 
-          mustOk(await admin.rpc('slaap_stille_groepen', { p_dagen: 30 }), 'groepen laten slapen');
+          // ⚠️ `p_group_ids` is geen versiering: zonder grens betekent NULL "alle
+          //    groepen", ook die van een suite die hiernaast draait (QS8-577).
+          mustOk(
+            await admin.rpc('slaap_stille_groepen', { p_dagen: 30, p_group_ids: [stille.id] }),
+            'groepen laten slapen',
+          );
 
           const geslapen = await admin
             .from('groups')
@@ -3308,7 +3313,47 @@ describe.skipIf(!rlsTestsConfigured)('RLS-policies met echte JWTs', () => {
    *    oordeel hier: één regel, met de reden, en een rode test zodra er een
    *    tweede bij komt.
    */
-  const KAAL_MET_REDEN: readonly string[] = ['groups.created_by (guard_group_update)'];
+  /**
+   * ⚠️⚠️ **Leeg sinds 0265 (QS8-488) — maar niet om de reden die hier eerst
+   *    stond, en dat verschil is de hele les.**
+   *
+   *    De eerste versie van deze toelichting zei dat de teller *"er nu een echte
+   *    grendel ziet"*. 📏 Dat was onjuist, en de security-ronde mat het na:
+   *
+   *      select count(*) from onveranderlijkheid_bewaking() where tabel='groups'
+   *        -> 0
+   *
+   *    Niet bewaakt maar **weg**. `onveranderlijkheid_bewaking()` (0221) eiste in
+   *    zijn `where` de vorm `new.<kolom> := old.<kolom>`; 0265 verving die door
+   *    een `raise`, en daarmee viel de rij uit de resultaatset. De lijst werd
+   *    leeg doordat de teller niet meer keek — en er stond een uitleg onder die
+   *    dat als winst presenteerde. **Precies de vorm die CLAUDE.md het duurst
+   *    noemt:** een omissie valt op, een uitgeschreven argument leest de
+   *    volgende persoon als een reden om niet te twijfelen.
+   *
+   *    En het was niet lokaal: de huisstijl schuift van `:=` naar `raise`, dus
+   *    élke trigger die meegaat verdwijnt uit deze teller. `groups` was de eerste.
+   *
+   * ✅ **0265 repareert nu de teller zelf.** Hij leest allebei de vormen en kent
+   *    drie grendelvormen: de null-tolerante tak van 0060, de bestaanstoets van
+   *    `bewaak_begunstigde()` (0169), en de vorm die de RI-actie aan zijn gedaante
+   *    herkent uit `fill_approval_subject()` (0262). 📏 Van vijf rijen naar
+   *    **negen**, alle negen met een grendel — dus deze lijst is leeg omdat er
+   *    niets kaals ís, en niet omdat er niet gekeken wordt.
+   *
+   * ⚠️ **Blijft een register en wordt geen lege array zonder kop.** Komt er ooit
+   *    weer een kale toewijzing bij, dan hoort daar een naam én een reden te
+   *    staan — niet een stilzwijgend uitgebreide lijst.
+   */
+  const KAAL_MET_REDEN: readonly string[] = [];
+
+  /**
+   * ⚠️⚠️ **Hoeveel rijen de teller vindt, is zelf een bewaking — QS8-488.**
+   *    Zonder dit getal is "niets kaals" ook waar zodra de detector versmalt, en
+   *    dat is precies hoe deze suite groen bleef toen `groups` eruit viel. 📏 Op
+   *    14-09-2026 zijn het er negen, over zes tabellen.
+   */
+  const MINSTENS_BEWAAKT = 9;
 
   describe('onveranderlijkheid tegenover on delete set null', () => {
     it(
@@ -3326,6 +3371,16 @@ describe.skipIf(!rlsTestsConfigured)('RLS-policies met echte JWTs', () => {
         //    inleest.
         expect(rijen.length).toBeGreaterThan(0);
 
+        // ⚠️ Niet alleen "er is iets", maar "er is niet mínder dan er was".
+        //    Zie MINSTENS_BEWAAKT hierboven.
+        expect(
+          rijen.length,
+          'De teller vindt minder set-null-kolommen dan op 14-09-2026. Dat is ' +
+            'geen opruiming maar blindheid: een trigger die van `:=` naar ' +
+            '`raise` gaat, valt zonder deze regel stilzwijgend uit beeld — ' +
+            'QS8-488.',
+        ).toBeGreaterThanOrEqual(MINSTENS_BEWAAKT);
+
         const kaal = rijen
           .filter((r) => !r.heeft_grendel)
           .map((r) => `${r.tabel}.${r.kolom} (${r.functie})`);
@@ -3336,11 +3391,13 @@ describe.skipIf(!rlsTestsConfigured)('RLS-policies met echte JWTs', () => {
     );
 
     /**
-     * ⚠️ **De uitzondering hierboven leunt op één zin in `guard_group_update()`,
-     *    en dit is de test die daar bovenop staat.** Zonder de vroege uitstap
+     * ⚠️ **Deze test leunt op één zin in `guard_group_update()`, en sinds 0265
+     *    draagt die zin iets zwaarders dan eerst.** Zonder de vroege uitstap
      *    voor niet-clientrollen loopt de RI-actie van `on delete set null` wél
-     *    door de trigger heen, en dan zet de kale toewijzing hem terug — met een
-     *    foreign key die niet meer klopt.
+     *    door de trigger heen — en waar dat vóór 0265 een kale toewijzing was
+     *    die de foreign key stilzwijgend terugzette, is het nu een `raise`.
+     *    📏 Gemeten: dan kan niemand die ooit een groep heeft opgericht zijn
+     *    account nog verwijderen. Dezelfde klasse als QS8-371 en QS8-480.
      *
      * ⚠️ **Leest de gestripte bron**, om dezelfde reden als 0221 zelf: een vroege
      *    uitstap die alleen in commentaar staat, stapt nergens uit.

@@ -48,9 +48,13 @@ export const GEEN_UITGANG_NODIG = {
     'sessie hierheen, dus er is per definitie niets om naar terug te gaan.',
   'app/onboarding/uitleg.tsx':
     'Het beginpunt van de onboarding, en die is een poort: zonder ' +
-    '`onboarded_at` stuurt `bestemmingVoor()` je hier terug. Elk stapje heeft ' +
-    'al zijn eigen "overslaan"; een terugknop zou naar het aanmeldscherm ' +
-    'wijzen dat je net verlaten hebt.',
+    '`onboarded_at` stuurt `bestemmingVoor()` je hier terug. Een terugknop in ' +
+    'de kop zou naar het aanmeldscherm wijzen dat je net verlaten hebt, en ' +
+    'daar bounce je meteen terug — een knop die aanvoelt als kapot. ' +
+    'Nagemeten in `tests/beloftes/een-meerstaps-scherm-biedt-een-weg-terug.test.ts`. ' +
+    '⚠️ Sinds QS8-438 heeft dit scherm wél een terugknop binnen de stappen: ' +
+    'die springt een stap terug en verlaat het scherm niet. Deze rij gaat over ' +
+    'de uitgang uit het scherm, en die hoort hier nog steeds niet te zijn.',
 };
 
 /** Bestanden in `app/` die geen scherm zijn. */

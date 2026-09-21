@@ -4,6 +4,7 @@ import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 
 import { beslissendeGroep } from '../../src/modules/buddies/deling';
+import { zonderCommentaar } from './roept-aan';
 
 /**
  * Een verzoek om je streefdatum te verschuiven gaat naar de groep die je
@@ -114,7 +115,18 @@ describe('verzoekGebruiktBeslisser', () => {
 });
 
 describe('het doelscherm', () => {
-  const inhoud = readFileSync(SCHERM, 'utf8');
+  /**
+   * ⚠️⚠️ **De knip staat hier en niet per toets — QS8-568.** Elke toets in dit
+   *    blok las de rúwe bron, en een `toContain` daarop is waar zodra de
+   *    tekenreeks érgens in het bestand staat — ook in een comment. 📏 Gemeten
+   *    op 21-09-2026: met `setFout(t('deling.kies_eerst'))` uitgecommentarieerd
+   *    bleven alle 24 toetsen van dit bestand en zijn buurman groen.
+   *
+   *    Eén knip op de leesplek dekt het hele blok. De zeven hierboven krijgen
+   *    hun vormen los aangeboden en veranderen hier dus niet van gedrag; een
+   *    knip binnenín zou die ijking juist stiller maken.
+   */
+  const inhoud = zonderCommentaar(readFileSync(SCHERM, 'utf8'));
 
   it('laat `beslissendeGroep()` bepalen wie beslist', () => {
     const naam = beslisserNaam(inhoud);

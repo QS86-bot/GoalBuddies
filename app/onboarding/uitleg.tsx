@@ -69,6 +69,19 @@ export default function Uitleg() {
     else setStap((n) => n + 1);
   }
 
+  /**
+   * Een stap terug — QS8-438.
+   *
+   * ⚠️ **Raakt alleen `stap` en niets anders**, en dat is de vorm die
+   *    criterium 3 van dat issue vraagt: teruggaan mag nooit weggooien wat je
+   *    al ingevuld had. Hier is niets in te vullen, maar de vorm is dezelfde
+   *    als in `vragenlijst.tsx` — en die is de maat, want dáár staan wél
+   *    antwoorden in een eigen state waar de stapovergang niet aan komt.
+   */
+  function vorige() {
+    setStap((n) => Math.max(0, n - 1));
+  }
+
   return (
     <Screen
       title={huidig?.kop ?? ''}
@@ -109,10 +122,22 @@ export default function Uitleg() {
       </Card>
 
       <View style={styles.knoppen}>
-        <Button variant="primair" onPress={verder}>
+        <Button variant="primair" block onPress={verder}>
           {laatste ? t('onboarding.aan_de_slag') : t('onboarding.verder')}
         </Button>
-        <Button variant="stil" onPress={() => router.replace('/onboarding/profiel')}>
+
+        {/*
+          ⚠️ Op stap 0 is er geen vorige, en dan staat er ook geen knop — een
+             knop die niets doet is erger dan geen knop. Zelfde voorwaarde als
+             in `vragenlijst.tsx`.
+        */}
+        {stap === 0 ? null : (
+          <Button variant="stil" block onPress={vorige}>
+            {t('onboarding.vorige')}
+          </Button>
+        )}
+
+        <Button variant="stil" block onPress={() => router.replace('/onboarding/profiel')}>
           {t('onboarding.overslaan')}
         </Button>
       </View>
@@ -124,5 +149,8 @@ const styles = StyleSheet.create({
   balk: { flexDirection: 'row', gap: 5 },
   segment: { flex: 1, height: 3, borderRadius: 2 },
   voorbeeld: { gap: 7, paddingTop: space.blokGap - 4 },
-  knoppen: { flexDirection: 'row', gap: space.blokGap - 3, alignItems: 'center' },
+  // ⚠️ Gestapeld sinds QS8-438 en niet meer op een rij: er staan nu drie
+  //    knoppen, en drie tekstlabels naast elkaar passen niet op een smalle
+  //    telefoon. Zelfde vorm als `vragenlijst.tsx`, dat de maat is.
+  knoppen: { gap: space.blokGap - 4 },
 });

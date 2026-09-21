@@ -22,6 +22,8 @@ import {
   rlsTestsConfigured,
   type TestUser,
 } from './harness';
+import { psql } from './psql-stack';
+import { proefCode } from './proefid';
 
 const SETUP_TIMEOUT = 180_000;
 const TEST_TIMEOUT = 60_000;
@@ -324,6 +326,148 @@ describe.skipIf(!rlsTestsConfigured)('0092 — archiveren in plaats van wissen',
       // Zeven actieve lidmaatschappen, drie gearchiveerd: er is nog plek.
       const poging = await vol.db.rpc('join_group_with_code', { code: doelgroep.code });
       expect(uitkomst(poging.data).ok).toBe(true);
+    },
+    TEST_TIMEOUT,
+  );
+});
+
+/**
+ * QS8-488 / migratie 0265 — het archief weigert hoorbaar, en niemand leunt meer
+ * op de stilte.
+ *
+ * ⚠️ **De belofte is niet "de trigger werpt".** Die is een eigenschap van een
+ *    tak. De belofte is:
+ *
+ *      Geen enkele UPDATE die een gearchiveerde groep ontarchiveert, meldt
+ *      succes — en het wekken van een groep loopt er niet op stuk.
+ *
+ *    Die twee horen in één blok, want ze zijn elkaars prijs: `archief_blijft_
+ *    archief()` kón vóór 0265 niet werpen zónder `wek_groep()` te breken.
+ *
+ * ⚠️⚠️ **De naad, en die stond niet in de dossierrij.** `wek_groep()` hangt
+ *    onder `chat_messages`, `chain_links` en `week_reviews` en deed
+ *    onvoorwaardelijk `set status = 'active'`. Op een gearchiveerde groep is dat
+ *    een ontarchivering, en die werd stilzwijgend teruggedraaid. 📏 Gemeten vóór
+ *    0265, in een teruggedraaide transactie:
+ *
+ *      als `authenticated`  -> insert in chat_messages GEWEIGERD, 42501 (RLS)
+ *      als tabeleigenaar    -> insert GELUKT, wek_groep vuurt,
+ *                              status ná afloop nog steeds `archived`
+ *
+ *    De clientkant was dus al dicht; de definer-kant leunde op de stilte. 0265
+ *    haalt dat leunen weg (`and status <> 'archived'`) en laat de trigger dán
+ *    pas werpen.
+ *
+ * ⚠️ **Eén waarneembaar gevolg, en dat stond hier eerst ten onrechte niet:**
+ *    `last_activity_at` liep vroeger nog op bij een bericht in een gearchiveerde
+ *    groep en doet dat nu niet meer. Inert — de enige lezer is
+ *    `slaap_stille_groepen()`, die op `status = 'active'` filtert — maar *"het
+ *    gedrag verandert niet"* was te stellig.
+ *
+ * IJKING — met de hand, 14-09-2026, per grendel één mutatie, en van elke mutatie
+ * eerst op de database bevestigd dát hij erin zat:
+ *
+ *   A  `archief_blijft_archief()` terug naar `new.status := old.status`
+ *      -> 1 rood: "een kale ontarchivering wordt hoorbaar geweigerd"
+ *   B  `and status <> 'archived'` uit `wek_groep()` halen
+ *      -> 1 rood: "een bericht in een gearchiveerde groep loopt niet stuk"
+ *         en dat is precies de naad: zonder A zou B nooit opvallen
+ */
+describe.skipIf(!rlsTestsConfigured)('0265 — het archief weigert hoorbaar', () => {
+  /** Zet een gearchiveerde groep neer en geeft terug wat `sql` oplevert. */
+  function opEenArchief(sql: string): string {
+    return psql(`
+      begin;
+      create temp table a as select gen_random_uuid() eig, gen_random_uuid() grp;
+      insert into auth.users (id, email) select eig, 'arch264@x.nl' from a;
+      insert into profiles (id, display_name) select eig, 'Archivaris' from a
+        on conflict (id) do nothing;
+      insert into groups (id, name, created_by, status, invite_code, tz)
+        select grp, 'Arch264', eig, 'archived', '${proefCode('arch2640', 1)}', 'Europe/Amsterdam' from a;
+      insert into group_members (group_id, user_id, role, status)
+        select grp, eig, 'admin', 'active' from a;
+
+      do $arch$
+      declare g uuid := (select grp from a); u uuid := (select eig from a);
+      begin
+        ${sql}
+      end
+      $arch$;
+
+      select current_setting('arch.uitslag');
+      rollback;
+    `)
+      .split('\n')
+      .map((r) => r.trim())
+      .filter((r) => r !== '')
+      .at(-1) as string;
+  }
+
+  it(
+    'een kale ontarchivering wordt hoorbaar geweigerd',
+    () => {
+      const uit = opEenArchief(`
+        begin
+          update groups set status = 'active' where id = g;
+          perform set_config('arch.uitslag', 'GELUKT', true);
+        exception when others then
+          perform set_config('arch.uitslag', 'GEWEIGERD ' || sqlstate, true);
+        end;
+      `);
+
+      expect(
+        uit,
+        'Een gearchiveerde groep die stilzwijgend gearchiveerd blijft, meldt de ' +
+          'aanroeper succes terwijl er niets gebeurde — QS8-488.',
+      ).toBe('GEWEIGERD 23514');
+    },
+    TEST_TIMEOUT,
+  );
+
+  it(
+    'een bericht in een gearchiveerde groep loopt niet stuk, en wekt hem niet',
+    () => {
+      // ⚠️ Dit is de must-allow bij de toets hierboven. Zonder hem zou een
+      //    trigger die op álles werpt deze suite halen en de app breken.
+      const uit = opEenArchief(`
+        begin
+          insert into chat_messages (group_id, sender_id, body) values (g, u, 'hoi');
+          perform set_config('arch.uitslag',
+            'GELUKT status=' || (select status from groups where id = g), true);
+        exception when others then
+          perform set_config('arch.uitslag', 'STUK ' || sqlstate, true);
+        end;
+      `);
+
+      expect(
+        uit,
+        'Het wekpad leunde op de stille terugzetting. Zonder ' +
+          '`and status <> \'archived\'` in wek_groep() klapt het zodra ' +
+          'archief_blijft_archief() werpt — dat is de naad van QS8-488.',
+      ).toBe('GELUKT status=archived');
+    },
+    TEST_TIMEOUT,
+  );
+
+  it(
+    'een slapende groep wordt nog gewoon gewekt',
+    () => {
+      // ⚠️ De tweede must-allow: `and status <> 'archived'` mag alleen het
+      //    archief uitsluiten en niet het wekken zelf.
+      const uit = opEenArchief(`
+        begin
+          perform set_config('app.heropent_groep', g::text, true);
+          update groups set status = 'sleeping' where id = g;
+          perform set_config('app.heropent_groep', '', true);
+          insert into chat_messages (group_id, sender_id, body) values (g, u, 'hoi');
+          perform set_config('arch.uitslag',
+            'status=' || (select status from groups where id = g), true);
+        exception when others then
+          perform set_config('arch.uitslag', 'STUK ' || sqlstate, true);
+        end;
+      `);
+
+      expect(uit, 'wek_groep() hoort een slapende groep nog wél te wekken').toBe('status=active');
     },
     TEST_TIMEOUT,
   );

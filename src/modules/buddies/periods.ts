@@ -2,8 +2,8 @@ import {
   groupPeriod,
   localDateIn,
   now,
-  type Cycle,
   type GroupClock,
+  type Groepsperiode,
   type Weekday,
 } from '../../shared/time';
 
@@ -37,7 +37,7 @@ export function groepsklok(groep: {
 export function huidigeGroepsperiode(groep: {
   readonly huddle_day: number;
   readonly tz: string;
-}): Cycle {
+}): Groepsperiode {
   return groupPeriod(groepsklok(groep), now());
 }
 
@@ -51,7 +51,7 @@ export function huidigeGroepsperiode(groep: {
 export function groepsperiodeVan(
   groep: { readonly huddle_day: number; readonly tz: string },
   moment: Date,
-): Cycle {
+): Groepsperiode {
   return groupPeriod(groepsklok(groep), moment);
 }
 

@@ -64,6 +64,9 @@ export const GEEN_GEDEELDE_IDENTITEIT = {
   '00000000-0000-4000-8000-000000000000': 'idem, in v4-vorm (`NERGENS` in aftasten.test.ts)',
   '00000000-0000-0000-0000-0000000000ff': 'doel van een update die geweigerd hoort te worden; er ontstaat geen rij',
   '3f1a7c9e-1b2d-4e5f-8a9b-0c1d2e3f4a5b': 'het subject in een JWT-testvector; raakt de database niet',
+  '00000000-0000-4000-8000-00000000dead':
+    'een mens die niet bestaat, doorgegeven aan `vereiste_goedkeuringen()` om te tonen dat het ' +
+    'antwoord niet meer van de persoon afhangt (QS8-181); er wordt geen rij mee geschreven',
 };
 
 /**

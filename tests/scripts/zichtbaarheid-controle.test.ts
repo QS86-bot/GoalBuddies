@@ -113,13 +113,18 @@ describe('de toestemmingszin', () => {
    *    de dingen noemt die vandaag opengaan. Verandert het aantal oppervlakken,
    *    dan wordt `zichtbaarheid:controle` rood en komt iemand hier langs.
    */
-  it('bestaat en noemt de drie dingen die vandaag opengaan', () => {
+  it('bestaat en noemt de dingen die vandaag opengaan', () => {
     const zin = nl['zichtbaarheid.open_uitleg'];
 
     expect(zin).toBeTruthy();
     expect(zin).toMatch(/gemiste/i);
     expect(zin).toMatch(/reeks/i);
     expect(zin).toMatch(/meedeed|meedoet/i);
+    expect(zin).toMatch(/punt/i);
+    // ⚠️ Het zesde oppervlak, sinds 0268 (QS8-477): welke held er bij wie langs
+    //    is geweest. Dat is een tegenslagsignaal — `misser` en `stilte` — en de
+    //    zin waar iemand ja op zegt hoort het te noemen.
+    expect(zin).toMatch(/held/i);
   });
 
   it('staat ook in de bevestiging, want dáár geeft iemand toestemming', () => {
@@ -128,6 +133,23 @@ describe('de toestemmingszin', () => {
     expect(zin).toBeTruthy();
     expect(zin).toMatch(/gemiste/i);
     expect(zin).toMatch(/reeks/i);
+    expect(zin).toMatch(/held/i);
+  });
+
+  /**
+   * ⚠️ **De andere kant van dezelfde belofte, en die stond hier niet.** Beide
+   *    zinnen hierboven sommen op wat er ópengaat; de bevestiging bij het
+   *    terugzetten somt op wat er dichtgaat. Loopt die uit de pas, dan belooft de
+   *    app dat er iets privé wordt terwijl het blijft staan — en dat is de
+   *    gevaarlijke richting van de twee.
+   */
+  it('en de bevestiging bij het terugzetten noemt wat er dan weer dichtgaat', () => {
+    const zin = nl['bevestiging.groep_beschermen.uitleg'];
+
+    expect(zin).toBeTruthy();
+    expect(zin).toMatch(/gemiste/i);
+    expect(zin).toMatch(/klassement/i);
+    expect(zin).toMatch(/held/i);
   });
 
   it('noemt dat het met terugwerkende kracht geldt', () => {

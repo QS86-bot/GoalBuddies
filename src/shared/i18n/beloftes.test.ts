@@ -47,6 +47,30 @@ const ONZICHTBAARHEID = [
   /no one[^.]{0,40}sees/i,
   /not your weeks/i,
   /stays? private/i,
+  // ⚠️⚠️ **De vier vormen hieronder ontbraken, en dat is gemeten en geen
+  //    vermoeden.** De doorlichting van 09-09-2026 vond vier sleutels met een
+  //    privacybelofte die dit register nooit gezien had, waaronder
+  //    `coach.alleen_voor_jou` — en díe was aantoonbaar onwaar (QS8-392). De
+  //    meest gebruikelijke Nederlandse formulering, *"alleen jij"*, stond er
+  //    domweg niet bij. Een register dat de gangbaarste vorm niet herkent,
+  //    bewaakt de zinnen die er toevallig anders staan.
+  // ⚠️ `alleen jij ziet` en niet `alleen jij`: dat tweede matcht ook *"Alleen
+  //    jij kunt je eigen goedkeuring intrekken"*, en dat is een bevoegdheid en
+  //    geen zichtbaarheidsbelofte. Dit register gaat over wie iets zíet, niet
+  //    over wie iets mág — een zeef die dat door elkaar haalt, meldt zinnen
+  //    waar niemand iets aan hoeft te doen, en dat is precies hoe je leert hem
+  //    te negeren.
+  /alleen jij (ziet|leest)/i,
+  /alleen voor jou/i,
+  /ziet .{0,25}nooit/i,
+  // ⚠️ `only you\b` en niet `only you`: dat tweede matcht ook *"only your
+  //    group members"*, en dat is een scope-belofte en geen
+  //    onzichtbaarheidsbelofte. Die vangen we hieronder apart, zodat het
+  //    patroon zegt wat het bedoelt in plaats van per ongeluk raak te schieten.
+  /only you (see|read)/i,
+  /never sees/i,
+  /alleen je groepsgenoten/i,
+  /only your group/i,
 ];
 
 /**
@@ -72,6 +96,63 @@ const TOEGESTAAN: Readonly<Record<string, string>> = {
   'onboarding.stap4.b':
     'Hier is nog geen groep. De zin noemt de voorwaarde zelf ("in een beschermde groep — ' +
     'de standaard") in plaats van een belofte te doen die later gebroken wordt.',
+  'lijst.prive_uitleg':
+    '⚠️ **Herschreven op 09-09-2026 toen QS8-381 delen bouwde, en deze test was ' +
+    'wat dat afdwong.** De zin luidde *"niemand in je groep ziet je taken. Delen ' +
+    'kan nog niet"* — onvoorwaardelijk waar toen `todo_items` eigenaar-only was ' +
+    '(0227), en onwaar op de dag dat er een deelknop kwam. Precies de val die ' +
+    '`koppel.uitleg` in EPIC 13 was: de policy bewoog en de zin niet. ' +
+    'Nu draagt hij de voorwaarde zelf: *een taak is prive tot je hem zelf deelt*. ' +
+    '📏 De grendel eronder is `todo_items_select`, die een groepsgenoot alleen ' +
+    'de rijen geeft met `visibility = group` én een `shared_group_id` waar hij ' +
+    'lid van is — gemeten met een kaal API-verzoek in `tests/rls/taak-delen.test.ts`.',
+  'lijst.deel_uitleg':
+    'Staat boven de deelknop en geldt per taak. De belofte is *de rest van je ' +
+    'lijst blijft prive*, en die is smaller dan hij lijkt: `todo_items_select` ' +
+    'geeft per rij toegang op `shared_group_id`, dus een taak die je niet deelt ' +
+    'valt buiten élke groepstak. ⚠️ **Hij noemt bewust "de groep die je kiest" ' +
+    'en niet "je groep".** Wie in twee groepen zit, deelt met één ervan (variant ' +
+    'B2, QS8-381); een zin die dat verzwijgt zou de andere groep impliciet ' +
+    'meenemen. **Wordt onwaar zodra delen ooit meer dan één groep tegelijk kan.**',
+  'coach.alleen_voor_jou':
+    'Waar sinds migratie 0236. Was het niet: goals_select gaf een groepsgenoot de héle rij, ' +
+    'inclusief identity_statement — gemeten, met de zin woordelijk terug op het scherm van ' +
+    'een ander (QS8-392). authenticated heeft nu een kolomgrant zonder die kolom, en de ' +
+    'eigenaar leest hem via de view mijn_doelvelden. Grendel: tests/rls/doelkolommen.test.ts.',
+  'radar.alleen_jij':
+    'goal_risk is eigenaar-only sinds migratie 0050 — dezelfde reparatie als hierboven, toen ' +
+    'op risk_status. Geen enkele policy geeft een groepsgenoot een rij uit die tabel.',
+  'overzicht.punten_prive':
+    'points_ledger is eigenaar-only (domeinregel 10). De enige uitzondering is ' +
+    'groep_klassement() in een open groep, en die geeft wat je in díe groep verdiend hebt — ' +
+    'geen totaal, geen delta, geen datum, en cycle_missed boekt zonder group_id.',
+  'melden.niet_zichtbaar':
+    'reports_select geeft de rij aan de melder en aan een beheerder die niet zelf het ' +
+    'onderwerp is. De gemelde persoon staat in geen van beide takken. ⚠️ Niet nagemeten in ' +
+    'de ronde van 09-09; staat als open vraag in docs/ENGINEER-REVIEW.md.',
+  'avatar.grens':
+    'Een scope-belofte en geen onzichtbaarheidsbelofte, en hij is waar. 📏 Gemeten: ' +
+    'avatars_select is (eigen map) OR shares_group_with_user(<uid uit het pad>), dus precies ' +
+    'je groepsgenoten en niemand anders. De bucket is privé; er gaan ondertekende URLs uit.',
+  'commitmentspoor.leeg_tekst':
+    'Waar. 📏 Gemeten: commitment_events_select eist dat het commitment aan een doel hangt ' +
+    'waarvan jij de eigenaar bent — één tak, geen groepstak. De begunstigde groep leest het ' +
+    'commitment zelf pas vanaf unlocked/due/resolved en het spoor nooit.',
+  'interview.stuck_before.toelichting':
+    'Zelfde onderwerp en zelfde reparatie als coach.alleen_voor_jou: het antwoord staat in ' +
+    'goal_interviews (eigenaar-only, één policy met alleen een eigenaarstak) en de twee ' +
+    'velden die naar goals gespiegeld worden zijn sinds migratie 0236 niet meer leesbaar ' +
+    'voor een groepsgenoot.',
+  'vindbaar.wat_niet':
+    'Waar, en nagemeten in plaats van aangenomen. De zin belooft dat doelen, reeks, punten, ' +
+    'groepen en weken dicht blijven voor wie geen groep met je deelt. zoek_mensen() geeft ' +
+    'precies drie kolommen — id, display_name, avatar_url — en is een SECURITY DEFINER met ' +
+    'een expliciete kolomlijst, geen tak op profiles_select. 📏 De naadtest in ' +
+    'tests/rls/vindbaar-buiten-je-groep.test.ts voert een gevonden id door goals, ' +
+    'daily_moves, completions, points_ledger, group_members, user_streaks, chain_links en ' +
+    'profiles en eist overal nul. ⚠️ groups.zichtbaarheid raakt dit oppervlak niet: A41 gaat ' +
+    'over wat leden van elkaar zien, en de kijker is hier per definitie geen lid — de zin is ' +
+    'dus in beide standen waar en hoeft niet gesplitst.',
   'straf.tot_dan':
     'Een commitment vóór de deadline. Oppervlak 20 is in EPIC 13 bewust niet opengezet: ' +
     'commitments_select geeft de begunstigde groep pas leesrecht vanaf unlocked/due/resolved. ' +

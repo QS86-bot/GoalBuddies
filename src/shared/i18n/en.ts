@@ -119,6 +119,27 @@ export const en: Record<Sleutel, string> = {
   'commitment.fout.al_afgegaan':
     'This commitment has already come into effect and can no longer be withdrawn.',
   'commitment.fout.laden': 'The reward and penalty could not be loaded.',
+  'stuurloos.kop': 'Your witness is gone',
+  'stuurloos.uitleg':
+    'The person you named as your witness has closed their account. Your stake is still open. Name someone else, or settle it if you have kept to it.',
+  'stuurloos.wie': 'Who watches from now on?',
+  'stuurloos.aanwijzen': 'Name this person',
+  'stuurloos.niemand':
+    'There is nobody in your groups to name right now. Once someone joins, you can do it here.',
+  'stuurloos.afwikkelen': 'I have kept to it',
+  'stuurloos.zeker': 'Settle this stake?',
+  'stuurloos.afwikkelen_uitleg':
+    'You are recording that you kept to your stake. There is no witness left to confirm it, so this rests on your word alone. It cannot be undone.',
+  'stuurloos.ja_afwikkelen': 'Yes, settle it',
+  'stuurloos.terug': 'Back',
+  'commitment.fout.herstel': 'That did not work. Please try again.',
+  'commitment.herstel.heeft_getuige':
+    'This stake still has a witness. You can only hand it over once your witness has closed their account.',
+  'commitment.herstel.niet_verschuldigd':
+    'This stake is not due yet. While that is the case, you can simply withdraw it.',
+  'commitment.herstel.geen_groepsgenoot':
+    'You can only pick someone you share a group with.',
+  'commitment.herstel.niet_jezelf': 'You cannot be your own witness.',
   'commitment.fout.spoor': 'The history could not be loaded.',
 
   'validatie.commitment_kort': 'Write down what you are holding yourself to.',
@@ -158,8 +179,9 @@ export const en: Record<Sleutel, string> = {
   'bevestiging.doel_afronden.titel': 'Complete this goal?',
   'bevestiging.doel_afronden.uitleg':
     'Every group this goal is linked to gets a message that you completed it, and a chat ' +
-    'message cannot be taken back. Your reward is released and announced too; a penalty ' +
-    'you had set expires. This cannot be undone.',
+    'message cannot be taken back. Finish on time and your reward is released and a penalty ' +
+    'you had set expires. Finish after the target date and your reward lapses while your ' +
+    'penalty stands: it becomes due. This cannot be undone.',
   'bevestiging.doel_afronden.knop': 'Complete',
 
   'viering.weekdoel.titel': 'Your week is confirmed',
@@ -390,6 +412,7 @@ export const en: Record<Sleutel, string> = {
   'onboarding.voorbeeld_plafond': 'Three times, at least five kilometres',
   'onboarding.aan_de_slag': 'Get started',
   'onboarding.verder': 'Next',
+  'onboarding.vorige': 'Back',
   'onboarding.overslaan': 'Skip',
 
   // Navigation — QS8-211. Deliberately separate from any one screen.
@@ -402,7 +425,6 @@ export const en: Record<Sleutel, string> = {
   'onboarding.naam_plaatshouder': 'Quinten',
   'onboarding.geen_avatar': 'No photo? Then we show your initials. You can pick one here, or later under Profile.',
   'onboarding.tijdzone_van_telefoon': 'Time zone: {zone}, from your phone.',
-  'onboarding.tijdzone_klopt_niet': 'Not right',
   'onboarding.waarvoor': 'What brings you here?',
   'onboarding.waarvoor_hint': 'Did you come in to help a friend? Then you do not need a goal yourself. You can always make one later.',
   'onboarding.zelf_doel': 'I want a goal of my own',
@@ -564,6 +586,37 @@ export const en: Record<Sleutel, string> = {
   'profiel.viering_uitleg': 'A short congratulation when a buddy confirms your week, you reach a milestone or your goal is done. Otherwise the app stays quiet.',
   'profiel.viering_aan_label': 'Celebratory moments on',
   'profiel.viering_uit_label': 'Celebratory moments off',
+  'vindbaar.titel': 'Findable outside your groups',
+  'vindbaar.uitleg': 'With this on, people who are signed in can find you by your name. They see your name and your profile photo.',
+  'vindbaar.label': 'Findable',
+  'vindbaar.wat_niet': 'Everything else stays closed: nobody outside your groups sees your goals, your streak, your points, your groups or your weeks.',
+  'vindbaar.terugdraaien': 'This is off by default and you can always switch it back.',
+  'mensen.titel': 'Find people',
+  'mensen.zoeken_mislukt': 'The search did not work. Try again in a moment.',
+  'mensen.veld': 'Name',
+  'mensen.begin': 'Type a name to look for someone who has made themselves findable.',
+  'mensen.te_kort': 'Type at least {aantal} characters.',
+  'mensen.niets_gevonden': 'Nobody with that name has made themselves findable.',
+  'mensen.meer': 'Load more',
+  'mensen.uitleg': 'You search the start of the name. You only see people who switched this on themselves.',
+  'meldingsoort.titel': 'Which notifications do you want?',
+  'meldingsoort.uitleg':
+    'The daily reminder is switched on or off above. These four are separate.',
+  'meldingsoort.approval_request': 'A buddy is waiting on your review',
+  'meldingsoort.approval_received': 'Someone approved your week',
+  'meldingsoort.cycle_summary': 'Your week in review',
+  'meldingsoort.commitment_witness': "A stake you're a witness to",
+  'meldingsoort.getuige_uitleg':
+    "You'll still see the stake under Witness statements; you just won't be notified.",
+  'stilteuren.titel': 'Quiet hours',
+  'stilteuren.uitleg':
+    "You get no notifications in this window. Anything that arrives during the quiet " +
+    'hours still comes through afterwards.',
+  'stilteuren.label': 'Quiet hours',
+  'stilteuren.van': 'From',
+  'stilteuren.tot': 'Until',
+  'stilteuren.herinnering_verschoven':
+    'Your {oud} reminder falls inside your quiet hours, so it arrives at {nieuw}.',
   'profiel.aan': 'On',
   'profiel.uit': 'Off',
   'profiel.viering_beweging': 'If your device asks for reduced motion, the app leaves out the animation anyway. The text simply stays.',
@@ -682,6 +735,7 @@ export const en: Record<Sleutel, string> = {
   'avatar.bezig': 'Uploading',
   'avatar.type_niet_toegestaan': 'Choose a JPG, PNG or WebP.',
   'avatar.te_groot': 'That photo is larger than 2 MB. Choose a smaller one.',
+  'avatar.rem_bereikt': 'You have changed your photo enough times today. Tomorrow you can again.',
   'avatar.uploaden_mislukt': 'The photo could not be saved. Please try again.',
   'avatar.verwijderen_mislukt': 'The photo could not be removed. Please try again.',
   'avatar.geen_toegang': 'Without access to your photos the app cannot pick one.',
@@ -792,6 +846,7 @@ export const en: Record<Sleutel, string> = {
   'groep.te_veel_groepen': 'You are already in ten groups. Leave one to make room.',
   'groep.naam_kort': 'Give your group a name of at least two characters.',
   'groep.naam_lang': 'That name is too long. At most 60 characters.',
+  'groep.naam_ongeldig': 'That name contains characters that will not work. Try it without invisible or formatting characters.',
   'groep.slechte_huddledag': 'Choose a day of the week for the huddle.',
   'groep.daglimiet': 'You have already created ten groups today. Tomorrow it works again.',
   'groep.geen_beheerder': 'Only an admin of this group can do this.',
@@ -894,11 +949,31 @@ export const en: Record<Sleutel, string> = {
   'chatfoto.weghalen': 'Remove photo',
   'chatfoto.type_niet_toegestaan': 'Pick a JPG, PNG or WebP.',
   'chatfoto.te_groot': 'This photo is larger than 1 MB. Pick a smaller one, or shrink it.',
+  'chatfoto.rem_bereikt': 'Enough photos have been posted in this group today. Tomorrow you can again.',
   'chatfoto.uploaden_mislukt': 'Sending the photo did not work. Try again in a moment.',
   'chatfoto.kiezen_mislukt': 'The photo picker did not open.',
-  'chatfoto.niet_beschikbaar': 'This photo is no longer available.',
+  'chatfoto.niet_beschikbaar': 'This photo is gone. Shared files are kept for {dagen} days.',
+  'bijlage.bewaartermijn': 'Shared files stay on the server for {dagen} days and are removed after that.',
   'chatfoto.laden': 'Loading photo',
   'chatfoto.beeld': 'Photo in this conversation',
+
+  // Documenten in de chat — QS8-72. Eigen sleutels en geen hergebruik van
+  // `chatfoto.*`: een document opent buiten de app, en dat hoort de zin te zeggen.
+  'chatdoc.knop': 'Add a document',
+  'chatdoc.gekozen': 'Document ready to send',
+  'chatdoc.weghalen': 'Remove document',
+  'chatdoc.type_niet_toegestaan': 'Pick a PDF.',
+  'chatdoc.te_groot': 'This document is larger than 5 MB. Pick a smaller file.',
+  'chatdoc.naam_leeg': 'This file has no usable name.',
+  'chatdoc.uploaden_mislukt': 'Sending the document did not work. Try again in a moment.',
+  'chatdoc.rem_bereikt': 'Enough documents have been shared in this group today. Tomorrow you can again.',
+  'chatdoc.kiezen_mislukt': 'The file picker did not open.',
+  'chatdoc.niet_beschikbaar': 'This document is gone. Shared files are kept for {dagen} days.',
+  'chatdoc.openen': 'Open',
+  'chatdoc.openen_label': 'Open {naam}, PDF, in another app',
+  'chatdoc.openen_mislukt': 'Opening the document did not work.',
+  'chatdoc.laden': 'Opening document',
+  'chatdoc.soort_pdf': 'PDF',
 
   // Bewijs bij een voltooiing — QS8-391. Eigen sleutels en geen hergebruik van
   // `chatfoto.*`: "deze foto is niet meer beschikbaar" leest in een gesprek
@@ -1055,6 +1130,64 @@ export const en: Record<Sleutel, string> = {
   'validatie.datum_vorm': 'Use an existing date like 2026-12-31.',
   'validatie.identiteit_lang': 'Keep it short: one sentence works best.',
   'validatie.uren_max': 'A week has 168 hours.',
+
+  'lijst.taak_leeg': 'Write down what you want to do.',
+  'lijst.taak_lang': 'Keep it short: at most 500 characters.',
+  'lijst.patch_leeg': 'Nothing was changed.',
+  'lijst.titel': 'The List',
+  'lijst.veld_label': 'New task',
+  'lijst.veld_hint': 'Something small you want to tick off today.',
+  'lijst.veld_plaats': 'Call the dentist',
+  'lijst.toevoegen': 'Add',
+  'lijst.teller': '{n} of {max} characters',
+  'lijst.leeg_titel': 'Your list is still empty',
+  'lijst.leeg_tekst':
+    'Put the things you do not want to forget here. A task does not count ' +
+    'towards your points or your streak; that stays the week.',
+  'lijst.prive_uitleg':
+    'A task is private until you share it yourself. Nobody in your group sees ' +
+    'what you do not share.',
+  'lijst.van_totaal': '{aantal} of {totaal}',
+  'lijst.meer_laden': 'Load more',
+  'lijst.afvinken': 'Tick off',
+  'lijst.ontvinken': 'Reopen',
+  'lijst.omhoog': 'Move up',
+  'lijst.omlaag': 'Move down',
+  'lijst.verwijderen': 'Delete',
+  'lijst.hernoemen': 'Edit text',
+  'lijst.hernoem_label': 'Task',
+  'lijst.hernoem_hint': 'Change what it says. The rest of the item stays as it is.',
+  'lijst.hernoem_opslaan': 'Save',
+  'lijst.hernoem_annuleer': 'Cancel',
+  'lijst.afgerond_op': 'Done on {datum}',
+  'lijst.laden_mislukt': 'Loading the list failed.',
+  'lijst.toevoegen_mislukt': 'Adding the task failed.',
+  'lijst.opslaan_mislukt': 'Saving the change failed.',
+  'lijst.verwijderen_mislukt': 'Deleting the task failed.',
+  'lijst.bestaat_niet': 'This task no longer exists.',
+  'lijst.verzetten_gelijk':
+    'These two tasks share the same spot in the list. Move another one out from ' +
+    'between them first.',
+  'lijst.delen_mislukt': 'Sharing failed.',
+  'lijst.geen_groepsgenoot': 'You are no longer a member of that group.',
+  'lijst.deel_aan': 'Shared with {groep}',
+  'lijst.deel_aan_onbekend': 'Shared with a group that is no longer in your list',
+  'lijst.deel_uit': 'Not shared',
+  'lijst.deel_knop': 'Share',
+  'lijst.deel_terug': 'Stop sharing',
+  'lijst.deel_kies': 'With which group?',
+  'lijst.deel_geen_groep':
+    'You are not in any group yet, so there is nobody to share anything with.',
+  'lijst.deel_uitleg':
+    'Only the group you pick sees what you share. The rest of your list stays ' +
+    'private, and you can always undo it.',
+  'lijst.invoer': 'Check what you filled in.',
+  'bevestiging.taak_verwijderen.titel': 'Throw this task away?',
+  'bevestiging.taak_verwijderen.uitleg':
+    'The task disappears and does not come back. If you only want it out of ' +
+    'sight, tick it off. Then it sinks to the bottom and stays.',
+  'bevestiging.taak_verwijderen.knop': 'Throw away',
+  'tab.lijst': 'List',
 
   'deadline.argument_kort':
     'Write one sentence about what changed. Your buddies decide on this, ' +
@@ -1301,7 +1434,7 @@ export const en: Record<Sleutel, string> = {
   'straf.welke_persoon': 'Who benefits?',
   'straf.persoon_uitleg':
     'Until your target date passes, this person sees nothing. After that they may read your ' +
-    'penalty. Do tell them yourself, because the app does not message them yet.',
+    'penalty and get a notification about it, unless they have turned that kind off.',
   'straf.verder': 'Continue',
   'straf.jouw_groep': 'your group',
 
@@ -1522,6 +1655,12 @@ export const en: Record<Sleutel, string> = {
   'vandaag.reeks_telt_weken': 'Your streak counts weeks, not days.',
   'vandaag.meenemen_knop': 'Carry over to this week',
   'vandaag.buddy_vraag': 'Your buddy has a question',
+  'profiel.naam_titel': 'Your name',
+  'profiel.naam_uitleg': 'This is the name your buddies see. You can change it any time.',
+  'profiel.naam_label': 'Display name',
+  'profiel.naam_hint': 'A first name is enough.',
+  'profiel.naam_bewaren': 'Save name',
+  'profiel.naam_bewaard': 'Your name has been updated.',
   'profiel.uitloggen_kop': 'Sign out',
   'profiel.uitloggen_uitleg': 'You stay a member of your groups. Your goals stay put.',
   'profiel.uitloggen_knop': 'Sign out',
@@ -1549,7 +1688,7 @@ export const en: Record<Sleutel, string> = {
   'zichtbaarheid.beschermd_uitleg':
     'The group sees what works out: finished weeks, milestones, encouragement. A missed week stays yours unless you share it yourself.',
   'zichtbaarheid.open_uitleg':
-    'The group also sees what does not work out: each other’s missed and carried weeks, each other’s best streak, who took part in which week, and each other’s point totals in this group. Only pick this if everyone wants it.',
+    'The group also sees what does not work out: each other’s missed and carried weeks, each other’s best streak, who took part in which week, each other’s point totals in this group, and which hero last visited whom in the past week. That includes the hero who turns up after a missed week. Only pick this if everyone wants it.',
   'zichtbaarheid.niet_bevestigd': 'Confirm first: this changes what the group sees about other people.',
   'bevestiging.huddledag_verzetten.titel': 'Move the huddle day?',
   'bevestiging.huddledag_verzetten.uitleg':
@@ -1558,11 +1697,11 @@ export const en: Record<Sleutel, string> = {
 
   'bevestiging.groep_openzetten.titel': 'Open up this group?',
   'bevestiging.groep_openzetten.uitleg':
-    'From now on everyone in this group also sees each other’s missed and carried weeks, each other’s best streak ever, who took part in each week, and a leaderboard of each other’s point totals in this group, including the weeks already there. So this is not only about you. Everyone gets a message in the group chat, so anyone who would rather not can unlink their goal. You can switch back at any time, immediately.',
+    'From now on everyone in this group also sees each other’s missed and carried weeks, each other’s best streak ever, who took part in each week, a leaderboard of each other’s point totals in this group, and which hero last visited whom in the past week. That includes the hero who turns up after a missed week, and it covers the weeks already there too. So this is not only about you. Everyone gets a message in the group chat, so anyone who would rather not can unlink their goal. That works for everything tied to a goal; the hero list is tied to your membership, so it stays as long as you are in the group. You can switch back at any time, immediately.',
   'bevestiging.groep_openzetten.knop': 'Yes, open it up',
   'bevestiging.groep_beschermen.titel': 'Protect this group again?',
   'bevestiging.groep_beschermen.uitleg':
-    'From now on the group only sees what works out. Missed weeks become private again, retroactively too, and the leaderboard disappears. Everyone gets a message about it.',
+    'From now on the group only sees what works out. Missed weeks become private again, retroactively too, and the leaderboard and the hero list disappear. Everyone gets a message about it.',
   'bevestiging.groep_beschermen.knop': 'Yes, protect it',
   'bevestiging.groep_ontdekbaar_maken.titel': 'Make this group discoverable?',
   'bevestiging.groep_ontdekbaar_maken.uitleg':
@@ -1667,16 +1806,9 @@ export const en: Record<Sleutel, string> = {
 
 
   'tijdzone.label': 'Time zone',
-  'tijdzone.hint':
-    'This is where “today” and “this week” are calculated. Your phone’s zone by default; search for a city to change it.',
-  'tijdzone.zoek_voorbeeld': 'Amsterdam',
   'tijdzone.nu': 'Currently set to: {zone}',
-  'tijdzone.gebruik_getypt': 'Use {zone}',
-  'tijdzone.van_apparaat': 'This device’s time zone ({zone})',
-  'tijdzone.niets_gevonden': 'No time zone found. Search for a large city nearby.',
-  'tijdzone.uitleg':
-    'Changing this leaves your points and your streak alone: those are fixed to the weeks already there. What changes is when the next week rolls over.',
-  'tijdzone.opgeslagen': 'Time zone saved.',
+  'tijdzone.van_het_apparaat':
+    'This comes from your device and updates automatically when you move or travel.',
 
 
   'weektip.lichaam.1': 'Your body remembers the weeks you showed up. This was one of them.',
@@ -1813,6 +1945,18 @@ export const en: Record<Sleutel, string> = {
   'klassement.laden_mislukt': 'The leaderboard could not be loaded.',
   'klassement.teller_mislukt': 'The counter could not be loaded.',
   'klassement.opnieuw': 'Try again',
+
+  // The hero list of an open group — QS8-493, RPC from 0268/0279.
+  // ⚠️ The wording follows `bevestiging.groep_openzetten.uitleg`, which is the
+  //    text the consent rests on. "seven days" rather than "week": the window is
+  //    a rolling UTC one and follows neither the cycle start nor the huddle day.
+  'groepshelden.kop': 'Which hero came by',
+  'groepshelden.uitleg':
+    'In this group you can see which hero last visited whom in the past seven days.',
+  'groepshelden.rij': '{held} visited {naam}',
+  'groepshelden.leeg': 'No hero visited anyone in the past seven days.',
+  'groepshelden.laden_mislukt': 'The hero list could not be loaded.',
+  'groepshelden.opnieuw': 'Try again',
 
   'teller.kop': 'Together',
   'teller.weken_een': '1 week wrapped up',
@@ -2033,6 +2177,10 @@ export const en: Record<Sleutel, string> = {
   'melden.deblokkeer_knop': 'Unblock',
   'melden.geblokkeerd_titel': 'Blocked',
   'melden.blokkades_mislukt': 'Your blocked list could not be loaded.',
+  // ⚠️ A sentence of its own rather than `melden.te_veel`: that one names twenty
+  //    reports, and this is about blocks with a very different number.
+  'melden.te_veel_blokkades':
+    'You have blocked a great many people today. Tomorrow you can again. Is someone harassing you right now? Report them; that still works.',
   'melden.blokkeer_stil': 'They get no message about this and cannot see it anywhere.',
   'melden.geblokkeerd': 'This is not possible.',
 
@@ -2060,4 +2208,181 @@ export const en: Record<Sleutel, string> = {
   'validatie.dagen_bereik': 'A week has seven days.',
   'validatie.vloer_boven_plafond': "Your floor can't be above your ceiling.",
   'validatie.vloer_zonder_plafond': 'A floor in days needs a ceiling too.',
+
+  // ---------------------------------------------------------------------------
+  // The six heroes — QS8-469, epic QS8-468
+  // ---------------------------------------------------------------------------
+  //
+  // ⚠️ The names are identical in every language on purpose — see the note in
+  //    `nl.ts`. Only the subtitle, the personality line and the quote text
+  //    change.
+  //
+  //
+  // ⚠️ **Punctuation in the quotes was adjusted; the wording was not.** QS8-218
+  //    bans the em dash in app text, so where an original had one there is now a
+  //    semicolon or a comma. A deliberate call on 14-09-2026: the words, their
+  //    order and the source are intact, the dashes are not. Anyone comparing a
+  //    quote with its source sees that difference and no other.
+  // ⚠️ A quote is chosen, not translated. Ali, Earhart, Nightingale and Twain
+  //    wrote in English, so these are their originals. Aurelius wrote Greek and
+  //    Da Vinci Italian: those carry the public-domain translation the source
+  //    document names (George Long 1862; Richter/MacCurdy). Back-translating the
+  //    Dutch would add a fifth version of a sentence that already passed through
+  //    a translator.
+
+  'held.strix.naam': 'Strix',
+  'held.strix.ondertitel': 'The Sage',
+  'held.strix.persoonlijkheid':
+    'Calm, dry and sharp. Says little, but what he says stays with you. No pats on the back. Just the kind of sentence you are still turning over a week later.',
+  'held.strix.quote1':
+    'If thou art pained by any external thing, it is not this thing that disturbs thee, but thy own judgment about it.',
+  'held.strix.quote1.bron': 'Marcus Aurelius · Meditations, book 8.47 · trans. George Long, 1862',
+  'held.strix.quote2': 'Confine thyself to the present.',
+  'held.strix.quote2.bron': 'Marcus Aurelius · Meditations, book 8.36 · trans. George Long, 1862',
+  'held.strix.quote3':
+    'No longer talk at all about the kind of man that a good man ought to be, but be such.',
+  'held.strix.quote3.bron': 'Marcus Aurelius · Meditations, book 10.16 · trans. George Long, 1862',
+  'held.strix.quote4':
+    'Begin the morning by saying to thyself, I shall meet today with people who behave without knowing better; let that not throw me off balance.',
+  'held.strix.quote4.bron': 'Marcus Aurelius · Meditations, freely after book 2.1',
+
+  'held.ignis.naam': 'Ignis',
+  'held.ignis.ondertitel': 'The Fighter',
+  'held.ignis.persoonlijkheid':
+    'Short, hard, warm underneath. Talks to you like a coach who believes in you even right after you lost. No pity. Just fire.',
+  'held.ignis.quote1':
+    'I hated every minute of training, but I said: don’t quit. Suffer now and live the rest of your life as a champion.',
+  'held.ignis.quote1.bron': 'Muhammad Ali · Muhammad Ali Center, verified quotations',
+  'held.ignis.quote2':
+    'The fight is won or lost far away from witnesses, behind the lines, in the gym, out there on the road, long before I dance under those lights.',
+  'held.ignis.quote2.bron': 'Muhammad Ali · Muhammad Ali Center, verified quotations',
+  'held.ignis.quote3':
+    'If my mind can conceive it and my heart can believe it, then I can achieve it.',
+  'held.ignis.quote3.bron': 'Muhammad Ali · Muhammad Ali Center, verified quotations',
+  'held.ignis.quote4':
+    'Only a man who knows what it is like to be defeated can reach down to the bottom of his soul and come up with the extra ounce of power it takes to win when the match is even.',
+  'held.ignis.quote4.bron': 'Muhammad Ali · Muhammad Ali Center, verified quotations',
+
+  'held.meridian.naam': 'Meridian',
+  'held.meridian.ondertitel': 'The Explorer',
+  'held.meridian.persoonlijkheid':
+    'Energetic and impatient in the good way. Nudges you just past the edge of your comfort zone and is already waving from the other side.',
+  'held.meridian.quote1':
+    'Preparation, I have often said, is rightly two-thirds of any venture.',
+  'held.meridian.quote1.bron': 'Amelia Earhart · Last Flight, 1937, p. 51',
+  'held.meridian.quote2':
+    'The more one does and sees and feels, the more one is able to do.',
+  'held.meridian.quote2.bron': 'Amelia Earhart · Soaring Wings, 1939, p. 83',
+  'held.meridian.quote3':
+    'In soloing, as in other activities, it is far easier to start something than it is to finish it.',
+  'held.meridian.quote3.bron': 'Amelia Earhart · 20 Hrs., 40 Min., 1928, p. 16',
+  'held.meridian.quote4':
+    'Women must try to do things as men have tried. When they fail, their failure must be but a challenge to others.',
+  'held.meridian.quote4.bron': 'Amelia Earhart · Last Flight, 1937',
+
+  'held.forge.naam': 'Forge',
+  'held.forge.ondertitel': 'The Builder',
+  'held.forge.persoonlijkheid':
+    'Level-headed and precise. No pep talk. Just the question you needed: what is the real problem here, and how do we build around it?',
+  'held.forge.quote1':
+    'Just as iron rusts from disuse and stagnant water putrefies, or turns to ice in the cold, so our intellect wastes unless it is kept in use.',
+  'held.forge.quote1.bron':
+    'Leonardo da Vinci · Codex Atlanticus 289v, in Richter & Wells, Notebooks',
+  'held.forge.quote2':
+    'He who loves practice without theory is like the sailor who boards ship without a rudder and compass and never knows where he may cast.',
+  'held.forge.quote2.bron':
+    'Leonardo da Vinci · The Literary Works of Leonardo da Vinci, 1883',
+  'held.forge.quote3': 'Poor is the pupil who does not surpass his master.',
+  'held.forge.quote3.bron':
+    'Leonardo da Vinci · Aphorisms, Notebooks · trans. E. MacCurdy, 1938',
+
+  'held.lucerna.naam': 'Lucerna',
+  'held.lucerna.ondertitel': 'The Caregiver',
+  'held.lucerna.persoonlijkheid':
+    'Gentle on the person, strict on the excuses. Gives you room to catch your breath and a clear reason to start again tomorrow.',
+  'held.lucerna.quote1': 'I attribute my success to this: I never gave or took an excuse.',
+  'held.lucerna.quote1.bron':
+    'Florence Nightingale · letter to Miss H. Bonham Carter, 1861',
+  'held.lucerna.quote2': 'When a disaster happens, I act and they make excuses.',
+  'held.lucerna.quote2.bron':
+    'Florence Nightingale · letter to Miss H. Bonham Carter, 1861',
+  'held.lucerna.quote3':
+    'Feelings waste themselves in words; they ought all to be distilled into actions; actions which bring results.',
+  'held.lucerna.quote3.bron': 'Florence Nightingale · letter to Mary Clarke, 1844',
+  'held.lucerna.quote4':
+    'Nursing is an art: and if it is to be made an art, it requires an exclusive devotion as hard a preparation as any painter’s or sculptor’s work.',
+  'held.lucerna.quote4.bron': 'Florence Nightingale · Good Words, 1868',
+
+  'held.quip.naam': 'Quip',
+  'held.quip.ondertitel': 'The Jester',
+  'held.quip.persoonlijkheid':
+    'Dry humour, a crooked grin, always a contrary remark ready. Takes the pressure off without making your goal the joke.',
+  'held.quip.quote1':
+    'Courage is resistance to fear, mastery of fear; not absence of fear.',
+  'held.quip.quote1.bron':
+    'Mark Twain · Pudd’nhead Wilson’s Calendar, in Following the Equator, 1897',
+  'held.quip.quote2':
+    'Whenever you find yourself on the side of the majority, it is time to pause and reflect.',
+  'held.quip.quote2.bron':
+    'Mark Twain · Pudd’nhead Wilson’s Calendar, in Following the Equator, 1897',
+  'held.quip.quote3':
+    'Habit is habit, and not to be flung out of the window by any man, but coaxed downstairs a step at a time.',
+  'held.quip.quote3.bron':
+    'Mark Twain · Pudd’nhead Wilson’s Calendar, in Following the Equator, 1897',
+
+  // The four hero questions — QS8-474, epic QS8-468. See nl.ts for why the
+  // option order lives in `HELDVRAAGOPTIES` and not here.
+
+  'heldvraag.aantrekking.vraag': 'What draws you in most about a new goal?',
+  'heldvraag.aantrekking.toelichting': 'One answer. Go with your first thought.',
+  'heldvraag.aantrekking.optie.meridian': 'Taking the first leap',
+  'heldvraag.aantrekking.optie.forge': 'Mapping out a plan',
+  'heldvraag.aantrekking.optie.strix': 'Keeping the end in clear view',
+  'heldvraag.aantrekking.optie.ignis': 'Just going for it, win or lose',
+  'heldvraag.aantrekking.optie.lucerna': 'Bringing someone along',
+  'heldvraag.aantrekking.optie.quip': 'Keeping it enjoyable above all',
+
+  'heldvraag.tegenslag.vraag': 'A setback: what is your first reaction?',
+  'heldvraag.tegenslag.toelichting': 'Not what you should do, but what you actually do.',
+  'heldvraag.tegenslag.optie.ignis': 'Push through, teeth clenched',
+  'heldvraag.tegenslag.optie.quip': 'Pause a moment and take the edge off with humour',
+  'heldvraag.tegenslag.optie.forge': 'Go back to basics and revise the plan',
+  'heldvraag.tegenslag.optie.lucerna': 'Take a break and go easy on myself',
+  'heldvraag.tegenslag.optie.strix': 'Think about what this teaches me',
+  'heldvraag.tegenslag.optie.meridian': 'Work out a different route',
+
+  'heldvraag.motivatie.vraag': 'What keeps you going the most?',
+  'heldvraag.motivatie.toelichting': 'What you still do it for on an average day.',
+  'heldvraag.motivatie.optie.ignis': 'Proving it can be done',
+  'heldvraag.motivatie.optie.meridian': 'Curiosity about what else is possible',
+  'heldvraag.motivatie.optie.forge': 'The feeling of building something good',
+  'heldvraag.motivatie.optie.strix': 'Inner calm and a clear overview',
+  'heldvraag.motivatie.optie.lucerna': 'Support from and for other people',
+  'heldvraag.motivatie.optie.quip': 'That it simply has to stay fun',
+
+  'heldvraag.viering.vraag': 'How do you most like to celebrate a win?',
+  'heldvraag.viering.toelichting': 'Last question. After this you see everything at a glance.',
+  'heldvraag.viering.optie.quip': 'With a joke or a party',
+  'heldvraag.viering.optie.strix': 'Quietly reflecting on what you learned',
+  'heldvraag.viering.optie.meridian': 'Moving straight on to the next goal',
+  'heldvraag.viering.optie.lucerna': 'Sharing it with the people who backed you',
+  'heldvraag.viering.optie.ignis': 'Being proud that you won the fight',
+  'heldvraag.viering.optie.forge': 'Looking at how to improve the system further',
+
+  'vragenlijst.held.vraag': 'Your hero',
+  'vragenlijst.held.kop': 'Who walks with you',
+  'vragenlijst.held.een':
+    'Your answers point to one hero. That is the voice you will hear at your check-ins.',
+  'vragenlijst.held.gelijk':
+    'Your answers point equally to {aantal} heroes. Pick the one you want walking with you.',
+  'vragenlijst.held.geen':
+    'You skipped the hero questions. That is fine: you get no fixed hero, and the rest of the app works as usual.',
+  'vragenlijst.held.gekozen': 'This is your hero. Tap another one to switch.',
+  'vragenlijst.held.blijft':
+    'This is your hero right now. Answer the four hero questions again to switch.',
+  'vragenlijst.held.laadt': 'Checking which hero you have right now.',
+  'vragenlijst.held.fout':
+    'Your current hero could not be loaded. Answer the four questions to pick one.',
+  'vragenlijst.held.kies_een': 'Pick one',
+  'vragenlijst.held.opslaan_mislukt': 'Your hero could not be saved. Please try again in a moment.',
 };

@@ -3,7 +3,6 @@ import { Platform, StyleSheet, View } from 'react-native';
 
 import {
   AVATAR_MAX_BYTES,
-  useAvatarKeuze,
   signOut,
   updateProfiel,
   userClock,
@@ -12,6 +11,7 @@ import {
   verwijderMijnAccount,
   type Profiel as ProfielRij,
 } from '@/modules/auth';
+import { useAvatarKeuze } from '@/modules/auth/react';
 import { deblokkeer, fetchBlokkades } from '@/modules/buddies';
 import { fetchBuddyBijdrage } from '@/modules/completions';
 import {
@@ -25,12 +25,21 @@ import {
   zetMeldingenUit,
   type Meldingenstand,
   type Toon,
+  MELDINGSOORTEN,
+  VOORKEUR_PER_SOORT,
+  type Melding,
+  meldingsoortVelden,
+  stilleUrenVelden,
+  uurUit,
 } from '@/modules/notifications';
 import { clientEnv } from '@/lib/env';
 import { huidigInstallatieadvies } from '@/shared/pwa';
-import { opmaaktaal, t, taal, zetTaal, type Taal } from '@/shared/i18n';
+import { opmaaktaal, t, taal, zetTaal, type Taal,
+  type Sleutel,
+} from '@/shared/i18n';
+import { telTekens } from '@/shared/tekst';
 import { space, useThemePreference, type ThemePreference } from '@/shared/theme';
-import { apparaatTijdzone, toonTijd, type Weekday } from '@/shared/time';
+import { apparaatTijdzone, toonTijd, verschovenUur, type Weekday } from '@/shared/time';
 import {
   AsyncView,
   Avatar,
@@ -46,7 +55,6 @@ import {
   Screen,
   Subheading,
   TaalKeuze,
-  TijdzoneKeuze,
   useAsync,
   useVieringenAan,
   WeekStartKeuze,
@@ -132,7 +140,11 @@ export default function Profiel() {
               <Caption>{t('profiel.reeks_uitleg')}</Caption>
             </Card>
 
+            <Naamkaart naam={p.display_name} userId={p.id} onOpgeslagen={zetProfiel} />
+
             <Avatarkaart profiel={p} onGewijzigd={zetProfiel} />
+
+            <VindbaarInstelling profiel={p} userId={p.id} onOpgeslagen={zetProfiel} />
 
             <BuddyBijdrage userId={p.id} />
 
@@ -146,7 +158,7 @@ export default function Profiel() {
 
             <WeekStartInstelling profiel={p} onOpgeslagen={zetProfiel} />
 
-            <TijdzoneInstelling waarde={p.tz} userId={p.id} onOpgeslagen={zetProfiel} />
+            <TijdzoneInstelling waarde={p.tz} />
 
             <Meldingen userId={p.id} />
 
@@ -157,6 +169,10 @@ export default function Profiel() {
               userId={p.id}
               onOpgeslagen={zetProfiel}
             />
+
+            <MeldingsoortenInstelling profiel={p} userId={p.id} onOpgeslagen={zetProfiel} />
+
+            <StilleUrenInstelling profiel={p} userId={p.id} onOpgeslagen={zetProfiel} />
 
             <ThemaKeuze />
 
@@ -212,6 +228,110 @@ function Uitloggen() {
       <Button busy={bezig} onPress={() => void uitloggen()}>
         {t('profiel.uitloggen_knop')}
       </Button>
+    </Card>
+  );
+}
+
+/**
+ * Je weergavenaam wijzigen — QS8-473.
+ *
+ * ⚠️ **Dit was een leeskant zonder schrijfpad**, dezelfde vorm als de profielfoto
+ *    in QS8-196 en de taalkeuze in QS8-115: `profielSchema` kende `display_name`
+ *    al, `updateProfiel()` nam hem al mee, `schoneNaam()` en de CHECK
+ *    `profiles_display_name_zichtbaar` uit 0256 stonden er — en het enige
+ *    invoerveld stond in de onboarding, een scherm dat je één keer ziet.
+ *    Onwrikbare regel 18, vraag 5: elk schakeltje af en de keten nergens
+ *    verbonden.
+ *
+ * ⚠️ **Geen eigen validatie.** De regels staan in `profielSchema` en de grens
+ *    staat in de database; wat hier gebeurt is dat `updateProfiel()` zijn melding
+ *    teruggeeft en dit scherm hem toont. Een tweede regelset hier zou de derde
+ *    plek zijn die uit de pas kan lopen — precies wat de kop van `profielSchema`
+ *    over `.trim()` en `.max()` uitlegt.
+ *
+ * ⚠️ **`telTekens()` en niet `.length`.** De teller moet in dezelfde eenheid
+ *    staan als de grens: `char_length` telt codepunten, `.length` telt
+ *    UTF-16-eenheden, en een naam van tachtig emoji is er honderdzestig. Een
+ *    teller in de verkeerde eenheid is een nieuwe fout en geen reparatie
+ *    (QS8-118).
+ */
+function useNaamOpslaan(
+  naam: string,
+  userId: string,
+  onOpgeslagen: (profiel: ProfielRij) => void,
+) {
+  const [wil, zetWil] = useState(naam);
+  const [bezig, setBezig] = useState(false);
+  const [fout, setFout] = useState<string | null>(null);
+  const [bewaard, setBewaard] = useState(false);
+
+  async function bewaar() {
+    setBezig(true);
+    setFout(null);
+    setBewaard(false);
+
+    // ⚠️ De uitkomst wordt gelezen en niet weggegooid — `void updateProfiel(...)`
+    //    is de vorm die QS8-245 een stille mislukking opleverde, en
+    //    `tests/beloftes/uitkomst-niet-weggooien.test.ts` bewaakt die klasse.
+    const uitkomst = await updateProfiel(userId, { display_name: wil });
+
+    if (uitkomst.ok) {
+      onOpgeslagen(uitkomst.profiel);
+      // ⚠️ Terugzetten uit het opgeslagen profiel en niet uit `wil`:
+      //    `schoneNaam()` kan hebben geknipt of genormaliseerd, en dan staat er
+      //    in het veld iets anders dan in de database. Het veld hoort te tonen
+      //    wat er écht staat.
+      zetWil(uitkomst.profiel.display_name);
+      setBewaard(true);
+    } else {
+      setFout(uitkomst.melding);
+    }
+
+    setBezig(false);
+  }
+
+  function typ(waarde: string) {
+    zetWil(waarde);
+    setBewaard(false);
+  }
+
+  return { wil, bezig, fout, bewaard, bewaar, typ };
+}
+
+function Naamkaart({
+  naam,
+  userId,
+  onOpgeslagen,
+}: {
+  readonly naam: string;
+  readonly userId: string;
+  readonly onOpgeslagen: (profiel: ProfielRij) => void;
+}) {
+  const { wil, bezig, fout, bewaard, bewaar, typ } = useNaamOpslaan(naam, userId, onOpgeslagen);
+
+  return (
+    <Card>
+      <Subheading>{t('profiel.naam_titel')}</Subheading>
+      <Body muted>{t('profiel.naam_uitleg')}</Body>
+
+      <Field
+        label={t('profiel.naam_label')}
+        hint={t('profiel.naam_hint')}
+        value={wil}
+        onChangeText={typ}
+        autoCapitalize="words"
+        autoComplete="name"
+        placeholder={t('onboarding.naam_plaatshouder')}
+        editable={!bezig}
+      />
+      <Caption>{`${telTekens(wil)}/80`}</Caption>
+
+      <Button busy={bezig} onPress={() => void bewaar()}>
+        {t('profiel.naam_bewaren')}
+      </Button>
+
+      {bewaard ? <Caption muted={false}>{t('profiel.naam_bewaard')}</Caption> : null}
+      {fout === null ? null : <Caption danger>{fout}</Caption>}
     </Card>
   );
 }
@@ -363,66 +483,30 @@ function TaalInstelling({
 }
 
 /**
- * De tijdzone, met de hand te overschrijven — QS8-27, criterium 1.
+ * De tijdzone waarin deze app rekent — QS8-472.
  *
- * ⚠️ **Waarom dit criterium er is en niet weggelaten kon worden.** De tijdzone
- *    komt uit het apparaat, en dat is meestal goed. Twee gevallen waarin het dat
- *    niet is: wie in Lissabon woont met een telefoon die op Amsterdam blijft
- *    staan, en wie reist. Voor de tweede is dit veld juist een *rem*: zonder
- *    handmatige zone verspringt je week omdat je twee weken in Bangkok zat, en
- *    dan breekt je reeks op een moment dat niets met je gedrag te maken heeft.
+ * ⚠️⚠️ **Dit was een keuze en is een mededeling geworden.** Er stond een
+ *    `TijdzoneKeuze` met een zoekveld en een opslagpad; `Tijdzonewacht` in
+ *    `app/_layout.tsx` houdt de kolom nu gelijk aan het apparaat en er is geen
+ *    handmatig pad meer. Quintens besluit van 14-09-2026.
  *
- * ⚠️ **Dit raakt `currentUserCycle()` en dus domeinregel 1.** De zone bepaalt
- *    wanneer "vandaag" omslaat en dus wanneer een weekdoel gemist heet. Daarom
- *    gaat de waarde door `updateProfiel()` en dus door `tijdzoneSchema`, en niet
- *    rechtstreeks naar de kolom: een onbekende zone laat `Intl` gooien en dan
- *    hangt élk scherm dat een week uitrekent.
+ * ⚠️ **De regel blijft staan, en dat is geen restant.** Domeinregel 2 hangt hier
+ *    aan: "vandaag" en "deze week" worden in deze zone berekend, en een reeks die
+ *    om middernacht verkeerd breekt kost je een gebruiker. Wie dát ziet gebeuren,
+ *    hoort te kunnen nazien in welke zone er gerekend wordt — anders is het
+ *    onverklaarbaar gedrag in plaats van een verkeerd ingestelde telefoon.
+ *    Acceptatiecriterium 4 van het issue.
  *
- * ⚠️ Zelfde volgorde als bij de week-startdag: opslaan, en pas bij `ok` het
- *    profiel in de provider zetten. Er is hier géén procesbrede tegenhanger van
- *    `zetTaal()` — `shared/time` leest de zone per aanroep uit het profiel — dus
- *    één stap volstaat.
+ * ⚠️ Geen `onOpgeslagen` en geen `userId` meer: dit component schrijft niets. Zou
+ *    het dat wel doen, dan was er een tweede schrijver naast de wacht en konden
+ *    die twee elkaar overschrijven.
  */
-function TijdzoneInstelling({
-  waarde,
-  userId,
-  onOpgeslagen,
-}: {
-  readonly waarde: string;
-  readonly userId: string;
-  readonly onOpgeslagen: (profiel: ProfielRij) => void;
-}) {
-  const [bezig, setBezig] = useState(false);
-  const [melding, setMelding] = useState<string | null>(null);
-  const [fout, setFout] = useState<string | null>(null);
-
-  async function kies(zone: string) {
-    setBezig(true);
-    setFout(null);
-    setMelding(null);
-
-    const uitkomst = await updateProfiel(userId, { tz: zone });
-
-    if (uitkomst.ok) {
-      onOpgeslagen(uitkomst.profiel);
-      setMelding(t('tijdzone.opgeslagen'));
-    } else {
-      setFout(uitkomst.melding);
-    }
-
-    setBezig(false);
-  }
-
+function TijdzoneInstelling({ waarde }: { readonly waarde: string }) {
   return (
     <Card>
-      <TijdzoneKeuze
-        waarde={waarde === '' ? apparaatTijdzone() : waarde}
-        onKies={(zone) => void kies(zone)}
-        disabled={bezig}
-      />
-      <Caption>{t('tijdzone.uitleg')}</Caption>
-      {melding === null ? null : <Caption muted={false}>{melding}</Caption>}
-      {fout === null ? null : <Caption danger>{fout}</Caption>}
+      <Subheading>{t('tijdzone.label')}</Subheading>
+      <Body>{t('tijdzone.nu', { zone: waarde === '' ? apparaatTijdzone() : waarde })}</Body>
+      <Caption>{t('tijdzone.van_het_apparaat')}</Caption>
     </Card>
   );
 }
@@ -793,6 +877,372 @@ function HerinneringInstelling({
  *    knop hier zou hetzelfde twee keer doen. Deze knop hoort bij web push, waar
  *    de toestemming per RFC uit een echte klik moet komen.
  */
+/**
+ * De tekstsleutel per soort die een eigen schakelaar heeft.
+ *
+ * ⚠️ **Exhaustief getypeerd en met opzet geen losse lijst.** Komt er een soort
+ *    bij mét een eigen schakelaar, dan is een ontbrekende rij hier een typefout
+ *    en geen scherm dat er stilletjes één mist. Zelfde gedachte als
+ *    `VOORKEUR_PER_SOORT`, één laag hoger.
+ *
+ * ⚠️⚠️ **`commitment_reverted` staat hier met reden níet** (QS8-321). Die soort
+ *    deelt `notify_commitment_witness` met `commitment_witness`, dus een rij
+ *    hier zou een tweede schakelaar tonen voor dezelfde kolom — twee knoppen die
+ *    elkaar overschrijven, en een gebruiker die niet kan zien welke telt.
+ *    Daarom `Zichtbaar` en niet `Exclude<Melding, 'nudge'>`: dat de uitsluiting
+ *    in het type staat, is precies waarom `tsc` hierover moest klagen toen de
+ *    zesde soort erbij kwam. Die klacht was terecht en dit is het antwoord
+ *    erop — niet een rij erbij.
+ */
+type Zichtbaar = Exclude<Melding, 'nudge' | 'commitment_reverted'>;
+
+const MELDINGSOORT_TEKST: Readonly<Record<Zichtbaar, Sleutel>> = {
+  approval_request: 'meldingsoort.approval_request',
+  approval_received: 'meldingsoort.approval_received',
+  cycle_summary: 'meldingsoort.cycle_summary',
+  commitment_witness: 'meldingsoort.commitment_witness',
+};
+
+/**
+ * Eén schakelaar, en hij toont nooit een stand die niet opgeslagen is.
+ *
+ * ⚠️ **Geen optimistic update.** De andere kaarten op dit scherm doen het ook
+ *    niet, en de reden staat bij `Meldingen`: een scherm dat "aan" toont terwijl
+ *    de opslag mislukte, liegt tegen de gebruiker over iets dat hij later niet
+ *    zal krijgen. De waarde komt uit het opgeslagen profiel en verandert pas als
+ *    de database het bevestigt.
+ */
+function MeldingsoortRij({
+  sleutel,
+  aan,
+  bezig,
+  onZet,
+}: {
+  readonly sleutel: Sleutel;
+  readonly aan: boolean;
+  readonly bezig: boolean;
+  readonly onZet: (nieuw: boolean) => void;
+}) {
+  return (
+    <Choice
+      label={t(sleutel)}
+      opties={[
+        { waarde: 'aan', label: t('profiel.aan') },
+        { waarde: 'uit', label: t('profiel.uit') },
+      ]}
+      waarde={aan ? 'aan' : 'uit'}
+      onKies={(v) => onZet(v === 'aan')}
+      disabled={bezig}
+    />
+  );
+}
+
+/**
+ * Per meldingsoort een schakelaar — QS8-92, criterium 1.
+ *
+ * ⚠️ **`nudge` staat hier niet bij, en de uitlegzin zegt waarom.** Die schakelaar
+ *    is `HerinneringInstelling` hierboven, met zijn eigen tijd en toon. Zonder die
+ *    zin lijkt deze lijst incompleet en gaat iemand een vijfde rij toevoegen —
+ *    en dan staat hetzelfde feit op twee plekken (QS8-125).
+ *
+ * ⚠️ **Direct opslaan en geen bewaarknop.** `HerinneringInstelling` heeft er één
+ *    omdat de tijd vrije tekst is die je halverwege kunt typen. Een schakelaar is
+ *    een gesloten keuze — zelfde vorm als `TaalInstelling` en `TijdzoneInstelling`.
+ */
+/**
+ * Of je buiten je eigen groepen te vinden bent — QS8-476.
+ *
+ * ⚠️⚠️ **De tekst moet allebei de helften zeggen, en dat is criterium 2
+ *    letterlijk.** Wát opengaat (je naam en je profielfoto, voor iedereen die is
+ *    ingelogd) én wat dicht blijft (je doelen, je reeks, je punten, je groepen,
+ *    je weken). Een schakelaar die alleen het eerste noemt, laat de gebruiker
+ *    zelf raden wat hij weggeeft — en dat is precies waar domeinregel 7 voor
+ *    bestaat.
+ *
+ * ⚠️ **Geen bevestigingsstap.** `zet_groepszichtbaarheid()` eist er een omdat
+ *    dát besluit met terugwerkende kracht verandert wat er over ándere leden
+ *    zichtbaar wordt. Dit gaat over jezelf, is omkeerbaar, en heeft geen
+ *    consequentie — domeinregel 5 raakt het niet.
+ *
+ * ⚠️ **Geen optimistic update.** De stand komt uit het opgeslagen profiel en
+ *    verandert pas als de database het bevestigt. Een scherm dat "aan" toont
+ *    terwijl de opslag mislukte, liegt over wie jou kan vinden.
+ */
+function VindbaarInstelling({
+  profiel,
+  userId,
+  onOpgeslagen,
+}: {
+  readonly profiel: ProfielRij;
+  readonly userId: string;
+  readonly onOpgeslagen: (profiel: ProfielRij) => void;
+}) {
+  const [bezig, setBezig] = useState(false);
+  const [fout, setFout] = useState<string | null>(null);
+
+  async function zet(aan: boolean) {
+    setBezig(true);
+    setFout(null);
+
+    const uitkomst = await updateProfiel(userId, { vindbaar: aan });
+
+    if (uitkomst.ok) onOpgeslagen(uitkomst.profiel);
+    else setFout(uitkomst.melding);
+
+    setBezig(false);
+  }
+
+  return (
+    <Card>
+      <Subheading>{t('vindbaar.titel')}</Subheading>
+      <Body muted>{t('vindbaar.uitleg')}</Body>
+
+      <Choice
+        label={t('vindbaar.label')}
+        opties={[
+          { waarde: 'aan', label: t('profiel.aan') },
+          { waarde: 'uit', label: t('profiel.uit') },
+        ]}
+        waarde={profiel.vindbaar === true ? 'aan' : 'uit'}
+        onKies={(v) => void zet(v === 'aan')}
+        disabled={bezig}
+      />
+
+      <Caption>{t('vindbaar.wat_niet')}</Caption>
+      <Caption>{t('vindbaar.terugdraaien')}</Caption>
+      {fout === null ? null : <Caption danger>{fout}</Caption>}
+    </Card>
+  );
+}
+
+function MeldingsoortenInstelling({
+  profiel,
+  userId,
+  onOpgeslagen,
+}: {
+  readonly profiel: ProfielRij;
+  readonly userId: string;
+  readonly onOpgeslagen: (profiel: ProfielRij) => void;
+}) {
+  const [bezig, setBezig] = useState<string | null>(null);
+  const [fout, setFout] = useState<string | null>(null);
+
+  async function zet(soort: Exclude<Melding, 'nudge'>, aan: boolean) {
+    setBezig(soort);
+    setFout(null);
+
+    const uitkomst = await updateProfiel(userId, meldingsoortVelden(soort, aan));
+
+    if (uitkomst.ok) onOpgeslagen(uitkomst.profiel);
+    else setFout(uitkomst.melding);
+
+    setBezig(null);
+  }
+
+  return (
+    <Card>
+      <Subheading>{t('meldingsoort.titel')}</Subheading>
+      <Body muted>{t('meldingsoort.uitleg')}</Body>
+
+      {/* ⚠️ `commitment_reverted` valt hier ook af: hij deelt zijn kolom met
+          `commitment_witness`, en twee schakelaars voor één kolom overschrijven
+          elkaar (QS8-321). De uitsluiting staat in `Zichtbaar` hierboven, zodat
+          `tsc` klaagt zodra iemand hem tóch als eigen soort wil tonen. */}
+      {MELDINGSOORTEN.filter((s): s is Zichtbaar => s !== 'nudge' && s !== 'commitment_reverted').map((soort) => {
+        const kolom = VOORKEUR_PER_SOORT[soort];
+        return (
+          <MeldingsoortRij
+            key={soort}
+            sleutel={MELDINGSOORT_TEKST[soort]}
+            aan={profiel[kolom] !== false}
+            bezig={bezig === soort}
+            onZet={(nieuw) => void zet(soort, nieuw)}
+          />
+        );
+      })}
+
+      <Caption>{t('meldingsoort.getuige_uitleg')}</Caption>
+      {fout === null ? null : <Caption danger>{fout}</Caption>}
+    </Card>
+  );
+}
+
+/** De 24 uren als keuzeopties, zonder ze te hoeven uitschrijven. */
+function uurOpties(): readonly { readonly waarde: number; readonly label: string }[] {
+  return Array.from({ length: 24 }, (_, u) => ({
+    waarde: u,
+    label: `${String(u).padStart(2, '0')}:00`,
+  }));
+}
+
+/**
+ * Wat er met je herinnering gebeurt als hij in de stille uren valt.
+ *
+ * ⚠️ **Het getal komt uit `verschovenUur()` en niet uit een eigen som.** Dat is
+ *    het verschil tussen een mededeling en een belofte: deze zin kan niet uit de
+ *    pas lopen met wat de meldingenjob doet, want het is dezelfde functie.
+ */
+function HerinneringVerschoven({
+  tijd,
+  van,
+  tot,
+}: {
+  readonly tijd: string | null;
+  readonly van: number | null;
+  readonly tot: number | null;
+}) {
+  const uur = uurUit(tijd);
+  const nieuw = verschovenUur(uur, van, tot);
+  if (uur === null || nieuw === null || nieuw === uur) return null;
+
+  return (
+    <Caption>
+      {t('stilteuren.herinnering_verschoven', {
+        oud: `${String(uur).padStart(2, '0')}:00`,
+        nieuw: `${String(nieuw).padStart(2, '0')}:00`,
+      })}
+    </Caption>
+  );
+}
+
+/**
+ * Het opslaan van het stille venster, los van de opmaak.
+ *
+ * ⚠️ Staat apart sinds `StilleUrenInstelling` over de vijftig regels van
+ *    coderegel 15 ging; `app/` staat onder een ratel, dus splitsen is hier het
+ *    antwoord en niet het plafond ophogen.
+ *
+ * ⚠️ **Geen optimistic update.** De waarde die het scherm toont komt uit het
+ *    opgeslagen profiel en verandert pas als de database het bevestigt — zelfde
+ *    reden als bij `Meldingen`: een scherm dat "aan" toont terwijl de opslag
+ *    mislukte, liegt over iets dat de gebruiker later niet krijgt.
+ */
+function useVensterOpslag(userId: string, onOpgeslagen: (profiel: ProfielRij) => void) {
+  const [bezig, setBezig] = useState(false);
+  const [fout, setFout] = useState<string | null>(null);
+
+  async function bewaar(keuze: { aan: boolean; van: number; tot: number }) {
+    setBezig(true);
+    setFout(null);
+
+    const uitkomst = await updateProfiel(userId, stilleUrenVelden(keuze));
+
+    if (uitkomst.ok) onOpgeslagen(uitkomst.profiel);
+    else setFout(uitkomst.melding);
+
+    setBezig(false);
+  }
+
+  return { bezig, fout, bewaar };
+}
+
+/**
+ * De twee uurkeuzes.
+ *
+ * ⚠️ Staat los sinds `StilleUrenInstelling` over de vijftig regels van
+ *    coderegel 15 ging. `app/` staat onder een ratel: het aantal lange functies
+ *    mag alleen dálen, dus splitsen is hier het antwoord en niet het plafond
+ *    ophogen.
+ *
+ * ⚠️ Elke lijst laat het uur van de ánder weg. De database weigert
+ *    `van === tot` (`profiles_stilte_is_geen_punt`), dus een scherm dat die
+ *    keuze aanbiedt, biedt een databasefout aan.
+ */
+function StilteVenster({
+  van,
+  tot,
+  bezig,
+  onKies,
+}: {
+  readonly van: number;
+  readonly tot: number;
+  readonly bezig: boolean;
+  readonly onKies: (keuze: { van: number; tot: number }) => void;
+}) {
+  return (
+    <>
+      <Choice
+        label={t('stilteuren.van')}
+        opties={uurOpties().filter((o) => o.waarde !== tot)}
+        waarde={van}
+        onKies={(v) => onKies({ van: v, tot })}
+        disabled={bezig}
+      />
+      <Choice
+        label={t('stilteuren.tot')}
+        opties={uurOpties().filter((o) => o.waarde !== van)}
+        waarde={tot}
+        onKies={(v) => onKies({ van, tot: v })}
+        disabled={bezig}
+      />
+    </>
+  );
+}
+
+/**
+ * Het stille venster — QS8-406.
+ *
+ * ⚠️ **Hele uren en geen tekstveld.** De opslag is `smallint` en de job beslist
+ *    per uur; een veld dat `22:30` accepteert liegt over wat er gebeurt.
+ *
+ * ⚠️ De database weigert `van === tot` (`profiles_stilte_is_geen_punt`), dus dat
+ *    laat dit scherm niet toe: `tot` slaat het gekozen `van` over. Zonder die
+ *    stap krijgt de gebruiker een databasefout te zien voor een keuze die het
+ *    scherm zelf aanbood.
+ */
+function StilleUrenInstelling({
+  profiel,
+  userId,
+  onOpgeslagen,
+}: {
+  readonly profiel: ProfielRij;
+  readonly userId: string;
+  readonly onOpgeslagen: (profiel: ProfielRij) => void;
+}) {
+  const aan = profiel.quiet_from !== null && profiel.quiet_to !== null;
+  const van = profiel.quiet_from ?? 22;
+  const tot = profiel.quiet_to ?? 7;
+
+  const { bezig, fout, bewaar } = useVensterOpslag(userId, onOpgeslagen);
+
+  return (
+    <Card>
+      <Subheading>{t('stilteuren.titel')}</Subheading>
+      <Body muted>{t('stilteuren.uitleg')}</Body>
+
+      <Choice
+        label={t('stilteuren.label')}
+        opties={[
+          { waarde: 'aan', label: t('profiel.aan') },
+          { waarde: 'uit', label: t('profiel.uit') },
+        ]}
+        waarde={aan ? 'aan' : 'uit'}
+        onKies={(v) => void bewaar({ aan: v === 'aan', van, tot })}
+        disabled={bezig}
+      />
+
+      {aan ? (
+        <StilteVenster
+          van={van}
+          tot={tot}
+          bezig={bezig}
+          onKies={(keuze) => void bewaar({ aan: true, ...keuze })}
+        />
+      ) : null}
+
+      {aan ? (
+        <HerinneringVerschoven
+          tijd={profiel.reminder_time}
+          van={profiel.quiet_from}
+          tot={profiel.quiet_to}
+        />
+      ) : null}
+
+      {fout === null ? null : <Caption danger>{fout}</Caption>}
+    </Card>
+  );
+}
+
 function Meldingen({ userId }: { readonly userId: string }) {
   const sleutel = clientEnv().vapidPublicKey;
   const [stand, setStand] = useState<Meldingenstand>(() => huidigeMeldingenstand(sleutel));

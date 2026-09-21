@@ -60,10 +60,23 @@ Het tweede slot is daarom een test, en die staat in
 ## De grendel, en waarom hij generiek is
 
 Eén grant repareren lost één geval op. De klasse is *"een recht dat niemand
-besloten heeft"*. `functies_voor_authenticated()` (0115) levert elke functie in
-`public` die `authenticated` mag uitvoeren; de test legt die lijst naast de
+besloten heeft"*. `functies_met_uitvoerrecht()` levert elke functie in `public`
+die `anon` of `authenticated` mag uitvoeren; de test legt die lijst naast de
 `grant`-regels in `supabase/migrations/`. Staat een functie in de lijst zonder
 dat enige migratie hem gunt, dan komt het recht uit de Supabase-standaard.
+
+⚠️ **Hier stond `functies_voor_authenticated()` (0115), en die is op 11-09-2026
+vervangen** — QS8-428, migratie 0253. Twee dingen ontbraken: de functie gaf
+alleen `proname` terug, zodat de test namen vergeleek en niet handtekeningen,
+en `anon` werd helemaal niet gekeken. Zie
+`docs/decisions/2026-09-11-een-grant-is-niet-altijd-het-slot.md`.
+
+⚠️⚠️ **En de zin hierboven — "de grant was het énige slot" — heeft sinds dat
+issue een gemeten uitzondering.** Op een `immutable` functie **zonder
+argumenten** vouwt PostgREST de aanroep weg in een hergebruikt prepared
+statement, en dan vervalt de EXECUTE-toets: 📏 `anon` kreeg 2 van de 25 keer een
+`200` op een functie waar `has_function_privilege` `false` gaf. `stable` is wél
+dicht (25/25 geweigerd). De klasse staat als QS8-433.
 
 ⚠️ **De vergelijking staat in de test en niet in de database**, want de database
 kent de migratiebestanden niet — en dát is precies de naad die bewaakt moet

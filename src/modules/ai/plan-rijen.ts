@@ -13,6 +13,7 @@
  *    Node-test — en dat is in deze codebase al drie keer misgegaan.
  */
 
+import { schoneEneRegel, schoneVrijeTekst } from '../../shared/tekst';
 import type { VoorstelMijlpaal, VoorstelPlan } from './uitvoer';
 
 /** Een mijlpaalrij zoals hij de database in gaat. */
@@ -75,7 +76,12 @@ export function rijenUitPlan(plan: VoorstelPlan, streefdatum: string): PlanRijen
 
   return {
     doel: {
-      title: plan.title,
+      // ⚠️ Ook hier gaat modeluitvoer rechtstreeks de database in, langs geen
+      //    enkel schema — zie `bruikbareMijlpalen()`. `goals.title` is
+      //    eenregelig, `identity_statement` draagt geen tekengrendel (📏 geen
+      //    SELECT-grant voor `authenticated`, dus geen ander leest hem) en gaat
+      //    daarom ongemoeid.
+      title: schoneEneRegel(plan.title),
       category: plan.category,
       identity_statement: plan.identity_statement,
       target_date: streefdatum,
@@ -85,9 +91,13 @@ export function rijenUitPlan(plan: VoorstelPlan, streefdatum: string): PlanRijen
       plan.first_weekly_goal === null || mijlpalen.length === 0
         ? null
         : {
-            title: plan.first_weekly_goal.title,
-            floor_text: plan.first_weekly_goal.floor_text,
-            ceiling_text: plan.first_weekly_goal.ceiling_text,
+            // ⚠️ De titel is eenregelig (`weekly_goals_title_een_regel`), vloer
+            //    en plafond dragen alleen de twee regels van 0283 — hun bron in
+            //    `weekly_plan_steps` is `multiline`, dus daar geldt de
+            //    eenregelige regel met opzet niet. Zie de kop van 0285.
+            title: schoneEneRegel(plan.first_weekly_goal.title),
+            floor_text: schoneVrijeTekst(plan.first_weekly_goal.floor_text),
+            ceiling_text: schoneVrijeTekst(plan.first_weekly_goal.ceiling_text),
             // ⚠️ Onder de eerste mijlpaal, en dat is het acceptatiecriterium:
             //    "het eerste weekdoel onder mijlpaal 1". Zijn er geen mijlpalen,
             //    dan is er niets om hem onder te hangen en valt hij weg — een
@@ -117,10 +127,29 @@ function bruikbareMijlpalen(
   streefdatum: string,
 ): readonly MijlpaalRij[] {
   return voorstellen
-    .filter((m) => m.title.trim() !== '')
+    .filter((m) => schoneEneRegel(m.title) !== '')
     .map((m, i) => ({
-      title: m.title.trim(),
-      description: m.description,
+      // ⚠️⚠️ **De tweede schrijfroute naar `milestones`, en hij raakt
+      //    `mijlpaalSchema` nooit** — gevonden in de security-review op QS8-507.
+      //    `schrijfMijlpalen()` insert deze rijen rechtstreeks, dus de grendels
+      //    van 0284 en 0285 staan hier tussen het model en de database zónder
+      //    dat er een schema tussen zit.
+      //
+      //    📏 Zonder dit strijken valt de hele insert om zodra één
+      //    modelomschrijving een teken draagt dat een CHECK weigert — en bij een
+      //    LLM is een omschrijving van meer dan één zin de normale vorm.
+      //    `schrijfMijlpalen()` vangt die fout af en geeft `[]` terug, dus de
+      //    gebruiker verliest zijn hele plan zonder dat er iets zichtbaar
+      //    misgaat.
+      //
+      // ⚠️ **En modeluitvoer is precies de plek waar een prompt-injectie een
+      //    bidi-override zou landen.** Dat de CHECK hem weigert is het goede
+      //    antwoord; dat de gebruiker er zijn plan mee verliest niet.
+      //
+      // ⚠️ De titel is eenregelig (`milestones_title_een_regel`), de omschrijving
+      //    proza — vandaar twee verschillende helpers.
+      title: schoneEneRegel(m.title),
+      description: m.description === null ? null : schoneVrijeTekst(m.description),
       target_date: bruikbareDatum(m.target_date, streefdatum),
       order_index: i + 1,
     }));

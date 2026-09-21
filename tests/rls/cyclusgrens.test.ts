@@ -244,8 +244,15 @@ describe.skipIf(!rlsTestsConfigured)('de cyclus van een weekdoel is geen invoerv
               values ('${id.trim()}', '${w.alice.id}', 'ceiling', 'af')`);
       }
 
+      // ⚠️ **`stable` en niet `immutable`, en dat is geen smaak** — QS8-433.
+      //    Deze twee regels hérdefiniëren de functie, dus ze bepalen waar hij ná
+      //    de suite op staat. Met `immutable` zette dit bestand de klasse terug
+      //    die migratie 0254 juist opruimt: een `immutable` functie zonder
+      //    argumenten wordt door PostgREST uit het plan gevouwen, waarna de
+      //    EXECUTE-toets vervalt. 📏 `volatiliteit:controle` ving dit ná een
+      //    volle poortrun — de enige rode functie in het hele schema.
       psql(`create or replace function public.goedkeuringen_plafond() returns integer
-            language sql immutable set search_path to 'public','pg_temp' as $fn$ select 3 $fn$`);
+            language sql stable set search_path to 'public','pg_temp' as $fn$ select 3 $fn$`);
       try {
         const ids = psql(`select c.id from public.completions c
                           join public.weekly_goals wg on wg.id = c.weekly_goal_id
@@ -268,7 +275,7 @@ describe.skipIf(!rlsTestsConfigured)('de cyclus van een weekdoel is geen invoerv
         expect(poging.error?.message, 'de melding hoort de batch te noemen').toContain('erbij');
       } finally {
         psql(`create or replace function public.goedkeuringen_plafond() returns integer
-              language sql immutable set search_path to 'public','pg_temp' as $fn$ select 200 $fn$`);
+              language sql stable set search_path to 'public','pg_temp' as $fn$ select 200 $fn$`);
       }
     },
     TEST_TIMEOUT,

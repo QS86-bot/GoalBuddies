@@ -80,8 +80,21 @@ import { psql, stackBeschikbaarOfFaal } from './psql-stack';
  *      → 2 rood: de zelftoets (29 → 17) en de registertest, want de twaalf
  *        tabellen met alléén een kolomgrant vallen dan uit de meting
  *
+ * En op 14-09-2026 erbij, voor de twee heldentabellen van 0264 (QS8-471):
+ *
+ *   F  de regel `hero_profiles` uit het register halen
+ *      → 1 rood, met `hero_profiles` in de melding
+ *   G  `grant insert (hero_key) on hero_appearances to authenticated` op de
+ *      lokale stack — de tabel die hier met opzet buiten valt een clientroute
+ *      geven
+ *      → 2 rood: het gat zelf mét `hero_appearances` in de melding, en de
+ *        zelftoets (32 → 33). Dat is de helft die telt: de append-only-belofte
+ *        van 0264 is hier een meting en geen aanname, en zodra iemand er een
+ *        schrijfroute bij zet, staat het er.
+ *
  * ⚠️ Bij elke mutatie is eerst met een grep in het bestand of in `pg_trigger`
- *    nagekeken dat hij er écht in stond vóór de uitslag geloofd werd.
+ *    nagekeken dat hij er écht in stond vóór de uitslag geloofd werd. Bij G is
+ *    dat `has_any_column_privilege`, vóór én na: `false` → `true` → `false`.
  */
 
 /**
@@ -105,6 +118,25 @@ const REGISTER: Readonly<Record<string, string>> = {
     'cyclusstarts, en omdat pauzes elkaar niet mogen overlappen is dat meteen de ' +
     'bovengrens per doel. 📏 Dezelfde 200 aanroepen die er vóór 0216 alle 200 in ' +
     'gingen, leveren er nu 53 op (QS8-373).',
+  commitment_events:
+    '⚠️ **Nieuw sinds QS8-333/0244, en het is de enige clientroute die er is.** ' +
+    '`herstel_stuurloze_straf()` is de eerste `security definer` die naar deze ' +
+    'tabel schrijft en die `authenticated` mag uitvoeren; 📏 gemeten met ' +
+    '`has_function_privilege`: `meld_commitment()` en `noteer_commitment()` mogen ' +
+    'dat geen van beide. ' +
+    '📏 **De route is niet in een lus te draaien, en dat is gemeten en niet ' +
+    'beredeneerd.** Op een verse stack, met een echt verdwenen getuige (`delete ' +
+    'from auth.users`, zoals `verwijder_mijn_account()` doet): de eerste aanroep ' +
+    'geeft `{ok: true, actie: nieuwe_getuige}` en schrijft twee auditrijen, de ' +
+    'tweede geeft `{ok: false, reason: heeft_nog_een_begunstigde}` en schrijft ' +
+    'niets. De tak `afwikkelen` sluit zichzelf op dezelfde manier af: die zet de ' +
+    'straf op `resolved`, waarna `niet_verschuldigd` weigert. ' +
+    'Hoogstens één geslaagde aanroep per stuurloos commitment dus, en het aantal ' +
+    'commitments is zelf begrensd door `commitments_dagplafond` (0203). ' +
+    '⚠️ Bewust géén trigger op deze tabel: die zou ook gelden voor ' +
+    '`service_role`, en daaronder draaien de rollover en `maak_straffen_' +
+    'verschuldigd()`. Dat is precies de reden die 0083 destijds opschreef om ' +
+    'géén trigger te kiezen.',
   deadline_requests: 'vraag_deadline_verschuiving() weigert vanaf 5 verzoeken in het laatste etmaal.',
   group_join_requests: 'vraag_lidmaatschap_aan() weigert zodra lidmaatschapsverzoeken_over() op nul staat.',
   group_members:
@@ -112,6 +144,20 @@ const REGISTER: Readonly<Record<string, string>> = {
     'routes ernaartoe hebben zelf een grens: create_group() 10 per etmaal, ' +
     'join_group_with_code() 20 pogingen per etmaal en 12 leden per groep.',
   groups: 'create_group() weigert vanaf 10 groepen in het laatste etmaal, en vanaf 10 lidmaatschappen.',
+  hero_profiles:
+    'PRIMARY KEY (user_id) én een insert-policy die `user_id` aan `auth.uid()` ' +
+    'vastzet — samen hoogstens één rij per gebruiker. 📏 Gemeten op 14-09-2026 ' +
+    '(QS8-471, 0264): een tweede insert op eigen naam geeft 23505, en dat staat ' +
+    'vast in `tests/rls/helden.test.ts` ("houdt het bij één held per gebruiker"). ' +
+    '⚠️ De sleutel alléén is hier niet genoeg als reden: die bindt het aantal ' +
+    'rijen per `user_id`, niet het aantal rijen. Het is de policy die de waarde ' +
+    'aan de sessie vastzet, en pas die twee samen maken er één van. ' +
+    '⚠️ **`hero_appearances` staat hier met opzet níet**, en dat is geen omissie ' +
+    'maar de meting: 📏 `has_any_column_privilege(authenticated, ' +
+    'hero_appearances, INSERT)` is `false`, dus die tabel valt buiten deze query. ' +
+    'Hij groeit wél, maar alleen onder `service_role`. Komt er ooit een ' +
+    'clientroute bij, dan meldt de test hierboven hem vanzelf als bevinding — ' +
+    'en dan is een dagplafond het antwoord, niet een regel hier.',
   invite_events: 'join_group_with_code() weigert vanaf 20 pogingen in het laatste etmaal.',
   invite_preview_limits:
     'PRIMARY KEY (group_id) — één rij per groep, en invite_preview() werkt hem ' +
@@ -122,10 +168,6 @@ const REGISTER: Readonly<Record<string, string>> = {
     'approval_withdrawals; plan_adempauze() boekt alleen bij een herstel van een ' +
     'al afgeboekt punt, en dan hoogstens 1 rij per doel per cyclus.',
   reports: 'meld() weigert zodra meldingen_over() op nul staat.',
-  user_blocks:
-    'PRIMARY KEY (blocker_id, blocked_id) met on conflict do nothing, en ' +
-    'blokkeer() eist een bestaand profiel — begrensd door het aantal mensen dat ' +
-    'je kunt noemen, niet door hoe vaak je het vraagt.',
   week_reviews: 'UNIQUE (group_id, user_id, group_period_start) — één weekafsluiting per periode.',
 };
 
@@ -217,13 +259,38 @@ describe.skipIf(!beschikbaar)('elke groeibare tabel heeft een plafond of een red
     // ⚠️ En het is geen ondergrens maar een exact getal, om dezelfde reden als
     //    de zelftoets in `remdekking.test.ts`: bij `> 10` hadden er negentien
     //    kunnen wegvallen zonder dat hier iets aansloeg.
+    //
+    // ⚠️ Negenentwintig werd dertig met `todo_items` (0246, QS8-379). Die tabel
+    //    draagt zijn eigen plafond — `taken_dagplafond` met `taken_rem`
+    //    ernaast — dus hij komt hier binnen als bewaakt en niet als bevinding.
     const gevonden = groeibareTabellen();
 
-    expect(gevonden.length, 'het aantal groeibare tabellen is veranderd').toBe(29);
+    // ⚠️ En dertig werd eenendertig met `commitment_events` (QS8-333, 0244):
+    //    `herstel_stuurloze_straf()` is de eerste definer naar die tabel die
+    //    `authenticated` mag uitvoeren. De reden staat in REGISTER hierboven.
+    //
+    // ⚠️⚠️ **Twee branches telden hier allebei naar dertig, en samen zijn het er
+    //    eenendertig.** Beide kanten voegden één tabel toe en beide schreven het
+    //    nieuwe totaal op; git merget dat schoon en houdt er één over. Dat het
+    //    hier een exact getal is en geen ondergrens, is precies wat dat vangt —
+    //    bij `> 29` was deze merge stil goed gegaan met een tabel te weinig.
+    //
+    // ⚠️ En eenendertig werd tweeëndertig met `hero_profiles` (QS8-471, 0264).
+    //    📏 De tweede heldentabel van diezelfde migratie, `hero_appearances`,
+    //    komt hier níet binnen: `authenticated` heeft er geen enkele
+    //    INSERT-kolomgrant op. Dat verschil is de hele opzet van die migratie —
+    //    de ene tabel schrijf je zelf, de andere schrijft de server — en dat het
+    //    hier als één in plaats van twee telt, is de meting die dat bevestigt.
+    expect(gevonden.length, 'het aantal groeibare tabellen is veranderd').toBe(32);
+    // ⚠️ En zeventien werd achttien met `user_blocks` (QS8-496, 0276). Die tabel
+    //    stond hierboven in REGISTER met de reden *"begrensd door het aantal
+    //    mensen dat je kunt noemen"* — en die reden verviel toen `zoek_mensen()`
+    //    (QS8-476, 0272) er tot vijftig id's per aanroep uit begon te geven. De
+    //    regel is daarom weggehaald en niet herschreven: hij bewaakte niets meer.
     expect(
       gevonden.filter((t) => t.plafond).length,
       'het aantal groeibare tabellen mét plafond is veranderd',
-    ).toBe(16);
+    ).toBe(18);
   }, 60_000);
 
   it('en push_tokens zit er met een plafond bij — de aanleiding van dit bestand', () => {

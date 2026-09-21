@@ -137,13 +137,26 @@ describe.skipIf(!beschikbaar)('elke dagteller heeft een rem', () => {
     //    aansloeg. Komt er een teller bij, dan hoort dit getal mee te bewegen —
     //    en dan kijkt er iemand naar of er ook een rem bij hoort.
     //
-    // ⚠️ 📏 **En dat werkte, twee keer op rij.** 0214 (QS8-369) zette de
-    //    vijftiende teller op `push_tokens` en 0217 (QS8-374) de zestiende op
-    //    `group_events`; beide keren was deze regel het enige dat erover begon —
-    //    rood op 14 ≠ 15 en op 15 ≠ 16 — terwijl de test hierboven groen bleef
-    //    omdat de rem er meteen bij zat. Precies de handeling waar hij voor
-    //    bedoeld is: een mens die naar de nieuwe teller kijkt en vraagt of er
-    //    een rem bij hoort.
-    expect(aantal, 'het aantal dagtellers is veranderd; hoort er een rem bij?').toBe(16);
+    // ⚠️ 📏 **En dat werkte, drie keer op rij.** 0214 (QS8-369) zette de
+    //    vijftiende teller op `push_tokens`, 0217 (QS8-374) de zestiende op
+    //    `group_events`, en 0246 (QS8-379) de zeventiende op `todo_items`. Elke
+    //    keer was deze regel het enige dat erover begon — rood op 14 ≠ 15,
+    //    15 ≠ 16 en 16 ≠ 17 — terwijl de test hierboven groen bleef omdat de rem
+    //    er meteen bij zat. Precies de handeling waar hij voor bedoeld is: een
+    //    mens die naar de nieuwe teller kijkt en vraagt of er een rem bij hoort.
+    // ⚠️⚠️ **De vierde keer ging het ánders, en dat is de meting die telt.**
+    //    0276 (QS8-496) zette de achttiende teller op `user_blocks`, en de rem
+    //    zat er — anders dan de drie hierboven — **niet** meteen bij. De test
+    //    hierboven werd rood, met `user_blocks (user_blocks_dagplafond)` in de
+    //    melding, en pas daardoor is `rem_blokkades()` er gekomen. 📏 Dit
+    //    bestand heeft dus één keer gevangen waar het voor geschreven is in
+    //    plaats van alleen meegeteld — en dat is geen ijking die iemand
+    //    opgevoerd heeft, maar een gat dat er echt in zat.
+    //
+    //    ⚠️ De teller heette bovendien eerst `user_blocks_dagplafond`, naar de
+    //    tábel, waar de zeventien anderen het domeinwoord dragen. De koppeling
+    //    hier loopt over die naam, dus met de tabelnaam had de rem nooit aan
+    //    zijn teller vastgezeten — hij heet nu `blokkades_dagplafond`.
+    expect(aantal, 'het aantal dagtellers is veranderd; hoort er een rem bij?').toBe(18);
   }, 60_000);
 });

@@ -35,7 +35,39 @@ export type { Resultaat };
  *    kunt.
  */
 
-export type Commitment = Tables<'commitments'>;
+/**
+ * ⚠️ **Een `Pick` en niet de hele rij, en dat volgt de kolomgrant.** Sinds
+ *    `0280` staat de SELECT-grant op `commitments` per kolom en ligt `tz`
+ *    erbuiten — 📏 gemeten op productie: `authenticated` leest precies deze tien
+ *    kolommen en verder niets. Elke `.select()` hieronder noemt dezelfde lijst,
+ *    want een `*` geeft `42501`.
+ *
+ * ⚠️ De generator spiegelt kólommen en geen kolomgrants (`ENGINEER-REVIEW.md`,
+ *    rij 09-09-2026), dus `Tables<'commitments'>` belooft een veld dat deze
+ *    client nooit binnenkrijgt. Dát verschil hoort hier en niet in
+ *    `database.types.correcties.ts`: daar staat wat de generator niet kán weten,
+ *    hier staat wat déze client mag.
+ *
+ * ⚠️⚠️ **`Pick` en niet `Omit<…, 'tz'>`, en dat is niet hetzelfde.** Een grant is
+ *    een opsomming; `Omit` is een uitsluiting. Komt er ooit een kolom bij
+ *    `commitments` die níét in de grant komt, dan krijgt dit type hem er
+ *    stilzwijgend bij — niet-optioneel getypeerd, `undefined` op runtime, want de
+ *    `.select()` hieronder vraagt hem niet op. Met een `Pick` is die kolom er
+ *    gewoon niet. Bevinding van de security-ronde op QS8-569.
+ */
+export type Commitment = Pick<
+  Tables<'commitments'>,
+  | 'id'
+  | 'goal_id'
+  | 'type'
+  | 'body'
+  | 'image_url'
+  | 'beneficiary_group_id'
+  | 'beneficiary_user_id'
+  | 'status'
+  | 'confirmed_at'
+  | 'created_at'
+>;
 export type CommitmentGebeurtenis = Tables<'commitment_events'>;
 
 
@@ -82,7 +114,11 @@ export async function fetchGetuigenissen(): Promise<readonly Getuigenis[]> {
 export async function fetchCommitments(goalId: string): Promise<readonly Commitment[]> {
   const { data, error } = await supabase()
     .from('commitments')
-    .select('*')
+    // ⚠️ Geen `select('*')`: sinds 0280 is de SELECT-grant op `commitments`
+    //    per kolom en ligt `tz` erbuiten — de begunstigde groep leest deze rij
+    //    mee zodra een straf verschuldigd wordt. PostgREST geeft bij een `*`
+    //    dan 42501 en niet stilzwijgend minder kolommen.
+    .select('id, goal_id, type, body, image_url, beneficiary_group_id, beneficiary_user_id, status, confirmed_at, created_at')
     .eq('goal_id', goalId)
     .order('created_at', { ascending: true });
 
@@ -312,7 +348,7 @@ async function maak(
       // `status` staat er bewust niet bij. De database staat alleen 'set' toe
       // bij een insert (0006); meesturen zou suggereren dat er iets te kiezen is.
     })
-    .select('*')
+    .select('id, goal_id, type, body, image_url, beneficiary_group_id, beneficiary_user_id, status, confirmed_at, created_at')
     .single();
 
   if (error) {
@@ -385,4 +421,70 @@ export async function fetchCommitmentSpoor(
   }
 
   return data ?? [];
+}
+
+/**
+ * Een verschuldigde straf weer bedienbaar maken nadat de getuige verdween —
+ * QS8-333, migratie 0244.
+ *
+ * ⚠️ **Waarom dit een RPC is en geen update.** De getuige staat in
+ *    `beneficiary_user_id`, en die kolom zit voor geen enkele client in de
+ *    UPDATE-grant: `grant update (body, image_url, status)`. Een policy
+ *    verruimen helpt daar niet — RLS kan geen kolommen beperken, dus de grant is
+ *    de grendel en niet de policy. En `resolved` valt buiten de `with_check` van
+ *    `commitments_update`, dus afwikkelen kon vanaf de client sowieso niet.
+ *
+ * ⚠️ **`bevestigd` is geen formaliteit.** Afwikkelen laat een commitment device
+ *    uitgaan, en domeinregel 5 zegt dat dat nooit stilzwijgend gebeurt. De
+ *    server weigert met `niet_bevestigd` als het scherm de bevestiging overslaat.
+ *
+ * ⚠️ **De server weigert in zes gevallen** en het scherm hoort ze niet na te
+ *    bouwen: niet ingelogd, niet van jou, geen straf, niet verschuldigd, er is
+ *    nog een begunstigde, en een getuige buiten je groepen of jezelf. De reden
+ *    komt terug in `reason`.
+ */
+export async function herstelStuurlozeStraf(
+  commitmentId: string,
+  actie: 'nieuwe_getuige' | 'afwikkelen',
+  opties: { readonly getuige?: string; readonly bevestigd?: boolean } = {},
+): Promise<Resultaat<true>> {
+  // ⚠️ `p_getuige` wordt alleen meegestuurd als hij er is. `exactOptionalPropertyTypes`
+  //    staat aan, en een expliciete `undefined` is iets anders dan een weggelaten
+  //    veld — PostgREST zou er `null` van maken en de servertak `getuige_ontbreekt`
+  //    raken in plaats van de default.
+  const argumenten = {
+    p_commitment_id: commitmentId,
+    p_actie: actie,
+    p_bevestigd: opties.bevestigd ?? false,
+    ...(opties.getuige === undefined ? {} : { p_getuige: opties.getuige }),
+  };
+
+  const { data, error } = await supabase().rpc('herstel_stuurloze_straf', argumenten);
+
+  if (error) {
+    // ⚠️ **Geen `code: error.code` erbij**, en dat is geen weglating maar de regel
+    //    van `tests/beloftes/foutcode-uit-een-bron.test.ts`: `beschrijfFout()`
+    //    zet de code al in de melding, en een tweede exemplaar in de context is
+    //    dezelfde waarde langs een tweede weg. Deze regel is er tijdens het
+    //    bijtrekken op `main` bij gekomen; hij stond hier al vóór die regel.
+    reportError(error, 'commitments.herstel');
+    return { ok: false, melding: t('commitment.fout.herstel') };
+  }
+
+  const uitkomst = (data ?? {}) as { ok?: boolean; reason?: string };
+
+  if (uitkomst.ok !== true) {
+    return { ok: false, melding: herstelMelding(uitkomst.reason) };
+  }
+
+  return { ok: true, waarde: true };
+}
+
+/** De melding per weigering van `herstel_stuurloze_straf()`. */
+function herstelMelding(reden: string | undefined): string {
+  if (reden === 'heeft_nog_een_begunstigde') return t('commitment.herstel.heeft_getuige');
+  if (reden === 'niet_verschuldigd') return t('commitment.herstel.niet_verschuldigd');
+  if (reden === 'geen_groepsgenoot') return t('commitment.herstel.geen_groepsgenoot');
+  if (reden === 'niet_jezelf') return t('commitment.herstel.niet_jezelf');
+  return t('commitment.fout.herstel');
 }

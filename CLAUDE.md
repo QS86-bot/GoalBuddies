@@ -68,11 +68,49 @@ het afsluiten van een issue of Linear en de documenten hetzelfde zeggen.
   is dat er **op één dag drie keer hetzelfde issue gebouwd is** — QS8-287,
   QS8-286 en QS8-214, elke keer allebei helemaal af.
 
+  ⚠️⚠️ **Hij leest twee bronnen sinds 13-09-2026 (QS8-449), en ze wegen
+  verschillend.** Een branch op de remote betekent *hier zit iemand nu* en
+  weigert hard. Een **gelande PR op `main`** betekent *hier is werk geweest* en
+  weigert deze keer **zonder te pushen** — met `--vervolg` als expliciete uitweg,
+  want er zijn issues die terecht openstaan nadat er werk voor geland is
+  (QS8-216, QS8-243, QS8-433).
+
+  De aanleiding is dat de branchlijst een **neveneffect** is en geen eigenschap:
+  ze antwoordt op *"zit hier iemand"*, en werd gelezen als antwoord op *"is dit
+  al gebouwd"*. 📏 Van QS8-437 en QS8-438 was de branch na de merge opgeruimd, en
+  toen gaf de claim allebei vrij — twee keer een claim-commit op een issue dat af
+  was. **Hoe netter er opgeruimd wordt, hoe vaker dat gebeurt.** Dat is het
+  spiegelbeeld van QS8-240, waar een branch die niet weg kán juist bezetting
+  voorwendt die er niet is.
+
+  ⚠️ **En de reden dat het een rem werd en geen melding:** QS8-411 vond de fout
+  allebei de keren, maar die controle komt ná de push die de schade maakt — en
+  een cloudsessie krijgt een claim-commit niet meer weg. Uitleg in
+  `docs/decisions/2026-09-13-een-opgeruimde-branch-is-geen-vrij-issue.md`.
+
   ⚠️ **Het issue op In Progress zetten is géén claim gebleken.** Bij QS8-214 is
   dat gedáán, vóór de eerste regel code, en de andere sessie begon daarna
   alsnog. Wat wél gelezen wordt is de remote branchlijst, want daar leunen
   `migratie:nieuw` en `migraties:controle` toch al op. Zet het issue dus
   *ook* op In Progress, maar vertrouw daar niet op.
+
+  ⚠️⚠️ **Lees het issue én zijn reacties, en dat is sinds 10-09-2026 (QS8-411)
+  een regel en geen vanzelfsprekendheid.** 📏 Op QS8-408 stond een besluit van
+  Quinten in een **reactie**, geplaatst vóór de eerste regel code, en dat ging
+  over meer dan het getal waar het over leek te gaan — het schreef ook de vórm
+  voor (*"geen eigen constante en geen tweede knop"*). De bouwsessie las bij het
+  claimen de beschrijving, bouwde het tegenovergestelde, **verdedigde** die keuze
+  in de migratiekop en het beslisdocument, en zette er een test onder die de
+  verkeerde vorm vastlegde. Het is gemerged.
+
+  De les is niet "beter opletten" maar waar besluiten belanden: bij een issue
+  dat dagen openstaat terwijl er parallel gewerkt wordt, is de reactie precies de
+  plek waar het antwoord op een openstaande vraag landt — de beschrijving is dan
+  de oudste tekst die er staat.
+
+  ⚠️ **En een afwijking die je onderbouwt is duurder dan een die je vergeet.**
+  Een omissie valt op; een uitgeschreven argument leest de volgende persoon als
+  een reden om er niet aan te twijfelen.
 
   ⚠️ **En een claim is een afspraak en geen slot.** Niets in git houdt een
   tweede branch tegen; dit werkt alleen zolang beide kanten kijken. Vindt de
@@ -109,6 +147,107 @@ Er is niemand die jouw werk nakijkt.
 3. Documenteer elke niet-vanzelfsprekende keuze in `docs/decisions/NNN-titel.md`.
 4. Houd `docs/ENGINEER-REVIEW.md` bij als agenda voor november.
 
+## Agentsturing naar risico — vastgelegd 17-09-2026
+
+> Overgenomen uit de *Installed agents guidance* van het Linear-project, zodat
+> hij ook geldt voor een sessie die Linear niet leest.
+
+⚠️⚠️ **Eén zin uit die guidance is hier níet overgenomen, en dat is met opzet.**
+De aanhef beschrijft een project in *"vroege bouwfase, codebase moet nog
+grotendeels ontstaan"*. 📏 Gemeten op 17-09-2026: **290** migraties, **65**
+controles, **208** beslisdocumenten, **443** testbestanden, **350**
+bronbestanden, productie live op `0282`, en dit bestand zelf telt er **1062**.
+
+Dat verschil is geen muggenzifterij. Wie deze sectie over een half jaar leest en
+er *"greenfield, snelheid gaat voor"* uit meeneemt, leest de rest van dit bestand
+met de verkeerde bril — en dit project heeft op 17-09 tweemaal betaald voor een
+kop die een gemeten onwaarheid droeg (QS8-525 en QS8-529). **De prioriteiten
+hieronder gelden onverkort; de toestandsbeschrijving eromheen is vervangen door
+de meting.**
+
+⚠️ **De snelheidsafweging leest hier dus als een verhouding en niet als een
+vrijbrief.** "Lichter" betekent: lichter dan de drie strenge gebieden hieronder —
+niet lichter dan de onwrikbare regels, die geen risicoschaal kennen.
+
+### 1. Modelkeuze naar risico
+
+| werk | model |
+| -- | -- |
+| scaffolding, UI-schermen, gamification | het lichtste dat het aankan |
+| **datamodel, AI-decompositielaag, commitment-device en penalty's, auth** | het zwaarste |
+| uitvoering nádat die keuze gemaakt is | weer het lichtste |
+
+⚠️ Het zware model is voor de **keuze**, niet voor het typen dat erop volgt. Een
+migratie uitschrijven waarvan de vorm al vastligt, is uitvoering.
+
+⚠️ **Vermijd `Auto` als standaard.** Dat gold vanaf "meer dan een paar bestanden"
+en is hier dus allang voorbij.
+
+### 2. Eén ronde per issue
+
+**Schrijf vóór delegatie op wat "klaar" betekent.** Dat is hier geen nieuwe
+regel maar de acceptatiecriteria die elk issue in dit project al draagt; nieuw is
+dat het ook geldt voor klein werk.
+
+⚠️ **Eén afgebakend issue per feature, niet één sessie op een heel
+PRD-hoofdstuk.** Dat sluit aan op de regel die er al staat: één branch per
+Linear-issue, en raakt je werk meerdere issues, dan zijn het meerdere branches en
+meerdere PR's — zie *Versiebeheer*.
+
+### 3. Review in verhouding tot risico
+
+| wat | review |
+| -- | -- |
+| UI, gamification, cosmetisch | één lichte controle volstaat |
+| **geld en penalty's** | volledige, kritische review |
+| **gebruikersdata tussen leden van een buddy-groep** | idem |
+| **de AI-decompositielogica** | idem |
+
+⚠️ **Dit versoepelt onwrikbare regel 19 niet, het bevestigt hem.** Die deelt de
+reviewagents al naar risico in: `security-reviewer` direct bij alles wat auth,
+RLS, punten, goedkeuring, commitments of een nieuw groepszichtbaar oppervlak
+raakt; `code-critic` en `critical-user` één keer per milestone. De drie strenge
+gebieden hierboven vallen alle drie onder die eerste categorie.
+
+⚠️ **"Automatische tests vanaf de eerste sprint"** is hier al onwrikbare regel 18
+en de Solo-fase-regel *tests zijn de enige review die bestaat*. Het lichte pad
+van rij 1 gaat over de **review**, nooit over de tests.
+
+### 4. Sandboxtijd
+
+**Rapporteer een aanname expliciet in plaats van door te blijven verifiëren in
+een omgeving die het antwoord niet kan geven.** Een integratie die nog niet
+bestaat, een productiesleutel die er niet is, een platform dat hier niet draait —
+dat zijn geen dingen om op door te meten.
+
+⚠️⚠️ **Maar "ik kan het niet meten" is iets anders dan "het is in orde", en dat
+verschil is hier een grendel.** De poort houdt *ongemeten* en *groen* uit elkaar
+en faalt op allebei; acht controles staan om deze reden standaard op ongemeten in
+een cloudsessie. Een aanname rapporteren betekent hem **als aanname** opschrijven,
+met wat je wél gemeten hebt ernaast.
+
+### 5. Wat nooit versoepelt
+
+1. **Penalty- en betaallogica: geen ongeteste code richting een branch die naar
+   productie kan.** Sluit aan op domeinregel 5 en 11, en op grens 1 van de
+   *Beslisbevoegdheid* — een commitment device is precies "wat een gebruiker als
+   consequentie beloofd is", en dat is een beslissing voor Quinten.
+2. **Privacy tussen buddy-groepen: nooit aannemen dat toegang afgeschermd is —
+   altijd expliciet toetsen.** Dat is domeinregel 7 met zijn twee vragen, plus de
+   les die dit project betaald heeft: **de regel is pas afgedwongen als de
+   dátabase hem afdwingt**, en RLS kan geen kolommen beperken.
+3. **Nieuwe architecturale keuzes in een besluitenlog.** `docs/decisions/NNN-*.md`,
+   vanaf de eerste dag en nog steeds.
+
+### 6. Rapporteren
+
+Kort, en in deze volgorde: **wat gebouwd, wat getest, wat een aanname is, wat de
+volgende afgebakende stap is.**
+
+⚠️ Het derde punt is het punt. Een verslag dat alleen zegt wat er gebouwd en
+getest is, laat de lezer raden welk deel gemeten is en welk deel aangenomen —
+en dat is de klasse fout waar dit hele bestand over gaat.
+
 ## ⚠️ Greenfield — de eerste beslissingen zijn de duurste
 Voordat er één feature gebouwd wordt:
 1. **Datamodel eerst, volledig, met RLS.** Doelen, buddy-groepen, lidmaatschappen,
@@ -126,9 +265,38 @@ Voordat er één feature gebouwd wordt:
 - Werkvoorraad: Linear
 - Visuele richting: **het Q-Projects navy-stelsel**, gedeeld met de Status Tracker
   (`tracker.q-projects.tech`), thema's `navy` en `navy-licht`. Navy is de
-  ondergrond, goud het accent. **Gebruik uitsluitend Q-Projects-kleurstellingen** —
-  geen zelfbedachte kleuren erbij. Volledige tokenset in Linear QS8-87.
+  ondergrond, goud het accent. **Gebruik Q-Projects-kleurstellingen** — geen
+  zelfbedachte kleuren erbij. Volledige tokenset in Linear QS8-87.
   *(Vervangt de emerald-richting uit PRD 10.1, gewijzigd 15-08-2026.)*
+
+  ⚠️ **Eén benoemde uitzondering sinds 14-09-2026 (QS8-470, besluit 4 van
+  QS8-468): het heldenpalet.** De zes helden dragen elk een kleurenpaar uit
+  `docs/helden-codex.html`, en 📏 geen van die twaalf waarden staat in de
+  Q-Projects-tokenset. Ze staan als `heldkleurenNavy` en `heldkleurenNavyLight`
+  in `src/shared/theme/tokens.ts`.
+
+  **De uitzondering geldt uitsluitend voor heldenoppervlakken.** Krijgt een knop,
+  kaart of badge die niets met een held te maken heeft een heldenkleur, dan is de
+  regel niet verruimd maar afgeschaft — en dat is precies hoe een standaard
+  verschuift zonder dat iemand het besloten heeft. Bij twijfel is het antwoord
+  navy.
+
+  ⚠️ **`primair` is een vulling en `accent` een voorgrond**, en die twee worden
+  verschillend getoetst. 📏 Elke `primair` zakt op navy onder de contrastdrempel
+  (1.08–2.94) en dat is geen fout: hij tint de badge, hij ís geen lijn. Een
+  contrasteis op `primair` tegen de schermgrond toetst iets wat nooit beloofd is.
+
+  ⚠️⚠️ **De zes helden zijn één kleurfamilie en `MIN_AFSTAND` geldt hier niet.**
+  📏 De onderlinge afstand van de accenten is **1.08** waar die drempel 10 is.
+  Codexprincipe 01 wil dat zo: *"één systeem, zes gezichten — alleen het
+  kleurenpaar en symbool verschillen"*. Het **symbool** draagt de identiteit van
+  een held, de kleur zijn stemming. Zes onderscheidbare kleuren zijn wél haalbaar
+  (📏 maximaal 16.07 op navy, 19.35 op licht), maar alleen door twee helden naar
+  bijna-wit en grijs te duwen of door de tinten los te laten waar de namen en
+  symbolen op gebouwd zijn; dat is op 14-09-2026 mét die meting voorgelegd en
+  afgewezen. `src/shared/theme/heldkleuren.test.ts` legt de gemeten afstand vast
+  als bodem, zodat "één familie" een keuze blijft en geen grens die stil
+  verschuift.
 
 ### Live-adressen
 | Omgeving | Adres |
@@ -263,6 +431,24 @@ Voordat er één feature gebouwd wordt:
      notitie of niveau.** Een bericht is een onveranderlijke kopie die de
      autorisatie overleeft waaronder hij gemaakt is; ontkoppelen trekt de
      toestemming in, maar wist geen chat. Uitleg in beslisdocument 002 §3.
+
+     ⚠️ **Eén benoemde uitzondering sinds 08-09-2026 (QS8-335, migratie 0221):
+     accountverwijdering.** Wie zijn account opzegt, neemt de systeemberichten
+     over zijn eigen **commitments** mee — `commitment_due` en
+     `commitment_unlocked` waarvan hij het onderwerp is. Verder niets: zijn
+     gewone berichten blijven staan met een lege afzender, en `goal_completed`
+     blijft ook staan. Besluit van Quinten; de afweging staat in
+     `docs/decisions/2026-09-08-wat-een-straf-overleeft.md` §4.
+
+     *Waarom die uitzondering er is:* zonder haar was het geen wisrecht maar een
+     halve wissing. De cascade wiste het commitment en zijn auditspoor, en het
+     bericht bleef staan — mét de naam als platte tekst erin, want die wordt bij
+     het plaatsen ingebakken. De groep hield de bewering en verloor de
+     administratie die haar kon staven. 📏 Gemeten in QS8-335.
+
+     **Verleg die grens niet als bijvangst.** Elk ander systeembericht valt
+     onverkort onder de regel hierboven, en er weer een uit halen is een besluit
+     met dezelfde zwaarte als dit.
    - **⚠️ Nooit `REPLICA IDENTITY FULL` op een tabel in de realtime-publicatie**
      (`completions`, `weekly_goals`, `chat_messages`). Supabase past RLS toe op
      INSERT en UPDATE, maar **niet op DELETE**: met `FULL` gaat bij een
@@ -446,17 +632,38 @@ docs/decisions/
 
     | Waar | Wat er geldt | Wie het afdwingt |
     |---|---|---|
-    | overal in `src/`, `app/` en `scripts/` | nesting <3 | `max-depth` in `eslint.config.js` |
+    | overal in `src/`, `app/`, `scripts/` en `supabase/functions/` | nesting <3 | `max-depth` in `eslint.config.js` |
     | logica: `src/` buiten `shared/ui` | <50 regels | `max-lines-per-function` |
     | componenten: `src/shared/ui` | een plafond dat vandaag bindt | `max-lines-per-function` |
     | de schermlaag: `app/` | het **aantal** functies boven de 50 mag alleen dalen | `npm run regel15:controle` |
     | de scripts: `scripts/` | idem — het **aantal** mag alleen dalen | `npm run regel15:controle` |
+    | de Edge Functions: `supabase/functions/` | idem — het **aantal** mag alleen dalen | `npm run regel15:controle` |
 
     ⚠️ **`scripts/` viel tot 06-09-2026 helemaal buiten de linter** (QS8-291):
     `eslint.config.js` dekte alleen `**/*.ts(x)` en die map is `.mjs`, dus 57
     bestanden en 14.170 regels zagen geen enkele coderegel — precies de map waar
     de grendels van dit project wonen. De nesting is er hard aan gegaan; de
     vijftig staat er als ratel, om dezelfde reden als in `app/`.
+
+    ⚠️⚠️ **En `supabase/functions/` viel tot 11-09-2026 buiten élke coderegel**
+    (QS8-422) — `eslint.config.js` sloot `supabase/*` uit en `deno lint` kent geen
+    complexiteitsregels. 📏 Bij het aanzetten: **22** nesting-overtredingen, en
+    **achttien** ervan had niemand geschreven. Het waren twee lussen boven
+    elkaar — `for await (const pagina of paginas(…))` met `for (const rij of
+    pagina)` erin — waarvan het lichaam bij het invoeren van de paginering nooit
+    herschreven is, dus de binnenste lus stond op dezelfde inspringing als de
+    buitenste. **Zet je een lintregel voor het eerst op een map aan, dan meldt hij
+    niet alleen wat er fout aan is maar ook wat er per ongeluk in staat** — en
+    hier was dat vier vijfde van het totaal. `rijen()` in `src/shared/bladeren`
+    haalt die laag weg.
+
+    ⚠️ **Tel de vijftig met dezelfde opties als de lintregel: `skipBlankLines` en
+    `skipComments`.** 📏 Zonder die twee telt dezelfde map er tien boven de
+    vijftig met een langste van 710; mét, zoals overal elders in dit project, zijn
+    het er zes met een langste van 282. Een plafond in een andere eenheid dan de
+    lintregel is een plafond dat de volgende meting niet terugvindt — zelfde
+    klasse als een teller in grafemen bij een grens in codepunten. Uitleg in
+    `docs/decisions/2026-09-11-de-nesting-die-erbij-kwam-zonder-dat-iemand-hem-schreef.md`.
 
     ⚠️ **Een component wordt anders geteld dan een functie, en dat is geen
     uitvlucht.** Het lichaam van een React-component is grotendeels JSX: één
@@ -476,6 +683,25 @@ docs/decisions/
     vorm als `levend:controle`.
 16. Elke async view heeft loading-, error- én empty-state.
 
+⚠️⚠️ **Een gegenereerd bestand werk je niet met de hand bij — vastgelegd
+21-09-2026 (QS8-569).** `src/lib/database.types.ts` is een afschrift dat
+`npm run types:db` in zijn geheel overschrijft. Klopt het niet met de database,
+dan is de vraag wélke van twee dingen er aan de hand is:
+
+- **het loopt achter** → hergenereren, en verder niets;
+- **de generator kán het niet weten** — een NOT NULL-kolom zonder `DEFAULT` die
+  een trigger vult, een functieargument dat NULL aanneemt, een
+  `RETURNS TABLE`-kolom die NULL kan zijn → dan hoort de correctie in
+  `src/lib/database.types.correcties.ts`, met de meting erbij, en onder de
+  tweezijdige toets in `tests/beloftes/typecorrecties.test.ts`.
+
+⚠️ **En de reden dat dit een regel is en geen gewoonte:** hij stond sinds `0136`
+al in het commentaar van `src/modules/ai/jobs.ts`, woordelijk en juist. 📏 Er
+kwamen in dat bestand tóch **veertien** handgeschreven correcties bij, over acht
+functies en één view, en ze zijn bij de eerste hergeneratie allemaal verdwenen
+zonder dat er iets rood van werd. Uitleg in
+`docs/decisions/2026-09-21-de-correcties-stonden-in-het-bestand-dat-overschreven-wordt.md`.
+
 ### Proces
 17. Elke feature begint met `spec-planner`.
 18. Elke feature eindigt met tests die de acceptatiecriteria dekken — en
@@ -490,6 +716,39 @@ docs/decisions/
     één, dan toetst de RLS-suite daar een ánder schema dan productie — groen
     zonder iets te bewijzen.
 
+    ⚠️⚠️ **En de regel geldt niet alleen voor migraties — beslist 10-09-2026
+    (QS8-209).** Een eenmalig hulpscript dat repobestanden herschrijft valt in
+    dezelfde categorie: de standaardreactie op een half gelukte run is *"draai
+    hem opnieuw"*, en dan is niet-idempotent een dubbele schrijfactie. 📏 Dat is
+    één keer gebeurd — bij QS8-115 liep een hulpscript twee keer door een fout
+    halverwege en kwam het catalogusblok dubbel in `nl.ts` en `en.ts`.
+
+    **Maar de eis is niet "elk wegwerpscript moet idempotent zijn".** Dat is een
+    gewoonte die niemand afdwingt, en de vorm die dit project duur betaalt. De eis
+    is scherper en hij is te toetsen:
+
+    > **Wat een hulpscript schrijft, staat onder een controle die rood wordt als
+    > het script twee keer draait.**
+
+    Is die er, dan mag het script wegwerpcode zijn — een tweede run kost je een
+    rode build en geen zoektocht. Is die er níet, dan hoort het script idempotent
+    te zijn, want dan is er niets anders dat je opvangt.
+
+    📏 **Voor het geval dat deze regel opleverde is dat vandaag waar, en het is
+    met de hand gemeten en niet aangenomen** (10-09-2026): een dubbele sleutel in
+    `src/shared/i18n/nl.ts` met de hand teruggezet geeft **allebei** de netten —
+    `tsc` met `TS1117` en ESLint met `no-dupe-keys`. Twee onafhankelijke, en
+    structureel: ze gelden voor elk object-literal in elk `.ts`-bestand.
+
+    ⚠️ **Wat er toevallig aan was, was juist de téstsuite.** Een dubbele sleutel
+    die dezelfde parameters draagt laat alle tests groen; de breuk van QS8-115
+    werd alleen rood doordat het duplicaat toevallig een `{naam}` liet vallen.
+    Reken dus niet op de tests voor deze klasse — reken op `tsc` en de linter.
+
+    ⚠️ Dit is een besluit onder *Beslisbevoegdheid* en geen wet: de
+    engineer-review in november mag hem omgooien. Wat hij vervangt is een open
+    vraag die er sinds 22-08 stond.
+
     ⚠️ **"Idempotent" betekent: idempotent tegen de toestand waarvoor de migratie
     geschreven is.** Verandert een latere migratie de vorm van hetzelfde object,
     dan is de botsing bij herhaling correct gedrag en geen defect — die weigering
@@ -498,6 +757,21 @@ docs/decisions/
     draait mee in `npm test`; hij vindt de echte fouten en laat die tweede klasse
     met rust. Meting en beide klassen in
     `docs/decisions/2026-08-28-idempotent-betekent-niet-altijd-doorlaten.md`.
+
+    ⚠️⚠️ **En sinds 10-09-2026 wordt die belofte ook echt uitgevoerd**
+    (QS8-413): `npm run idempotent:controle` speelt élke migratie **direct na
+    zichzelf** nog een keer af op een eigen lege database. Dat "direct" is het
+    ontwerp en geen detail — de uitzonderingsklasse hierboven kan zo niet
+    optreden, want de latere migratie heeft nog niet gedraaid. 📏 Gemeten:
+    naïef alles achteraf herhalen meldt **14** bestanden, deze vorm **0**.
+
+    Aanleiding is 0252: twee constraints die van elkaar afhingen, elk mét zijn
+    eigen `drop … if exists`, en tóch een botsing bij de tweede run omdat de
+    unieke constraint niet weg kon zolang de foreign key eraan hing. 📏 Met die
+    oude vorm teruggezet blijft de **statische** grendel groen op 23 tests. Een
+    per-object-regel kan een volgordefout **tussen** twee objecten niet zien;
+    dat is een eigenschap van het geheel. Uitleg in
+    `docs/decisions/2026-09-10-een-migratie-die-op-zichzelf-botst.md`.
 
     ⚠️ **De drop-uitzondering leest de handtekening en niet alleen de naam.** Een
     migratie die de vorm van een functie verandert móet hem eerst droppen, want
@@ -563,6 +837,19 @@ precies waar een refactor, een migratie of een tweede schrijver langskomt.
    deze klasse niet: die kijkt naar databasefuncties zonder aanroeper, één laag
    lager. Een route die er met reden geen ingang heeft, staat met zijn meting in
    `ZONDER_PUSH` in dat script — en dat register is smal bedoeld.
+
+   ⚠️ **Er zijn drie sporten en ze dekken elk een andere laag** (QS8-194):
+   `schermingang:controle` de route, `exports:controle` de TypeScript-functie
+   zonder pad naar een scherm of geplande taak, en `keten:controle` de
+   databasefunctie, trigger of CHECK-waarde zonder aanroeper. Alle drie dragen
+   een register met een reden per rij, en alle drie zijn met de hand rood
+   gemaakt — de metingen staan bij de dossierrij van 21-08-2026.
+
+   ⚠️⚠️ **Wat geen van de drie vindt, en dat is de reden dat vraag 5 een vraag
+   blijft:** een keten die op wáárde-niveau bínnen een functie doodloopt. EPIC 9
+   hád een aanroeper — een trigger die netjes aan een tabel hing en wachtte op
+   een status die niets ooit zette. Van de vijf historische gevallen vangen de
+   scripts er vier. **De vijfde is handwerk, en dat blijft zo.**
 6. **Tilt deze feature een aanname van "er is er altijd precies één" naar "er
    kunnen er meer zijn"?** Dan staat de fout er waarschijnlijk al en heeft niemand
    hem kunnen zien — er is dan geen test die de belofte kón raken. Grep op `[0]`,
@@ -574,6 +861,18 @@ met de hand te breken en te kijken of hij rood wordt.** Dat is in dit project de
 standaard voor élke nieuwe controle en elke test die een regel bewaakt — en het
 is dezelfde gedachte als bij de secret-scan in de deploy: eentje die nog nooit
 rood is geweest, is een aanname.
+
+⚠️⚠️ **En een meting die op "er werd iets rood" leunt, moet weten wát er rood
+werd — en of dat er vóór de meting al was.** Een instrument dat een grendel ijkt
+door hem te breken, beantwoordt in werkelijkheid *"is de toestand na mijn mutatie
+anders dan ervoor"*, en dat is niet te beantwoorden zonder "ervoor" te meten.
+📏 Dat kostte `rls:dekking` op 10-09-2026 een uitslag die precies omkeerde toen
+er één dagteller volliep, zonder dat er iets aan de code veranderd was — en de
+gevaarlijke richting is dat een gat er dan uit komt als bewaakt. ⚠️ Meet je
+"ervoor" één keer aan het begin en één keer aan het eind, dan vind je daarmee
+niet de drift die zíchzelf herstelt; die grens hoort je instrument op te
+schrijven in plaats van hem te overschreeuwen. Uitleg in
+`docs/decisions/2026-09-10-een-rood-is-niet-vanzelf-jouw-rood.md`.
 
 ⚠️ **Breek de grendel die de ijking nóemt, niet zomaar iets — anders is de ijking
 zelf de aanname.** Een controle heeft meestal meer dan één grendel achter elkaar,
@@ -594,6 +893,26 @@ is: de tests verhuizen mee en blijven groen, want ze toetsen wat er in het
 bestand staat en niet wat het bestand belóófde. **Loop bij elke verhuizing na
 welke belofte eraan hing en of die nog ergens getoetst wordt.**
 
+⚠️⚠️ **En noem je een grendel bij naam, dan is dat sinds 10-09-2026 een controle**
+(QS8-412): `npm run padverwijzing:controle` wordt rood zodra een bestand een
+repo-pad tussen backticks noemt dat niet bestaat. 📏 Aanleiding: negen bestanden
+noemden een testbestand dat er niet was, en het zuiverste geval was
+`src/shared/ui/Foto.tsx` — dat legde zijn belofte uit, waarschuwde in dezelfde
+kop voor verhuizingen, en wees naar een toets die nooit geschreven is. **Een
+ontbrekende test valt op; een test waarvan in de bron staat dát hij er is, valt
+niet op.** De controle vindt dat de grendel er niet ís; of hij het júíste toetst
+blijft handwerk. Scope, register en de ijking staan in
+`docs/decisions/2026-09-10-een-grendel-die-alleen-in-een-comment-staat.md`.
+
+⚠️⚠️ **Kijk bij een ijking wélke test omvalt, niet dát er een omvalt.** 📏 Bij
+QS8-412 werd de suite rood op een ándere toets dan de grendel die de mutatie
+noemde, en de bedoelde grendel bleef groen — de knip die commentaar uit de bron
+haalt (`\/\/[^\n]*`) at alles op ná de `//` van een URL. Dezelfde knip stond in
+twee testbestanden en was in allebei blind voor die vorm; met
+`const x = 'https://opslag/x'; Linking.openURL(x);` in `Document.tsx` bleef de
+suite groen op eenenzestig tests. **De knip die een controle scherp houdt, is
+zelf een grendel.**
+
 #### Een bevinding die je wegzet, zegt wanneer hij terugkomt (QS8-123)
 
 Elke rij in `docs/ENGINEER-REVIEW.md` met risico **Laag** draagt de zin
@@ -606,6 +925,17 @@ EPIC 12") werkte, maar noemde een feature die al gepland was. Dat kon niet bij d
 rij van 17-08 over het ontkoppelen: QS8-110/optie C bestond toen nog niet als
 plan. Wat je wél altijd kunt opschrijven is waaróm iets nú laag is. Vervalt die
 aanname, dan is het geen Laag meer.
+
+⚠️⚠️ **Een `|` in een tabelcel schrijf je als `\|`, óók binnen backticks.**
+GFM knipt een tabelrij op élke niet-ontsnapte streep — een codespan wordt pas ná
+het knippen herkend — en de overtollige cellen vallen weg aan het **eind**, dus
+precies op de risicokolom. 📏 Op 10-09-2026 (QS8-415) renderden **18** rijen
+iets anders dan hun risico en verloren er **3** de tekst erachter, terwijl de
+brontekst overal klopte. `review:controle` knipt sinds dat issue zoals GFM
+knipt; hij deed het daarvóór van rechts naar links, mét een comment dat een cel
+nu eenmaal een streep kan dragen. **Een controle die een lastig geval omzeilt in
+plaats van het te melden, bewaakt vanaf dat moment de omweg en niet de belofte.**
+Uitleg in `docs/decisions/2026-09-10-de-kolom-die-de-lezer-niet-ziet.md`.
 
 ⚠️ **Vraag bij elke nieuwe beslissing die op een bestaande primitieve handeling
 leunt: staat daar een weggelegde bevinding over?** Een rij die terecht Laag was
@@ -633,6 +963,23 @@ npm run build
 controle die niet meegedraaid was: de controle deed precies zijn werk, de poort
 was de inschatting van een mens over zijn eigen werk.
 
+⚠️⚠️ **En CI draait ze sinds 10-09-2026 óók allemaal, uit dezelfde lijst**
+(QS8-417). Daarvóór somde `ci.yml` ze met de hand op: 📏 **26 van de 52** stonden
+in geen enkele workflow, waaronder `schermingang:`, `registerdrift:`, `exports:`
+en `hoofdrun:controle`. Dat liep de verkeerde kant op — een nieuwe grendel stond
+automatisch in de poort (een commando dat een mens typt) en automatisch niet in
+CI (dat bij elke push draait). `scripts/ci-controles.mjs --baan repo|database`
+deelt ze nu in vanuit `package.json` en `HEEFT_DATABASE_NODIG`; wat CI niet kan
+draaien staat mét reden in `ZONDER_CI`, en `cidekking:controle` wordt rood zodra
+er weer een handmatige stap naast komt.
+
+⚠️ **De les eronder is breder dan CI:** de rij van 27-08 die dit al eens
+repareerde stond op *opgelost*, en had **acht van de zeventien** instanties
+opgeruimd zonder het mechanisme. **Een reparatie die de instanties opruimt en het
+mechanisme laat staan, groeit terug — en hij doet dat onder een rij die
+"opgelost" zegt.** Uitleg in
+`docs/decisions/2026-09-10-de-poort-ontdekt-en-ci-somt-op.md`.
+
 ⚠️ **Een controle zonder database is niet groen maar *ongemeten*.** De poort houdt
 die twee uit elkaar en faalt op allebei. `functies:controle` en
 `register:controle` printen "OVERGESLAGEN" en geven daarna exitcode 0; wie alleen
@@ -658,6 +1005,21 @@ zesmaal dezelfde vergeten vlag geweest. `psqlArgumenten()` is de enige weg; een
 uitzondering hoort in het register in `tests/scripts/psql-verbinding.test.ts`,
 mét reden. Uitleg in
 `docs/decisions/2026-09-04-geen-database-was-de-verkeerde-reden.md`.
+
+⚠️⚠️ **En dat geldt sinds 10-09-2026 ook voor de testboom** (QS8-414). Dat
+register keek alleen in `scripts/`; de tests roepen `psql` óók aan. 📏 Toen de
+controle er kwam meldde hij er **vijf**, waarvan drie een woordelijke kopie van
+`psqlMetInvoer()` — de vorm van QS8-270 nog een keer. Een handmatige `grep` had
+er één gevonden: vier van de vijf schrijven `execFileSync(` en `'psql'` op
+verschillende regels. **Een regel die je met de hand handhaaft, handhaaf je op
+de vorm die je toevallig intypt.**
+
+De regel is niet *"gebruik `psqlArgumenten()`"* maar *"bouw je eigen aanroep
+niet"*. De twee bomen mogen een eigen standaard hebben — `scripts/` zet `-h`/`-p`
+in de argumenten, `tests/` haalt ze uit `PSQL_OMGEVING` — zolang ze er elk maar
+één hebben. In `tests/` is dat `psqlBasisArgumenten()` uit
+`tests/rls/psql-stack.ts`. Uitleg in
+`docs/decisions/2026-09-10-het-register-keek-de-andere-kant-op.md`.
 
 ⚠️ **Een nieuwe migratie begint met `npm run migratie:nieuw -- "naam"`.** Die
 kijkt naar élke branch die de remote kent en niet alleen naar je eigen map, en hij
@@ -691,6 +1053,24 @@ Mislukt de fetch, dan telt het script dóór — zonder netwerk moet je een migr
 kunnen beginnen — maar noemt hij hoe oud het beeld is. **Het verschil tussen "van
 net" en "van eergisteren" ís het risico**; één tekst voor beide gevallen leest als
 een disclaimer, en die leer je overslaan.
+
+⚠️⚠️ **En dat geldt sinds 12-09-2026 ook voor de controlerende kant — een
+branchmelding is pas een bevinding ná een verse `git fetch --all`** (QS8-435).
+`migraties:controle` fetcht niet en blijft dat niet doen, maar hij noemt vanaf nu
+bij elke **branch**bevinding hoe oud zijn beeld is: vers, ouder dan vijf minuten,
+of nooit gefetcht sinds de kloon — drie gevallen, drie teksten. Voor een gat of
+een duplicaat in je eigen map zegt hij er niets over, want die leest hij van
+schijf.
+
+📏 De aanleiding is dat de vaste zin die er stond — *dit beeld is zo oud als je
+laatste `git fetch`* — precies niets deed: hij stond er ook bij een ref van tien
+seconden oud. Op 11-09-2026 belandde een branchbevinding daardoor op het issue van
+iemand anders terwijl hij al een uur onwaar was; de branch was om 15:03 UTC
+hernummerd en de melding is om 16:13 UTC geschreven, met alleen
+`git fetch origin main` gedraaid. **Voor je eigen nummer maakt een oud beeld niet
+uit — dat sluit aan op je eigen map — maar voor wat je over het werk van een ander
+beweert wel.** Uitleg in
+`docs/decisions/2026-09-12-de-waarschuwing-die-er-altijd-stond.md`.
 
 ⚠️⚠️ **En dragen twee PR's toch hetzelfde nummer: wie als tweede merget,
 hernummert.** Dat is sinds QS8-318 een regel en geen gewoonte. Het venster tussen

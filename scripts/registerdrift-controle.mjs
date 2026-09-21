@@ -52,6 +52,16 @@ export const AANVAARD = [
       'QS8-325 haalde `paused` uit de CHECK op `group_members.status`; er is geen ' +
       'hervatting meer om een sleutel voor te zetten.',
   },
+  {
+    migratie: '0249_vereiste_goedkeuringen_verraadt_geen_lidmaatschap.sql',
+    functie: 'definer_bewaking',
+    sleutel: 'vereiste_goedkeuringen',
+    reden:
+      'QS8-181. De regel stond er met de reden "een revoke breekt de app, er is een toets ' +
+      'binnenin nodig" (QS8-289 deel B). Die toets staat er nu — dezelfde migratie zet hem — ' +
+      'dus de uitzondering dekt geen bezwaar meer. Tak 5 van `definer_bewaking()` werd hier ' +
+      'zelf rood van, en dat is precies waarvoor die tak bestaat.',
+  },
 ];
 
 /**

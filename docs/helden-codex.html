@@ -1,0 +1,520 @@
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;600;700&family=Work+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<title>Helden Codex</title>
+
+<style>
+  :root{
+    --bg: #14161c;
+    --bg-vignette: #0d0e12;
+    --surface: #1c1f27;
+    --surface-raised: #232631;
+    --line: #33363f;
+    --line-soft: #262933;
+    --ink: #f0ede4;
+    --ink-dim: #a8a79c;
+    --ink-faint: #6f7079;
+    --accent: #d9a62e;
+    --accent-soft: rgba(217,166,46,0.14);
+    --shadow: rgba(0,0,0,0.45);
+
+    --wijze-a: #1b2a4a;   --wijze-b: #c9a24b;
+    --strijder-a: #b3211e; --strijder-b: #f2b705;
+    --ontdek-a: #1f6f5c;  --ontdek-b: #e07a34;
+    --bouwer-a: #4b2e83;  --bouwer-b: #b87333;
+    --verzorger-a: #8c2f39; --verzorger-b: #e8a33d;
+    --nar-a: #4a1942;     --nar-b: #d9a62e;
+
+    --font-display: 'Cinzel', 'Iowan Old Style', Georgia, serif;
+    --font-body: 'Work Sans', -apple-system, 'Segoe UI', sans-serif;
+    --font-mono: 'JetBrains Mono', 'SFMono-Regular', Consolas, monospace;
+  }
+
+  *{ box-sizing: border-box; }
+  html{ text-size-adjust: 100%; }
+
+  body{
+    margin: 0;
+    background:
+      radial-gradient(ellipse 900px 500px at 50% -10%, rgba(217,166,46,0.08), transparent 60%),
+      var(--bg);
+    color: var(--ink);
+    font-family: var(--font-body);
+    line-height: 1.55;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  a{ color: var(--accent); }
+
+  .wrap{
+    max-width: 1180px;
+    margin: 0 auto;
+    padding: 5rem 1.5rem 6rem;
+  }
+
+  header.masthead{
+    display: flex;
+    flex-direction: column;
+    gap: 1.1rem;
+    padding-bottom: 3.25rem;
+    margin-bottom: 3.25rem;
+    border-bottom: 1px solid var(--line-soft);
+  }
+
+  .eyebrow{
+    font-family: var(--font-mono);
+    font-size: 0.72rem;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+    color: var(--accent);
+  }
+
+  h1{
+    font-family: var(--font-display);
+    font-weight: 600;
+    font-size: clamp(2.1rem, 4.4vw, 3.2rem);
+    letter-spacing: 0.01em;
+    margin: 0;
+    text-wrap: balance;
+    color: var(--ink);
+  }
+
+  .dek{
+    max-width: 62ch;
+    color: var(--ink-dim);
+    font-size: 1.05rem;
+    margin: 0;
+  }
+
+  .meta-row{
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem 1.2rem;
+    font-family: var(--font-mono);
+    font-size: 0.78rem;
+    color: var(--ink-faint);
+    margin-top: 0.4rem;
+  }
+
+  .meta-row span{ white-space: nowrap; }
+
+  /* ---- hero grid ---- */
+
+  .grid{
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+    gap: 1.5rem;
+  }
+
+  .card{
+    --a: var(--ink);
+    --b: var(--ink);
+    position: relative;
+    background: linear-gradient(165deg, var(--surface-raised), var(--surface));
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    padding: 1.9rem 1.7rem 1.7rem;
+    display: flex;
+    flex-direction: column;
+    gap: 1.15rem;
+    box-shadow: 0 1px 0 rgba(255,255,255,0.03) inset, 0 12px 28px -18px var(--shadow);
+    transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease;
+  }
+
+  @media (prefers-reduced-motion: no-preference){
+    .card:hover{
+      transform: translateY(-3px);
+      border-color: color-mix(in srgb, var(--a) 55%, var(--line));
+      box-shadow: 0 1px 0 rgba(255,255,255,0.04) inset, 0 18px 34px -16px var(--shadow), 0 0 0 1px color-mix(in srgb, var(--a) 30%, transparent);
+    }
+  }
+
+  .card-top{
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 1rem;
+  }
+
+  .icon-badge{
+    flex: none;
+    width: 52px;
+    height: 52px;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: color-mix(in srgb, var(--a) 22%, var(--surface));
+    border: 1px solid color-mix(in srgb, var(--a) 45%, var(--line));
+  }
+  .icon-badge svg{ width: 28px; height: 28px; color: var(--b); }
+
+  .trigger-pill{
+    font-family: var(--font-mono);
+    font-size: 0.68rem;
+    letter-spacing: 0.04em;
+    color: var(--ink-dim);
+    background: var(--bg-vignette);
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    padding: 0.3rem 0.65rem;
+    white-space: nowrap;
+  }
+
+  .name-block h2{
+    font-family: var(--font-display);
+    font-size: 1.5rem;
+    margin: 0 0 0.15rem;
+    color: var(--ink);
+    letter-spacing: 0.01em;
+  }
+
+  .archetype-tag{
+    font-size: 0.86rem;
+    color: var(--b);
+    font-weight: 600;
+  }
+
+  .spirit{
+    font-size: 0.9rem;
+    color: var(--ink-dim);
+    border-left: 2px solid color-mix(in srgb, var(--a) 60%, var(--line));
+    padding-left: 0.7rem;
+  }
+  .spirit strong{ color: var(--ink); font-weight: 600; }
+  .spirit .years{ font-family: var(--font-mono); font-size: 0.76rem; color: var(--ink-faint); }
+
+  .personality{
+    font-size: 0.94rem;
+    color: var(--ink);
+    margin: 0;
+  }
+
+  .swatches{
+    display: flex;
+    gap: 0.6rem;
+  }
+  .swatch{
+    flex: 1;
+    border-radius: 8px;
+    padding: 0.5rem 0.6rem;
+    font-family: var(--font-mono);
+    font-size: 0.68rem;
+    color: rgba(255,255,255,0.92);
+    display: flex;
+    align-items: flex-end;
+    min-height: 2.6rem;
+    text-shadow: 0 1px 2px rgba(0,0,0,0.35);
+  }
+
+  blockquote{
+    margin: 0;
+    padding: 0.9rem 1rem;
+    background: var(--bg-vignette);
+    border: 1px solid var(--line-soft);
+    border-radius: 10px;
+    font-size: 0.92rem;
+    color: var(--ink);
+    font-style: italic;
+  }
+  blockquote cite{
+    display: block;
+    margin-top: 0.5rem;
+    font-family: var(--font-mono);
+    font-style: normal;
+    font-size: 0.7rem;
+    color: var(--ink-faint);
+    letter-spacing: 0.01em;
+  }
+
+  /* ---- principles ---- */
+
+  .principles{
+    margin-top: 4rem;
+    padding-top: 2.75rem;
+    border-top: 1px solid var(--line-soft);
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+    gap: 2rem 2.5rem;
+  }
+
+  .principles h2{
+    font-family: var(--font-display);
+    font-size: 1.5rem;
+    font-weight: 600;
+    margin: 0 0 1.4rem;
+    grid-column: 1 / -1;
+  }
+
+  .principle{
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+  }
+  .principle .num{
+    font-family: var(--font-mono);
+    color: var(--accent);
+    font-size: 0.78rem;
+    letter-spacing: 0.05em;
+  }
+  .principle h3{
+    margin: 0;
+    font-size: 1.02rem;
+    font-weight: 600;
+  }
+  .principle p{
+    margin: 0;
+    color: var(--ink-dim);
+    font-size: 0.92rem;
+  }
+
+  footer{
+    margin-top: 4rem;
+    padding-top: 1.75rem;
+    border-top: 1px solid var(--line-soft);
+    font-family: var(--font-mono);
+    font-size: 0.74rem;
+    color: var(--ink-faint);
+    display: flex;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+  }
+
+  @media (max-width: 560px){
+    .wrap{ padding: 3.25rem 1.1rem 4rem; }
+    .card{ padding: 1.5rem 1.3rem; }
+  }
+</style>
+
+<div class="wrap">
+
+  <header class="masthead">
+    <span class="eyebrow">GoalBuddies · Helden Codex</span>
+    <h1>Zes geesten, één ploeg buddy&#8209;helden</h1>
+    <p class="dek">Elke held vertegenwoordigt een Jungiaans archetype en spreekt met de stem van een historische figuur. Ze verschijnen op het moment dat bij hen past &mdash; niet willekeurig &mdash; en geven de app zijn spel&shy;gevoel.</p>
+    <div class="meta-row">
+      <span>v1 &middot; vastgesteld rooster</span>
+      <span>6 archetypes</span>
+      <span>stoer, niet overdreven</span>
+    </div>
+  </header>
+
+  <section class="grid">
+
+    <!-- DE WIJZE -->
+    <article class="card" style="--a:var(--wijze-a); --b:var(--wijze-b);">
+      <div class="card-top">
+        <div class="icon-badge">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round">
+            <ellipse cx="12" cy="13.5" rx="6.2" ry="6.8"/>
+            <circle cx="9.3" cy="12" r="1.7"/>
+            <circle cx="14.7" cy="12" r="1.7"/>
+            <circle cx="9.3" cy="12" r="0.4" fill="currentColor"/>
+            <circle cx="14.7" cy="12" r="0.4" fill="currentColor"/>
+            <path d="M12 13.2 L10.8 15.4 L13.2 15.4 Z"/>
+            <path d="M6.5 8.2 L4.8 4.6 L8.6 6.3 Z"/>
+            <path d="M17.5 8.2 L19.2 4.6 L15.4 6.3 Z"/>
+          </svg>
+        </div>
+        <span class="trigger-pill">bij een mijlpaal</span>
+      </div>
+      <div class="name-block">
+        <h2>De Wijze</h2>
+        <span class="archetype-tag">Sage &middot; reflectie &amp; overzicht</span>
+      </div>
+      <p class="spirit"><strong>Marcus Aurelius</strong> <span class="years">121&ndash;180, Romeins keizer &amp; stoïcijn</span></p>
+      <p class="personality">Kalm, droog en scherp. Zegt weinig, maar wat hij zegt zet je aan het denken. Geen schouderklopjes &mdash; wel het soort zin waar je een week later nog aan terugdenkt.</p>
+      <div class="swatches">
+        <div class="swatch" style="background:var(--wijze-a);">#1B2A4A</div>
+        <div class="swatch" style="background:var(--wijze-b); color:#241a03;">#C9A24B</div>
+      </div>
+      <blockquote>
+        &ldquo;Als iets buiten uzelf u pijn doet, is het niet het ding zelf dat u kwelt &mdash; het is uw eigen oordeel erover.&rdquo;
+        <cite>Meditations, boek 8.47 &middot; vert. George Long, 1862 (publiek domein)</cite>
+      </blockquote>
+    </article>
+
+    <!-- DE STRIJDER -->
+    <article class="card" style="--a:var(--strijder-a); --b:var(--strijder-b);">
+      <div class="card-top">
+        <div class="icon-badge">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="7.2" y="10.5" width="9.5" height="8" rx="2.6"/>
+            <path d="M9.4 10.5 V8.6 M12 10.5 V7.8 M14.6 10.5 V8.6"/>
+            <path d="M13 7.4 C13.9 6.2 13.6 5 12.6 4.2 C13.4 5.4 12.9 6.4 12.1 7.1 C11.6 6 11.9 5.1 12.6 4.4 C11.3 4.8 10.7 6.1 11.3 7.4 Z" fill="currentColor" stroke="none"/>
+          </svg>
+        </div>
+        <span class="trigger-pill">na een misser</span>
+      </div>
+      <div class="name-block">
+        <h2>De Strijder</h2>
+        <span class="archetype-tag">Hero &middot; doorzetten &amp; opstaan</span>
+      </div>
+      <p class="spirit"><strong>Muhammad Ali</strong> <span class="years">1942&ndash;2016, bokskampioen</span></p>
+      <p class="personality">Kort, hard, warm vanbinnen. Praat tegen je zoals een coach die in je gelooft ook als je net verloren hebt. Geen medelijden &mdash; wel vuur.</p>
+      <div class="swatches">
+        <div class="swatch" style="background:var(--strijder-a);">#B3211E</div>
+        <div class="swatch" style="background:var(--strijder-b); color:#241a03;">#F2B705</div>
+      </div>
+      <blockquote>
+        &ldquo;Ik haatte elke minuut van het trainen. Maar ik zei: geef niet op. Lijd nu, en leef de rest van je leven als een kampioen.&rdquo;
+        <cite>Muhammad Ali Center, geverifieerde uitspraken</cite>
+      </blockquote>
+    </article>
+
+    <!-- DE ONTDEKKINGSREIZIGER -->
+    <article class="card" style="--a:var(--ontdek-a); --b:var(--ontdek-b);">
+      <div class="card-top">
+        <div class="icon-badge">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="7.4"/>
+            <path d="M12 6.2 V7.6 M12 16.4 V17.8 M6.2 12 H7.6 M16.4 12 H17.8"/>
+            <path d="M14.6 9.4 L12.9 12.9 L9.4 14.6 L11.1 11.1 Z" fill="currentColor" stroke="none"/>
+          </svg>
+        </div>
+        <span class="trigger-pill">bij een nieuw doel</span>
+      </div>
+      <div class="name-block">
+        <h2>De Ontdekkingsreiziger</h2>
+        <span class="archetype-tag">Explorer &middot; starten &amp; wagen</span>
+      </div>
+      <p class="spirit"><strong>Amelia Earhart</strong> <span class="years">1897&ndash;1937, vliegenierster</span></p>
+      <p class="personality">Energiek en ongeduldig in de goede zin. Duwt je net over de rand van je comfortzone en staat al te wapperen vanaf de andere kant.</p>
+      <div class="swatches">
+        <div class="swatch" style="background:var(--ontdek-a);">#1F6F5C</div>
+        <div class="swatch" style="background:var(--ontdek-b); color:#241a03;">#E07A34</div>
+      </div>
+      <blockquote>
+        &ldquo;Voorbereiding is, zoals ik vaak zeg, terecht tweederde van elk avontuur.&rdquo;
+        <cite>Last Flight, 1937, p.51</cite>
+      </blockquote>
+    </article>
+
+    <!-- DE BOUWER -->
+    <article class="card" style="--a:var(--bouwer-a); --b:var(--bouwer-b);">
+      <div class="card-top">
+        <div class="icon-badge">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="6.4" r="1.5"/>
+            <path d="M12 7.9 L7.6 18.6 M12 7.9 L16.4 18.6"/>
+            <path d="M9.3 13.6 H14.7"/>
+            <path d="M7.6 18.6 H9.6 M14.4 18.6 H16.4"/>
+          </svg>
+        </div>
+        <span class="trigger-pill">bij vastlopen</span>
+      </div>
+      <div class="name-block">
+        <h2>De Bouwer</h2>
+        <span class="archetype-tag">Creator &middot; systeem &amp; strategie</span>
+      </div>
+      <p class="spirit"><strong>Leonardo da Vinci</strong> <span class="years">1452&ndash;1519, uitvinder &amp; kunstenaar</span></p>
+      <p class="personality">Nuchter en precies. Geen pep talk &mdash; wel de vraag die je nodig had: &ldquo;wat is hier het echte probleem, en hoe bouwen we eromheen?&rdquo;</p>
+      <div class="swatches">
+        <div class="swatch" style="background:var(--bouwer-a);">#4B2E83</div>
+        <div class="swatch" style="background:var(--bouwer-b); color:#241a03;">#B87333</div>
+      </div>
+      <blockquote>
+        &ldquo;Wie de praktijk liefheeft zonder de theorie, is als een zeeman die aan boord gaat zonder roer of kompas.&rdquo;
+        <cite>The Literary Works of Leonardo da Vinci, 1883</cite>
+      </blockquote>
+    </article>
+
+    <!-- DE VERZORGER -->
+    <article class="card" style="--a:var(--verzorger-a); --b:var(--verzorger-b);">
+      <div class="card-top">
+        <div class="icon-badge">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M8.6 17.4 C8.6 14.6 9.8 13 12 13 C14.2 13 15.4 14.6 15.4 17.4 Z"/>
+            <path d="M7.2 17.4 H16.8"/>
+            <path d="M7.8 19.4 H16.2"/>
+            <path d="M12 13 V10.6"/>
+            <path d="M12 10.6 C10.9 9.6 11 8.2 12 7.2 C13 8.2 13.1 9.6 12 10.6 Z" fill="currentColor" stroke="none"/>
+            <path d="M15.4 15 C17 14.4 18 13 17.8 11.4"/>
+          </svg>
+        </div>
+        <span class="trigger-pill">bij een lange stilte</span>
+      </div>
+      <div class="name-block">
+        <h2>De Verzorger</h2>
+        <span class="archetype-tag">Caregiver &middot; herstel &amp; steun</span>
+      </div>
+      <p class="spirit"><strong>Florence Nightingale</strong> <span class="years">1820&ndash;1910, grondlegster moderne verpleegkunde</span></p>
+      <p class="personality">Zacht op de persoon, streng op de excuses. Geeft je rust om op adem te komen &eacute;n een duidelijke reden om morgen weer te beginnen.</p>
+      <div class="swatches">
+        <div class="swatch" style="background:var(--verzorger-a);">#8C2F39</div>
+        <div class="swatch" style="background:var(--verzorger-b); color:#241a03;">#E8A33D</div>
+      </div>
+      <blockquote>
+        &ldquo;Ik dank mijn succes hieraan: ik heb nooit een excuus gegeven of aanvaard.&rdquo;
+        <cite>brief aan Miss H. Bonham Carter, 1861</cite>
+      </blockquote>
+    </article>
+
+    <!-- DE NAR -->
+    <article class="card" style="--a:var(--nar-a); --b:var(--nar-b);">
+      <div class="card-top">
+        <div class="icon-badge">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M17 5.5 C13 6 9.5 9.5 8 15.5 C10 14.8 12 13.8 13.4 12.2"/>
+            <path d="M8 15.5 L6.2 18.4"/>
+            <path d="M10.2 12.6 L11.6 13.6 M11.6 10.6 L13 11.6"/>
+            <path d="M17.6 6.4 L18.6 5" />
+            <path d="M18.8 8 L20.2 7.6 M15.8 4.6 L15.4 3.2"/>
+          </svg>
+        </div>
+        <span class="trigger-pill">tussendoor, luchtig</span>
+      </div>
+      <div class="name-block">
+        <h2>De Nar</h2>
+        <span class="archetype-tag">Jester &middot; luchtigheid &amp; lef</span>
+      </div>
+      <p class="spirit"><strong>Mark Twain</strong> <span class="years">1835&ndash;1910, schrijver &amp; humorist</span></p>
+      <p class="personality">Droge humor, een scheve grijns, altijd een tegendraadse opmerking klaar. Haalt de druk eraf zonder het doel belachelijk te maken.</p>
+      <div class="swatches">
+        <div class="swatch" style="background:var(--nar-a);">#4A1942</div>
+        <div class="swatch" style="background:var(--nar-b); color:#241a03;">#D9A62E</div>
+      </div>
+      <blockquote>
+        &ldquo;Moed is weerstand tegen angst, beheersing van angst &mdash; niet de afwezigheid van angst.&rdquo;
+        <cite>Pudd&rsquo;nhead Wilson&rsquo;s Calendar, in Following the Equator, 1897</cite>
+      </blockquote>
+    </article>
+
+  </section>
+
+  <section class="principles">
+    <h2>Ontwerpprincipes voor deze reeks</h2>
+
+    <div class="principle">
+      <span class="num">01</span>
+      <h3>Eén systeem, zes gezichten</h3>
+      <p>Alle helden delen dezelfde donkere ondergrond, dezelfde kaartvorm en hetzelfde icoon-lijnenspel. Alleen het kleurenpaar en symbool verschillen &mdash; zo voelt de reeks als één universum, niet als zes losse illustraties.</p>
+    </div>
+
+    <div class="principle">
+      <span class="num">02</span>
+      <h3>Stoer, niet overdreven</h3>
+      <p>Geen capes tot op de grond of overdreven spierbundels. Elke held is herkenbaar aan houding en symbool, met genoeg understatement om serieus te blijven voor zakelijke doelen.</p>
+    </div>
+
+    <div class="principle">
+      <span class="num">03</span>
+      <h3>Geest, geen portret</h3>
+      <p>Gebruik gestileerde, originele figuren &ldquo;in de geest van&rdquo; de historische persoon &mdash; geen letterlijke gelijkenis. Veiliger qua rechten, en het levert eigen, beschermbare app-IP op.</p>
+    </div>
+
+    <div class="principle">
+      <span class="num">04</span>
+      <h3>Eén moment, één held</h3>
+      <p>Laat per triggermoment steeds dezelfde held spreken (zie de pil bovenaan elke kaart). Herhaling van de juiste stem op het juiste moment bouwt herkenning op &mdash; net als een vast personage in een spel.</p>
+    </div>
+
+  </section>
+
+  <footer>
+    <span>GoalBuddies &middot; Helden Codex &middot; v1</span>
+    <span>Quotes geverifieerd op bron &middot; check rechten vóór productie</span>
+  </footer>
+
+</div>

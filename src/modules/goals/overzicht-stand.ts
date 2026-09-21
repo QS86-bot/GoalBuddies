@@ -1,4 +1,4 @@
-import { previousCycle, type Cycle } from '../../shared/time';
+import { previousCycle, type Cycle, type Klok } from '../../shared/time';
 
 /**
  * De pure laag van het overzicht — QS8-256.
@@ -51,9 +51,19 @@ export const WEKEN_IN_OVERZICHT = 12;
  * ⚠️ Afgeleid met `previousCycle()` en niet door zeven dagen af te trekken: het
  *    verzetten van een week-startdag of een tijdzonegrens zou dat tweede laten
  *    verschuiven, en dan staat er een balk op een dag die geen cyclusgrens is.
+ *
+ * ⚠️ **Generiek in de klok en niet vastgezet op de persoonlijke** — QS8-180.
+ *    Terugtellen is voor beide klokken hetzelfde rekenwerk, en het merk gaat er
+ *    ongeschonden doorheen: stop je er een groepsperiode in, dan komen er
+ *    groepsperiodes uit. Een vast `Gebruikerscyclus` zou hier een belofte doen
+ *    die de functie niet nakomt, en een kaal `Cycle` zou het merk juist wéggooien
+ *    — precies de plek waar zo'n merk in dit project stil verdwijnt.
  */
-export function laatsteCycli(huidige: Cycle, aantal = WEKEN_IN_OVERZICHT): readonly Cycle[] {
-  const rij: Cycle[] = [huidige];
+export function laatsteCycli<K extends Klok>(
+  huidige: Cycle<K>,
+  aantal = WEKEN_IN_OVERZICHT,
+): readonly Cycle<K>[] {
+  const rij: Cycle<K>[] = [huidige];
 
   while (rij.length < Math.max(1, aantal)) {
     const eerste = rij[0];

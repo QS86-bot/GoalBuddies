@@ -7,47 +7,97 @@
 > Bijwerken is onderdeel van het werk. Sluit je een issue af, werk dan ook dit
 > bestand bij — anders begint de volgende sessie met verouderde informatie.
 
-**Laatst bijgewerkt:** 09-09-2026 (na QS8-243 en QS8-220; daarvóór QS8-314; daarvóór QS8-147, QS8-174, QS8-191, QS8-297, QS8-298, QS8-299, QS8-303 en QS8-304; daarvóór QS8-287, QS8-288, QS8-289 en QS8-291;
-daarvóór QS8-266, QS8-202 en QS8-196, en het toepassen van `0139` t/m `0149` op
+**Laatst bijgewerkt:** 21-09-2026 (na QS8-572 — de detector van `knip:controle` is op twee regexvormen verbreed en op vier stringmethode-vormen bewust niet, met de meting per vorm; daarvóór QS8-569 — `src/lib/database.types.ts` is hergenereerd tegen productie en de handgeschreven correcties zijn naar een eigen laag verhuisd; daarvóór 17-09-2026 met QS8-531 — de verlooppoort van een uitstelverzoek meet aan de bevroren strafklok; daarvóór QS8-515 — `create_group()` stelt dezelfde vraag als de CHECK, met QS8-526 als gemeten bijvangst; daarvóór QS8-508; daarvóór QS8-451 — het besluit over `U+200C` aan de rand van een naam, met QS8-508 als bijvangst; daarvóór QS8-500; daarvóór QS8-505 — productie stond 58 migraties achter en staat nu gelijk aan de map; daarvóór QS8-499, migratie 0282; daarvóór QS8-450, QS8-482 en QS8-494 uit deze sessie, en QS8-493, QS8-495, QS8-496, QS8-498, QS8-501, QS8-502, QS8-503 en QS8-504 uit de parallelle; daarvóór QS8-488; daarvóór QS8-471; daarvóór QS8-485; daarvóór QS8-484 en QS8-483; daarvóór QS8-480; daarvóór QS8-479; daarvóór QS8-467; daarvóór QS8-465, QS8-463, QS8-462 en QS8-460; daarvóór QS8-449; daarvóór QS8-448 uit de parallelle sessie; daarvóór QS8-447, QS8-446, QS8-439 en QS8-182; daarvóór QS8-441; daarvóór QS8-443; daarvóór QS8-445; daarvóór QS8-438; daarvóór QS8-434, QS8-435, QS8-431, QS8-416 en QS8-432; diezelfde dag QS8-419, QS8-420, QS8-423, QS8-425, QS8-426, QS8-427, QS8-428, QS8-430 en QS8-432 uit deze sessie en QS8-262 ronde 9, QS8-421 en QS8-422 uit de parallelle; daarvóór de hele novemberronde, alle tien — QS8-180, QS8-181, QS8-183, QS8-184, QS8-189 en QS8-194 uit deze sessie, QS8-179, QS8-182, QS8-187 en QS8-204 uit de parallelle; daarvóór QS8-24; daarvóór QS8-92; daarvóór QS8-392 en QS8-393; daarvóór QS8-396 en QS8-402; daarvóór QS8-404, QS8-399, QS8-400 en QS8-401; daarvóór QS8-403, QS8-140 en QS8-320; daarvóór QS8-243 en QS8-220; daarvóór QS8-314; daarvóór QS8-147, QS8-174, QS8-191, QS8-297, QS8-298, QS8-299, QS8-303 en QS8-304; daarvóór QS8-287, QS8-288, QS8-289 en QS8-291;daarvóór QS8-266, QS8-202 en QS8-196, en het toepassen van `0139` t/m `0149` op
 productie in twee rondes)
 
-⚠️ **Productie staat op `0221`.** 📏 Hermeten op 09-09 om 16:10 UTC met
-`migratieregister()` tegen `wehgocadxehottiiyvsc`: **224 registerrijen**, `0001`
-t/m `0221` aaneengesloten, inclusief de drie letterversies. De map telt er
-**229**.
+⚠️ **De uitrolstand staat sinds 17-09-2026 (QS8-517) in
+`supabase/uitgerold.json` en niet meer als getal in deze alinea.** Draai
+`npm run uitrolstand:controle` en je krijgt de lijn, het gat met de map en de
+leeftijd van de meting — zonder sleutel, dus ook in een cloudsessie. Het bestand
+wordt geschreven door `register:controle`, de kant die de productiesleutel wél
+heeft.
 
-**Het gat is daarmee vijf bestanden**, alle vijf van 09-09 en alle vijf uit
-QS8-71 (PR #352):
+⚠️⚠️ **Waarom het getal hier weg is.** Het stond hier met de hand overgetypt,
+terwijl de enige grendel erop (`register:controle`) niet kan draaien op de plek
+waar dat gebeurt. 📏 Zo groeide de drift tot 52 bestanden zonder dat er iets
+rood werd, en werd de zin *"gelijk aan de map"* binnen één dag onwaar. Een gat
+tussen map en productie is geen achterstand maar de normale toestand tussen twee
+uitrollen; het getal eromheen hoort alleen geen kopie te zijn. Afweging in
+`docs/decisions/2026-09-17-de-uitrolstand-is-een-gegeven-en-geen-alinea.md`.
 
-| | |
-| -- | -- |
-| `0222_een_foto_hoort_bij_een_groep.sql` | QS8-71 |
-| `0223_een_bijlage_wijst_naar_deze_groep.sql` | QS8-71 |
-| `0224_een_chatfoto_overleeft_zijn_eigenaar_niet.sql` | QS8-71 |
-| `0225_een_pad_heeft_een_canonieke_vorm.sql` | QS8-71 |
-| `0226_een_plafond_per_lid_naast_dat_van_de_groep.sql` | QS8-71 |
+📏 **En het merge-conflict waarmee dit landde, is het bewijs erbij.** Deze alinea
+zei op 17-09-2026 om 07:30 UTC dat het gat **drie** bestanden was; een uur later
+stond er in `main` **vier**, met de hand bijgewerkt na QS8-508. Twee sessies
+onderhielden dus dezelfde kopie, en de tweede moest hem overtypen om hem te laten
+kloppen. `npm run uitrolstand:controle` rekent hem nu uit.
 
-⚠️ **Hier stond een uur eerder `0219` met twee bestanden gat, en dat klopte
-toen.** `0220` en `0221` zijn erna toegepast en `0222` t/m `0226` landden
-intussen op `main`. Dat is de vorm van QS8-318 nog een keer: **een regel over de
-achterstand veroudert terwijl je hem opschrijft**, en de enige stand die klopt is
-de gemeten stand.
+**Lees de lijn nooit als getal maar meet hem** — de regel hieronder zegt hetzelfde
+en gold al voor de zin die hier stond.
 
-⚠️⚠️ **Dit gat is niet vanuit een bouwsessie te dichten, en dat is op 09-09
-gemeten in plaats van aangenomen.** `0222` valt om op
-`ERROR: 42501: must be owner of table objects`: `storage.objects` is eigendom van
-`supabase_storage_admin`, de MCP draait als `postgres`, en die is **geen lid** van
-die rol — `set role` geeft *permission denied*. `0222` en `0225` maken policies
-en een trigger op die tabel; `0223`, `0224` en `0226` zouden op zichzelf wél
-gaan, maar `0222` is de eerste van de vijf, **dus stopt de reeks daar**. Ze
-alsnog toepassen slaat een gat in het register, en dat is de duurdere kant
-(`docs/decisions/2026-09-08-het-gat-is-erger-dan-de-botsing.md`).
+⚠️⚠️ **En dat "gelijk" is binnen één ronde al een keer verlopen.** 📏 Toen
+`0225` t/m `0279` toegepast waren, was `main` doorgelopen naar `0282`: QS8-499
+landde tijdens de uitrol. Dat is het venster van QS8-318 — het getal was juist
+toen het opgeschreven werd — en het is precies waarom de regel hieronder staat.
+De drie zijn er in dezelfde ronde bij toegepast.
 
-⚠️ **Dat corrigeert een regel die sinds 02-09 in QS8-243 stond:** *"een
-bouwsessie kan de drift wel meten maar niet opheffen"* was toen weerlegd omdat de
-MCP `execute_sql` heeft. De grens ligt scherper dan beide beweringen: **alles in
-`public` gaat, alles wat `storage.objects` bezit niet.** De regel staat nu in
-`docs/DEPLOY.md` §2.2, want dit komt terug bij elke volgende opslagmigratie.
+⚠️ **En de types zijn een dérde lijn, met een eigen meetmoment — sinds
+21-09-2026 (QS8-569).** `src/lib/database.types.ts` is een afschrift van
+productie en staat daar vandaag gelijk aan; `typesdrift:controle` zegt het, maar
+alléén als je hem voedt, en in een cloudsessie doet niemand dat vanzelf. Het
+recept staat in de kop van `scripts/typesdrift-controle.mjs`: schrijf de uitvoer
+van de MCP-tool `generate_typescript_types` naar een bestand en zet
+`TYPES_GENERATIE` erop. **Doe dat in elke ronde waarin je de migratiemap of
+productie aanraakt.**
+
+⚠️ Correcties op dat afschrift horen sinds die datum in
+`src/lib/database.types.correcties.ts` en niet in het gegenereerde bestand; de
+regel staat in CLAUDE.md, de onderbouwing in
+`docs/decisions/2026-09-21-de-correcties-stonden-in-het-bestand-dat-overschreven-wordt.md`.
+
+⚠️ **Lees dit nooit als getal maar meet het.** De lijn is op 09-09 twee keer op
+één dag verschoven en tussen 09-09 en 14-09 nog een keer, telkens doordat er
+buiten een sessie om iets op toegepast werd. Gelijk vandaag is dus niet gelijk
+morgen.
+
+⚠️⚠️ **Meet hem bovendien met het instrument dat de eenheid deelt.** 📏 Op
+14-09 met twee instrumenten nagemeten: `list_migrations` eindigde op `0224` en
+`migratieregister()` telde **227** rijen. Dat is geen tegenspraak maar het
+verschil tussen een nummer en een telling — de drie letterversies (`0039a`,
+`0041a`, `0052a`) dragen geen eigen nummer. Wie de registertelling voor een
+migratienummer aanziet, legt de lijn drie bestanden te hoog. Zelfde klasse als
+een teller in grafemen bij een grens in codepunten.
+
+⚠️⚠️ **Hier stond tot 16-09-2026 een tabel van 58 achterstallige bestanden én
+de zin dat dat gat "niet vanuit een bouwsessie te dichten" was. Het eerste is
+weg en het tweede was al vier dagen onwaar.** Die zin stond er sinds 09-09 mét
+een meting eronder: `0222` viel toen om op
+`ERROR: 42501: must be owner of table objects`. De conclusie die eruit getrokken
+werd — *elke migratie met DDL op `storage.objects` is van hieruit onmogelijk* —
+is breder dan die meting droeg, en `docs/DEPLOY.md` §2.2 wist het op 12-09 al
+beter: Supabase heeft `create policy` en `create trigger` op die tabel sindsdien
+vrijgegeven, en alleen `create index` wordt nog geweigerd.
+
+📏 En dat laatste kwam in `0225` t/m `0282` nergens kaal voor: de drie
+`create index`-opdrachten op `storage.objects` staan in een
+`do $$ … exception when insufficient_privilege … end $$;`, en de twee
+`drop index if exists` van `0233` wijzen naar indexen die op productie niet
+bestaan — nagemeten in `pg_indexes`, daar staan alleen de acht van Supabase
+zelf. Er zat dus nergens meer een rem. Alle 58 zijn op 16-09 vanuit deze sessie
+toegepast.
+
+⚠️ **De les is niet "het kon toch wel" maar hoe die rem zeven dagen bleef
+staan:** een gemeten grens (*`0222` valt om*) werd een algemene regel (*storage-DDL
+kan niet van hieruit*), en die regel overleefde de meting waarop hij rustte.
+CLAUDE.md zegt het over precies deze tabel met zoveel woorden — *schrijf een
+gemeten grens nooit zonder zijn meetdatum op; hij verloopt, en wie hem overneemt
+neemt de conclusie over in plaats van de meting.* Dit is de tweede keer dat dat
+hier tijd gekost heeft; de eerste waren de drie dagen van QS8-243.
+
+⚠️ **Wat wél blijft gelden:** alles in `public` gaat vanuit een sessie, een
+`create index` op `storage.objects` niet. Die grens staat mét zijn meetdatum in
+`docs/DEPLOY.md` §2.2, want hij komt terug bij elke volgende opslagmigratie.
+De uitrol zelf staat in
+`docs/decisions/2026-09-16-de-rem-die-al-weg-was.md`.
 
 ⚠️⚠️ **Hier stond tot 09-09 `0185`, en dat was 34 migraties naast de
 werkelijkheid.** De ronde die `0187` t/m `0219` toepaste is verderop in dit
@@ -59,23 +109,52 @@ database.
 
 De les die eronder staat, staat er niet voor niets: **vraag het aan de database.**
 
-⚠️⚠️ **De edge-functies zijn nog van 06-09 en dat is wél een gat.**
-`list_edge_functions` geeft voor alle drie `updated_at = 2026-09-06T09:07:56Z`
-— 📏 hermeten op 09-09 om 14:40 UTC en nog steeds zo. 📏 En sindsdien is er wél
-aan gewerkt: `git log --since=2026-09-06T09:07:56Z -- supabase/functions/` geeft
-commits, dus de gedeployde code is niet meer die van de map.
-Gevolg: `0178` staat op productie, de code die `getuigenissen_voor()` aanroept
-staat in de map, en de gedeployde `notificaties` weet er niets van — **de
-persoon-getuige krijgt zijn melding niet**. Er is geen kapot onderdeel, dus niets
-wordt er rood van. QS8-320, met het commando erbij.
+✅ **De edge-functies zijn op 09-09 om 18:19 UTC gedeployd — het gat is dicht.**
+📏 Nagemeten met `list_edge_functions` en niet overgenomen uit de deploy-uitvoer:
+alle drie staan op `updated_at = 2026-09-09T18:19:06Z`, 81 uur na de vorige, en
+alle drie hebben een nieuwe `ezbr_sha256`. De versies gingen rollover 20 → 24,
+doelcoach 17 → 19 en notificaties 15 → 19.
 
-⚠️ **De rollover is een apart geval, en `0186` staat er inmiddels op.** `0185`
+Daarmee is **de getuigemelding van QS8-298 voor het eerst aangesloten**: `0178`
+stond al op productie, de code die `getuigenissen_voor()` aanroept stond in de
+map, en de gedeployde `notificaties` wist er niets van. Er was geen kapot
+onderdeel, dus niets werd er rood van — regel 18 vraag 5 in zijn zuiverste vorm.
+
+⚠️ **Dat het gat dicht is, is niet hetzelfde als dat het gesignaleerd wordt.**
+`edge:gedeployd` zag dit achteráf en alleen als iemand hem draaide; hij vraagt
+een `SUPABASE_ACCESS_TOKEN` en draaide daarom nergens automatisch. ✅ **Dat is
+criterium 2 van QS8-320 en het is gebouwd** (PR #356): hij slaat zichzelf nu
+zichtbaar over — OVERGESLAGEN naar stderr, en de poort telt hem als *ongemeten*
+in plaats van als groen. Zelfde onderscheid als `functies:controle` en
+`register:controle`. Met `--streng` is een ontbrekend token wél een fout.
+
+⚠️ **De rollover was een apart geval, en `0186` staat er inmiddels op.** `0185`
 dropte `activeer_weekplanstap(uuid, date, integer)`, en de gedeployde rollover
-roept die vorm nog aan. 📏 Vandaag inert — `weekly_plan_steps` is leeg, dus de
-RPC wordt nooit bereikt — maar het scherpt zichzelf zodra er een weekplan komt.
-`0186` zet de oude handtekening terug als afgeschreven wrapper, zodat de deploy
-een gewone deploy is in plaats van een race (QS8-324). Die wrapper mag weg zodra
-`supabase functions deploy rollover` gedraaid heeft.
+riep tot 09-09 die vorm nog aan. `0186` zet de oude handtekening terug als
+afgeschreven wrapper, zodat de deploy een gewone deploy is in plaats van een
+race (QS8-324).
+
+✅ **Die deploy is op 09-09 gedraaid, en de vraag die eraan vastzat is
+beantwoord.** Hier stond: *vraag vóór het droppen opnieuw of de gedéployde
+rollover de tweearguments vorm aanroept — de gedeployde code, niet de map.*
+📏 Gedaan op 09-09 om 20:38 UTC (QS8-403), tegen de bundel zelf en niet tegen de
+map, opgehaald met `get_edge_function` op `wehgocadxehottiiyvsc`:
+
+```
+await db.rpc('activeer_weekplanstap', {
+  p_goal_id: kandidaat.goal_id,
+  p_cycle_start_date: huidige.startDate,
+});
+```
+
+Eén aanroep, twee argumenten, geen `p_cycle_index`. **De wrapper heeft geen
+aanroeper meer en mag weg** — en dat is geen opruimwerk maar een grendel die
+anders verwatert: zolang de driearguments vorm bestaat, blijft een aanroeper die
+hem gebruikt onzichtbaar.
+
+⚠️ Dat droppen is een eigen migratie en staat nog open. Meet vlak vóór die
+migratie nog één keer — er kan intussen opnieuw gedeployd zijn, en dán is deze
+regel een aanname in plaats van een meting.
 
 Vraag de database welke migraties er staan, niet dit document.
 
@@ -157,8 +236,8 @@ staat er iets bij dat uitleg nodig heeft, dan hoort die uitleg in §2, §3b of �
    **Meet ze dus, tel ze niet op:** bij het samengaan met `main` is het antwoord
    `npm run poort` of `npm run tellers`, nooit het hoogste van twee getallen.
 <!-- POORTSTAND:BEGIN — gegenereerd door `npm run poortstand` -->
-Typecheck, lint en alle 49 controlescripts groen;
-`npm run poort` meldt 53 stappen.
+Typecheck, lint en alle 72 controlescripts groen;
+`npm run poort` meldt 76 stappen.
 <!-- POORTSTAND:EINDE -->
    ⚠️ **Vier ervan meten niets zonder de credentials van het échte project**
    (`adviseur`, `functies`, `register`, `wachtwoord`), en de poort noemt dat
@@ -202,8 +281,13 @@ Typecheck, lint en alle 49 controlescripts groen;
     coulanceperiode: daarvóór is die vraag per definitie nee. Daarna
     QS8-200/QS8-201. Wat
     van Fase 1 overblijft vraagt nog steeds Quintens hand en geen code: een
-    browser met VAPID-sleutels (QS8-124), een iPhone (QS8-117), het
-    Supabase-dashboard (QS8-25, QS8-141) en de twee deploys (QS8-139, QS8-140).
+    browser met VAPID-sleutels (QS8-124), een iPhone (QS8-117) en het
+    Supabase-dashboard (QS8-25, QS8-141). ⚠️ **De twee deploys staan hier niet
+    meer bij, en dat is sinds 14-09-2026 een gemeten stand en geen aanname:**
+    QS8-140 is op 09-09 gedeployd en Done, en de webdeploy van QS8-139 is op
+    10-09 gelopen — bewezen doordat de source-maps-upload toen slaagde en doordat
+    het Sentry-event van 14-09 uit een productiebundel mét DSN komt. Van QS8-139
+    rest alleen nog de bevestiging in de browser.
     **Het bord klopt beter dan deze documenten** — kijk dus eerst in Linear en
     dan pas hier.
 
@@ -227,10 +311,17 @@ zegt alleen in welke volgorde en waar de valkuilen zitten.
 
 ## 2. Wat er nu draait
 
-**Database — af, en nu ook getest.** 34 tabellen.
+**Database — af, en nu ook getest.** 41 tabellen, alle 41 met RLS aan.
+
+⚠️ Hier stond **34** en dat was op 28-08 waar; het getal bewoog daarna mee met
+elke nieuwe tabel en deze regel niet. 📏 Opnieuw gemeten op 09-09 op een verse
+opbouw uit `supabase/migrations/`:
+`select count(*) filter (where rowsecurity), count(*) from pg_tables where
+schemaname = 'public'` gaf `41|41`. Vraag het aan de database en niet aan deze
+regel — net als bij het aantal migraties in §0.
 
 <!-- STAND:BEGIN — gegenereerd door `npm run stand` -->
-Migraties `0001` t/m `0231` staan in de map: **234 bestanden**,
+Migraties `0001` t/m `0294` staan in de map: **297 bestanden**,
 waarvan 3 met een letter-achtervoegsel (`0039a`, `0041a`, `0052a`).
 De nummering is aaneengesloten.
 <!-- STAND:EINDE -->
@@ -412,28 +503,34 @@ die "de achterstand inhaalt" heeft geen eindpunt zolang `main` doorloopt. De
 enige stand die klopt is de gemeten stand, niet het getal dat je aan het begin
 opschreef.
 
-**De drie Edge Functions lopen nog achter, en dat is de rest van QS8-243.**
-📏 Per bestand gemeten tegen `main` met `get_edge_function`:
+✅ **De drie Edge Functions liepen achter; sinds 09-09 om 18:19 UTC niet meer.**
+Dat was de ene helft van QS8-243 en die is eraf — zie §0 voor de meting. **De
+rest van dat issue is de migratieachterstand en het planpad**, en die staan nog
+open.
+
+📏 Wat er stond toen ze wél achterliepen, per bestand gemeten tegen `main` met
+`get_edge_function` — bewaard omdat het laat zien hoe ver zoiets wegloopt
+voordat iemand ernaar kijkt:
 
 | Functie | Gedeployde bestanden | Anders dan de repo |
 |---|---|---|
-| `rollover` | 8 | 6 — en `_shared/bladeren/index.ts` ontbreekt er helemaal |
+| `rollover` | 8 | 6 — en `_shared/bladeren/index.ts` ontbrak er helemaal |
 | `doelcoach` | 6 | 4 |
 | `notificaties` | 11 | 7 |
 
-`_shared/melden.ts` en `_shared/time/types.ts` zijn de enige die overal gelijk
-liepen. `npm run edge:sync:controle` is groen, dus de veertien gedeelde kopieën
-in `supabase/functions/` lopen wél gelijk met `src/` — de achterstand zit
+`_shared/melden.ts` en `_shared/time/types.ts` waren de enige die overal gelijk
+liepen. `npm run edge:sync:controle` was groen, dus de veertien gedeelde kopieën
+in `supabase/functions/` liepen wél gelijk met `src/` — de achterstand zat
 uitsluitend tussen de repo en het project.
 
-⚠️ **Dit deel vraagt Quintens hand en er is bewust géén omweg voor gebouwd.**
+⚠️ **Deployen vraagt Quintens hand en er is bewust géén omweg voor gebouwd.**
 `npm run edge:gedeployd` en `npx supabase functions deploy` vragen allebei een
 `SUPABASE_ACCESS_TOKEN`, en dat is een personal access token en niet de
 service-role-key. De MCP heeft wél een `deploy_edge_function`, maar die vraagt
 elk bestand van de importsluiting inline: 108 KB voor `rollover`, 104 KB voor
 `doelcoach` en 164 KB voor `notificaties`. Dat met de hand overtypen is precies
 de transcriptieroute die QS8-220 heeft opgeleverd, en dan op de job die beslist
-of iemands week telt.
+of iemands week telt. **Dat blijft gelden voor de volgende keer.**
 
 ⚠️ En het is alles of niets: `rollover` en `notificaties` delen
 `_shared/time/cycle.ts`. Eén van de twee bijwerken zet twee jobs op verschillende
@@ -796,8 +893,15 @@ niet kon, staat in `docs/VOLGENDE-SESSIE.md` bij punt 0.
   harnas tekent ze sinds 23-08 zelf en logt niet meer in
 - `npm run typecheck` en `lint` staan groen; het aantal tests staat in §0 en
   niet hier — twee tellers die elkaar tegenspreken zijn precies waarom die regel
-  bestaat. `tests/rls` telt 34 bestanden; 32 daarvan slaan zonder credentials
-  over (zie §3b)
+  bestaat. 📏 `tests/rls` telt **181** testbestanden (`ls tests/rls/*.test.ts`,
+  hermeten 18-09-2026; hier stond **167** van 11-09, en daarvóór **140** van
+  10-09 — elke keer met de hand geteld en niet overgenomen). ⚠️ Dat is **veertien
+  bestanden drift in een week**, en dat is het eigenlijke signaal: een getal in
+  proza dat niemand rood maakt, loopt hier ongeveer twee bestanden per dag achter.
+  Wie het nodig heeft, telt het zelf; wie het hier leest, leest een momentopname
+  met een datum erbij. Zonder
+  credentials én zonder lokale stack slaan ze over — zie §3b, en let op het
+  verschil tussen *overgeslagen* en *groen*
 
 **Wat werkt in de app:** aanmelden met e-mail, de onboarding, doelen aanmaken en
 bijhouden, weekdoelen met vloer en plafond, en sinds EPIC 5 de hele
@@ -922,6 +1026,82 @@ Drie keer dezelfde klasse, en hij keert terug omdat er geen signaal op staat maa
 alleen een gewoonte. Het signaal wordt gebouwd in **QS8-385**; dat issue is
 afgesplitst omdat de meting en het gereedschap twee dingen zijn.
 
+### De commentaarval in `tests/beloftes/` — gesloten op 21-09-2026 (QS8-574)
+
+✅ **Er staat een grendel op de vorm die QS8-568 vond.**
+`npm run belofteknip:controle` wordt rood zodra een belofte-test bevestigend
+toetst op ruwe bestandsinhoud — `expect(bron).toContain(…)` zonder knip op de
+leesplek. Die toets is ook waar als de aanroep uitgecommentarieerd is, en bij een
+tijdelijke uitschakeling blijft de naam juist ín de comment staan.
+
+📏 **Acht bestanden gemeten met elf eigen mutaties, en alle elf faalden open.**
+Alle acht zijn gerepareerd; het register van de controle is daarom **leeg**, en
+dat is een uitkomst en geen omissie. De tabel met de mutaties, de twee die iets
+anders maten dan ze leken te meten, en de afweging *eigen controle of tweede
+helft van `knip:controle`* staan in
+`docs/decisions/2026-09-21-het-mechanisme-onder-de-commentaarval.md`.
+
+⚠️ **Twee van de elf waren onwrikbare regel 3.** De toetsen die bewaken dat de
+storage-emmers `avatars` en `chatdocs` **privé** zijn, bleven groen met `public`
+op `true` — een openbare bucket omzeilt RLS volledig. Eén raakte domeinregel 2:
+met `<Tijdzonewacht />` uitgecommentarieerd verandert `profiles.tz` na de
+onboarding nergens meer.
+
+⚠️ **De SQL-knip is verhuisd en niet gekopieerd.** Hij stond in
+`scripts/sleutelvorm-controle.mjs`, waar `dml-controle.mjs` hem al uit
+importeerde, en heet nu `zonderCommentaarSql` in
+`scripts/zonder-sql-commentaar.mjs`. Er zijn dus twee gedeelde knippen — JS en
+SQL — en de derde blijft een keuze die je verantwoordt.
+
+⚠️ **Wat open blijft: vier knippen die `knip:controle` niet ziet**, omdat zijn
+`DEFINITIE` alleen namen matcht die met `zonderCommentaar` beginnen. Twee zijn
+nagemeten en falen dicht, twee zijn **ongemeten**. Dat staat als **QS8-579**.
+
+### De knip die anders heet — gesloten op 21-09-2026 (QS8-579)
+
+✅ **`knip:controle` vindt een knip nu ook aan zijn lichaam en niet alleen aan
+zijn naam.** `DEFINITIE` matchte `function zonderCommentaar\w*(`; 📏 **tien**
+knippen liepen daaromheen — vier in `tests/beloftes/`, zes in `scripts/` — en
+geen van tien stond in een register.
+
+📏 **Twee ervan faalden open, allebei met een tegenproef gemeten.**
+`ontdaanVanCommentaar()` in `datumopmaak.test.ts` liet een zelf-opgemaakte datum
+door zodra er een URL vóór stond op dezelfde regel, en `normaliseer()` in
+`edge-tijd-controle.mjs` verklaarde twee uiteenlopende kopieën van `shared/time`
+gelijk op precies diezelfde vorm. Die tweede is **correctheidsregel 7**: de
+rollover en de app zouden 's nachts met andere weekgrenzen rekenen. Allebei de
+blinde vorm van QS8-412.
+
+⚠️ **De reparatie is per geval verschillend, en dat is het punt.** `datumopmaak`
+en `onboarding` delen nu de gedeelde knip; `edge-tijd-controle` houdt zijn eigen
+en kreeg alleen de `(^|[^:])`-wacht erbij — die controle vergelijkt twee kopieën
+en commentaar mág daar verschillen. 📏 De eerste, bottere reparatie brak zijn
+ijking, en de poort ving dat. **"Deel de gedeelde knip" is niet het doel; het doel
+is dat elke knip een keuze is met een reden.**
+
+⚠️ **Een derde faalde dicht om de verkéérde reden.**
+`onboarding-schrijft-niets-over.test.ts` betoogde in zijn kop dat grendel 4 de
+URL-vorm opving; gemeten viel hij op grendel 2, via een accoladetelling die door
+de aanroep heen liep. Na de omzetting valt dezelfde mutatie op grendel 1, en dát
+is de belofte. **Tweede keer in twee issues dat een uitgeschreven verdediging
+half bleek te kloppen.**
+
+⚠️ **Er is een derde register bijgekomen: `GEEN_KNIP`.** Een vormdetector zonder
+plek voor zijn eigen valse treffers wordt een controle die je uitzet. Er staan er
+drie in, alle drie dezelfde vorm: ze **selecteren** commentaarregels in plaats van
+ze weg te gooien — de kop van een migratie ís commentaar.
+
+📏 **En `belofteknip:controle` uit QS8-574 ving bij de merge meteen een elfde
+instantie** — een belofte-test uit de parallelle sessie (QS8-436) die een pin op
+de bron van `expo-image-picker` ruw toetste. Gemeten: faalt open, gerepareerd,
+rood na de reparatie. Dat bestand importeerde de gedeelde knip al en gebruikte
+hem voor ónze bron maar niet voor de pin.
+
+⚠️ **Wat de rand is, staat in de kop van het script en als rij in
+`ENGINEER-REVIEW.md`:** een pijlfunctie, een methode, twee parameters en de
+teken-voor-teken-vorm ziet hij niet. Afweging in
+`docs/decisions/2026-09-21-een-knip-die-anders-heet.md`.
+
 ## 3. Wat een nieuwe sessie als eerste doet
 
 1. Lees `CLAUDE.md`. Dat is de grondwet en die wint van alles hieronder.
@@ -1022,6 +1202,70 @@ november, als er een echte tweede lezer is.
 Er zijn vier milestones in Linear. Deze volgorde is geen suggestie — de
 afhankelijkheden zitten er echt in.
 
+### Nieuw sinds 14-09-2026: de zes helden (QS8-468)
+
+Milestone **Fase 2**, label `phase:v2` — besloten door Quinten op 14-09-2026.
+Die milestone stond op 100%; dit epic zet hem weer open.
+
+⚠️ **Vrijgegeven om nu te bouwen, terwijl Fase 1 zijn exit-criterium nog niet
+haalt.** Zelfde vorm als de drie issues die op 27-08 met naam vrijgegeven zijn:
+de grens verschuift niet, dit epic staat er met naam naast. Quinten heeft op
+14-09 gezegd de voorbereidende PR te mergen en er daarna sessies op te starten;
+dát is de vrijgave.
+
+Zes superhelden-archetypes worden de stem van de app — Strix, Ignis, Meridian,
+Forge, Lucerna en Quip. Zes deelissues: QS8-469 en QS8-470 konden meteen en
+tegelijk, QS8-471 daarna, en QS8-474, QS8-475 en QS8-477 weer parallel.
+
+| Issue | Wat | Stand |
+|---|---|---|
+| QS8-469 | het heldenrooster als data, elke quote op zijn bron | ✅ af 14-09 — PR #462 |
+| QS8-470 | het heldenpalet als benoemde uitzondering op het navystelsel | ✅ af 14-09 — PR #464 |
+| QS8-471 | datamodel: welke held is van wie, elke verschijning append-only | ✅ af 14-09 — PR #470, migratie `0264` |
+| QS8-474 | de vragenlijst van vier naar acht vragen, gelijkspel is de regel | ✅ af 14-09 — PR #473 |
+| QS8-475 | de heldenstem in de meldingen die er al zijn | ✅ af 14-09 — PR #478 |
+| QS8-477 | je held in een open groep, en nergens anders | ✅ af 14-09 — PR #483, migratie `0268` |
+| QS8-493 | *(vervolg)* de heldenlijst van een open groep krijgt een eigen kaart | ✅ af 16-09 — PR #498, migratie `0279` |
+
+⚠️ **De datum is de afronding in Linear en niet de merge**, en hij staat er sinds
+QS8-524 bij omdat twee van deze zeven rijen een stand droegen die Linear al dagen
+tegensprak. Dit bestand is het eerste dat een nieuwe sessie leest; een rij die
+`open` zegt over werk dat af is, stuurt die sessie naar een issue dat er al ligt.
+📏 Alle zeven zijn op 17-09-2026 rij voor rij tegen Linear nagelopen. ⚠️ Geen
+enkele controle doet dat voor je — `docs:controle` legt de drie
+overdrachtsdocumenten naast **elkaar**, nooit naast Linear, dus ze kunnen het met
+z'n drieën eens zijn en met z'n drieën ongelijk hebben. Dat gat draagt QS8-452,
+en dat issue wacht op een Linear-sleutel in de bouwomgeving.
+
+⚠️ **QS8-477 is het enige issue van dit epic met een groepsoppervlak, en dat is
+met opzet zo gehouden.** 0264 bevat geen enkele groepstak: `hero_appearances`
+draagt `trigger`, en `misser` en `stilte` zijn tegenslagsignalen. Een vierde tak
+op de leespolicy geeft de hele rij weg, want RLS kan geen kolommen beperken —
+dus de vorm is een RPC met een expliciete kolomlijst, zoals
+`straffen_bij_uitstelverzoek()` (0218) en `getuigenissen()` (0169). Zo is het
+ook gebouwd: `groep_helden()` in `0268`, oppervlak 37 in
+`docs/decisions/002-domeinregel7-oppervlakken.md`.
+
+⚠️ **Het epic is af sinds 16-09-2026, inclusief het groepsoppervlak.** QS8-468
+zette "een eigen heldenscherm of heldenkaart op het overzicht" met zoveel
+woorden buiten scope voor die ronde, dus `groep_helden()` stond met de vraag erbij in
+`WACHT_OP_EEN_BESLUIT` (`scripts/dode-keten-controle.mjs`). QS8-493 heeft die
+vraag beantwoord met een kaart (`src/modules/helden/groepshelden.ts`, migratie
+`0279`); dat register is sindsdien leeg. De regels en de reden staan in CLAUDE.md
+en in `docs/decisions/2026-09-14-een-held-verraadt-geen-doel.md` §7; dít bestand
+houdt alleen de stand bij.
+
+De zeven besluiten die eraan vooraf gingen staan in
+`docs/decisions/2026-09-14-zes-helden-en-de-zeven-besluiten-eronder.md`; de
+brondocumenten zijn `docs/superhelden-archetypes.md` en `docs/helden-codex.html`.
+**Wil je er met meerdere sessies tegelijk aan werken, lees dan eerst
+`docs/helden-parallelprompt.md`** — daar staat wat er bij dít epic botst als er
+twee sessies naast elkaar lopen.
+
+⚠️ Twee van de zeven besluiten kosten een bestaande regel: de kleurregel in
+CLAUDE.md wordt herschreven (QS8-470) en besluit A56 wordt deels heropend
+(QS8-474). Allebei staan ze in het beslisdocument uitgeschreven.
+
 ### Milestone: Fase 1 — MVP
 
 Werk de epics in deze volgorde af. Binnen een epic: op prioriteit, hoog eerst.
@@ -1042,6 +1286,11 @@ Werk de epics in deze volgorde af. Binnen een epic: op prioriteit, hoog eerst.
 | 12 | **EPIC 12 — Risico-radar** (QS8-17) | Rekent op cyclusgeschiedenis, dus laat | ✅ af (20-08). `risk_status` is vóór het bouwen naar een eigen eigenaar-only tabel verhuisd |
 | 13 | **EPIC 9 — Commitment device** (QS8-14) | Laatste; raakt vertrouwen, dus niet haasten | ✅ **af** (21-08). QS8-83 (beloning vrijgeven), QS8-84 (straf verschuldigd) en QS8-85 (informeel) staan alle drie op Done; migraties 0057 en 0058, en de rollover is gedeployd mét `maak_straffen_verschuldigd` |
 | 14 | **EPIC 13 — Open of beschermde groepen** (QS8-132) | Besluit A41, 24-08. Varieert de gevoeligste policies die er zijn per groep, dus na alles wat erop leunt | ✅ **af** (24-08). Migraties 0076 (kolom, `group_events`, `zet_groepszichtbaarheid()`, twee systeemberichten), 0077 (`weekly_goals_select`), 0078 (`best_streak` en `last_cycle_start`) 0079 (De Ketting) en 0080 (de uitnodiging noemt de stand). Alle twintig oppervlakken beoordeeld; zeven staan bewust dicht, óók in een open groep. Beoordeling per oppervlak in beslisdocument 002 §6 |
+| 15 | **QS8-394 — hoe privé is een gedeelde foto** | Losgetrokken uit de doorlichting van 09-09. Drie stappen, en ze staan los van elkaar: QS8-395 (metadata eraf vóór het uploaden, In Review), QS8-396 (bewaartermijn van 21 dagen + de leesgrens aan het bericht, migratie 0235), QS8-397 (end-to-end-versleuteling — **een besluit van Quinten**, sleutelbeheer, niet op eigen gezag te bouwen). ⚠️ De bewaartermijn leunt op de uurlijkse rollover uit `.github/workflows/rollover.yml`; het restrisico staat in §6 en in `ENGINEER-REVIEW.md`. QS8-396 en QS8-399 zijn op 09-09 samengevoegd op één branch — de teller is die van 399, zie QS8-402 | 1 en 2 gebouwd, 3 wacht op Quinten |
+| 16 | **EPIC — De Lijst** (QS8-378) | Wens van Quinten, 09-09-2026: losse to-do's op de taakbalk, getypt of ingesproken, privé of gedeeld. Staat naast de kernlus en niet erin: De Lijst levert nooit punten, een reeks of goedkeuring op, want de week blijft de enige eenheid die telt (domeinregel 9 en 10) | ✅ **Beide beslispunten zijn op 09-09 beslist.** Een **vijfde tabblad** (de kop van `_layout.tsx` zei "vier en niet vijf" en is herschreven met de reden erbij), en **per taak aanvinken** wat de groep ziet — variant B, bewust niet de C die de wens letterlijk vroeg. Daarmee is er géén verruiming van domeinregel 7 nodig. Deel 1 af: **QS8-379**, migratie `0246` — de tabel `todo_items`, eigenaar-only, met een dagplafond en een `visibility` die voor geen enkele client schrijfbaar is. Deel 2 af: **QS8-380** — het tabblad, het scherm en de datalaag, alles prive. Deel 3 af: **QS8-381**, migratie `0248` — delen per taak met **één gekozen groep** (B2, niet "iedereen met wie je een groep deelt"), via de RPC `zet_taakzichtbaarheid()` en beide kanten op. ⚠️ De security-ronde daar vond dat een gedeelde taak het lidmaatschap eronder overleefde; dat is gesloten met een trigger op `group_members` en niet met een regel in `verwijder_lid()` en `verlaat_groep()` — die twee eindigen een lidmaatschap verschillend. ✅ **QS8-386** is de staart en is op 10-09 af: een taak is te hernoemen via hetzelfde gedeelde `Field`, dus het schrijfrecht op `todo_items.body` heeft nu een aanroeper en de rij is uit `GEEN_SCHRIJFPAD` van `kolomrechten-controle.mjs` weg. Gebouwd en niet ingetrokken — de afweging staat in `docs/decisions/2026-09-10-een-typefout-hoort-geen-verwijderknop-te-vragen.md`. Daarmee is de epic in zijn geheel af |
+| 17 | **De novemberronde** (label `review:november`) | Tien bevindingen die bewust waren weggelegd tot de engineer er zou zijn. ⚠️ **Op 10-09 heeft Quinten gevraagd ze nú uit te voeren**, en daarmee verviel het parkeerbesluit | ✅ **Alle tien Done** — QS8-179, 180, 181, 182, 183, 184, 187, 189, 194, 204, over twee sessies. ⚠️ QS8-180 droeg het label niet en is op 11-09 alsnog gelabeld; het waren er negen zolang je op het label afging. ⚠️ **De aanname dat het "een oordeel en geen meting" was, hield bij geen van de tien stand.** Er bleek telkens iets te meten of te grendelen: QS8-181 was een lidmaatschapsorakel (migratie 0249) en leverde `definers:controle` op, QS8-182 een goedkeuring die aan een gedenormaliseerde kolom hing (0252), QS8-184 drie beloftes van domeinregel 9 die alleen als afwezigheid bestonden, QS8-189 een pushtoken dat over te nemen was, QS8-180 de twee klokken die typematig niet gescheiden waren. Wat er als produktvraag overblijft — of gebruikers de Dagzet als "de check-in die telt" gaan zien — is gedrag en staat als zodanig in `docs/ENGINEER-REVIEW.md` |
+
+| 18 | **QS8-416 — `copy` is een INSERT** | Uit de audit van 10-09. 0239 trok elk UPDATE-pad op `storage.objects` in en schreef erbij dat daarmee ook het move/copy-eindpunt dicht was; dat dekt `move` en niet `copy`, want een `copy` schrijft een **nieuwe rij**. Dezelfde zin stond in 0235, 0240 en twee dossierrijen | ✅ **af op 11-09**, migratie `0255` — en hij doet mínder dan het issue aannam. 📏 De securityronde vond dat de extensieregex géén enkele kruisrichting sluit: bij een `copy` kiest de client de **doelnaam** (`sourceKey` en `destinationKey` zijn twee losse parameters in `@supabase/storage-js` 2.112.3), dus een pdf uit `chatdocs` heet in `chatfotos` gewoon `onschuldig.jpg`. Zelf nagemeten als `authenticated` ná 0255: alle vier de emmers laten een vrij gekozen doelnaam door. **Wat 0255 wél oplevert:** de naamvorm is in alle vier de emmers een databaseeigenschap in plaats van een clienteigenschap — dezelfde belofte die 0240 voor `chatdocs` waarmaakte, met `evil.html` als meting. De open copy-route staat op **Middel** in `docs/ENGINEER-REVIEW.md`, met `chatdocs` → fotoemmer als zwaarste richting (5 MB tegen 1 MB): op databaseniveau niet te sluiten, want een INSERT-policy ziet alleen de nieuwe rij. ⚠️ De bijbehorende test heette naar `0237` terwijl de drops in `0239` staan — zes keer, inclusief de naam van het `describe`. Uitleg in `docs/decisions/2026-09-11-een-copy-is-geen-move.md` |
 
 **Exit:** een groep van drie draait ≥4 opeenvolgende cycli.
 
@@ -1064,7 +1313,7 @@ kan een sessie **niet** zelf oppakken:
 
 | Issue | Waarom niet |
 |---|---|
-| QS8-71, QS8-72 | Vragen een betaalde tier en een nieuw groepszichtbaar oppervlak. ⚠️ Sinds `0126` is de bucket-helft er wél (voor avatars), maar dat maakt deze twee niet vrij: bijlagen bij voltooiingen en chatberichten zijn iets anders dan een profielfoto. Overleg met Quinten |
+| ~~QS8-71, QS8-72~~ | ✅ **allebei gebouwd** — QS8-71 op 09-09 (migraties `0222` t/m `0226`), QS8-72 op 10-09 (`0235` t/m `0243`). De rij hield ze tegen op "een betaalde tier en een nieuw groepszichtbaar oppervlak"; het eerste bleek niet nodig (de gratis tier draagt het met twee dagplafonds per emmer) en het tweede is gewoon gedaan — rij 32 en rij 34 in `docs/decisions/002-domeinregel7-oppervlakken.md` |
 | QS8-86 | Betaalprovider — grens 1 uit de beslisbevoegdheid. **En bewust als laatste (28-08): Quinten wil de app eerst met echte mensen testen. Niet nodig voor de MVP** |
 | QS8-92 | Zit in `src/modules/notifications/`, en dat was het werkgebied van een parallelle sessie |
 | QS8-108 | Vraagt een nieuwe dependency |
@@ -1163,7 +1412,7 @@ Klein, maar het staat nergens anders opgeschreven:
 | Rollover automatisch laten draaien | QS8-49 | De functie werkt en is getest, maar wordt door niets aangeroepen. Zie hieronder |
 | ~~Een verschuldigd commitment verdween met het doel~~ | ENGINEER-REVIEW 19-08 | ✅ gedicht in 0058: `verwijder_doel()` weigert bij `unlocked`, `due` of `resolved` — dezelfde lijst als `commitments_select` |
 | ~~Systeembericht bij een ketting-mijlpaal~~ | QS8-70 | ✅ gebouwd 24-08 in migratie 0070. De ontbrekende definitie is ingevuld: een rond cumulatief aantal schakels van de groep. `chain_milestone` staat op de allowlist én in `SYSTEEM_GEBEURTENISSEN` |
-| Foto's en documenten in de chat | QS8-71, QS8-72 | `phase:v2`. Vraagt een Storage-bucket met policies, en die is er niet — Q-TODO A12 |
+| ~~Foto's en documenten in de chat~~ | QS8-71, QS8-72 | ✅ **allebei gebouwd** (09-09 en 10-09). Twee eigen emmers met vier policies elk: `chatfotos` (`0222`) en `chatdocs` (`0235`). ⚠️ De vorm is een kopie en het veiligheidsargument niet — zie `docs/decisions/2026-09-10-een-document-is-geen-foto.md` §1 |
 | ~~Hetzelfde doel aan meerdere groepen koppelen~~ | QS8-56 | ✅ **gebouwd 27-08**, zónder migratie. `goal_group_links` kon dit vanaf dag één en het gróépsscherm kon het ook — `KoppelDoel` filtert alleen tegen de koppelingen van díé groep, dus wie in twee groepen achter elkaar hetzelfde doel koos, hád het al. Wat ontbrak was het overzicht vanaf het doel, en dat is nu het blok **Gedeeld met** op `app/doel/[id].tsx`. ⚠️ **Onderweg bleek het deadlineverzoek stuk te staan wachten:** het scherm nam `groepen[0]` als de groep die erover besliste, en die lijst had geen `order by`. Elk slot eromheen was dicht en gemeten; de gebruiker had de groep alleen nooit aangewezen. Zie `docs/decisions/2026-08-27-een-doel-in-meer-dan-een-groep.md` §2 |
 | ~~Een groep verlaten~~ | QS8-57 | ✅ **gebouwd 27-08**, migratie 0102. Vertrekken loopt via `verlaat_groep()`; `group_members_delete` staat op `using (false)`, want de laatste-beheerder-eis gaat over de rijen die óverblijven en dat kan RLS niet zien. Onderweg bleek `shares_group_with_goal()` de eigenaar nooit te toetsen: een oud-lid bleef zijn doel, weekdoelen en voltooiingen aan de verlaten groep uitdelen. Zie de kop van 0102 |
 | ~~Rollover opnieuw deployen~~ | Q-TODO A13 | ✅ **gedaan 19-08.** De Supabase CLI blijkt ingelogd (token in de CLI-config, niet in `.env`), dus `supabase functions deploy rollover` kón gewoon. Geverifieerd met een echte aanroep: `401` zonder token, `200` met een service-role-token — de kapotte regex had hier altijd `403` gegeven. Draai `npm run edge:sync` vóór elke deploy; de kopie liep achter |
@@ -1217,10 +1466,11 @@ gebouwd; zie de EPIC-tabel hierboven en §2.
 
 **Wat dit niet is:** geen vrijbrief voor de rest van het label. Wie een ander
 `phase:v2`-issue wil oppakken, vraagt dat opnieuw. Drie ervan staan sowieso op
-slot en dat is ouder dan dit besluit: **QS8-71** en **QS8-72** vragen een
-betaalde tier en een nieuw groepszichtbaar oppervlak (de bucket-helft is sinds
-`0126` gebouwd, maar alleen voor avatars) en
-**QS8-86** vraagt een betaalprovider — dat laatste is grens 1 uit de
+slot, en dat is ouder dan dit besluit. ⚠️ **Twee ervan zijn er inmiddels af:**
+**QS8-71** (09-09) en **QS8-72** (10-09) stonden op "vraagt een betaalde tier en
+een nieuw groepszichtbaar oppervlak", en dat eerste bleek bij het bouwen niet
+nodig — de gratis tier draagt het met twee dagplafonds per emmer. Wat overblijft
+is **QS8-86**: dat vraagt een betaalprovider, en dat is grens 1 uit de
 beslisbevoegdheid in `CLAUDE.md`.
 
 ---
@@ -1231,7 +1481,7 @@ beslisbevoegdheid in `CLAUDE.md`.
 |---|---|---|
 | QS8-98 | RLS-testsuite met echte JWT's | ✅ af, plus zeven gaten gedicht |
 | QS8-23 | CI: typecheck, lint, test op elke push | ✅ af — branch protection nog zetten |
-| QS8-24 | Sentry | ✅ alle vier de criteria gebouwd en gemerged — open: er is nooit een echte gebeurtenis uít de app aangekomen |
+| QS8-24 | Sentry | ✅ **af sinds 14-09-2026.** Alle vier de criteria gebouwd en gemerged, en de laatste openstaande meting is gedaan: Quinten forceerde een fout in de browser op `goalbuddies.q-projects.tech` en de gebeurtenis staat in Sentry met `server_name: app`, tag `runtime: web`, `waar/logger: globaal.fout`, `environment: production` en `release: goalbuddies@0.1.0`. Dát was de hele meting — uit een Edge Function was al eerder een envelope aangekomen, maar dat is een afgeleide |
 | QS8-22 | Migratie-workflow | ✅ af sinds QS8-119 — dumpscript, docs én een lokale stack. Zie de correctie hieronder |
 
 ⚠️ **Achterhaald sinds QS8-119 (24-08-2026), en dat stond hier tot 27-08 nog
@@ -1286,14 +1536,14 @@ Deze dingen kan een sessie niet zelf oplossen.
 | Branch protection op `main` | Maakt de CI-check "Alles groen" blokkerend | niet gedaan — **kan nu wel**, via `gh api` in plaats van de webinterface |
 | Leaked password protection | Staat uit in Supabase Auth. Eén schakelaar in het dashboard | niet gedaan |
 | Apple/Google OAuth | Providers aanzetten in het Supabase-dashboard | niet gedaan |
-| ~~Storage-bucket~~ | Voor avatars en later bijlagen | ✅ **gedaan 28-08 in migratie `0126`** — voor avatars. Bijlagen bij voltooiingen en chatberichten (QS8-71, QS8-72) blijven open: die vragen een betaalde tier en een nieuw groepszichtbaar oppervlak |
+| ~~Storage-bucket~~ | Voor avatars en later bijlagen | ✅ **gedaan 28-08 in migratie `0126`** — voor avatars. En inmiddels drie emmers erbij: `chatfotos` (`0222`, QS8-71), `bewijsfotos` (`0227`, QS8-391) en `chatdocs` (`0235`, QS8-72). ⚠️ Alle vier privé, alle vier met vier policies; `storage:controle` wordt rood zodra er een emmer zonder policy bij komt |
 | ~~Rollover inplannen~~ | De Edge Function werd door niets aangeroepen | ✅ **gedaan 19-08.** `.github/workflows/rollover.yml` draait hem elk uur; de sleutel staat in GitHub Secrets en niet in de database. Geverifieerd op GitHub: twee runs geslaagd, log toont `HTTP 200` en `{"ok":true,...}` |
 | ~~Rollover opnieuw deployen~~ | Hij roept nu ook `slaap_stille_groepen()` aan (QS8-60), en de repo-versie had een kapotte `Bearer`-regex | ✅ **gedaan 19-08**, geverifieerd met een echte aanroep. De CLI blijkt ingelogd; het access token stond in de CLI-config en niet in `.env`, en dat is de reden dat dit maanden onterecht als geblokkeerd stond |
 | `EXPO_PUBLIC_APP_URL` invullen | Voedt de uitnodigingslink. Leeg betekent: terugval op het productieadres, dus een testomgeving deelt links naar productie | niet gedaan — Q-TODO A14 |
 | ~~Vier productbeslissingen~~ | A15, A17 en A18 zijn beantwoord op 18-08 en uitgevoerd (0029, 0032). Alleen A16 staat nog open | ✅ op A16 na |
 | ~~Twee beslissingen uit EPIC 6~~ | A19 beantwoord en gebouwd (0030); A20 staat in `CLAUDE.md` met een test | ✅ |
 | Vier nieuwe vragen | A27 t/m A30 uit de besluitenronde van 18-08: een `ref_id` op `chat_messages`, chat anonimiseren of cascaderen, de puntenvariant bij A7, en wie over een deadline-verzoek beslist | wachten op Quinten |
-| `npm run types:db` draaien | Regenereert `src/lib/database.types.ts` uit het echte project. Een sessie in de cloudcontainer kán dit niet: het vraagt én een productietoken én een draaiende Docker-daemon, óók met `--db-url`. Tot dat gebeurt staan er handmatige handtekeningen in het bestand (zie §2), en **een handmatige regel die niemand meer als handmatig herkent, is precies hoe de repo en het project uit elkaar gaan lopen** | open — productie is sinds 09-09 bij (zie §2), dus dit loopt achter op álles vanaf `0120` |
+| `npm run types:db` draaien | Regenereert `src/lib/database.types.ts` uit het echte project. Een sessie in de cloudcontainer kán dit niet: het vraagt én een productietoken én een draaiende Docker-daemon, óók met `--db-url`. Tot dat gebeurt staan er handmatige handtekeningen in het bestand (zie §2), en **een handmatige regel die niemand meer als handmatig herkent, is precies hoe de repo en het project uit elkaar gaan lopen** | open als handeling, maar 📏 op 16-09-2026 staat het bestand wél gelijk: productie en de map dragen sinds QS8-505 hetzelfde schema, en de typen zijn uit die map gegenereerd. Nagemeten dat `vindbaar`, `shared_group_id`, `ronde`, `zonder_beoordelaar`, `quiet_from`, `attachment_name`, `hero_profiles`, `todo_items`, `zoek_mensen`, `zet_taakzichtbaarheid`, `herstel_stuurloze_straf` en `groep_helden` erin staan. ⚠️ `dagtellers` staat er terecht niet in — die tabel is voor `anon` en `authenticated` ingetrokken, dus PostgREST kent hem niet |
 
 ---
 
@@ -1500,9 +1750,15 @@ database leunt: wie kan die stand veranderen, en wanneer?**
     zo goed als voor je eigen aannames — een uur werk aan een niet-bestaand gat
     is even duur als een uur niet werken aan een echt gat.
 
-    Hetzelfde geldt voor `supabase/functions/`: die vallen buiten typecheck, lint
-    én CI, en geen enkele workflow deployt ze. Draai `npm run edge:sync` vóór elke
-    deploy en controleer de gedéployde versie, niet de repo-versie.
+    Hetzelfde geldt voor `supabase/functions/`, al is de reden versmald. ~~Die
+    vallen buiten typecheck, lint én CI~~ — dat stond hier tot 11-09 en klopt
+    niet meer: `deno check` en `deno lint` draaien er sinds 25-08 in CI overheen
+    (QS8-118-ronde), en sinds **11-09** valt de map ook onder ESLint met
+    `max-depth`, `no-shadow` en de ratel van coderegel 15 (QS8-422). Wat er
+    **wél** blijft staan is de kant die je hier nodig hebt: **geen enkele
+    workflow deployt ze**, en er is geen Deno-testruntime in de poort. Draai
+    `npm run edge:sync` vóór elke deploy en controleer de gedéployde versie, niet
+    de repo-versie.
 
 15. **⚠️ Een aannemelijke diagnose is geen meting.** Hier stond tot 23-08 dat
     Supabase weigert na *ongeveer dertig aanmeldingen per uur*, en dat je de
@@ -1555,6 +1811,12 @@ je weet wát je tegenkomt als de controle afgaat.
 - **CRLF en meerregelige zoek-en-vervang** → `.gitattributes` met `eol=lf`. De
   bestanden staan sinds 20-08 als LF op schijf, dus dit kán niet meer misgaan.
   Was drie keer misgegaan op één dag terwijl de waarschuwing op deze lijst stond.
+- **Een branchmelding van `migraties:controle` geloven zonder verse fetch** →
+  die melding noemt sinds 12-09-2026 (QS8-435) zelf de leeftijd van zijn beeld:
+  vers, ouder dan vijf minuten, of nooit gefetcht. Staat er een ⚠ bij, draai dan
+  `git fetch --all` vóór je er iets over zegt — er is al eens een bevinding op
+  het issue van een ander beland die op dat moment een uur onwaar was. De regel
+  staat in `CLAUDE.md`.
 - **Geen Vercel-specifieke API's, geen dependency zonder overleg, niet meer dan
   15 bestanden per keer** → staan in `CLAUDE.md`, niet hier.
 

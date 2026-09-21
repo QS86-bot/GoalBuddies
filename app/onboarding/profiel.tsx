@@ -6,13 +6,13 @@ import {
   AVATAR_MAX_BYTES,
   rondOnboardingAf,
   updateProfiel,
-  useAvatarKeuze,
   type Profiel,
   useProfiel,
   userClock,
   useSession,
   zetWeekStartdag,
 } from '@/modules/auth';
+import { useAvatarKeuze } from '@/modules/auth/react';
 import { herinneringStandaard } from '@/modules/notifications';
 import { t } from '@/shared/i18n';
 import { space } from '@/shared/theme';
@@ -28,7 +28,6 @@ import {
   Choice,
   Field,
   Screen,
-  TijdzoneKeuze,
   WeekStartKeuze,
 } from '@/shared/ui';
 
@@ -87,13 +86,22 @@ function OnboardingProfielFormulier() {
   const { profiel, zetProfiel } = useProfiel();
 
   const [naam, setNaam] = useState(profiel?.display_name ?? '');
-  const [tz, setTz] = useState(profiel?.tz ?? apparaatTijdzone());
+  // ⚠️⚠️ **Geen `useState` en niet uit `profiel`, en dat is een gemeten
+  //    bevinding uit de security-review van QS8-472.** Dit stond als
+  //    `useState(profiel?.tz ?? apparaatTijdzone())`, en dat bevriest de zone bij
+  //    de eerste render. 📏 Het gevolg: `profiles.tz` draagt bij een vers account
+  //    de kolomstandaard `Europe/Amsterdam` (migratie 0001). `Tijdzonewacht`
+  //    schrijft daar de échte zone overheen en onthoudt dat hij dat gedaan heeft;
+  //    dit formulier schrijft seconden later de bevroren standaard terug, en de
+  //    wacht probeert het die sessie niet meer. Een gebruiker in Tokio rondde zijn
+  //    onboarding dus af in Amsterdam — en `zetWeekStartdag()` hieronder rekent
+  //    zijn éérste cyclusgrens in díé zone uit.
+  //
+  //    Nu lezen beide schrijvers uit dezelfde bron. Ze kunnen elkaar nog steeds
+  //    overschrijven, maar niet meer met een andere waarde.
+  const tz = apparaatTijdzone();
   const [weekStart, setWeekStart] = useState<Weekday>((profiel?.week_start_day ?? 1) as Weekday);
   const [eigenDoel, setEigenDoel] = useState(profiel?.wants_own_goal ?? true);
-
-  // Het correctiepad staat dicht tot iemand zegt dat de zone niet klopt. Zie de
-  // kaart hieronder voor waarom dat de hele wijziging van QS8-213 is.
-  const [zoneOpen, setZoneOpen] = useState(false);
 
   const [bezig, setBezig] = useState(false);
   const [fout, setFout] = useState<string | null>(null);
@@ -207,35 +215,21 @@ function OnboardingProfielFormulier() {
       </Card>
 
       {/*
-        ⚠️ **De tijdzone is een regel tekst en geen veld** — QS8-213. Hij kwam al
-           uit het apparaat (`apparaatTijdzone()` leest
-           `Intl.DateTimeFormat().resolvedOptions().timeZone`), maar hij stond
-           hier als volledig zoekveld met label, hint en plaatshouder. Dat leest
-           als iets wat je moet invullen, terwijl het bedoeld is als correctiepad
-           voor wie verhuisd is of wiens telefoon het mis heeft.
+        ⚠️ **De tijdzone is een regel tekst en geen veld** — QS8-213, en sinds
+           QS8-472 is er ook geen weg meer naar een veld. Hij komt uit het
+           apparaat (`apparaatTijdzone()` leest
+           `Intl.DateTimeFormat().resolvedOptions().timeZone`) en `Tijdzonewacht`
+           in `app/_layout.tsx` houdt hem daar gelijk aan.
 
-        ⚠️ **`TijdzoneKeuze` blijft er wél onder zitten, ongewijzigd.** Alleen de
-           regel tonen zonder weg ernaartoe zou de keten van QS8-27 opnieuw
-           doorknippen: zone verkeerd, en geen enkele knop om hem recht te
-           zetten. Het is dezelfde component, in volle vorm, één tik verderop.
+        ⚠️⚠️ **Hier stond een "Klopt niet"-knop met `TijdzoneKeuze` eronder, en
+           die is weg.** Dat is een besluit met een prijs en geen opruiming: wie
+           in Lissabon woont met zijn telefoon op Amsterdam kan dat nergens meer
+           rechtzetten. Quinten heeft dat op 14-09-2026 zo besloten; de afweging
+           staat in
+           `docs/decisions/2026-09-14-de-tijdzone-komt-uit-het-apparaat.md`.
       */}
       <Card>
-        <View style={styles.zonerij}>
-          {/*
-            ⚠️ De `View` eromheen en geen `style` op `Body`: die component zet
-               `style` zelf en spreidt `...rest` daarná, dus een eigen `style`
-               vervángt de typografie in plaats van hem aan te vullen.
-          */}
-          <View style={styles.zonetekst}>
-            <Body>{t('onboarding.tijdzone_van_telefoon', { zone: tz })}</Body>
-          </View>
-          {zoneOpen ? null : (
-            <Button variant="stil" onPress={() => setZoneOpen(true)}>
-              {t('onboarding.tijdzone_klopt_niet')}
-            </Button>
-          )}
-        </View>
-        {zoneOpen ? <TijdzoneKeuze waarde={tz} onKies={setTz} /> : null}
+        <Body>{t('onboarding.tijdzone_van_telefoon', { zone: tz })}</Body>
       </Card>
 
       <Card nested>
@@ -263,13 +257,6 @@ function OnboardingProfielFormulier() {
 const styles = StyleSheet.create({
   naamrij: { flexDirection: 'row', gap: space.blokGap, alignItems: 'flex-start' },
   naamveld: { flex: 1 },
-  zonerij: {
-    flexDirection: 'row',
-    gap: space.blokGap,
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  zonetekst: { flexShrink: 1 },
 });
 
 /**

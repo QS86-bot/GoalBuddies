@@ -50,13 +50,30 @@
  *    terugstaat. Ligt het er bij de start nog, dan is een vorige run afgebroken
  *    en herstelt hij eerst — vóór hij iets meet.
  *
+ * ⚠️⚠️ **En "er werd een test rood" is niet hetzelfde als "déze policy maakte
+ *    hem rood".** Dat is de derde fout van deze soort op dit script, en alle
+ *    drie gaan ze de geruststellende kant op: een gat komt eruit als bewaakt.
+ *    Daarom meet hij de suite ook één keer vóór de eerste mutatie en één keer
+ *    ná de laatste: wat toen al rood stond telt niet als bewijs, en wat onderweg
+ *    rood werd **én aan het eind rood bleef** ook niet. Meting en geval staan bij
+ *    `weegTegenBaseline()`.
+ *
+ * ⚠️ **Die tweede helft is smaller dan hij klinkt, en dat hoort er expliciet bij
+ *    te staan.** Drift die zichzelf herstelt — een teller waarvan het venster
+ *    omrolt, een storing die overgaat — staat bij de slotmeting weer groen en
+ *    komt er dus niet uit. Het venster van `tel_dagteller()` (0233) is een vást
+ *    etmaal en een volledige sweep duurt uren, dus dat is geen theorie. Wat
+ *    daartegen helpt is de naam bij elke `✓`: die maakt een ongerijmde getuige
+ *    zichtbaar voor wie het rapport leest. Staat als rij in
+ *    `docs/ENGINEER-REVIEW.md`.
+ *
  * Gebruik:
  *   npm run rls:dekking              alle policies
  *   npm run rls:dekking -- goals     alleen tabellen waarvan de naam dit bevat
  */
 import { execFileSync, spawnSync } from 'node:child_process';
 import { existsSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
-import { dirname, join } from 'node:path';
+import { basename, dirname, join } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 
 const WORTEL = join(dirname(fileURLToPath(import.meta.url)), '..');
@@ -113,11 +130,128 @@ export function ontleedPolicies(uitvoer) {
   return ruw;
 }
 
-/** De ALTER die deze policy wagenwijd openzet, of `null` als er niets te openen valt. */
-export function verzwakSql(policy, helft) {
+/**
+ * De conjuncten waar een policyhelft op het hoogste niveau uit bestaat.
+ *
+ * ⚠️⚠️ **Waarom dit bestaat — QS8-550.** Deze meting beantwoordde tot 18-09-2026
+ *    *"wordt er iets rood als ik deze helft wagenwijd openzet"*, en dat is niet
+ *    dezelfde vraag als *"is elke voorwaarde in deze helft getoetst"*. Bij een
+ *    `and` vallen die twee uit elkaar: één getoetste conjunct maakt het geheel
+ *    `bewaakt`, en de andere kan stil verdwijnen.
+ *
+ *    📏 Gemeten op `chat_messages_delete`, dat
+ *    `(sender_id = auth.uid()) and is_group_member(group_id)` draagt. Het
+ *    rapport meldde `bewaakt`, met `archief-leesbaar.test.ts` als getuige — en
+ *    dat klopte, want wagenwijd open laat óók het archiefdeel vallen. Maar
+ *    alleen de eigenaarshelft weghalen liet **180 bestanden en 2094 tests groen**
+ *    staan terwijl elk groepslid het bericht van elk ander kon wissen.
+ *
+ * ⚠️ **De kosten zijn gemeten en niet geschat.** 📏 Van de **133** policyhelften
+ *    zijn er **35** een top-level conjunctie, samen **106** conjuncten. Per
+ *    conjunct meten kost dus 133 − 35 + 106 = **204** runs in plaats van 133,
+ *    een groei van **1,53×**. Dit rapport draait met opzet niet in de poort en
+ *    duurt toch al uren; die anderhalf is de prijs van een getal dat betekent
+ *    wat het zegt.
+ *
+ * ⚠️ **Splitsen doet hij alleen op diepte nul.** Een `and` binnen een subquery,
+ *    een join of een `exists` is geen aparte grendel maar een deel van één
+ *    uitdrukking; die staan er in dit schema volop in. Een naïeve
+ *    `split(' AND ')` telde er 50 waar er 35 zijn.
+ */
+export function conjunctenVan(uitdrukking) {
+  const kern = zonderBuitensteHaakjes(uitdrukking);
+  const delen = [];
+  let diepte = 0;
+  let start = 0;
+
+  for (let i = 0; i < kern.length; i += 1) {
+    const teken = kern[i];
+    if (teken === '(') diepte += 1;
+    else if (teken === ')') diepte -= 1;
+    else if (diepte === 0 && kern.startsWith(' AND ', i)) {
+      delen.push(kern.slice(start, i));
+      start = i + ' AND '.length;
+      i += ' AND '.length - 1;
+    }
+  }
+
+  delen.push(kern.slice(start));
+  return delen.map((d) => d.trim()).filter((d) => d !== '');
+}
+
+/**
+ * Haalt haakjes weg die de héle uitdrukking omsluiten.
+ *
+ * ⚠️ `(a) AND (b)` begint en eindigt óók met een haakje, maar die twee horen
+ *    niet bij elkaar. Daarom telt hij de diepte mee in plaats van blind te
+ *    strippen — anders wordt `a) AND (b` de kern en klopt er niets meer.
+ */
+function zonderBuitensteHaakjes(uitdrukking) {
+  let e = uitdrukking.trim();
+
+  while (e.startsWith('(') && e.endsWith(')') && isEenOmhulsel(e)) {
+    e = e.slice(1, -1).trim();
+  }
+
+  return e;
+}
+
+/** Sluit het eerste haakje van `e` pas helemaal aan het eind? */
+function isEenOmhulsel(e) {
+  let diepte = 0;
+
+  for (let i = 0; i < e.length; i += 1) {
+    if (e[i] === '(') diepte += 1;
+    else if (e[i] === ')') diepte -= 1;
+    if (diepte === 0) return i === e.length - 1;
+  }
+
+  return false;
+}
+
+/** De uitdrukking van een helft, of `''` als die helft er niet is. */
+function uitdrukkingVan(policy, helft) {
+  return helft === 'check' ? policy.wcheck : policy.qual;
+}
+
+/**
+ * Knipt een eenheid uit `helftenVan()` uiteen in zijn helft en zijn
+ * conjunctnummer. `using` geeft `{ helft: 'using', index: null }`,
+ * `using#1` geeft `{ helft: 'using', index: 1 }`.
+ */
+export function ontleedEenheid(eenheid) {
+  const streep = eenheid.indexOf('#');
+  if (streep === -1) return { helft: eenheid, index: null };
+
+  return { helft: eenheid.slice(0, streep), index: Number(eenheid.slice(streep + 1)) };
+}
+
+/**
+ * De ALTER die deze eenheid openzet, of `null` als er niets te openen valt.
+ *
+ * Zonder conjunctnummer zet hij de hele helft op `true`; mét nummer vervangt hij
+ * alléén die conjunct door `true` en laat de rest staan. Dat tweede is wat een
+ * `and` los te breken maakt.
+ */
+export function verzwakSql(policy, eenheid = 'beide') {
+  // ⚠️ Zonder eenheid betekent dit "allebei de helften wagenwijd open", zoals
+  //    vóór QS8-550. Die aanroep bestaat nog en hoort niet te werpen.
+  const { helft, index } = ontleedEenheid(eenheid);
   const stukken = [];
-  if (policy.qual !== '' && helft !== 'check') stukken.push('using (true)');
-  if (policy.wcheck !== '' && helft !== 'using') stukken.push('with check (true)');
+
+  const open = (h) => {
+    const bron = uitdrukkingVan(policy, h);
+    if (index === null) return 'true';
+
+    const delen = conjunctenVan(bron);
+    if (index < 0 || index >= delen.length) {
+      throw new Error(`conjunct ${index} bestaat niet in ${policy.tabel}.${policy.naam}.${h}`);
+    }
+    return delen.map((d, i) => (i === index ? 'true' : d)).join(' AND ');
+  };
+
+  if (policy.qual !== '' && helft !== 'check') stukken.push(`using (${open('using')})`);
+  if (policy.wcheck !== '' && helft !== 'using') stukken.push(`with check (${open('check')})`);
   if (stukken.length === 0) return null;
 
   return `alter policy ${kwoot(policy.naam)} on public.${kwoot(policy.tabel)} ${stukken.join(' ')};`;
@@ -135,8 +269,23 @@ export function verzwakSql(policy, helft) {
  */
 export function helftenVan(policy) {
   const uit = [];
-  if (policy.qual !== '') uit.push('using');
-  if (policy.wcheck !== '') uit.push('check');
+
+  // ⚠️⚠️ **En sinds QS8-550 gaat dat argument één niveau dieper.** Een helft die
+  //    op het hoogste niveau uit meerdere conjuncten bestaat, is net zo goed
+  //    meerdere grendels — en dan betekende "bewaakt" hier opnieuw *minstens
+  //    één*. Zie `conjunctenVan()` voor de meting die dat blootlegde.
+  //
+  // ⚠️ Een helft met precies één conjunct houdt zijn kale naam (`using`), zodat
+  //    de registersleutels van zulke rijen niet verschuiven. Alleen de 35
+  //    helften die écht een conjunctie zijn, krijgen `#0`, `#1`, …
+  for (const [helft, uitdrukking] of [['using', policy.qual], ['check', policy.wcheck]]) {
+    if (uitdrukking === '') continue;
+
+    const delen = conjunctenVan(uitdrukking);
+    if (delen.length < 2) uit.push(helft);
+    else for (let i = 0; i < delen.length; i += 1) uit.push(`${helft}#${i}`);
+  }
+
   return uit;
 }
 
@@ -167,8 +316,14 @@ export function bestandenVoor(tabel, bestanden) {
   return geraakt.length > 0 ? geraakt.map((b) => b.naam) : bestanden.map((b) => b.naam);
 }
 
-/** Wat een meting betekent. */
-export function oordeel(policy, uitkomst) {
+/**
+ * Wat een meting betekent.
+ *
+ * ⚠️ **`bewijs` is er sinds ronde 9, en het is geen opsmuk.** Tot dan gaf dit
+ *    script bij een bewaakte helft één teken en verder niets — geen mens kon
+ *    nakijken of het rood ergens ánders vandaan kwam. Zie `weegTegenBaseline()`.
+ */
+export function oordeel(policy, uitkomst, bewijs = {}) {
   if (uitkomst === 'onverzwakbaar') {
     return { ...policy, status: 'geen-uitdrukking', melding: 'geen `using` en geen `with check`' };
   }
@@ -198,14 +353,23 @@ export function oordeel(policy, uitkomst) {
 
   // ⚠️ Geen oordeel is iets anders dan een gunstig oordeel — zie `leesUitkomst()`.
   if (uitkomst === 'onbruikbaar') {
-    return { ...policy, status: 'ongemeten', melding: 'de testrun leverde geen bruikbare uitslag' };
+    return {
+      ...policy,
+      status: 'ongemeten',
+      melding: bewijs.reden
+        ? `de testrun leverde geen bruikbare uitslag — ${bewijs.reden}`
+        : 'de testrun leverde geen bruikbare uitslag',
+    };
   }
-  if (uitkomst === 'rood') return { ...policy, status: 'bewaakt' };
+  if (uitkomst === 'rood') return { ...policy, status: 'bewaakt', rood: bewijs.rood ?? [] };
 
   return {
     ...policy,
     status: 'onbewaakt',
-    melding: 'wagenwijd opengezet en geen enkele test werd rood',
+    melding: bewijs.alRood?.length
+      ? 'wagenwijd opengezet; er stond wél rood, maar alleen tests die vóór de meting ' +
+        `al rood stonden (${bewijs.alRood[0]})`
+      : 'wagenwijd opengezet en geen enkele test werd rood',
   };
 }
 
@@ -247,24 +411,6 @@ export function oordeel(policy, uitkomst) {
  * De sleutel is `tabel.policynaam.helft`.
  */
 export const NIET_PER_HELFT_TE_METEN = {
-  'profiles.profiles_update.using': {
-    reden:
-      '`using` en `with check` zijn letterlijk dezelfde uitdrukking — `id = auth.uid()` — ' +
-      'en `id` staat níet in de UPDATE-kolomgrant van `profiles` (📏 gemeten: veertien ' +
-      'kolommen wél, `id` niet). Er bestaat dus geen rij die de ene helft passeert en de ' +
-      'andere niet. Het páár is wél bewaakt: `schrijfgrenzen.test.ts` wordt rood zodra ' +
-      'béide helften verruimd worden met `or shares_group_with_user(id)`, de verruiming ' +
-      'die iemand realistisch schrijft.',
-    wordtToetsbaarAls:
-      'de twee uitdrukkingen uit elkaar lopen — bijvoorbeeld als een beheerder ooit ' +
-      "andermans profiel mag lezen maar niet schrijven — of `id` in de UPDATE-kolomgrant komt.",
-    staatIn: 'tests/rls/schrijfgrenzen.test.ts',
-  },
-  'profiles.profiles_update.check': {
-    reden: 'Zelfde paar als `profiles.profiles_update.using`; zie daar voor de meting.',
-    wordtToetsbaarAls: 'zie `profiles.profiles_update.using`.',
-    staatIn: 'tests/rls/schrijfgrenzen.test.ts',
-  },
   'day_checkins.day_checkins_delete.using': {
     reden:
       'PostgREST stuurt een DELETE als `DELETE … RETURNING`, dus de rij moet óók door ' +
@@ -288,25 +434,173 @@ export const NIET_PER_HELFT_TE_METEN = {
       'de uitdrukkingen van `push_tokens_select` en `push_tokens_delete` uit elkaar lopen.',
     staatIn: 'tests/rls/afvinkgrens.test.ts',
   },
-  'groups.groups_update.using': {
+  'profiles.profiles_update.check': {
+    reden:
+      '`using` en `with check` zijn letterlijk dezelfde uitdrukking — `id = auth.uid()` — ' +
+      'en `id` staat níet in de UPDATE-kolomgrant van `profiles` (📏 hermeten op 10-09-2026: ' +
+      'twintig kolommen wél, `id` niet; de kop van `schrijfgrenzen.test.ts` zei nog veertien). ' +
+      'Er bestaat dus geen rij die de `using`-helft passeert en hier alsnog strandt: de ' +
+      'nieuwe rij draagt altijd hetzelfde `id` als de oude. ' +
+      '⚠️ De `using`-helft van dit paar stáát wél onder test, in `tests/rls/halfslot-update.test.ts`: zet je hem los open, dan slaat een stille `0 rijen` om in `42501`. Alleen déze helft is niet te isoleren. ' +
+      '⚠️⚠️ **Hier stond ook een rij voor `profiles_update.using`, en die is op 10-09-2026 ' +
+      'weggehaald omdat hij één stap te ver redeneerde.** Uit *"er bestaat geen rij die de ene ' +
+      'helft passeert en de andere niet"* volgt niet dat de helft niet te toetsen is — het ' +
+      'gedrag verandert wel degelijk waarneembaar. Diezelfde rij was daarvóór al eens ten ' +
+      'onrechte verwijderd op een `bewaakt`-uitslag die van een volgelopen dagteller kwam; ' +
+      'beide gevallen staan in `docs/decisions/2026-09-10-een-rood-is-niet-vanzelf-jouw-rood.md`.',
+    wordtToetsbaarAls:
+      'de twee uitdrukkingen uit elkaar lopen — bijvoorbeeld als een beheerder ooit ' +
+      "andermans profiel mag lezen maar niet schrijven — of `id` in de UPDATE-kolomgrant komt.",
+    staatIn: 'tests/rls/schrijfgrenzen.test.ts',
+  },
+  'todo_items.todo_items_update.check': {
+    reden:
+      '`using` en `with check` zijn letterlijk dezelfde uitdrukking — `user_id = auth.uid()` — ' +
+      'en `user_id` staat níet in de UPDATE-kolomgrant van `todo_items` (📏 gemeten: ' +
+      '`order_index`, `body` en `done_at` wél, `user_id` niet). Een client kan de eigenaar dus ' +
+      'nooit veranderen, waardoor de nieuwe rij altijd dezelfde `user_id` draagt als de oude — ' +
+      'en die is de `using`-helft al gepasseerd. Er bestaat geen rij die de ene helft passeert ' +
+      'en de andere niet. ' +
+      '⚠️⚠️ **Deze tabel was op 10-09-2026 het bewijs dat vier ándere rijen fout stonden.** ' +
+      'Hier gaf de `using`-helft los **1 rood** en bij `goals`, `profiles`, `weekly_goals` en ' +
+      '`groups` gaf hij nul — en dat verschil zat niet in de policy maar in de téstsuite: voor ' +
+      'deze tabel bestond zo\'n test al (`todo-lijst.test.ts`), voor die vier niet. Ze staan ' +
+      'er sinds ronde 9 wel, in `tests/rls/halfslot-update.test.ts`. 📏 Drie metingen op ' +
+      '10-09-2026: alleen `using` open → 1 rood, alleen `check` open → 0 rood, béíde open → ' +
+      '1 rood, elke keer *de UPDATE-policy filtert andermans rij weg, ook met SELECT wagenwijd ' +
+      'open*. Alleen déze helft is niet te isoleren.',
+    wordtToetsbaarAls:
+      'de twee uitdrukkingen uit elkaar lopen, of `user_id` in de UPDATE-kolomgrant komt — ' +
+      'dan kan iemand zijn taak naar een ander schrijven en is `check` in zijn eentje de ' +
+      'grendel. ⚠️ Een gedeelde taak maakt dat scherper: `shared_group_id` staat er vandaag ' +
+      'ook niet in, en `zet_taakzichtbaarheid()` is de enige weg.',
+    staatIn: 'tests/rls/todo-lijst.test.ts',
+  },
+  'goals.goals_update.check': {
+    reden:
+      '`using` en `with check` zijn letterlijk dezelfde uitdrukking — `owner_id = auth.uid()` — ' +
+      'en `owner_id` staat níet in de UPDATE-kolomgrant van `goals` (📏 gemeten op 10-09-2026: ' +
+      'vijf kolommen wél — `available_hours_per_week`, `category`, `description`, ' +
+      '`identity_statement`, `title` — `owner_id` niet). Een client kan de eigenaar dus nooit ' +
+      'verzetten, waardoor de nieuwe rij altijd dezelfde eigenaar draagt als de oude. ' +
+      '⚠️ De `using`-helft van dit paar stáát wél onder test, in `tests/rls/halfslot-update.test.ts`: zet je hem los open, dan slaat een stille `0 rijen` om in `42501`. Alleen déze helft is niet te isoleren. ' +
+      '⚠️ Ronde 4 (#174) mat het paar al zo en legde het niet vast; het register bestond toen ' +
+      'nog niet.',
+    wordtToetsbaarAls:
+      'de twee uitdrukkingen uit elkaar lopen, of `owner_id` in de UPDATE-kolomgrant komt — ' +
+      'dan kan iemand zijn doel naar een ander schrijven en is deze helft in zijn eentje de ' +
+      'grendel.',
+    staatIn: 'tests/rls/eigenaarschap.test.ts',
+  },
+  'weekly_goals.weekly_goals_update.check': {
+    reden:
+      '`using` en `with check` zijn letterlijk dezelfde uitdrukking — de eigenaarstoets via ' +
+      '`goals` — en `goal_id` staat níet in de UPDATE-kolomgrant van `weekly_goals` ' +
+      '(📏 gemeten: `milestone_id`, `ceiling_text`, `floor_text` en `title` wél, `goal_id` niet). ' +
+      'Een client kan het doel van een weekdoel dus nooit verzetten, waardoor de nieuwe rij ' +
+      'altijd dezelfde eigenaar heeft als de oude. ' +
+      '⚠️ De `using`-helft van dit paar stáát wél onder test, in `tests/rls/halfslot-update.test.ts`: zet je hem los open, dan slaat een stille `0 rijen` om in `42501`. Alleen déze helft is niet te isoleren. ' +
+      '⚠️ Ronde 4 (#174) mat het paar al zo en legde het niet vast; het register bestond toen ' +
+      'nog niet.',
+    wordtToetsbaarAls:
+      'de twee uitdrukkingen uit elkaar lopen, of `goal_id` in de UPDATE-kolomgrant komt — dan ' +
+      'kan een eigenaar zijn weekdoel naar het doel van een ander schrijven en is deze helft ' +
+      'in zijn eentje de grendel.',
+    staatIn: 'tests/rls/eigenaarschap.test.ts',
+  },
+  // ⚠️⚠️ **Deze rij was er één en is er sinds QS8-550 vier.** Hij dekte de hele
+  //    `check`-helft, en die valt uiteen in drie conjuncten met drie
+  //    verschillende redenen; de `using`-helft heeft er bovendien een die
+  //    dezelfde bescherming deelt. De metingen eronder zijn die van ronde 9,
+  //    aangevuld met een eigen paarmeting per conjunct op 18-09-2026.
+  'weekly_plan_steps.weekly_plan_steps_update.check#0': {
+    reden:
+      'De eigenaarstoets staat lééterlijk in béíde helften, dus alleen de check openzetten ' +
+      'laat de `using` de rij nog steeds wegfilteren. Bovendien staat `goal_id` níet in de ' +
+      'UPDATE-kolomgrant (📏 gemeten: alleen `title`, `floor_text` en `ceiling_text`). ' +
+      '📏 Hermeten per conjunct op 18-09-2026: deze conjunct in béíde helften tegelijk open ' +
+      'geeft **1 rood** — *laat de stap van Alice ongemoeid bij een ongefilterde update van ' +
+      'Bob* in `tests/rls/planstapgrens.test.ts`. De grendel is het paar.',
+    wordtToetsbaarAls:
+      '`goal_id` in de UPDATE-kolomgrant komt, of als de twee helften uit elkaar gaan lopen.',
+    staatIn: 'tests/rls/planstapgrens.test.ts',
+  },
+
+  'weekly_plan_steps.weekly_plan_steps_update.check#1': {
+    reden:
+      '`activated_cycle is null` staat óók in béíde helften, en `activated_cycle` staat niet ' +
+      'in de UPDATE-kolomgrant. Voor déze conjunct volstaat die kolomgrant als grendel — dat ' +
+      'is het verschil met `check#2` hieronder. ' +
+      '📏 Hermeten per conjunct op 18-09-2026: deze conjunct in béíde helften tegelijk open ' +
+      'geeft **1 rood** in `tests/rls/planstapgrens.test.ts`.',
+    wordtToetsbaarAls: '`activated_cycle` in de UPDATE-kolomgrant komt.',
+    staatIn: 'tests/rls/schrijfgrenzen.test.ts',
+  },
+
+  'weekly_plan_steps.weekly_plan_steps_update.using#1': {
+    reden:
+      'De spiegelzijde van `check#1`: dezelfde uitdrukking, dezelfde kolomgrant, dezelfde ' +
+      'paarmeting. 📏 18-09-2026: béíde helften van deze conjunct open geeft **1 rood**.',
+    wordtToetsbaarAls: 'idem `check#1`.',
+    staatIn: 'tests/rls/planstapgrens.test.ts',
+  },
+
+  'weekly_plan_steps.weekly_plan_steps_update.check#2': {
+    reden:
+      '⚠️⚠️ **Deze is de enige van de drie zonder tegenhanger in de `using`, en juist daarom ' +
+      'niet door de policy beschermd maar door een invariant.** De `using`-helft toetst ' +
+      '`weekly_goal_id` helemaal niet, dus "de using al gepasseerd" zegt er niets over. De ' +
+      'onderscheidende rij is `activated_cycle is null and weekly_goal_id is not null`, en die ' +
+      'is onbereikbaar omdat `weekly_goal_id` ook niet in de INSERT-grant staat en de énige ' +
+      'schrijver ervan — `weekplanstap_naar_weekdoel()` — hem altijd samen met ' +
+      '`activated_cycle` in dezelfde UPDATE zet. ' +
+      '⚠️ Die invariant leeft in één functielichaam en staat in geen enkele CHECK. ' +
+      '📏 Gemeten in ronde 9: `using` los = bewaakt, `check` los = nul rood, béíde tegelijk = ' +
+      '2 rood (*een geactiveerde stap is niet meer te wijzigen* in `schrijfgrenzen.test.ts` en ' +
+      '*laat de stap van Alice ongemoeid* in `planstapgrens.test.ts`).',
+    wordtToetsbaarAls:
+      '`weekly_goal_id` in de UPDATE-kolomgrant komt, **of zodra er een tweede schrijver van ' +
+      '`weekly_goal_id` bijkomt die hem zet zonder `activated_cycle`** — een "ontkoppel dit ' +
+      'weekdoel maar hou de stap verbruikt"-actie, bijvoorbeeld. Die tweede route was de eerste ' +
+      'keer vergeten, en hij is de enige die realistisch is: de invariant leeft in een ' +
+      'functielichaam en niet in een constraint.',
+    staatIn: 'tests/rls/schrijfgrenzen.test.ts',
+  },
+
+  'groups.groups_update.check': {
     reden:
       '`using` en `with check` zijn letterlijk dezelfde uitdrukking — `is_group_admin(id)` — ' +
-      'en `id` staat níet in de UPDATE-kolomgrant van `groups` (📏 gemeten na 0202: ' +
-      'name, huddle_day, categorie en zeven andere wél — tien in totaal — `id` niet. ' +
-      '`tz` stond hier tot QS8-355 bij en is er met 0202 uit). Er bestaat dus geen rij die ' +
-      'de ene helft passeert en de andere niet. 📏 Gemeten: elke helft los = nul rood, ' +
-      'béide helften tegelijk = 3 rood. De grendel is het paar.',
+      'en `id` staat níet in de UPDATE-kolomgrant van `groups`. 📏 **Hermeten op 10-09-2026, ' +
+      'en het getal dat hier stond was gedrift:** negen kolommen, niet tien, en `huddle_day` ' +
+      'hoort er níet bij — die is er met 0208 uit gehaald. Wat er wél in staat: ' +
+      '`approval_quorum`, `approval_rule`, `categorie`, `evidence_policy`, `icon`, `name`, ' +
+      '`omschrijving`, `season_cadence`, `voertaal`. (`tz` stond hier tot QS8-355 bij en is er ' +
+      'met 0202 uit.) ' +
+      '⚠️ De `using`-helft van dit paar stáát wél onder test, in `tests/rls/halfslot-update.test.ts`: zet je hem los open, dan slaat een stille `0 rijen` om in `42501`. Alleen déze helft is niet te isoleren. ',
     wordtToetsbaarAls:
       'de twee uitdrukkingen uit elkaar lopen, of `id` in de UPDATE-kolomgrant komt — ' +
-      'dan kan een beheerder zijn groep naar een ander id schrijven en is `check` in ' +
+      'dan kan een beheerder zijn groep naar een ander id schrijven en is deze helft in ' +
       'zijn eentje de grendel.',
     staatIn: 'tests/rls/lidmaatschapsgrens.test.ts',
   },
-  'groups.groups_update.check': {
-    reden: 'Zelfde paar als `groups.groups_update.using`; zie daar voor de meting.',
-    wordtToetsbaarAls: 'zie `groups.groups_update.using`.',
-    staatIn: 'tests/rls/lidmaatschapsgrens.test.ts',
+  'chat_messages.chat_messages_insert.check#2': {
+    reden:
+      'De conjunct is `type <> \'system\'`, en naast hem staat de CHECK ' +
+      '`chat_messages_sender_required` (`type <> \'system\' or sender_id is null`). ' +
+      'Elk van de twee volstaat afzonderlijk om een vervalst systeembericht tegen te ' +
+      'houden, dus geen van beide is los te breken. 📏 Gemeten met de toets uit ' +
+      '`bewerkvenster.test.ts`: alleen deze conjunct op `true` = groen, alleen de CHECK ' +
+      'gedropt = groen, allebei weg = 1 rood en het is de juiste test. ' +
+      '📏 En dat het paar écht de grendel is, is apart gemeten: met conjunct 0 én ' +
+      'conjunct 2 open landde `insert … (sender_id, type) values (null, \'system\')` gewoon. ' +
+      'De grendel is dus het paar — zelfde vorm als `day_checkins_delete.using`.',
+    wordtToetsbaarAls:
+      'de CHECK `chat_messages_sender_required` verdwijnt of versmalt, of als een ' +
+      'systeembericht ooit een `sender_id` mag dragen. Dan staat deze conjunct er alleen ' +
+      'voor en is hij wél los te breken.',
+    staatIn: 'tests/rls/bewerkvenster.test.ts',
   },
+
   'user_blocks.user_blocks_delete.using': {
     reden:
       'PostgREST stuurt een DELETE als `DELETE … RETURNING`, en met een RETURNING moet ' +
@@ -336,9 +630,15 @@ export function registervormKlachten(register) {
       uit.push(`\`${sleutel}\` is geen \`tabel.policy.helft\``);
       continue;
     }
-    const helft = sleutel.split('.')[2];
+    // ⚠️ Sinds QS8-550 mag een sleutel ook een conjunct noemen — `check#2`. Het
+    //    nummer moet dan wél een getal zijn: `check#x` is een typefout die
+    //    anders stil een rij zou registreren die nooit gevonden wordt.
+    const eenheid = sleutel.split('.')[2];
+    const { helft, index } = ontleedEenheid(eenheid);
     if (helft !== 'using' && helft !== 'check') {
       uit.push(`\`${sleutel}\` noemt helft \`${helft}\` en niet \`using\` of \`check\``);
+    } else if (index !== null && !Number.isInteger(index)) {
+      uit.push(`\`${sleutel}\` noemt conjunct \`${eenheid.split('#')[1]}\`, en dat is geen getal`);
     }
     for (const veld of ['reden', 'wordtToetsbaarAls', 'staatIn']) {
       if (typeof rij?.[veld] !== 'string' || rij[veld].trim() === '') {
@@ -575,6 +875,49 @@ function psql(sql) {
  *    gefaald.** Draaide er niets, dan is de uitkomst `onbruikbaar` en dat is geen
  *    oordeel maar een reden om te stoppen.
  */
+export function faalnamen(uit) {
+  const namen = [];
+  for (const bestand of uit.testResults ?? []) {
+    for (const test of bestand.assertionResults ?? []) {
+      if (test.status !== 'failed') continue;
+      const waar = bestand.name ? basename(bestand.name) : '?';
+      namen.push(`${waar} > ${test.fullName ?? test.title ?? '?'}`);
+    }
+  }
+  return [...new Set(namen)].sort();
+}
+
+/**
+ * Welke testbestanden zijn omgevallen zónder dat er één assertie in faalde?
+ *
+ * ⚠️⚠️ **Dit stond eerst als `numFailedTestSuites > aantal bestanden met een
+ *    gefaalde assertie`, en dat was een vergelijking tussen twee verschillende
+ *    eenheden.** 📏 Gemeten op 11-09-2026: één testbestand met zeven
+ *    `describe`-blokken geeft `numTotalTestSuites: 8`. Dat veld telt **suites en
+ *    geen bestanden** — de root plus elk `describe`. Eén bestand waarin drie
+ *    blokken rood worden gaf dus "3 bestanden faalden, 1 had een assertie", en
+ *    de hele sweep kwam terug als `onbruikbaar`.
+ *
+ *    Zelfde klasse als een teller in grafemen bij een grens in codepunten: het
+ *    getal klopte, de eenheid niet. En de richting was hier de andere dan
+ *    gewoonlijk — het instrument weigerde te meten in plaats van te ruim te
+ *    oordelen, dus het viel meteen op.
+ *
+ * ⚠️ De juiste vorm staat in `testResults` zelf en is wél in één eenheid: een
+ *    bestand dat als `failed` gemeld wordt terwijl er geen enkele assertie in
+ *    faalde, is in `beforeAll` omgevallen. Dat is een instorting en geen
+ *    oordeel over de policy.
+ */
+export function omgevallenZonderAssertie(uit) {
+  return (uit.testResults ?? [])
+    .filter(
+      (bestand) =>
+        bestand.status === 'failed' &&
+        !(bestand.assertionResults ?? []).some((test) => test.status === 'failed'),
+    )
+    .map((bestand) => (bestand.name ? basename(bestand.name) : '?'));
+}
+
 export function leesUitkomst(json) {
   let uit;
   try {
@@ -586,7 +929,48 @@ export function leesUitkomst(json) {
   const gedraaid = (uit.numTotalTests ?? 0) - (uit.numPendingTests ?? 0);
   if (gedraaid <= 0) return { uitkomst: 'onbruikbaar', reden: 'er is geen enkele test gedraaid' };
 
-  if ((uit.numFailedTests ?? 0) > 0) return { uitkomst: 'rood', gedraaid };
+  if ((uit.numFailedTests ?? 0) > 0) {
+    const rood = faalnamen(uit);
+
+    // ⚠️⚠️ **Een rood zonder namen is geen bruikbaar rood, en dat is sinds
+    //    ronde 9 een weigering in plaats van een aanname.** Vanaf hier telt niet
+    //    meer dát er iets rood werd maar wát; kan dit script dat niet uitlezen,
+    //    dan kan het de vraag van `weegTegenBaseline()` niet stellen en is een
+    //    oordeel over deze helft niet te geven. De json-reporter van vitest
+    //    noemt ze altijd — komt er toch een telling zonder namen uit, dan is er
+    //    iets met de reporter en niet met de policy.
+    if (rood.length === 0) {
+      return {
+        uitkomst: 'onbruikbaar',
+        reden: `vitest telde ${uit.numFailedTests} gefaalde test(s) maar noemde er geen één`,
+      };
+    }
+
+    // ⚠️⚠️ **En een rood uit een half ingestorte run is ook geen bewijs.** De
+    //    toets hieronder op `numFailedTestSuites` staat op het gróéne pad, en
+    //    dekt daarmee alleen de kant waar het instrument gaten verzint. De
+    //    andere kant bestond nog: 📏 gevoerd met het echte geval van 03-09
+    //    (813 tests, 600 niet gedraaid, 58 bestanden om) plus één losse gefaalde
+    //    assertie kwam er `bewaakt` uit. Een wegvallende PostgREST geeft precies
+    //    dat beeld — sommige bestanden sneuvelen in `beforeAll`, andere falen op
+    //    een assertie.
+    //
+    //    Het onderscheid staat in dezelfde JSON en kost geen enkele geldige
+    //    meting: bij een échte bewaakte policy is elk gefaald bestand er één
+    //    mét een gefaalde assertie. Zie `omgevallenZonderAssertie()` voor de
+    //    vorm — en voor de eenheid, want dáár ging het op 10-09 mis.
+    const ingestort = omgevallenZonderAssertie(uit);
+    if (ingestort.length > 0) {
+      return {
+        uitkomst: 'onbruikbaar',
+        reden:
+          `${ingestort.length} testbestand(en) vielen om zonder dat er één assertie in ` +
+          `faalde (${ingestort[0]})`,
+      };
+    }
+
+    return { uitkomst: 'rood', gedraaid, rood };
+  }
 
   // ⚠️ **Een groene uitslag is alleen te geloven als er geen bestand omviel.**
   //    K3 hierboven dekt de ene kant af — "er ging íets mis" mag niet als bewaakt
@@ -601,16 +985,84 @@ export function leesUitkomst(json) {
   //    niet zijn, en wie ze gaat dichten schrijft tests voor een probleem dat niet
   //    bestaat. Bij een échte onbewaakte policy draait de suite gewoon groen —
   //    nul gefaalde bestanden — dus deze toets kost geen enkele geldige meting.
-  if ((uit.numFailedTestSuites ?? 0) > 0) {
+  const omgevallen = omgevallenZonderAssertie(uit);
+  if (omgevallen.length > 0) {
     return {
       uitkomst: 'onbruikbaar',
       reden:
-        `${uit.numFailedTestSuites} testbestand(en) vielen om zonder dat er één assertie faalde ` +
-        '— de stack is er waarschijnlijk onder weggevallen',
+        `${omgevallen.length} testbestand(en) vielen om zonder dat er één assertie faalde ` +
+        `(${omgevallen[0]}) — de stack is er waarschijnlijk onder weggevallen`,
     };
   }
 
   return { uitkomst: 'groen', gedraaid };
+}
+
+/**
+ * ⚠️⚠️ **Het hart van ronde 9: "er werd een test rood" is niet hetzelfde als
+ *    "déze policy maakte hem rood".**
+ *
+ *    📏 Gemeten op 10-09-2026, op één commit, zonder één policy aan te raken:
+ *    `rls:dekking -- profiles` gaf eerst `1 van de 3`, met beide helften van
+ *    `profiles_update` als gat. Daarna is in `dagtellers` één rij opgehoogd —
+ *    `avatars/uploader/tmp` van 6 naar 10, precies de stand die vier gewone
+ *    suiteruns opleveren — en dezelfde meting gaf **`3 van de 3` bewaakt**, mét
+ *    de eis om de twee registerrijen weg te halen die die gaten vastleggen.
+ *
+ *    De oorzaak is dat `tmp` een lettérlijke sleutel is: elke run van
+ *    `avatarbucket.test.ts` telt er één bij en een `delete` haalt hem er niet af
+ *    (dat is precies wat migratie 0233 wilde). Bij tien slaat de dagteller dicht
+ *    en valt *"valt niet om op een map die geen uuid is"* om met `23514` — in
+ *    élke beurt van deze meting, ongeacht welke policy er openstond.
+ *
+ *    Dit is dezelfde klasse als de twee fouten die dit issue al draagt (een
+ *    afgebroken run die een policy liet openstaan; elke niet-nul exitcode als
+ *    bewaakt), en hij gaat dezelfde geruststellende kant op: een echt gat komt
+ *    eruit als bewaakt. Ik ben er zelf in gelopen — in ronde 9 heb ik op grond
+ *    van zo'n uitslag twee terechte registerrijen wéggehaald.
+ *
+ *    De reparatie is dat een rood pas telt als het er vóór de meting nog niet
+ *    was. Wat er al rood stond, bewijst niets over een policy die op dat moment
+ *    nog gewoon dichtstond.
+ */
+export function weegTegenBaseline(uitslag, baseline) {
+  if (uitslag.uitkomst !== 'rood') return uitslag;
+
+  const nieuw = (uitslag.rood ?? []).filter((naam) => !baseline.includes(naam));
+  if (nieuw.length > 0) return { ...uitslag, rood: nieuw };
+
+  return { ...uitslag, uitkomst: 'groen', rood: [], alRood: uitslag.rood ?? [] };
+}
+
+/**
+ * De andere helft van dezelfde reparatie: de basislijn wordt gemeten vóór de
+ * eerste mutatie, maar een teller loopt tíjdens de run door.
+ *
+ * ⚠️ **Daarom wordt hij ook aan het eind gemeten, met alles teruggezet.** Een
+ *    test die dán rood staat en bij de start groen was, is onderweg omgevallen
+ *    zonder dat er iets openstond. Rust een `bewaakt` uitsluitend op zo'n test,
+ *    dan is dat geen bewijs maar drift — en dit script noemt dan liever geen
+ *    getal dan een verkeerd getal. Zelfde houding als bij `ongemeten`.
+ *
+ * ⚠️ Alleen wie er hélemaal op leunt wordt teruggezet. Wie er nog een ánder rood
+ *    onder heeft, houdt dat rood en blijft bewaakt: dat rood was er bij de start
+ *    niet en aan het eind ook niet.
+ */
+export function weegDrift(bevindingen, gedrift) {
+  return bevindingen.map((b) => {
+    if (b.status !== 'bewaakt') return b;
+
+    const overeind = (b.rood ?? []).filter((naam) => !gedrift.includes(naam));
+    if (overeind.length > 0) return { ...b, rood: overeind };
+
+    return {
+      ...b,
+      status: 'ongemeten',
+      melding:
+        'het enige rood stond aan het eind van de run óók rood, met alles dicht ' +
+        `(${(b.rood ?? [])[0]})`,
+    };
+  });
 }
 
 function draai(bestanden) {
@@ -636,7 +1088,171 @@ function draai(bestanden) {
   return leesUitkomst(uit.stdout.slice(begin, eind + 1));
 }
 
-function hoofd() {
+/**
+ * De URL waar de suite PostgREST verwacht — dezelfde afleiding als
+ * `tests/rls/harness.ts`, zodat deze controle de verbinding toetst die de suite
+ * ook echt gebruikt en niet een tweede die er toevallig op lijkt.
+ */
+const POSTGREST_URL = process.env.RLS_LOKAAL_URL ?? 'http://127.0.0.1:3010';
+
+/**
+ * Het oordeel over de koppeling, los aangeboden zodat hij te ijken is.
+ *
+ * @param {{ status: number | null, merk: string, fout?: string }} waarneming
+ * @returns {{ ok: boolean, reden?: string }}
+ */
+export function beoordeelKoppeling({ status, merk, fout }) {
+  if (status === 200) return { ok: true };
+
+  if (status === null) {
+    return {
+      ok: false,
+      reden:
+        `PostgREST op ${POSTGREST_URL} antwoordde niet (${fout ?? 'geen reden'}). ` +
+        'Zonder antwoord is niet vast te stellen of hij dezelfde database serveert ' +
+        'als die ik muteer, en dan is elke uitslag hieronder een aanname',
+    };
+  }
+
+  if (status === 404) {
+    return {
+      ok: false,
+      reden:
+        `ik heb \`${merk}\` aangemaakt in de database die ik muteer, en PostgREST ` +
+        `op ${POSTGREST_URL} kent hem niet (404). Die twee zijn dus niet dezelfde ` +
+        'database: ik zou de ene openzetten en de andere meten. Dat is precies ' +
+        'het stille geval — zonder deze toets was elk gat er als bewaakt uitgekomen',
+    };
+  }
+
+  return {
+    ok: false,
+    reden:
+      `PostgREST gaf ${status} op \`${merk}\`. Verwacht is 200 (zelfde database) ` +
+      'of 404 (een andere); iets anders is een storing die deze meting onbruikbaar maakt',
+  };
+}
+
+/**
+ * Plant een merkteken in de database die we muteren en vraagt PostgREST ernaar.
+ *
+ * ⚠️⚠️ **Waarom een merkteken en geen vergelijking van twee instellingen.**
+ *    De `db-uri` van PostgREST is van deze kant niet uit te lezen, en twee
+ *    strings naast elkaar leggen zou de omweg bewaken en niet de belofte. Dit
+ *    toetst het enige dat telt: *ziet de kant die meet, wat de kant die muteert
+ *    doet?*
+ *
+ * ⚠️ `notify pgrst, 'reload schema'` is nodig omdat PostgREST zijn schemacache
+ *    vasthoudt; zonder die regel is een vers aangemaakte tabel een 404 om een
+ *    reden die niets met de database te maken heeft.
+ *
+ * ⚠️ **Het merkteken gaat er in een `finally` weer uit**, ook als de vraag
+ *    onderweg omvalt. Een achtergebleven tabel is hier geen vuiltje maar een
+ *    tweede run die op zijn eigen rommel struikelt.
+ */
+/**
+ * Eén poging: vraagt PostgREST naar het merkteken.
+ *
+ * ⚠️ Los van de lus omdat `max-depth` anders afgaat — en dat is hier niet alleen
+ *    de linter zijn zin geven: een poging die zijn eigen fout teruggeeft in
+ *    plaats van hem in een buitenliggende variabele te zetten, is ook los te
+ *    toetsen.
+ *
+ * @param {string} merk
+ * @returns {Promise<{ status: number | null, fout?: string }>}
+ */
+async function vraagHetMerk(merk) {
+  try {
+    const antwoord = await fetch(`${POSTGREST_URL}/${merk}?limit=1`);
+    return { status: antwoord.status };
+  } catch (f) {
+    return { status: null, fout: f instanceof Error ? f.message : String(f) };
+  }
+}
+
+export async function koppelingKlopt() {
+  const merk = `pgrst_koppeling_${Date.now().toString(36)}`;
+  psql(
+    `create table public.${merk} (id int);` +
+      `grant select on public.${merk} to anon, authenticated;` +
+      `notify pgrst, 'reload schema';`,
+  );
+
+  try {
+    // PostgREST verwerkt de herlaadmelding asynchroon; even wachten is hier
+    // eerlijker dan één poging en een conclusie.
+    let laatste = { status: null, fout: undefined };
+    for (let poging = 0; poging < 20; poging += 1) {
+      await new Promise((klaar) => setTimeout(klaar, 250));
+      laatste = await vraagHetMerk(merk);
+      if (laatste.status === 200) break;
+    }
+    return beoordeelKoppeling({ status: laatste.status, merk, fout: laatste.fout });
+  } finally {
+    psql(`drop table if exists public.${merk}; notify pgrst, 'reload schema';`);
+  }
+}
+
+/**
+ * Toetst de koppeling en schrijft de uitleg als hij niet klopt.
+ *
+ * ⚠️ Los van `hoofd()` omdat coderegel 15 in `scripts/` een ratel is: het
+ *    plafond mag alleen dálen. Een controle erbij hoort dus een functie erbij te
+ *    zijn en geen regels in een bestaande.
+ *
+ * @returns {Promise<boolean>} of er gemeten mag worden
+ */
+/**
+ * Meet waar `psql` werkelijk uitkomt en schrijft de uitleg als dat niet klopt.
+ *
+ * ⚠️ **De `try` dekt alléén de aanroep en niet het ontleden.** De eerste versie
+ *    deed dat wel, en meldde een échte parseerfout als "geen database" — dan
+ *    lijkt een defect een overslag. Zelfde val als in `kolomrechten-controle`.
+ *
+ * ⚠️ Los van `hoofd()` om dezelfde reden als `koppelingOfMeldFout()`: coderegel
+ *    15 is in `scripts/` een ratel, en dit is de laag waar hij op stuurt.
+ *
+ * @returns {boolean} of de bestemming is wat we denken
+ */
+function bestemmingOfMeldFout() {
+  let adres;
+  let poort;
+  let database;
+  try {
+    [adres, poort, database] = psql(
+      "select coalesce(host(inet_server_addr()), 'unix-socket'), inet_server_port(), current_database();",
+    )
+      .trim()
+      .split('|');
+  } catch (fout) {
+    console.error(
+      '⚠ rls-dekking: OVERGESLAGEN — geen database om mee te verbinden.\n\n' +
+        `psql zei: ${fout instanceof Error ? fout.message.split('\n')[0] : String(fout)}`,
+    );
+    return false;
+  }
+
+  const echt = kloptDeBestemming({ adres, poort, database });
+  if (echt.ok) return true;
+
+  console.error(`✗ rls-dekking weigert te draaien: ${echt.reden}.`);
+  return false;
+}
+
+async function koppelingOfMeldFout() {
+  const koppeling = await koppelingKlopt();
+  if (koppeling.ok) return true;
+
+  console.error(
+    `✗ rls-dekking weigert te rapporteren: ${koppeling.reden}.\n\n` +
+      'Dit is geen "alles onbewaakt" en ook geen "alles bewaakt": het is geen\n' +
+      'meting. Zorg dat PostgREST en psql op dezelfde database wijzen — de\n' +
+      'eenvoudigste weg is `npm run rls:stack`, die zet ze allebei.',
+  );
+  return false;
+}
+
+async function hoofd() {
   const filter = process.argv[2] ?? '';
   const mag = magHierDraaien({
     host: BESTEMMING.host,
@@ -662,24 +1278,13 @@ function hoofd() {
   //    het aan het eind van die beurt weer terug — zie `verdachtePolicies()`.
   // ⚠️ **Nameten waar we uitkwamen, en niet aannemen dat het gelukt is.**
   //    Zie `kloptDeBestemming()`.
-  try {
-    const [adres, poort, database] = psql(
-      "select coalesce(host(inet_server_addr()), 'unix-socket'), inet_server_port(), current_database();",
-    )
-      .trim()
-      .split('|');
-    const echt = kloptDeBestemming({ adres, poort, database });
-    if (!echt.ok) {
-      console.error(`✗ rls-dekking weigert te draaien: ${echt.reden}.`);
-      return 1;
-    }
-  } catch (fout) {
-    console.error(
-      '⚠ rls-dekking: OVERGESLAGEN — geen database om mee te verbinden.\n\n' +
-        `psql zei: ${fout instanceof Error ? fout.message.split('\n')[0] : String(fout)}`,
-    );
-    return 1;
-  }
+  if (!bestemmingOfMeldFout()) return 1;
+
+  // ⚠️⚠️ **Hier, vóór de eerste mutatie.** Vanaf de volgende regel zet dit
+  //    script policies wagenwijd open; als dat in een ándere database landt dan
+  //    de suite meet, is elke uitslag hieronder verzonnen — en in het stille
+  //    geval komt elk gat eruit als bewaakt. Zie QS8-497.
+  if (!(await koppelingOfMeldFout())) return 1;
 
   let ruw;
   try {
@@ -720,8 +1325,39 @@ function hoofd() {
     .filter((n) => n.endsWith('.test.ts'))
     .map((naam) => ({ naam, inhoud: readFileSync(join(TESTMAP, naam), 'utf8') }));
 
+  // ⚠️ **Welke bestanden er in déze run langskomen.** De basislijn moet precies
+  //    die dekken: minder en er glipt een al-rode test doorheen, meer en hij
+  //    kost tijd zonder iets toe te voegen.
+  const nodig = [
+    ...new Set(
+      policies.filter((p) => p.recht).flatMap((p) => bestandenVoor(p.tabel, bestanden)),
+    ),
+  ];
+
   console.log(`rls-dekking: ${policies.length} policies, elk apart opengezet.\n`);
-  const bevindingen = [];
+
+  // ⚠️⚠️ **Eerst meten wat er al rood staat, mét alles dicht.** Zie
+  //    `weegTegenBaseline()` voor het geval dat dit oplevert.
+  console.log('  ·  basislijn: de suite één keer met alle policies zoals ze zijn…');
+  const voor = nodig.length > 0 ? draai(nodig) : { uitkomst: 'groen', rood: [] };
+  if (voor.uitkomst === 'onbruikbaar') {
+    console.error(
+      `\n✗ de basislijn leverde geen bruikbare uitslag: ${voor.reden}.\n\n` +
+        'Zonder basislijn is niet vast te stellen of een rood van de policy komt\n' +
+        'of er al stond. Er valt dan niets te meten.',
+    );
+    return 1;
+  }
+  const baseline = voor.rood ?? [];
+  if (baseline.length > 0) {
+    console.log(
+      `  ·  ${baseline.length} test(en) staan nu al rood en tellen deze run niet als bewijs:\n` +
+        baseline.map((n) => `       ${n}`).join('\n'),
+    );
+  }
+  console.log('');
+
+  let bevindingen = [];
 
   for (const [i, policy] of policies.entries()) {
     const kop = `[${i + 1}/${policies.length}] ${policy.tabel}.${policy.naam}`;
@@ -748,20 +1384,76 @@ function hoofd() {
       const label = helften.length > 1 ? `${kop} (${helft})` : kop;
 
       writeFileSync(HERSTELBESTAND, JSON.stringify(policy), 'utf8');
-      psql(open);
 
+      // ⚠️ **De `alter policy` staat sinds ronde 9 binnen de `try`.** Stond hij
+      //    erbuiten en wierp hij ná het committen — een timeout van zestig
+      //    seconden, een haperende verbinding — dan viel het proces om zonder
+      //    dat `psql(terug)` ooit draaide. Het herstelbestand ving dat op bij de
+      //    vólgende run; nu wordt er meteen teruggezet.
       let uitslag;
       try {
+        psql(open);
         uitslag = draai(bestandenVoor(policy.tabel, bestanden));
       } finally {
         psql(terug);
         rmSync(HERSTELBESTAND, { force: true });
       }
 
-      const b = { ...oordeel(policy, uitslag.uitkomst), helft };
+      uitslag = weegTegenBaseline(uitslag, baseline);
+
+      const b = { ...oordeel(policy, uitslag.uitkomst, uitslag), helft };
       bevindingen.push(b);
       const teken = uitslag.uitkomst === 'rood' ? '✓' : uitslag.uitkomst === 'groen' ? '✗' : '·';
-      console.log(`  ${teken}  ${label}${b.melding ? ` — ${b.melding}` : ''}`);
+
+      // ⚠️ **Een bewaakt-uitslag noemt vanaf ronde 9 zijn getuige.** Zonder die
+      //    naam is een uitslag niet na te kijken, en juist dáár zat de fout:
+      //    ✓ zag er hetzelfde uit of het rood nou van deze policy kwam of van
+      //    een dagteller die vol was gelopen.
+      const getuige = uitslag.uitkomst === 'rood' ? ` — rood werd: ${uitslag.rood[0]}` : '';
+      console.log(`  ${teken}  ${label}${b.melding ? ` — ${b.melding}` : ''}${getuige}`);
+    }
+  }
+
+  // ⚠️ **De laatste vraag: is de database achtergelaten zoals hij gevonden is?**
+  //    Bij de eerste echte run was het antwoord nee, en niemand vroeg het.
+  //
+  // ⚠️ **Hij staat sinds ronde 9 vóór de slotbasislijn en niet erna**, want een
+  //    basislijn die tegen een openstaande policy gemeten is, meet niet de
+  //    basislijn.
+  const nogOpen = watOpenstaat();
+  if (nogOpen.length > 0) {
+    console.error(
+      `\n✗ deze run heeft ${nogOpen.length} policy/policies laten openstaan:\n\n` +
+        nogOpen.map((r) => `    ${r}`).join('\n') +
+        '\n\nDat hoort niet te kunnen. Bouw de stack opnieuw op met `npm run rls:stack`\n' +
+        'en vertrouw de uitslag hierboven niet.',
+    );
+    return 1;
+  }
+
+  // ⚠️⚠️ **En dezelfde basislijn nog een keer, nu aan het eind.** Zie
+  //    `weegDrift()`: een teller die tijdens de run volloopt, staat bij de start
+  //    nog groen. Alleen de tweede meting vindt die.
+  if (bevindingen.some((b) => b.status === 'bewaakt')) {
+    console.log('\n  ·  basislijn opnieuw, met alles teruggezet…');
+    const na = draai(nodig);
+    if (na.uitkomst === 'onbruikbaar') {
+      console.error(
+        `\n✗ de slotbasislijn leverde geen bruikbare uitslag: ${na.reden}.\n\n` +
+          'Zonder die tweede meting is niet vast te stellen of een bewaakt-uitslag\n' +
+          'op een test rust die onderweg is omgevallen. Draai opnieuw.',
+      );
+      return 1;
+    }
+
+    const gedrift = (na.rood ?? []).filter((naam) => !baseline.includes(naam));
+    if (gedrift.length > 0) {
+      console.log(
+        `  ·  ${gedrift.length} test(en) zijn tíjdens deze run rood geworden zonder dat er\n` +
+          '     iets openstond; wat daarop leunt telt niet als bewijs:\n' +
+          gedrift.map((n) => `       ${n}`).join('\n'),
+      );
+      bevindingen = weegDrift(bevindingen, gedrift);
     }
   }
 
@@ -774,19 +1466,6 @@ function hoofd() {
       `\n✗ ${ongemeten.length} policy/policies leverden geen bruikbare uitslag:\n\n` +
         ongemeten.map((b) => `    ${b.tabel}.${b.naam}`).join('\n') +
         '\n\nEr is dan geen getal te noemen. Draai opnieuw.',
-    );
-    return 1;
-  }
-
-  // ⚠️ **De laatste vraag: is de database achtergelaten zoals hij gevonden is?**
-  //    Bij de eerste echte run was het antwoord nee, en niemand vroeg het.
-  const nogOpen = watOpenstaat();
-  if (nogOpen.length > 0) {
-    console.error(
-      `\n✗ deze run heeft ${nogOpen.length} policy/policies laten openstaan:\n\n` +
-        nogOpen.map((r) => `    ${r}`).join('\n') +
-        '\n\nDat hoort niet te kunnen. Bouw de stack opnieuw op met `npm run rls:stack`\n' +
-        'en vertrouw de uitslag hierboven niet.',
     );
     return 1;
   }
@@ -863,4 +1542,6 @@ function hoofd() {
   return 0;
 }
 
-if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) process.exit(hoofd());
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+  hoofd().then((code) => process.exit(code));
+}

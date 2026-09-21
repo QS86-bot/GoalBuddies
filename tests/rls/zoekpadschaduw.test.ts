@@ -1,9 +1,8 @@
-import { execFileSync } from 'node:child_process';
 
 import { describe, expect, it } from 'vitest';
 
-import { PSQL_DB, PSQL_OMGEVING, psql, stackBeschikbaarOfFaal } from './psql-stack';
-import { proefId } from './proefid';
+import { psql, psqlMetInvoer, stackBeschikbaarOfFaal } from './psql-stack';
+import { proefCode, proefId } from './proefid';
 
 const SCHADUW_EEN = proefId(1);
 const SCHADUW_TWEE = proefId(2);
@@ -82,11 +81,7 @@ const beschikbaar = stackBeschikbaarOfFaal(
  *    nog steeds op één plek staat (QS8-270).
  */
 function inEenSessie(sql: string): string {
-  return execFileSync(
-    'psql',
-    ['-U', PSQL_OMGEVING.PGUSER as string, '-d', PSQL_DB, '-q', '-w', '-v', 'ON_ERROR_STOP=1', '-tA'],
-    { env: PSQL_OMGEVING, encoding: 'utf8', input: sql },
-  ).trim();
+  return psqlMetInvoer(sql).trim();
 }
 
 /** Zoals `inEenSessie`, maar geeft de foutmelding terug in plaats van te werpen. */
@@ -166,7 +161,7 @@ describe.skipIf(!beschikbaar)('een tijdelijke tabel stuurt geen enkele functie',
           values ('${SCHADUW_TWEE}', 'schaduw2@voorbeeld.test', '{}'::jsonb);
         insert into groups (id, name, created_by, invite_code, tz)
           values ('${SCHADUW_GROEP}', 'Schaduwgroep',
-                  '${SCHADUW_TWEE}', 'SCHAD1', 'UTC');
+                  '${SCHADUW_TWEE}', '${proefCode('schad1', 1)}', 'UTC');
 
         create temp table groups (id uuid, tz text);
         insert into groups values

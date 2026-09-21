@@ -36,6 +36,8 @@ import { readFileSync, readdirSync, statSync } from 'node:fs';
 import { join } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 
+import { zonderCommentaar } from './zonder-commentaar.mjs';
+
 const WORTEL = fileURLToPath(new URL('..', import.meta.url));
 const CATALOGUS = join(WORTEL, 'src', 'shared', 'i18n', 'nl.ts');
 const DOORZOEKEN = ['src', 'app', 'supabase/functions'];
@@ -73,6 +75,18 @@ export const NOG_NIET_AANGESLOTEN = {
   'ritme.onder_de_vloer':
     'Kwam op 01-09 mee met QS8-253 (migratie 0140) van een parallelle sessie. ' +
     'Dat werk is nog in beweging — niet weghalen zonder QS8-253 na te lopen.',
+  'groep.gearchiveerd':
+    'De ledenbanner voor een gearchiveerde groep: "je kunt alles teruglezen, maar ' +
+    'er is niets meer in te doen". Die weergave bestaat nog niet — er is wel een ' +
+    'beheerscherm en een uitnodigingslink, maar geen scherm dat een lid dit ' +
+    'vertelt. 📏 Boven water gekomen bij QS8-571: de sleutel leek levend omdat de ' +
+    'kop van `meldingen()` in src/modules/buddies/api.ts hem noemt — en dat ' +
+    'comment legt juist uit dat hij dáár níet gebruikt wordt, omdat het publiek ' +
+    'verschilt (een niet-lid dat een link volgt krijgt `groep.link_gearchiveerd`). ' +
+    'Niet weghalen: die kop leunt op het bestaan van deze tekst als de ' +
+    'ledenvariant. Weg zodra die weergave er is, samen met zijn buur ' +
+    '`beheer.melding_gearchiveerd` hierboven.',
+
 };
 
 /**
@@ -197,7 +211,26 @@ function bestanden(map, exts) {
   return uit;
 }
 
-/** De bron waarin een aanroeper kan staan — de catalogi zelf tellen niet mee. */
+/**
+ * De bron waarin een aanroeper kan staan — de catalogi zelf tellen niet mee.
+ *
+ * ⚠️⚠️ **Commentaar telt niet als aanroeper, en dat is een gerepareerde valse
+ *    groene (QS8-571).** Deze helft leidt af of een sleutel nog **levend** is;
+ *    een sleutel die alleen in een comment genoemd wordt, gold daarmee als
+ *    getoond. 📏 Gemeten: `"// t('doel.weg') stond hier ooit"` gaf
+ *    `aantalDood: 0`, dezelfde bron zónder die regel gaf `aantalDood: 1`.
+ *
+ * 📏 Over de échte boom kostte de knip één sleutel: **6 → 7 dood**.
+ *    `groep.gearchiveerd` leefde alleen in de kop van `meldingen()` in
+ *    `src/modules/buddies/api.ts` — en dat comment legt juist uit dat die
+ *    sleutel dáár **niet** gebruikt wordt, omdat het publiek verschilt. De
+ *    uitleg waarom een sleutel niet gebruikt wordt, hield hem levend.
+ *
+ * ⚠️ **Per bestand knippen en niet ná het samenvoegen.** Een niet-afgesloten
+ *    `/*` in het ene bestand zou anders het begin van het volgende opeten — de
+ *    bestanden worden hier met `\n` aan elkaar geplakt, en die grens is geen
+ *    barrière voor een blokcommentaar.
+ */
 export function projectbron(wortel = WORTEL) {
   const paden = DOORZOEKEN.flatMap((d) => {
     try {
@@ -207,7 +240,7 @@ export function projectbron(wortel = WORTEL) {
     }
   }).filter((p) => !p.includes(`${'i18n'}`));
 
-  return paden.map((p) => readFileSync(p, 'utf8')).join('\n');
+  return paden.map((p) => zonderCommentaar(readFileSync(p, 'utf8'))).join('\n');
 }
 
 function hoofd() {

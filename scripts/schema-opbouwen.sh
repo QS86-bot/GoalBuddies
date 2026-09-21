@@ -15,15 +15,47 @@
 # Gebruik:
 #   scripts/schema-opbouwen.sh                 # lokale server op poort 5433
 #   PGPORT=5432 scripts/schema-opbouwen.sh
+#   scripts/schema-opbouwen.sh --dubbel        # elk bestand direct twee keer
+#
+# ⚠️⚠️ **Wat `--dubbel` toetst, en waarom "direct" het belangrijkste woord is**
+#    (QS8-413). Elk migratiebestand wordt tweemaal afgespeeld vóórdat de
+#    volgende aan de beurt is. Dat vindt een bestand dat op **zichzelf** botst —
+#    0252 kon zijn eigen unieke constraint niet droppen zolang zijn eigen
+#    foreign key eraan hing — en laat de uitzonderingsklasse met rust die
+#    CLAUDE.md beschermt: een botsing met een **latere** migratie kan hier per
+#    definitie niet optreden, want die migratie heeft nog niet gedraaid.
+#
+#    Een statische regel kan deze klasse niet zien. `bezwarenIn()` toetst per
+#    object of er een `drop … if exists` vóór staat, en die stónd er voor
+#    allebei de constraints van 0252. De fout zat in de volgorde **tussen twee
+#    objecten**, en dat is een eigenschap van het geheel.
+#
+#    📏 Kost 2 seconden op 255 migraties (23,3 s → 25,3 s), want beide passes
+#    gaan in één psql-sessie: de tweede is per definitie bijna helemaal no-op.
 #
 # Voorwaarde: een draaiende Postgres 16 waarop je superuser bent. Zie
 # docs/DEPLOY.md, §"Het schema elders opbouwen".
 
 set -euo pipefail
 
+DUBBEL=0
+for arg in "$@"; do
+  case "$arg" in
+    --dubbel) DUBBEL=1 ;;
+    *) echo "onbekende optie: $arg" >&2; exit 2 ;;
+  esac
+done
+
 WORTEL="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 DB="${DB:-goalbuddies_opbouw}"
-PSQL=(psql --quiet --no-psqlrc -v ON_ERROR_STOP=1)
+# ⚠️ **`-w` staat er sinds QS8-562 bij, en dat is geen netheid.** Zonder die vlag
+#    vraagt psql interactief om een wachtwoord zodra de rol er een nodig heeft.
+#    📏 Gemeten op deze werkplek: `psql -h 127.0.0.1 -p 5433 -U postgres` drukt
+#    `Password for user postgres:` af. Deze opbouw draait onder
+#    `idempotent:controle` en dus in de poort en in CI, en daar is hangen erger
+#    dan falen — de uitslag is dan "nog bezig" en niet "fout". Dezelfde reden als
+#    in `scripts/psql.mjs`.
+PSQL=(psql --quiet --no-psqlrc -w -v ON_ERROR_STOP=1)
 
 if [[ -n "${PGHOST:-}" ]]; then PSQL+=(-h "$PGHOST"); fi
 PSQL+=(-p "${PGPORT:-5433}" -U "${PGUSER:-postgres}")
@@ -48,12 +80,43 @@ echo "→ ${DB} opnieuw aanmaken"
   "select pg_terminate_backend(pid) from pg_stat_activity where datname = '${DB}' and pid <> pg_backend_pid();" \
   >/dev/null 2>&1 || true
 
-if ! "${PSQL[@]}" -d postgres -c "drop database if exists ${DB};" >/dev/null 2>&1; then
-  echo "✗ ${DB} kon niet weg." >&2
-  "${PSQL[@]}" -d postgres -At -c \
-    "select '  nog verbonden: ' || count(*) || ' sessie(s), o.a. ' ||
-            coalesce(string_agg(distinct application_name, ', '), '(onbekend)')
-     from pg_stat_activity where datname = '${DB}';" >&2 2>/dev/null || true
+# ⚠️⚠️ **De stderr van psql wordt opgevangen en niet weggegooid — QS8-562.**
+#    Hier stond `>/dev/null 2>&1`, en wat overbleef was één vaste diagnose:
+#    *"${DB} kon niet weg"*, met de comment hierboven over PostgREST eronder.
+#    📏 Op 19-09-2026 kwam die melding terwijl de database **niet eens bestond**
+#    en er nul sessies waren; de echte oorzaak was peer-authenticatie op de
+#    unix-socket. Een `drop database if exists` op iets wat er niet is, kan per
+#    definitie niet op een verbinding stuklopen — en dát was de meting die het
+#    omdraaide, na drie rondes zoeken in de verkeerde hoek.
+#
+#    `2>&1 >/dev/null` in **deze** volgorde: eerst gaat fd2 naar de plek waar fd1
+#    nu heen wijst (de opvang), daarna gaat fd1 naar /dev/null. Andersom vangt hij
+#    stdout op en laat hij stderr lopen — precies verkeerd om.
+if ! fout="$("${PSQL[@]}" -d postgres -c "drop database if exists ${DB};" 2>&1 >/dev/null)"; then
+  # De duiding staat in `scripts/psql.mjs` naast die van de controles, en niet
+  # hier in bash: twee indelingen van dezelfde psql-melding lopen uit elkaar
+  # zodra iemand er één aanpast. Zelfde reden als in `ci-controle-draai.mjs`.
+  #
+  # ⚠️ Mislukt de duiding zélf, dan is de letterlijke fout nog steeds het
+  #    belangrijkste dat er staat. Zonder deze tak zou een kapotte node of een
+  #    verhuisd script de melding stiller maken dan hij vóór dit issue was.
+  if ! oordeel="$(printf '%s\n' "$fout" | node "$WORTEL/scripts/psql-drop-oordeel.mjs" "$DB")"; then
+    echo "✗ ${DB} kon niet weg, en de duiding zelf viel ook om." >&2
+    echo "psql zei letterlijk:" >&2
+    printf '%s\n' "$fout" >&2
+    exit 1
+  fi
+
+  # ⚠️ Alleen bij `bezet` zegt deze telling iets. Stond hij er onvoorwaardelijk,
+  #    dan drukte hij bij een geweigerde gebruiker "0 sessie(s)" af onder een
+  #    melding die juist zegt dat er niet verbonden is — een tweede plausibele
+  #    oorzaak naast de gemeten.
+  if [[ "$oordeel" == "bezet" ]]; then
+    "${PSQL[@]}" -d postgres -At -c \
+      "select '  nog verbonden: ' || count(*) || ' sessie(s), o.a. ' ||
+              coalesce(string_agg(distinct application_name, ', '), '(onbekend)')
+       from pg_stat_activity where datname = '${DB}';" >&2 2>/dev/null || true
+  fi
   exit 1
 fi
 
@@ -67,11 +130,47 @@ for bestand in "$WORTEL"/supabase/migrations/*.sql; do
   naam="$(basename "$bestand")"
   versie="${naam%%_*}"
 
-  # ⚠️ Elke migratie in zijn eigen transactie, precies zoals Supabase hem heeft
-  #    toegepast. Alles in één transactie zou een fout in migratie 60 laten
-  #    lijken op een fout in migratie 1.
-  if ! "${PSQL[@]}" -d "$DB" -f "$bestand" >/dev/null; then
-    echo "✗ ${naam} viel om" >&2
+  # ⚠️⚠️ **`--single-transaction` per migratie, en dat stond hier tot QS8-466
+  #    alleen in deze comment.** Zonder die vlag is elke **statement** zijn
+  #    eigen transactie en niet elk bestand: valt een migratie halverwege om,
+  #    dan blijft de eerste helft staan. 📏 Gemeten met precies de vlaggen die
+  #    hier stonden, op een bestand `create table t1 (...); select 1/0;` —
+  #    zonder de vlag bleef `t1` bestaan, ermee niet.
+  #
+  #    Dat is geen schoonheidsfoutje: `supabase db push` en de MCP
+  #    `apply_migration` draaien élke migratie wél in een transactie, dus een
+  #    half toegepaste migratie is op productie onmogelijk. Lokaal kon je zo een
+  #    schema bereiken dat nergens bestaat — en dan meet alles wat erop draait
+  #    iets anders dan het beweert. Bij 0260 ging het precies daarover: laat een
+  #    omgevallen `validate constraint` de `not valid` ervoor staan? Lokaal was
+  #    het antwoord ja en op productie nee.
+  #
+  #    Wat er níet verandert is dat elke migratie zijn **eigen** transactie
+  #    houdt: alles in één transactie zou een fout in migratie 60 laten lijken
+  #    op een fout in migratie 1.
+  #
+  #    ⚠️ Er staat vandaag geen enkele migratie in de map die niet in een
+  #    transactie kán — geen `create index concurrently`, geen `vacuum`, geen
+  #    `alter type … add value`. 📏 Gemeten door de volledige map met deze vlag
+  #    op te bouwen. Komt die er ooit, dan valt de opbouw luid om op dát
+  #    bestand, en dan hoort hij met reden in een register en niet in een
+  #    naamloze uitzondering.
+  #
+  #    Uitleg in `docs/decisions/2026-09-14-de-comment-beloofde-een-transactie.md`;
+  #    de grendel staat in `tests/scripts/schema-opbouwen-atomair.test.ts`.
+  # ⚠️ Bij `--dubbel` staat het bestand er twee keer, in **één** psql-sessie.
+  #    Twee losse aanroepen zouden 255 extra processen kosten voor precies
+  #    dezelfde uitslag.
+  BESTANDEN=(-f "$bestand")
+  if [[ "$DUBBEL" == "1" ]]; then BESTANDEN+=(-f "$bestand"); fi
+
+  if ! "${PSQL[@]}" --single-transaction -d "$DB" "${BESTANDEN[@]}" >/dev/null; then
+    if [[ "$DUBBEL" == "1" ]]; then
+      echo "✗ ${naam} viel om — draai hem los om te zien of het de eerste of de" >&2
+      echo "  tweede ronde was:  psql -v ON_ERROR_STOP=1 -f ${bestand}" >&2
+    else
+      echo "✗ ${naam} viel om" >&2
+    fi
     exit 1
   fi
 
@@ -94,4 +193,8 @@ done
 major="$("${PSQL[@]}" -At -d "$DB" -c 'show server_version_num' 2>/dev/null | head -1)"
 major="${major:0:2}"
 
-echo "✓ ${aantal} migraties afgespeeld op een lege database (Postgres ${major:-?})"
+if [[ "$DUBBEL" == "1" ]]; then
+  echo "✓ ${aantal} migraties elk twee keer afgespeeld op een lege database (Postgres ${major:-?})"
+else
+  echo "✓ ${aantal} migraties afgespeeld op een lege database (Postgres ${major:-?})"
+fi

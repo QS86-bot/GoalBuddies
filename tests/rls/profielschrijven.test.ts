@@ -123,4 +123,256 @@ describe.skipIf(!rlsTestsConfigured)('Je eigen profiel opslaan', () => {
     },
     TEST_TIMEOUT,
   );
+  /**
+   * ⚠️⚠️ **De belofte: je kunt je eigen naam niet onzichtbaar maken** — QS8-448,
+   *    `profiles_display_name_zichtbaar` uit migratie 0256.
+   *
+   *    📏 Dit is de route die de eerste versie van dat issue **open liet**. Die
+   *    repareerde `handle_new_user()`, dus de aanmelding, en liet de schrijfkant
+   *    staan: één `PATCH /rest/v1/profiles?id=eq.<eigen id>` met een zero-width
+   *    space zette je als naamloos lid in het groepsoverzicht. `profiles_update`
+   *    toetst alleen `id = auth.uid()` en de enige inhoudelijke CHECK was
+   *    `profiles_display_name_len` — één zero-width space is één codepunt.
+   *
+   *    Dat is bovendien de **makkelijkere** deur: om groepszichtbaar te zijn heb
+   *    je toch al een account. `profielSchema` staat in de bundel en draait in de
+   *    browser van de aanvaller, dus die is geen grens.
+   *
+   * ⚠️ **Deze toets gaat door PostgREST en niet over psql.** Dat is met opzet:
+   *    hij moet de route nemen die een aanvaller neemt, niet de route waarop de
+   *    CHECK toevallig ook zit. Een test die `schone_naam()` aanroept, toetst de
+   *    functie; deze toetst de grens.
+   */
+  describe('een onzichtbare weergavenaam komt er niet in', () => {
+    const ONZICHTBAAR: readonly { readonly naam: string; readonly waarde: string }[] = [
+      { naam: 'zero-width space', waarde: String.fromCodePoint(0x200b) },
+      { naam: 'no-break space', waarde: String.fromCodePoint(0x00a0) },
+      { naam: 'hangul filler', waarde: String.fromCodePoint(0x3164) },
+      { naam: 'braille blank', waarde: String.fromCodePoint(0x2800) },
+      { naam: 'soft hyphen', waarde: String.fromCodePoint(0x00ad) },
+      { naam: 'language tag', waarde: String.fromCodePoint(0xe0001) },
+      { naam: 'alleen spaties', waarde: '   ' },
+      { naam: 'newline en tab', waarde: '\n\t' },
+      // ⚠️⚠️ **Verhuisd uit de must-allow-lijst hieronder op 16-09-2026**
+      //    (QS8-508, migratie 0286). Tot die migratie was ` Jan ` toegestaan: de
+      //    vier gelijkheids-CHECKs keken naar bidi, nul-pixels, losse tags en
+      //    tekens tussen letters, en geen van vieren naar de **rand**. Sinds
+      //    `profiles_display_name_schoon` moet een naam gelijk zijn aan
+      //    `schone_naam()`, en die strijkt de randen.
+      //
+      //    📏 Dat het hier bij de weigeringen hoort en niet meer bij de
+      //    must-allow, is de gemeten bijvangst van dat issue en geen ongeluk: de
+      //    tien nul-pixeltekens aan de rand waren niet te sluiten zonder de
+      //    spatie mee te nemen. Een gewone gebruiker raakt dit niet —
+      //    `profielSchema` doet `.transform(schoneNaam)` vóór verzending — dus
+      //    alleen een rechtstreekse PATCH komt hier.
+      { naam: 'een naam met een spatie aan de rand', waarde: ' Jan ' },
+    ];
+
+    it.each(ONZICHTBAAR)(
+      'weigert $naam',
+      async ({ waarde }) => {
+        const { error } = await alice.db
+          .from('profiles')
+          .update({ display_name: waarde })
+          .eq('id', alice.id)
+          .select('id')
+          .single();
+
+        // 23514 — check_violation. Slaagt dit, dan staat er een lid zonder
+        // leesbare naam in het groepsoverzicht van iedereen die een groep deelt.
+        expect(
+          error?.code,
+          'de database liet een onzichtbare weergavenaam toe — `display_name` is ' +
+            'groepszichtbaar via `profiles_select`',
+        ).toBe('23514');
+      },
+      TEST_TIMEOUT,
+    );
+
+    /**
+     * ⚠️ **De must-allow, en die is hier niet optioneel.** 📏 Gemeten: een CHECK
+     *    die `public.schone_naam()` aanroept zónder `grant execute` aan
+     *    `authenticated` laat **élke** profielschrijving omvallen op
+     *    `permission denied for function schone_naam` — ook een doodgewone naam.
+     *    Postgres toetst het uitvoerrecht op het moment van schrijven. Zonder dit
+     *    geval was dat een dichte deur die als een veilige deur leest.
+     *
+     * ⚠️ **Er stond een vierde geval — ` Jan `, "onzichtbare randen eromheen" —
+     *    en dat is op 16-09-2026 naar de weigeringen verhuisd** (QS8-508). De
+     *    drie die overblijven dragen de grant-belofte onverkort: een gewone naam,
+     *    een naam met een spatie erín, en een gezinsemoji (die de zero-width
+     *    joiner als lijm gebruikt). Zou de grant ontbreken, dan vallen ze alle
+     *    drie om op `permission denied`, precies zoals de meting hierboven zegt.
+     */
+    it.each([
+      { naam: 'een gewone naam', waarde: 'Jan Jansen' },
+      { naam: 'een naam met een spatie erin', waarde: 'Jan  Jansen' },
+      { naam: 'een gezinsemoji', waarde: '👨‍👩‍👧‍👦' },
+    ])(
+      'laat $naam wel toe',
+      async ({ waarde }) => {
+        const { error } = await alice.db
+          .from('profiles')
+          .update({ display_name: waarde })
+          .eq('id', alice.id)
+          .select('id')
+          .single();
+
+        expect(error, 'de CHECK weigert een naam die hij hoort door te laten').toBeNull();
+      },
+      TEST_TIMEOUT,
+    );
+  });
+
+  /**
+   * De belofte: **een weergavenaam kan niet als een ándere naam renderen** —
+   * QS8-450, migratie 0269.
+   *
+   * ⚠️⚠️ **Dit is een andere klasse dan het blok hierboven, en de grens is een
+   *    andere.** Daar ging het om een naam die als **niets** rendert, en die
+   *    weigert `profiles_display_name_zichtbaar`. Hier gaat het om een naam die
+   *    als **iets anders** rendert, en die weigert
+   *    `profiles_display_name_geen_bidi`. 📏 Het gemeten geval uit de
+   *    security-review: `display_name` = `gxp‮eterces` rendert als
+   *    `secrete.pxg`, en `display_name` is groepszichtbaar via
+   *    `profiles_select`.
+   *
+   * ⚠️⚠️ **Het verschil is dat deze tekens aan de rand al gestreken werden.** Ze
+   *    stáán in de bereikenlijst van 0256 — met tekst eromheen bleven ze alleen
+   *    staan, want die lijst wordt met opzet alleen op de randen toegepast. Een
+   *    toets die alleen een kaal stuurteken instuurt, blijft dus groen op precies
+   *    de bug: elk geval hieronder heeft zichtbare tekens aan **beide** kanten.
+   *
+   * ⚠️ Door PostgREST en niet over psql — de route die een aanvaller neemt.
+   */
+  describe('een weergavenaam die omkeert komt er niet in', () => {
+    const OMKEREND: readonly { readonly naam: string; readonly waarde: string }[] = [
+      { naam: 'de gemeten spoofnaam', waarde: 'gxp\u202Eeterces' },
+      { naam: 'right-to-left override', waarde: `a${String.fromCodePoint(0x202e)}b` },
+      { naam: 'left-to-right override', waarde: `a${String.fromCodePoint(0x202d)}b` },
+      { naam: 'right-to-left embedding', waarde: `a${String.fromCodePoint(0x202b)}b` },
+      { naam: 'pop directional formatting', waarde: `a${String.fromCodePoint(0x202c)}b` },
+      { naam: 'right-to-left isolate', waarde: `a${String.fromCodePoint(0x2067)}b` },
+      { naam: 'pop directional isolate', waarde: `a${String.fromCodePoint(0x2069)}b` },
+    ];
+
+    it.each(OMKEREND)(
+      'weigert $naam',
+      async ({ waarde }) => {
+        const { error } = await alice.db
+          .from('profiles')
+          .update({ display_name: waarde })
+          .eq('id', alice.id)
+          .select('id')
+          .single();
+
+        expect(
+          error?.code,
+          'de database liet een naam toe die omgekeerd rendert — die staat in de ' +
+            'ledenlijst van iedereen die een groep met je deelt',
+        ).toBe('23514');
+
+        // ⚠️ **De naam van de constraint erbij, en dat is geen sierlijkheid.**
+        //    `23514` zegt alleen "een CHECK weigerde dit". `profiles` draagt er
+        //    vijftien; een tweede die deze invoer toevallig ook weigert, houdt
+        //    deze toets groen terwijl `profiles_display_name_geen_bidi` weg is.
+        //    Dat is regel 18 vraag 3 — toets de belofte, niet het symptoom.
+        expect(
+          error?.message ?? '',
+          'een CHECK weigerde dit, maar niet degene die deze toets bewaakt',
+        ).toContain('profiles_display_name_geen_bidi');
+      },
+      TEST_TIMEOUT,
+    );
+
+    /**
+     * ⚠️⚠️ **De richtingsmarkeringen, en die horen bij een ándere CHECK.** `0269`
+     *    laat ze met opzet buiten `zonder_bidi()`: ze kéren niets om, ze
+     *    markeren. Maar strikt tussen twee ASCII-alfanumerieken markeren ze ook
+     *    niets — er is daar geen grens — en `a<RLM>b` is niet van `ab` te
+     *    onderscheiden. QS8-499 (migratie 0282) sluit precies die plek.
+     *
+     * ⚠️ De constraintnaam staat erbij om dezelfde reden als hierboven: dit is
+     *    `geen_onzichtbaar_tussen_letters` en niet `geen_bidi`, en een toets die
+     *    alleen op `23514` let zou niet merken dat de verkeerde CHECK het deed.
+     */
+    it.each([
+      { naam: 'de right-to-left mark', waarde: `a${String.fromCodePoint(0x200f)}b` },
+      { naam: 'de left-to-right mark', waarde: `a${String.fromCodePoint(0x200e)}b` },
+      { naam: 'de arabic letter mark', waarde: `a${String.fromCodePoint(0x061c)}b` },
+    ])(
+      'weigert $naam tússen twee letters, waar hij niets markeert',
+      async ({ waarde }) => {
+        const { error } = await alice.db
+          .from('profiles')
+          .update({ display_name: waarde })
+          .eq('id', alice.id)
+          .select('id')
+          .single();
+
+        expect(error?.code, 'de CHECK liet een naam door die als een andere rendert').toBe('23514');
+        expect(
+          error?.message ?? '',
+          'een CHECK weigerde dit, maar niet degene die deze toets bewaakt',
+        ).toContain('profiles_display_name_geen_onzichtbaar_tussen_letters');
+      },
+      TEST_TIMEOUT,
+    );
+
+    /**
+     * ⚠️ **De must-allow, en om dezelfde reden als hierboven niet optioneel.**
+     *    📏 `profiles_display_name_geen_bidi` roept `public.zonder_bidi()` aan;
+     *    zónder `grant execute` aan `authenticated` valt élke profielschrijving
+     *    om op `permission denied for function zonder_bidi` — ook een naam die
+     *    niets met bidi te maken heeft. Een dichte deur leest als een veilige
+     *    deur.
+     *
+     * ⚠️ De laatste is een besluit uit migratie 0269: homoglyphen worden hier
+     *    niet opgelost. Hij staat hier zodat dat besluit zichtbaar is als besluit
+     *    en niet als omissie — wie het ooit omkeert, maakt deze toets rood en
+     *    leest dan waarom hij er stond.
+     *
+     * ⚠️⚠️ **Hier stond `a<U+200F>b` met als reden "de RLM is een markering en
+     *    geen override", en dat geval is met QS8-499 (migratie 0282) omgeslagen
+     *    naar een weigering.** Die reden ging over 0269: de RLM hoort niet in
+     *    `zonder_bidi()`, want hij kéért niets om. Hij zegt niets over de plek.
+     *
+     *    📏 Strikt tussen twee ASCII-alfanumerieken is `a<RLM>b` niet van `ab`
+     *    te onderscheiden en is er geen grens waar de markering op werkt — dus
+     *    daar gaat hij weg. Het geval staat nu hierboven bij de weigeringen.
+     *
+     *    Wat ervoor in de plaats komt is het geval waar de markering wél werk
+     *    doet: een naam die twee schriften mengt. 📏 Die is gemeten en hij was
+     *    bijna de bijvangst van deze wijziging — een eerdere versie van de regel
+     *    haalde hem wél weg, en geen enkele toets zag dat.
+     */
+    it.each([
+      { naam: 'een gewone naam', waarde: 'Jan Jansen' },
+      { naam: 'een gezinsemoji', waarde: '👨‍👩‍👧‍👦' },
+      { naam: 'een Arabische naam', waarde: 'محمد' },
+      {
+        naam: 'een naam die twee schriften mengt met een right-to-left mark',
+        waarde: `Jan${String.fromCodePoint(0x200f)} محمد`,
+      },
+      {
+        naam: 'dezelfde markering vóór een spatie',
+        waarde: `Jan${String.fromCodePoint(0x200f)} Jansen`,
+      },
+      { naam: 'een naam met een Cyrillische homoglyph', waarde: 'J\u0430n' },
+    ])(
+      'laat $naam wel toe',
+      async ({ waarde }) => {
+        const { error } = await alice.db
+          .from('profiles')
+          .update({ display_name: waarde })
+          .eq('id', alice.id)
+          .select('id')
+          .single();
+
+        expect(error, 'de CHECK weigert een naam die hij hoort door te laten').toBeNull();
+      },
+      TEST_TIMEOUT,
+    );
+  });
 });

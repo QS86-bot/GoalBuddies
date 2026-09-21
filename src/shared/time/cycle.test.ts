@@ -296,11 +296,18 @@ describe('navigeren tussen cycli', () => {
         expect(weekdayOf(cyclus.startDate)).toBe(startDay);
         expect(weekdayOf(nextCycle(cyclus).startDate)).toBe(startDay);
         expect(weekdayOf(previousCycle(cyclus).startDate)).toBe(startDay);
-
-        // En de weken sluiten aan: navigeren verschuift precies één cyclus.
-        expect(cyclesBetween(cyclus, nextCycle(cyclus))).toBe(1);
-        expect(cyclesBetween(cyclus, previousCycle(cyclus))).toBe(-1);
       }
+
+      // En de weken sluiten aan: navigeren verschuift precies één cyclus.
+      //
+      // ⚠️ Per klok apart en niet in de lus hierboven, en dat is de grendel van
+      //    QS8-180 die zich hier laat voelen: `[persoonlijk, groep]` is voor
+      //    TypeScript één unie van beide merken, en `cyclesBetween` neemt geen
+      //    cyclus meer aan waarvan niet vaststaat van welke klok hij komt.
+      expect(cyclesBetween(persoonlijk, nextCycle(persoonlijk))).toBe(1);
+      expect(cyclesBetween(persoonlijk, previousCycle(persoonlijk))).toBe(-1);
+      expect(cyclesBetween(groep, nextCycle(groep))).toBe(1);
+      expect(cyclesBetween(groep, previousCycle(groep))).toBe(-1);
     }
   });
 

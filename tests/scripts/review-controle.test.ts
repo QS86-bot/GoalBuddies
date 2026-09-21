@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 // ⚠️ Een `.mjs` zonder eigen typings — zelfde patroon als `tekst-controle.test.ts`.
-import { controleer } from '../../scripts/review-controle.mjs';
+import { cellenVanRij, controleer, rapport, UITLEG } from '../../scripts/review-controle.mjs';
 
 /**
  * De ijking van `npm run review:controle`.
@@ -195,5 +195,184 @@ describe('de vijfde toets — dubbele bevindingen', () => {
 
   it('laat twee verschillende bevindingen op dezelfde datum met rust', () => {
     expect(controleer([rij('Eerste', 'a', 'Middel'), rij('Tweede', 'b', 'Middel')])).toEqual([]);
+  });
+});
+
+/**
+ * ⚠️⚠️ **De GFM-celsplitsing, en waarom hij een eigen blok krijgt** — QS8-415.
+ *    Dit script las de risicokolom tot 10-09-2026 door van rechts te knippen,
+ *    met een comment erbij dat een cel nu eenmaal een `|` binnen backticks kan
+ *    dragen. Die omweg maakte de controle groen over een document waarin
+ *    **achttien rijen** hun risico niet renderden. De belofte gaat over wat een
+ *    reviewer op GitHub ziet, dus knipt de controle nu zoals GFM knipt.
+ */
+describe('cellenVanRij knipt zoals GFM knipt', () => {
+  it('een gewone rij levert vier cellen', () => {
+    expect(cellenVanRij('| 2026-08-25 | X | iets | Laag |')).toEqual([
+      '2026-08-25',
+      'X',
+      'iets',
+      'Laag',
+    ]);
+  });
+
+  /**
+   * ⚠️ **Backticks beschermen niets** — dat is de spec en niet een gril van één
+   *    parser. Zou deze test het tegenovergestelde beweren, dan was hij de
+   *    aanname die dit issue veroorzaakte.
+   */
+  it('een streep binnen backticks scheidt óók een cel', () => {
+    expect(cellenVanRij('| 2026-08-25 | X | `SELECT|INSERT` | Laag |')).toHaveLength(5);
+  });
+
+  it('een ontsnapte streep binnen backticks doet dat niet', () => {
+    const c = cellenVanRij('| 2026-08-25 | X | `SELECT\\|INSERT` | Laag |');
+    expect(c).toHaveLength(4);
+    expect(c[2]).toBe('`SELECT\\|INSERT`');
+    expect(c[3]).toBe('Laag');
+  });
+
+  it('een ontsnapte streep buiten backticks ook niet', () => {
+    expect(cellenVanRij('| 2026-08-25 | X | a \\| b | Laag |')).toHaveLength(4);
+  });
+
+  it('twee ontsnapte strepen achter elkaar blijven inhoud', () => {
+    expect(cellenVanRij('| 2026-08-25 | X | `a\\|b\\|c` | Laag |')).toHaveLength(4);
+  });
+});
+
+describe('een rij waarvan de risicokolom niet rendert', () => {
+  it('wordt gemeld zodra een niet-ontsnapte streep hem verschuift', () => {
+    const klachten = controleer(['| 2026-08-25 | X | `SELECT|INSERT` telt mee | Laag |']);
+
+    expect(klachten).toHaveLength(1);
+    expect(klachten[0]?.soort).toBe('kolom-verschoven');
+  });
+
+  /**
+   * ⚠️ De tweede vorm, en die is stiller: het risico rendert wél, maar wat
+   *    erachter staat valt in zijn geheel weg. Drie rijen deden dat, en één
+   *    ervan droeg een aantekening van diezelfde dag.
+   */
+  it('wordt ook gemeld als er tekst áchter de risicokolom staat', () => {
+    const klachten = controleer(['| 2026-08-25 | X | iets | Laag | een naschrift |']);
+
+    expect(klachten).toHaveLength(1);
+    expect(klachten[0]?.soort).toBe('kolom-verschoven');
+  });
+
+  it('en de melding gaat vóór elke andere toets, want het risico is onbekend', () => {
+    const klachten = controleer(['| 2026-08-25 | X | `a|b` | Gedicht |']);
+
+    expect(klachten).toHaveLength(1);
+    expect(klachten[0]?.soort).toBe('kolom-verschoven');
+  });
+});
+
+describe('wat de kolomtoets met rust laat', () => {
+  it('een rij met een correct ontsnapte streep in een codespan', () => {
+    const klachten = controleer([
+      '| 2026-08-25 | X | `SELECT\\|INSERT` telt mee. **Wordt zwaarder als:** iets | Laag |',
+    ]);
+
+    expect(klachten).toEqual([]);
+  });
+
+  it('een rij zonder enige streep in de inhoud', () => {
+    const klachten = controleer([
+      '| 2026-08-25 | X | gewoon proza. **Wordt zwaarder als:** iets | Laag |',
+    ]);
+
+    expect(klachten).toEqual([]);
+  });
+});
+
+/**
+ * De naad tussen tellen en afdrukken — QS8-462.
+ *
+ * ⚠️ **De belofte is niet "de regex klopt" maar: een bevinding die meetelt,
+ *    staat in de uitvoer.** Dat zijn twee onderdelen — `controleer()` telt,
+ *    `rapport()` drukt af — en de lijst ertussen was er drie keer: de
+ *    `soort:`-literals, een hardgecodeerde array in `main()`, en `UITLEG`.
+ *
+ *    📏 Op 07-09-2026 liepen ze uiteen: `stale` telde mee in de exitcode en
+ *    verscheen niet in de tekst. De uitslag was *"1 bevinding(en)"* en daarna
+ *    niets, en de rij moest met de hand gezocht worden. Geen enkele test kon
+ *    dat zien, want de rendering stond binnen `main()` en was niet te voeden.
+ *
+ * ⚠️ **Elke soort wordt hier met een échte rij opgewekt** en niet met een
+ *    zelfgemaakt klachtobject. Anders toetst dit of `rapport()` mijn eigen
+ *    verzinsel kan afdrukken, en niet of de soorten die dit script werkelijk
+ *    oplevert allemaal een uitleg hebben — dat is precies het verschil dat
+ *    CLAUDE.md bij regel 18, vraag 2 beschrijft.
+ *
+ * IJKING — met de hand gedraaid op 13-09-2026, één mutatie per grendel:
+ *
+ *   A  een regel uit `UITLEG` halen            → 2 rood hier
+ *   B  `rapport()` de onbekende soort laten
+ *      overslaan in plaats van afdrukken       → 1 rood hier
+ */
+/**
+ * ⚠️ Een lijst van paren en geen object dat je met een `string` indexeert: dan
+ *    is `soort` een `keyof typeof UITLEG` en toetst de compiler mee dat elke
+ *    opwekker een bestaande soort noemt. Met een `Record<string, …>` was dat
+ *    een `any`-index geworden, en dat is onwrikbare regel 13.
+ */
+const GEVALLEN: readonly (readonly [keyof typeof UITLEG, string[]])[] = [
+  ['kolom-verschoven', [rij('X', 'een `|` kaal in de celinhoud', 'Laag')]],
+  ['onbekend-niveau', [rij('X', 'iets', 'Gedicht')]],
+  ['stale', [rij('X', '✅ **Gedicht in 0066.** enzovoort', '**Hoog**')]],
+  ['geen-agendapunt', [rij('X', 'Dit is geen openstaand werk maar context.', 'Middel')]],
+  ['geen-voorwaarde', [rij('X', 'een open bevinding zonder herbeoordeling', 'Laag')]],
+  ['dubbele-rij', [rij('X', 'eerste', 'Middel'), rij('X', 'tweede', 'Middel')]],
+];
+
+const soortenVan = (regels: string[]): string[] =>
+  controleer(regels).map((k: { soort: string }) => k.soort);
+
+describe('elke soort die de controle oplevert, komt in de uitvoer terecht', () => {
+  it.each(GEVALLEN)('%s wordt werkelijk opgewekt', (soort, regels) => {
+    // ⚠️ Zonder deze toets is `GEVALLEN` een lijst van mijn aannames: een rij
+    //    die niets oplevert zou de dekkingstoets hieronder stil laten slagen.
+    expect(soortenVan(regels)).toContain(soort);
+  });
+
+  it('en staat met naam én uitleg in het rapport', () => {
+    for (const [soort, regels] of GEVALLEN) {
+      const tekst = rapport(controleer(regels));
+      expect(tekst, soort).toContain(`  ${soort}:`);
+      expect(tekst, soort).toContain(UITLEG[soort]);
+    }
+  });
+
+  /**
+   * ⚠️ **De grendel zelf.** Komt er een zevende toets bij zonder regel in
+   *    `UITLEG`, dan wordt deze rood — en dat is de enige plek die dat kan
+   *    zien, want `controleer()` en `UITLEG` weten niets van elkaar.
+   */
+  it('UITLEG dekt precies de soorten die opgewekt kunnen worden', () => {
+    const opgewekt = new Set(GEVALLEN.flatMap(([, regels]) => soortenVan(regels)));
+    expect([...opgewekt].sort()).toEqual(Object.keys(UITLEG).sort());
+  });
+
+  /**
+   * ⚠️ **Faalt open en niet dicht.** Dit is de tak die aangaat als de grendel
+   *    hierboven toch gepasseerd wordt. Een bevinding die in het getal meetelt
+   *    en niet in de tekst staat, is precies de fout van 07-09.
+   */
+  it('een soort zonder uitleg verdwijnt niet stil uit het rapport', () => {
+    const tekst = rapport([{ soort: 'verzonnen-soort', risico: 'Laag', titel: 'X' }]);
+    expect(tekst).toContain('1 bevinding(en)');
+    expect(tekst).toContain('verzonnen-soort');
+    expect(tekst).toContain('geen uitleg geregistreerd');
+  });
+
+  it('het getal boven de lijst is het aantal klachten en niet het aantal soorten', () => {
+    const klachten = controleer([
+      rij('Y', 'eerste', 'Middel'),
+      rij('Y', 'tweede', 'Middel'),
+      rij('Z', 'iets', 'Gedicht'),
+    ]);
+    expect(rapport(klachten)).toContain(`${klachten.length} bevinding(en)`);
   });
 });

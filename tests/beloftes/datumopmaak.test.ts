@@ -4,6 +4,8 @@ import { fileURLToPath } from 'node:url';
 
 import { describe, expect, it } from 'vitest';
 
+import { zonderCommentaar } from './roept-aan';
+
 /**
  * Een datum wordt op één plek opgemaakt, en nooit aan de invoerkant — QS8-221.
  *
@@ -68,10 +70,7 @@ function bestanden(map: string): string[] {
   return gevonden;
 }
 
-/** Commentaar weg; de ⚠️-blokken in dit project noemen deze namen zelf. */
-function ontdaanVanCommentaar(bron: string): string {
-  return bron.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/[^\n]*/g, '');
-}
+
 
 const ALLE = [...bestanden('app'), ...bestanden('src')];
 
@@ -85,7 +84,7 @@ describe('een datum wordt op één plek opgemaakt', () => {
     const overtreders = ALLE.filter(
       (pad) =>
         !(pad.split('\\').join('/') in MAG_ZELF_OPMAKEN) &&
-        ZELF_OPMAKEN.test(ontdaanVanCommentaar(readFileSync(join(WORTEL, pad), 'utf8'))),
+        ZELF_OPMAKEN.test(zonderCommentaar(readFileSync(join(WORTEL, pad), 'utf8'))),
     );
 
     expect(
@@ -119,7 +118,7 @@ describe('de opmaak blijft aan de weergavekant', () => {
   const INVOER = /\b(?:value|onChangeText|defaultValue)=\{[^}]*\btoon(?:Datum|DatumKort|DatumLang|Tijd|KlokTijd|Moment)\s*\(/;
 
   for (const pad of ALLE.filter((p) => p.startsWith('app'))) {
-    const bron = ontdaanVanCommentaar(readFileSync(join(WORTEL, pad), 'utf8'));
+    const bron = zonderCommentaar(readFileSync(join(WORTEL, pad), 'utf8'));
     if (!OPMAAKHELPERS.test(bron)) continue;
 
     it(`${pad} voert geen opgemaakte datum een formulier in`, () => {

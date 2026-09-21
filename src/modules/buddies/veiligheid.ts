@@ -2,6 +2,7 @@ import { reportError } from '../../lib/observability';
 import { supabase } from '../../lib/supabase';
 import { type Resultaat } from '../../shared/api';
 import { t, type Sleutel } from '../../shared/i18n';
+import { schoneVrijeTekst } from '../../shared/tekst';
 
 import { type Meldreden } from './veiligheid-schemas';
 
@@ -89,7 +90,19 @@ async function stuurMelding(argumenten: {
   p_reden: Meldreden;
   p_toelichting: string | null;
 }): Promise<Resultaat<true>> {
-  const { data, error } = await supabase().rpc('meld', argumenten);
+  // ⚠️ Zelfde reden als in `beslisDeadlineVerzoek()`: `reports.toelichting`
+  //    draagt sinds 0284 de twee regels en deze route kent geen Zod-schema.
+  //    QS8-507.
+  //
+  // ⚠️ **`p_reden` gaat er met opzet niet langs**, en `bericht_kopie` evenmin:
+  //    de eerste is een enum en de tweede zet `meld()` zelf uit
+  //    `chat_messages.body`. Allebei staan ze mét hun meting in de kop van 0284.
+  const schoneToelichting = schoneVrijeTekst(argumenten.p_toelichting ?? '');
+
+  const { data, error } = await supabase().rpc('meld', {
+    ...argumenten,
+    p_toelichting: schoneToelichting === '' ? null : schoneToelichting,
+  });
 
   if (error) {
     // ⚠️ Geen `subject_id` in de context. Een melding is stil, en een sink is
@@ -133,9 +146,19 @@ export async function blokkeer(userId: string): Promise<Resultaat<true>> {
   }
 
   const uit = data as unknown as Uitkomst;
-  if (uit.ok !== true) return { ok: false, melding: meldingBijReden(uit.reason) };
+  if (uit.ok === true) return { ok: true, waarde: true };
 
-  return { ok: true, waarde: true };
+  // ⚠️⚠️ **`rate_limited` betekent hier iets anders dan bij melden.** De gedeelde
+  //    tabel mapt hem op `melden.te_veel`, en die zin noemt *twintig meldingen* —
+  //    hier gaat het om blokkades en om een heel ander getal. Op de knop
+  //    "blokkeer deze persoon" is een verkeerd getal geen schoonheidsfout: dit
+  //    is de handeling waar 0203 met opzet géén rem op zette, en wie hem raakt
+  //    moet lezen wat er echt aan de hand is en wat er wél kan. Zie 0276.
+  if (uit.reason === 'rate_limited') {
+    return { ok: false, melding: t('melden.te_veel_blokkades') };
+  }
+
+  return { ok: false, melding: meldingBijReden(uit.reason) };
 }
 
 export async function deblokkeer(userId: string): Promise<Resultaat<true>> {

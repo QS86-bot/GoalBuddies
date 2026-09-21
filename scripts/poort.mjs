@@ -58,6 +58,9 @@ export const HEEFT_DATABASE_NODIG = new Set([
   'tijdzones:controle',
   'functies:controle',
   'kolomrechten:controle',
+  // ⚠️ Leest `pg_class`, `pg_policy` en `pg_proc`: welke tabellen `authenticated`
+  //    DELETE geven en of daar iets tegenover staat. Zonder database meet hij niets.
+  'deleterecht:controle',
   'pin:controle',
   'gedeelde-identiteit:controle',
   'logboek:controle',
@@ -65,6 +68,24 @@ export const HEEFT_DATABASE_NODIG = new Set([
   'register:controle',
   // ⚠️ Leest `pg_proc`, niet de migratiebestanden — zonder database meet hij niets.
   'definers:controle',
+  // ⚠️ Bouwt het schema van nul op en speelt elk bestand twee keer af (QS8-413).
+  'idempotent:controle',
+  // ⚠️ Leest `pg_proc`: welke functies zijn `immutable` met nul argumenten (QS8-433).
+  'volatiliteit:controle',
+  // ⚠️ Leest `pg_get_functiondef()`: de vorm waarin een `app.`-sleutel
+  //    vergeleken wordt (QS8-491). Zonder database meet hij niets.
+  'sleutelvorm:controle',
+  // ⚠️ Leest `pg_class.relacl` en `pg_attribute`: welke kolommen staan er op een
+  //    tabel met een tabelbrede SELECT-grant (QS8-457).
+  'groepskolommen:controle',
+  // ⚠️ Leest `pg_trigger`, de kolomgrants en `pg_policy`: welke tabellen een
+  //    client kan volschrijven en of daar een rem op staat (QS8-522).
+  'rem:controle',
+  // ⚠️ Leest `pg_proc` én de uitvoerrechten: welke functies een globale job zijn
+  //    (QS8-577). De lijst komt met opzet niet uit de migratiebestanden — een
+  //    lijst die je met de hand bijhoudt, handhaaf je op de vorm die je
+  //    toevallig intypt.
+  'jobbereik:controle',
 ]);
 
 /**
@@ -177,10 +198,24 @@ const OVERGESLAGEN = /^[^\n]*\b[\w-]+(?:-controle|:controle)?:\s*OVERGESLAGEN\b/
  *    Zie QS8-239.
  */
 export function draai(commando) {
-  const uitkomst = spawnSync('npm', ['run', '--silent', commando], {
+  // ⚠️ **`shell: true` met de opdracht als één string, en dat is een reparatie
+  //    waar de héle poort op Windows op omviel.** `npm` is daar `npm.cmd`, en
+  //    Node weigert sinds de mitigatie van CVE-2024-27980 (24.x) een `.cmd` te
+  //    spawnen zonder shell: `spawnSync('npm', …)` geeft ENOENT, `npm.cmd` geeft
+  //    EINVAL. Elke stap viel dus om met "kon niet starten" — niet rood om wat
+  //    hij mat, maar omdat hij nooit draaide. Op Linux/CI werkte het, dus het
+  //    bleef verborgen.
+  //
+  //    De opdracht gaat als één string en niet als (commando, args): met een
+  //    args-array plús `shell: true` waarschuwt Node (DEP0190) dat argumenten
+  //    niet ge-escaped worden, en die waarschuwing zou 33 keer door de uitvoer
+  //    lopen. `commando` is een vaste scriptnaam uit `package.json` (hooguit met
+  //    een `:` erin), geen gebruikersinvoer, dus er valt niets te injecteren.
+  const uitkomst = spawnSync(`npm run --silent ${commando}`, {
     cwd: WORTEL,
     encoding: 'utf8',
     stdio: ['ignore', 'pipe', 'pipe'],
+    shell: true,
   });
 
   // ⚠️ Ging het spawnen zelf mis (npm niet gevonden), dan is er geen exitcode.

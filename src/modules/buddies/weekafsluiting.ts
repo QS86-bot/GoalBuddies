@@ -1,16 +1,13 @@
 import { t } from '../../shared/i18n';
 
-// ⚠️ Rechtstreeks uit `auth/avatar.ts` en niet via `modules/auth/index.ts`. Die
-//    laatste re-exporteert `SessionProvider` en `AvatarKeuze`, en die trekken
-//    React en React Native mee — in een test die in Node draait is dat een
-//    parsefout op `react-native/index.js`. Zelfde reden en zelfde vorm als de
-//    directe import van `periods.ts` in `tests/rls/epic7.test.ts`.
+// ⚠️ Rechtstreeks uit `auth/avatar.ts` en niet via de barrel, met één reden op
+//    één plek: `docs/decisions/2026-09-11-een-kiezer-is-geen-ui.md` §5.
 import { metGetekendeAvatars } from '../auth/avatar';
 
 import type { Database } from '../../lib/database.types';
 import { reportError } from '../../lib/observability';
 import { supabase } from '../../lib/supabase';
-import type { Cycle } from '../../shared/time';
+import type { Groepsperiode } from '../../shared/time';
 
 import type { Pagina, Resultaat } from './api';
 import {
@@ -27,7 +24,7 @@ import { invoerfout, type RpcRij } from '../../shared/api';
 /**
  * De weekafsluiting — QS8-73.
  *
- * ⚠️ Alle vier de aanroepen krijgen de periode van buiten mee, als `Cycle` uit
+ * ⚠️ Alle vier de aanroepen krijgen de periode van buiten mee, als `Groepsperiode` uit
  *    `huidigeGroepsperiode()`. De database kent de huddledag en de tijdzone wel,
  *    maar mag er niet mee rekenen (CLAUDE.md, correctheidsregel 7) — en het is de
  *    gróepsperiode en niet de persoonlijke cyclus, want dit is het ritueel van de
@@ -79,7 +76,7 @@ function naarAntwoord(rij: AntwoordRij): Antwoord | null {
  */
 export async function fetchWeekafsluiting(
   groupId: string,
-  periode: Cycle,
+  periode: Groepsperiode,
 ): Promise<readonly Antwoord[]> {
   const { data, error } = await supabase().rpc('weekafsluiting', {
     p_group_id: groupId,
@@ -147,7 +144,7 @@ export interface ReactiePagina extends Pagina<Reactie> {
  */
 export async function fetchWeekafsluitingReacties(
   groupId: string,
-  periode: Cycle,
+  periode: Groepsperiode,
   opties: { readonly na?: ReactieCursor } = {},
 ): Promise<ReactiePagina> {
   const { data, error } = await supabase().rpc('weekafsluiting_reacties', {
@@ -210,11 +207,31 @@ export async function fetchWeekafsluitingReacties(
  * ⚠️ Leeg is leeg: een veld dat je niet invult wordt `null` en niet een lege
  *    string. Anders staat er op de kaart een kopje met niets eronder, en dat leest
  *    als een storing.
+ *
+ * ⚠️⚠️ **Deze functie is de tweede route naar een lege weekafsluiting, en de
+ *    reacties blijven hier wél staan** — QS8-487. `week_reviews_iets_ingevuld`
+ *    eist alleen dat één van de drie velden niet blanco is, dus een bewerking
+ *    tot één teken komt hier gewoon langs. 📏 Gemeten:
+ *
+ *    ```
+ *    terugnemen  afsluitingen 1 -> 0   reacties 1 -> 0   schakels 1 -> 1
+ *    bewerken    afsluitingen 1 -> 1   reacties 1 -> 1   schakels 1 -> 1
+ *    ```
+ *
+ *    **Lees de kop van `verwijderWeekafsluiting()` hieronder dus niet als een
+ *    systeemeigenschap.** Daar staat dat een reactie op een antwoord dat niet
+ *    meer bestaat een halve zin is over iets dat niemand kan nalezen — dat geldt
+ *    voor die route, niet voor deze. Het verschil is besloten en geen omissie:
+ *    reacties wissen bij een bewérking betekent dat het herstellen van een
+ *    typefout de aanmoediging van je buddies opruimt. Beide routes staan naast
+ *    elkaar onder test in `tests/rls/weekafsluiting-twee-routes.test.ts`; de
+ *    afweging met de prijs van elk alternatief staat in
+ *    `docs/decisions/2026-09-14-twee-routes-naar-een-lege-weekafsluiting.md`.
  */
 export async function bewaarWeekafsluiting(
   userId: string,
   groupId: string,
-  periode: Cycle,
+  periode: Groepsperiode,
   invoer: WeekafsluitingInvoer,
 ): Promise<Resultaat<true>> {
   const gevalideerd = weekafsluitingSchema.safeParse(invoer);
@@ -263,7 +280,7 @@ export async function bewaarWeekafsluiting(
 export async function verwijderWeekafsluiting(
   userId: string,
   groupId: string,
-  periode: Cycle,
+  periode: Groepsperiode,
 ): Promise<Resultaat<true>> {
   const { error } = await supabase()
     .from('week_reviews')

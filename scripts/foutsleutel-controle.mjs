@@ -43,6 +43,7 @@ import { dirname, join, relative } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 
 import { metSchuineStrepen } from './paden.mjs';
+import { zonderCommentaar } from './zonder-commentaar.mjs';
 
 const WORTEL = join(dirname(fileURLToPath(import.meta.url)), '..');
 
@@ -122,6 +123,20 @@ export const MELDERS = ['reportError', 'meldEdgeFout', 'meld'];
  *    er langs. Dichten vraagt dataflow — dezelfde grens als bij
  *    `meldtekst:controle` — en zolang dat er niet is, is opschrijven dat hij er
  *    is het enige eerlijke.
+ *
+ * ⚠️⚠️ **Deze helft leest ruwe bron — met commentaar erin — en dat is een keuze
+ *    (QS8-567).** Hij meldt een **regelnummer**, en de gedeelde knip vervangt
+ *    een blok door één spatie; knippen zou elke melding naar de verkeerde regel
+ *    laten wijzen. Dat is dezelfde afweging waarom
+ *    `gedeelde-identiteit-controle.mjs` met reden zijn eigen knip houdt — zie
+ *    het register in `scripts/knip-controle.mjs`.
+ *
+ *    De prijs staat hier zodat niemand hem hoeft te raden: een
+ *    **uitgecommentarieerde** `reportError(e, { pgcode })` wordt gemeld terwijl
+ *    er niets verstuurd wordt. Dat faalt **dicht** — ruis, geen gat — en het is
+ *    de andere kant op dan de twee helften hierboven, die open faalden. Wordt
+ *    die ruis ooit echt, dan is de uitweg een knip die regeleindes behoudt,
+ *    mét een rij in dat register.
  */
 export function contextsleutels(bron) {
   const gevonden = [];
@@ -154,16 +169,46 @@ export function contextsleutels(bron) {
   return gevonden;
 }
 
-/** De sleutels op `ALLOWED_KEYS` in `scrub.ts`. */
+/**
+ * De sleutels op `ALLOWED_KEYS` in `scrub.ts`.
+ *
+ * ⚠️⚠️ **Eerst knippen, en dat is een gerepareerde valse groene (QS8-567).** De
+ *    match is niet-globaal en lui: hij pakt de **eerste** `new Set([…])` in het
+ *    bestand. 📏 Gemeten door een voorbeeld-allowlist in een comment bóven de
+ *    echte te zetten — `allowlist()` gaf `['onschuldig']` in plaats van de elf
+ *    echte sleutels, en de controle meldde **0** bevindingen. De hele tweede
+ *    helft beoordeelde toen een lijst die niet bestaat.
+ *
+ * ⚠️ De kop vangt `null` op met *"stil overslaan is hier hetzelfde als niets
+ *    bewaken"*. Dat klopt, en het dekt de verkeerde helft: **"de verkeerde
+ *    gevonden" is stiller dan "niet gevonden"** — `null` schreeuwt, een
+ *    comment-treffer zwijgt.
+ */
 export function allowlist(bron) {
-  const blok = bron.match(/ALLOWED_KEYS[^=]*=\s*new Set\(\[([\s\S]*?)\]\)/);
+  const blok = zonderCommentaar(bron).match(/ALLOWED_KEYS[^=]*=\s*new Set\(\[([\s\S]*?)\]\)/);
   if (blok === null) return null;
   return [...blok[1].matchAll(/'([^']+)'/g)].map((m) => m[1]);
 }
 
-/** Draagt deze sleutel in `scrub.ts` een eigen vormtoets? */
+/**
+ * Draagt deze sleutel in `scrub.ts` een eigen vormtoets?
+ *
+ * ⚠️⚠️ **Eerst knippen (QS8-567).** Dit toetst of een stuk *tekst* ergens in het
+ *    bestand staat, en een vormtoets die alleen in een comment genoemd wordt is
+ *    geen vormtoets. 📏 Gemeten door de echte `key === 'sqlstate'`-tak weg te
+ *    halen, de naam in een JSDoc-blok te laten staan en `sqlstate` op de
+ *    allowlist te zetten: `heeftVormtoets` gaf `true` en de controle meldde
+ *    **0**. Een sleutel op de allowlist zónder vorm is precies het kanaal waar
+ *    deze controle voor bestaat.
+ *
+ * ⚠️ **Wat de gedeelde knip niet weghaalt: een áchterlopend `// …` op een regel
+ *    met code.** Dat is met opzet — zie de kop van `zonderCommentaar`, waar een
+ *    knip die midden in een regel snijdt de `//` van een URL opat (QS8-412).
+ *    Hier is het een geaccepteerde rest: de vorm die dit project schrijft is een
+ *    JSDoc-blok, en die gaat er wél uit.
+ */
 export function heeftVormtoets(bron, sleutel) {
-  return new RegExp(`key === '${sleutel}'`).test(bron);
+  return new RegExp(`key === '${sleutel}'`).test(zonderCommentaar(bron));
 }
 
 export function beoordeel({ bestanden, scrub }) {

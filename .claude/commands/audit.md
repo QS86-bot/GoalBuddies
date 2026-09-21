@@ -139,6 +139,28 @@ en geen ontbrekende grendel.
     waren. Kom je zo'n rij tegen, meet dan de gedeployde stand
     (`pg_get_functiondef()`, `pg_policy`) en niet het migratiebestand.
 
+    ⚠️⚠️ **En achterhaald gaat twee kanten op — de tweede is de kant die je niet
+    zoekt** (QS8-421). Een rij kan óók achterlopen doordat de **code zichzelf
+    gerepareerd heeft**. 📏 De rij van 09-09 over de kolomgrants op `todo_items`
+    zei met zoveel woorden *"er is géén grendel die dat opvangt"*; die was er wél,
+    en `verlopenRegels()` in `kolomrechten-controle.mjs` had de twee
+    registerrijen al opgeruimd zodra het scherm bestond. Dezelfde dag droeg
+    `WERKVOORRAAD.md` de zin dat `supabase/functions/` buiten typecheck en CI
+    valt, twee weken nadat dat gerepareerd was. **Vraag bij elke rij dus niet
+    alleen "is de aanname vervallen" maar ook "heeft iets dit inmiddels
+    afgevangen".** Een ratel die zijn werk doet, maakt de rij erboven stil
+    onwaar.
+
+    ⚠️⚠️ **Lees deze stap naast stap 13, en niet los ervan** (QS8-421). Een
+    Laag-rij beschrijft risico, en risico is een eigenschap van wat er **draait**
+    — maar bijna elke meting hier gaat over de repo. 📏 Op 11-09-2026 stond
+    productie op `0221` en de map op 255: drie rijen over de opslagemmers gingen
+    over vier emmers waarvan er op productie **één** bestond. Dat maakte ze niet
+    onjuist maar wel iets anders: het gat zat in de map dicht, op productie
+    onbereikbaar, en de échte voorwaarde bleek *"een deploy die deels landt"* —
+    iets wat geen van de drie rijen noemde. **Noteer bij een rij die over
+    gedeployde toestand gaat, welke van de twee je gemeten hebt.**
+
 11. **De migratiemap** — draai `npm run migraties:controle`. Die toetst dat de
     nummering aaneengesloten is, dat er geen twee migraties hetzelfde nummer
     dragen, en dat elke migratie een rollback-pad in zijn kop heeft (onwrikbare

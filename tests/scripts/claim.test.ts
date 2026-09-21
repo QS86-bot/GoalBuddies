@@ -1,6 +1,12 @@
 import { describe, expect, it } from 'vitest';
 
-import { botsendeBranches, claimNaam, nummerUit } from '../../scripts/claim.mjs';
+import {
+  botsendeBranches,
+  claimNaam,
+  gelandVoor,
+  isGelandeVorm,
+  nummerUit,
+} from '../../scripts/claim.mjs';
 
 /**
  * Een issue bezetten met een lege branch — QS8-294.
@@ -86,5 +92,102 @@ describe('claimNaam', () => {
       naam: 'quintenstrijdonk/qs8-294-claim',
       vanLinear: false,
     });
+  });
+});
+
+/**
+ * De tweede bron: de geschiedenis van `origin/main` — QS8-449.
+ *
+ * ⚠️ **De belofte hier is niet "de regex klopt" maar "een afgerond issue waarvan
+ *    de branch is opgeruimd, komt er niet als vrij uit".** De branchlijst
+ *    antwoordt op *"zit hier iemand"*; ze werd ook gelezen als antwoord op *"is
+ *    dit al gebouwd"*, en dat is ze niet zodra iemand opruimt.
+ *
+ * ⚠️ **Elke onderwerpregel hieronder is er een die écht op `main` staat.** Een
+ *    zelfverzonnen regel toetst of mijn regex mijn eigen voorbeeld vindt; dit
+ *    toetst of hij de vormen vindt die dit project daadwerkelijk produceert.
+ */
+const ONDERWERPEN = [
+  // Vorm 1 — de merge-commit. 232 van de 1109 regels op main.
+  'Merge pull request #440 — De overdracht bijgewerkt met de vier valkuilen van 13-09 (QS8-447)',
+  'Merge pull request #431 — De taakbalk blijft staan op elk scherm (QS8-437)',
+  'Merge pull request #430 — Elk vragenscherm krijgt verder en terug (QS8-438)',
+  'Merge pull request #425 — een grant is geen slot zodra de aanroep uit het plan verdwijnt (QS8-433, migratie 0254)',
+  // Vorm 2 — de squash. Zo landde QS8-294, het issue dat dit script maakte.
+  'Claimen is een commando geworden in plaats van een gewoonte (QS8-294) (#232)',
+  // ⚠️ Geen van de volgende drie is een landing, en alle drie noemen ze een issue.
+  "main erin gehaald om QS8-364 te kunnen landen",
+  'Samengaan met main — QS8-174 is geland (0180)',
+  'claim: QS8-449 — bezet sinds 13:41 UTC',
+];
+
+describe('isGelandeVorm', () => {
+  it('kent de twee vormen waarin werk op main belandt', () => {
+    expect(isGelandeVorm('Merge pull request #440 — iets (QS8-447)')).toBe(true);
+    expect(isGelandeVorm('Iets moois (QS8-294) (#232)')).toBe(true);
+  });
+
+  /**
+   * ⚠️ **Dit is de helft die de meting redde.** 📏 Zonder deze grens noemde
+   *    14 van de 22 open issues wel érgens een commit op main — dit project
+   *    verwijst in vrijwel elke commit-tekst naar een ander issue. Mét de grens
+   *    zijn het er drie, en die drie zijn terecht.
+   */
+  it.each([
+    ['een merge van main ín een branch', "main erin gehaald om QS8-364 te kunnen landen"],
+    ['een samengaan', 'Samengaan met main — QS8-174 is geland (0180)'],
+    ['een claim-commit', 'claim: QS8-449 — bezet sinds 13:41 UTC'],
+    ['een gewone commit op een branch', 'De kop noemt de voorwaarde niet (QS8-449)'],
+    ['een nummer dat op een PR lijkt maar middenin staat', 'Iets (#232) en daarna nog tekst'],
+  ])('laat %s met rust', (_naam, regel) => {
+    expect(isGelandeVorm(regel)).toBe(false);
+  });
+});
+
+describe('gelandVoor', () => {
+  /**
+   * 📏 **De twee gevallen van 13-09-2026.** Beide branches waren na de merge
+   *    opgeruimd, dus `botsendeBranches` gaf ze vrij. Dit is wat dat moest
+   *    opvangen.
+   */
+  it('vindt QS8-437 en QS8-438 — de twee die de branchlijst vrijgaf', () => {
+    expect(gelandVoor(437, ONDERWERPEN)).toHaveLength(1);
+    expect(gelandVoor(438, ONDERWERPEN)).toHaveLength(1);
+  });
+
+  it('vindt een squash-landing net zo goed als een merge-commit', () => {
+    expect(gelandVoor(294, ONDERWERPEN)).toEqual([
+      'Claimen is een commando geworden in plaats van een gewoonte (QS8-294) (#232)',
+    ]);
+  });
+
+  it('vindt een landing waar het issuenummer een staart achter zich heeft', () => {
+    // ⚠️ `(QS8-433, migratie 0254)` — de komma mag de treffer niet breken.
+    expect(gelandVoor(433, ONDERWERPEN)).toHaveLength(1);
+  });
+
+  /**
+   * ⚠️ **De andere helft, en die is hier niet de minder belangrijke.** Deze
+   *    melding stáát een claim in de weg. Slaat ze aan op een issue waar niets
+   *    voor geland is, dan is `--vervolg` binnen een week een gewoonte en is de
+   *    grendel weg — dezelfde afweging als bij `botsendeBranches` hierboven.
+   */
+  it.each([
+    ['een issue waar niets voor geland is', 449],
+    ['een nummer dat alleen in een merge-van-main staat', 364],
+    ['een nummer dat alleen in een samengaan staat', 174],
+  ])('zwijgt bij %s', (_naam, nummer) => {
+    expect(gelandVoor(nummer, ONDERWERPEN)).toEqual([]);
+  });
+
+  it('verwart 44 niet met 447, en 4471 niet met 447', () => {
+    // ⚠️ Links grenst het aan het letterlijke `qs8-`, rechts aan een niet-cijfer.
+    expect(gelandVoor(44, ONDERWERPEN)).toEqual([]);
+    expect(gelandVoor(4471, ONDERWERPEN)).toEqual([]);
+    expect(gelandVoor(43, ONDERWERPEN)).toEqual([]);
+  });
+
+  it('kijkt niet naar hoofdletters', () => {
+    expect(gelandVoor(447, ['Merge pull request #440 — iets (qs8-447)'])).toHaveLength(1);
   });
 });

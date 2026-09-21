@@ -134,6 +134,21 @@ function verwijderNaOpbouw(dagenOud: number): string {
     update o set goal = (select id from goals where owner_id = (select uid from o) limit 1);
     reset role;
 
+    -- De buddy in de groep en het doel aan de groep, en dat is sinds 0262 geen
+    -- opsmuk meer. Deze opstelling schreef goedkeuringen weg als de
+    -- tabeleigenaar, dus langs de policies heen, en bouwde daarmee een stand
+    -- die completion_approvals_insert nooit had toegelaten: een goedkeurder die
+    -- geen lid is, op een doel dat aan geen enkele groep hangt. Clausule 2 van
+    -- domeinregel 3 weigert dat nu ook buiten RLS om (QS8-480), en dat is
+    -- precies de bedoeling -- een veegtest hoort te vegen wat er echt kan staan.
+    --
+    -- 'admin' en niet 'member': de vertrekker is de oprichter, en met een
+    -- tweede lid erbij dat geen beheerder is weigert verwijder_mijn_account()
+    -- hem met last_admin. Dat is terecht gedrag en niet wat deze test meet.
+    insert into group_members (group_id, user_id, role, status)
+      select gid, buddy, 'admin', 'active' from o;
+    insert into goal_group_links (goal_id, group_id) select goal, gid from o;
+
     -- ⚠️ De weekafsluiting moet écht oud zijn, en met de trigger aan kan dat
     --    niet — dat is meteen het bewijs dat een geldige rij vanzelf ongeldig
     --    wordt. Even uitzetten is DDL en draait binnen dezelfde transactie.
@@ -163,6 +178,7 @@ function verwijderNaOpbouw(dagenOud: number): string {
     insert into goals (owner_id, title, target_date)
       select buddy, 'Buddydoel', current_date + 90 from o;
     update o set buddy_goal = (select id from goals where owner_id = (select buddy from o) limit 1);
+    insert into goal_group_links (goal_id, group_id) select buddy_goal, gid from o;
     insert into weekly_goals (goal_id, title, cycle_start_date)
       select buddy_goal, 'Buddyweek', date_trunc('week', current_date)::date from o;
     update o set buddy_wg =
@@ -525,6 +541,9 @@ describe.skipIf(!beschikbaar)('een vertrokken goedkeurder laat niets na', () => 
         insert into goals (owner_id, title, target_date)
           select bob, 'Bobdoel', current_date + 90 from r;
         update r set goal = (select id from goals where owner_id = (select bob from r) limit 1);
+        -- Zie de opmerking bij verwijderNaOpbouw: zonder deze koppeling is de
+        -- goedkeuring hieronder een rij die via de policies niet kan ontstaan.
+        insert into goal_group_links (goal_id, group_id) select goal, gid from r;
         insert into weekly_goals (goal_id, title, cycle_start_date)
           select goal, 'Bobweek', date_trunc('week', current_date)::date from r;
         update r set wg = (select id from weekly_goals where goal_id = (select goal from r) limit 1);

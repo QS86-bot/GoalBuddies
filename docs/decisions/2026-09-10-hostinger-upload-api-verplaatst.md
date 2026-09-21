@@ -6,6 +6,25 @@ upload-URL, gevolgd door een libuv-assertie-crash op Windows.
 **Raakt:** `scripts/deploy-web.mjs` (`upload()`, `zetLive()`, `fail()`, het
 entrypoint).
 
+## ⚠️⚠️ Wat hiervan geland is, en wat niet — aangetekend 21-09-2026
+
+Dit document is op 10-09 geschreven; de PR eromheen (#451) bleef een week liggen
+en is pas op 21-09 gemerged. In die week is **hoofdstuk 1 zelfstandig opgelost**:
+QS8-504 werkte de twee routes op 16-09 bij (PR #499), in een nettere vorm met een
+gedeelde `${API}`-constante. Bij het mergen zijn die drie conflicten daarom in het
+voordeel van `main` beslist.
+
+| deel | stand |
+|---|---|
+| §1 — de twee verplaatste endpoints | **al opgelost door QS8-504 (16-09)**; hier historisch |
+| de `ForceType` voor `sw.js` | idem, zat in dezelfde PR #499 |
+| §2 — de libuv-crash op Windows | **dit is wat deze PR daadwerkelijk toevoegt** |
+
+⚠️ De routes hieronder beschrijven dus wat er op 10-09 gemeten is en niet wat er
+vandaag in de code staat. Lees `scripts/deploy-web.mjs` voor de huidige vorm.
+Deze aantekening staat er omdat een beslisdocument dat een achterhaalde route als
+huidig presenteert, precies de vorm is waar dit project elders voor betaalt.
+
 ## 1. De twee endpoints zijn verplaatst
 
 De deploy leunt op twee Hostinger-API-routes, en beide zijn gewijzigd. De oude

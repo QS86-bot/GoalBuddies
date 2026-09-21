@@ -44,6 +44,26 @@
  *    bevinding zelf. Daarom telt een expliciete open-markering zwaarder dan een
  *    reparatiemelding. `tests/scripts/review-controle.test.ts` voedt beide vormen.
  *
+ * ---------------------------------------------------------------------------
+ *
+ * ⚠️⚠️ **En sinds 10-09-2026 toetst hij de rij zoals GitHub hem rendert, niet
+ *    zoals hij in de editor staat** (QS8-415). Dit script las de risicokolom
+ *    door van rechts naar links te knippen, met een comment erbij dat een cel
+ *    nu eenmaal een `|` binnen backticks kan bevatten. Dat is geen omgang met
+ *    het probleem maar een omweg eromheen: **GFM ontsnapt niets binnen
+ *    backticks.** Elke niet-ontsnapte `|` scheidt een cel, ook in een codespan,
+ *    en een rij met meer cellen dan de kop verliest de overtollige — aan het
+ *    éínd, en dat is precies de risicokolom.
+ *
+ *    📏 Gemeten op 10-09-2026: **18 rijen** renderden iets anders dan hun
+ *    risico (drie ervan leeg), en bij **3 rijen** viel tekst áchter de
+ *    risicokolom volledig weg. In de brontekst stond overal het juiste woord,
+ *    dus dit script was groen — vraag 3 van regel 18 in zijn zuiverste vorm:
+ *    *kan deze test groen blijven terwijl de belofte breekt?* Ja, en dat deed hij.
+ *
+ *    De belofte gaat over het **gerenderde** document, want zo opent een
+ *    reviewer het. Vandaar `cellenVanRij()` en toets 0.
+ *
  * Draaien: `npm run review:controle`. Hoort mee in `/audit`.
  */
 
@@ -55,6 +75,43 @@ const MARKERING = 'Wordt zwaarder als:';
 
 /** De niveaus die "hier moet nog iets gebeuren" betekenen. */
 const OPEN_NIVEAUS = ['laag', 'middel', 'hoog', 'kritiek'];
+
+/** Datum, bestand, onzekerheid, risico — de kop van de dossiertabel. */
+const KOLOMMEN = 4;
+
+/**
+ * De cellen van een tabelrij, precies zoals GFM ze knipt.
+ *
+ * ⚠️⚠️ **Backticks beschermen niets.** Dat is geen eigenaardigheid van één
+ *    parser maar wat de GFM-spec zegt: binnen een tabelrij scheidt élke `|` een
+ *    cel, en alleen `\\|` is een letterlijke streep. Een codespan wordt pas ná
+ *    het knippen herkend. Wie hier "maar het staat tussen backticks" denkt,
+ *    denkt het verkeerde model — en dat is precies hoe dit document achttien
+ *    kapotte rijen kreeg.
+ *
+ * ⚠️ Geëxporteerd zodat hij los te ijken is, mét de vormen die hij met rust
+ *    moet laten: een rij met `\\|` in een codespan houdt zijn vier cellen.
+ */
+export function cellenVanRij(regel) {
+  const kaal = regel.trim().replace(/^\|/, '').replace(/\|$/, '');
+  const uit = [];
+  let huidig = '';
+
+  for (let i = 0; i < kaal.length; i += 1) {
+    if (kaal[i] === '\\' && kaal[i + 1] === '|') {
+      huidig += '\\|';
+      i += 1;
+    } else if (kaal[i] === '|') {
+      uit.push(huidig);
+      huidig = '';
+    } else {
+      huidig += kaal[i];
+    }
+  }
+
+  uit.push(huidig);
+  return uit.map((c) => c.trim());
+}
 
 /**
  * Zegt de beschrijving zelf dat het opgelost is?
@@ -124,16 +181,28 @@ export function controleer(regels) {
   for (const regel of regels) {
     if (!regel.startsWith('| 2026-')) continue;
 
-    // ⚠️ Van rechts lezen. Een cel kan een `|` bevatten binnen backticks — dat is
-    //    niet theoretisch, de rij over de twee voortgangsbalken doet het — en
-    //    naïef splitsen op `|` zet dan de verkeerde kolom als risico.
-    const laatste = regel.lastIndexOf('|');
-    const daarvoor = regel.lastIndexOf('|', laatste - 1);
-    if (daarvoor === -1) continue;
+    // ⚠️⚠️ **Knippen zoals GFM knipt, en niet van rechts lezen.** Dit stond hier
+    //    tot 10-09-2026 andersom: het script zocht de laatste twee strepen en
+    //    nam wat daartussen stond. Dat lás het risico goed uit de brontekst en
+    //    verborg daarmee dat de lézer iets anders te zien krijgt. De cellen
+    //    hieronder zijn wat GitHub toont.
+    const cellen = cellenVanRij(regel);
+    const titel = cellen[1] ?? regel.slice(0, 60);
 
-    const kop = regel.slice(0, daarvoor);
-    const risico = regel.slice(daarvoor + 1, laatste).trim();
-    const titel = kop.split('|')[2]?.trim() ?? kop.slice(0, 60);
+    // 0 — meer cellen dan de kop betekent dat GFM de laatste weggooit, en de
+    //     laatste ís de risicokolom. Dit gaat vóór elke andere toets: op een
+    //     verschoven rij zegt "het risico" niets meer.
+    if (cellen.length !== KOLOMMEN) {
+      klachten.push({
+        soort: 'kolom-verschoven',
+        titel,
+        risico: `${cellen.length} cellen in plaats van ${KOLOMMEN}`,
+      });
+      continue;
+    }
+
+    const kop = cellen.slice(0, KOLOMMEN - 1).join(' | ');
+    const risico = cellen[KOLOMMEN - 1] ?? '';
 
     // 1 — het niveau moet een bekend woord zijn.
     const kaal = risico.replace(/[*~]/g, '').split(/\s+/)[0]?.toLowerCase() ?? '';
@@ -184,7 +253,27 @@ export function controleer(regels) {
   return klachten;
 }
 
-const UITLEG = {
+/**
+ * De uitleg per soort — **en tegelijk de volgorde waarin ze afgedrukt worden.**
+ *
+ * ⚠️ **Eén lijst en niet drie — QS8-462.** Hier stond een hardgecodeerde array
+ *    in `main()` naast dit object naast de `soort:`-literals in `controleer()`,
+ *    en niets legde ze naast elkaar. 📏 Op 07-09 telde `stale` daardoor mee in
+ *    de exitcode en verscheen hij niet in de uitvoer: *"1 bevinding(en)"* en
+ *    daarna niets. **Een controle die rood staat zonder te zeggen waarom, leer
+ *    je net zo hard negeren als een die alles meldt.**
+ *
+ *    De insertion order van dit object ís de afdrukvolgorde, dus een nieuwe
+ *    soort erbij zetten is genoeg — er is geen tweede plek meer die je vergeet.
+ *    `tests/scripts/review-controle.test.ts` legt de soorten die `controleer()`
+ *    daadwerkelijk oplevert hiernaast en wordt rood zodra er een mist.
+ */
+export const UITLEG = {
+  'kolom-verschoven':
+    'Deze rij draagt een niet-ontsnapte `|` in zijn celinhoud. GFM knipt daarop\n' +
+    '  ook binnen backticks, de rij krijgt meer cellen dan de kop, en de\n' +
+    '  overtollige vallen aan het eind weg — dus de risicokolom. Schrijf `\\|`\n' +
+    '  in de celinhoud. In je editor ziet de rij er nu goed uit; op GitHub niet.',
   'onbekend-niveau':
     'Het risico is geen bekend niveau. Gebruik Laag, Middel, Hoog of Kritiek —\n' +
     '  en zet er `~~` omheen zodra het afgehandeld is. Een eigen woord als\n' +
@@ -207,12 +296,61 @@ const UITLEG = {
     '  vervalt, is het geen Laag meer. Zie QS8-123 en onwrikbare regel 19.',
 };
 
+/**
+ * De bevindingen als tekst — geen `console`, geen `process.exit`.
+ *
+ * ⚠️ **Dit was de reden dat de naad onzichtbaar bleef.** De rendering stond
+ *    binnen `main()`, tussen twee `process.exit`-takken, en was dus niet te
+ *    voeden. In dit project is dat de regel omgekeerd: *een controle die je niet
+ *    kunt voeden, kun je niet ijken.*
+ *
+ * ⚠️⚠️ **De onbekende soort wordt afgedrukt en niet overgeslagen.** De oude lus
+ *    liep over een vaste lijst, dus een soort die daar niet in stond viel stil
+ *    weg terwijl hij wél meetelde in het getal erboven. Faalt dit open, dan is
+ *    de melding lelijk; faalt het dicht, dan is ze onwaar. De grendel in de
+ *    testsuite hoort dit geval te voorkomen — deze tak is wat er gebeurt als
+ *    dat toch misgaat.
+ */
+export function rapport(klachten) {
+  const regels = [`review-controle: ${klachten.length} bevinding(en).\n`];
+  const bekend = Object.keys(UITLEG);
+  const soorten = [...bekend, ...new Set(klachten.map((k) => k.soort).filter((s) => !bekend.includes(s)))];
+
+  for (const soort of soorten) {
+    const groep = klachten.filter((k) => k.soort === soort);
+    if (groep.length === 0) continue;
+
+    regels.push(`  ${soort}:`);
+    for (const k of groep) regels.push(`    - [${k.risico}] ${k.titel}`);
+    regels.push(
+      `  ${UITLEG[soort] ?? `(geen uitleg geregistreerd voor "${soort}" — zet er een in UITLEG in scripts/review-controle.mjs)`}\n`,
+    );
+  }
+  return regels.join('\n');
+}
+
 function main() {
   const regels = readFileSync(PAD, 'utf8').split('\n');
   const klachten = controleer(regels);
-  const laag = regels.filter(
-    (r) => r.startsWith('| 2026-') && /\|\s*laag\s*\|\s*$/i.test(r),
-  ).length;
+
+  // ⚠️ **De kop is de bron van het getal en `KOLOMMEN` de aanname erover.**
+  //    Krijgt de tabel ooit een vijfde kolom, dan meldt dit script anders élke
+  //    rij als verschoven — een controle die alles meldt, leer je uitzetten.
+  //    Dus faalt hij hier hard, met de reden erbij.
+  const kopregel = regels.find((r) => r.startsWith('| Datum |'));
+  if (kopregel === undefined || cellenVanRij(kopregel).length !== KOLOMMEN) {
+    console.error(
+      `review-controle: de kop van de dossiertabel telt geen ${KOLOMMEN} kolommen.\n` +
+        '  Pas KOLOMMEN in dit script aan; zonder dat meldt toets 0 elke rij.',
+    );
+    process.exit(1);
+  }
+
+  const laag = regels.filter((r) => {
+    if (!r.startsWith('| 2026-')) return false;
+    const c = cellenVanRij(r);
+    return c.length === KOLOMMEN && /^laag$/i.test(c[KOLOMMEN - 1] ?? '');
+  }).length;
 
   if (klachten.length === 0) {
     console.log(
@@ -223,17 +361,7 @@ function main() {
     process.exit(0);
   }
 
-  console.error(`review-controle: ${klachten.length} bevinding(en).\n`);
-
-  for (const soort of ['onbekend-niveau', 'stale', 'geen-agendapunt', 'geen-voorwaarde']) {
-    const groep = klachten.filter((k) => k.soort === soort);
-    if (groep.length === 0) continue;
-
-    console.error(`  ${soort}:`);
-    for (const k of groep) console.error(`    - [${k.risico}] ${k.titel}`);
-    console.error(`  ${UITLEG[soort]}\n`);
-  }
-
+  console.error(rapport(klachten));
   process.exit(1);
 }
 

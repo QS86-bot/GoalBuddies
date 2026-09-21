@@ -1,0 +1,658 @@
+import { useCallback, useState } from 'react';
+import { StyleSheet, View } from 'react-native';
+
+import { useProfiel, useSession } from '@/modules/auth';
+import { fetchMijnGroepen, type Lijstgroep } from '@/modules/buddies';
+import {
+  TAAK_MAX,
+  deelTaak,
+  fetchTaken,
+  maakTaak,
+  verwijderTaak,
+  verzetTaak,
+  zetAfgevinkt,
+  zetTekst,
+  type Taak,
+} from '@/modules/todos';
+import { opmaaktaal, t } from '@/shared/i18n';
+import { telTekens } from '@/shared/tekst';
+import { space } from '@/shared/theme';
+import { toonMoment, type TimeZone } from '@/shared/time';
+import {
+  AsyncView,
+  Bevestiging,
+  Body,
+  Button,
+  Caption,
+  Card,
+  Choice,
+  Field,
+  Screen,
+  bevestigingen,
+  useAsync,
+  useAsyncMetTerugval,
+} from '@/shared/ui';
+
+/**
+ * De Lijst — losse taken, privé — QS8-380, tabel uit migratie 0246.
+ *
+ * ⚠️ **Een taak telt nooit mee**, en dat staat ook in de lege staat. De app heeft
+ *    weekdoelen die punten opleveren en peer-goedkeuring vragen; wie hier iets
+ *    neerzet moet niet gaan denken dat dit meetelt. Domeinregel 9 trekt dezelfde
+ *    grens voor De Dagzet, en om dezelfde reden.
+ *
+ * ⚠️ **Alles is privé, en dat staat er als zin én als grendel.** De zin hangt in
+ *    `beloftes.test.ts` aan een reden; de grendel is `todo_items` zelf, dat sinds
+ *    0246 vier eigenaar-only policies draagt. Delen is QS8-381 — en zolang dat
+ *    niet bestaat, hoort er geen schakelaar te staan die niets doet.
+ *
+ * ⚠️ **Het invoerveld is het gedeelde `Field` en geen eigen `TextInput`.** Dat is
+ *    de hele reden dat inspreken later werkt: QS8-250 hangt de microfoon aan
+ *    `Field`, en dan verschijnt hij hier vanzelf.
+ *    `tests/beloftes/tekstinvoer.test.ts` wordt rood zodra dit scherm zijn eigen
+ *    invoer bouwt.
+ */
+export default function Lijst() {
+  const { userId } = useSession();
+  const { profiel } = useProfiel();
+  const lijst = useTaken(userId);
+
+  // ⚠️ Apart van de lijst, en met een terugval op een lege reeks: een lijst
+  //    zonder groepen is bruikbaar (je deelt dan niets), een lijst die helemaal
+  //    niet laadt niet. Zelfde afweging als de risicostanden op het doelenscherm.
+  const groepen = useAsyncMetTerugval(userId ? () => fetchMijnGroepen() : null, [], [userId]);
+  const [melding, setMelding] = useState<string | null>(null);
+
+  return (
+    <Screen title={t('lijst.titel')}>
+      <Caption>{t('lijst.prive_uitleg')}</Caption>
+
+      <Invoer userId={userId} onKlaar={lijst.opnieuw} onFout={setMelding} />
+
+      {melding === null ? null : <Caption danger>{melding}</Caption>}
+
+      <AsyncView
+        loading={lijst.loading}
+        error={lijst.error}
+        data={lijst.pagina}
+        isEmpty={() => lijst.rijen.length === 0}
+        onRetry={lijst.herlaad}
+        empty={{ title: t('lijst.leeg_titel'), body: t('lijst.leeg_tekst') }}
+      >
+        {() => (
+          <Takenlijst
+            rijen={lijst.rijen}
+            groepen={groepen}
+            tz={profiel?.tz ?? null}
+            totaal={lijst.pagina?.totaal ?? lijst.rijen.length}
+            meer={lijst.pagina?.meer ?? false}
+            onGewijzigd={lijst.opnieuw}
+            onFout={setMelding}
+            onMeer={lijst.volgendePagina}
+          />
+        )}
+      </AsyncView>
+    </Screen>
+  );
+}
+
+/**
+ * De laadstand van de lijst: de opgehaalde pagina's, de volgende, en opnieuw.
+ *
+ * ⚠️ **Elke wijziging leest opnieuw vanaf pagina 0, en dat is geen luiheid.**
+ *    Afvinken en verplaatsen veranderen de vólgorde, dus de opgehaalde pagina's
+ *    kloppen daarna niet meer bij elkaar: een taak die zakt, zou anders twee
+ *    keer in beeld staan.
+ */
+function useTaken(userId: string | null) {
+  const [paginaNr, setPaginaNr] = useState(0);
+  const [eerdere, setEerdere] = useState<readonly Taak[]>([]);
+
+  const { data: pagina, loading, error, herlaad } = useAsync(
+    userId ? () => fetchTaken(userId, { pagina: paginaNr }) : null,
+    [userId, paginaNr],
+  );
+
+  const rijen = [...eerdere, ...(pagina?.rijen ?? [])];
+
+  const opnieuw = useCallback(() => {
+    setEerdere([]);
+    setPaginaNr(0);
+    herlaad();
+  }, [herlaad]);
+
+  const volgendePagina = () => {
+    setEerdere(rijen);
+    setPaginaNr((n) => n + 1);
+  };
+
+  return { pagina, rijen, loading, error, herlaad, opnieuw, volgendePagina };
+}
+
+/**
+ * Het invoerveld en de knop.
+ *
+ * ⚠️ **De teller telt in codepunten en niet met `.length`.** `telTekens()` is de
+ *    eenheid die de database telt (`char_length`); een teller in
+ *    UTF-16-eenheden toont bij emoji een andere grens dan de grens die geldt.
+ *    Zie CLAUDE.md, Emoji.
+ */
+function Invoer({
+  userId,
+  onKlaar,
+  onFout,
+}: {
+  readonly userId: string | null;
+  readonly onKlaar: () => void;
+  readonly onFout: (melding: string | null) => void;
+}) {
+  const [tekst, setTekst] = useState('');
+  const [bezig, setBezig] = useState(false);
+  const tekens = telTekens(tekst.trim());
+
+  const voegToe = async () => {
+    if (userId === null || bezig) return;
+    setBezig(true);
+    const uitkomst = await maakTaak(userId, { body: tekst });
+    setBezig(false);
+
+    if (!uitkomst.ok) {
+      onFout(uitkomst.melding);
+      return;
+    }
+    setTekst('');
+    onFout(null);
+    onKlaar();
+  };
+
+  return (
+    <Card>
+      <Field
+        label={t('lijst.veld_label')}
+        hint={t('lijst.veld_hint')}
+        placeholder={t('lijst.veld_plaats')}
+        value={tekst}
+        onChangeText={setTekst}
+        multiline
+      />
+      <View style={styles.voet}>
+        <Caption>{t('lijst.teller', { n: tekens, max: TAAK_MAX })}</Caption>
+        <Button
+          variant="primair"
+          busy={bezig}
+          disabled={tekens === 0 || tekens > TAAK_MAX}
+          onPress={() => void voegToe()}
+        >
+          {t('lijst.toevoegen')}
+        </Button>
+      </View>
+    </Card>
+  );
+}
+
+/**
+ * De lijst zelf.
+ *
+ * ⚠️ **De buren voor omhoog en omlaag komen uit de open taken en niet uit alle
+ *    rijen.** De server sorteert afgevinkte taken onderaan (`done_at` nulls
+ *    first), dus een open taak met een afgevinkte buur wisselen zou een
+ *    `order_index` verzetten die je nergens ziet — een knop die niets doet.
+ *
+ * ⚠️ Aan het einde van wat er geladen is, staat de buur op de volgende pagina.
+ *    De knop is daar uit, en dat is de zachtere fout: liever geen knop dan een
+ *    knop die een taak met zichzelf wisselt.
+ */
+function Takenlijst({
+  rijen,
+  groepen,
+  tz,
+  totaal,
+  meer,
+  onGewijzigd,
+  onFout,
+  onMeer,
+}: {
+  readonly rijen: readonly Taak[];
+  readonly groepen: readonly Lijstgroep[];
+  /** De tijdzone van de gebruiker; `null` zolang het profiel nog laadt. */
+  readonly tz: TimeZone | null;
+  readonly totaal: number;
+  readonly meer: boolean;
+  readonly onGewijzigd: () => void;
+  readonly onFout: (melding: string | null) => void;
+  readonly onMeer: () => void;
+}) {
+  const open = rijen.filter((taak) => taak.done_at === null);
+
+  return (
+    <View style={styles.lijst}>
+      {rijen.map((taak) => (
+        <TaakRegel
+          key={taak.id}
+          taak={taak}
+          groepen={groepen}
+          tz={tz}
+          vorige={buur(open, taak, -1)}
+          volgende={buur(open, taak, +1)}
+          onGewijzigd={onGewijzigd}
+          onFout={onFout}
+        />
+      ))}
+
+      {meer ? (
+        <>
+          <Caption>{t('lijst.van_totaal', { aantal: rijen.length, totaal })}</Caption>
+          <Button variant="secundair" block onPress={onMeer}>
+            {t('lijst.meer_laden')}
+          </Button>
+        </>
+      ) : null}
+    </View>
+  );
+}
+
+/** De buur van `taak` binnen `open`, of `null` aan de rand. */
+function buur(open: readonly Taak[], taak: Taak, stap: -1 | 1): Taak | null {
+  const plek = open.indexOf(taak);
+  if (plek === -1) return null;
+  return open[plek + stap] ?? null;
+}
+
+/** Wat elke schrijfactie van dit scherm teruggeeft. */
+type Uitkomst = { readonly ok: boolean; readonly melding?: string };
+
+/**
+ * Voert één schrijfactie uit en vertelt het scherm hoe het afliep.
+ *
+ * ⚠️ **Een mislukking blijft staan als melding en niet als niets.** Een
+ *    `verzetTaak()` die weigert omdat twee taken hetzelfde nummer dragen, geeft
+ *    anders een knop die niets doet — en dat is precies de stille terugzetting
+ *    waar QS8-314 over gaat.
+ */
+async function voerUit(
+  handeling: () => Promise<Uitkomst>,
+  scherm: {
+    readonly bezig: boolean;
+    readonly setBezig: (b: boolean) => void;
+    readonly onFout: (melding: string | null) => void;
+    readonly onGewijzigd: () => void;
+  },
+): Promise<void> {
+  if (scherm.bezig) return;
+  scherm.setBezig(true);
+  const uitkomst = await handeling();
+  scherm.setBezig(false);
+
+  scherm.onFout(uitkomst.ok ? null : (uitkomst.melding ?? t('lijst.opslaan_mislukt')));
+  if (uitkomst.ok) scherm.onGewijzigd();
+}
+
+/**
+ * Eén regel: de tekst, de stand, en wat je ermee kunt.
+ *
+ * ⚠️ **Afgevinkt is doorgestreept én in woorden.** Alleen een streep is voor een
+ *    schermlezer niets, en `textDecorationLine` reist bovendien niet altijd mee
+ *    naar native. De datum eronder zegt hetzelfde in tekst.
+ */
+function TaakRegel({
+  taak,
+  groepen,
+  tz,
+  vorige,
+  volgende,
+  onGewijzigd,
+  onFout,
+}: {
+  readonly taak: Taak;
+  readonly groepen: readonly Lijstgroep[];
+  readonly tz: TimeZone | null;
+  readonly vorige: Taak | null;
+  readonly volgende: Taak | null;
+  readonly onGewijzigd: () => void;
+  readonly onFout: (melding: string | null) => void;
+}) {
+  const [wijzigt, setWijzigt] = useState(false);
+  const [bezig, setBezig] = useState(false);
+  const af = taak.done_at !== null;
+
+  const voer = (handeling: () => Promise<Uitkomst>) =>
+    void voerUit(handeling, { bezig, setBezig, onFout, onGewijzigd });
+
+  const opslaan = (tekst: string) => {
+    setWijzigt(false);
+    voer(() => zetTekst(taak.id, tekst));
+  };
+
+  if (wijzigt) {
+    return <Hernoemen taak={taak} bezig={bezig} onOpslaan={opslaan} onStop={() => setWijzigt(false)} />;
+  }
+
+  return (
+    <Card>
+      <Body muted={af} doorgestreept={af}>
+        {taak.body}
+      </Body>
+      <Afgerond doneAt={taak.done_at} tz={tz} />
+      <Deelblok taak={taak} groepen={groepen} bezig={bezig} onDeel={(g) => voer(() => deelTaak(taak.id, g))} />
+      <Regelvoet
+        af={af}
+        bezig={bezig}
+        vorige={vorige}
+        volgende={volgende}
+        onAfvinken={() => voer(() => zetAfgevinkt(taak.id, !af))}
+        onVerzet={(buurman) => voer(() => verzetTaak(taak, buurman))}
+        onHernoem={() => setWijzigt(true)}
+        onWeg={() => voer(() => verwijderTaak(taak.id))}
+      />
+    </Card>
+  );
+}
+
+/**
+ * De bewerkstand van één regel — QS8-386.
+ *
+ * ⚠️ **Hetzelfde gedeelde `Field` als de invoer bovenaan het scherm**, en om
+ *    dezelfde reden: QS8-250 hangt de microfoon aan `Field`, dus een taak wordt
+ *    straks ook inspreekbaar zonder dat hier iets verandert.
+ *    `tests/beloftes/tekstinvoer.test.ts` wordt rood zodra dit scherm zijn eigen
+ *    `TextInput` bouwt.
+ *
+ * ⚠️ **De teller telt codepunten** (`telTekens`) en niet UTF-16-eenheden, want
+ *    dat is wat `char_length(btrim(body))` in 0246 telt. Een teller in de ene
+ *    eenheid bij een grens in de andere is een nieuwe fout en geen reparatie —
+ *    CLAUDE.md, Emoji, en QS8-118.
+ *
+ * ⚠️ **Onveranderd opslaan is uit en niet stil.** Zou het door mogen, dan meldt
+ *    het scherm "opgeslagen" bij een PATCH die niets veranderde, en is de knop
+ *    een gok in plaats van een handeling.
+ */
+function Hernoemen({
+  taak,
+  bezig,
+  onOpslaan,
+  onStop,
+}: {
+  readonly taak: Taak;
+  readonly bezig: boolean;
+  readonly onOpslaan: (tekst: string) => void;
+  readonly onStop: () => void;
+}) {
+  const [tekst, setTekst] = useState(taak.body);
+  const tekens = telTekens(tekst.trim());
+  const gelijk = tekst.trim() === taak.body.trim();
+
+  return (
+    <Card>
+      <Field
+        label={t('lijst.hernoem_label')}
+        hint={t('lijst.hernoem_hint')}
+        value={tekst}
+        onChangeText={setTekst}
+        multiline
+      />
+      <View style={styles.voet}>
+        <Caption>{t('lijst.teller', { n: tekens, max: TAAK_MAX })}</Caption>
+        <View style={styles.knoppen}>
+          <Button variant="stil" disabled={bezig} onPress={onStop}>
+            {t('lijst.hernoem_annuleer')}
+          </Button>
+          <Button
+            variant="primair"
+            busy={bezig}
+            disabled={tekens === 0 || tekens > TAAK_MAX || gelijk}
+            onPress={() => onOpslaan(tekst)}
+          >
+            {t('lijst.hernoem_opslaan')}
+          </Button>
+        </View>
+      </View>
+    </Card>
+  );
+}
+
+/**
+ * De onderrand van een regel: de knoppen, of de bevestiging die er één vervangt.
+ *
+ * ⚠️ **De bevestiging woont hier en niet in `TaakRegel`.** Verwijderen is de
+ *    enige onomkeerbare knop van de vier, dus de vraag *"weet je het zeker"*
+ *    hoort bij de knop die hem stelt — niet bij de regel eromheen. Aanleiding was
+ *    QS8-386: met de hernoemknop erbij liep `TaakRegel` over de vijftig regels en
+ *    werd `regel15:controle` rood.
+ */
+function Regelvoet({
+  af,
+  bezig,
+  vorige,
+  volgende,
+  onAfvinken,
+  onVerzet,
+  onHernoem,
+  onWeg,
+}: {
+  readonly af: boolean;
+  readonly bezig: boolean;
+  readonly vorige: Taak | null;
+  readonly volgende: Taak | null;
+  readonly onAfvinken: () => void;
+  readonly onVerzet: (buurman: Taak) => void;
+  readonly onHernoem: () => void;
+  readonly onWeg: () => void;
+}) {
+  const [vraagt, setVraagt] = useState(false);
+
+  if (vraagt) {
+    return (
+      <Bevestiging
+        tekst={bevestigingen().taakVerwijderen}
+        bezig={bezig}
+        onBevestig={onWeg}
+        onAnnuleer={() => setVraagt(false)}
+      />
+    );
+  }
+
+  return (
+    <Regelknoppen
+      af={af}
+      bezig={bezig}
+      vorige={vorige}
+      volgende={volgende}
+      onAfvinken={onAfvinken}
+      onVerzet={onVerzet}
+      onHernoem={onHernoem}
+      onWeg={() => setVraagt(true)}
+    />
+  );
+}
+
+/**
+ * Wanneer een taak is afgevinkt, in de tijdzone van de gebruiker.
+ *
+ * ⚠️ **`toonMoment()` en niet de datum uit de tijdstempel snijden.** `done_at`
+ *    staat in UTC; de eerste tien tekens eruit halen geeft de UTC-datum, en die
+ *    is voor iemand in Auckland dertien uur van de zijne verwijderd.
+ *    Domeinregel 2, en correctheidsregel 7: geen datumberekening buiten
+ *    `shared/time`.
+ *
+ * ⚠️ Zonder tijdzone toont hij niets in plaats van een gok. Het profiel laadt
+ *    apart, en een datum in de verkeerde zone is erger dan even geen datum.
+ */
+function Afgerond({ doneAt, tz }: { readonly doneAt: string | null; readonly tz: TimeZone | null }) {
+  if (doneAt === null || tz === null) return null;
+
+  return <Caption>{t('lijst.afgerond_op', { datum: toonMoment(doneAt, tz, opmaaktaal()) })}</Caption>;
+}
+
+/**
+ * Wat er over deze taak naar de groep gaat, en de knop die dat omzet.
+ *
+ * ⚠️⚠️ **Delen is per taak en met één gekozen groep** — besluit van Quinten,
+ *    09-09-2026, variant B2 van QS8-378. Niet "iedereen met wie je een groep
+ *    deelt": zit er een leidinggevende in één van je gezelschappen, dan ziet die
+ *    anders je boodschappenlijst. CLAUDE.md waarschuwt daar bij domeinregel 7
+ *    met zoveel woorden voor.
+ *
+ * ⚠️ **Bij één groep vraagt de app niets**, en dat is dezelfde afweging die
+ *    `beslissendeGroep()` in `modules/buddies/deling.ts` maakte: een keuze
+ *    stellen die er niet is, is een stille keuze onder een andere naam. Pas bij
+ *    twee of meer verschijnt de lijst.
+ *
+ * ⚠️ **De knop schrijft geen kolom maar roept een RPC aan.** `visibility` en
+ *    `shared_group_id` staan in geen enkele kolomgrant; de grendel is de
+ *    database en niet dit scherm.
+ */
+function Deelblok({
+  taak,
+  groepen,
+  bezig,
+  onDeel,
+}: {
+  readonly taak: Taak;
+  readonly groepen: readonly Lijstgroep[];
+  readonly bezig: boolean;
+  readonly onDeel: (groupId: string | null) => void;
+}) {
+  const [kiest, setKiest] = useState(false);
+  const gedeeldMet = groepen.find((g) => g.id === taak.shared_group_id);
+
+  if (taak.shared_group_id !== null) {
+    return (
+      <View style={styles.knoppen}>
+        {/*
+          ⚠️ **De naamloze tak is bereikbaar, en dat was hij stil.** `Gedeeld met `
+             zonder naam stond er tot de security-ronde op QS8-381: `gedeeldMet`
+             komt uit `fetchMijnGroepen()`, en die laat een gearchiveerde groep
+             met opzet weg (0153) terwijl de taak daar wél gedeeld blijft — een
+             archief blijft leesbaar, dat is de lees/schrijf-splitsing. De
+             eigenaar las dan dat hij deelde en niet met wie.
+
+             De andere twee routes hierheen zijn dicht gemaakt in plaats van
+             opgevangen: een ex-lid deelt niet door (migratie 0248 §5) en een
+             verwijderde groep laat geen `('group', null)` achter (de CHECK
+             daar). Wat overblijft is het archief, en dat krijgt een zin.
+        */}
+        <Caption>
+          {gedeeldMet
+            ? t('lijst.deel_aan', { groep: gedeeldMet.name })
+            : t('lijst.deel_aan_onbekend')}
+        </Caption>
+        <Button variant="stil" disabled={bezig} onPress={() => onDeel(null)}>
+          {t('lijst.deel_terug')}
+        </Button>
+      </View>
+    );
+  }
+
+  if (groepen.length === 0) return <Caption>{t('lijst.deel_geen_groep')}</Caption>;
+
+  if (groepen.length === 1 || !kiest) {
+    return (
+      <View style={styles.knoppen}>
+        <Caption>{t('lijst.deel_uit')}</Caption>
+        <Button
+          variant="stil"
+          disabled={bezig}
+          onPress={() => (groepen.length === 1 ? onDeel(groepen[0]?.id ?? null) : setKiest(true))}
+        >
+          {t('lijst.deel_knop')}
+        </Button>
+      </View>
+    );
+  }
+
+  return <Groepskeuze groepen={groepen} bezig={bezig} onKies={onDeel} />;
+}
+
+/** De keuzelijst die alleen verschijnt bij twee of meer groepen. */
+function Groepskeuze({
+  groepen,
+  bezig,
+  onKies,
+}: {
+  readonly groepen: readonly Lijstgroep[];
+  readonly bezig: boolean;
+  readonly onKies: (groupId: string) => void;
+}) {
+  const [keuze, setKeuze] = useState(groepen[0]?.id ?? '');
+
+  return (
+    <Card nested>
+      <Caption>{t('lijst.deel_uitleg')}</Caption>
+      <Choice
+        label={t('lijst.deel_kies')}
+        opties={groepen.map((g) => ({ waarde: g.id, label: g.name }))}
+        waarde={keuze}
+        onKies={setKeuze}
+        disabled={bezig}
+      />
+      <Button variant="secundair" busy={bezig} disabled={keuze === ''} onPress={() => onKies(keuze)}>
+        {t('lijst.deel_knop')}
+      </Button>
+    </Card>
+  );
+}
+
+/** De vier knoppen onder een regel. Apart, want vier knoppen is geen regel. */
+function Regelknoppen({
+  af,
+  bezig,
+  vorige,
+  volgende,
+  onAfvinken,
+  onVerzet,
+  onHernoem,
+  onWeg,
+}: {
+  readonly af: boolean;
+  readonly bezig: boolean;
+  readonly vorige: Taak | null;
+  readonly volgende: Taak | null;
+  readonly onAfvinken: () => void;
+  readonly onVerzet: (buurman: Taak) => void;
+  readonly onHernoem: () => void;
+  readonly onWeg: () => void;
+}) {
+  return (
+    <View style={styles.knoppen}>
+      <Button variant="secundair" busy={bezig} onPress={onAfvinken}>
+        {af ? t('lijst.ontvinken') : t('lijst.afvinken')}
+      </Button>
+      {/*
+        ⚠️ De buur gaat mee in de aanroep en niet als vlag ernaast. Zo kan een
+           knop die aan staat geen buur missen: `disabled` en `onPress` lezen
+           dezelfde waarde.
+      */}
+      <Button
+        variant="stil"
+        disabled={bezig || vorige === null}
+        onPress={() => vorige !== null && onVerzet(vorige)}
+      >
+        {t('lijst.omhoog')}
+      </Button>
+      <Button
+        variant="stil"
+        disabled={bezig || volgende === null}
+        onPress={() => volgende !== null && onVerzet(volgende)}
+      >
+        {t('lijst.omlaag')}
+      </Button>
+      <Button variant="stil" disabled={bezig} onPress={onHernoem}>
+        {t('lijst.hernoemen')}
+      </Button>
+      <Button variant="stil" disabled={bezig} onPress={onWeg}>
+        {t('lijst.verwijderen')}
+      </Button>
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  lijst: { gap: space.blokGap },
+  voet: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    gap: space.blokGap,
+  },
+  knoppen: { flexDirection: 'row', flexWrap: 'wrap', gap: space.blokGap - 3, alignItems: 'center' },
+});

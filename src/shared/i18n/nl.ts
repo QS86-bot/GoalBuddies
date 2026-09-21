@@ -209,6 +209,27 @@ export const nl = {
   'commitment.fout.al_afgegaan':
     'Dit commitment is al in werking getreden en kan niet meer worden ingetrokken.',
   'commitment.fout.laden': 'De beloning en straf konden niet geladen worden.',
+  'stuurloos.kop': 'Je getuige is er niet meer',
+  'stuurloos.uitleg':
+    'De persoon die je als getuige had aangewezen, heeft zijn account opgezegd. Je inzet staat nog open. Wijs iemand anders aan, of wikkel hem af als je hem bent nagekomen.',
+  'stuurloos.wie': 'Wie let er vanaf nu op?',
+  'stuurloos.aanwijzen': 'Deze persoon aanwijzen',
+  'stuurloos.niemand':
+    'Er is nu niemand in je groepen om aan te wijzen. Zodra er iemand bijkomt, kan het hier.',
+  'stuurloos.afwikkelen': 'Ik heb hem nagekomen',
+  'stuurloos.zeker': 'Deze inzet afwikkelen?',
+  'stuurloos.afwikkelen_uitleg':
+    'Je legt hiermee vast dat je je inzet bent nagekomen. Er is nu geen getuige die dat kan bevestigen, dus dit staat op jouw woord. Terugdraaien kan niet.',
+  'stuurloos.ja_afwikkelen': 'Ja, afwikkelen',
+  'stuurloos.terug': 'Terug',
+  'commitment.fout.herstel': 'Dat lukte niet. Probeer het opnieuw.',
+  'commitment.herstel.heeft_getuige':
+    'Deze inzet heeft nog een getuige. Je kunt hem alleen overdragen als je getuige zijn account heeft opgezegd.',
+  'commitment.herstel.niet_verschuldigd':
+    'Deze inzet is nog niet verschuldigd. Zolang dat zo is, kun je hem gewoon intrekken.',
+  'commitment.herstel.geen_groepsgenoot':
+    'Je kunt alleen iemand aanwijzen met wie je een groep deelt.',
+  'commitment.herstel.niet_jezelf': 'Je kunt niet je eigen getuige zijn.',
   'commitment.fout.spoor': 'De geschiedenis kon niet geladen worden.',
 
   'validatie.commitment_kort': 'Schrijf op wat je jezelf oplegt.',
@@ -256,8 +277,9 @@ export const nl = {
   'bevestiging.doel_afronden.titel': 'Dit doel afronden?',
   'bevestiging.doel_afronden.uitleg':
     'Elke groep waaraan dit doel hangt, krijgt een bericht dat je het afgerond hebt, en ' +
-    'een chatbericht haal je niet meer weg. Je beloning komt vrij en wordt ook gemeld; ' +
-    'een straf die je had ingesteld, vervalt. Terugzetten kan niet.',
+    'een chatbericht haal je niet meer weg. Rond je op tijd af, dan komt je beloning vrij ' +
+    'en vervalt een straf die je had ingesteld. Ben je na de streefdatum, dan verloopt je ' +
+    'beloning en blijft je straf staan: die wordt verschuldigd. Terugzetten kan niet.',
   'bevestiging.doel_afronden.knop': 'Afronden',
 
   // ---------------------------------------------------------------------------
@@ -562,6 +584,7 @@ export const nl = {
   'onboarding.voorbeeld_plafond': 'Drie keer, minstens vijf kilometer',
   'onboarding.aan_de_slag': 'Aan de slag',
   'onboarding.verder': 'Verder',
+  'onboarding.vorige': 'Terug',
   'onboarding.overslaan': 'Overslaan',
 
   // Navigatie — QS8-211. Deze staan bewust apart van elk scherm: de terugknop en
@@ -576,7 +599,6 @@ export const nl = {
   'onboarding.naam_plaatshouder': 'Quinten',
   'onboarding.geen_avatar': 'Geen foto? Dan tonen we je initialen. Je kunt er hier een kiezen, of later bij Profiel.',
   'onboarding.tijdzone_van_telefoon': 'Tijdzone: {zone}, van je telefoon.',
-  'onboarding.tijdzone_klopt_niet': 'Klopt niet',
   'onboarding.waarvoor': 'Waarvoor kom je?',
   'onboarding.waarvoor_hint': 'Kwam je binnen om een vriend te helpen? Dan hoef je zelf geen doel. Je kunt er altijd later een maken.',
   'onboarding.zelf_doel': 'Ik wil zelf een doel',
@@ -718,7 +740,7 @@ export const nl = {
   'zichtbaarheid.beschermd_uitleg':
     'De groep ziet wat er lukt: afgeronde weken, mijlpalen, aanmoedigingen. Een gemiste week blijft van jou, tenzij je hem zelf deelt.',
   'zichtbaarheid.open_uitleg':
-    'De groep ziet ook wat er niet lukt: gemiste en doorgeschoven weken, elkaars beste reeks, wie er in welke week meedeed, en elkaars puntentotaal in deze groep. Kies dit alleen als iedereen dat wil.',
+    'De groep ziet ook wat er niet lukt: gemiste en doorgeschoven weken, elkaars beste reeks, wie er in welke week meedeed, elkaars puntentotaal in deze groep, en welke held er de afgelopen week bij wie langs is geweest. Dat is ook de held die na een gemiste week komt. Kies dit alleen als iedereen dat wil.',
   'zichtbaarheid.niet_bevestigd': 'Bevestig eerst: dit verandert wat de groep over anderen ziet.',
   'zichtbaarheid.onbekend': 'Die instelling bestaat niet.',
   'zichtbaarheid.ongewijzigd': 'Zo stond hij al.',
@@ -743,11 +765,11 @@ export const nl = {
 
   'bevestiging.groep_openzetten.titel': 'Deze groep openzetten?',
   'bevestiging.groep_openzetten.uitleg':
-    'Vanaf nu ziet iedereen in deze groep ook elkaars gemiste en doorgeschoven weken, elkaars beste reeks ooit, van elke week wie er meedeed, en een klassement met elkaars puntentotaal in deze groep, ook de weken die er al staan. Dit gaat dus niet alleen over jou. Iedereen krijgt een bericht in de groepschat, zodat wie dat niet wil zijn doel kan ontkoppelen. Terugzetten kan altijd en meteen.',
+    'Vanaf nu ziet iedereen in deze groep ook elkaars gemiste en doorgeschoven weken, elkaars beste reeks ooit, van elke week wie er meedeed, een klassement met elkaars puntentotaal in deze groep, en welke held er de afgelopen week bij wie langs is geweest. Dat is ook de held die na een gemiste week komt, en het geldt ook voor de weken die er al staan. Dit gaat dus niet alleen over jou. Iedereen krijgt een bericht in de groepschat, zodat wie dat niet wil zijn doel kan ontkoppelen. Dat werkt voor alles wat aan een doel hangt; de heldenlijst hangt aan je lidmaatschap en blijft dus staan zolang je in de groep zit. Terugzetten kan altijd en meteen.',
   'bevestiging.groep_openzetten.knop': 'Ja, zet hem open',
   'bevestiging.groep_beschermen.titel': 'Deze groep weer beschermen?',
   'bevestiging.groep_beschermen.uitleg':
-    'De groep ziet vanaf nu alleen nog wat er lukt. Gemiste weken worden weer privé, ook met terugwerkende kracht, en het klassement verdwijnt. Iedereen krijgt er een bericht van.',
+    'De groep ziet vanaf nu alleen nog wat er lukt. Gemiste weken worden weer privé, ook met terugwerkende kracht, en het klassement en de heldenlijst verdwijnen. Iedereen krijgt er een bericht van.',
   'bevestiging.groep_beschermen.knop': 'Ja, bescherm hem',
   'bevestiging.groep_ontdekbaar_maken.titel': 'Deze groep vindbaar maken?',
   'bevestiging.groep_ontdekbaar_maken.uitleg':
@@ -879,6 +901,47 @@ export const nl = {
   'profiel.viering_uitleg': 'Een korte felicitatie als een buddy je week bevestigt, je een mijlpaal haalt of je doel af is. Verder blijft de app rustig.',
   'profiel.viering_aan_label': 'Feestelijke momenten aan',
   'profiel.viering_uit_label': 'Feestelijke momenten uit',
+  // ⚠️ De vier soorten die je los kunt uitzetten (QS8-92). `nudge` staat hier
+  //    niet bij: die schakelaar is de herinneringkaart hierboven, en dat zegt
+  //    `meldingsoort.uitleg` met zoveel woorden — zonder die zin lijkt de lijst
+  //    incompleet.
+  'vindbaar.titel': 'Buiten je groepen te vinden',
+  'vindbaar.uitleg': 'Staat dit aan, dan kunnen mensen die zijn ingelogd je vinden op je naam. Ze zien je naam en je profielfoto.',
+  'vindbaar.label': 'Vindbaar',
+  'vindbaar.wat_niet': 'Verder blijft alles dicht: je doelen, je reeks, je punten, je groepen en je weken ziet niemand die geen groep met je deelt.',
+  'vindbaar.terugdraaien': 'Dit staat standaard uit en je kunt het altijd terugzetten.',
+  'mensen.titel': 'Mensen zoeken',
+  'mensen.zoeken_mislukt': 'Zoeken lukte niet. Probeer het zo nog eens.',
+  'mensen.veld': 'Naam',
+  'mensen.begin': 'Typ een naam om iemand te zoeken die zichzelf vindbaar heeft gemaakt.',
+  'mensen.te_kort': 'Typ minstens {aantal} tekens.',
+  'mensen.niets_gevonden': 'Niemand met die naam heeft zichzelf vindbaar gemaakt.',
+  'mensen.meer': 'Meer laden',
+  'mensen.uitleg': 'Je zoekt op het begin van de naam. Je ziet alleen mensen die dit zelf hebben aangezet.',
+  'meldingsoort.titel': 'Welke meldingen wil je?',
+  'meldingsoort.uitleg':
+    'De dagelijkse herinnering zet je hierboven aan of uit. Deze vier staan los ' +
+    'daarvan.',
+  'meldingsoort.approval_request': 'Een buddy wacht op jouw oordeel',
+  'meldingsoort.approval_received': 'Iemand heeft jouw week goedgekeurd',
+  'meldingsoort.cycle_summary': 'Je weekoverzicht',
+  'meldingsoort.commitment_witness': 'Een inzet waarvan jij getuige bent',
+  // ⚠️ Feitelijk en niet geruststellend: dempen haalt de getuigenis niet weg,
+  //    het haalt alleen de onderbreking weg. Zie domeinregel 5.
+  'meldingsoort.getuige_uitleg':
+    'Je blijft de inzet zien bij Getuigenissen; je krijgt er alleen geen melding meer van.',
+  'stilteuren.titel': 'Stille uren',
+  'stilteuren.uitleg':
+    'In dit venster krijg je geen meldingen. Wat er tijdens de stilte binnenkomt, ' +
+    'komt erna alsnog.',
+  'stilteuren.label': 'Stille uren',
+  'stilteuren.van': 'Van',
+  'stilteuren.tot': 'Tot',
+  // ⚠️ Feitelijk en geen waarschuwing: het getal komt uit dezelfde functie die
+  //    de verschuiving doet, dus deze zin kan niet uit de pas lopen met wat er
+  //    gebeurt. Zie `verschovenUur()` en QS8-406.
+  'stilteuren.herinnering_verschoven':
+    'Je herinnering van {oud} valt in je stille uren. Hij komt daarom om {nieuw}.',
   'profiel.aan': 'Aan',
   'profiel.uit': 'Uit',
   'profiel.viering_beweging': 'Vraagt je toestel om minder beweging, dan laat de app de animatie sowieso weg. De tekst blijft dan gewoon staan.',
@@ -1009,6 +1072,7 @@ export const nl = {
   'avatar.type_niet_toegestaan': 'Kies een JPG, PNG of WebP.',
   'avatar.te_groot': 'Die foto is groter dan 2 MB. Kies een kleinere.',
   'avatar.uploaden_mislukt': 'De foto kon niet opgeslagen worden. Probeer het opnieuw.',
+  'avatar.rem_bereikt': 'Je hebt je foto vandaag vaak genoeg gewisseld. Morgen kan het weer.',
   'avatar.verwijderen_mislukt': 'De foto kon niet weggehaald worden. Probeer het opnieuw.',
   'avatar.geen_toegang': 'Zonder toegang tot je foto’s kan de app er geen kiezen.',
   'avatar.grens': 'JPG, PNG of WebP, tot {mb} MB. Alleen je groepsgenoten zien hem.',
@@ -1127,6 +1191,9 @@ export const nl = {
   'groep.te_veel_groepen': 'Je zit al in tien groepen. Verlaat er een om ruimte te maken.',
   'groep.naam_kort': 'Geef je groep een naam van minstens twee tekens.',
   'groep.naam_lang': 'Die naam is te lang. Maximaal 60 tekens.',
+  // Onbereikbaar via de app — `groepSchema` strijkt de naam al — maar wel via
+  // een rechtstreekse RPC. Zie migratie 0287 (QS8-515).
+  'groep.naam_ongeldig': 'Die naam bevat tekens die niet kunnen. Probeer hem zonder onzichtbare of opmaaktekens.',
   'groep.slechte_huddledag': 'Kies een dag van de week voor de huddle.',
   'groep.daglimiet': 'Je hebt vandaag al tien groepen aangemaakt. Morgen kan het weer.',
   'groep.geen_beheerder': 'Alleen een beheerder van deze groep kan dit doen.',
@@ -1268,10 +1335,44 @@ export const nl = {
   'chatfoto.type_niet_toegestaan': 'Kies een JPG, PNG of WebP.',
   'chatfoto.te_groot': 'Deze foto is groter dan 1 MB. Kies een kleinere of maak hem kleiner.',
   'chatfoto.uploaden_mislukt': 'De foto versturen lukte niet. Probeer het zo nog eens.',
+  'chatfoto.rem_bereikt': 'Er zijn vandaag genoeg foto\u2019s in deze groep geplaatst. Morgen kan het weer.',
   'chatfoto.kiezen_mislukt': 'De fotokiezer ging niet open.',
-  'chatfoto.niet_beschikbaar': 'Deze foto is niet meer beschikbaar.',
+  // ⚠️ **De reden staat erbij sinds QS8-396, en dat is geen opsmuk.** Zonder de
+  //    termijn leest "niet meer beschikbaar" als een storing, en dan probeert
+  //    iemand het morgen weer. Mét de termijn is het een eigenschap van de app:
+  //    de server bewaart je bestanden niet. `{dagen}` komt uit
+  //    `BIJLAGE_BEWAARDAGEN`, dat op zijn beurt naast `bijlage_bewaartermijn()`
+  //    gelegd wordt — één getal en niet twee.
+  //
+  // ⚠️⚠️ **Eén sleutel voor de zin vóór het versturen, twee voor de zin erna**,
+  //    en dat is geen inconsistentie. Het besluit van QS8-408 zegt: *"als de zin
+  //    voor beide klopt, is één sleutel beter dan twee die hetzelfde zeggen"*.
+  //    De zin vóór het versturen gaat over de server en niet over wat je koos,
+  //    dus die klopt voor beide en is er één. De zin die er staat waar de bijlage
+  //    stónd, noemt het ding — *"deze foto"* / *"dit document"* — en dat is echt
+  //    verschillende tekst en geen duplicaat. Allebei lezen ze hetzelfde getal.
+  'chatfoto.niet_beschikbaar': 'Deze foto staat er niet meer. Gedeelde bestanden blijven {dagen} dagen bewaard.',
+  'bijlage.bewaartermijn': 'Gedeelde bestanden blijven {dagen} dagen op de server staan en gaan daarna weg.',
   'chatfoto.laden': 'Foto laden',
   'chatfoto.beeld': 'Foto in dit gesprek',
+
+  // Documenten in de chat — QS8-72. Eigen sleutels en geen hergebruik van
+  // `chatfoto.*`: een document opent buiten de app, en dat hoort de zin te zeggen.
+  'chatdoc.knop': 'Document toevoegen',
+  'chatdoc.gekozen': 'Document klaar om te versturen',
+  'chatdoc.weghalen': 'Document weghalen',
+  'chatdoc.type_niet_toegestaan': 'Kies een PDF.',
+  'chatdoc.te_groot': 'Dit document is groter dan 5 MB. Kies een kleiner bestand.',
+  'chatdoc.naam_leeg': 'Dit bestand heeft geen bruikbare naam.',
+  'chatdoc.uploaden_mislukt': 'Het document versturen lukte niet. Probeer het zo nog eens.',
+  'chatdoc.rem_bereikt': 'Er zijn vandaag genoeg documenten gedeeld in deze groep. Morgen kan het weer.',
+  'chatdoc.kiezen_mislukt': 'De bestandskiezer ging niet open.',
+  'chatdoc.niet_beschikbaar': 'Dit document staat er niet meer. Gedeelde bestanden blijven {dagen} dagen bewaard.',
+  'chatdoc.openen': 'Openen',
+  'chatdoc.openen_label': '{naam} openen, PDF, in een andere app',
+  'chatdoc.openen_mislukt': 'Het document openen lukte niet.',
+  'chatdoc.laden': 'Document openen',
+  'chatdoc.soort_pdf': 'PDF',
 
   // Bewijs bij een voltooiing — QS8-391. Eigen sleutels en geen hergebruik van
   // `chatfoto.*`: "deze foto is niet meer beschikbaar" leest in een gesprek
@@ -1458,6 +1559,67 @@ export const nl = {
   // ---------------------------------------------------------------------------
   // Deadline verschuiven met akkoord — A7
   // ---------------------------------------------------------------------------
+  // ---------------------------------------------------------------------------
+  // De Lijst — losse taken (QS8-379/380)
+  // ---------------------------------------------------------------------------
+  'lijst.taak_leeg': 'Schrijf op wat je wilt doen.',
+  'lijst.taak_lang': 'Hou het kort: maximaal 500 tekens.',
+  'lijst.patch_leeg': 'Er is niets gewijzigd.',
+  'lijst.titel': 'De Lijst',
+  'lijst.veld_label': 'Nieuwe taak',
+  'lijst.veld_hint': 'Iets kleins dat je vandaag wilt afvinken.',
+  'lijst.veld_plaats': 'Bellen met de tandarts',
+  'lijst.toevoegen': 'Toevoegen',
+  'lijst.teller': '{n} van {max} tekens',
+  'lijst.leeg_titel': 'Je lijst is nog leeg',
+  'lijst.leeg_tekst':
+    'Zet hier de dingen neer die je niet wilt vergeten. Een taak telt niet mee ' +
+    'voor je punten of je reeks; dat blijft de week.',
+  'lijst.prive_uitleg':
+    'Een taak is prive tot je hem zelf deelt. Wat je niet deelt, ziet niemand in ' +
+    'je groep.',
+  'lijst.van_totaal': '{aantal} van {totaal}',
+  'lijst.meer_laden': 'Meer laden',
+  'lijst.afvinken': 'Afvinken',
+  'lijst.ontvinken': 'Weer openzetten',
+  'lijst.omhoog': 'Naar boven',
+  'lijst.omlaag': 'Naar beneden',
+  'lijst.verwijderen': 'Verwijderen',
+  'lijst.hernoemen': 'Tekst wijzigen',
+  'lijst.hernoem_label': 'Taak',
+  'lijst.hernoem_hint': 'Pas aan wat er staat. De rest van de regel blijft zoals hij is.',
+  'lijst.hernoem_opslaan': 'Opslaan',
+  'lijst.hernoem_annuleer': 'Annuleren',
+  'lijst.afgerond_op': 'Afgerond op {datum}',
+  'lijst.laden_mislukt': 'De lijst laden lukte niet.',
+  'lijst.toevoegen_mislukt': 'De taak toevoegen lukte niet.',
+  'lijst.opslaan_mislukt': 'De wijziging opslaan lukte niet.',
+  'lijst.verwijderen_mislukt': 'De taak verwijderen lukte niet.',
+  'lijst.bestaat_niet': 'Deze taak bestaat niet meer.',
+  'lijst.verzetten_gelijk':
+    'Deze twee taken staan op dezelfde plek in de lijst. Verplaats er eerst een ' +
+    'andere tussenuit.',
+  'lijst.delen_mislukt': 'Delen lukte niet.',
+  'lijst.geen_groepsgenoot': 'Je bent geen lid meer van die groep.',
+  'lijst.deel_aan': 'Gedeeld met {groep}',
+  'lijst.deel_aan_onbekend': 'Gedeeld met een groep die niet meer in je lijst staat',
+  'lijst.deel_uit': 'Niet gedeeld',
+  'lijst.deel_knop': 'Delen',
+  'lijst.deel_terug': 'Niet meer delen',
+  'lijst.deel_kies': 'Met welke groep?',
+  'lijst.deel_geen_groep':
+    'Je zit nog in geen enkele groep, dus er is niemand om iets mee te delen.',
+  'lijst.deel_uitleg':
+    'Wat je deelt, ziet alleen de groep die je kiest. De rest van je lijst blijft ' +
+    'prive, en je kunt het altijd terugdraaien.',
+  'lijst.invoer': 'Controleer wat je hebt ingevuld.',
+  'bevestiging.taak_verwijderen.titel': 'Deze taak weggooien?',
+  'bevestiging.taak_verwijderen.uitleg':
+    'De taak verdwijnt en komt niet terug. Wil je hem alleen uit je zicht, vink ' +
+    'hem dan af. Dan zakt hij naar onderen en blijft hij staan.',
+  'bevestiging.taak_verwijderen.knop': 'Weggooien',
+  'tab.lijst': 'Lijst',
+
   'deadline.argument_kort':
     'Schrijf één zin over wat er veranderd is. Je buddy’s beslissen hierop, ' +
     'dus "geen tijd" is te weinig om ja op te zeggen.',
@@ -1752,8 +1914,8 @@ export const nl = {
   //    straf" zou dus iets beloven wat de app niet levert, en dat is bij een
   //    commitment device domeinregel 5. Zeg wat waar is: vertel het hem zelf.
   'straf.persoon_uitleg':
-    'Tot je streefdatum verstrijkt ziet deze persoon niets. Daarna mag hij je straf lezen. ' +
-    'Laat het hem wel zelf even weten, want de app stuurt hem nog geen bericht.',
+    'Tot je streefdatum verstrijkt ziet deze persoon niets. Daarna mag hij je straf lezen ' +
+    'en krijgt hij er een melding van, tenzij hij dat soort meldingen heeft uitgezet.',
   'straf.verder': 'Verder',
   'straf.jouw_groep': 'je groep',
 
@@ -2033,6 +2195,12 @@ export const nl = {
   'vandaag.reeks_telt_weken': 'Je reeks telt weken, geen dagen.',
   'vandaag.meenemen_knop': 'Meenemen naar deze week',
   'vandaag.buddy_vraag': 'Je buddy heeft een vraag',
+  'profiel.naam_titel': 'Je naam',
+  'profiel.naam_uitleg': 'Dit is de naam die je buddy\u2019s zien. Je kunt hem altijd wijzigen.',
+  'profiel.naam_label': 'Weergavenaam',
+  'profiel.naam_hint': 'Een voornaam is genoeg.',
+  'profiel.naam_bewaren': 'Naam bewaren',
+  'profiel.naam_bewaard': 'Je naam is bijgewerkt.',
   'profiel.uitloggen_kop': 'Uitloggen',
   'profiel.uitloggen_uitleg': 'Je blijft lid van je groepen. Je doelen blijven staan.',
   'profiel.uitloggen_knop': 'Uitloggen',
@@ -2104,16 +2272,9 @@ export const nl = {
   // De tijdzone met de hand zetten — QS8-27, criterium 1
   // ---------------------------------------------------------------------------
   'tijdzone.label': 'Tijdzone',
-  'tijdzone.hint':
-    'Hierin worden "vandaag" en "deze week" berekend. Standaard die van je telefoon; zoek op een plaatsnaam om hem te wijzigen.',
-  'tijdzone.zoek_voorbeeld': 'Amsterdam',
   'tijdzone.nu': 'Nu ingesteld: {zone}',
-  'tijdzone.gebruik_getypt': 'Gebruik {zone}',
-  'tijdzone.van_apparaat': 'De tijdzone van dit apparaat ({zone})',
-  'tijdzone.niets_gevonden': 'Geen tijdzone gevonden. Zoek op een grote stad in de buurt.',
-  'tijdzone.uitleg':
-    'Wijzigen laat je punten en je reeks met rust: die staan vast op de weken die er al zijn. Wat verandert is wanneer de volgende week omslaat.',
-  'tijdzone.opgeslagen': 'Tijdzone opgeslagen.',
+  'tijdzone.van_het_apparaat':
+    'Deze komt uit je apparaat en wordt automatisch bijgewerkt als je verhuist of reist.',
 
 
   // ---------------------------------------------------------------------------
@@ -2291,6 +2452,24 @@ export const nl = {
   'klassement.laden_mislukt': 'Het klassement kon niet geladen worden.',
   'klassement.teller_mislukt': 'De teller kon niet geladen worden.',
   'klassement.opnieuw': 'Opnieuw proberen',
+
+  // De heldenlijst van een open groep — QS8-493, RPC uit 0268/0279.
+  // ⚠⚠ **De kop noemt de held en niet de persoon**, want de rij doet dat ook.
+  //    Met de naam voorop las "Wie er langs is geweest → Anna" als het
+  //    tegendeel van wat er bedoeld is. Gevonden in de gebruikersreview.
+  // ⚠️ **"zeven dagen" en niet "de afgelopen week".** Het venster van de RPC is
+  //    rollend en op UTC; het volgt noch je eigen week-startdag noch de
+  //    huddledag. "Week" is in deze app een geladen woord (domeinregel 1).
+  // ⚠️ De uitleg begint niet met dezelfde bijzin als `klassement.uitleg`. Twee
+  //    kaarten onder elkaar die allebei met "Jullie hebben afgesproken open te
+  //    zijn" beginnen, lezen als een sjabloon.
+  'groepshelden.kop': 'Welke held er langskwam',
+  'groepshelden.uitleg':
+    'In deze groep zie je van elkaar welke held er de afgelopen zeven dagen langskwam.',
+  'groepshelden.rij': 'Bij {naam} kwam {held} langs',
+  'groepshelden.leeg': 'Deze zeven dagen kwam er bij niemand een held langs.',
+  'groepshelden.laden_mislukt': 'De heldenlijst kon niet geladen worden.',
+  'groepshelden.opnieuw': 'Opnieuw proberen',
 
   'teller.kop': 'Samen',
   'teller.weken_een': '1 week afgerond',
@@ -2567,6 +2746,10 @@ export const nl = {
   'melden.deblokkeer_knop': 'Blokkade opheffen',
   'melden.geblokkeerd_titel': 'Geblokkeerd',
   'melden.blokkades_mislukt': 'Je blokkades konden niet geladen worden.',
+  // ⚠️ Een eigen zin en niet `melden.te_veel`: die noemt twintig meldingen, en
+  //    dit gaat over blokkades met een heel ander getal. Zie 0276 en QS8-496.
+  'melden.te_veel_blokkades':
+    'Je hebt vandaag heel veel mensen geblokkeerd. Morgen kan het weer. Gaat het om iemand die je nu lastigvalt? Meld hem dan; dat kan wel.',
   /**
    * ⚠️ **Deze zin zegt met zoveel woorden wat blokkeren níét doet**, en dat is
    *    het belangrijkste eraan. Wie denkt dat de knop iemand uit zijn groep zet,
@@ -2599,6 +2782,198 @@ export const nl = {
   'validatie.dagen_bereik': 'Een week heeft zeven dagen.',
   'validatie.vloer_boven_plafond': 'Je vloer kan niet boven je plafond liggen.',
   'validatie.vloer_zonder_plafond': 'Een vloer in dagen vraagt ook een plafond.',
+
+  // ---------------------------------------------------------------------------
+  // De zes helden — QS8-469, epic QS8-468
+  // ---------------------------------------------------------------------------
+  //
+  // ⚠️ De naam is eigen IP; de historische figuur staat alleen onder de quote.
+  //    Besluit 1 en 3 van 14-09-2026, zie
+  //    docs/decisions/2026-09-14-zes-helden-en-de-zeven-besluiten-eronder.md
+  //
+  // ⚠️ De namen zijn in élke taal gelijk — Strix blijft Strix. Alleen de
+  //    ondertitel, de persoonlijkheid en de quotetekst vertalen mee. Dat is geen
+  //    vergeten vertaling: een personagenaam vertalen maakt er zes andere
+  //    personages van.
+  //
+  //
+  // ⚠️ **De interpunctie van de citaten is aangepast en de tekst niet.** QS8-218
+  //    verbiedt het lange gedachtestreepje in app-tekst; waar een origineel er
+  //    een had, staat hier een puntkomma of een komma. Dat is een bewuste keuze
+  //    van 14-09-2026 en geen slordige overname: de woorden, de volgorde en de
+  //    bron kloppen, de streepjes zijn vervangen. Wie een citaat naast zijn bron
+  //    legt en verschil ziet, ziet dít verschil.
+  // ⚠️ Welke sleutels hier horen te staan, bepaalt `modules/helden`. Een quote
+  //    erbij is daar een regel in het rooster, niet hier een sleutel erbij —
+  //    `src/modules/helden/quotes.test.ts` wordt rood als die twee uit elkaar
+  //    lopen, in beide richtingen.
+
+  'held.strix.naam': 'Strix',
+  'held.strix.ondertitel': 'De Wijze',
+  'held.strix.persoonlijkheid':
+    'Kalm, droog en scherp. Zegt weinig, maar wat hij zegt zet je aan het denken. Geen schouderklopjes. Wel het soort zin waar je een week later nog aan terugdenkt.',
+  'held.strix.quote1':
+    'Als iets buiten uzelf u pijn doet, is het niet het ding zelf dat u kwelt; het is uw eigen oordeel erover.',
+  'held.strix.quote1.bron': 'Marcus Aurelius · Meditations, boek 8.47 · vert. George Long, 1862',
+  'held.strix.quote2': 'Beperk uzelf tot het huidige moment.',
+  'held.strix.quote2.bron': 'Marcus Aurelius · Meditations, boek 8.36 · vert. George Long, 1862',
+  'held.strix.quote3': 'Praat niet langer over hoe een goed mens zou moeten zijn; wees er een.',
+  'held.strix.quote3.bron': 'Marcus Aurelius · Meditations, boek 10.16 · vert. George Long, 1862',
+  'held.strix.quote4':
+    'Begin de ochtend met tegen uzelf te zeggen: ik zal vandaag mensen tegenkomen die zich onwetend gedragen; laat dat mij niet uit balans brengen.',
+  'held.strix.quote4.bron': 'Marcus Aurelius · Meditations, vrij naar boek 2.1',
+
+  'held.ignis.naam': 'Ignis',
+  'held.ignis.ondertitel': 'De Strijder',
+  'held.ignis.persoonlijkheid':
+    'Kort, hard, warm vanbinnen. Praat tegen je zoals een coach die in je gelooft ook als je net verloren hebt. Geen medelijden. Wel vuur.',
+  'held.ignis.quote1':
+    'Ik haatte elke minuut van het trainen, maar ik zei: geef niet op. Lijd nu, en leef de rest van je leven als een kampioen.',
+  'held.ignis.quote1.bron': 'Muhammad Ali · Muhammad Ali Center, geverifieerde uitspraken',
+  'held.ignis.quote2':
+    'Het gevecht wordt gewonnen of verloren ver weg van het publiek, achter de schermen, in de sportschool, op de weg, lang voordat ik onder die lichten dans.',
+  'held.ignis.quote2.bron': 'Muhammad Ali · Muhammad Ali Center, geverifieerde uitspraken',
+  'held.ignis.quote3':
+    'Als mijn geest het kan bedenken en mijn hart het kan geloven, dan kan ik het bereiken.',
+  'held.ignis.quote3.bron': 'Muhammad Ali · Muhammad Ali Center, geverifieerde uitspraken',
+  'held.ignis.quote4':
+    'Alleen wie weet hoe het is om verslagen te worden, kan diep in zijn ziel graven naar die laatste hoeveelheid kracht die nodig is om te winnen wanneer de strijd gelijk opgaat.',
+  'held.ignis.quote4.bron': 'Muhammad Ali · Muhammad Ali Center, geverifieerde uitspraken',
+
+  'held.meridian.naam': 'Meridian',
+  'held.meridian.ondertitel': 'De Ontdekkingsreiziger',
+  'held.meridian.persoonlijkheid':
+    'Energiek en ongeduldig in de goede zin. Duwt je net over de rand van je comfortzone en staat al te wapperen vanaf de andere kant.',
+  'held.meridian.quote1':
+    'Voorbereiding is, zoals ik vaak zeg, terecht tweederde van elk avontuur.',
+  'held.meridian.quote1.bron': 'Amelia Earhart · Last Flight, 1937, p. 51',
+  'held.meridian.quote2': 'Hoe meer je doet, ziet en voelt, hoe meer je in staat bent te doen.',
+  'held.meridian.quote2.bron': 'Amelia Earhart · Soaring Wings, 1939, p. 83',
+  'held.meridian.quote3':
+    'Bij solovluchten, net als bij andere dingen, is het veel makkelijker om ergens aan te beginnen dan het af te maken.',
+  'held.meridian.quote3.bron': 'Amelia Earhart · 20 Hrs., 40 Min., 1928, p. 16',
+  'held.meridian.quote4':
+    'Vrouwen moeten proberen dingen te doen zoals mannen het geprobeerd hebben. Als ze falen, moet hun falen slechts een uitdaging zijn voor anderen.',
+  'held.meridian.quote4.bron': 'Amelia Earhart · Last Flight, 1937',
+
+  'held.forge.naam': 'Forge',
+  'held.forge.ondertitel': 'De Bouwer',
+  'held.forge.persoonlijkheid':
+    'Nuchter en precies. Geen pep talk. Wel de vraag die je nodig had: wat is hier het echte probleem, en hoe bouwen we eromheen?',
+  'held.forge.quote1':
+    'Zoals ijzer roest van onbruik en stilstaand water verrot, of water bevriest tot ijs, zo verkwijnt ons verstand als het niet gebruikt wordt.',
+  'held.forge.quote1.bron':
+    'Leonardo da Vinci · Codex Atlanticus 289v, in Richter & Wells, Notebooks',
+  'held.forge.quote2':
+    'Wie de praktijk liefheeft zonder de theorie, is als een zeeman die aan boord gaat zonder roer of kompas en niet weet waarheen hij reist.',
+  'held.forge.quote2.bron':
+    'Leonardo da Vinci · The Literary Works of Leonardo da Vinci, 1883',
+  'held.forge.quote3': 'Arm is de leerling die zijn meester niet overtreft.',
+  'held.forge.quote3.bron':
+    'Leonardo da Vinci · Aphorisms, Notebooks · vert. E. MacCurdy, 1938',
+
+  'held.lucerna.naam': 'Lucerna',
+  'held.lucerna.ondertitel': 'De Verzorger',
+  'held.lucerna.persoonlijkheid':
+    'Zacht op de persoon, streng op de excuses. Geeft je rust om op adem te komen én een duidelijke reden om morgen weer te beginnen.',
+  'held.lucerna.quote1':
+    'Ik dank mijn succes hieraan: ik heb nooit een excuus gegeven of aanvaard.',
+  'held.lucerna.quote1.bron':
+    'Florence Nightingale · brief aan Miss H. Bonham Carter, 1861',
+  'held.lucerna.quote2': 'Wanneer een ramp gebeurt, handel ik; zij verzinnen excuses.',
+  'held.lucerna.quote2.bron':
+    'Florence Nightingale · brief aan Miss H. Bonham Carter, 1861',
+  'held.lucerna.quote3':
+    'Gevoelens verspillen zich in woorden; ze zouden allemaal vertaald moeten worden in daden; daden die resultaat opleveren.',
+  'held.lucerna.quote3.bron': 'Florence Nightingale · brief aan Mary Clarke, 1844',
+  'held.lucerna.quote4':
+    'Verplegen is een kunst: en als het een kunst moet zijn, vergt het een even exclusieve toewijding als het werk van een schilder of beeldhouwer.',
+  'held.lucerna.quote4.bron': 'Florence Nightingale · Good Words, 1868',
+
+  'held.quip.naam': 'Quip',
+  'held.quip.ondertitel': 'De Nar',
+  'held.quip.persoonlijkheid':
+    'Droge humor, een scheve grijns, altijd een tegendraadse opmerking klaar. Haalt de druk eraf zonder het doel belachelijk te maken.',
+  'held.quip.quote1':
+    'Moed is weerstand tegen angst, beheersing van angst; niet de afwezigheid van angst.',
+  'held.quip.quote1.bron':
+    'Mark Twain · Pudd’nhead Wilson’s Calendar, in Following the Equator, 1897',
+  'held.quip.quote2':
+    'Wanneer je jezelf aan de kant van de meerderheid vindt, is het tijd om stil te staan en na te denken.',
+  'held.quip.quote2.bron':
+    'Mark Twain · Pudd’nhead Wilson’s Calendar, in Following the Equator, 1897',
+  'held.quip.quote3':
+    'Gewoonte is gewoonte, en die gooi je niet zomaar het raam uit bij een mens; je lokt haar stap voor stap de trap af.',
+  'held.quip.quote3.bron':
+    'Mark Twain · Pudd’nhead Wilson’s Calendar, in Following the Equator, 1897',
+
+  // ---------------------------------------------------------------------------
+  // De vier heldenvragen — QS8-474, epic QS8-468
+  // ---------------------------------------------------------------------------
+  //
+  // ⚠️ **De opties staan hier in de volgorde van het brondocument en dat is een
+  //    besluit.** `HELDVRAAGOPTIES` in `src/modules/helden/quiz.ts` bepaalt de
+  //    volgorde op het scherm; deze sleutels dragen alleen de tekst. Elke vraag
+  //    noemt alle zes de helden precies één keer, en `quiz.test.ts` toetst dat
+  //    in beide richtingen — valt er een held uit een vraag weg, dan scoort hij
+  //    structureel lager en ziet niemand dat aan de uitslag.
+  //
+  // ⚠️ Het brondocument nummert de opties A t/m F. Dat is een scoringshulp en
+  //    geen UI-vorm: de letters staan niet in deze teksten en niet op het
+  //    scherm.
+
+  'heldvraag.aantrekking.vraag': 'Wat trekt je het meest aan bij een nieuw doel?',
+  'heldvraag.aantrekking.toelichting': 'Eén antwoord. Ga af op wat je als eerste denkt.',
+  'heldvraag.aantrekking.optie.meridian': 'De eerste sprong wagen',
+  'heldvraag.aantrekking.optie.forge': 'Een plan uitstippelen',
+  'heldvraag.aantrekking.optie.strix': 'Het einddoel scherp voor ogen houden',
+  'heldvraag.aantrekking.optie.ignis': 'Het gewoon aanpakken, winnen of verliezen',
+  'heldvraag.aantrekking.optie.lucerna': 'Er iemand bij betrekken',
+  'heldvraag.aantrekking.optie.quip': 'Er vooral plezier in houden',
+
+  'heldvraag.tegenslag.vraag': 'Een tegenslag: wat is je eerste reactie?',
+  'heldvraag.tegenslag.toelichting': 'Niet wat je zou moeten doen, maar wat je dóét.',
+  'heldvraag.tegenslag.optie.ignis': 'Doorzetten, tanden op elkaar',
+  'heldvraag.tegenslag.optie.quip': 'Er even bij stilstaan en het relativeren met humor',
+  'heldvraag.tegenslag.optie.forge': 'Teruggaan naar de basis en het plan herzien',
+  'heldvraag.tegenslag.optie.lucerna': 'Rust nemen en mezelf niet te hard beoordelen',
+  'heldvraag.tegenslag.optie.strix': 'Erover nadenken wat dit me leert',
+  'heldvraag.tegenslag.optie.meridian': 'Een nieuwe route bedenken',
+
+  'heldvraag.motivatie.vraag': 'Wat motiveert je het meest om door te gaan?',
+  'heldvraag.motivatie.toelichting': 'Waar je het op een matige dag nog voor doet.',
+  'heldvraag.motivatie.optie.ignis': 'Bewijzen dat het kan',
+  'heldvraag.motivatie.optie.meridian': 'Nieuwsgierigheid naar wat er nog meer mogelijk is',
+  'heldvraag.motivatie.optie.forge': 'Het gevoel dat ik iets moois bouw',
+  'heldvraag.motivatie.optie.strix': 'Innerlijke rust en overzicht',
+  'heldvraag.motivatie.optie.lucerna': 'Steun van en voor anderen',
+  'heldvraag.motivatie.optie.quip': 'Dat het simpelweg leuk moet blijven',
+
+  'heldvraag.viering.vraag': 'Hoe vier je een overwinning het liefst?',
+  'heldvraag.viering.toelichting': 'De laatste vraag. Daarna zie je alles op een rij.',
+  'heldvraag.viering.optie.quip': 'Met een grap of een feestje',
+  'heldvraag.viering.optie.strix': 'Rustig reflecteren op wat je geleerd hebt',
+  'heldvraag.viering.optie.meridian': 'Meteen doorpakken naar het volgende doel',
+  'heldvraag.viering.optie.lucerna': 'Delen met wie je gesteund hebben',
+  'heldvraag.viering.optie.ignis': 'Trots zijn dat je het gevecht gewonnen hebt',
+  'heldvraag.viering.optie.forge': 'Kijken hoe je het systeem verder kunt verbeteren',
+
+  'vragenlijst.held.vraag': 'Je held',
+  'vragenlijst.held.kop': 'Wie er met je meeloopt',
+  'vragenlijst.held.een':
+    'Je antwoorden wijzen naar één held. Die neemt straks het woord bij je check-ins.',
+  'vragenlijst.held.gelijk':
+    'Je antwoorden wijzen even hard naar {aantal} helden. Kies zelf wie er met je meeloopt.',
+  'vragenlijst.held.geen':
+    'Je hebt de heldenvragen overgeslagen. Dat mag: je krijgt dan geen vaste held, en de rest van de app werkt gewoon.',
+  'vragenlijst.held.gekozen': 'Dit is je held. Tik een andere aan om te wisselen.',
+  'vragenlijst.held.blijft':
+    'Dit is nu je held. Beantwoord de vier heldenvragen opnieuw om te wisselen.',
+  'vragenlijst.held.laadt': 'Even kijken welke held je nu hebt.',
+  'vragenlijst.held.fout':
+    'Je huidige held kon niet opgehaald worden. Beantwoord de vier vragen om er een te kiezen.',
+  'vragenlijst.held.kies_een': 'Kies er een',
+  'vragenlijst.held.opslaan_mislukt': 'Je held kon niet bewaard worden. Probeer het zo nog eens.',
 } as const;
 
 export type Sleutel = keyof typeof nl;

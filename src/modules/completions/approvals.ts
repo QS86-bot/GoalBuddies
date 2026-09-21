@@ -2,12 +2,10 @@ import type { Database } from '../../lib/database.types';
 import { reportError } from '../../lib/observability';
 import { supabase } from '../../lib/supabase';
 import { t } from '../../shared/i18n';
+import { schoneVrijeTekst } from '../../shared/tekst';
 
-// ⚠️ Rechtstreeks uit `auth/avatar.ts` en niet via `modules/auth/index.ts`. Die
-//    laatste re-exporteert `SessionProvider` en `AvatarKeuze`, en die trekken
-//    React en React Native mee — in een test die in Node draait is dat een
-//    parsefout op `react-native/index.js`. Zelfde reden en zelfde vorm als de
-//    directe import van `periods.ts` in `tests/rls/epic7.test.ts`.
+// ⚠️ Rechtstreeks uit `auth/avatar.ts` en niet via de barrel, met één reden op
+//    één plek: `docs/decisions/2026-09-11-een-kiezer-is-geen-ui.md` §5.
 import { metGetekendeAvatars } from '../auth/avatar';
 
 import {
@@ -360,7 +358,22 @@ export async function dienOpnieuwIn(
    */
   attachmentPad?: string | null,
 ): Promise<Resultaat<string>> {
-  const schoon = note?.trim() ?? '';
+  // ⚠️⚠️ **De tweede schrijfroute naar `completions.note`, en die liep langs
+  //    geen enkel schema** — gevonden in de security-review op QS8-506.
+  //    `rondAf()` gaat langs `afrondSchema`; dit pad niet, en het schreef
+  //    dezelfde kolom met alleen een `.trim()`.
+  //
+  //    📏 Gemeten: een notitie met een `U+200B` erin komt hier ongestreken
+  //    binnen, `dien_opnieuw_in()` doet `nullif(btrim(...),'')` en `btrim`
+  //    haalt dat teken niet weg, `completions_note_geen_nul_pixels` weigert met
+  //    `23514`, en de exception-handler van die RPC matcht die melding op geen
+  //    van zijn twee patronen — dus de gebruiker krijgt `opnieuw.mislukt` en
+  //    kan zijn week nóóit meer opnieuw indienen met diezelfde geplakte tekst.
+  //
+  // ⚠️ Dit is regel 18 vraag 5 in zuivere vorm: elk schakeltje was af — de CHECK
+  //    klopte, `afrondSchema` klopte, de RPC klopte — en de keten liep op één
+  //    van de twee paden dood. Geen enkele bestaande toets raakte het.
+  const schoon = schoneVrijeTekst(note ?? '');
   const pad = attachmentPad?.trim() ?? '';
 
   const { data, error } = await supabase().rpc('dien_opnieuw_in', {

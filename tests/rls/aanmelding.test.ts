@@ -36,7 +36,7 @@ import { execFileSync } from 'node:child_process';
 
 import { describe, expect, it } from 'vitest';
 
-import { PSQL_DB, PSQL_OMGEVING, stackBeschikbaarOfFaal } from './psql-stack';
+import { PSQL_OMGEVING, psqlBasisArgumenten, stackBeschikbaarOfFaal } from './psql-stack';
 import { proefId } from './proefid';
 
 const TEST_TIMEOUT = 30_000;
@@ -94,13 +94,15 @@ function meldAan(
 
   let uit: string;
   try {
+    // ⚠️ **De gedeelde lijst plus drie variabelen, en niet een eigen lijst.**
+    //    Een `-v` erbij is een reden om een vlag te variëren; het is geen reden
+    //    om `-U`, `-d`, `-q` en `-w` opnieuw te typen. Dat onderscheid is sinds
+    //    QS8-414 een grendel in `tests/scripts/psql-verbinding.test.ts`.
     uit = execFileSync(
       'psql',
       [
-        '-U', PSQL_OMGEVING.PGUSER as string, '-d', PSQL_DB, '-q', '-w',
-        '-v', 'ON_ERROR_STOP=1',
+        ...psqlBasisArgumenten(),
         '-v', `id=${id}`, '-v', `email=${email}`, '-v', `meta=${metadata}`,
-        '-tA',
       ],
       // ⚠️ **Via stdin en niet via `-c`.** Gemeten: met `-c` laat psql `:'id'`
       //    letterlijk staan en krijg je `syntax error at or near ":"`. Variabelen
@@ -169,6 +171,134 @@ describe.skipIf(!beschikbaar)('een aanmelding wordt een profiel', () => {
     TEST_TIMEOUT,
   );
 
+  /**
+   * ⚠️⚠️ **Deze vier gevallen kwamen langs de oude trigger als geldige naam** —
+   *    QS8-448, migratie 0256. `trim()` in Postgres strijkt alleen de spatie, dus
+   *    `nullif(trim(…), '')` zag een naam van twee newlines niet als leeg en de
+   *    terugval naar `Naamloos` sloeg over. 📏 Gemeten: `E'\n\n'` → 2 tekens,
+   *    `E'\t\t'` → 2, U+00A0 → 1, U+200B → 1.
+   *
+   * ⚠️ **`display_name` is groepszichtbaar**, dus de uitkomst was een lid in het
+   *    groepsoverzicht zonder leesbare naam — bereikbaar met één `signup` met de
+   *    anon-sleutel.
+   *
+   * ⚠️ U+200B is het geval dat ertoe doet: de drie andere werden nog door
+   *    `profielSchema` geweigerd (JS' `.trim()` strijkt ze wél), maar die ene
+   *    kwam langs **beide** poorten.
+   */
+  it.each([
+    ['twee newlines', '\\n\\n'],
+    ['twee tabs', '\\t\\t'],
+    ['een no-break space', '\\u00a0'],
+    ['een zero-width space', '\\u200b'],
+  ])('een naam die alleen uit %s bestaat, wordt niet de weergavenaam', (wat, ontsnapt) => {
+    const lokaal = `onzichtbaar${wat.length}`;
+    const uit = meldAan(ID(20 + wat.length), `${lokaal}@voorbeeld.test`, `{"full_name":"${ontsnapt}"}`);
+
+    expect(uit, 'de aanmelding is mislukt').not.toBeNull();
+    expect(
+      uit?.naam.trim(),
+      'de trigger nam de onzichtbare naam over — `display_name` is groepszichtbaar, ' +
+        'dus dat is een lid zonder leesbare naam in het groepsoverzicht',
+    ).not.toBe('');
+    expect(
+      uit?.naam,
+      'de onzichtbare naam telde als bruikbaar, dus de volgende sport van de ' +
+        'terugvalketen kwam niet aan de beurt',
+    ).toBe(lokaal);
+  }, TEST_TIMEOUT);
+
+  /**
+   * ⚠️⚠️ **De onderste sport, en die vraagt een aanmelding zónder e-mail.** 📏 De
+   *    eerste versie van de vier gevallen hierboven verwachtte `Naamloos` en
+   *    kreeg `onzichtbaar13` — het deel vóór de `@`. Dat was de terugvalketen die
+   *    gewoon zijn werk deed (`full_name` → `name` → e-mail → `Naamloos`), en
+   *    mijn verwachting die een sport oversloeg. De trigger had gelijk.
+   *
+   *    Het geval blijft de moeite waard, want alleen hier is te zien dat een
+   *    onzichtbare naam écht helemaal onderaan uitkomt en niet ergens
+   *    halverwege blijft hangen.
+   */
+  it(
+    'en zonder bruikbaar e-mailadres komt zo\'n naam uit op Naamloos',
+    () => {
+      // ⚠️ Een lege string en geen `null`: de trigger doet
+      //    `coalesce(new.email, '')` en daarna `split_part(…, '@', 1)`, dus
+      //    allebei komen op dezelfde sport uit. Zo hoeft `meldAan()` geen
+      //    nullable parameter te krijgen voor één geval.
+      const uit = meldAan(ID(26), '', '{"full_name":"\\u200b"}');
+
+      expect(uit, 'de aanmelding is mislukt').not.toBeNull();
+      expect(uit?.naam).toBe('Naamloos');
+    },
+    TEST_TIMEOUT,
+  );
+
+  /**
+   * ⚠️ De must-allow ernaast. "Alles valt terug" is goedkoop te halen; dit geval
+   *    eist dat een naam mét onzichtbare randen zijn zichtbare deel houdt.
+   */
+  it(
+    'maar een naam met onzichtbare randen houdt zijn zichtbare deel',
+    () => {
+      const uit = meldAan(ID(25), 'randen@voorbeeld.test', '{"full_name":"\\u200b Jan \\u200b"}');
+
+      expect(uit, 'de aanmelding is mislukt').not.toBeNull();
+      expect(uit?.naam).toBe('Jan');
+    },
+    TEST_TIMEOUT,
+  );
+
+  /**
+   * De tweede schrijver van `display_name` — QS8-450, migratie 0269.
+   *
+   * ⚠️⚠️ **Dit geval staat hier omdat de CHECK het niet kan dekken.** De grens
+   *    tegen een omkerende naam is `profiles_display_name_geen_bidi`, en die
+   *    **weigert**. Op deze route mag niets weigeren: een provider levert de
+   *    naam aan, de gebruiker heeft er geen invloed op, en een geweigerde
+   *    aanmelding is erger dan een gepoetste naam. De trigger gaat daarom langs
+   *    `schone_naam()`, die sinds 0269 `zonder_bidi()` componeert — en dán haalt
+   *    hij de CHECK.
+   *
+   *    📏 Zonder die compositie valt de aanmelding om op de nieuwe CHECK: dat is
+   *    exact het geval waar de rollback-kop van 0269 voor waarschuwt.
+   *
+   * ⚠️ De les van 7a in
+   *    `docs/decisions/2026-09-13-twee-poorten-die-elkaar-niet-kenden.md`: een
+   *    issue dat een leesbaar oppervlak beschermt, moet **elke** schrijver van
+   *    dat oppervlak opsommen. `display_name` heeft er twee, en dit is de tweede.
+   */
+  it(
+    'een aangeleverde naam met een bidi-override levert een gewone naam op',
+    () => {
+      const uit = meldAan(ID(27), 'bidi@voorbeeld.test', '{"full_name":"gxp\\u202Eeterces"}');
+
+      expect(uit, 'de aanmelding is mislukt — een aangeleverde naam mag nooit een account kosten').not.toBeNull();
+      expect(uit?.naam, 'de override staat er nog in, en die rendert de naam omgekeerd').toBe(
+        'gxpeterces',
+      );
+    },
+    TEST_TIMEOUT,
+  );
+
+  /**
+   * ⚠️⚠️ **Twee overrides, en dít is de toets die de `g`-vlag draagt.** 📏 Met
+   *    de `g` uit `zonder_bidi()` blijft de tweede staan, haalt de trigger de
+   *    nieuwe CHECK niet, en **kost een aangeleverde naam een account** — het
+   *    ergste wat op deze route kan gebeuren. Geen van de andere toetsen ziet
+   *    dat: ze dragen allemaal één stuurteken, en dan doet de vlag niets.
+   */
+  it(
+    'twee bidi-overrides in een aangeleverde naam kosten nog steeds geen account',
+    () => {
+      const uit = meldAan(ID(28), 'bidi2@voorbeeld.test', '{"full_name":"a\\u202Eb\\u202Ec"}');
+
+      expect(uit, 'de aanmelding is mislukt — waarschijnlijk op de CHECK van 0269').not.toBeNull();
+      expect(uit?.naam, 'er staat nog een override in de naam').toBe('abc');
+    },
+    TEST_TIMEOUT,
+  );
+
   it(
     'een naam die langer is dan de CHECK toestaat, kost geen aanmelding',
     () => {
@@ -180,7 +310,38 @@ describe.skipIf(!beschikbaar)('een aanmelding wordt een profiel', () => {
         'de aanmelding is mislukt op `profiles_display_name_len` — een lange naam ' +
           'mag nooit een account kosten',
       ).not.toBeNull();
-      expect(codepunten(uit?.naam ?? ''), 'de naam is niet afgekapt op 80 codepunten').toBe(80);
+      // ⚠️⚠️ **`toBeLessThanOrEqual` en niet `toBe(80)`, en dat is een
+      //    verruiming met een reden** — QS8-508, migratie 0286. Deze naam is
+      //    `'Naam '.repeat(25).trim()`, en codepunt 80 daarvan ís de spatie na de
+      //    zestiende `Naam`. Sinds 0286 normaliseert de trigger **ná** het
+      //    afkappen, dus die afkapspatie gaat eraf en er staan er 79.
+      //
+      //    📏 Vóór die reparatie kostte deze naam de hele aanmelding: `left()`
+      //    maakte een nieuwe rand en `profiles_display_name_schoon` weigerde hem,
+      //    waarop de insert op `auth.users` mee terugrolde. Deze toets stond daar
+      //    rood van, en dat was terecht.
+      //
+      // ⚠️ De belofte is *afgekapt op codepunten en niet op bytes*, en die staat
+      //    hieronder en in de emoji-toets. Exact 80 was een eigenschap van de
+      //    implementatie, geen belofte — en hij zat de reparatie in de weg.
+      expect(
+        codepunten(uit?.naam ?? ''),
+        'de naam is niet afgekapt op 80 codepunten',
+      ).toBeLessThanOrEqual(80);
+      expect(codepunten(uit?.naam ?? ''), 'de naam is verder afgekapt dan nodig').toBeGreaterThan(
+        70,
+      );
+
+      // ⚠️ **De nieuwe belofte, en die hoort hier en niet alleen in
+      //    `de-rand-van-een-naam.test.ts`.** Die toetst de PATCH-route; dít is de
+      //    aanmeldroute, en dat is een andere schrijver van dezelfde kolom. Een
+      //    naam die de trigger oplevert moet `profiles_display_name_schoon`
+      //    halen — anders is een geslaagde aanmelding een rij die zijn eigen
+      //    CHECK niet zou overleven bij de volgende schrijfactie.
+      expect(
+        (uit?.naam ?? '').trimEnd(),
+        'de trigger levert een naam met een onzichtbare rand — dat weigert de CHECK van 0286',
+      ).toBe(uit?.naam ?? '');
     },
     TEST_TIMEOUT,
   );
@@ -270,6 +431,102 @@ describe.skipIf(!beschikbaar)('een aanmelding wordt een profiel', () => {
       const uit = meldAan(id, 'lang@y.nl', JSON.stringify({ avatar_url: `${id}/${'a'.repeat(1001)}` }));
       expect(uit, 'de aanmelding is mislukt op profiles_avatar_url_len').not.toBeNull();
       expect(uit?.avatar, 'een pad van 1001 tekens is alsnog overgenomen').toBe('');
+    },
+    TEST_TIMEOUT,
+  );
+});
+
+/**
+ * De bovengrens op wat er genormaliseerd wordt — QS8-546, migratie 0291.
+ *
+ * `schone_naam()` liep op `raw_user_meta_data` zónder bovengrens, in een
+ * `security definer`-trigger op een pad dat voor niet-ingelogde gebruikers
+ * openstaat. 📏 Gemeten door deze trigger heen, met 262.144 losse tags
+ * (`U+E0020`) — het maximum dat in GoTrue's 1 MB verzoeklichaam past:
+ * **350,6 ms** zonder grens tegen **25,2 ms** met.
+ *
+ * ⚠️⚠️ **Deze toets meet gedrag en geen tijd.** Een drempel op milliseconden is
+ *    op een gedeelde runner een gok, en hij wordt rood om redenen die niets met
+ *    de belofte te maken hebben. Wat de grens wél deterministisch verandert is
+ *    *waar hij knipt*: precies op codepunt 1000. Twee gevallen aan weerszijden
+ *    van die grens leggen hem vast, en ze zijn ook echt aan beide kanten gemeten.
+ *
+ * ⚠️ De grens kapt af en weigert niet, anders dan `create_group()` (0287). De
+ *    reden staat in de kop van 0291: dit is een trigger, weigeren is werpen, en
+ *    dan mislukt de aanmelding. Migratie `0154` bestaat omdat juist dát een keer
+ *    gebeurd is.
+ */
+describe.skipIf(!beschikbaar)('handle_new_user begrenst wat hij normaliseert', () => {
+  /** Duizend onzichtbare tekens, gevolgd door een gewone naam. */
+  const onzichtbaar = (aantal: number): string => '​'.repeat(aantal);
+
+  it(
+    'kapt af op 1000 codepunten: wat dáárna komt telt niet meer mee',
+    () => {
+      // 1000 zero-width spaces + 'Jan' — de grens knipt vóór de J, er blijft
+      // alleen onzichtbaars over, dat normaliseert naar leeg, en de terugval
+      // pakt het deel vóór de `@`.
+      const profiel = meldAan(
+        ID(60),
+        'grensgeval@voorbeeld.nl',
+        JSON.stringify({ full_name: `${onzichtbaar(1000)}Jan` }),
+      );
+
+      expect(profiel).not.toBeNull();
+      expect(profiel?.naam).toBe('grensgeval');
+      // ⚠️ De assertie die rood wordt zodra de grens weggaat: zónder hem vindt
+      //    `schone_naam()` de 'Jan' die erachter staat.
+      expect(profiel?.naam).not.toBe('Jan');
+    },
+    TEST_TIMEOUT,
+  );
+
+  it(
+    'laat een naam die nét binnen de grens valt ongemoeid',
+    () => {
+      // 997 + 3 = precies 1000 codepunten, dus 'Jan' haalt het net.
+      const profiel = meldAan(
+        ID(61),
+        'netbinnen@voorbeeld.nl',
+        JSON.stringify({ full_name: `${onzichtbaar(997)}Jan` }),
+      );
+
+      expect(profiel?.naam).toBe('Jan');
+    },
+    TEST_TIMEOUT,
+  );
+
+  /**
+   * ⚠️ `coalesce` kortsluit, dus normaal wordt alleen `full_name` genormaliseerd.
+   *    Een `full_name` die naar leeg normaliseert dwingt `name` er alsnog bij —
+   *    en dan telt het werk op. Beide bronnen dragen daarom de grens, en deze
+   *    toets is de enige die de tweede aanraakt.
+   */
+  it(
+    'begrenst ook `name`, de tweede bron van de coalesce',
+    () => {
+      const profiel = meldAan(
+        ID(62),
+        'tweedebron@voorbeeld.nl',
+        JSON.stringify({ full_name: onzichtbaar(10), name: `${onzichtbaar(1000)}Piet` }),
+      );
+
+      expect(profiel?.naam).toBe('tweedebron');
+      expect(profiel?.naam).not.toBe('Piet');
+    },
+    TEST_TIMEOUT,
+  );
+
+  it(
+    'een gewone naam merkt er niets van',
+    () => {
+      const profiel = meldAan(
+        ID(63),
+        'gewoon@voorbeeld.nl',
+        JSON.stringify({ full_name: 'Siobhan O’Brien' }),
+      );
+
+      expect(profiel?.naam).toBe('Siobhan O’Brien');
     },
     TEST_TIMEOUT,
   );

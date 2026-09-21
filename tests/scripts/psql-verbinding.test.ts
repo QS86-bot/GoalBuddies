@@ -185,6 +185,21 @@ describe('verbindingsmelding — alleen echt niets te meten heet OVERGESLAGEN', 
  */
 const SCRIPTS = fileURLToPath(new URL('../../scripts', import.meta.url));
 
+/** Elk `.ts`-bestand onder een map, met een pad relatief aan die map. */
+function tsBestanden(wortel: string): { naam: string; inhoud: string }[] {
+  const uit: { naam: string; inhoud: string }[] = [];
+  const loop = (map: string, voorvoegsel: string): void => {
+    for (const naam of readdirSync(map, { withFileTypes: true })) {
+      const vol = join(map, naam.name);
+      const pad = voorvoegsel === '' ? naam.name : `${voorvoegsel}/${naam.name}`;
+      if (naam.isDirectory()) loop(vol, pad);
+      else if (naam.name.endsWith('.ts')) uit.push({ naam: pad, inhoud: readFileSync(vol, 'utf8') });
+    }
+  };
+  loop(wortel, '');
+  return uit;
+}
+
 /** Een handgebouwde psql-argumentenlijst. */
 const EIGEN_AANROEP = /\[[^\]]*'--no-psqlrc'/;
 
@@ -235,6 +250,128 @@ describe('scriptsMetEigenPsql — geijkt op losse vormen', () => {
         { naam: 'rls-dekking.mjs', inhoud: "['--quiet', '--no-psqlrc', '-At', '-U', x]" },
       ]),
     ).toEqual([]);
+  });
+});
+
+/**
+ * ⚠️⚠️ **En de testboom, sinds QS8-414.** Het register hierboven scant
+ *    `readdirSync(SCRIPTS)` op `.mjs` — dus alléén `scripts/`. De testboom roept
+ *    `psql` óók aan, en die aanroepen zag niemand.
+ *
+ *    📏 Dat gat was al gevuld toen dit issue geschreven werd: er stonden **twee**
+ *    handgebouwde lijsten in `tests/`, niet één. De tweede zat in
+ *    `adempauze-grendels.test.ts` — een `spawn` met een open stdin voor de
+ *    slottest, met een eigen `psqlArgs()` zónder `ON_ERROR_STOP`. Die kon
+ *    `psql()` niet gebruiken (die wacht op het einde) en typte de lijst daarom
+ *    over. Precies de vorm die QS8-270 dertig tests kostte.
+ *
+ * ⚠️ **De twee bomen mogen verschillende standaarden hebben, en dat is opzet.**
+ *    `scripts/` zet `-h` en `-p` in de argumenten; `tests/` haalt ze uit
+ *    `PSQL_OMGEVING`. Deze toets trekt de testboom dus **niet** naar
+ *    `psqlArgumenten()` — hij eist alleen dat er in `tests/` óók maar één plek
+ *    is, en dat is `psqlBasisArgumenten()`.
+ */
+const TESTBOOM = fileURLToPath(new URL('..', import.meta.url));
+
+/** Een bestand dat zelf een psql-proces start. */
+const START_PSQL = /(?:execFileSync|spawnSync|spawn)\(\s*'psql'/;
+
+/** De gedeelde lijst uit `tests/rls/psql-stack.ts`. */
+const GEDEELDE_LIJST = /psqlBasisArgumenten\s*\(/;
+
+/**
+ * Testbestanden die psql terecht zelf starten, met de reden.
+ *
+ * ⚠️ Twee rijen en twee soorten reden. `psql-stack.ts` **is** de gedeelde
+ *    aanroep; `psql-verbinding.test.ts` is de ijking van deze controle en noemt
+ *    de verboden vorm met opzet in zijn eigen fixtures. Zonder die tweede zou
+ *    de controle zijn eigen voorbeeld melden — dezelfde val als bij
+ *    `padverwijzing:controle`, en de reden dat een ijking anders zijn geval
+ *    moet verdraaien om langs de grendel te komen.
+ */
+const TESTS_EIGEN_REDEN: Readonly<Record<string, string>> = {
+  'rls/psql-stack.ts':
+    'Dit ís de gedeelde aanroep van de testboom. `psqlBasisArgumenten()` staat ' +
+    'hier, met `PSQL_OMGEVING` ernaast; één omgeving en één lijst voor de hele boom.',
+  'scripts/psql-verbinding.test.ts':
+    'De ijking van deze controle. Hij voedt de verboden vorm met opzet aan de ' +
+    'functie hieronder; zou hij meetellen, dan meldt de controle zijn eigen ' +
+    'voorbeeld en leer je hem negeren.',
+};
+
+export function testsMetEigenPsql(
+  bestanden: readonly { readonly naam: string; readonly inhoud: string }[],
+): string[] {
+  return bestanden
+    .filter((b) => START_PSQL.test(b.inhoud))
+    .filter((b) => !GEDEELDE_LIJST.test(b.inhoud))
+    .filter((b) => !(b.naam in TESTS_EIGEN_REDEN))
+    .map((b) => b.naam);
+}
+
+describe('testsMetEigenPsql — geijkt op losse vormen', () => {
+  it('meldt een testbestand dat zijn eigen lijst bouwt', () => {
+    expect(
+      testsMetEigenPsql([
+        {
+          naam: 'rls/nieuw.test.ts',
+          inhoud: "execFileSync('psql', ['-U', 'postgres', '-d', PSQL_DB, '-tA']);",
+        },
+      ]),
+    ).toEqual(['rls/nieuw.test.ts']);
+  });
+
+  /** De vorm van QS8-414 zelf: `spawn` voor een sessie die blijft staan. */
+  it('meldt ook een spawn en een spawnSync', () => {
+    expect(
+      testsMetEigenPsql([
+        { naam: 'rls/a.test.ts', inhoud: "spawn('psql', eigenArgs(), { env });" },
+        { naam: 'rls/b.test.ts', inhoud: "spawnSync('psql', eigenArgs());" },
+      ]),
+    ).toEqual(['rls/a.test.ts', 'rls/b.test.ts']);
+  });
+
+  it('laat een bestand met rust dat de gedeelde lijst gebruikt', () => {
+    expect(
+      testsMetEigenPsql([
+        { naam: 'rls/a.test.ts', inhoud: "spawn('psql', psqlBasisArgumenten(), { env });" },
+      ]),
+    ).toEqual([]);
+  });
+
+  it('laat een bestand met rust dat psql helemaal niet start', () => {
+    expect(
+      testsMetEigenPsql([{ naam: 'rls/a.test.ts', inhoud: "import { psql } from './psql-stack';" }]),
+    ).toEqual([]);
+  });
+
+  it('laat een geregistreerde uitzondering met rust', () => {
+    expect(
+      testsMetEigenPsql([
+        { naam: 'rls/psql-stack.ts', inhoud: "execFileSync('psql', ['-U', 'postgres']);" },
+      ]),
+    ).toEqual([]);
+  });
+});
+
+describe('de testboom zelf', () => {
+  const bestanden = tsBestanden(TESTBOOM);
+
+  it('start psql nergens met een eigen argumentenlijst', () => {
+    expect(testsMetEigenPsql(bestanden)).toEqual([]);
+  });
+
+  it('en elke geregistreerde uitzondering bestaat nog', () => {
+    const namen = new Set(bestanden.map((b) => b.naam));
+    for (const naam of Object.keys(TESTS_EIGEN_REDEN)) expect(namen.has(naam)).toBe(true);
+  });
+
+  /**
+   * ⚠️ Zonder deze regel bewaakt de toets hierboven niets zodra iemand de
+   *    gedeelde lijst weghaalt: nul bestanden die psql starten is dan ook groen.
+   */
+  it('start psql wél ergens, anders meet de toets hierboven niets', () => {
+    expect(bestanden.filter((b) => START_PSQL.test(b.inhoud)).length).toBeGreaterThan(1);
   });
 });
 

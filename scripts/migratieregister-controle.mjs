@@ -33,16 +33,30 @@
  *    credentials er per definitie, dus daar is overslaan geen afspraak maar een
  *    gemiste controle.
  *
+ * ⚠️⚠️ **En sinds 17-09-2026 (QS8-517) schrijft hij op wat hij gemeten heeft.**
+ *    `supabase/uitgerold.json` is de neerslag van deze meting, en hij bestaat
+ *    omdat dít script niet kan draaien op de plek waar gebouwd wordt: de
+ *    uitrolstand stond daardoor alleen als met de hand overgetypt proza in
+ *    `docs/WERKVOORRAAD.md`, en niets las dat na. 📏 Zo groeide de drift tot 52
+ *    bestanden zonder dat er iets rood werd (QS8-505).
+ *
+ *    Het schrijven is een **bijproduct** en geen ceremonie: hier zijn de
+ *    credentials per definitie, dus hier is de meting gratis. `uitrolstand:controle`
+ *    leest het bestand daarna zónder sleutel, overal, ook in CI — die bewijst
+ *    niet wat productie draait (dat kan alleen dit script), maar wel dat het
+ *    opgeschreven getal intern klopt met de map, en hij zegt hoe oud het is.
+ *
  * Leest het register via de RPC `migratieregister()` (migratie 0072). Die staat
  * alleen voor `service_role` open; `supabase_migrations` zelf zit niet in de API.
  */
 
-import { readdirSync } from 'node:fs';
+import { writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import { beoordeelOmgeving } from './migratieregister-omgeving.mjs';
-import { vergelijk } from './migratieregister-vergelijk.mjs';
+import { migratiesInMap, standUitRegister, vergelijk } from './migratieregister-vergelijk.mjs';
+import { STANDBESTAND } from './uitrolstand-controle.mjs';
 
 const WORTEL = fileURLToPath(new URL('..', import.meta.url));
 
@@ -72,16 +86,28 @@ if (oordeel === 'overslaan') {
   process.exit(0);
 }
 
-/** De migraties zoals ze in de repo staan: `0057_commitments_afwikkelen.sql`. */
-function uitDeRepo() {
-  return readdirSync(join(WORTEL, 'supabase', 'migrations'))
-    .filter((naam) => naam.endsWith('.sql'))
-    .map((naam) => {
-      const stam = naam.slice(0, -4);
-      const scheiding = stam.indexOf('_');
-      return { versie: stam.slice(0, scheiding), naam: stam.slice(scheiding + 1), bestand: naam };
-    })
-    .sort((a, b) => a.versie.localeCompare(b.versie));
+/**
+ * De meting opschrijven zodat een sessie zónder sleutel hem kan nalezen.
+ *
+ * ⚠️ **Ook als de vergelijking daarna rood wordt.** Wat er op productie staat
+ *    is waar, ongeacht of het bevalt — en juist bij een verschil is dit getal
+ *    het eerste dat iemand wil zien. Eerst schrijven, dan oordelen.
+ *
+ * ⚠️ De vórm komt uit `standUitRegister()` in `migratieregister-vergelijk.mjs`,
+ *    en dat is met opzet: deze functie draait alleen mét de productiesleutel en
+ *    is hier dus nooit te ijken. De naad tussen schrijver en lezer staat onder
+ *    test in `tests/scripts/migratieregister.test.ts`.
+ *
+ * @param {readonly {versie: string, naam: string}[]} project
+ */
+function schrijfStand(project) {
+  const stand = standUitRegister(
+    project,
+    new URL(url).hostname.split('.')[0],
+    new Date().toISOString().slice(0, 10),
+  );
+  writeFileSync(join(WORTEL, STANDBESTAND), `${JSON.stringify(stand, null, 2)}\n`);
+  console.log(`migratieregister-controle: ${STANDBESTAND} bijgewerkt (${stand.hoogste}).`);
 }
 
 async function uitHetProject() {
@@ -107,8 +133,10 @@ async function uitHetProject() {
   return antwoord.json();
 }
 
-const repo = uitDeRepo();
+const repo = migratiesInMap(WORTEL);
 const project = await uitHetProject();
+
+schrijfStand(project);
 
 const klachten = vergelijk(repo, project);
 

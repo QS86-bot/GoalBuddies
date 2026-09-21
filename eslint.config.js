@@ -1,10 +1,31 @@
 const expoConfig = require('eslint-config-expo/flat');
 const tseslint = require('typescript-eslint');
 
+// Eén tekst voor twee grendels — zie het blok voor `src/shared/**` verderop.
+// Twee regels moeten dezelfde grens in twee vormen afdwingen (een statische en
+// een dynamische import); de uitleg die de lezer krijgt hoort dan niet per vorm
+// te verschillen, en al helemaal niet uit elkaar te groeien.
+const GEDEELDE_LAAG_GEEN_DATALAAG =
+  'De gedeelde laag importeert niets uit de datalaag. Een platformvermogen (een kiezer, een opener) hoort in shared/kiezers; een hook die zo\'n vermogen aan een domein knoopt hoort in modules/<naam>/react.ts. Zie QS8-423.';
+
+const DATALAAG_GEEN_SHARED_UI =
+  'De datalaag importeert niets uit shared/ui — ook geen type. De standen die de database teruggeeft staan in shared/standen; labels en toon blijven in shared/ui. Zie QS8-207.';
+
 module.exports = [
   ...expoConfig,
   {
-    ignores: ['dist/*', '.expo/*', 'node_modules/*', 'supabase/*'],
+    // ⚠️ **`supabase/functions` staat er sinds 11-09-2026 níét meer bij**
+    //    (QS8-422). `supabase/*` sloot de hele map uit, en dat is ~6.700 regels
+    //    TypeScript waar coderegel 15 nergens gold — precies de map die elk uur
+    //    met `service_role` tegen productie draait en dus langs elke
+    //    RLS-policy heen gaat. `deno lint` draait er wel overheen maar kent
+    //    geen complexiteitsregels.
+    //
+    //    `migrations/` en `shim/` blijven uitgesloten en staan er bij naam:
+    //    die dragen SQL. Bewust niet als `supabase/*` met een uitzondering
+    //    erop — dan valt een map die er ooit bij komt stilzwijgend buiten de
+    //    linter, en dat is precies de bevinding die dit blok repareert.
+    ignores: ['dist/*', '.expo/*', 'node_modules/*', 'supabase/migrations/*', 'supabase/shim/*'],
   },
   {
     files: ['**/*.ts', '**/*.tsx'],
@@ -74,6 +95,11 @@ module.exports = [
     //    verhuizing zonder deze regel is een opruimactie die over drie maanden
     //    terug is; met deze regel wordt de zesde rood op de regel waar hij
     //    geschreven wordt.
+    //
+    // ⚠️ **Dit patroon is de helft van de grens.** Het dekt de statische vormen;
+    //    `await import()` glipt er onderdoor en wordt gevangen door de zone in
+    //    het `import/no-restricted-paths`-blok verderop. Haal je hier iets weg,
+    //    kijk dan dáár ook.
     files: ['src/modules/**/*.ts', 'src/modules/**/*.tsx'],
     ignores: ['**/*.test.ts', '**/*.test.tsx'],
     plugins: { '@typescript-eslint': tseslint.plugin },
@@ -84,8 +110,123 @@ module.exports = [
           patterns: [
             {
               group: ['**/shared/ui', '**/shared/ui/*'],
-              message:
-                'De datalaag importeert niets uit shared/ui — ook geen type. De standen die de database teruggeeft staan in shared/standen; labels en toon blijven in shared/ui. Zie QS8-207.',
+              message: DATALAAG_GEEN_SHARED_UI,
+            },
+          ],
+        },
+      ],
+    },
+  },
+  {
+    // ⚠️⚠️ **En de andere kant op, sinds 11-09-2026 (QS8-423).** De regel
+    //    hierboven was asymmetrisch: de datalaag mocht niets uit `shared/ui`
+    //    halen, maar `shared/ui` mocht alles uit de datalaag halen. 📏 Gemeten
+    //    in de weekaudit van 10-09: drie bestanden deden dat, alle drie in
+    //    dezelfde week gebouwd, alle drie met een **waarde**-import — en alle
+    //    drie geëxporteerd uit `shared/ui/index.ts`, dus
+    //    `import { Button } from '@/shared/ui'` trok de barrel van
+    //    `modules/buddies` mee.
+    //
+    // ⚠️ **De reden die er in de koppen stond, was geen laagargument.** Er
+    //    stond dat `expo-image-picker` react-native meesleept en dat een
+    //    module-barrel door tests wordt geïmporteerd die geen RN-omgeving
+    //    hebben. Dat klopt — 📏 opnieuw nagemeten op 11-09 door `kiesFoto`
+    //    tijdelijk in `modules/buddies/index.ts` te exporteren: `doorloop.test.ts`
+    //    viel om met `ReferenceError: __DEV__ is not defined`. Maar het is een
+    //    **testomgevingsprobleem** en geen domeingrens, en de prijs was dat een
+    //    componentenbibliotheek het chatdomein ging kennen (`keurChatfoto`,
+    //    `tekenChatdoc`).
+    //
+    // ⚠️ **De knoop is opgelost door de derde laag te benoemen die er al was:**
+    //    een kiezer is geen UI. `shared/kiezers` draagt de platformvermogens,
+    //    de hooks die ze aan een domein knopen wonen in
+    //    `modules/<naam>/react.ts`, en `shared/ui` houdt componenten, labels en
+    //    toon. Zie `docs/decisions/2026-09-11-een-kiezer-is-geen-ui.md`.
+    //
+    // ⚠️ **Dit is de grendel van dit issue en niet de verhuizing** — dezelfde
+    //    zin als bij de regel hierboven, en om dezelfde reden: zonder deze
+    //    regel is het opruimen over drie maanden terug.
+    //
+    // ⚠️ **Dit patroon is de helft van de grens.** Het dekt de statische vormen;
+    //    `await import()` glipt er onderdoor en wordt gevangen door de zone in
+    //    het `import/no-restricted-paths`-blok verderop. Haal je hier iets weg,
+    //    kijk dan dáár ook.
+    files: ['src/shared/**/*.ts', 'src/shared/**/*.tsx'],
+    ignores: ['**/*.test.ts', '**/*.test.tsx'],
+    plugins: { '@typescript-eslint': tseslint.plugin },
+    rules: {
+      '@typescript-eslint/no-restricted-imports': [
+        'error',
+        {
+          patterns: [
+            {
+              group: ['**/modules/**'],
+              message: GEDEELDE_LAAG_GEEN_DATALAAG,
+            },
+          ],
+        },
+      ],
+    },
+  },
+  {
+    // ⚠️⚠️ **Eén blok voor beide laaggrenzen, en dat is sinds 11-09-2026
+    //    (QS8-425) een besluit en geen indeling.** `no-restricted-paths` scoopt
+    //    zichzelf al per richting via `target`; het blok ook nog eens op `files`
+    //    scopen voegt niets toe en kost precies het risico dat QS8-423 een ronde
+    //    kostte — twee blokken die dezelfde regelnaam zetten zijn niet allebei
+    //    van kracht zodra hun `files` gaan overlappen, en de laatste wint
+    //    volledig en zwijgend. Eén regelnaam, één plek, geen volgorde die ertoe
+    //    doet.
+    //
+    // ⚠️ **Waarom deze regel naast `no-restricted-imports` staat en die niet
+    //    vervangt.** 📏 `no-restricted-imports` hangt aan `ImportDeclaration` en
+    //    ziet `await import()` niet; deze kijkt naar het opgelóste pad en dekt
+    //    de statische én de dynamische vorm, relatief én via `@/`. Dat gat is
+    //    niet theoretisch — `src/modules/ai/plan-toepassen.ts` gebruikt
+    //    `await import()` op twee plekken in productiecode om een cykel te
+    //    breken, en er staan er veertien in de repo. De patroonregels blijven
+    //    staan als tweede net op de statische vormen: hun melding valt op de
+    //    importregel zelf, wat korter uit te leggen is dan een opgelost pad.
+    //
+    // ⚠️ **Wat geen van beide vangt:** een `import()` met een variabele bron.
+    //    Allebei lezen ze de bronstring, en een variabele heeft er geen. Dat is
+    //    een grens van het gereedschap; hij staat als eigen geval in
+    //    `tests/scripts/laaggrenzen.test.ts` zodat hij opvalt als hij verschuift.
+    files: ['src/**/*.ts', 'src/**/*.tsx'],
+    ignores: ['**/*.test.ts', '**/*.test.tsx'],
+    rules: {
+      'import/no-restricted-paths': [
+        'error',
+        {
+          zones: [
+            {
+              target: './src/shared',
+              from: './src/modules',
+              message: GEDEELDE_LAAG_GEEN_DATALAAG,
+            },
+            {
+              // ⚠️ **`lib/supabase` is de datalaag één deur verder.** De zone
+              //    hierboven dekt `src/modules`, en een `shared`-bestand dat de
+              //    client rechtstreeks pakt legt dezelfde knoop zonder er ooit
+              //    langs te komen. 📏 Vandaag nul treffers in `src/shared`.
+              //
+              //    Met opzet het bestand en niet de map: `lib/observability` en
+              //    `lib/env` zijn dwarsdoorsnijdend en geen datalaag, en die
+              //    hier meenemen zou een grens trekken die niemand besloten
+              //    heeft.
+              target: './src/shared',
+              from: './src/lib/supabase.ts',
+              message: GEDEELDE_LAAG_GEEN_DATALAAG,
+            },
+            {
+              // ⚠️⚠️ **De andere richting, en die had het gat nog tot QS8-425.**
+              //    De patroonregel van QS8-207 hierboven ving de statische vorm
+              //    en de type-import, maar 📏 `await import('../../shared/ui')`
+              //    in `src/modules/**` was groen. Zelfde oorzaak, zelfde fix,
+              //    en nu dus ook zelfde regel.
+              target: './src/modules',
+              from: './src/shared/ui',
+              message: DATALAAG_GEEN_SHARED_UI,
             },
           ],
         },
@@ -174,7 +315,23 @@ module.exports = [
     //    het waren allemaal controlescripts die over geneste datastructuren
     //    lopen, en de reparatie was elke keer dezelfde: de binnenste lus naar een
     //    functie met een naam.
-    files: ['src/**/*.ts', 'src/**/*.tsx', 'app/**/*.ts', 'app/**/*.tsx', 'scripts/**/*.mjs'],
+    // ⚠️ **`supabase/functions/` staat er sinds 11-09-2026 bij** (QS8-422).
+    //    📏 Gemeten toen die map voor het eerst gelint werd: **22**
+    //    overtredingen, en **achttien** ervan kwamen niet uit de logica maar
+    //    uit één vorm — `for await (const pagina of paginas(…))` met
+    //    `for (const rij of pagina)` erin, in de twee jobs die elk uur draaien.
+    //    Het lichaam was bij het invoeren van de paginering nooit herschreven,
+    //    dus de extra laag stond er zonder dat iemand hem gezien had. `rijen()`
+    //    in `src/shared/bladeren` haalt hem weg; de vier die overbleven zijn
+    //    met guards vlak getrokken, zónder een functie op te splitsen.
+    files: [
+      'src/**/*.ts',
+      'src/**/*.tsx',
+      'app/**/*.ts',
+      'app/**/*.tsx',
+      'scripts/**/*.mjs',
+      'supabase/functions/**/*.ts',
+    ],
     rules: { 'max-depth': ['error', 3] },
   },
   {
@@ -217,6 +374,43 @@ module.exports = [
     ignores: ['**/*.test.ts', '**/*.test.tsx'],
     rules: {
       'max-lines-per-function': ['error', { max: 75, skipBlankLines: true, skipComments: true }],
+    },
+  },
+  {
+    // ⚠️ **`supabase/functions/` viel tot 11-09-2026 buiten élke coderegel**
+    //    (QS8-422). `deno lint` draait er sinds 25-08 overheen, maar dat kent
+    //    geen complexiteitsregels — dus ~6.700 regels TypeScript zonder
+    //    coderegel 15, in precies de map die elk uur met `service_role` tegen
+    //    productie draait en dus langs elke RLS-policy heen gaat.
+    //
+    //    Wat hier wél al goed was: 📏 `no-explicit-any` en `no-empty` apart
+    //    tegen deze map losgelaten gaven **nul** treffers. Dit ging over
+    //    vertakking en lengte, niet over typeveiligheid.
+    //
+    // ⚠️ **De vijftig staat hier bewust níét als lintregel**, om dezelfde reden
+    //    als in `app/` en `scripts/`: er zitten er zes boven en de langste telt
+    //    280 regels. Wat hier bindt is de rátel in
+    //    `scripts/regel15-controle.mjs`. `max-depth` kán wél hard — de
+    //    tweeëntwintig overtredingen zijn in deze ronde weg.
+    files: ['supabase/functions/**/*.ts'],
+    plugins: { '@typescript-eslint': tseslint.plugin },
+    rules: {
+      // ⚠️⚠️ **Geen schaduw, en dat is een grendel uit de security-review op
+      //    QS8-422.** `rijen` werd daar als import binnengehaald terwijl er in
+      //    hetzelfde bestand al twee lokale `const rijen` stonden. Vandaag
+      //    onschadelijk — die helpers roepen de generator niet aan — maar niets
+      //    ving het: `deno lint` zwijgt hier ook over. Wie er later paginering
+      //    in zo'n helper zet, krijgt de lokale array te pakken en de uurjob
+      //    valt om met een TypeError, in de énige map zonder testruntime.
+      //    📏 Nul treffers nadat die twee hernoemd zijn, dus dit kan hard.
+      '@typescript-eslint/no-shadow': 'error',
+      // ⚠️ **Deno en niet Node, en dat is de enige uitzondering die deze map
+      //    krijgt.** `jsr:@supabase/supabase-js@2` is de specifier die Supabase
+      //    voorschrijft en die de runtime verwacht; ESLint's resolver kent
+      //    alleen Node-paden en meldt hem als onvindbaar. Dat de import klópt,
+      //    toetst `deno check` in `npm run edge:types:controle` — dus hier is
+      //    niets onbewaakt, alleen elders bewaakt.
+      'import/no-unresolved': 'off',
     },
   },
   {

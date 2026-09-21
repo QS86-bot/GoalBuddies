@@ -149,23 +149,89 @@ Een migratie toepassen gaat zo:
    te zijn — draai hem dan met `--streng` of met `REGISTER_CONTROLE_STRENG=1`.
    `npm run db:push` doet dat zelf.
 
-⚠️⚠️ **Een migratie die `storage.objects` aanraakt, kun je vanuit een
-bouwsessie niet toepassen — en dat is een grens en geen storing.** 📏 Gemeten op
-09-09-2026 bij `0222`:
+⚠️⚠️ **Op `storage.objects` kun je alles behalve een index — 📏 gemeten
+12-09-2026 (QS8-439).** Die tabel is eigendom van `supabase_storage_admin`, en
+**alles wat dit project heeft draait als `postgres`**: de Supabase-MCP, `psql`
+met de projectcredentials én de SQL-editor in het dashboard. `postgres` is geen
+lid van die rol, en lid wórden kan niet:
 
 ```
-ERROR: 42501: must be owner of table objects
+grant supabase_storage_admin to postgres;
+ERROR: 42501: "supabase_storage_admin" role memberships are reserved,
+              only superusers can grant them
 ```
 
-`storage.objects` is eigendom van `supabase_storage_admin`; de Supabase-MCP
-draait als `postgres`, en `postgres` is **geen lid** van die rol (nagemeten in
-`pg_auth_members`), dus `set role supabase_storage_admin` geeft *permission
-denied*. Een `create policy` of `create trigger` op die tabel vraagt eigendom,
-en daar is geen weg omheen die geen omweg is.
+Per handeling apart gemeten, elk in een eigen terugrollende transactie:
+
+| Op `storage.objects` als `postgres` | 09-09-2026 | 12-09-2026 |
+|---|---|---|
+| `create policy` | geweigerd | ✅ **gaat** |
+| `create trigger` | geweigerd | ✅ **gaat** |
+| `create index` | geweigerd | ❌ `42501: must be owner of table objects` |
+
+⚠️ **Hier stond tot 12-09 dat dit "de grens van de bouwsessie" was en dat een
+`create policy` of `create trigger` eigendom vraagt. Allebei onjuist**, en de
+tweede was op 09-09 nog wél waar — Supabase heeft de rechten daarna verruimd.
+Die meting stond hier als feit **zonder datum**, en dat heeft QS8-243 drie dagen
+laten wachten op een mens die precies dezelfde rechten heeft als een bouwsessie.
+**Schrijf een gemeten grens nooit zonder zijn meetdatum op**; hij verloopt, en
+wie hem overneemt neemt de conclusie over in plaats van de meting.
+
+⚠️ **Een index op die tabel hoort daarom voorwaardelijk**, in een
+`do $$ … exception when insufficient_privilege … end $$;` — dan legt hetzelfde
+bestand hem lokaal wél aan (daar bezitten we de tabel) en slaat hij hem op
+Supabase hoorbaar over. `npm run storage-eigendom:controle` wordt rood zodra er
+een kale bij komt. Vormen en afweging in
+`docs/decisions/2026-09-12-een-index-op-een-tabel-die-niet-van-ons-is.md`.
 
 **Wat wél gaat vanuit een bouwsessie:** alles in `public` — tabellen,
 constraints, functies, triggers, policies, indexen, grants. Dat is de reden dat
-`0139` t/m `0221` er langs deze route op gekomen zijn.
+`0139` t/m `0221` er langs deze route op gekomen zijn, en op 16-09-2026 ook
+`0225` t/m `0279` in één ronde (QS8-505).
+
+⚠️⚠️ **De storage-helft gaat tegenwoordig dus óók, en de zin dat een gat "niet
+vanuit een bouwsessie te dichten" is, is op 16-09 weerlegd.** Hij stond in
+`docs/WERKVOORRAAD.md` §0 sinds 09-09, toen `0222` omviel op `42501`. Die meting
+klopte; de algemene regel die eruit groeide — *elke migratie met DDL op
+`storage.objects` kan hier niet* — overleefde de rechtenverruiming van 12-09 die
+hierboven staat. 📏 Van de 55 bestanden deed er geen enkele een kále
+`create index` op die tabel. **Lees de tabel hierboven dus als de grens, niet
+een afgeleide zin ergens anders.**
+
+#### ⚠️⚠️ 2.2a Een `\uXXXX` in de migratie haalt de server niet — QS8-505
+
+📏 Gemeten op 16-09-2026. `0242` draagt in
+`chat_messages_attachment_name_vorm` een regex met letterlijke
+backslash-u-escapes (`[\u0000-\u001F…]`). `apply_migration` viel daarop om met:
+
+```
+ERROR:  08P01: invalid message format
+```
+
+Dat is een **protocol**fout en geen SQL-fout: de JSON-laag onderweg decodeert zo'n
+reeks, dus er belandt een echte NUL-byte in het bericht. Bevestigd met een
+testregel — `'A\u0041B'` kwam als `'AAB'` bij Postgres aan — en verdubbelen van
+de backslash hielp niet.
+
+⚠️ **De omweg mag de opgeslagen tekst niet veranderen**, anders loopt productie
+op dit punt uiteen met wat `scripts/schema-opbouwen.sh` lokaal neerzet. Codeer
+daarom het ómvallende statement — niet de hele migratie — als base64 en laat
+Postgres het decoderen:
+
+```sql
+do $$
+begin
+  execute convert_from(decode('<base64 van het statement>', 'base64'), 'UTF8');
+end $$;
+```
+
+📏 Nameten hoort erbij en is hier gedaan: `md5(pg_get_constraintdef(…))` gaf
+op productie en op de lokale opbouw hetzelfde,
+`7b6d8283d9f606439025710593118345` over 291 tekens.
+
+⚠️ **De migratie in de map blijft ongewijzigd.** `psql` heeft dit probleem niet —
+alleen de MCP-route. Een migratie herschrijven om een transportlaag te plezieren
+zou de grendel verplaatsen naar de plek waar hij het minst thuishoort.
 
 ⚠️ **En dus: hou de volgorde heel.** Struikelt een migratie hierop, dan stopt de
 hele reeks daar. Wie de volgende wél toepast, slaat een **gat** in het register,
@@ -173,8 +239,12 @@ en een gat is duurder dan wachten: de map bouwt het schema dan nergens meer op
 en een RLS-suite toetst een ánder schema dan productie. Zie
 `docs/decisions/2026-09-08-het-gat-is-erger-dan-de-botsing.md`.
 
-De storage-helft hoort dus van Quintens machine te komen — de SQL-editor in het
-dashboard of `psql` met de projectcredentials.
+⚠️ **Hier stond tot 12-09-2026: *"de storage-helft hoort dus van Quintens
+machine te komen — de SQL-editor in het dashboard of `psql` met de
+projectcredentials."*** Dat is onjuist en het is de zin die QS8-243 drie dagen
+heeft laten wachten: die twee routes draaien **óók als `postgres`** en kunnen
+dus precies evenveel als een bouwsessie. Zie de meettabel hierboven. Een index
+op `storage.*` hoort voorwaardelijk; er is geen mens die hem er anders op krijgt.
 
 ⚠️ **Hier stond tot 24-08-2026 dat stap 3 een UPDATE met de hand was**, met als
 geruststelling dat stap 4 het wel zou opmerken. Dat klopte, en het hielp niet:
@@ -279,6 +349,20 @@ npm run types:db
 schema klopt, en het register loopt achter. `register:controle --streng` is de
 enige die dat ziet.
 
+⚠️⚠️ **Stap 5 schrijft sinds 17-09-2026 (QS8-517) ook `supabase/uitgerold.json`**
+— de gemeten lijn, het aantal registerrijen, de datum en de bron. Commit dat
+bestand mee; dat is het hele punt ervan. Dit is de enige plek waar de sleutel er
+per definitie is, en daarmee de enige plek waar die meting gratis is.
+
+Elke sessie daarna leest hem **zonder sleutel** met `npm run uitrolstand:controle`
+— in de poort, in CI en in een cloudsessie. Die controle bewijst niet wat
+productie draait (dat kan alleen stap 5), maar wel dat het opgeschreven getal
+intern klopt met de map, en hij zegt hoe oud het is. 📏 De aanleiding is dat de
+stand hiervóór alleen als met de hand overgetypt proza in `docs/WERKVOORRAAD.md`
+stond, en de drift daardoor tot 52 bestanden groeide zonder dat er iets rood
+werd (QS8-505). Afweging in
+`docs/decisions/2026-09-17-de-uitrolstand-is-een-gegeven-en-geen-alinea.md`.
+
 ⚠️ **De volgorde is niet vrij.** Latere migraties herschrijven functies uit
 eerdere; door elkaar afspelen zet een oudere definitie terug.
 
@@ -335,6 +419,24 @@ van een race die je stil verliest. `0186` doet dat voor `activeer_weekplanstap`
 wrapper zelf het gat. `npm run edge:gedeployd`
 ziet het achteraf, en alleen met een `SUPABASE_ACCESS_TOKEN` — dat is een
 controle, geen volgordegarantie.
+
+⚠️⚠️ **Maar die wrapper neemt de eis maar in één richting weg, en dat stond hier
+niet — gevonden in de security-ronde op QS8-548, 19-09-2026.** Hij dekt
+*migratie vóór deploy*: de oude bundel blijft werken omdat de oude handtekening
+er nog is. Hij dekt **niet** *deploy vóór migratie*: de nieuwe bundel roept de
+**nieuwe** handtekening aan, en die bestaat op productie pas als de migratie
+gelandt is. Wie dus `npx supabase functions deploy` draait terwijl de migratie
+nog niet is toegepast, krijgt exact hetzelfde stille faalbeeld — `PGRST202`, een
+`console.error`, een 200 en een telling van nul.
+
+📏 Bij `0294` is dat geen randgeval: `supabase/uitgerold.json` zegt dat productie
+op `0282` staat (gemeten 17-09-2026) terwijl de map veel verder is, dus de
+migratie ligt daar gegarandeerd nog niet.
+
+**De regel die hier dus geldt is: migratie eerst, deploy daarna — altijd.** De
+wrapper maakt alleen dat je tussen die twee mag ádemen; hij maakt de volgorde
+niet vrij. Draai `npm run uitrolstand:controle` vóór een deploy om te zien of de
+map vóórloopt, en land eerst de migraties.
 
 ### 2.4 Volgorde van de bestaande migraties
 
@@ -619,7 +721,128 @@ tien per gebruiker per dag is de bovengrens dus ruwweg dertien cent per
 gebruiker per dag — maar in de praktijk gebruikt niemand zijn plafond, en de
 cache vangt herhaalde vragen af.
 
+## 2.9 De bewaartermijn van chatfoto's — en wat een rollback níet terugdraait
+
+Sinds migratie 0235 (QS8-396) is de fotobucket een doorgeefluik en geen archief.
+De rollover-functie haalt elk uur op wat weg mag en wist het:
+
+```sql
+select * from verlopen_chatfotos(500);   -- als service_role
+select chatfoto_bewaartermijn();          -- 21 days
+```
+
+Twee redenen komen eruit, en ze staan als kolom in de teruggave:
+
+| Reden | Wat het is | Vanaf |
+|---|---|---|
+| `verlopen` | ouder dan `chatfoto_bewaartermijn()` | 21 dagen |
+| `wees` | geen chatbericht meer dat naar dit pad wijst | een uur na de upload |
+
+De termijn verhogen of verlagen is één regel SQL en geen release — zelfde vorm
+als `ai_dag_limiet()` hierboven:
+
+```sql
+create or replace function public.chatfoto_bewaartermijn()
+returns interval language sql immutable set search_path = public, pg_catalog, pg_temp
+as $$ select interval '21 days' $$;
+```
+
+⚠️ **Maar dan ook in de app.** `CHATFOTO_BEWAARDAGEN` in
+`src/shared/bewaartermijn/index.ts` staat in de zin die de gebruiker ziet waar
+zijn foto stónd. `tests/rls/chatfoto-bewaartermijn.test.ts` legt de twee naast
+elkaar en wordt rood zodra ze uiteenlopen — dus dit is één regel SQL **en** één
+regel TypeScript, of anders een rode poort.
+
+### ⚠️⚠️ Wat een rollback wél en niet terugdraait
+
+Het ROLLBACK-PAD in de kop van 0235 zet de leesgrens, de teller en de
+opruimfuncties terug. **Het zet geen foto's terug.**
+
+- **De bytes zijn weg.** `storage.remove()` heeft ze verwijderd; er is geen
+  prullenbak, en op de gratis tier zijn er geen automatische backups. Alles wat
+  de pas heeft opgehaald in de tijd dat 0235 draaide, is onherroepelijk weg.
+- **`pg_dump` helpt hier niet.** Die dumpt de metadata-rijen in
+  `storage.objects`, niet de blobs. Een teruggezette dump geeft dus rijen die
+  naar bestanden wijzen die er niet meer zijn — en de app toont daar netjes
+  *"Deze foto staat er niet meer"*.
+- **Wil je de pas alleen stilzetten** zonder de rest van 0235 terug te draaien,
+  dan is dat de veiligste stap en hij is één regel: zet de bewaartermijn
+  belachelijk hoog (`interval '3650 days'`). De weestak blijft dan draaien — die
+  ruimt alleen op wat sowieso onleesbaar is — en er verdwijnt niets wat nog in
+  een chat staat.
+
+  ```sql
+  create or replace function public.chatfoto_bewaartermijn()
+  returns interval language sql immutable set search_path = public, pg_catalog, pg_temp
+  as $$ select interval '3650 days' $$;
+  ```
+
+⚠️ **Draai die stap vóór een rollback en niet erna.** De rollover draait elk uur;
+tussen "ik ga terugdraaien" en "het is teruggedraaid" past een ronde.
+
 ---
+
+---
+
+## 2.9a Een dump terugzetten — wat `--data-only` breekt
+
+⚠️ **Een vólledige `pg_restore` gaat goed. Een `--data-only` terugzet van
+`completion_approvals` niet**, en dat is precies de vorm die je gebruikt om één
+migratie ongedaan te maken.
+
+**Waarom.** Sinds `0275` toetst de trigger op goedkeuringen ook of de voltooiing
+nog de actieve is. Voor levend verkeer is dat juist: je keurt geen voltooiing
+goed die al vervangen is. Maar bij een groep met `approval_rule = 'quorum'` is
+een goedkeuring op een inmiddels vervángen voltooiing de **gewone gang van
+zaken**:
+
+1. Bob keurt goed → de week blijft `pending` (1 van 2)
+2. Alice dient opnieuw in → de eerste voltooiing wordt vervangen
+3. die eerste draagt nu een volkomen legitieme goedkeuring
+
+`dien_opnieuw_in()` ruimt die goedkeuring niet op, en dat hoort ook niet:
+voltooiingen en goedkeuringen zijn append-only (domeinregel 6). Bij een volledige
+`pg_restore` merk je er niets van — triggers zitten in de post-data-sectie, dus
+de rijen staan er al vóór de trigger bestaat.
+
+**Wat je doet.** Zet zo'n dump terug met de triggers uit:
+
+```bash
+pg_restore --data-only --disable-triggers -t completion_approvals ...
+```
+
+Of, als je met de hand `psql` gebruikt:
+
+```sql
+begin;
+set session_replication_role = replica;
+-- \copy of insert ...
+set session_replication_role = origin;
+commit;
+```
+
+⚠️⚠️ **De prijs daarvan is niet nul, en hij is gemeten (16-09-2026).** Met de
+triggers uit valt domeinregel 3 in tweeën uiteen:
+
+| grens | waar hij zit | overleeft een terugzet met triggers uit |
+|---|---|---|
+| je keurt nooit jezelf goed | CHECK `completion_approvals_not_self` | **ja** |
+| alleen een lid van dezelfde groep keurt goed | trigger `fill_approval_subject()` | **nee** |
+
+Een CHECK wordt getoetst tegen de rij, wie hem ook schrijft — `security definer`,
+`service_role`, `COPY` en `pg_restore` komen er geen van allen langs. Een trigger
+niet. 📏 Gemeten in een teruggedraaide transactie: onder
+`session_replication_role = replica` weigert een zelfgoedkeuring nog steeds, en
+komt een **wildvreemde** als goedkeurder er wél doorheen.
+
+**Daarom: zet alleen je eigen dump terug, en nooit data van buiten.** Dat is de
+hele reden dat deze grens met twee middelen is afgedwongen en niet met één.
+
+`tests/rls/goedkeuring-terugzetten.test.ts` legt alle vier de eigenschappen vast,
+zodat wie de trigger ooit verzacht, ziet wát hij verzacht.
+
+---
+
 
 ## 3. Build en uitrollen
 
@@ -740,10 +963,18 @@ npm ci
 npm run deploy
 ```
 
-⚠️ **Er is geen versiegeschiedenis op de host.** `static-deploy` overschrijft de
+⚠️ **Er is geen versiegeschiedenis op de host.** De deploy-route overschrijft de
 map; Hostinger bewaart geen vorige uitrol. De repo ís het rollback-pad, en dat
 werkt alleen als wat je deployt ook gecommit is. Deploy daarom nooit vanuit een
 vuile werkboom.
+
+⚠️⚠️ **De routes heetten tot 16-09-2026 `upload-url` en `static-deploy`, en die
+bestaan niet meer** (QS8-504). Hostinger heeft zijn API geherstructureerd; beide
+gaven 404 en de deploy liep vast op een script dat maanden had gewerkt. Ze staan
+nu bij de constante `API` in `scripts/deploy-web.mjs`, met de oude vorm ernaast
+zodat je bij een volgende 404 in één blik ziet wat er verhuisd is. Dit document
+noemt ze met opzet niet meer bij naam: twee plekken die hetzelfde endpoint
+opschrijven lopen uiteen, en dan is de verkeerde de plek waar je het leest.
 
 ### Supabase Auth: de URL's — QS8-99
 
@@ -931,7 +1162,26 @@ SENTRY_ORG='<je organisatie-slug>'
 SENTRY_PROJECT='<je project-slug>'
 ```
 
-Het token maak je op `https://sentry.io/settings/auth-tokens/`.
+**Waar je die drie vindt — nagelopen op 10-09-2026:**
+
+| Waarde | Waar | Let op |
+|---|---|---|
+| `SENTRY_AUTH_TOKEN` | Settings → Auth Tokens → *Create New Token* (`https://sentry.io/settings/auth-tokens/`) | Scopes `project:releases` en `org:read`. Je ziet hem één keer. |
+| `SENTRY_ORG` | de eerste padcomponent in de URL van je project, en Settings → General Settings → *Organization Slug* | de **slug**, niet het nummer |
+| `SENTRY_PROJECT` | Settings → Projects → je project → *Name* / de URL | idem |
+
+⚠️ **Het zijn de slugs en niet de id's.** Uit de DSN zijn allebei de nummers af
+te lezen — organisatie `4511976142274560`, project `4511976458027088` — en die
+horen hier níét. Het project-id is wél een goede kruiscontrole dat je naar het
+juiste project kijkt: het staat in Settings → General Settings van het project.
+
+✅ **Er is géén `SENTRY_URL` nodig, ook al wijst de DSN naar
+`ingest.de.sentry.io`.** 📏 Gemeten op 10-09-2026: `sentry-cli` uploadde de
+source maps in één keer met alleen die drie variabelen, zonder fout erna. Dit
+staat er met zoveel woorden omdat de EU-regio er precies uitziet als iets dat een
+vierde variabele vraagt, en `sentry-cli` er ook een aanbiedt. Wat hier gemeten is
+is de uitkomst — de upload slaagde — en niet waaróm; ga dus niet op zoek naar een
+instelling die het probleem niet is.
 
 ⚠️ **`SENTRY_AUTH_TOKEN` is wél geheim**, anders dan de twee DSN's. Hij geeft
 schrijftoegang tot je Sentry-organisatie. Hij begint niet met `EXPO_PUBLIC_`, dus
@@ -1080,7 +1330,7 @@ Alles wat nu Hostinger-specifiek is en straks aangepast moet worden:
       SPA-fallback, want `output: "static"` levert een bestand per route.
       `scripts/deploy-web.mjs` leidt ze af uit `dist/`; die afleiding is
       herbruikbaar, het formaat niet.
-- [ ] `scripts/deploy-web.mjs` zelf: de TUS-upload en `static-deploy` zijn
+- [ ] `scripts/deploy-web.mjs` zelf: de TUS-upload en de deploy-route zijn
       Hostinger-API's. De secret-scan en de `.htaccess`-generatie zijn dat níét
       en horen te blijven — de scan hoort dan in de CI-stap vóór `vercel deploy`.
 - [x] ~~Het pad-voorvoegsel `/goalbuddies/`~~ — vervallen. Het subdomein heeft een

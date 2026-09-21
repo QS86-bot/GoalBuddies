@@ -8,8 +8,11 @@
 
 export type {
   Cycle,
+  Gebruikerscyclus,
+  Groepsperiode,
   GroupClock,
   IsoDate,
+  Klok,
   TimeZone,
   UserClock,
   Weekday,
@@ -17,6 +20,8 @@ export type {
 export { GRACE_HOURS } from './types';
 
 export { freezeNow, now, ouderDan, unfreezeNow } from './clock';
+
+export { eersteLuideUur, inStilteVenster, verschovenUur } from './stilte';
 
 export {
   closableUserCycle,

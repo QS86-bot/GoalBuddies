@@ -21,15 +21,28 @@
  *    het ijken bleven twee van de drie gevallen groen terwijl de aanroep eruit
  *    was. **Precies de fout die deze test moet vangen, in de test zelf.**
  */
+/**
+ * De bron zonder commentaar.
+ *
+ * ⚠️⚠️ **Sinds QS8-446 staat hij in `scripts/zonder-commentaar.mjs` en wordt hij
+ *    hier alleen doorgegeven.** De reden dat hij bij QS8-443 hiernaartoe kwam
+ *    staat nog overeind — CLAUDE.md noemt deze knip een grendel op zichzelf, en
+ *    bij QS8-412 was dezelfde knip in twee bestanden blind voor `https://` —
+ *    maar het antwoord was te klein. 📏 Er stonden er zeventien verschillende,
+ *    verdeeld over `scripts/` en `tests/`, en deze boom kon de andere niet
+ *    bereiken. Een `.mjs` kan dat wél in beide richtingen.
+ *
+ * ⚠️ De importeurs van dít bestand blijven werken; die hoefden niet mee te
+ *    verhuizen.
+ */
+import { zonderCommentaar } from '../../scripts/zonder-commentaar.mjs';
+
+export { zonderCommentaar };
+
 export function roeptAan(bron: string, naam: string): boolean {
-  const zonderCommentaar = bron
-    // Eerst blokken: /* … */ dekt zowel JSDoc als de JSX-vorm {/* … */}.
-    .replace(/\/\*[\s\S]*?\*\//g, ' ')
-    .split('\n')
-    .filter((regel) => !regel.trimStart().startsWith('//'))
-    .join('\n');
+  const schoon = zonderCommentaar(bron);
 
   // ⚠️ De haakjes horen erbij: een `import { wijzigDoel }` is geen knop. En de
   //    negatieve vooruitblik houdt `wijzigDoelStatus` buiten de deur.
-  return new RegExp(`(?<![a-zA-Z0-9_])${naam}\\s*\\(`).test(zonderCommentaar);
+  return new RegExp(`(?<![a-zA-Z0-9_])${naam}\\s*\\(`).test(schoon);
 }

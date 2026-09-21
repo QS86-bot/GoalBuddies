@@ -1,7 +1,7 @@
 import { z } from 'zod';
 
 import { t, TALEN } from '../../shared/i18n';
-import { telTekens } from '../../shared/tekst';
+import { schoneNaam, telTekens } from '../../shared/tekst';
 import { isGeldigeTijdzone } from '../../shared/time';
 
 /**
@@ -121,11 +121,38 @@ export const tijdzoneSchema = z
   .refine(isGeldigeTijdzone, { error: () => t('validatie.tijdzone') });
 
 export const profielSchema = z.object({
+  /**
+   * ⚠️⚠️ **Geen `.trim()` en geen `.max()`, en dat is geen smaak** — QS8-448.
+   *    Allebei tellen ze iets anders dan de database:
+   *
+   *    - `.trim()` strijkt de hele WhiteSpace-klasse, Postgres' `trim()` alleen
+   *      de spatie. 📏 Gemeten: `E'\n\n'`, `E'\t\t'` en U+00A0 kwamen door de
+   *      aanmeldtrigger en werden hier gewéigerd — een profiel dat zijn eigen
+   *      schema afwijst. En U+200B kwam door **allebei**.
+   *    - `.max(80)` telt UTF-16-eenheden, `char_length` telt codepunten. 📏 Een
+   *      naam van 80 emoji is 160 eenheden: de trigger maakt hem aan en dit
+   *      schema weigerde hem, waarna de gebruiker vastliep op een veld dat hij
+   *      niet had aangeraakt.
+   *
+   * ⚠️ `schoneNaam()` en `schone_naam()` in migratie 0256 zijn dezelfde
+   *    definitie in twee talen. `tests/rls/naamnormalisatie.test.ts` loopt het
+   *    hele codepuntbereik af en legt beide oordelen naast elkaar — dat is de
+   *    naad, en de toets hoort daar en niet op één van de twee kanten.
+   *
+   * ⚠️⚠️ **Dit schema is geen grens.** Het draait in de browser van de gebruiker
+   *    en zit in de bundel; wie het wil overslaan, praat rechtstreeks met
+   *    PostgREST. De grens is `profiles_display_name_zichtbaar` uit 0256, en
+   *    `tests/rls/profielschrijven.test.ts` toetst hém. Wat dit schema toevoegt
+   *    is een nette melding vóórdat je die grens raakt — niet de grens zelf.
+   *
+   * ⚠️ Eerst schoonmaken, dán oordelen — net als de trigger, die `schone_naam()`
+   *    binnen `nullif(…, '')` aanroept en pas daarna `left(…, 80)` doet.
+   */
   display_name: z
     .string()
-    .trim()
-    .min(1, { error: () => t('validatie.naam_leeg') })
-    .max(80, { error: () => t('validatie.naam_lang') }),
+    .transform(schoneNaam)
+    .refine((naam) => naam !== '', { error: () => t('validatie.naam_leeg') })
+    .refine((naam) => telTekens(naam) <= 80, { error: () => t('validatie.naam_lang') }),
   week_start_day: weekdagSchema,
   tz: tijdzoneSchema,
   // `HH:MM` of `HH:MM:SS`; Postgres `time` slikt allebei.
@@ -135,7 +162,31 @@ export const profielSchema = z.object({
     .nullable(),
   reminder_enabled: z.boolean(),
   reminder_tone: z.enum(['gentle', 'firm']),
+
+  // ⚠️ De schakelaars per meldingsoort (QS8-92). `nudge` staat hier niet bij:
+  //    dat ís `reminder_enabled` hierboven. De vertaling van soort naar veld
+  //    staat op één plek — `VOORKEUR_PER_SOORT` in de module notifications.
+  notify_approval_request: z.boolean(),
+  notify_approval_received: z.boolean(),
+  notify_cycle_summary: z.boolean(),
+  notify_commitment_witness: z.boolean(),
+
+  // ⚠️ Het stille venster in hele uren (QS8-406). De échte grens staat in de
+  //    database — `profiles_stilte_is_heel_of_niet` en `profiles_stilte_is_geen_punt`
+  //    — en dit is de foutmelding vóór het verzoek de deur uit gaat.
+  quiet_from: z.number().int().min(0).max(23).nullable(),
+  quiet_to: z.number().int().min(0).max(23).nullable(),
   share_moves_by_default: z.boolean(),
+
+  /**
+   * Of je buiten je eigen groepen vindbaar bent op naam en profielfoto —
+   * QS8-476.
+   *
+   * ⚠️ Standaard uit, en dat is een besluit en geen erfenis: CLAUDE.md zegt dat
+   *    voor élk nieuw oppervlak beschermd het antwoord is tot iemand het
+   *    tegendeel besluit. De kolom draagt dezelfde `default false`.
+   */
+  vindbaar: z.boolean(),
   /**
    * De taalkeuze — QS8-115, criterium 4.
    *

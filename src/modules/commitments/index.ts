@@ -14,6 +14,7 @@ export {
   fetchGetuigenissen,
   fetchMogelijkeBegunstigden,
   fetchStrafDoelen,
+  herstelStuurlozeStraf,
   trekIn,
   zetBeloning,
   zetStraf,

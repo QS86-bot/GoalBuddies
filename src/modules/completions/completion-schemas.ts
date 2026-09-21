@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { t } from '../../shared/i18n';
+import { telTekens, schoneVrijeTekst } from '../../shared/tekst';
 
 /**
  * De invoerregels van een afronding en van de Dagzet — QS8-121.
@@ -18,7 +19,12 @@ import { t } from '../../shared/i18n';
 
 export const afrondSchema = z.object({
   achieved_level: z.enum(['floor', 'ceiling']),
-  note: z.string().trim().max(2000, { error: () => t('validatie.notitie_lang') }).nullable(),
+  note: z
+    .string()
+    // ⚠️ Eerst schoonmaken, dán oordelen — QS8-506.
+    .transform(schoneVrijeTekst)
+    .refine((v) => telTekens(v) <= 2000, { error: () => t('validatie.notitie_lang') })
+    .nullable(),
 });
 
 export type AfrondInvoer = z.infer<typeof afrondSchema>;
@@ -26,9 +32,10 @@ export type AfrondInvoer = z.infer<typeof afrondSchema>;
 export const dagzetSchema = z.object({
   body: z
     .string()
-    .trim()
-    .min(1, { error: () => t('validatie.dagzet_leeg') })
-    .max(2000, { error: () => t('validatie.notitie_lang') }),
+    // ⚠️ Zichtbaar voor de groep zodra `visibility = 'group'` — QS8-507, 0284.
+    .transform(schoneVrijeTekst)
+    .refine((v) => telTekens(v) >= 1, { error: () => t('validatie.dagzet_leeg') })
+    .refine((v) => telTekens(v) <= 2000, { error: () => t('validatie.notitie_lang') }),
   weekly_goal_id: z.uuid().nullable(),
   visibility: z.enum(['private', 'group']),
 });

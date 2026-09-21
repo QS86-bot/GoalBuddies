@@ -1,7 +1,7 @@
 import { reportError } from '../../lib/observability';
 import { supabase } from '../../lib/supabase';
 import { t } from '../../shared/i18n';
-import type { Cycle } from '../../shared/time';
+import type { Gebruikerscyclus } from '../../shared/time';
 
 import { standUitWeekdoelen, type Weekbalk, type WeekRij } from './overzicht-stand';
 
@@ -64,7 +64,7 @@ function niveauVan(week: RuweWeek): 'floor' | 'ceiling' | null {
  */
 export async function fetchWeekbalken(
   userId: string,
-  cycli: readonly Cycle[],
+  cycli: readonly Gebruikerscyclus[],
 ): Promise<readonly Weekbalk[]> {
   const eerste = cycli[0];
   const laatste = cycli[cycli.length - 1];

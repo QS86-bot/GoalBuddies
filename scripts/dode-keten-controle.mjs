@@ -100,14 +100,6 @@ export const BEWUST_ONGESCHREVEN = {
     'is vandaag voor geen enkele client schrijfbaar, en **wordt interessant ' +
     'zodra er iemand of iets is dat meldingen beoordeelt.** Is dat er dan nog ' +
     'niet, dan hoort de waarde weg.',
-  'chat_messages.type=doc':
-    // ⚠️ De fotosoort stond hier tot 09-09-2026 naast, met dezelfde reden. Die
-    //    is vervallen: QS8-71 heeft de bucket, de knop en het renderpad gebouwd,
-    //    dus er is een schrijver. Deze blijft staan tot QS8-72 er een heeft.
-    'Wacht op documenten in de chat (QS8-72, Fase 2). ⚠️ De waarde is vandaag ' +
-    'wél door een client te schrijven — kolomrecht en policy staan open — dus ' +
-    'een bericht kan zo heten met een gewone tekst erin. Wordt een defect ' +
-    'zodra de chat op `type` gaat renderen.',
   'points_ledger.reason=milestone_done':
     // ⚠️ `goal_done` stond hier tot 31-08 naast, met dezelfde reden. Hij is in
     //    migratie 0132 geschrapt na een besluit van Quinten; deze bleef staan
@@ -153,9 +145,12 @@ export const BEWAAKT_BUITEN_DE_APP = {
   functie_vingerafdrukken:
     'Vergelijkt de gedeployde functies met de migraties. Aanroeper is ' +
     '`scripts/functies-controle.mjs`, die in `/audit` draait.',
-  functies_voor_authenticated:
-    'De grendel onder 0115: welke functies `authenticated` mag uitvoeren. Zonder ' +
-    'test is die grant een aanname.',
+  functies_met_uitvoerrecht:
+    'De grendel onder 0115 en 0253: welke functies `anon` of `authenticated` mag ' +
+    'uitvoeren, mét handtekening. Zonder test is die grant een aanname.',
+  kanonieke_handtekeningen:
+    'Zet de handtekeningen uit de grant-regels om naar de vorm die Postgres zelf ' +
+    'rendert. Hoort bij `functies_met_uitvoerrecht` — QS8-428.',
   indexdekking_bewaking:
     'Onwrikbare regel 11 — index op elke FK en elke WHERE/ORDER BY-kolom.',
   initplan_bewaking:
@@ -187,10 +182,20 @@ export const BEWAAKT_BUITEN_DE_APP = {
     'Meldt ook als de CHECK niet meer de verwachte vorm heeft: onherkenbaar ' +
     'moet een alarm zijn en geen stilte.',
   tijdstempel_bewaking:
-    'Kolommen van type timestamptz met een now()-default die anon of ' +
-    'authenticated mag schrijven (0173). Elke teller en elk venster dat op zo\'n ' +
-    'kolom rekent is dan te omzeilen. Aanroeper is `tests/rls/tijdstempels.test.ts`. ' +
-    'Bewust niet voor `authenticated`: de uitkomst is een kaart van het schema.',
+    'Kolommen van type timestamptz die de server bij het invoegen zet en die ' +
+    'anon of authenticated mag schrijven (0173, sinds 0292 gemeten aan de ' +
+    'parseboom in plaats van aan het woord `now()`). Elke teller en elk venster ' +
+    'dat op zo\'n kolom rekent is dan te omzeilen. Aanroeper is ' +
+    '`tests/rls/tijdstempels.test.ts`. Bewust niet voor `authenticated`: de ' +
+    'uitkomst is een kaart van het schema.',
+  dagplafondvenster_bewaking:
+    'Zoekt per *_dagplafond-trigger de kolom op waar zijn etmaalvenster op rust ' +
+    'en meldt het zodra anon of authenticated die kan schrijven (0292). De ' +
+    'belofte van rij 603 van docs/ENGINEER-REVIEW.md, die daarvóór met de hand ' +
+    'nagekeken werd — en dan op het woord `created_at`, terwijl twee van de ' +
+    'achttien vensters op `submitted_at` en `linked_at` rusten. Aanroeper is ' +
+    '`tests/rls/dagplafondvenster.test.ts`. Bewust niet voor `authenticated`: ' +
+    'de uitkomst wijst aan waar een plafond het dunst is.',
   volgorde_bewaking:
     'De volgordesleutel van een auditspoor: bestaat de kolom, is hij ' +
     '`generated always as identity`, staat de unieke sorteerindex er nog, en ' +
@@ -201,8 +206,20 @@ export const BEWAAKT_BUITEN_DE_APP = {
   schrijfrechten_bewaking:
     'Schrijfrechten voor `anon` of `authenticated` waar geen policy bij hoort ' +
     '(0101, generiek sinds 0118).',
+  standaardrechten_bewaking:
+    'Wat de vólgende tabel in `public` aan een niet-ingelogde bezoeker zou geven ' +
+    '(0263). De tweede helft van 0261, dat alleen de tabellen opruimde die er ' +
+    'stónden. Ziet zowel een grant aan `anon` als een aan `PUBLIC` (0191), en ' +
+    'zowel een standaardregel voor `public` als een globale zonder `in schema`. ' +
+    'Aanroepers zijn `tests/rls/anonleesrecht.test.ts` en ' +
+    '`tests/rls/publieke-grant.test.ts`.',
   domeinregel3_bewaking:
-    'De drie sloten op peer-goedkeuring: policy, constraint en trigger (0093).',
+    'De zes sloten op peer-goedkeuring (0093, uitgebreid in 0262). Clausule 1 ' +
+    '"nooit jezelf": de RLS-clausule, de CHECK not_self, de trigger die ' +
+    '`subject_id` vult, en de foreign key van 0252. Clausule 2 "alleen een ' +
+    'groepsgenoot": het lidmaatschap en de koppeling doel-groep, allebei in het ' +
+    'lichaam van `fill_approval_subject()`. Aanroeper is ' +
+    '`tests/rls/domeinregel3.test.ts`.',
   // ⚠️ Deze twee zijn op 06-09-2026 boven water gekomen doordat
   //    `zonderDefinities()` een puntkomma binnen een `comment on`-tekst als einde
   //    van het statement las (QS8-296). De rest van die zin bleef in de romp
@@ -243,6 +260,13 @@ export const BEWAAKT_BUITEN_DE_APP = {
     'paden hetzelfde géven, en dat blijft waar als iemand de dure join naar de ' +
     'barrière-view terugzet. Gemeten: die terugzetting maakt nul van de elf ' +
     'andere tests rood.',
+  leesroute_bewaking:
+    'Leespolicies die de lidmaatschapstoets zelf uitschrijven of via een te ' +
+    'zwakke route ontsluiten (0259). Hoort leeg te zijn. Aanroeper is ' +
+    '`tests/rls/hulpfunctiemodel.test.ts`. ⚠️ 📏 De aanleiding: de gedeelde ' +
+    'toets vervangen door een eigen join zonder eigenaar- en archieftoets liet ' +
+    'de hele RLS-suite groen (1796 passed, 0 failed) terwijl een uitgetreden ' +
+    'lid en een gearchiveerde groep er weer bij konden.',
   alleenlezen_bewaking:
     'Welke policyhelften letterlijk `false` zijn terwijl `authenticated` het ' +
     'recht wél heeft (0148). Aanroeper is `tests/rls/alleenlezen.test.ts`, dat ' +
@@ -286,6 +310,12 @@ export const BEWAAKT_BUITEN_DE_APP = {
  * @type {Record<string, string>}
  */
 export const WACHT_OP_EEN_BESLUIT = {
+  // ⚠️⚠️ **Leeg, en dat is de goede stand.** `groep_helden` stond hier van
+  //    14-09 tot 16-09 met de vraag *"krijgt dit oppervlak een plek op het
+  //    groepsscherm, of hoort de RPC weg?"*. QS8-493 heeft die beantwoord — een
+  //    eigen kaart op `app/groep/[id].tsx`, bewust niet naast het klassement —
+  //    en deze controle meldde zelf dat de rij weg mocht zodra de aanroeper er
+  //    was. Precies wat de kop hierboven belooft: een agenda, geen parkeerplaats.
 };
 
 /** Bestanden waarin een aanroep als "productie" telt. Tests en scripts niet. */
@@ -665,7 +695,37 @@ export const GEDEELDE_WAARDEN = {
   done: ['ai_jobs', 'milestones'],
   en: ['groups', 'milestone_tips', 'profiles'],
   fitness: ['goals', 'groups', 'profiles'],
+  // ⚠️ **Met de hand nagelopen per tabel, zoals de melding vraagt (QS8-379).**
+  //    `daily_moves`: `deelDagzet()` schrijft `group`, de kolom staat in de
+  //    INSERT-grant. `todo_items`: hier stond *"niets schrijft hem"*, met de
+  //    voorwaarde erbij — *kijk hier opnieuw zodra QS8-381 landt; komt er dan
+  //    geen schrijver, dan hoort de waarde uit de CHECK*.
+  //    ✅ **Die voorwaarde is ingetreden en de uitkomst is de andere kant op:
+  //    `zet_taakzichtbaarheid()` (0248) schrijft hem.** De kolom blijft voor
+  //    geen enkele client schrijfbaar — het pad is de RPC, die door `pin_taak()`
+  //    heen komt met een sessiesleutel — maar `group` is niet langer een waarde
+  //    die vooruitlopend bestaat. Hij is bereikbaar, en dus is deze rij geen
+  //    uitstel meer.
+  // ⚠️ **De zes heldsleutels — QS8-471, migratie 0264.** Ze staan in de CHECK van
+  //    zowel `hero_profiles` als `hero_appearances`, en dat maakt de
+  //    schrijverstoets voor allebei blind: een treffer in de bron kan van de
+  //    andere tabel komen.
+  //
+  //    📏 Met de hand nagelopen per tabel, zoals de melding vraagt. **Vandaag
+  //    schrijft niets ze, in geen van beide tabellen** — grep op `hero_profiles`
+  //    en `hero_appearances` in `src/`, `app/` en `supabase/functions/` geeft nul
+  //    treffers. Dat is geen dode waarde maar een fundering vóór zijn afnemers:
+  //    QS8-474 schrijft `hero_profiles` vanuit de quiz, QS8-475 schrijft
+  //    `hero_appearances` vanuit de Edge Function onder `service_role`.
+  //
+  //    ⚠️ Kijk hier opnieuw zodra die twee geland zijn. Schrijft er dán nog
+  //       niets, dan is dát de bevinding en horen de waarden uit de CHECK.
+  forge: ['hero_appearances', 'hero_profiles'],
+  group: ['daily_moves', 'todo_items'],
   huddle_day_changed: ['chat_messages', 'group_events'],
+  ignis: ['hero_appearances', 'hero_profiles'],
+  lucerna: ['hero_appearances', 'hero_profiles'],
+  meridian: ['hero_appearances', 'hero_profiles'],
   milestone_done: ['chat_messages', 'points_ledger'],
   mindfulness: ['goals', 'groups', 'profiles'],
   nl: ['groups', 'milestone_tips', 'profiles'],
@@ -673,10 +733,20 @@ export const GEDEELDE_WAARDEN = {
   open: ['deadline_requests', 'groups', 'reports'],
   other: ['goals', 'groups', 'profiles', 'reports'],
   pending: ['group_join_requests', 'weekly_goals'],
+  // ⚠️ In beide tabellen de standaard: `daily_moves` via de kolomgrant,
+  //    `todo_items` via de default en de conjunct in `todo_items_insert` (0246).
+  //    ⚠️ Sinds 0248 is dit voor `todo_items` niet meer de énige geschreven
+  //    waarde: `zet_taakzichtbaarheid()` zet een gedeelde taak ook weer terug op
+  //    `private`. Dat terugpad is met opzet gebouwd — een zichtbaarheid die maar
+  //    één kant op kan is geen keuze maar een val (de les van `daily_moves`,
+  //    migratie 0197).
+  private: ['daily_moves', 'todo_items'],
   productivity: ['goals', 'groups', 'profiles'],
+  quip: ['hero_appearances', 'hero_profiles'],
   resolved: ['commitment_events', 'commitments'],
   self_care: ['goals', 'groups', 'profiles'],
   skills: ['goals', 'groups', 'profiles'],
+  strix: ['hero_appearances', 'hero_profiles'],
   study: ['goals', 'groups', 'profiles'],
   todo: ['milestones', 'weekly_goals'],
 };

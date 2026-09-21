@@ -16,6 +16,7 @@ import {
   type TestUser,
 } from './harness';
 import { proefId } from './proefid';
+import { psqlMetInvoer, stackBeschikbaarOfFaal } from './psql-stack';
 
 /**
  * Wat de client alleen mag lézen, blijft alleen te lezen — QS8-262, migratie 0148.
@@ -690,4 +691,121 @@ describe.skipIf(!rlsTestsConfigured)('wat de client alleen mag lezen, blijft all
     },
     SETUP_TIMEOUT,
   );
+});
+
+// ---------------------------------------------------------------------------
+
+/**
+ * De belofte: **`alleenlezen_bewaking()` meldt een dichte policyhelft precies dan
+ * als díe helft de grendel is** — QS8-458, migratie 0258.
+ *
+ * ⚠️⚠️ **Deze grendel is niet met de bestaande data te ijken, en dat is precies
+ *    waarom hij een eigen fixture heeft.** 📏 Gemeten op 13-09-2026: er zijn vier
+ *    `ALL`-policies in `public` en geen ervan heeft een `false`-helft, dus de
+ *    reproductie uit reviewrij 428 geeft vóór én na een `revoke` nul rijen. Een
+ *    toets die daarop leunt, toetst niets.
+ *
+ *    *"Een controle die je niet kunt voeden, kun je niet ijken."*
+ *
+ * ⚠️⚠️ **Per hélft, en dat is de correctie die deze toets zijn vorm gaf.** De
+ *    eerste versie vroeg "heeft de client schrijfrecht" en liet SELECT weg. Voor
+ *    een `for all` stuurt de `using`-helft óók SELECT aan, dus een tabel waarop de
+ *    client alleen mág lezen terwijl de policy dat blokkeert, viel weg uit de
+ *    uitslag — en daarmee uit de volledigheidstoets hierboven. Voor een bewaking
+ *    is dat de gevaarlijke kant: geen ruis erbij, maar een melding die wegvalt.
+ *
+ *    📏 Gemeten, alle rechten ingetrokken op `select` na:
+ *
+ *      policy dicht, leesrecht open -> de client leest 0 rijen
+ *      policy open,  leesrecht open -> de client leest 1 rij
+ *
+ *    Alleen de policy verschilt; de grants zijn tussen die twee metingen niet
+ *    aangeraakt. De policy ís daar dus de grendel.
+ *
+ * ⚠️ **Een verse tabel draagt de schrijfrechten al.** 📏 `create table public.x`
+ *    geeft direct `authenticated=arwdx/postgres` — `alter default privileges`
+ *    deelt in Supabase élke nieuwe tabel in `public` uit aan `anon`,
+ *    `authenticated` én `service_role` (beveiligingsregel 4). Een fixture die
+ *    alleen `grant select` doet en denkt dat de schrijfrechten weg zijn, meet
+ *    niets. Vandaar de `revoke all` vooraf in elke stand.
+ *
+ * ⚠️ Alles in één transactie die terugrolt: deze suite draait tegen dezelfde
+ *    database als de rest, en een achtergebleven tabel met een open grant is
+ *    precies het soort rest dat een volgende run laat liegen.
+ *
+ * ⚠️ `stackBeschikbaarOfFaal()` en niet `rlsTestsConfigured`: dit blok praat
+ *    alleen met `psql` en heeft PostgREST niet nodig. Achter de PostgREST-vlag
+ *    zou het zichzelf stil overslaan bij een kale `npm test` — mét de database
+ *    ernaast, volledig meetbaar. Dat is het faalbeeld van QS8-270.
+ */
+const bewakingBeschikbaar = stackBeschikbaarOfFaal(
+  "select count(*) from pg_proc where proname = 'alleenlezen_bewaking'",
+  import.meta.url,
+);
+
+/**
+ * De helften die `alleenlezen_bewaking()` meldt voor een tabel met een
+ * `ALL`-policy die alles dichtzet, bij een gegeven set rechten.
+ */
+function helftenBij(rechten: string): string[] {
+  const uit = psqlMetInvoer(
+    [
+      'begin;',
+      'create table public.proef_alleenlezen_458 (id uuid primary key default gen_random_uuid());',
+      'alter table public.proef_alleenlezen_458 enable row level security;',
+      'create policy proef_458_all on public.proef_alleenlezen_458',
+      '  as permissive for all to authenticated using (false) with check (false);',
+      // ⚠️ Eerst alles weg — zie de kop: de standaardrechten staan er al op.
+      'revoke all on public.proef_alleenlezen_458 from authenticated;',
+      rechten === ''
+        ? '-- geen rechten'
+        : `grant ${rechten} on public.proef_alleenlezen_458 to authenticated;`,
+      "select 'HELFT=' || helft from alleenlezen_bewaking()",
+      "  where tabel = 'proef_alleenlezen_458' order by helft;",
+      'rollback;',
+    ].join('\n'),
+  );
+
+  return uit
+    .split('\n')
+    .map((r) => r.trim())
+    .filter((r) => r.startsWith('HELFT='))
+    .map((r) => r.slice('HELFT='.length))
+    .sort();
+}
+
+describe.runIf(bewakingBeschikbaar)('alleenlezen_bewaking toetst het recht per helft bij ALL', () => {
+  /**
+   * ⚠️ **Vier standen, en drie ervan had de eerste reparatie fout.** De tabel in
+   *    de kop van migratie 0258 is deze tabel.
+   */
+  it.each([
+    {
+      naam: 'alle rechten — beide helften dragen',
+      rechten: 'select, insert, update, delete',
+      verwacht: ['check', 'using'],
+    },
+    {
+      naam: 'alleen select — lezen komt langs de grant, de policy blokkeert het',
+      rechten: 'select',
+      verwacht: ['using'],
+    },
+    {
+      naam: 'alleen insert — de using-helft is onbereikbaar',
+      rechten: 'insert',
+      verwacht: ['check'],
+    },
+    {
+      naam: 'geen rechten — de grant is de grendel, dus zwijgen',
+      rechten: '',
+      verwacht: [],
+    },
+  ])('$naam', ({ rechten, verwacht }) => {
+    expect(
+      helftenBij(rechten),
+      'de ALL-tak meldt een helft die niet bereikbaar is, of laat er een weg die ' +
+        'de policy wél dichthoudt — een weggevallen melding haalt de tabel uit de ' +
+        'volledigheidstoets hierboven en niemand ziet dat',
+    ).toEqual(verwacht);
+  }, TEST_TIMEOUT);
 });

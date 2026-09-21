@@ -435,6 +435,106 @@ describe.skipIf(!rlsTestsConfigured)('QS8-93 — de haalbaarheidsberekening', ()
     },
     TEST_TIMEOUT,
   );
+
+  /**
+   * ⚠️⚠️ **Wat "tempo" hier écht meet — QS8-183, en dit is een eigenschap en
+   *    geen wens.** De dossierrij van 15-08-2026 vraagt of de vier standen iets
+   *    zinnigs zeggen. Dát valideer je met gebruikersdata, en die is er niet.
+   *    Maar één ding valt vandaag wél te meten, zonder één gebruiker: **welke
+   *    grootheid de heuristiek eigenlijk vergelijkt.**
+   *
+   *    De twee kanten van de vergelijking hebben verschillende eenheden:
+   *
+   *      v_tempo    = gehaalde cycli / bekeken cycli        -> altijd 0..1
+   *      v_benodigd = open mijlpalen / weken tot de datum   -> onbegrensd
+   *
+   *    en de takken toetsen `v_benodigd > v_tempo` en `v_benodigd > v_tempo *
+   *    1.5`. Daar zit een aanname onder die nergens opgeschreven staat: **één
+   *    mijlpaal per cyclus is het referentietempo.** Bij `unreachable` is die
+   *    aanname er wél uitgeschreven (*"zelfs in een perfecte week-per-mijlpaal"*,
+   *    0051); bij `behind` en `at_risk` niet.
+   *
+   * ⚠️ **Het gevolg is te meten: de mijlpaaldoorloop van de gebruiker telt niet
+   *    mee.** `v_afgerond` — het aantal mijlpalen dat écht af is — wordt
+   *    berekend, gaat mee in `reason` als `mijlpalen_af`, en raakt **geen enkele
+   *    tak**. Wie tien mijlpalen afrondde krijgt hetzelfde oordeel als wie er
+   *    nul afrondde, zolang hun weekdoelen dezelfde stand hebben.
+   *
+   *    Deze test toont dat aan met twee doelen die op één ding verschillen, en
+   *    hij staat er om twee redenen: de dossierrij heeft er een gemeten feit aan
+   *    in plaats van een vermoeden, en gaat iemand `v_afgerond` ooit wél
+   *    gebruiken, dan is dat vanaf nu een besluit en geen bijvangst — deze test
+   *    wordt er rood van.
+   *
+   * ⚠️ De stand is met opzet `at_risk` en niet `on_track`: bij `on_track` zou de
+   *    test groen blijven omdat er niets te beslissen valt, en dan bewaakt hij
+   *    niets. Hier hángt het oordeel aan het tempo — tempo 0,5 tegen benodigd
+   *    0,75 — en juist dán is het zichtbaar dat de doorloop er niet in zit.
+   */
+  it(
+    'geeft hetzelfde oordeel, of je nu nul of tien mijlpalen afrondde',
+    async () => {
+      const admin = adminDb();
+
+      /** Vier cycli, twee gehaald -> tempo 0,5. Drie open mijlpalen over vier weken -> benodigd 0,75. */
+      const basis = {
+        deadlineOverDagen: 30,
+        openMijlpalen: 3,
+        cycli: ['missed', 'approved', 'missed', 'approved'],
+        verwacht: 'at_risk',
+      } as const;
+
+      const zonder = { ...basis, naam: 'niets afgerond', goalId: proefId(20) };
+      const met = { ...basis, naam: 'tien afgerond', goalId: proefId(21) };
+
+      await bouwScenario(zonder);
+      await bouwScenario(met);
+
+      // ⚠️ `done`-mijlpalen raken `v_open_mijlpalen` niet — die telt alleen
+      //    `todo`. Ze raken uitsluitend `v_afgerond`, en dat is precies de
+      //    grootheid waarvan deze test de invloed meet.
+      const af = await admin.from('milestones').insert(
+        Array.from({ length: 10 }, (_, i) => ({
+          goal_id: met.goalId,
+          title: `Af ${i + 1}`,
+          order_index: 100 + i,
+          status: 'done',
+        })),
+      );
+      if (af.error) throw new Error(`afgeronde mijlpalen: ${af.error.message}`);
+
+      const [a, b] = await Promise.all([herbereken(zonder.goalId), herbereken(met.goalId)]);
+
+      expect(a.error).toBeNull();
+      expect(b.error).toBeNull();
+
+      // De belofte van deze test: de doorloop verandert het oordeel niet.
+      expect(b.data).toBe(a.data);
+
+      // En het oordeel is er een waar tempo daadwerkelijk aan te pas komt.
+      expect(a.data).toBe(basis.verwacht);
+
+      // ⚠️ Het verschil ís er en het staat alleen in `reason`. Zonder deze
+      //    assertie zou de test ook groen zijn als de twee doelen per ongeluk
+      //    identiek waren opgebouwd — dan meet hij niets.
+      const standen = await admin
+        .from('goal_risk')
+        .select('goal_id, reason')
+        .in('goal_id', [zonder.goalId, met.goalId]);
+      if (standen.error) throw new Error(`goal_risk: ${standen.error.message}`);
+
+      const afgerondVan = (id: string): number =>
+        Number(
+          (standen.data ?? []).find((r) => r.goal_id === id)?.reason?.['mijlpalen_af' as never] ?? -1,
+        );
+
+      expect(afgerondVan(zonder.goalId)).toBe(0);
+      expect(afgerondVan(met.goalId)).toBe(10);
+
+      await admin.from('goals').delete().in('id', [zonder.goalId, met.goalId]);
+    },
+    120_000,
+  );
 });
 
 

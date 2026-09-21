@@ -31,6 +31,8 @@ import { REDACTED, scrubContext } from '../../src/lib/observability/scrub';
  *   A  `'mislukt', mislukt` uit de teruggave van 0158 halen   → 2 rood
  *   B  het `meld()`-blok in de rollover weghalen              → 1 rood
  *   C  `recapsOvergeslagen` uit het antwoord van de rollover  → 1 rood
+ *   C' de waarde ervan op een vaste `0` zetten                → 1 rood (sinds
+ *      QS8-424; hiervóór groen, zie de kop bij die toets)
  *   D  de afleiding uit de migratie naar een naam die niet
  *      bestaat wijzen                                         → 1 rood ("vindt geen")
  *   E  `count` in de Sentry-context terug naar `groepen`      → 1 rood
@@ -131,10 +133,33 @@ describe('een overgeslagen groep verlaat de recapjob', () => {
     );
   });
 
+  /**
+   * ⚠️⚠️ **Deze toets greep tot 11-09-2026 naar de verkeerde helft** (QS8-424).
+   *    Hij zocht met `/const (\w+) = …mislukt…/` de **interne variabelenaam** op
+   *    en legde díé naast het antwoord. Toen `draaiRollover` opgesplitst werd,
+   *    verhuisde die variabele naar `maakSeizoensrecaps()` en werd de toets rood
+   *    — terwijl de belofte gewoon overeind stond: het runrapport draagt
+   *    `recapsOvergeslagen` nog steeds.
+   *
+   *    Dat is regel 18 vraag 4 in zuivere vorm: *grijpt deze test naar een plek
+   *    in plaats van naar de belofte?* De belofte is de **uitvoersleutel** — dat
+   *    is wat een mens in het runlog naleest — en niet hoe de variabele erboven
+   *    heet. De ijkingslijst in de kop zei dat al met zoveel woorden (mutatie C
+   *    noemt `recapsOvergeslagen`); de code was ervan afgedreven.
+   *
+   * ⚠️⚠️ **En de eerste reparatie was op één as zwakker dan wat hij verving** —
+   *    aangewezen door de security-review op QS8-424, die het niet beredeneerde
+   *    maar naspeelde. `toMatch(/recapsOvergeslagen\s*:/)` toetst dat de
+   *    **sleutel** er staat en niet dat de **waarde** uit de recapstap komt. 📏
+   *    Gemeten: `recapsOvergeslagen: 0` en `recapsOvergeslagen:
+   *    seizoensrecaps.recaps` bleven allebei groen — precies de twee gevallen
+   *    die het foutbericht hieronder belooft te vangen. De oude vorm ving ze
+   *    wél, want die eiste de variabelenaam ín het antwoord.
+   *
+   *    **Een grendel die groen blijft terwijl de belofte breekt, is erger dan
+   *    geen grendel — want je vertrouwt hem.** De assertie eist nu allebei.
+   */
   it('en zet het in zijn eigen uitvoer, zodat het log het naleest', () => {
-    const opvang = /const\s+(\w+)\s*=[^;]*\bmislukt\b[^;]*;/.exec(bron);
-    const naam = opvang?.[1] as string;
-
     // ⚠️ De láátste, en niet de eerste. Bovenin staat de 403-tak van de
     //    autorisatie, en die draagt dit getal terecht niet.
     const antwoord = [
@@ -149,7 +174,7 @@ describe('een overgeslagen groep verlaat de recapjob', () => {
     expect(
       antwoord?.[1],
       'een deels mislukte recapjob is in de uitvoer niet van een geslaagde te onderscheiden',
-    ).toContain(naam);
+    ).toMatch(/recapsOvergeslagen\s*:\s*\w+\.overgeslagen\b/);
   });
 });
 

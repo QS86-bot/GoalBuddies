@@ -156,6 +156,20 @@ describe.runIf(beschikbaar)('een foto verlaat zijn groep niet', () => {
     //    en gaat de foto weg; zónder tekst ís het bericht de foto en gaat de rij
     //    weg. Een lege bubbel kán bovendien niet — `chat_messages_inhoud_vereist`
     //    eist tekst óf een bijlage.
+    //
+    // ⚠️⚠️ **Dit geval toetste tot 0235 het mechanisme en niet de belofte, en
+    //    het mechanisme was fout.** Het eiste `objecten: '0'` — de metadata-rijen
+    //    weg — en dat is precies wat 0224 deed. Alleen: een `delete from
+    //    storage.objects` haalt de **rij** weg en niet de **bytes**, en zonder rij
+    //    wijst er niets meer naar dat pad. De blob was daarmee onvindbaar voor
+    //    élke opruimpas, en dus voor altijd. Een groene test op een belofte die
+    //    niet waargemaakt werd; de tweede vraag van onwrikbare regel 18.
+    //
+    //    De belofte is: de foto van een vertrekker is weg uit de groep. De
+    //    bewering is daarom nu drieledig — de rij staat er nog (anders is er
+    //    niets meer op te ruimen), niemand kan hem lezen, en `verlopen_chatfotos()`
+    //    wijst hem aan zodat `storage.remove()` er in de rollover de bytes
+    //    daadwerkelijk afhaalt.
     const vertrekker = randomUUID();
     psql(
       `insert into auth.users (id, email) values ('${vertrekker}', '${vertrekker}@weg.local')
@@ -183,25 +197,48 @@ describe.runIf(beschikbaar)('een foto verlaat zijn groep niet', () => {
        values ('${groepA}', '${vertrekker}', '', 'photo', '${alleenFoto}')`,
     );
 
+    // ⚠️ Het respijtuur van 0235 geldt ook voor déze wezen; zonder deze regel
+    //    toetst het laatste veld hieronder het respijtuur en niet de trigger.
+    psql(
+      `update storage.objects set created_at = now() - interval '3 hours'
+       where bucket_id = 'chatfotos' and name like '${groepA}/${vertrekker}/%'`,
+    );
+
     psql(`delete from public.profiles where id = '${vertrekker}'`);
 
     const objecten = psql(
       `select count(*) from storage.objects
        where bucket_id = 'chatfotos' and name like '${groepA}/${vertrekker}/%'`,
     );
+    const leesbaar = als(
+      bob,
+      `select count(*) from storage.objects where name like '${groepA}/${vertrekker}/%'`,
+    );
+    const opgeruimd = psql(
+      `select count(*) from public.verlopen_chatfotos(500)
+       where pad like '${groepA}/${vertrekker}/%' and reden = 'wees'`,
+    );
     const alleenFotoOver = psql(
       `select count(*) from public.chat_messages where attachment_url = '${alleenFoto}'`,
     );
+    // ⚠️ **`group_id` erbij, en dat is geen overbodige nauwkeurigheid.** Elke
+    //    andere telling hierboven is met `${groepA}/${vertrekker}/%` op deze run
+    //    ingeperkt; deze één leunde alleen op de letterlijke tekst `kijk hier`.
+    //    Draait er een tweede suite tegen dezelfde stack, dan telt hij diens rij
+    //    mee en komt er 2 uit waar 1 hoort — gemeten op 14-09-2026 (QS8-481).
     const tekstOver = psql(
       `select count(*) from public.chat_messages
-       where body = 'kijk hier' and attachment_url is null`,
+       where group_id = '${groepA}' and body = 'kijk hier' and attachment_url is null`,
     );
 
+    psql(`delete from storage.objects where bucket_id = 'chatfotos' and name like '${groepA}/${vertrekker}/%'`);
     psql(`delete from public.chat_messages where group_id = '${groepA}' and body = 'kijk hier'`);
     psql(`delete from auth.users where id = '${vertrekker}'`);
 
-    expect({ objecten, alleenFotoOver, tekstOver }).toEqual({
-      objecten: '0',
+    expect({ objecten, leesbaar, opgeruimd, alleenFotoOver, tekstOver }).toEqual({
+      objecten: '2',
+      leesbaar: '0',
+      opgeruimd: '2',
       alleenFotoOver: '0',
       tekstOver: '1',
     });

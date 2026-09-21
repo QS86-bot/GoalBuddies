@@ -2,7 +2,7 @@ import { t } from '../../shared/i18n';
 
 import { reportError } from '../../lib/observability';
 import { supabase } from '../../lib/supabase';
-import type { Cycle } from '../../shared/time';
+import type { Groepsperiode } from '../../shared/time';
 import type { KettingStand } from '../../shared/standen';
 
 /**
@@ -42,7 +42,7 @@ interface RpcStand {
  */
 export async function fetchKettingStand(
   groupId: string,
-  periode: Cycle,
+  periode: Groepsperiode,
 ): Promise<KettingStand | null> {
   const { data, error } = await supabase().rpc('ketting_stand', {
     p_group_id: groupId,

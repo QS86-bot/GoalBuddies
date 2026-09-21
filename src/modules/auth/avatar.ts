@@ -103,7 +103,14 @@ export async function uploadAvatar(
   });
   if (gezet.error) {
     reportError(gezet.error, 'avatar.upload', { user_id: userId });
-    return { ok: false, melding: t('avatar.uploaden_mislukt') };
+    // ⚠️ **Het dagplafond van 0233 komt hier ook binnen, en het is nieuw.** Tot
+    //    die migratie ging de grens van 0130 in de praktijk nooit af — deze
+    //    functie schrijft een vers pad en wist het oude, dus er stond er altijd
+    //    één. De dagteller telt wél elke wisseling, en zonder deze tak leest de
+    //    elfde wissel als "probeer het opnieuw": een uitnodiging om te blijven
+    //    proberen tegen een rem. Precies de klacht die 0226 opschreef.
+    const rem = /Te veel avatars/.test(gezet.error.message ?? '');
+    return { ok: false, melding: t(rem ? 'avatar.rem_bereikt' : 'avatar.uploaden_mislukt') };
   }
 
   // ⚠️ **`.select('id').single()` en niet een kale update.** PostgREST geeft bij
@@ -228,48 +235,4 @@ export async function metGetekendeAvatars<T, K extends keyof T>(
     const url = pad === null ? null : (getekend.get(pad) ?? null);
     return { ...rij, [veld]: url } as T;
   });
-}
-
-// ---------------------------------------------------------------------------
-// Van wat de fotokiezer geeft naar wat de storage-API wil
-// ---------------------------------------------------------------------------
-
-const B64_ALFABET = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/';
-
-/**
- * Zet base64 om in bytes.
- *
- * ⚠️ **Met de hand, en dat is een afweging en geen koppigheid.** `expo-image-picker`
- *    geeft op native een `file://`-uri en op web een `data:`-uri; `fetch()` op een
- *    `file://`-uri is in React Native niet betrouwbaar, dus we vragen de kiezer om
- *    `base64` en dat werkt op beide platformen hetzelfde. `atob` bestaat op
- *    moderne Hermes wél, maar niet op elke versie die een testtoestel draait, en
- *    een terugval die je nooit kunt zien is geen terugval. Twintig regels is
- *    goedkoper dan een dependency die alleen dit doet.
- *
- * ⚠️ Ongeldige invoer geeft `null` en geen halve buffer. Een afbeelding die er
- *    half is, is een upload die op de server sneuvelt met een melding waar
- *    niemand iets aan heeft.
- */
-export function base64NaarBytes(base64: string): Uint8Array | null {
-  const schoon = base64.replace(/[\r\n\s]/g, '').replace(/=+$/, '');
-  if (schoon.length % 4 === 1) return null;
-
-  const uit = new Uint8Array(Math.floor((schoon.length * 3) / 4));
-  let buffer = 0;
-  let bits = 0;
-  let n = 0;
-
-  for (const teken of schoon) {
-    const waarde = B64_ALFABET.indexOf(teken);
-    if (waarde === -1) return null;
-    buffer = (buffer << 6) | waarde;
-    bits += 6;
-    if (bits >= 8) {
-      bits -= 8;
-      uit[n++] = (buffer >> bits) & 0xff;
-    }
-  }
-
-  return uit;
 }

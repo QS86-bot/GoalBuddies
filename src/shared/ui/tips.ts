@@ -232,7 +232,7 @@ export function weektip(categorie: string, cycleStart: string): string {
  *    rijen niet. Scherpt iemand `tegenvaller_woorden()` ooit aan, dan blijft een
  *    tip staan die onder de oude regel legaal was en onder de nieuwe niet. Deze
  *    tak vangt precies dat geval — en de prijs is een naad, die onder test staat
- *    (`tests/beloftes/mijlpaaltip.test.ts` voert één corpus door béide zeven).
+ *    (`tests/rls/mijlpaaltip.test.ts` voert één corpus door béide zeven).
  *
  * ⚠️ **Lengte in codepunten en niet in UTF-16-eenheden.** De CHECK in de database
  *    telt `char_length`, en dat zijn codepunten. `telTekens()` telt hetzelfde;

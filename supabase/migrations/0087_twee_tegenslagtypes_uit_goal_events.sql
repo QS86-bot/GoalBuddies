@@ -36,7 +36,7 @@
 --    maar een tegenspraak, en domeinregel 7 wint.
 --
 -- ⚠️ **`deadline_moved` blijft en dat is geen inconsequentie.** Dat is een van de
---    twee benoemde verruimingen uit `docs/decisions/002-...md` §4a: je vraagt hem
+--    twee benoemde verruimingen uit `docs/decisions/002-domeinregel7-oppervlakken.md` §4a: je vraagt hem
 --    zelf aan en een buddy keurt hem goed (A7). Een verschuiving die de groep
 --    heeft goedgekeurd, mag de groep ook zien.
 --

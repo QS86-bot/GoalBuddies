@@ -39,7 +39,14 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 const HULPSCRIPTS = [
   'migratiebranches.mjs',
   'migraties-controle.mjs',
+  // ⚠️ `migraties-controle` importeert hem sinds QS8-405; zonder deze regel valt
+  //    de kloon om op een ontbrekende module in plaats van op wat je toetst.
+  'rollbackpad.mjs',
   'migratie-hernummer.mjs',
+  // ⚠️ Sinds QS8-580 importeert `migratie-hernummer.mjs` hieruit. Ontbreekt
+  //    dit bestand, dan valt de opbouw om — en vitest meldt zo'n suite als
+  //    **skipped** en niet als failed.
+  'paden.mjs',
   'migratieregister-omgeving.mjs',
   'letterversies.mjs',
 ];

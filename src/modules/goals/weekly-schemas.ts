@@ -1,6 +1,7 @@
 import { z } from 'zod';
 
 import { t } from '../../shared/i18n';
+import { schoneEneRegel, schoneVrijeTekst, telTekens } from '../../shared/tekst';
 
 import { MAX_DAGEN_PER_WEEK } from './schemas';
 
@@ -24,9 +25,10 @@ export const weekdoelSchema = z.object({
   milestone_id: z.uuid().nullable(),
   title: z
     .string()
-    .trim()
-    .min(3, { error: () => t('validatie.weekdoeltitel') })
-    .max(200, { error: () => t('validatie.weekdoeltitel_lang') }),
+    // ⚠️ Eerst schoonmaken, dán oordelen — QS8-506. Zie `schoneVrijeTekst()`.
+    .transform(schoneEneRegel)
+    .refine((v) => telTekens(v) >= 3, { error: () => t('validatie.weekdoeltitel') })
+    .refine((v) => telTekens(v) <= 200, { error: () => t('validatie.weekdoeltitel_lang') }),
   /**
    * De vloer — QS8-44, de belangrijkste import uit Habit Huddle.
    *
@@ -34,8 +36,18 @@ export const weekdoelSchema = z.object({
    *    ingevulde onzin op, en dan is de vloer een formulierveld in plaats van
    *    een vangnet. De UI moedigt hem wél actief aan.
    */
-  floor_text: z.string().trim().max(200, { error: () => t('validatie.vloer_plafond_kort') }).nullable(),
-  ceiling_text: z.string().trim().max(200, { error: () => t('validatie.vloer_plafond_kort') }).nullable(),
+  floor_text: z
+    .string()
+    // ⚠️ Eerst schoonmaken, dán oordelen — QS8-506.
+    .transform(schoneVrijeTekst)
+    .refine((v) => telTekens(v) <= 200, { error: () => t('validatie.vloer_plafond_kort') })
+    .nullable(),
+  ceiling_text: z
+    .string()
+    // ⚠️ Eerst schoonmaken, dán oordelen — QS8-506.
+    .transform(schoneVrijeTekst)
+    .refine((v) => telTekens(v) <= 200, { error: () => t('validatie.vloer_plafond_kort') })
+    .nullable(),
 
   /**
    * De vloer en het plafond in dagen — besluit A53, migratie 0140.

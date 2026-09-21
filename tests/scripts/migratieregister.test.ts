@@ -3,7 +3,8 @@ import { describe, expect, it } from 'vitest';
 // ⚠️ Een `.mjs` zonder eigen typings. TypeScript leest de JSDoc ernaast en leidt
 //    de vorm daaruit af — vandaar dat hier geen `@ts-expect-error` staat, en dat
 //    is met opzet: die zou pas opvallen als hij ooit onnodig wordt.
-import { vergelijk } from '../../scripts/migratieregister-vergelijk.mjs';
+import { standUitRegister, vergelijk } from '../../scripts/migratieregister-vergelijk.mjs';
+import { beoordeel } from '../../scripts/uitrolstand-controle.mjs';
 
 /**
  * QS8-122 — de controle die repo en project naast elkaar legt.
@@ -96,5 +97,45 @@ describe('migratieregister vergelijken', () => {
    */
   it('accepteert een nummer met een lettersuffix', () => {
     expect(vergelijk(GOED, REGISTER)).toEqual([]);
+  });
+});
+
+/**
+ * QS8-517 — de naad tussen de schrijver en de lezer van `supabase/uitgerold.json`.
+ *
+ * ⚠️⚠️ **Dit is onwrikbare regel 18, vraag 1, in zijn zuiverste vorm.**
+ *    `register:controle` schrijft dat bestand en `uitrolstand:controle` leest
+ *    het, en beide zijn apart getoetst. Maar het schrijven draait alléén mét de
+ *    productiesleutel — dus in de poort nooit, in CI nooit, in een cloudsessie
+ *    nooit. Schrijft de een een vorm die de ander afkeurt, dan blijkt dat pas
+ *    midden in een uitrol, ná `supabase db push`, op de rode kant van de stap
+ *    die juist bewijzen moest dat het goed ging.
+ *
+ * ⚠️ Vandaar geen test op elk veld apart maar één die het resultaat van de
+ *    schrijver rechtstreeks aan `beoordeel()` voorlegt. Dát is de belofte:
+ *    *wat register:controle wegschrijft, keurt uitrolstand:controle goed.*
+ */
+describe('wat de schrijver oplevert, keurt de lezer goed', () => {
+  const MAP = ['0001', '0052a', '0072'];
+
+  it('is een stand zonder klachten', () => {
+    const stand = standUitRegister(REGISTER, 'wehgocadxehottiiyvsc', '2026-09-17');
+    expect(beoordeel(stand, MAP, '2026-09-17').fouten).toEqual([]);
+  });
+
+  it('zet de letterversie als `hoogste` en niet het aantal', () => {
+    // ⚠️ Drie rijen t/m `0072`, dus `registerrijen` is 3 en `hoogste` is `0072`.
+    //    Zou de schrijver `length` als lijn nemen, dan stond er `3` en keurde de
+    //    lezer dat af omdat er geen bestand `0003` t/m die lijn bij hoort.
+    const stand = standUitRegister(REGISTER, 'wehgocadxehottiiyvsc', '2026-09-17');
+    expect(stand.hoogste).toBe('0072');
+    expect(stand.registerrijen).toBe(3);
+  });
+
+  it('levert een stand die ook rood wordt als hij dat hoort te zijn', () => {
+    // ⚠️ De keerzijde: deze naadtest zou groen blijven als `beoordeel()` álles
+    //    goedkeurde. Dezelfde map, maar één bestand minder onder de lijn.
+    const stand = standUitRegister(REGISTER, 'wehgocadxehottiiyvsc', '2026-09-17');
+    expect(beoordeel(stand, ['0001', '0072'], '2026-09-17').fouten).not.toEqual([]);
   });
 });

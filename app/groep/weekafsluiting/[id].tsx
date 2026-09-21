@@ -29,7 +29,7 @@ import {
 import { fetchDagzetten } from '@/modules/completions';
 import { opmaaktaal, t } from '@/shared/i18n';
 import { space } from '@/shared/theme';
-import { toonKlokTijd, type Cycle } from '@/shared/time';
+import { toonKlokTijd, type Groepsperiode } from '@/shared/time';
 import {
   AsyncView,
   Avatar,
@@ -309,7 +309,7 @@ function MijnAntwoorden({
 }: {
   readonly groupId: string;
   readonly userId: string | null;
-  readonly periode: Cycle;
+  readonly periode: Groepsperiode;
   readonly mijnAntwoord: Antwoord | null;
   readonly voorstel: string;
   /** Hoeveel reacties er onder je antwoord staan. Nodig voor de waarschuwing. */
@@ -672,7 +672,7 @@ function AntwoordBlok({
 
 interface Stand {
   readonly groep: Groep | null;
-  readonly periode: Cycle;
+  readonly periode: Groepsperiode;
   readonly antwoorden: readonly Antwoord[];
   readonly reacties: readonly Reactie[];
   /** Zijn er meer reacties dan er nu staan? */
@@ -690,8 +690,10 @@ interface Stand {
  *    voor het groepsoverzicht met naam noemt.
  *
  * ⚠️ De Dagzetten worden opgehaald over de gróepsperiode en niet over de eigen
- *    cyclus. `fetchDagzetten()` neemt een `Cycle`, en welke klok je erin stopt is
- *    hier de hele vraag: dit gesprek gaat over de week van de groep.
+ *    cyclus. `fetchDagzetten()` neemt met opzet een ongemerkt `Cycle`, en welke
+ *    klok je erin stopt is hier de hele vraag: dit gesprek gaat over de week van
+ *    de groep. Sinds QS8-180 staat dat antwoord in het type van `eigenDagzetten`
+ *    en niet alleen in deze zin.
  */
 async function laad(groupId: string, userId: string | null): Promise<Stand> {
   const groep = await fetchGroep(groupId);
@@ -736,7 +738,7 @@ async function laad(groupId: string, userId: string | null): Promise<Stand> {
  */
 async function eigenDagzetten(
   userId: string | null,
-  periode: Cycle,
+  periode: Groepsperiode,
 ): Promise<readonly { readonly body: string; readonly local_date: string }[]> {
   if (userId === null || userId === '') return [];
 

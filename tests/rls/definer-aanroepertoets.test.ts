@@ -1,8 +1,7 @@
-import { execFileSync } from 'node:child_process';
 
 import { describe, expect, it } from 'vitest';
 
-import { PSQL_DB, PSQL_OMGEVING, psql, stackBeschikbaarOfFaal } from './psql-stack';
+import { psql, psqlMetInvoer, stackBeschikbaarOfFaal } from './psql-stack';
 
 /**
  * Een definer-functie die `authenticated` mag aanroepen, toetst de aanroeper —
@@ -58,11 +57,7 @@ const beschikbaar = stackBeschikbaarOfFaal(
  *    sessie, de `begin` is meteen weer weg, en de proeffunctie blijft staan.
  */
 function inEenSessie(sql: string): string {
-  return execFileSync(
-    'psql',
-    ['-U', PSQL_OMGEVING.PGUSER as string, '-d', PSQL_DB, '-q', '-w', '-v', 'ON_ERROR_STOP=1', '-tA'],
-    { env: PSQL_OMGEVING, encoding: 'utf8', input: sql },
-  ).trim();
+  return psqlMetInvoer(sql).trim();
 }
 
 /** Leest één `sleutel=waarde`-regel uit de uitvoer van een sessie. */
@@ -240,13 +235,18 @@ $ijk$;
       //    straks stilzwijgend iets ánders af dan waarvoor het geschreven is:
       //    de naam blijft staan, de reden verdwijnt, en de volgende functie die
       //    zo heet is gratis vrijgesteld.
+      // ⚠️ **Dit geval stond op `vereiste_goedkeuringen` en staat sinds 0249 op
+      //    `groepsdatum`**, en die verhuizing is zelf het bewijs dat deze test
+      //    werkt: QS8-181 gaf de eerste een poort, waarmee zijn registerregel
+      //    geen bezwaar meer dekte — en déze tak werd rood en dwong de regel
+      //    eruit. Zie de rij in `docs/ENGINEER-REVIEW.md`.
       const uit = inEenSessie(`
         begin;
-        revoke execute on function public.vereiste_goedkeuringen(uuid, uuid)
+        revoke execute on function public.groepsdatum(uuid)
           from public, anon, authenticated;
         select 'gemeld=' || case when exists (
           select 1 from definer_bewaking()
-          where naam = 'vereiste_goedkeuringen' and bezwaar like 'staat als uitzondering%'
+          where naam = 'groepsdatum' and bezwaar like 'staat als uitzondering%'
         ) then 'ja' else 'nee' end;
         rollback;
       `);

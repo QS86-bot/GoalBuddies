@@ -164,6 +164,50 @@ describe.runIf(beschikbaar)('de avatar-bucket (0126)', () => {
     ).toBe('0');
   });
 
+  // ---------------------------------------------------------------------------
+  // De derde tak: vindbaar buiten je groep (0272, QS8-476)
+  // ---------------------------------------------------------------------------
+  //
+  // ⚠️⚠️ **Deze twee staan hier en niet bij de RPC, want ze toetsen deze policy.**
+  //    De belofte van QS8-476 is *"naam én foto buiten je groep"*, en die keten
+  //    loopt over twee objecten: `zoek_mensen()` geeft het `avatar_url`, en deze
+  //    policy bepaalt of er een ondertekende URL uit komt. `zoek_mensen()`
+  //    testen bewijst de helft — precies het patroon van regel 18 vraag 5, waar
+  //    elk schakeltje af is en de keten onderbroken.
+  //
+  // 📏 **De aanleiding is gemeten en niet bedacht.** De eerste vorm van die tak
+  //    was `exists (select 1 from public.profiles p where p.vindbaar and …)`
+  //    rechtstreeks in de policy. Een policy-expressie draait met de rechten van
+  //    wie de query stelt, en `authenticated` heeft op `profiles` een kolomgrant
+  //    zonder `vindbaar`. Dat gaf geen stille *nee* maar
+  //    `ERROR: 42501: permission denied for table profiles` op de héle policy —
+  //    zes tests in dít bestand werden er rood van, het lezen van je eigen foto
+  //    incluis. Vandaar `vindbaar_voor_mij()`, `security definer`, net als
+  //    `shares_group_with_user()` ernaast.
+  it('laat een vreemde de avatar zien van wie zichzelf vindbaar maakte', () => {
+    psql(`update public.profiles set vindbaar = true where id = '${alice}'`);
+    try {
+      expect(
+        als(vreemde, `select count(*) from storage.objects where name like '${alice}/%'`),
+      ).toBe('1');
+    } finally {
+      psql(`update public.profiles set vindbaar = false where id = '${alice}'`);
+    }
+  });
+
+  // ⚠️ De must-deny-helft, en zonder haar bewijst de test hierboven niets: een
+  //    tak die iedereen doorlaat is groen op "de vreemde ziet de foto".
+  it('laat de vindbaarheid van de één de foto van de ánder niet openen', () => {
+    psql(`update public.profiles set vindbaar = true where id = '${vreemde}'`);
+    try {
+      expect(
+        als(vreemde, `select count(*) from storage.objects where name like '${alice}/%'`),
+      ).toBe('0');
+    } finally {
+      psql(`update public.profiles set vindbaar = false where id = '${vreemde}'`);
+    }
+  });
+
   // -------------------------------------------------------------------------
   // Schrijven — hier hangt de grens aan het pad en niet aan `owner`
   // -------------------------------------------------------------------------
@@ -313,16 +357,35 @@ describe.runIf(beschikbaar)('de avatar-bucket (0126)', () => {
    *    `<map>/.emptyFolderPlaceholder` neer.
    */
   it('valt niet om op een map die geen uuid is', () => {
+    // ⚠️⚠️ **De mapnaam is per run een andere, en dat is sinds QS8-262 ronde 9
+    //    geen smaak maar een reparatie.** Hier stond `tmp`, en dat is een
+    //    lettérlijke sleutel: `bewaak_avatar_aantal()` telt per map in
+    //    `dagtellers` en een `delete` haalt die telling er niet af — dat is
+    //    precies wat migratie 0233 wilde. Dus telde élke run van dit bestand er
+    //    één bij op dezelfde rij, en bij de elfde run viel deze test om met
+    //    `23514` op een stack waar niets mis mee was.
+    //
+    //    📏 Gemeten op 10-09-2026: de rij `avatars/uploader/tmp` stond op 6 na
+    //    een dag testen. Met de hand op 10 gezet werd deze test rood zonder dat
+    //    er één regel code veranderd was — en `rls:dekking` las dat rood als
+    //    "deze policy is bewaakt" en eiste dat er twee terechte registerrijen
+    //    uit gehaald werden. Het instrument is daar apart voor gerepareerd
+    //    (`weegTegenBaseline()`), maar de vaste sleutel hoort hier weg: een test
+    //    die na tien runs omvalt, is een landmijn onder élke poortrun.
+    //
+    //    Een uuid mag het niet zijn — dat is nu juist wat deze test uitsluit.
+    const geenUuid = `map-${randomUUID()}`;
+
     psql(
       `insert into storage.objects (bucket_id, name)
-       values ('avatars', 'tmp/.emptyFolderPlaceholder') on conflict do nothing`,
+       values ('avatars', '${geenUuid}/.emptyFolderPlaceholder') on conflict do nothing`,
     );
 
     expect(als(alice, `select count(*) from storage.objects where bucket_id = 'avatars'`)).toBe(
       '1',
     );
 
-    psql(`delete from storage.objects where name = 'tmp/.emptyFolderPlaceholder'`);
+    psql(`delete from storage.objects where name = '${geenUuid}/.emptyFolderPlaceholder'`);
   });
 
   /**

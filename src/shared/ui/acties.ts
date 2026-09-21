@@ -121,6 +121,11 @@ export function bevestigingen(): Record<BevestigingsNaam, BevestigingsTekst> {
     weekdoelDoorschuiven: bouw('bevestiging.weekdoel_doorschuiven'),
     doelVerwijderen: bouw('bevestiging.doel_verwijderen'),
     doelAfronden: bouw('bevestiging.doel_afronden'),
+    // ⚠️ De enige bevestiging hier die geen punten of geschiedenis raakt — een
+    //    taak in De Lijst telt nergens voor mee (QS8-380). Hij staat er omdat
+    //    verwijderen onomkeerbaar is, en de uitleg noemt daarom de zachtere weg:
+    //    afvinken laat de regel staan.
+    taakVerwijderen: bouw('bevestiging.taak_verwijderen'),
     // ⚠️ Besluit A41 (QS8-132). Deze twee zijn de enige bevestigingen in dit
     //    bestand die niet over je eigen geschiedenis of punten gaan maar over die
     //    van ánderen — en dat is precies waarom ze hier horen: de uitleg noemt de
@@ -195,4 +200,5 @@ export type BevestigingsNaam =
   | 'doelVerwijderen'
   | 'doelAfronden'
   | 'weekStartVerzetten'
-  | 'huddledagVerzetten';
+  | 'huddledagVerzetten'
+  | 'taakVerwijderen';

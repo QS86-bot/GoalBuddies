@@ -27,7 +27,7 @@ export { AvatarKeuze } from './AvatarKeuze';
 export { initialen } from './naming';
 export { Button, type ButtonVariant } from './Button';
 export { Card } from './Card';
-export { ChatRegel } from './ChatRegel';
+export { ChatRegel, type Chatbijlage } from './ChatRegel';
 export { Choice, type Optie } from './Choice';
 export { CategorieMerk } from './CategorieMerk';
 export { DatumKeuze } from './DatumKeuze';
@@ -38,9 +38,8 @@ export { Weekbalken, type WeekbalkRegel } from './Weekbalken';
 export { CATEGORIEMERKEN, categoriemerk, type Categoriemerk, type Familie } from './categoriemerk';
 export { GegroepeerdeKeuze, type Keuzegroep } from './GegroepeerdeKeuze';
 export { Deelknop } from './Deelknop';
-export { kiesFoto, type Fotokeuze, type Fotofoutsleutel } from './kiesFoto';
-export { useBewijsfotokeuze, type Bewijsfotokeuze } from './useBewijsfotokeuze';
 export { BEWIJSFOTO_TEKSTEN, CHATFOTO_TEKSTEN, Foto, type FotoProps } from './Foto';
+export { CHATDOC_TEKSTEN, Document, type DocumentProps } from './Document';
 export { DoelStandKaart } from './DoelStandKaart';
 export { EmptyState } from './EmptyState';
 export { Field } from './Field';
@@ -50,7 +49,9 @@ export { Meldpaneel, type MeldpaneelProps } from './Meldpaneel';
 export { MemberRow } from './MemberRow';
 export { MilestoneProgress } from './MilestoneProgress';
 export { RisicoBadge } from './RisicoBadge';
-export { BovenrandAlVerrekend, useBovenrandAlVerrekend, veiligeBovenrand } from './bovenrand';
+export { Taakbalk } from './Taakbalk';
+export { actiefTabblad, TABBLADEN, toontTaakbalk, ZONDER_TAAKBALK } from './taakbalk';
+export type { Tabblad } from './taakbalk';
 export { Screen, useTerug, type Terug } from './Screen';
 export { StreakCounter } from './StreakCounter';
 export { Weekpas } from './Weekpas';
@@ -69,8 +70,6 @@ export {
   weektip,
   type TipSet,
 } from './tips';
-export { TijdzoneKeuze } from './TijdzoneKeuze';
-export { isBruikbareZone, VOORSTELLEN_MAX, zoekTijdzones } from './tijdzone';
 export { WeekStartKeuze } from './WeekStartKeuze';
 export { Body, Caption, Eyebrow, Heading, Subheading } from './Text';
 

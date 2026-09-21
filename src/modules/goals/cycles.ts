@@ -4,7 +4,7 @@ import {
   now,
   previousCycle,
   userCycle,
-  type Cycle,
+  type Gebruikerscyclus,
   type UserClock,
 } from '../../shared/time';
 
@@ -17,7 +17,7 @@ import {
  */
 
 /** De cyclus waarin de gebruiker zich nu bevindt — QS8-45. */
-export function huidigeCyclus(klok: UserClock): Cycle {
+export function huidigeCyclus(klok: UserClock): Gebruikerscyclus {
   return userCycle(klok, now());
 }
 
@@ -31,7 +31,7 @@ export function huidigeCyclus(klok: UserClock): Cycle {
  *    De UI moet erbij zeggen om welke week het gaat, anders lijkt het alsof je
  *    per ongeluk de verkeerde week afsluit.
  */
-export function afsluitbareCyclus(klok: UserClock): Cycle {
+export function afsluitbareCyclus(klok: UserClock): Gebruikerscyclus {
   return closableUserCycle(klok, now());
 }
 
@@ -61,6 +61,6 @@ export function inCoulanceperiode(klok: UserClock): boolean {
  * vorige week en sloot de rollover die dáárvoor af; erbuiten is de afsluitbare
  * cyclus de lopende week en sloot hij de vorige af.
  */
-export function zojuistAfgeslotenCyclus(klok: UserClock): Cycle {
+export function zojuistAfgeslotenCyclus(klok: UserClock): Gebruikerscyclus {
   return previousCycle(afsluitbareCyclus(klok));
 }
