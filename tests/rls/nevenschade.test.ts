@@ -430,9 +430,12 @@ describe.skipIf(!rlsTestsConfigured)('een globale schrijver raakt geen vreemde f
    *    `now()` — een eigenschap van de kolom, geen keuze van de functie.
    *
    *    **Wordt zwaarder als:** een bestand `last_activity_at` terugzet en daarna
-   *    ongescopeerd laat slapen. `policies.test.ts` doet het eerste al (regel
-   *    2174, terug naar 2026-01-01) en roept daarna `slaap_stille_groepen(30)`
-   *    aan; dat gaat vandaag goed omdat alle ándere groepen op `now()` staan.
+   *    ongescopeerd laat slapen. `policies.test.ts` deed precies dat — het zet
+   *    een groep terug naar 2026-01-01 — en riep daarna `slaap_stille_groepen`
+   *    zónder grens aan. ✅ Sinds QS8-577 geeft die aanroep zijn `p_group_ids`
+   *    mee, en `npm run jobbereik:controle` wordt rood zodra er weer zo eentje
+   *    bij komt. Deze aanroep hier blijft met reden ongescopeerd; de reden
+   *    staat in `ZONDER_GRENS` in `scripts/jobbereik-controle.mjs`.
    *
    * ⚠️⚠️ **Die voorwaarde is één keer ingetreden, in dit bestand zelf.** De
    *    bereikstest onderaan zet `last_activity_at` terug om zijn eigen grens

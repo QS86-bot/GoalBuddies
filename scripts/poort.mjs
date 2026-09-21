@@ -81,6 +81,11 @@ export const HEEFT_DATABASE_NODIG = new Set([
   // ⚠️ Leest `pg_trigger`, de kolomgrants en `pg_policy`: welke tabellen een
   //    client kan volschrijven en of daar een rem op staat (QS8-522).
   'rem:controle',
+  // ⚠️ Leest `pg_proc` én de uitvoerrechten: welke functies een globale job zijn
+  //    (QS8-577). De lijst komt met opzet niet uit de migratiebestanden — een
+  //    lijst die je met de hand bijhoudt, handhaaf je op de vorm die je
+  //    toevallig intypt.
+  'jobbereik:controle',
 ]);
 
 /**

@@ -35,6 +35,7 @@ import { addDays, localDateIn, now, type IsoDate, type TimeZone } from '../../sr
 import {
   adminDb,
   createTestUser,
+  eigenGebruikers,
   removeTestUsers,
   rlsTestsConfigured,
   type TestUser,
@@ -176,10 +177,18 @@ async function stempelVoorIndienen(goalId: string, dagenVoor: number): Promise<v
   if (error) throw new Error(`stempel: ${error.message}`);
 }
 
-/** Laat de rollover zijn ronde doen. */
+/**
+ * Laat de rollover zijn ronde doen.
+ *
+ * ⚠️ **`p_owner_ids` en niet NULL** (QS8-577). Zonder grens keurt deze job élke
+ *    vastgelopen week in de database goed, ook die van een suite die hiernaast
+ *    draait — en dit bestand draait niet in een transactie, dus dat is geen
+ *    theorie. `eigenGebruikers()` is dezelfde boekhouding die het opruimen leest.
+ */
 async function draaiTermijn(termijn = 7): Promise<number> {
   const { data, error } = await adminDb().rpc('keur_vastgelopen_goedkeuringen_goed', {
     p_termijn_dagen: termijn,
+    p_owner_ids: eigenGebruikers(),
   });
   if (error) throw new Error(`termijn: ${error.message}`);
   return data as unknown as number;
@@ -1156,8 +1165,11 @@ describe.skipIf(!rlsTestsConfigured)('een week die zijn beoordelaars kwijtraakt'
    */
   describe('de goedkeuringstermijn handelt elke route af', () => {
     async function keurGoed(termijn = 7): Promise<number> {
+      // ⚠️ Zie `draaiTermijn()` hierboven: zonder `p_owner_ids` raakt deze job
+      //    de weken van elke andere suite (QS8-577).
       const { data, error } = await adminDb().rpc('keur_vastgelopen_goedkeuringen_goed', {
         p_termijn_dagen: termijn,
+        p_owner_ids: eigenGebruikers(),
       });
       if (error) throw new Error(`termijn: ${error.message}`);
       return data as unknown as number;
