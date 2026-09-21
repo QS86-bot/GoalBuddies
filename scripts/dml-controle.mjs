@@ -54,11 +54,14 @@
 import { readFileSync, readdirSync } from 'node:fs';
 import { pathToFileURL } from 'node:url';
 
-// ⚠️ **De knip van `sleutelvorm-controle.mjs` en geen eigen.** Die loopt teken
-//    voor teken om enkele quotes én dollar-quotes heen, precies wat hier nodig
-//    is. `knip:controle` bestaat om een tiende `zonderCommentaar` tegen te
-//    houden; dit script schrijft er dus geen.
-import { zonderCommentaar } from './sleutelvorm-controle.mjs';
+// ⚠️ **De gedeelde SQL-knip en geen eigen.** Die loopt teken voor teken om
+//    enkele quotes én dollar-quotes heen, precies wat hier nodig is.
+//    `knip:controle` bestaat om een tiende `zonderCommentaar` tegen te houden;
+//    dit script schrijft er dus geen. ⚠️ Hij stond tot QS8-574 in
+//    `sleutelvorm-controle.mjs` en werd hier al uit dát bestand geïmporteerd —
+//    een gedeelde knip in het bestand van één consument is een kopie die nog
+//    niet gemaakt is.
+import { zonderCommentaarSql } from './zonder-sql-commentaar.mjs';
 
 const MAP = 'supabase/migrations';
 
@@ -75,7 +78,7 @@ export function zonderFunctielichamen(sql) {
 
 /** De topniveau-DML-statements in één migratie, genormaliseerd op witruimte. */
 export function topniveauDml(sql) {
-  return zonderFunctielichamen(zonderCommentaar(sql))
+  return zonderFunctielichamen(zonderCommentaarSql(sql))
     .split(';')
     .map((s) => s.replace(/\s+/g, ' ').trim())
     .filter((s) => /^(insert\s+into|update|delete\s+from)\b/i.test(s));

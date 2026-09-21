@@ -3,6 +3,8 @@ import { join } from 'node:path';
 
 import { describe, expect, it } from 'vitest';
 
+import { zonderCommentaar } from './roept-aan';
+
 const WORTEL = join(__dirname, '..', '..');
 const PROFIELTAB = join(WORTEL, 'app', '(tabs)', 'profiel.tsx');
 const ONBOARDING = join(WORTEL, 'app', 'onboarding', 'profiel.tsx');
@@ -79,7 +81,7 @@ describe('elk gedeeld profielveld is te wijzigen zonder de onboarding over te do
   });
 
   it.each(GEDEELDE_VELDEN)('$veld is te wijzigen op het profieltabblad', ({ schrijft, reden }) => {
-    const bron = readFileSync(PROFIELTAB, 'utf8');
+    const bron = zonderCommentaar(readFileSync(PROFIELTAB, 'utf8'));
 
     expect(
       schrijft.test(bron),
@@ -94,7 +96,7 @@ describe('elk gedeeld profielveld is te wijzigen zonder de onboarding over te do
    *    vragen; wat niet mag is dat hij de énige plek is.
    */
   it('laat de onboarding de naam gewoon blijven vragen', () => {
-    const bron = readFileSync(ONBOARDING, 'utf8');
+    const bron = zonderCommentaar(readFileSync(ONBOARDING, 'utf8'));
 
     expect(bron, 'de onboarding vraagt de naam niet meer — dan is dit een andere fout').toMatch(
       /display_name:\s*[A-Za-z_$]/,
@@ -117,7 +119,7 @@ describe('elk gedeeld profielveld is te wijzigen zonder de onboarding over te do
  */
 describe('de naamteller telt in de eenheid van de grens', () => {
   it('gebruikt telTekens() en niet .length', () => {
-    const bron = readFileSync(PROFIELTAB, 'utf8');
+    const bron = zonderCommentaar(readFileSync(PROFIELTAB, 'utf8'));
 
     const naamkaart = bron.slice(bron.indexOf('function Naamkaart'));
     expect(
