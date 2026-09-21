@@ -85,6 +85,135 @@ export const GEDEELD = 'scripts/zonder-commentaar.mjs';
 export const DEFINITIE = /(?:export\s+)?function\s+(zonderCommentaar\w*)\s*\(/g;
 
 /**
+ * Een knip herkend aan zijn **lichaam** en niet aan zijn naam — QS8-579.
+ *
+ * ⚠️⚠️ **Waarom dit er later bij kwam.** `DEFINITIE` hierboven matcht alleen
+ *    namen die met `zonderCommentaar` beginnen. 📏 Gemeten op 21-09-2026 liepen
+ *    er **tien** knippen omheen die anders heten — vier in `tests/beloftes/` en
+ *    zes in `scripts/` — en geen van tien stond in een register. Een knip die
+ *    anders heet is precies zo onzichtbaar als de knip die er niet is, en dit
+ *    register bestaat nu juist om de vólgende een keuze te maken in plaats van
+ *    een gewoonte.
+ *
+ * ⚠️⚠️ **En twee van die tien faalden open, met een tegenproef erbij:**
+ *    `ontdaanVanCommentaar()` in `datumopmaak.test.ts` liet een zelf-opgemaakte
+ *    datum dóór zodra er een URL vóór stond op dezelfde regel, en
+ *    `normaliseer()` in `edge-tijd-controle.mjs` verklaarde twee uiteenlopende
+ *    kopieën van `shared/time` gelijk op precies diezelfde vorm — dat is
+ *    correctheidsregel 7, de regel waarvan CLAUDE.md zegt dat hij je een
+ *    gebruiker kost. Allebei de blinde vorm van QS8-412.
+ *
+ * ## Wat hij zoekt: de operatie, niet het teken
+ *
+ * ⚠️ **Een commentaarteken alleen is niet genoeg en dat is gemeten.** 📏 Een
+ *    eerste versie die op `'--'` matchte meldde `git('diff', '--name-only', …)`
+ *    in `branches-controle.mjs`, en een versie die op `\/\/` matchte meldde elke
+ *    URL-regex. Daarom eist hij een **operatie** — `replace`, `split`, `filter`
+ *    of `test` — én een patroon dat een commentaaropener codeert, en kijkt hij
+ *    de `\/\/`-vorm voorbij als er een `:` voor staat (`https:\/\/`).
+ */
+export const KNIPVORM = {
+  /** `\/\*` in een regex: een blokopener, en die schrijf je nergens anders. */
+  blok: /\\\/\\\*/,
+  /** `\/\/` in een regex, maar niet de `https:\/\/` van een URL. */
+  regel: /(?<![:s])\\\/\\\//,
+  /** `--[^\n]*` of `--.*`: SQL-commentaar tot het regeleinde. */
+  sql: /--(?:\[\^\\n\]|\.)\*/,
+  /** `startsWith('//')` en familie — de regelfilter-vorm. */
+  filter: /startsWith\(\s*['"`](?:\/\/|--|\/\*)/,
+};
+
+const OPERATIE = /\.(?:replace|split|filter|test)\s*\(/;
+
+/** Doet dit functielichaam aan commentaar wegknippen? */
+export function isKnipLichaam(lichaam) {
+  if (!OPERATIE.test(lichaam)) return false;
+  return Object.values(KNIPVORM).some((vorm) => vorm.test(lichaam));
+}
+
+/** De index van de `}` die hoort bij de `{` op `open`. */
+function sluitAccolade(bron, open) {
+  let diepte = 0;
+  for (let i = open; i < bron.length; i += 1) {
+    if (bron[i] === '{') diepte += 1;
+    else if (bron[i] === '}') {
+      diepte -= 1;
+      if (diepte === 0) return i;
+    }
+  }
+  return -1;
+}
+
+/**
+ * Elke functie in deze bron met een knip-lichaam, als `functienaam`.
+ *
+ * ⚠️⚠️ **Wat hij ziet en wat niet — gemeten, niet geschat.** Dit is een detector
+ *    op vórm, en die heeft een rand. Die staat hier zodat niemand de telling voor
+ *    volledigheid aanziet:
+ *
+ *    | vorm | |
+ *    | -- | -- |
+ *    | `function naam(bron) { … .replace(/\/\*…\*\//…) … }` | gezien |
+ *    | een knip ergens middenin een grotere functie | gezien |
+ *    | een pijlfunctie: `const knip = (b) => b.replace(…)` | **gemist** |
+ *    | een methode in een klasse of object-literal | **gemist** |
+ *    | een knip die teken voor teken loopt zonder regex | **gemist** |
+ *    | een knip met twee parameters | **gemist** |
+ *
+ * ⚠️ **Eén parameter, en dat is een keuze die precisie koopt.** Een knip neemt
+ *    bron en geeft bron terug. 📏 Zonder die eis meldde de detector `git()`-
+ *    aanroepen met vlaggen en een handvol formatteerfuncties. De prijs staat
+ *    hierboven: een knip met twee parameters ziet hij niet. De teken-voor-teken-
+ *    vorm mist hij ook, en dat is de vorm van `sleutelvorm`, `idlijst` en
+ *    `klokgrens` — die staan alle drie al op naam in `MET_REDEN`, dus vandaag
+ *    kost dat niets. Morgen kan dat anders zijn, en dan is dít de regel die
+ *    verruimd moet worden.
+ */
+export function knipVormenIn(bron) {
+  const schoon = zonderCommentaar(bron);
+  const uit = [];
+
+  for (const m of schoon.matchAll(
+    /(?:export\s+)?function\s+([A-Za-z_$][\w$]*)\s*\(([^)]*)\)[^{]*\{/g,
+  )) {
+    const parameters = m[2].trim();
+    if (parameters === '' || parameters.includes(',')) continue;
+
+    const open = m.index + m[0].length - 1;
+    const eind = sluitAccolade(schoon, open);
+    if (eind === -1) continue;
+
+    if (isKnipLichaam(schoon.slice(open, eind))) uit.push(m[1]);
+  }
+
+  return uit;
+}
+
+/**
+ * De vormtreffers die géén knip zijn, met de reden waarom niet.
+ *
+ * ⚠️⚠️ **Dit is de precisiehelft en hij hoort erbij te staan.** Een vormdetector
+ *    zonder plek voor zijn eigen valse treffers wordt een controle die je
+ *    uitzet — en dan bewaakt hij de échte elfde ook niet meer. Elke rij zegt
+ *    waaróm die functie geen commentaar wegknipt.
+ *
+ * ⚠️ **Een rij hier is geen vrijbrief voor het bestand.** Hij vrijwaart één
+ *    functie; komt er morgen een echte knip naast, dan meldt de controle die
+ *    gewoon. Zelfde overweging als bij `MET_REDEN`.
+ */
+export const GEEN_KNIP = {
+  'scripts/migratie-hernummer.mjs:kopNummer':
+    'selecteert juist de commentaarregels in plaats van ze weg te gooien — de kop van ' +
+    'een migratie ís commentaar, en dit leest het nummer eruit',
+  'scripts/rollbackpad.mjs:padOnderbroken':
+    'verzamelt de `--`-kopregels om te toetsen of het rollback-pad erin staat; hij ' +
+    'gooit niets weg',
+  'scripts/deploy-web.mjs:stripSourceMapVerwijzing':
+    'haalt de `//# sourceMappingURL`-aanwijzing weg, en dat is een bundeldirective en ' +
+    'geen toelichting — hij bepaalt nergens wat er *code* heet',
+};
+
+/**
  * De knippen die met reden een eigen vorm houden.
  *
  * ⚠️ **Op bestand én functienaam, niet op bestand alleen.** Een uitzondering per
@@ -92,6 +221,44 @@ export const DEFINITIE = /(?:export\s+)?function\s+(zonderCommentaar\w*)\s*\(/g;
  *    overweging als in `gedeelde-identiteit-controle.mjs`.
  */
 export const MET_REDEN = {
+  // ── Knippen die niet `zonderCommentaar` heten (QS8-579) ──────────────────
+  'scripts/avatar-controle.mjs:beoordeelBestand':
+    'knipt per regel en op regelbegin (`/^\\s*(\\/\\/|\\*|\\/\\*).*$/`), want deze ' +
+    'controle meldt regelnummers — de gedeelde knip gooit een regel wég en dan ' +
+    'wijst de melding naar de verkeerde regel',
+  'scripts/dode-keten-controle.mjs:zonderDefinities':
+    'knipt SQL (`--`) uit een migratie en doet daarna nog drie dingen; JS-commentaar ' +
+    'komt er niet in voor. 📏 Op 28-08 gemeten dat dit nodig was: zonder de knip ' +
+    'telde een ⚠️-regel in 0122 die `initplan_bewaking()` noemde als aanroeper. ' +
+    '⚠️ Hij stond tot QS8-579 in ZONDER_KNIP alsof hij niets knipte; die rij is ' +
+    'vervallen. Zijn resterende commentaargevoeligheid staat als eigen rij in ' +
+    'docs/ENGINEER-REVIEW.md en faalt **dicht** — 0292 meldde een `klok_fout()` ' +
+    'die alleen in een comment stond',
+  'scripts/edge-tijd-controle.mjs:normaliseer':
+    'knipt óók een **staartcommentaar** weg, en dat moet hier: deze controle ' +
+    'vergelijkt twee kopieën van `shared/time` en commentaar mág daar verschillen. ' +
+    'De gedeelde knip laat een staart staan en meldt dan een verschil dat er geen ' +
+    'is. 📏 Gemeten bij QS8-579: met de gedeelde knip viel ' +
+    '`tests/scripts/edge-tijd.test.ts` om op `const a = 1; // uitleg`. Hij draagt ' +
+    'sinds datzelfde issue wél de `(^|[^:])`-wacht van QS8-412 — zonder die wacht ' +
+    'verklaarde hij twee uiteenlopende kopieën gelijk zodra er een URL in stond',
+  'scripts/registerdrift-controle.mjs:registersIn':
+    'knipt SQL (`--`) uit een functielichaam om de registerrijen te tellen; een ' +
+    'JS-knip haalt daar niets weg',
+  'scripts/tijdzones-controle.mjs:tijdzonekandidaten':
+    'filtert regels die mét commentaar beginnen (`/^\\s*(\\/\\/|\\*|\\/\\*|--)/`) en ' +
+    'dekt daarmee JS én SQL in één zeef — de gedeelde knip kent de `--` niet',
+  'scripts/verbindingen-controle.mjs:controleer':
+    'slaat commentaarregels over met een `return` middenin een grotere lus; de knip ' +
+    'is hier geen aparte stap maar de eerste regel van de beoordeling',
+  'tests/beloftes/aanmeldscherm.test.ts:plat':
+    'knipt mét de `(^|[^:])`-wacht van QS8-412 én slaat witruimte plat — dat tweede ' +
+    'is een andere belofte dan "zonder commentaar". 📏 Gemeten bij QS8-579: faalt ' +
+    'dicht (1 rood) op de `beginModus`-mutatie',
+  'tests/beloftes/tabbalk-bovenaan.test.ts:bronZonderCommentaar':
+    'knipt per regel mét de `(^|[^:])`-wacht van QS8-412, zodat een `https://` in het ' +
+    'scherm niet de rest van zijn regel opeet. 📏 Gemeten bij QS8-579: faalt dicht ' +
+    '(2 rood) op de `<Taakbalk />`-mutatie',
   'scripts/definers-controle.mjs:zonderCommentaar':
     'knipt SQL-commentaar (`--`), niet JS — een andere taal en dus een andere knip',
   'scripts/storage-eigendom-controle.mjs:zonderCommentaar':
@@ -194,10 +361,6 @@ export const ZONDER_KNIP = {
     'leest YAML-workflows, en de gedeelde knip is een JS-knip — een `#` haalt hij niet weg. ' +
     '📏 Gemeten: een uitgecommentarieerde `# - run: npm run x` telt mee. Dat faalt **dicht** ' +
     '(een handmatige stap melden die er niet is), dus het is ruis en geen gat',
-  'scripts/dode-keten-controle.mjs':
-    'leest SQL-migraties; daar hoort een SQL-knip bij en niet deze. Zijn commentaargevoeligheid ' +
-    'staat als eigen rij in docs/ENGINEER-REVIEW.md — hij faalt **dicht** (0292 meldde een ' +
-    '`klok_fout()` die alleen in een comment stond)',
 };
 
 /**
@@ -280,6 +443,22 @@ export function klachten(bron, ruwPad) {
         'met zijn reden in MET_REDEN.',
     );
 
+  // ⚠️ De derde helft: een knip die niet `zonderCommentaar` heet, ontliep dit
+  //    register volledig (QS8-579). Wat hier gevraagd wordt is hetzelfde als bij
+  //    de eerste helft — deel de knip, of leg uit waarom je hem houdt — plus de
+  //    uitweg dat het helemaal geen knip is.
+  for (const naam of knipVormenIn(bron)) {
+    const sleutel = `${pad}:${naam}`;
+    if (MET_REDEN[sleutel] !== undefined || GEEN_KNIP[sleutel] !== undefined) continue;
+    if (DEFINITIE.test(`function ${naam}(`)) continue;
+    DEFINITIE.lastIndex = 0;
+    uit.push(
+      `${pad}: \`${naam}\` knipt commentaar maar heet niet zo — importeer ` +
+        `\`${GEDEELD}\`, zet hem met zijn reden in MET_REDEN, of zet hem in ` +
+        'GEEN_KNIP als hij geen commentaar wegknipt.',
+    );
+  }
+
   // ⚠️ De tweede helft: een bronlezer zónder knip is een keuze of een gat, en
   //    die twee zien er hetzelfde uit tot iemand het opschrijft (QS8-567).
   if (
@@ -343,7 +522,11 @@ export function hoofd() {
     if (pad.startsWith(`${ZONDER_TOETS}/`)) continue;
     const bron = readFileSync(join(WORTEL, pad), 'utf8');
     bronnen.set(metSchuineStrepen(relative('.', pad)), bron);
+    // ⚠️ Béide helften voeden het "bestaat nog"-beeld (QS8-579). Zonder de
+    //    tweede regel meldt `verweesdeRedenen()` elke vormgeregistreerde knip
+    //    als verdwenen — een controle die onzin meldt, leer je negeren.
     for (const naam of definitiesIn(bron)) gevonden.add(`${pad}:${naam}`);
+    for (const naam of knipVormenIn(bron)) gevonden.add(`${pad}:${naam}`);
     uit.push(...klachten(bron, relative('.', pad)));
   }
 
