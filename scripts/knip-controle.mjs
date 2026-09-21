@@ -94,6 +94,9 @@ export const MET_REDEN = {
     'SQL én stringliteralen, per regel — hij loopt teken voor teken om quotes heen',
   'scripts/uitgang-controle.mjs:zonderCommentaarEnTekst':
     'haalt óók stringliteralen weg; dat is een andere belofte dan "zonder commentaar"',
+  'tests/migraties/idempotentie.ts:zonderCommentaarEnTekst':
+    'knipt SQL en niet JS: geneste blokken, dollar-quotes en enkele quotes, met ' +
+    'behoud van regellengte omdat een bezwaar een regelnummer draagt (QS8-570)',
   'scripts/gedeelde-identiteit-controle.mjs:zonderCommentaar':
     'vervangt een blok door evenveel regeleindes, want deze controle meldt regelnummers — ' +
     'met de gedeelde knip zou hij naar de verkeerde regel wijzen',

@@ -101,3 +101,34 @@ iets anders dan ze beloofde.
 Dat is dezelfde vorm die dit project vaker betaalt, nu in een assertie in plaats
 van in een grendel: **een losse letter toetst niet wat een woord toetst.** De
 toets gebruikt nu onderscheidende woorden (`buiten`, `binnen`).
+
+## ⚠️⚠️ Nawoord: deze knip kwam bijna langs `knip:controle` door zijn naam
+
+Terwijl dit issue liep, landde QS8-567: `knip:controle` eist sindsdien dat elke
+eigen knip de gedeelde importeert of met een reden in `MET_REDEN` staat, en hij
+kijkt óók in `tests/`.
+
+Deze zeef heette eerst `schoneBron()`.
+
+| toestand | `knip:controle` |
+|---|---|
+| als `schoneBron` | **groen — 22 knippen met een reden**, 813 bestanden, deze niet geteld |
+| exact dezelfde code als `zonderCommentaarEnTekst` | rood tot hij een registerrij had, daarna **23** |
+
+De detector is `/(?:export\s+)?function\s+(zonderCommentaar\w*)\s*\(/` — een
+detector op **naam**. De tweede helft van die controle zou het nog kunnen
+vangen, maar die draait alleen op `scripts/`.
+
+⚠️ **De naam was niet gekozen om eronderuit te komen**; `schoneBron` was gewoon
+de betere beschrijving. Dat maakt het erger: dit is de vorm die je per ongeluk
+bereikt. De functie heet nu `zonderCommentaarEnTekst` — dezelfde naamvorm als
+`scripts/uitgang-controle.mjs`, dat óók literalen wegknipt — en staat met zijn
+reden in het register.
+
+📏 Het gat zelf staat daarmee niet dicht: een volgende knip onder een andere naam
+is nog steeds onzichtbaar. Dat is **QS8-576**, met deze meting als instantie.
+
+⚠️ En criterium 4 van dit issue — *"het register hoeft niet, dit is `tests/`,
+buiten de scope van QS8-567's grendel"* — is daarmee achterhaald: die grendel
+kreeg `tests` in zijn `MAPPEN` toen hij landde, ná het schrijven van dat
+criterium. De premisse is hermeten in plaats van overgenomen.

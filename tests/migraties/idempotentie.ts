@@ -79,17 +79,30 @@ export type Bezwaar = {
  *    (`"..."`) blijven ongemoeid — dat is een objectnaam en die telt wél mee.
  */
 function ontdaanVanRuis(inhoud: string): readonly string[] {
-  return schoneBron(inhoud).split('\n');
+  return zonderCommentaarEnTekst(inhoud).split('\n');
 }
 
 /**
  * De bron met commentaar en literaalinhoud vervangen door spaties.
  *
+ * ⚠️⚠️ **De naam begint met opzet met `zonderCommentaar`.** `knip:controle`
+ *    (QS8-567) zoekt knippen met het patroon `zonderCommentaar\\w*` en kijkt
+ *    daarbij óók in `tests/`. Een zeef die anders heet, is voor die grendel
+ *    onzichtbaar — 📏 gemeten: onder de naam `schoneBron` bleef hij groen op
+ *    813 bestanden zonder deze knip te tellen. **Dat is langs een grendel komen
+ *    door hoe je iets noemt**, en dat is precies de klasse waar dit bestand zelf
+ *    over gaat. De uitzondering staat nu met reden in `MET_REDEN` in
+ *    `scripts/knip-controle.mjs`.
+ *
+ *    ⚠️ Het achtervoegsel `EnTekst` volgt `scripts/uitgang-controle.mjs`: die
+ *    haalt óók stringliteralen weg, en dat is een andere belofte dan "zonder
+ *    commentaar".
+ *
  * Geëxporteerd om los te kunnen voeden — CLAUDE.md regel 18: *een controle die
  * je niet kunt voeden, kun je niet ijken*. Elke regel houdt zijn lengte en elke
  * `\n` blijft staan, zodat de regelnummers in een bezwaar blijven kloppen.
  */
-export function schoneBron(inhoud: string): string {
+export function zonderCommentaarEnTekst(inhoud: string): string {
   const uit: string[] = [];
   let i = 0;
 

@@ -2,7 +2,7 @@ import { readFileSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 
-import { argumenttypes, bezwarenIn, schoneBron } from './idempotentie';
+import { argumenttypes, bezwarenIn, zonderCommentaarEnTekst } from './idempotentie';
 
 const MIGRATIES = join(__dirname, '..', '..', 'supabase', 'migrations');
 
@@ -236,10 +236,10 @@ describe('idempotentie van migraties — onwrikbare regel 20', () => {
    * voeden, kun je niet ijken*. Beide kanten: wat hij moet legen én wat hij met
    * rust moet laten.
    */
-  describe('schoneBron', () => {
+  describe('zonderCommentaarEnTekst', () => {
     it('houdt het aantal regels gelijk, want bezwaren dragen regelnummers', () => {
       const bron = 'a\n/*\nb\nc\n*/\nd';
-      expect(schoneBron(bron).split('\n')).toHaveLength(bron.split('\n').length);
+      expect(zonderCommentaarEnTekst(bron).split('\n')).toHaveLength(bron.split('\n').length);
     });
 
     it('⚠️ nest blokcommentaar, zoals Postgres doet en C niet', () => {
@@ -249,7 +249,7 @@ describe('idempotentie van migraties — onwrikbare regel 20', () => {
       //    zou ook aanslaan op de 'a' in `table`, en dan toetst de regel iets
       //    anders dan hij belooft. Dat is precies hoe deze toets eerst rood
       //    werd op een scanner die het goed deed.
-      const uit = schoneBron('/* buiten /* binnen */ nog-buiten */ create table t (id int);');
+      const uit = zonderCommentaarEnTekst('/* buiten /* binnen */ nog-buiten */ create table t (id int);');
       expect(uit).not.toContain('buiten');
       expect(uit).not.toContain('binnen');
       expect(uit).toContain('create table t');
@@ -257,26 +257,26 @@ describe('idempotentie van migraties — onwrikbare regel 20', () => {
 
     it('laat een -- binnen een stringliteral geen commentaar worden', () => {
       // De oude vorm knipte hier de rest van de regel weg, inclusief de create.
-      expect(schoneBron("select 'x -- y'; create table t (id int);")).toContain('create table t');
+      expect(zonderCommentaarEnTekst("select 'x -- y'; create table t (id int);")).toContain('create table t');
     });
 
     it('leegt de inhoud van een dollar-quote maar houdt de begrenzers', () => {
-      const uit = schoneBron('as $$ create table verborgen (id int); $$;');
+      const uit = zonderCommentaarEnTekst('as $$ create table verborgen (id int); $$;');
       expect(uit).toContain('$$');
       expect(uit).not.toContain('verborgen');
     });
 
     it('⚠️ laat een gequote identifier met rust — dat is een naam en geen tekst', () => {
-      expect(schoneBron('create table "mijn tabel" (id int);')).toContain('"mijn tabel"');
+      expect(zonderCommentaarEnTekst('create table "mijn tabel" (id int);')).toContain('"mijn tabel"');
     });
 
     it('laat gewone code ongemoeid', () => {
       const bron = "create index if not exists i on t (a);";
-      expect(schoneBron(bron)).toBe(bron);
+      expect(zonderCommentaarEnTekst(bron)).toBe(bron);
     });
 
     it("herkent '' als ontsnapt aanhalingsteken en niet als einde", () => {
-      expect(schoneBron("select 'a''b'; create table t (id int);")).toContain('create table t');
+      expect(zonderCommentaarEnTekst("select 'a''b'; create table t (id int);")).toContain('create table t');
     });
   });
 
