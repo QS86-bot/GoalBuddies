@@ -5,6 +5,7 @@ import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 
 import { stackOordeel } from '../rls/psql-stack';
+import { zonderCommentaar } from './roept-aan';
 
 /**
  * De belofte: **een suite die zegt te meten, meet — of valt om.**
@@ -116,7 +117,7 @@ describe('bestandenMetEigenPoort — geijkt op losse vormen', () => {
 describe('de RLS-map zelf', () => {
   const bestanden = readdirSync(RLS)
     .filter((naam) => naam.endsWith('.ts'))
-    .map((naam) => ({ naam, inhoud: readFileSync(join(RLS, naam), 'utf8') }));
+    .map((naam) => ({ naam, inhoud: zonderCommentaar(readFileSync(join(RLS, naam), 'utf8')) }));
 
   it('kent het poortnummer op precies één plek', () => {
     expect(bestandenMetEigenPoort(bestanden)).toEqual([]);

@@ -23,6 +23,8 @@ import {
   metGetekendeAvatars,
 } from '../../src/modules/auth/avatar';
 import { base64NaarBytes } from '../../src/shared/afbeelding';
+import { zonderCommentaarSql } from '../../scripts/zonder-sql-commentaar.mjs';
+import { zonderCommentaar } from './roept-aan';
 
 import { readFileSync } from 'node:fs';
 
@@ -40,7 +42,22 @@ const tekentNiets = {
 
 vi.mock('../../src/lib/supabase', () => ({ supabase: () => tekentNiets }));
 
-const MIGRATIE = readFileSync('supabase/migrations/0126_avatars_in_een_eigen_emmer.sql', 'utf8');
+/**
+ * ⚠️⚠️ **De knip staat op de leesplek — QS8-574.** Zonder hem toetst
+ *    `expect(MIGRATIE).toMatch(…)` *"die tekenreeks staat in het bestand"* en
+ *    niet *"de emmer is privé"*, en een toelichting die de oude vorm citeert
+ *    stelt hem tevreden. 📏 Gemeten: met `public` op `true` gezet én de regel
+ *    `-- Stond tot vandaag op: values ('avatars', 'avatars', false, 2097152, …)`
+ *    erboven bleef dit bestand **25 van de 25** groen. Een openbare bucket
+ *    omzeilt RLS volledig, dus dat is onwrikbare regel 3 die stil weglekt.
+ *
+ * ⚠️ **De SQL-knip en niet de gedeelde JS-knip**: een SQL-comment is `--`, en
+ *    `zonderCommentaar` filtert regels die met `//` beginnen. Hij laat de
+ *    tekstliteralen staan, want de toetsen hieronder zoeken juist `'avatars'`.
+ */
+const MIGRATIE = zonderCommentaarSql(
+  readFileSync('supabase/migrations/0126_avatars_in_een_eigen_emmer.sql', 'utf8'),
+);
 
 // ---------------------------------------------------------------------------
 
@@ -245,7 +262,13 @@ describe('de tweede schakel: de hook doet wat de knop belooft', () => {
    *    spelen. Wat deze toets wél kan is bewijzen dat de twee kanten van de keten
    *    aan elkaar zitten — en dat was precies wat er ontbrak.
    */
-  const HOOK = readFileSync('src/modules/auth/useAvatarKeuze.ts', 'utf8');
+  /**
+   * ⚠️ **Geknipt op de leesplek — QS8-574.** 📏 Gemeten: met
+   *    `// const pad = await uploadAvatar(…)` in de hook bleef dit bestand **25
+   *    van de 25** groen. Een uitgeschakelde aanroep laat zijn naam juist ín de
+   *    comment staan, dus dit is precies de vorm waar QS8-568 over gaat.
+   */
+  const HOOK = zonderCommentaar(readFileSync('src/modules/auth/useAvatarKeuze.ts', 'utf8'));
 
   it('uploadt', () => {
     expect(HOOK).toContain('uploadAvatar(');

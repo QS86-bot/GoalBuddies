@@ -7,8 +7,8 @@ import {
   lichaamVan,
   NUMERIEKE_LEZERS,
   ontleed,
-  zonderCommentaar,
 } from '../../scripts/sleutelvorm-controle.mjs';
+import { zonderCommentaarSql } from '../../scripts/zonder-sql-commentaar.mjs';
 
 /**
  * QS8-491 — de vorm waarin een `app.`-sleutel gelezen wordt.
@@ -138,7 +138,7 @@ describe('leesplekken — de vormen die gemeld moeten worden', () => {
   });
 });
 
-describe('zonderCommentaar — de knip is zelf een grendel', () => {
+describe('zonderCommentaarSql — de knip is zelf een grendel', () => {
   it('telt een uitgecommentarieerde vorm niet mee', () => {
     const bron = `-- nullif(current_setting('app.oud', true), '') = old.id::text
       v_x := nullif(current_setting('app.echt', true), '') is distinct from old.id::text;`;
@@ -163,7 +163,7 @@ describe('zonderCommentaar — de knip is zelf een grendel', () => {
   });
 
   it('haalt een blokcommentaar weg', () => {
-    expect(zonderCommentaar("/* current_setting('app.x') */ select 1;")).not.toContain('app.x');
+    expect(zonderCommentaarSql("/* current_setting('app.x') */ select 1;")).not.toContain('app.x');
   });
 });
 
