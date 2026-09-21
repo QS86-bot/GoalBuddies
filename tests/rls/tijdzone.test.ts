@@ -144,10 +144,17 @@ describe.runIf(rlsTestsConfigured)('een tz-waarde die geen tijdzone is (0119)', 
           `dit afvangt en deze test de trigger niet meer raakt (kreeg ${error?.code})`,
       ).toBe('22023');
 
-      // `maak_seizoensrecaps()` loopt in één lus over álle groepen: één kapotte
-      // zone zette de recap voor iedereen stil. Daarom draait hij hier echt.
+      // `maak_seizoensrecaps()` loopt in één lus over de groepen die hij krijgt:
+      // één kapotte zone zette de recap voor iedereen stil. Daarom draait hij
+      // hier echt.
+      //
+      // ⚠️ **Met `p_group_ids`, en dat verzwakt de toets niet** (QS8-577). De
+      //    groep waarvan de zone zojuist aangevallen is, is `groupId` — precies
+      //    de enige groep die dit geval interessant maakt. Zónder grens betekent
+      //    NULL "alle groepen", ook die van een suite die hiernaast draait.
       const recap = await adminDb().rpc('maak_seizoensrecaps', {
         p_op: new Date().toISOString(),
+        p_group_ids: [groupId],
       });
       expect(recap.error, 'maak_seizoensrecaps brak op een groep').toBeNull();
     },
