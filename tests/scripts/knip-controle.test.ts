@@ -13,6 +13,9 @@ import { describe, expect, it } from 'vitest';
 import {
   BEOORDEELD,
   definitiesIn,
+  GEEN_KNIP,
+  isKnipLichaam,
+  knipVormenIn,
   GEDEELD,
   klachten,
   knipt,
@@ -246,6 +249,145 @@ describe('verweesdeVrijstellingen', () => {
   it('zwijgt over een rij die zijn vrijstelling nog nodig heeft', () => {
     const bronnen = new Map(Object.keys(ZONDER_KNIP).map((p) => [p, LEZER]));
     expect(verweesdeVrijstellingen(bronnen)).toEqual([]);
+  });
+});
+
+// ---------------------------------------------------------------------------
+
+/**
+ * De derde helft: een knip die niet `zonderCommentaar` heet — QS8-579.
+ *
+ * ⚠️⚠️ **De tweede helft hieronder is hier de zwaarste.** Deze detector kijkt
+ *    naar een lichaamsvorm, en een vormdetector die te ruim staat meldt elke
+ *    `git('diff', '--name-only', …)` en elke URL-regex. 📏 Dat is precies wat
+ *    een eerdere versie deed. Een controle die je leert negeren, bewaakt de
+ *    échte elfde knip ook niet meer.
+ */
+describe('isKnipLichaam — de operatie, niet het teken', () => {
+  it.each([
+    "return bron.replace(/\\/\\*[\\s\\S]*?\\*\\//g, ' ');",
+    "return bron.replace(/\\/\\/[^\\n]*/g, '');",
+    "return sql.replace(/--[^\\n]*/g, ' ');",
+    "return bron.split('\\n').filter((r) => !r.trimStart().startsWith('//')).join('\\n');",
+  ])('herkent %s', (lichaam) => {
+    expect(isKnipLichaam(lichaam)).toBe(true);
+  });
+
+  /**
+   * ⚠️ **Een commentaarteken is geen knip.** Een CLI-vlag begint met `--` en een
+   *    URL bevat `//`; allebei zijn ze geen uitleg die weggeknipt hoort te
+   *    worden.
+   */
+  it.each([
+    "return git('diff', '--name-only', basis, naam);",
+    "return argv.filter((v) => v !== '--stil').join(' ');",
+    "return /https:\\/\\/[^\\s]+/.exec(bron)?.[0] ?? null;",
+    "return bron.toUpperCase();",
+    "const opener = '/*';",
+  ])('laat %s met rust', (lichaam) => {
+    expect(isKnipLichaam(lichaam)).toBe(false);
+  });
+});
+
+describe('knipVormenIn — welke functie knipt, ongeacht zijn naam', () => {
+  it('vindt een knip onder een willekeurige naam', () => {
+    const bron = "function plat(bron) {\n  return bron.replace(/\\/\\*[\\s\\S]*?\\*\\//g, ' ');\n}";
+
+    expect(knipVormenIn(bron)).toEqual(['plat']);
+  });
+
+  it('en ook een knip die middenin een grotere functie zit', () => {
+    const bron = [
+      'function beoordeel(inhoud) {',
+      "  const regels = inhoud.split('\\n');",
+      "  regels.forEach((r) => { const code = r.replace(/^\\s*(\\/\\/|\\*)/, ''); tel(code); });",
+      '  return regels.length;',
+      '}',
+    ].join('\n');
+
+    expect(knipVormenIn(bron)).toEqual(['beoordeel']);
+  });
+
+  /**
+   * ⚠️ **Eén parameter, en dat is een keuze die precisie koopt.** Een knip neemt
+   *    bron en geeft bron terug. De prijs staat in de randtabel van het script:
+   *    een knip met twee parameters ziet hij niet.
+   */
+  it('maar niet een functie met twee parameters', () => {
+    const bron = "function knip(bron, vlag) {\n  return bron.replace(/\\/\\/[^\\n]*/g, vlag);\n}";
+
+    expect(knipVormenIn(bron)).toEqual([]);
+  });
+
+  it('en niet een functie zonder parameters', () => {
+    const bron = "function knip() {\n  return X.replace(/\\/\\/[^\\n]*/g, '');\n}";
+
+    expect(knipVormenIn(bron)).toEqual([]);
+  });
+
+  /**
+   * ⚠️ De gedeelde knip loopt er eerst overheen: een knip die alléén in een
+   *    voorbeeld in commentaar staat, is er geen. Zelfde stap en zelfde reden
+   *    als in `definitiesIn()`.
+   */
+  it('en niet een vorm die alleen in commentaar staat', () => {
+    const bron = "// function plat(b) { return b.replace(/\\/\\*[\\s\\S]*?\\*\\//g, ' '); }";
+
+    expect(knipVormenIn(bron)).toEqual([]);
+  });
+});
+
+describe('de derde helft van klachten', () => {
+  const KNIP = "function plat(bron) {\n  return bron.replace(/\\/\\*[\\s\\S]*?\\*\\//g, ' ');\n}";
+
+  it('meldt een knip die niet zo heet', () => {
+    const uit = klachten(KNIP, 'scripts/nieuw-controle.mjs');
+
+    expect(uit).toHaveLength(1);
+    expect(uit[0]).toContain('`plat` knipt commentaar maar heet niet zo');
+  });
+
+  it('en doet dat ook in de testboom — daar zaten er vier', () => {
+    expect(klachten(KNIP, 'tests/beloftes/x.test.ts')).toHaveLength(1);
+  });
+
+  /**
+   * ⚠️ Een naam die `DEFINITIE` al vangt, hoort niet twee keer gemeld te worden:
+   *    dan staat er één knip met twee klachten en weet de lezer niet welke rij
+   *    hij moet zetten.
+   */
+  it('meldt een `zonderCommentaar`-knip precies één keer', () => {
+    const bron = "function zonderCommentaarX(bron) {\n  return bron.replace(/\\/\\/[^\\n]*/g, '');\n}";
+
+    expect(klachten(bron, 'scripts/nieuw-controle.mjs')).toHaveLength(1);
+  });
+
+  it('zwijgt over een vormtreffer die in GEEN_KNIP staat', () => {
+    const [sleutel] = Object.keys(GEEN_KNIP);
+    const [pad, naam] = (sleutel ?? ':').split(':');
+    const bron = `function ${naam}(bron) {\n  return bron.replace(/\\/\\*[\\s\\S]*?\\*\\//g, ' ');\n}`;
+
+    expect(klachten(bron, pad)).toEqual([]);
+  });
+
+  it('maar niet over diezelfde naam in een ánder bestand', () => {
+    const [sleutel] = Object.keys(GEEN_KNIP);
+    const naam = (sleutel ?? ':').split(':')[1];
+    const bron = `function ${naam}(bron) {\n  return bron.replace(/\\/\\*[\\s\\S]*?\\*\\//g, ' ');\n}`;
+
+    expect(klachten(bron, 'scripts/ergens-anders.mjs')).toHaveLength(1);
+  });
+
+  /**
+   * ⚠️⚠️ **Elke rij in `GEEN_KNIP` draagt een reden die iets uitlegt.** Een
+   *    register met lege rijen is de vorm die dit project elders afwijst — zie
+   *    de eis bij `dml:controle`.
+   */
+  it('en elke rij in GEEN_KNIP zegt waaróm het geen knip is', () => {
+    for (const [sleutel, reden] of Object.entries(GEEN_KNIP)) {
+      expect(sleutel, `${sleutel} mist een functienaam`).toMatch(/^[^:]+:[A-Za-z_$][\w$]*$/);
+      expect(reden.length, `${sleutel} staat er zonder reden`).toBeGreaterThan(30);
+    }
   });
 });
 

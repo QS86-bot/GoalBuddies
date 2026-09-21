@@ -58,6 +58,10 @@ const HULPSCRIPTS = [
   'migratie-hernummer.mjs',
   'migratiebranches.mjs',
   'migratieregister-omgeving.mjs',
+  // ⚠️ Sinds QS8-580 importeert het script `metSchuineStrepen()` hiervandaan.
+  //    Ontbreekt dit bestand, dan valt `beforeAll` om — en dan meldt vitest de
+  //    toetsen als **skipped** en niet als failed. Ongemeten is niet groen.
+  'paden.mjs',
 ];
 
 let werkmap = '';

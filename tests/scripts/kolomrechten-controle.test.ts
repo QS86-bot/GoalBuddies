@@ -22,6 +22,9 @@ import {
   objectSleutels,
   ontleedRechten,
   ontleedSchrijfrechten,
+  ontleedSchrijvers,
+  geenClientSchrijver,
+  SCHRIJVERVRAAG,
   rechtenVoor,
   schrijfacties,
   schrijfIn,
@@ -1102,8 +1105,17 @@ describe('een grant zonder aanroeper — QS8-349', () => {
       rechten: { chat_messages: { UPDATE: { breed: false, kolommen: ['body', 'attachment_url'] } } },
     });
 
+    // ⚠️ `dbSchrijvers: null` is sinds QS8-573 onderdeel van de vorm, en het
+    //    betekent hier *niet gevraagd* — deze aanroep geeft geen `schrijvers`
+    //    mee. Dat is iets anders dan `[]`, en dat onderscheid hoort in de toets
+    //    te staan in plaats van weggelaten te worden met een losser matcher.
     expect(oordeel.zonderAanroeper).toEqual([
-      { tabel: 'chat_messages', soort: 'UPDATE', kolommen: ['body', 'attachment_url'] },
+      {
+        tabel: 'chat_messages',
+        soort: 'UPDATE',
+        kolommen: ['body', 'attachment_url'],
+        dbSchrijvers: null,
+      },
     ]);
     expect(meldingen(oordeel, lijsten)).toHaveLength(1);
     expect(meldingen(oordeel, lijsten)[0]).toContain('chat_messages');
@@ -1392,6 +1404,135 @@ describe('de vragen lezen het effectieve recht en niet de boekhouding — QS8-33
     ['de schrijfkant', SCHRIJFVRAAG],
   ])('%s filtert niet op een grantee-naam', (_naam, vraag) => {
     expect(vraag).not.toMatch(/grantee\s*=/);
+  });
+});
+
+/**
+ * De tegenvraag van QS8-573 — rij 634 van `docs/ENGINEER-REVIEW.md`.
+ *
+ * ⚠️⚠️ **Beide helften staan hieronder, en de tweede draagt de reparatie.** Een
+ *    melding die zegt *"de database schrijft hier"* waar dat niet zo is, praat de
+ *    lezer van een échte dode grant af — en dat is precies wat er gebeurt als de
+ *    tabelnaam in een **comment** meetelt.
+ */
+describe('ontleedSchrijvers', () => {
+  it('leest een paar met schrijvers en een paar zonder', () => {
+    expect(ontleedSchrijvers('groups|INSERT|create_group\ngroups|UPDATE|\n')).toEqual({
+      'groups|INSERT': ['create_group'],
+      'groups|UPDATE': [],
+    });
+  });
+
+  it('splitst meerdere schrijvers', () => {
+    const uit = ontleedSchrijvers('group_members|UPDATE|verlaat_groep,verwijder_lid\n');
+
+    expect(uit['group_members|UPDATE']).toEqual(['verlaat_groep', 'verwijder_lid']);
+  });
+
+  /** ⚠️ Een halve regel is een fout en geen lege lijst — zelfde vorm als `ontleedSchrijfrechten()`. */
+  it('werpt op een onleesbare regel in plaats van hem als leeg te lezen', () => {
+    expect(() => ontleedSchrijvers('groups|INSERT\n')).toThrow(/onleesbare regel/);
+  });
+});
+
+describe('geenClientSchrijver — welk van de drie gevallen', () => {
+  it('zegt "dood hout" als de database er ook niet naar schrijft', () => {
+    const uit = geenClientSchrijver({ 'reports|UPDATE': [] }, 'reports|UPDATE');
+
+    expect(uit.dbSchrijvers).toEqual([]);
+    expect(uit.reden).toContain('geen enkele databasefunctie ook');
+  });
+
+  /**
+   * ⚠️⚠️ **Het geval dat 21 tests kostte.** `group_members` UPDATE: niets in
+   *    `src/` of `app/` schrijft ernaar, en de database wél.
+   */
+  it('noemt de databaseschrijvers als die er zijn', () => {
+    const uit = geenClientSchrijver(
+      { 'group_members|UPDATE': ['beslis_lidmaatschapsverzoek', 'verlaat_groep'] },
+      'group_members|UPDATE',
+    );
+
+    expect(uit.dbSchrijvers).toEqual(['beslis_lidmaatschapsverzoek', 'verlaat_groep']);
+    expect(uit.reden).toContain('2 databasefunctie(s) wél');
+  });
+
+  /**
+   * ⚠️ **Ongemeten is niet hetzelfde als niemand.** Zonder database is er geen
+   *    antwoord, en dan mag de melding niet klinken alsof er wél gemeten is.
+   */
+  it('zegt dat er niet gevraagd is als het paar ontbreekt', () => {
+    const uit = geenClientSchrijver({}, 'groups|INSERT');
+
+    expect(uit.dbSchrijvers).toBeNull();
+    expect(uit.reden).toContain('niet bevraagd');
+  });
+});
+
+describe('SCHRIJVERVRAAG — de vorm van de vraag', () => {
+  /**
+   * ⚠️⚠️ **Zonder deze knip telt een comment als schrijver.** `prosrc` bevat het
+   *    commentaar, en dit project schrijft er veel. Dit is de grendel die de hele
+   *    reparatie draagt; hem weglaten laat de controle "de database schrijft
+   *    hier" zeggen over een functie die dat juist níet doet.
+   */
+  it('knipt commentaar weg vóór hij naar een schrijver zoekt', () => {
+    expect(SCHRIJVERVRAAG).toContain('code_zonder_commentaar(p.prosrc)');
+  });
+
+  /**
+   * ⚠️ `as materialized` is een meting en geen smaak: 📏 zonder dat woord voert
+   *    Postgres de scanner per join-poging opnieuw uit en liep dezelfde vraag na
+   *    twee minuten nog; mét duurt hij 11 seconden.
+   */
+  it('rekent de knip één keer uit', () => {
+    expect(SCHRIJVERVRAAG).toContain('as materialized');
+  });
+
+  /**
+   * ⚠️⚠️ **`\M` sluit de tabelnaam af.** Zonder die grens telt `update groups`
+   *    ook als schrijver van `group_members`, en dan draagt élk paar op een
+   *    tabel met een langere naamgenoot een schrijver die er niet is.
+   */
+  it('sluit de tabelnaam af, zodat `groups` geen `group_members` matcht', () => {
+    expect(SCHRIJVERVRAAG).toContain(String.raw`|| '\M'`);
+  });
+});
+
+describe('beoordeelSchrijven met de tegenvraag', () => {
+  const RECHTEN = {
+    group_members: { UPDATE: { kolommen: ['role', 'status'], totaal: 6, breed: false } },
+  };
+
+  it('hangt de databaseschrijvers aan het paar zonder clientschrijver', () => {
+    const uit = beoordeelSchrijven({
+      acties: [],
+      rechten: RECHTEN,
+      schrijvers: { 'group_members|UPDATE': ['verlaat_groep'] },
+    });
+
+    expect(uit.zonderAanroeper[0]?.dbSchrijvers).toEqual(['verlaat_groep']);
+    expect(uit.ongemeten['group_members|UPDATE']).toContain('1 databasefunctie(s) wél');
+  });
+
+  /** ⚠️ De must-allow: een paar zonder enige schrijver blijft gewoon dood hout. */
+  it('laat een paar zonder enige schrijver dood hout heten', () => {
+    const uit = beoordeelSchrijven({
+      acties: [],
+      rechten: RECHTEN,
+      schrijvers: { 'group_members|UPDATE': [] },
+    });
+
+    expect(uit.zonderAanroeper[0]?.dbSchrijvers).toEqual([]);
+    expect(uit.ongemeten['group_members|UPDATE']).toContain('geen enkele databasefunctie ook');
+  });
+
+  /** ⚠️ Zonder `schrijvers` verandert er niets aan wélke paren gemeld worden. */
+  it('meldt hetzelfde paar ook zonder database, met een andere reden', () => {
+    const uit = beoordeelSchrijven({ acties: [], rechten: RECHTEN });
+
+    expect(uit.zonderAanroeper).toHaveLength(1);
+    expect(uit.ongemeten['group_members|UPDATE']).toContain('niet bevraagd');
   });
 });
 
