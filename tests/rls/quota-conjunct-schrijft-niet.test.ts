@@ -11,8 +11,37 @@ import { psql } from './psql-stack';
  *
  * `tests/rls/bulkschrijf.test.ts` bewaakt deze belofte voor `weekly_plan_steps`.
  * 📏 Gemeten op 19-09-2026 in `pg_policy`: **vijf** insert-policies dragen een
- * conjunct `<iets>_over() > 0`, en de vier andere stonden even onbewaakt als die
- * ene stond toen QS8-557 hem wagenwijd openzette zonder dat iets rood werd.
+ * conjunct `<iets>_over() > 0`, en de vier andere droegen er geen toets op.
+ *
+ * ⚠️⚠️ **"Geen toets" is niet hetzelfde als "niets werd rood", en dat verschil is
+ *    op 21-09-2026 nagemeten omdat de eerste versie van deze kop het door elkaar
+ *    haalde.** Haal je de conjunct uit `chat_messages_insert`,
+ *    `day_checkins_insert` of `weekly_goals_insert`, dan wórdt er iets rood —
+ *    📏 `rem.test.ts:144`, `afvinkgrens.test.ts:213` en `bulkschrijf.test.ts:239`,
+ *    elk precies één toets. Maar alle drie vallen om op de **foutcode**
+ *    (`23514` waar `42501` verwacht werd), en geen van die drie gevallen meet de
+ *    schijf: `rem.test.ts` zet er een rijtelling achter, de andere twee niets.
+ *    (`bulkschrijf.test.ts` méét de schijf wel — maar in zijn eigen toets over
+ *    `weekly_plan_steps`, niet in deze.)
+ *
+ *    ⚠️ En een rijtelling kán deze belofte niet zien. 📏 Dat volgt uit de
+ *       ijking hieronder: de tabel groeit terwijl assertie 1 (*"elk verzoek
+ *       wordt geweigerd"*) groen blijft — de rijen zijn dus geschreven en
+ *       daarna teruggerold, en een telling achteraf klopt precies zoals ze
+ *       klopte.
+ *
+ * ⚠️⚠️ **Dat is de gevaarlijkste vorm, niet de veiligste.** Die drie toetsen
+ *    zeggen wat er rood is en dat is niet wat er stuk is, en `bulkschrijf.test.ts`
+ *    zegt het met zoveel woorden verkeerd: zijn boodschap luidt *"23514 betekent
+ *    dat de rem het venster telt in plaats van dit verzoek"*, en dat is onder
+ *    déze mutatie een onjuiste diagnose die de volgende lezer naar de rem stuurt.
+ *    De belofte — de rijen worden niet geschreven — stond bij alle vier even
+ *    onbewaakt.
+ *
+ * ⚠️ 📏 En bij de vierde wordt er inderdaad niets rood: met
+ *    `weekreacties_over() > 0` uit `week_review_replies_insert` liep de hele
+ *    `tests/rls`-boom zonder dit bestand groen door op **185 bestanden en 2143
+ *    toetsen** (21-09-2026).
  *
  * ## Wat de conjunct wél en niet doet — per tabel nagemeten, niet overgenomen
  *
@@ -43,17 +72,29 @@ import { psql } from './psql-stack';
  * worden geweigerd, dus ze committen nooit, dus zijn teller blijft nul en
  * `<iets>_over()` geeft altijd het volle plafond. Wat de conjunct wél levert is
  * de nette afhandeling van een legitieme herhaling door wie zijn plafond écht
- * gehaald heeft. Het gat erachter staat als open risico **Hoog** in rij 609 van
- * `docs/ENGINEER-REVIEW.md`: er staat geen rate limit vóór PostgREST.
+ * gehaald heeft. Het gat erachter staat als open risico **Hoog** in de rij
+ * *Er staat geen rate limit vóór PostgREST* (08-09-2026) van
+ * `docs/ENGINEER-REVIEW.md`.
  *
  * ## De vulkant verschilt per tabel, en dat is geen detail
  *
  * 📏 `berichten_over()` en `weekreacties_over()` tellen op **auteur**
  * (`sender_id` / `author_id`); `dagafvinkingen_over()` en `weekdoelen_over()`
- * tellen via de **eigenaar** van het doel. Opvullen via `adminDb()` telt dus
- * alleen mee voor die laatste twee — voor de eerste twee moet de gebruiker zijn
- * eigen rijen schrijven, anders staat hij bij de meting helemaal niet op zijn
- * plafond en meet de toets niets.
+ * tellen via de **eigenaar** van het doel. De opvulling moet die kolom dus
+ * vullen met de id van de testgebruiker, anders staat hij bij de meting helemaal
+ * niet op zijn plafond en meet de toets niets terwijl hij groen is.
+ *
+ * ⚠️ **Wat daar níet uit volgt, en wat QS8-557 er wél uit afleidde: dat de
+ *    gebruiker zijn opvulling zelf moet schrijven.** 📏 Nagemeten op 21-09-2026:
+ *    een rij die buiten de sessie van de gebruiker geschreven wordt mét
+ *    `sender_id` op zijn id telt gewoon mee — `berichten_over()` ging van 500
+ *    naar 499 — want `berichten_over()` leest de **kolom** en niet de schrijver,
+ *    en `stamp_chat_message()` zet `sender_id` alleen bij UPDATE terug
+ *    (`new.sender_id := old.sender_id`), nooit bij INSERT.
+ *
+ *    De toetsen hieronder laten de gebruiker zijn chatopvulling tóch zelf
+ *    schrijven — dat is dichter bij de werkelijkheid en kost niets — maar de
+ *    regel eronder is *"de kolom draagt zijn id"*, en die geldt voor alle vier.
  *
  * ## ⚠️ De volgorde van de asserties is de ijkbaarheid
  *
@@ -62,20 +103,33 @@ import { psql } from './psql-stack';
  * en de meting die de belófte raakt draait nooit. Die val is in QS8-557 in de
  * eerste versie van de toets gelopen.
  *
- * IJKING — met de hand gedraaid op 19-09-2026, **per conjunct apart**: de policy
- * opnieuw aangemaakt zónder `<iets>_over() > 0` en verder woordelijk gelijk, de
- * suite erna, en daarna `npm run rls:stack` om hem terug te zetten. Elke mutatie
- * maakt precies één toets rood, en telkens op de schijfassertie:
- *
- *   `weekdoelen_over` weg          -> weekly_goals groeide 344 kB
- *   `dagafvinkingen_over` weg      -> day_checkins groeide 1368 kB
- *   `berichten_over` weg           -> chat_messages groeide 3520 kB
- *   `weekreacties_over` weg        -> week_review_replies groeide 464 kB
+ * IJKING — met de hand gedraaid op 19-09-2026 en op 21-09-2026 opnieuw,
+ * **per conjunct apart**: de policy opnieuw aangemaakt zónder `<iets>_over() > 0`
+ * en verder woordelijk gelijk, de suite erna, en daarna de policy teruggezet en
+ * `pg_get_expr()` ernaast gelegd om te tonen dat hij woordelijk terug is. Elke
+ * mutatie maakt precies één toets uit dít bestand rood, en telkens op de
+ * schijfassertie. En 📏 in alle vier de gevallen bleef assertie 1 (*"elk verzoek
+ * wordt geweigerd"*) groen — dat is de bevinding van QS8-557 nog een keer: de
+ * weigering is niet wat deze conjunct levert.
  *
  * ⚠️ Vier mutaties en geen één voor alle vier, want dat zou niets zeggen over de
- *    drie andere policies. En 📏 in alle vier de gevallen bleef assertie 1
- *    (*"elk verzoek wordt geweigerd"*) groen — dat is de bevinding van QS8-557
- *    nog een keer: de weigering is niet wat deze conjunct levert.
+ *    drie andere policies.
+ *
+ * ⚠️⚠️ **De groei is geen getal maar een spreiding, en dat is op 21-09-2026
+ *    rechtgezet.** De eerste versie van deze kop noemde één meting per tabel
+ *    alsof het dé waarde was; 📏 `weekly_goals` kwam daar op 344 kB uit en dat
+ *    getal is in vijf latere metingen **niet één keer** teruggekomen. Het is
+ *    precies de grootheid die volgens de `DREMPEL`-kop hieronder varieert met
+ *    vrijgemaakte ruimte, dus één monster zégt niets — en het was uitgerekend
+ *    het monster waar de drempel op verantwoord werd.
+ *
+ *   tabel                  gemeten zonder de conjunct        kleinste   factor
+ *   weekly_goals           344*, 448, 584, 688, 704, 736 kB   448 kB     3,0
+ *   week_review_replies    464, 504, 528 kB                   464 kB     3,1
+ *   day_checkins           1304, 1368, 1480 kB               1304 kB     8,7
+ *   chat_messages          3360, 3456, 3520 kB               3360 kB    22,4
+ *
+ *   (*) de 344 kB van 19-09-2026, één keer gezien en nooit gereproduceerd.
  */
 
 const SETUP_TIMEOUT = 300_000;
@@ -88,10 +142,14 @@ const RONDES = 10;
  * De drempel waaronder de groei van een tabel nog "niet gegroeid" heet.
  *
  * 📏 Dezelfde 150 kB als in `bulkschrijf.test.ts`, en hij houdt het voor alle
- *    vier — het kleinste gemeten signaal zónder de conjunct is `weekly_goals`
- *    met 344 kB, dus factor 2,3. De andere drie liggen ruimer: 464 kB
- *    (`week_review_replies`), 1368 kB (`day_checkins`) en 3520 kB
- *    (`chat_messages`). Alle vier gemeten op 19-09-2026 met `RONDES = 10`.
+ *    vier. Het **kleinste** signaal zónder de conjunct, over alle metingen in de
+ *    IJKING-tabel hierboven, is `weekly_goals` met 448 kB — factor 3,0. De
+ *    andere drie liggen ruimer: 464 kB (`week_review_replies`), 1304 kB
+ *    (`day_checkins`) en 3360 kB (`chat_messages`). Gemeten op 19- en 21-09-2026
+ *    met `RONDES = 10`.
+ *
+ * ⚠️ **Het kleinste en niet het gemiddelde.** Een drempel die op een gemiddelde
+ *    leunt, laat de helft van de metingen aan de verkeerde kant vallen.
  *
  * ⚠️ **De marge is er niet voor parallelle ruis.** 📏 `vitest.config.mts` zet voor
  *    de `rls`-groep `fileParallelism: false` én `sequence: { concurrent: false }`.
@@ -99,11 +157,21 @@ const RONDES = 10;
  *    en halfvolle pagina's achter, en dan groeit een tabel onder de mutatie
  *    minder hard omdat hij die ruimte hergebruikt.
  *
+ * ⚠️ **Dit bestand is daar zelf een bron van**, en dat verklaart de spreiding in
+ *    de IJKING-tabel hierboven: de opvulling van vier tabellen (200 + 216
+ *    weekdoelen, 500 afvinkingen, 500 berichten, 100 reacties) verdwijnt in
+ *    `afterAll` met `removeTestUsers()`, maar de ruimte komt pas met een vacuum
+ *    terug bij de vrije lijst. Een volgende run meet daardoor niet dezelfde
+ *    beginstand als deze.
+ *
  * ⚠️ Wie deze drempel ooit ruimer zet omdat een toets rood werd, repareert het
  *    verkeerde: er is geen ruisbron die hem legitiem over de 150 kB tilt. De
  *    opvulling staat vóór de nulmeting, dus die telt niet mee.
  */
 const DREMPEL = 150 * 1024;
+
+/** De vier tellers die de conjunct leest — één naam per tabel. */
+type Quotateller = 'berichten_over' | 'dagafvinkingen_over' | 'weekdoelen_over' | 'weekreacties_over';
 
 function tabelbytes(tabel: string): number {
   return Number(psql(`select pg_total_relation_size('public.${tabel}')`).trim());
@@ -141,12 +209,13 @@ function beoordeel(
       `met de conjunct hoort dat nul te zijn (📏 zonder hem: ${signaal})`,
   ).toBeLessThan(drempel);
 
-  // Assertie 3 — de diagnose: wélke grendel sprak. 23514 betekent dat de
-  // handhaver het overnam, en dan stonden de rijen al op schijf.
+  // Assertie 3 — de diagnose: wélke grendel sprak. 23514 betekent dat een
+  // grendel ná het begin van het schrijven het overnam, en dan staan er rijen
+  // op schijf.
   expect(
     [...new Set(codes)],
-    `42501 is de policy die vóór het schrijven weigert; 23514 is de handhaver die ná het ` +
-      `schrijven weigert — dan is de conjunct weg`,
+    `42501 is de policy die vóór het schrijven weigert; 23514 is een grendel die pas ná het ` +
+      `begin van het schrijven weigert (de handhaver of de rem) — dan is de conjunct weg`,
   ).toEqual(['42501']);
 }
 
@@ -179,6 +248,34 @@ describe.skipIf(!rlsTestsConfigured)('de quota-conjunct schrijft niet', () => {
     return (doel.data as { id: string }).id;
   }
 
+  /**
+   * De naad tussen de opvulling en de meting — regel 18 vraag 3 in zijn
+   * goedkoopste vorm.
+   *
+   * ⚠️⚠️ **Zonder deze assertie is elke toets hieronder groen te houden met een
+   *    fixture die de toestand niet maakt die hij beweert te maken.** Vult de
+   *    opvulling de verkeerde kolom (de vulkant hierboven), of verschuift een
+   *    `*_plafond()` ooit weg van de waarde die hier hardgecodeerd staat, dan
+   *    staat de gebruiker niet op nul, passeert een deel van de aanvalsbatch de
+   *    conjunct gewoon, en meet de schijfassertie iets anders dan haar naam zegt.
+   *
+   * IJKING — 21-09-2026, met de hand: de chatopvulling via `adminDb()` met
+   * `sender_id: bob.id` in plaats van dat van alice. 📏 `staatOpZijnPlafond()`
+   * wordt rood met `500` waar `0` hoort — en dat is precies de fixture-fout
+   * die QS8-557 als regel opschreef en die hier dus wél te maken is met
+   * `adminDb()`: niet omdat de schrijver de verkeerde is, maar omdat de kolom de
+   * verkeerde id draagt.
+   *
+   * ⚠️ Hij gooit vóór de meting, dus wat de schijfassertie daarná gedaan zou
+   *    hebben is niet gemeten en staat hier niet. Dát is de winst: een kapotte
+   *    fixture komt eruit als een kapotte fixture, en niet als een groeigetal
+   *    dat de lezer moet duiden.
+   */
+  async function staatOpZijnPlafond(teller: Quotateller, tabel: string): Promise<void> {
+    const over = await alice.db.rpc(teller);
+    expect(over.data, `${teller}() hoort na de opvulling van ${tabel} op nul te staan`).toBe(0);
+  }
+
   // -------------------------------------------------------------------------
   // weekly_goals — plafond 200, telt via de eigenaar
   // -------------------------------------------------------------------------
@@ -189,9 +286,10 @@ describe.skipIf(!rlsTestsConfigured)('de quota-conjunct schrijft niet', () => {
       const PLAFOND = 200;
       const doelId = await doelVan('QUOTA weekdoelen');
 
-      // Opvullen via `adminDb()` mag hier: `weekdoelen_over()` telt het venster
-      // van de eigenaar en niet van de schrijver. 📏 `weekdoel_cyclus_klopt()`
-      // keert vroeg terug zodra `auth.uid()` null is, dus de cyclus knelt niet.
+      // Opvullen via `adminDb()` kan hier zonder de eigenaar mee te geven:
+      // `weekdoelen_over()` telt het venster van de **doel-eigenaar**, en dat is
+      // alice via `doelVan()`. 📏 `weekdoel_cyclus_klopt()` keert vroeg terug
+      // zodra `auth.uid()` null is, dus de cyclus knelt niet.
       moetLukken(
         await adminDb()
           .from('weekly_goals')
@@ -205,6 +303,8 @@ describe.skipIf(!rlsTestsConfigured)('de quota-conjunct schrijft niet', () => {
         'weekdoelen opvullen tot het plafond',
       );
 
+      await staatOpZijnPlafond('weekdoelen_over', 'weekly_goals');
+
       const vooraf = tabelbytes('weekly_goals');
       const codes: (string | undefined)[] = [];
       for (let ronde = 0; ronde < RONDES; ronde += 1) {
@@ -217,7 +317,7 @@ describe.skipIf(!rlsTestsConfigured)('de quota-conjunct schrijft niet', () => {
       }
       const groei = tabelbytes('weekly_goals') - vooraf;
 
-      beoordeel('weekly_goals', codes, groei, DREMPEL, '344 kB (352.256 bytes), factor 2,3 op de drempel');
+      beoordeel('weekly_goals', codes, groei, DREMPEL, '448-736 kB over vijf metingen, kleinste factor 3,0 op de drempel');
     },
     TEST_TIMEOUT,
   );
@@ -275,18 +375,27 @@ describe.skipIf(!rlsTestsConfigured)('de quota-conjunct schrijft niet', () => {
         'afvinkingen opvullen tot het plafond',
       );
 
+      await staatOpZijnPlafond('dagafvinkingen_over', 'day_checkins');
+
       const vooraf = tabelbytes('day_checkins');
       const codes: (string | undefined)[] = [];
       for (let ronde = 0; ronde < RONDES; ronde += 1) {
-        // Dezelfde rijen elke ronde: ze worden geweigerd, dus ze botsen nooit
-        // met zichzelf op `day_checkins_een_per_dag`.
+        // Dezelfde rijen elke ronde: ze worden geweigerd, dus ze committen nooit
+        // en botsen nooit met zichzelf op `day_checkins_een_per_dag`.
+        //
+        // ⚠️ De opvulling (500) plus deze batch (1000) tilt het venster boven de
+        //    remgrens van `plafond * 2`. Met de conjunct intact doet dat niets —
+        //    de rem is `before insert … for each row` en telt bij rij 1 pas 500 —
+        //    maar bij de ijking kan hij de weigering overnemen van de handhaver.
+        //    Voor de schijfassertie maakt dat niet uit: allebei weigeren ze
+        //    nadat er rijen geschreven zijn, en dat is wat hier gemeten wordt.
         codes.push(
           (await alice.db.from('day_checkins').insert(afvinkingen(aanvalIds, PLAFOND * 2))).error?.code,
         );
       }
       const groei = tabelbytes('day_checkins') - vooraf;
 
-      beoordeel('day_checkins', codes, groei, DREMPEL, '1368 kB (1.400.832 bytes), factor 9,1 op de drempel');
+      beoordeel('day_checkins', codes, groei, DREMPEL, '1304-1480 kB over drie metingen, kleinste factor 8,7 op de drempel');
     },
     TEST_TIMEOUT,
   );
@@ -305,9 +414,11 @@ describe.skipIf(!rlsTestsConfigured)('de quota-conjunct schrijft niet', () => {
       if (uit.ok !== true || !uit.group) throw new Error(`groep: ${JSON.stringify(groep.data)}`);
       const groepId = uit.group.id;
 
-      // ⚠️ **Alice schrijft haar eigen opvulling.** `berichten_over()` telt op
-      //    `sender_id`; via `adminDb()` opvullen zou haar teller niet raken en de
-      //    meting zou dan niets meten.
+      // ⚠️ **Alice schrijft haar eigen opvulling**, en dat is hier de vorm die
+      //    het dichtst bij de werkelijkheid ligt. De *eis* is smaller: 📏
+      //    `berichten_over()` telt op de kolom `sender_id`, dus een opvulling via
+      //    `adminDb()` mét `sender_id: alice.id` telt net zo goed mee (gemeten
+      //    21-09-2026: 500 -> 499). Wat niet mag is de kolom een ándere id geven.
       moetLukken(
         await alice.db.from('chat_messages').insert(
           Array.from({ length: PLAFOND }, (_, i) => ({
@@ -318,6 +429,8 @@ describe.skipIf(!rlsTestsConfigured)('de quota-conjunct schrijft niet', () => {
         ),
         'berichten opvullen tot het plafond',
       );
+
+      await staatOpZijnPlafond('berichten_over', 'chat_messages');
 
       const vooraf = tabelbytes('chat_messages');
       const codes: (string | undefined)[] = [];
@@ -331,7 +444,7 @@ describe.skipIf(!rlsTestsConfigured)('de quota-conjunct schrijft niet', () => {
       }
       const groei = tabelbytes('chat_messages') - vooraf;
 
-      beoordeel('chat_messages', codes, groei, DREMPEL, '3520 kB (3.604.480 bytes), factor 23,4 op de drempel');
+      beoordeel('chat_messages', codes, groei, DREMPEL, '3360-3520 kB over drie metingen, kleinste factor 22,4 op de drempel');
     },
     TEST_TIMEOUT,
   );
@@ -386,6 +499,8 @@ describe.skipIf(!rlsTestsConfigured)('de quota-conjunct schrijft niet', () => {
         'weekreacties opvullen tot het plafond',
       );
 
+      await staatOpZijnPlafond('weekreacties_over', 'week_review_replies');
+
       const vooraf = tabelbytes('week_review_replies');
       const codes: (string | undefined)[] = [];
       for (let ronde = 0; ronde < RONDES; ronde += 1) {
@@ -398,7 +513,7 @@ describe.skipIf(!rlsTestsConfigured)('de quota-conjunct schrijft niet', () => {
       }
       const groei = tabelbytes('week_review_replies') - vooraf;
 
-      beoordeel('week_review_replies', codes, groei, DREMPEL, '464 kB (475.136 bytes), factor 3,1 op de drempel');
+      beoordeel('week_review_replies', codes, groei, DREMPEL, '464-528 kB over drie metingen, kleinste factor 3,1 op de drempel');
     },
     TEST_TIMEOUT,
   );
