@@ -82,13 +82,76 @@ export function beoordeelOpbouw({ code, uitvoer }) {
   }
 
   const omgevallen = /✗ (\S+) viel om/.exec(uitvoer);
-  return {
-    stand: 'rood',
-    reden:
-      omgevallen === null
-        ? 'de opbouw viel om zonder te zeggen waar.'
-        : `\`${omgevallen[1]}\` botst op zichzelf bij een tweede run.`,
-  };
+
+  // ⚠️⚠️ **`soort` bestaat sinds QS8-562, en het is dezelfde les één laag hoger.**
+  //    Hieronder stond één advies voor élke rode uitslag: *zet de opruiming van
+  //    álle objecten bovenaan, in omgekeerde afhankelijkheidsvolgorde.* 📏 Gemeten
+  //    op 19-09-2026 met een rol die geen eigenaar van de database is: de opbouw
+  //    zei `ERROR: must be owner of database goalbuddies_dubbel`, en deze controle
+  //    drukte dat advies af over constraints die er niets mee te maken hebben.
+  //    Een plausibele oorzaak in plaats van de gemeten — precies waar QS8-562
+  //    over gaat, en de opbouw eronder was er net voor gerepareerd.
+  return omgevallen === null
+    ? { stand: 'rood', soort: 'onbekend', reden: 'de opbouw viel om zonder te zeggen waar.' }
+    : {
+        stand: 'rood',
+        soort: 'migratie',
+        reden: `\`${omgevallen[1]}\` botst op zichzelf bij een tweede run.`,
+      };
+}
+
+/**
+ * De staart van de opbouw-uitvoer, want daar staat de fout.
+ *
+ * ⚠️ **Niet alles, en dat is een afweging.** Een geslaagde opbouw schrijft
+ *    honderden `NOTICE`-regels; de fout staat altijd aan het eind, want de
+ *    opbouw stopt erop. Alles afdrukken zou de melding begraven onder de ruis
+ *    die deze controle juist wegfiltert.
+ *
+ * @param {string} uitvoer
+ * @param {number} [regels]
+ * @returns {string}
+ */
+export function staart(uitvoer, regels = 20) {
+  const alle = String(uitvoer).split('\n').filter((r) => r.trim() !== '');
+  return alle.slice(-regels).join('\n');
+}
+
+/** Het advies dat alleen klopt als er écht een migratie omviel. */
+const OPRUIMVOLGORDE =
+  'Een migratie hoort een tweede run te overleven tegen de toestand waarvoor hij\n' +
+  'geschreven is. Zet de opruiming van álle objecten bovenaan, in omgekeerde\n' +
+  'afhankelijkheidsvolgorde: een unieke constraint kan niet weg zolang een\n' +
+  'foreign key uit hetzelfde bestand eraan hangt.\n\n' +
+  'Botst hij met een **latere** migratie die de vorm van hetzelfde object\n' +
+  'veranderde, dan hoort die weigering te blijven staan — maar dan valt hij hier\n' +
+  'ook niet om, want die migratie heeft nog niet gedraaid.\n';
+
+/**
+ * Wat er op stderr komt bij een rode uitslag.
+ *
+ * ⚠️⚠️ **Los van `hoofd()` en zonder proces, met opzet.** 📏 Geijkt: zolang deze
+ *    twee keuzes in `hoofd()` stonden, gaven twee mutaties — het advies weer
+ *    onvoorwaardelijk, en de uitvoer van de opbouw weer weggooien — **nul** rode
+ *    toetsen. Ze zaten in een functie die een database en een subproces vraagt,
+ *    en dat is de vorm die CLAUDE.md afraadt: *een controle die je niet kunt
+ *    voeden, kun je niet ijken.*
+ *
+ * ⚠️ **Twee keuzes, en allebei zijn het QS8-562.** Het advies hoort bij de
+ *    gemeten oorzaak: viel er een migratie om, dan gaat het over opruimvolgorde;
+ *    viel de opbouw op iets anders om, dan is datzelfde advies een gok. En de
+ *    uitvoer van de opbouw gaat **altijd** mee — die duidt een mislukte drop tot
+ *    op de psql-regel, en die duiding werd hiervóór helemaal weggegooid.
+ *
+ * @param {{ reden?: string, soort?: string }} oordeel
+ * @param {string} uitvoer
+ * @returns {string[]}
+ */
+export function roodregels(oordeel, uitvoer) {
+  const uit = [`✗ idempotent-controle: ${oordeel.reden}\n`];
+  if (oordeel.soort === 'migratie') uit.push(OPRUIMVOLGORDE);
+  uit.push(`De opbouw zei, laatste regels:\n${staart(uitvoer)}`);
+  return uit;
 }
 
 /** Draait de opbouw met `--dubbel` en vangt de uitvoer op. */
@@ -131,7 +194,8 @@ function hoofd() {
     return 1;
   }
 
-  const oordeel = beoordeelOpbouw(opbouwen());
+  const laatste = opbouwen();
+  const oordeel = beoordeelOpbouw(laatste);
 
   if (oordeel.stand === 'groen') {
     console.log(
@@ -141,16 +205,7 @@ function hoofd() {
     return 0;
   }
 
-  console.error(`✗ idempotent-controle: ${oordeel.reden}\n`);
-  console.error(
-    'Een migratie hoort een tweede run te overleven tegen de toestand waarvoor hij\n' +
-      'geschreven is. Zet de opruiming van álle objecten bovenaan, in omgekeerde\n' +
-      'afhankelijkheidsvolgorde: een unieke constraint kan niet weg zolang een\n' +
-      'foreign key uit hetzelfde bestand eraan hangt.\n\n' +
-      'Botst hij met een **latere** migratie die de vorm van hetzelfde object\n' +
-      'veranderde, dan hoort die weigering te blijven staan — maar dan valt hij hier\n' +
-      'ook niet om, want die migratie heeft nog niet gedraaid.',
-  );
+  for (const regel of roodregels(oordeel, laatste.uitvoer)) console.error(regel);
   return 1;
 }
 
