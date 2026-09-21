@@ -220,6 +220,47 @@ describe('foutsleutel-controle', () => {
       expect(allowlist('const ALLOWED_KEYS = someOtherShape();')).toBeNull();
     });
 
+    /**
+     * ⚠️⚠️ **De commentaarvorm, en die ontbrak hier (QS8-567).** De ijking voedde
+     *    `heeftVormtoets` en `allowlist` alleen schóne bron; geen van beide
+     *    kreeg ooit een comment te zien. Allebei faalden daardoor **open**.
+     *
+     * 📏 **Gemeten per vorm op de échte `scrub.ts`, niet voorspeld** — de tak
+     *    `key === 'sqlstate'` weggehaald, `sqlstate` op de allowlist gezet, en
+     *    de naam in drie vormen laten staan:
+     *
+     *    | vorm | heeftVormtoets | bevindingen |
+     *    | -- | -- | -- |
+     *    | JSDoc-blok (de huisstijlvorm) | `false` | **1 — rood** |
+     *    | hele regel `//` | `false` | **1 — rood** |
+     *    | áchterlopend `//` op een coderegel | `true` | **0 — groen** |
+     *
+     * ⚠️ **Die laatste rij is een geaccepteerde rest en geen omissie.** De
+     *    gedeelde knip snijdt met opzet niet midden in een regel; doet hij dat
+     *    wel, dan eet hij de `//` van een URL op (QS8-412). Hij staat hier zodat
+     *    de volgende lezer hem niet voor gedekt aanziet.
+     */
+    it('heeftVormtoets telt een tak in een JSDoc-blok niet mee', () => {
+      const bron = GEZOND.replace("if (key === 'sqlstate')", "/** key === 'sqlstate' */ if (false)");
+      expect(heeftVormtoets(bron, 'sqlstate')).toBe(false);
+    });
+
+    it('heeftVormtoets telt een tak op een hele commentaarregel niet mee', () => {
+      const bron = GEZOND.replace(
+        "if (key === 'sqlstate')",
+        "// key === 'sqlstate'\n    if (false)",
+      );
+      expect(heeftVormtoets(bron, 'sqlstate')).toBe(false);
+    });
+
+    it('allowlist leest de échte Set, niet een voorbeeld in een comment erboven', () => {
+      const bron = scrubBron({ sleutels: ['where', 'name'] }).replace(
+        'const ALLOWED_KEYS',
+        "/* ooit: const ALLOWED_KEYS = new Set(['onschuldig']) */\nconst ALLOWED_KEYS",
+      );
+      expect(allowlist(bron)).toEqual(['where', 'name']);
+    });
+
     it('heeftVormtoets ziet de tak in scrubContext', () => {
       expect(heeftVormtoets(GEZOND, 'sqlstate')).toBe(true);
       expect(heeftVormtoets(GEZOND, 'pgcode')).toBe(false);

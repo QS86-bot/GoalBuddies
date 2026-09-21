@@ -9,6 +9,7 @@ import {
   magOvernemenUitDagzetten,
   voorstelUitDagzetten,
 } from '../../src/modules/buddies/weekafsluiting-schemas';
+import { roeptAan, zonderCommentaar } from './roept-aan';
 
 /**
  * Een Dagzet komt nooit in de groep zonder dat je hem er zelf in zet.
@@ -41,9 +42,16 @@ import {
 const WORTEL = fileURLToPath(new URL('../..', import.meta.url));
 const SCHERM = 'app/groep/weekafsluiting/[id].tsx';
 
-/** Wordt het voorstel gebruikt als beginwaarde van een `useState`? */
+/**
+ * Wordt het voorstel gebruikt als beginwaarde van een `useState`?
+ *
+ * ⚠️ **Knipt commentaar weg — QS8-568.** Deze kant faalt dicht (een
+ *    uitgecommentarieerde `useState(voorstel)` gaf vals alarm) en was dus niet
+ *    het gevaar; de knip staat er omdat het antwoord op *"staat deze
+ *    tekenreeks in het bestand"* in beide richtingen de verkeerde vraag is.
+ */
 export function voorstelAlsBeginwaarde(inhoud: string): boolean {
-  return /useState\([^)]*\bvoorstel\b/.test(inhoud);
+  return /useState\([^)]*\bvoorstel\b/.test(zonderCommentaar(inhoud));
 }
 
 describe('beginwaardeVraag1', () => {
@@ -92,10 +100,22 @@ describe('het scherm vult vraag 1 niet voor', () => {
     // ⚠️ De positieve controle. Zonder deze helft is een scherm waar het
     //    voorstel helemáál uit verdwenen is net zo groen als een scherm dat het
     //    goed doet, en dan is het gemak stilletjes weg. Vraag 3 uit regel 18.
+    //
+    // ⚠️⚠️ **Dit stond tot QS8-568 als `toContain` op de ruwe bron, en dan
+    //    bewaakte het niets.** De belofte is *"dit scherm roept die poort aan"*;
+    //    getoetst werd *"die tekenreeks staat in het bestand"*, en dat is óók
+    //    waar als de aanroep uitgecommentarieerd is — precies wat er bij een
+    //    tijdelijke uitschakeling gebeurt, want de naam blijft dan in de comment
+    //    staan. 📏 Gemeten op 21-09-2026: met beide aanroepen uitgecommentarieerd
+    //    bleven alle 24 toetsen van dit bestand en zijn buurman groen.
+    //
+    //    En de belofte weegt hier zwaar: deze poort bepaalt of een Dagzet de
+    //    weekafsluiting in mag — de grens tussen privé (domeinregel 9) en
+    //    groepszichtbaar.
     const inhoud = readFileSync(join(WORTEL, SCHERM), 'utf8');
 
-    expect(inhoud).toContain('magOvernemenUitDagzetten(');
-    expect(inhoud).toContain('setDid(voorstel)');
+    expect(roeptAan(inhoud, 'magOvernemenUitDagzetten'), SCHERM).toBe(true);
+    expect(zonderCommentaar(inhoud), SCHERM).toContain('setDid(voorstel)');
   });
 
   it.each([

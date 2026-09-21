@@ -34,6 +34,8 @@ import { readFileSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
 
+import { zonderCommentaar } from './zonder-commentaar.mjs';
+
 const WORTEL = process.cwd();
 const MAPPEN = ['src', 'app'];
 
@@ -126,6 +128,17 @@ export function injectiepuntenIn(bron) {
  *    vier de dode ketens hadden een groene test; wat ontbrak was een áánroep in
  *    de app.
  *
+ * ⚠️⚠️ **Commentaar telt niet mee, en dat is een gerepareerde valse groene
+ *    (QS8-567).** 📏 Gemeten: een naam die alléén in een `//`- of
+ *    `/** *\/`-comment stond, gaf `true`. Deze controle bestaat om functies
+ *    zónder aanroeper te vinden; een comment die de naam noemt maakte elke dode
+ *    keten levend, en dat faalt **open**. Juist hier is dat waarschijnlijk: een
+ *    dode functie wordt in dit project zelden stil weggehaald — er komt een
+ *    regel uitleg bij die zijn naam noemt.
+ *
+ * ⚠️ De knip is de gedeelde uit `zonder-commentaar.mjs`; een áchterlopend `// …`
+ *    op een coderegel blijft staan (zie de kop daar, QS8-412).
+ *
  * @param {string} naam
  * @param {{ pad: string, bron: string }[]} bestanden
  * @param {string} eigenBestand
@@ -133,7 +146,10 @@ export function injectiepuntenIn(bron) {
 export function wordtAangesloten(naam, bestanden, eigenBestand) {
   const patroon = new RegExp(`\\b${naam}\\s*\\(`);
   return bestanden.some(
-    (b) => b.pad !== eigenBestand && !/\.test\.tsx?$/.test(b.pad) && patroon.test(b.bron),
+    (b) =>
+      b.pad !== eigenBestand &&
+      !/\.test\.tsx?$/.test(b.pad) &&
+      patroon.test(zonderCommentaar(b.bron)),
   );
 }
 

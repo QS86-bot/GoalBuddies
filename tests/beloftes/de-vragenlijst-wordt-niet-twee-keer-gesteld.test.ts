@@ -13,7 +13,7 @@ import {
 } from '../../src/modules/goals/interview-schemas';
 import { urenPerWeekUitMinuten } from '../../src/modules/goals/vragenlijst-schemas';
 
-import { roeptAan } from './roept-aan';
+import { roeptAan, zonderCommentaar } from './roept-aan';
 
 /**
  * De onboarding vraagt iets één keer — QS8-301, groep 1.
@@ -139,7 +139,14 @@ describe('de vragenlijst wordt niet twee keer blanco gesteld', () => {
   });
 
   describe('en het scherm houdt de twee bronnen uit elkaar', () => {
-    const bron = readFileSync(COACHSCHERM, 'utf8');
+    /**
+     * ⚠️⚠️ **De knip staat op de leesplek — QS8-568.** Een `toContain` op ruwe
+     *    bron is waar zodra de tekenreeks érgens in het bestand staat, ook in een
+     *    comment — en bij een tijdelijke uitschakeling blijft de naam daar juist
+     *    staan. 📏 Gemeten op 21-09-2026: met de belofte hieronder
+     *    uitgecommentarieerd bleef dit bestand volledig groen.
+     */
+    const bron = zonderCommentaar(readFileSync(COACHSCHERM, 'utf8'));
 
     /**
      * ⚠️ **Grendel 5 — zonder aanroep gebeurt de hele voorvulling niet.**
