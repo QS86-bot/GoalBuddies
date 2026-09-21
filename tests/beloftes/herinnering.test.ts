@@ -4,6 +4,8 @@ import { fileURLToPath } from 'node:url';
 
 import { describe, expect, it } from 'vitest';
 
+import { zonderCommentaar } from './roept-aan';
+
 /**
  * "Uit is uit" heeft één schrijver — QS8-77.
  *
@@ -110,7 +112,9 @@ describe('"uit is uit" heeft één schrijver', () => {
     //    verdwenen is net zo groen als een repo waarin alles klopt. Dat is
     //    vraag 3 uit regel 18: kan deze test groen blijven terwijl de belofte
     //    breekt?
-    const bron = readFileSync(join(WORTEL, SCHRIJVER), 'utf8');
+    // ⚠️ De knip: zonder hem is `export function herinneringVelden` óók
+    //    aanwezig als de regel uitgecommentarieerd is — QS8-568, gemeten.
+    const bron = zonderCommentaar(readFileSync(join(WORTEL, SCHRIJVER), 'utf8'));
 
     expect(TOEWIJZING.test(bron)).toBe(true);
     expect(bron).toContain('export function herinneringVelden');
