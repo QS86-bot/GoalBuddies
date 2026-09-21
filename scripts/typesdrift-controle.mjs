@@ -64,6 +64,35 @@
  *   3. Anders: **OVERGESLAGEN**, met de reden. Dat is ongemeten en niet groen;
  *      de poort telt het als zodanig.
  *
+ * ## ⚠️⚠️ Waarom hij in een cloudsessie standaard niets meet — en wat dat kostte
+ *
+ * Een bouwsessie in de cloud heeft geen `SUPABASE_ACCESS_TOKEN` (Q-TODO C3) en
+ * zet geen `TYPES_GENERATIE`, want dat bestand moet er eerst met de hand komen.
+ * Bron 3 is dus **de standaard en niet de uitzondering**: deze controle telt bij
+ * elke poortronde mee in de rij "hebben niets gemeten", en wie alleen naar de
+ * exitcode kijkt, telt hem als groen.
+ *
+ * 📏 Wat dat gekost heeft, gemeten op 19-09-2026 en herhaald op 21-09-2026 (QS8-569):
+ * de éérste keer dat hij gevoed werd, meldde hij **57** naamverschillen — 55
+ * functienamen en de tabel `dagtellers` die het schema wel had en de types niet,
+ * plus `ketting_schakel` die de types wel hadden en het schema niet. **Zes**
+ * daarvan kwamen uit de uitrol van die dag; de andere **51** stonden er al, tot
+ * `mijn_datum` sinds `0170` aan toe. Niet één ervan is ooit ergens rood geworden.
+ *
+ * ⚠️ **De route die hem wél meetbaar maakt, vraagt niets.** De Supabase-MCP-tool
+ * `generate_typescript_types` werkt in een cloudsessie zonder token en zonder
+ * Docker; schrijf zijn uitvoer naar een bestand en draai
+ * `TYPES_GENERATIE=<pad> npm run typesdrift:controle`. Zo is de meting hierboven
+ * gedaan en zo is QS8-569 gesloten. **Doe dat bij elke ronde waarin je de
+ * migratiemap of productie aanraakt** — dat is het enige moment waarop dit gat
+ * kan ontstaan, en de enige keer dat iemand keek stond het op 57.
+ *
+ * ⚠️ En wat hij níét ziet: hij vergelijkt **namen** en geen velden. Een
+ * handgeschreven `| null` op een bestaand argument of een kolom die aan een
+ * handtekening ontbreekt, komt hier nooit uit. 📏 Op 21-09-2026 waren dat er
+ * veertien, allemaal in namen die deze controle groen noemde. Die kant staat in
+ * `src/lib/database.types.correcties.ts` en `tests/beloftes/typecorrecties.test.ts`.
+ *
  * ⚠️ Een generatie vanaf de **map** vraagt `supabase gen types --db-url`, en dat
  *    commando start een Docker-container. 📏 Gemeten in een cloudsessie: de CLI
  *    is wél op te halen (`npx supabase@latest --version` geeft 2.117.0, dus

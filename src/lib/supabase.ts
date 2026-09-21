@@ -3,7 +3,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import { Platform } from 'react-native';
 
-import type { Database } from './database.types';
+import type { Database } from './database.types.correcties';
 import { clientEnv } from './env';
 
 /** De client met het schema erin: elke query is getypeerd tegen de database. */
