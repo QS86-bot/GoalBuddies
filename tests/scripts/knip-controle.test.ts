@@ -14,8 +14,12 @@ import {
   definitiesIn,
   GEDEELD,
   klachten,
+  knipt,
+  leestBronMetNaampatroon,
   MET_REDEN,
   verweesdeRedenen,
+  verweesdeVrijstellingen,
+  ZONDER_KNIP,
   ZONDER_TOETS,
 } from '../../scripts/knip-controle.mjs';
 
@@ -128,5 +132,117 @@ describe('de ijkingsmap valt erbuiten, en dat staat vast', () => {
     expect(
       klachten('function zonderCommentaar(b) { return b; }', 'tests/beloftes/x.test.ts'),
     ).toHaveLength(1);
+  });
+});
+
+// ---------------------------------------------------------------------------
+
+/**
+ * De tweede helft: **een bronlezer zónder knip is een keuze of een gat** — QS8-567.
+ *
+ * ⚠️⚠️ **Wat deze helft belooft is smal, en dat staat hier omdat het verschil
+ *    de hele aanleiding was.** Hij belooft dat een nieuwe bronlezende controle
+ *    geclassificeerd wordt. Hij belooft **niet** dat elke bronlezer correct
+ *    knipt — "importeert de knip" is een neveneffect van de reparatie en geen
+ *    eigenschap van het werk, en een grendel die daarop afgaat meet precies wat
+ *    hij zegt te bewaken niet.
+ *
+ * 📏 **Vier instanties gemeten, alle vier falend open** (`foutsleutel`,
+ *    `kolomrechten`, `aansluiting`, `avatar`). Die laatste vond deze controle
+ *    zelf, nadat hij aan stond — en hij corrigeerde ook de telling waarmee het
+ *    issue begon: `afstemgetal` leek een instantie omdat het een template
+ *    literal gebruikt, maar zonder `${…}` erin is het de vorm niet.
+ */
+describe('leestBronMetNaampatroon', () => {
+  const LEZER = "readFileSync(p); const r = new RegExp(`\\b${naam}\\s*\\(`);";
+
+  it('ziet een bestand dat bron leest én een regex uit een naam bouwt', () => {
+    expect(leestBronMetNaampatroon(LEZER)).toBe(true);
+  });
+
+  it('laat een template literal zónder interpolatie met rust', () => {
+    // ⚠️ Dit is de vorm van `afstemgetal-controle.mjs`: een backtick-regex die
+    //    geen naam inbouwt, en dus niet door een comment te misleiden is.
+    expect(leestBronMetNaampatroon('readFileSync(p); new RegExp(`^\\s*const\\s+`, "u");')).toBe(
+      false,
+    );
+  });
+
+  it('laat een bestand dat geen bron leest met rust', () => {
+    expect(leestBronMetNaampatroon('const r = new RegExp(`${naam}`);')).toBe(false);
+  });
+
+  /**
+   * ⚠️ **Hij eet zijn eigen kost.** Deze controle beschrijft de vorm die hij
+   *    zoekt in zijn eigen kop; zonder knip zou hij zichzelf melden.
+   */
+  it('telt de vorm niet mee als hij alleen in commentaar staat', () => {
+    expect(leestBronMetNaampatroon('// readFileSync(p); new RegExp(`${naam}`)')).toBe(false);
+  });
+});
+
+describe('knipt', () => {
+  it('ziet de gedeelde import', () => {
+    expect(knipt("import { zonderCommentaar } from './zonder-commentaar.mjs';", 'scripts/x.mjs')).toBe(
+      true,
+    );
+  });
+
+  it('ziet een eigen knip die in MET_REDEN staat', () => {
+    const sleutel = Object.keys(MET_REDEN)[0] ?? '';
+    const pad = sleutel.slice(0, sleutel.lastIndexOf(':'));
+    expect(knipt('function zonderCommentaar(b) { return b; }', pad)).toBe(true);
+  });
+
+  it('ziet een bestand zonder knip als niet-knippend', () => {
+    expect(knipt('const x = 1;', 'scripts/x.mjs')).toBe(false);
+  });
+});
+
+describe('klachten over een bronlezer zonder knip', () => {
+  const LEZER = "readFileSync(p); const r = new RegExp(`\\b${naam}\\s*\\(`);";
+
+  it('meldt een ongeclassificeerde bronlezer in scripts/', () => {
+    expect(klachten(LEZER, 'scripts/nieuw-controle.mjs')).toEqual([
+      expect.stringContaining('knipt geen commentaar'),
+    ]);
+  });
+
+  it('zwijgt over een bronlezer die in ZONDER_KNIP staat', () => {
+    const pad = Object.keys(ZONDER_KNIP)[0] ?? '';
+    expect(klachten(LEZER, pad)).toEqual([]);
+  });
+
+  it('zwijgt over een bronlezer die de gedeelde knip importeert', () => {
+    const bron = `import { zonderCommentaar } from './zonder-commentaar.mjs';\n${LEZER}`;
+    expect(klachten(bron, 'scripts/nieuw-controle.mjs')).toEqual([]);
+  });
+
+  it('kijkt niet buiten scripts/ — tests hebben hun eigen vormen', () => {
+    expect(klachten(LEZER, 'tests/beloftes/x.test.ts')).toEqual([]);
+  });
+});
+
+describe('verweesdeVrijstellingen', () => {
+  const LEZER = "readFileSync(p); const r = new RegExp(`\\b${naam}\\s*\\(`);";
+
+  it('meldt een rij waarvan het bestand weg is', () => {
+    expect(verweesdeVrijstellingen(new Map())).toEqual(Object.keys(ZONDER_KNIP));
+  });
+
+  it('meldt een rij die inmiddels wél knipt', () => {
+    const pad = Object.keys(ZONDER_KNIP)[0] ?? '';
+    const bronnen = new Map(
+      Object.keys(ZONDER_KNIP).map((p) => [
+        p,
+        p === pad ? `import { zonderCommentaar } from './zonder-commentaar.mjs';\n${LEZER}` : LEZER,
+      ]),
+    );
+    expect(verweesdeVrijstellingen(bronnen)).toEqual([pad]);
+  });
+
+  it('zwijgt over een rij die zijn vrijstelling nog nodig heeft', () => {
+    const bronnen = new Map(Object.keys(ZONDER_KNIP).map((p) => [p, LEZER]));
+    expect(verweesdeVrijstellingen(bronnen)).toEqual([]);
   });
 });
