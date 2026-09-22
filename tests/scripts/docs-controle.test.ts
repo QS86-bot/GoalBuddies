@@ -2,12 +2,15 @@ import { describe, expect, it } from 'vitest';
 
 // ⚠️ Een `.mjs` zonder eigen typings; TypeScript leest de JSDoc ernaast.
 import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import {
+  DOCUMENTEN,
   GATGROOTTE,
   MAPTELLING,
   beoordeelStand,
+  eigendomsklachten,
   gattabelKlachten,
   leesBewering,
   nummerVan,
@@ -452,5 +455,105 @@ describe('gattabelKlachten — de vormen die hij met rúst moet laten', () => {
   it('zwijgt in een document zonder gattabel', () => {
     expect(gattabelKlachten({ ...GAT, inhoud: 'Productie staat op `0221`. Verder niets.' }))
       .toEqual([]);
+  });
+});
+
+
+/**
+ * QS8-583 — tak B is een pure functie geworden, en `docs/PROMPT-SESSIE.md` valt
+ * er sindsdien onder.
+ *
+ * ⚠️ **Waarom deze toets bestaat.** `docs/PROMPT-SESSIE.md` draagt zelf metingen
+ *    — merge-aandelen, conflictkansen, CI-duur. Dat is precies het soort tekst
+ *    waar een volgende sessie "en trouwens, de map telt er 297" aan toevoegt, en
+ *    dan staat dezelfde stand op twee plekken. Een vierde document met stand dat
+ *    níets bewaakt is de drift waar QS8-125 voor bestaat.
+ *
+ * ⚠️ **De helft die het zwaarst weegt is de tweede**: de vormen die met rust
+ *    gelaten moeten worden. Een controle die de eigenaar zélf rood maakt, of die
+ *    klaagt over een document dat niet meedoet, leer je uitzetten.
+ */
+describe('eigendomsklachten — tak B', () => {
+  const TESTTELLER = 'De suite komt op 467 geslaagd terug.';
+  const MIGRATIEBEREIK = 'Productie draait migraties 0001 t/m 0294.';
+
+  describe('moet vinden', () => {
+    it('meldt de testteller als die in PROMPT-SESSIE opduikt', () => {
+      const klachten = eigendomsklachten({
+        WERKVOORRAAD: TESTTELLER,
+        'PROMPT-SESSIE': TESTTELLER,
+      });
+
+      expect(klachten).toHaveLength(1);
+      expect(klachten[0]).toContain('docs/WERKVOORRAAD.md');
+      expect(klachten[0]).toContain('docs/PROMPT-SESSIE.md');
+    });
+
+    it('meldt het migratiebereik als dat in PROMPT-SESSIE opduikt', () => {
+      const klachten = eigendomsklachten({
+        WERKVOORRAAD: MIGRATIEBEREIK,
+        'PROMPT-SESSIE': MIGRATIEBEREIK,
+      });
+
+      expect(klachten).toHaveLength(1);
+      expect(klachten[0]).toContain('docs/PROMPT-SESSIE.md');
+    });
+
+    it('noemt elk document waar het feit ook staat, niet alleen het eerste', () => {
+      const klachten = eigendomsklachten({
+        WERKVOORRAAD: TESTTELLER,
+        'PROMPT-SESSIE': TESTTELLER,
+        'VOLGENDE-SESSIE': TESTTELLER,
+      });
+
+      expect(klachten).toHaveLength(1);
+      expect(klachten[0]).toContain('docs/PROMPT-SESSIE.md');
+      expect(klachten[0]).toContain('docs/VOLGENDE-SESSIE.md');
+    });
+  });
+
+  describe('moet met rust laten', () => {
+    it('zwijgt over de eigenaar zelf', () => {
+      expect(eigendomsklachten({ WERKVOORRAAD: TESTTELLER })).toEqual([]);
+    });
+
+    it('slaat een ontbrekend document over in plaats van het als leeg te lezen', () => {
+      // ⚠️ Het verschil telt: een sleutel die er niet is, is "doet niet mee" en
+      //    niet "draagt het feit niet". Zou hij als lege string meedoen, dan
+      //    verandert er vandaag niets — maar een negatief patroon (iets dat er
+      //    juist wél hoort te staan) zou er stil op afgaan.
+      expect(
+        eigendomsklachten({ WERKVOORRAAD: TESTTELLER, 'CLAUDE.md': 'geen enkel getal' }),
+      ).toEqual([]);
+    });
+
+    it('zwijgt als niemand het feit draagt', () => {
+      expect(
+        eigendomsklachten({ WERKVOORRAAD: 'niets', 'PROMPT-SESSIE': 'ook niets' }),
+      ).toEqual([]);
+    });
+  });
+
+  /**
+   * ⚠️ **Deze toets is de grendel onder de grendel.** De toets hieronder loopt
+   *    over `DOCUMENTEN` heen, dus haal je `PROMPT-SESSIE` daaruit weg, dan
+   *    controleert hij dat document simpelweg niet meer — en blijft groen. Een
+   *    grendel waarvan je het onderwerp kunt verwijderen zonder dat iets rood
+   *    wordt, bewaakt niets (onwrikbare regel 18, vraag 3).
+   */
+  it('PROMPT-SESSIE doet mee in DOCUMENTEN', () => {
+    expect(Object.keys(DOCUMENTEN as Record<string, string>)).toContain('PROMPT-SESSIE');
+    expect((DOCUMENTEN as Record<string, string>)['PROMPT-SESSIE']).toBe('docs/PROMPT-SESSIE.md');
+  });
+
+  it('het echte docs/PROMPT-SESSIE.md draagt geen feit dat een ander document bezit', () => {
+    const inhoud = Object.fromEntries(
+      Object.entries(DOCUMENTEN as Record<string, string>).map(([sleutel, pad]) => [
+        sleutel,
+        readFileSync(join(WORTEL, pad), 'utf8'),
+      ]),
+    );
+
+    expect(eigendomsklachten(inhoud)).toEqual([]);
   });
 });

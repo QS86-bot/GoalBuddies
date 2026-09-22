@@ -56,6 +56,7 @@ het afsluiten van een issue of Linear en de documenten hetzelfde zeggen.
 | `docs/decisions/NNN-*.md` | Architectuurbeslissingen |
 | `docs/ENGINEER-REVIEW.md` | Agenda voor de engineer-review in november |
 | `docs/DEPLOY.md` | Deploy- en migratiehandleiding |
+| `docs/PROMPT-SESSIE.md` | De afspraken tussen twee gelijktijdige sessies, met de meting die het sessieaantal draagt (QS8-583) |
 
 **Linear:** project GoalBuddies in team `QS86-bot Linear` (prefix `QS8`).
 **Supabase:** project `goalbuddies`, ref `wehgocadxehottiiyvsc`, regio `eu-west-3`.
