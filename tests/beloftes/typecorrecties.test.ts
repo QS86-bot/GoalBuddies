@@ -330,8 +330,8 @@ export function herkomst(bron: string, naam: string): string | null {
 }
 
 describe('de correcties op de gegenereerde types', () => {
-  it('telt drieëntwintig correcties, elk twee kanten op', () => {
-    expect(Object.keys(CORRECTIES)).toHaveLength(46);
+  it('telt vijfentwintig correcties, elk twee kanten op', () => {
+    expect(Object.keys(CORRECTIES)).toHaveLength(50);
     expect(Object.values(CORRECTIES).every((waarde) => waarde === true)).toBe(true);
   });
 

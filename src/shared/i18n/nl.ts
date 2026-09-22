@@ -2772,6 +2772,7 @@ export const nl = {
     'Er staat geen melding open. Komt er een binnen, dan verschijnt hij hier.',
   'meldingen.over': 'Over {naam}',
   'meldingen.in_groep': 'In {groep}',
+  'meldingen.gemeld_op': 'Gemeld op {datum}',
   'meldingen.escalatie':
     'Deze melding gaat over een beheerder van de groep, dus de groep kan hem niet zelf beoordelen.',
   'meldingen.toelichting_kop': 'Toelichting van de melder',

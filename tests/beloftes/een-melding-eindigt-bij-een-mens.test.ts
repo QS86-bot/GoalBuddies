@@ -173,7 +173,11 @@ describe('een melding eindigt bij een mens', () => {
    *    valt met opzet buiten de twee mappen hierboven.
    */
   it('MUST-ALLOW: de kolom bestaat wel degelijk, alleen niet in de schermlaag', () => {
-    const gegenereerd = readFileSync('src/lib/database.types.ts', 'utf8');
+    // ⚠️ Door de knip, want dit is een **bevestigende** `toContain` op ruwe
+    //    bron: zonder hem is hij ook waar als de kolom alleen in een comment
+    //    staat, en bij een tijdelijke uitschakeling is dat precies waar hij
+    //    belandt (QS8-568). `belofteknip:controle` bewaakt die klasse.
+    const gegenereerd = zonderCommentaar(readFileSync('src/lib/database.types.ts', 'utf8'));
 
     expect(gegenereerd, 'anders toetst de zeef hierboven een naam die nergens meer bestaat').toContain(
       'platform_beheerder',

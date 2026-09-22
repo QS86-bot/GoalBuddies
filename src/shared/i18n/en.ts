@@ -2197,6 +2197,7 @@ export const en: Record<Sleutel, string> = {
   'meldingen.leeg_tekst': 'No report is open. When one comes in, it shows up here.',
   'meldingen.over': 'About {naam}',
   'meldingen.in_groep': 'In {groep}',
+  'meldingen.gemeld_op': 'Reported on {datum}',
   'meldingen.escalatie':
     'This report is about an admin of the group, so the group cannot review it itself.',
   'meldingen.toelichting_kop': 'What the reporter wrote',

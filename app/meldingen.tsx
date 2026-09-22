@@ -194,10 +194,13 @@ function MeldingKaart({
   return (
     <Card>
       <Subheading>{t('meldingen.over', { naam: melding.onderwerp_naam })}</Subheading>
-      <Caption>
-        {t('meldingen.in_groep', { groep: melding.groepsnaam })}
-        {datum === '' ? '' : ` — ${datum}`}
-      </Caption>
+      <Caption>{t('meldingen.in_groep', { groep: melding.groepsnaam })}</Caption>
+      {/*
+        ⚠️ Een eigen regel en niet achter de groepsnaam met een streepje ertussen.
+           `streepje:controle` wordt daar rood op (QS8-218), en terecht: twee
+           losse feiten aan elkaar plakken leest slechter dan twee regels.
+      */}
+      {datum === '' ? null : <Caption>{t('meldingen.gemeld_op', { datum })}</Caption>}
 
       <Body>{reden}</Body>
 
