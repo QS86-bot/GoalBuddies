@@ -418,6 +418,63 @@ describe.skipIf(!beschikbaar)('een leespolicy routeert via de gedeelde groepstoe
    *    dan is hij te streng geworden en leert iemand hem uitzetten — precies het
    *    tegenovergestelde van wat 0295 wil.
    */
+  it('meldt een zwakke OR-tak ook als de sterke aanroep één laag dieper staat — de vorm van `goal_events_select`', () => {
+    // ⚠️⚠️ **Dit is de vorm die de eerste versie van 0295 níet ving**, gevonden
+    //    door de security-review op die migratie en daarna zelf nagemeten.
+    //
+    //    📏 `goal_events_select` — de policy waarmee 0259 zijn eigen meting deed —
+    //    draagt `shares_group_with_goal(g.id)` binnen een `EXISTS`-subquery. De
+    //    natuurlijke plek voor een extra tak is dus náást hem, één laag dieper.
+    //    Met een splitser die alleen de bovenste laag deed: 0 rijen, gat open.
+    //
+    // ⚠️ 📏 Van de 48 SELECT/ALL-policies hebben er 35 één bovenste tak, waarvan
+    //    er 8 tóch een ` OR ` dragen. Dit is dus geen bedachte vorm maar de
+    //    meerderheidsvorm.
+    const uit = psqlMetInvoer(
+      [
+        'begin;',
+        'create table public.proef_leesroute_nest (id uuid primary key default gen_random_uuid(), goal_id uuid);',
+        'alter table public.proef_leesroute_nest enable row level security;',
+        // MOET GEMELD: exact de vorm van goal_events_select, met een derde
+        // OR-tak binnen de EXISTS — daar waar de sterke aanroep óók staat.
+        'create policy proef_nest_diep on public.proef_leesroute_nest for select to authenticated',
+        '  using (exists (select 1 from goals g',
+        '                 where g.id = proef_leesroute_nest.goal_id',
+        '                   and ((g.owner_id = (select auth.uid()))',
+        '                        or shares_group_with_goal(g.id)',
+        '                        or exists (select 1 from goal_group_links l',
+        '                                   join group_members m on m.group_id = l.group_id',
+        '                                                       and m.user_id = (select auth.uid())',
+        '                                   where l.goal_id = g.id))));',
+        // MOET MET RUST: dezelfde geneste vorm zónder de extra tak — dit is
+        // letterlijk hoe goal_events_select er vandaag uitziet.
+        'create policy proef_nest_schoon on public.proef_leesroute_nest for select to authenticated',
+        '  using (exists (select 1 from goals g',
+        '                 where g.id = proef_leesroute_nest.goal_id',
+        '                   and ((g.owner_id = (select auth.uid()))',
+        '                        or shares_group_with_goal(g.id))));',
+        "select 'GEMELD=' || coalesce(string_agg(naam, ',' order by naam), '') from leesroute_bewaking()",
+        "  where naam like '%proef_leesroute_nest%';",
+        'rollback;',
+      ].join('\n'),
+    );
+
+    const gemeld = uit
+      .split('\n')
+      .map((r) => r.trim())
+      .find((r) => r.startsWith('GEMELD='))
+      ?.slice('GEMELD='.length);
+
+    expect(
+      gemeld,
+      'alleen de policy met de extra geneste OR-tak hoort gemeld te worden. Meldt hij er ' +
+        'nul, dan kijkt de splitser niet dieper dan de bovenste laag en staat het gat van ' +
+        'QS8-461 open op precies de vorm die de meeste echte policies dragen. Meldt hij ' +
+        'er twee, dan is de schone vorm van `goal_events_select` zelf een bevinding en ' +
+        'wordt deze grendel onbruikbaar',
+    ).toBe('proef_leesroute_nest.proef_nest_diep');
+  }, 30_000);
+
   it('meldt een zwakke tweede OR-tak naast een sterke aanroep, en laat dezelfde kopie achter een `and` met rust', () => {
     const uit = psqlMetInvoer(
       [
@@ -471,13 +528,21 @@ describe.skipIf(!beschikbaar)('een leespolicy routeert via de gedeelde groepstoe
    *    subquery of binnen een stringliteral, dan meldt `leesroute_bewaking()`
    *    takken die geen takken zijn, en dat is een controle die alles meldt.
    */
-  it('splitst alleen op de bovenste OR-laag, niet in een subquery of een stringliteral', () => {
+  it('splitst niet binnen een stringliteral of een aanhalingstekennaam', () => {
+    // ⚠️⚠️ **De tweede en derde regel hieronder zijn grendels en geen netheid.**
+    //    📏 Gemeten op de eerste versie van 0295, die alleen `'` bijhield:
+    //
+    //      kolom "it's" in de qual  -> 1 tak i.p.v. 3, en een zwakke kopie erachter
+    //                                  bleef ONGEMELD. Eén kolomnaam zette de hele
+    //                                  grendel uit — faalt open.
+    //      kolom "vlag or niet"     -> splitste binnen de naam, en meldde een
+    //                                  volstrekt veilige policy — faalt luid.
     const uit = psqlMetInvoer(
       [
-        "select 'N1=' || (select count(*) from bovenste_or_takken('(a(x) OR (EXISTS (SELECT 1 FROM t WHERE (p OR q))))'));",
-        "select 'N2=' || (select count(*) from bovenste_or_takken('(shares_group_with_goal(goal_id))'));",
-        "select 'N3=' || (select count(*) from bovenste_or_takken('(naam = ''x OR y'')'));",
-        "select 'N4=' || (select count(*) from bovenste_or_takken('(a OR b OR c)'));",
+        "select 'N1=' || (select count(*) from or_takken('(naam = ''x OR y'')'));",
+        "select 'N2=' || (select count(*) from or_takken('(a OR b OR c)'));",
+        "select 'N3=' || (select count(*) from or_takken('(\"it''s\" OR b OR c)'));",
+        'select \'N4=\' || (select count(*) from or_takken(\'(alpha AND "vlag or niet")\'));',
       ].join('\n'),
     );
 
@@ -488,11 +553,17 @@ describe.skipIf(!beschikbaar)('een leespolicy routeert via de gedeelde groepstoe
         .find((r) => r.startsWith(sleutel))
         ?.slice(sleutel.length);
 
-    expect(lees('N1='), 'een OR binnen een subquery is geen bovenste tak').toBe('2');
-    expect(lees('N2='), 'zonder bovenste OR is er precies één tak — gelijk aan 0259').toBe('1');
-    expect(lees('N3='), 'een OR in een stringliteral is geen bovenste tak').toBe('1');
-    expect(lees('N4='), 'Postgres vlakt geneste OR af; drie takken horen er drie te zijn').toBe(
-      '3',
-    );
+    expect(lees('N1='), 'een OR in een stringliteral is geen tak').toBe('1');
+    expect(lees('N2='), 'drie disjuncten horen er drie te zijn').toBe('3');
+    expect(
+      lees('N3='),
+      "een apostrof in een aanhalingstekennaam mag de stringliteraalvlag niet omzetten — " +
+        'doet hij dat wel, dan wordt de hele qual één tak en faalt de grendel OPEN',
+    ).toBe('3');
+    expect(
+      lees('N4='),
+      'een `or` binnen een aanhalingstekennaam is geen disjunct — splitst hij daar, ' +
+        'dan meldt hij veilige policies en leer je hem uitzetten',
+    ).toBe('1');
   }, 30_000);
 });

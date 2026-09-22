@@ -5,13 +5,13 @@
 `leesroute_bewaking()` (0259) toetst of een leespolicy die groepsgenoten iets
 laat zien, dat via de gedeelde toets doet en niet via een eigen kopie. Hij deed
 dat met `like` en `not like` op de **hele** `qual`. Dit document legt vast waarom
-dat de verkeerde korrel was, welke twee richtingen er waren, en waarom het
-richting 1 geworden is.
+dat de verkeerde korrel was, en — belangrijker — **waarom de eerste reparatie
+hiervan óók de verkeerde korrel had, en hoe dat gemeten is.**
 
-## De meting
+## De meting die het issue opleverde
 
 📏 Op een lokaal opgebouwd schema — Postgres 16, `scripts/schema-opbouwen.sh`,
-297 migraties op een lege database — met de fixture uit QS8-461 in een
+298 migraties op een lege database — met de fixture uit QS8-461 in een
 teruggerolde transactie:
 
 ```sql
@@ -33,9 +33,7 @@ verruiming waarvoor 0259 bestaat — en de grendel zweeg, omdat de **eerste** ta
 het gesanctioneerde woord droeg en `not like` naar de hele `qual` keek.
 
 ⚠️ **Het "ervóór" is hier geen formaliteit.** De baseline is nul, dus elke rij die
-na de mutatie verschijnt is aantoonbaar van de mutatie. Was de baseline niet
-gemeten, dan had "er werd niets gemeld" ook kunnen betekenen dat de functie al
-stuk was.
+na de mutatie verschijnt is aantoonbaar van de mutatie.
 
 ## Waarom juist deze vorm gevaarlijk is
 
@@ -48,103 +46,144 @@ En het gaat om een groepszichtbaar oppervlak: een gearchiveerde groep die weer
 meeleest, ziet `missed`-weekdoelen. Dat is het schaamtemoment waar domeinregel 7
 voor bestaat.
 
-## De twee richtingen, en de meting die de keuze maakte
+## ⚠️⚠️ De eerste versie van deze migratie splitste alleen de bovenste OR-laag, en dat was fout
 
-QS8-461 noemt ze allebei.
+Die versie redeneerde: `and` versmalt, `or` verbreedt, dus alleen de bovenste
+`or` hoeft per tak getoetst. Een security-review op deze migratie heeft dat
+weerlegd, en het is daarna zelf nagemeten.
 
-### Richting 2 — de tabelnamen verbieden
+📏 `goal_events_select` — de policy waarmee 0259 zijn eigen meting deed — ziet er
+vandaag zo uit:
 
-*De `qual` mag `goal_group_links` en `group_members` niet noemen buiten een
-gesanctioneerde aanroep.* Strenger, korter op te schrijven, en het sluit ook de
-vorm uit QS8-459 zelf uit.
+```
+(EXISTS ( SELECT 1 FROM goals g
+  WHERE ((g.id = goal_events.goal_id)
+     AND ((g.owner_id = ( SELECT auth.uid() AS uid)) OR shares_group_with_goal(g.id)))))
+```
 
-📏 Gemeten hoeveel legitieme policies dit vandaag zou melden: van alle
-SELECT/ALL-policies in `public` en `storage` noemt er **nul** `goal_group_links`
-of `group_members`. Richting 2 zou dus vandaag **nul** valse meldingen geven —
-precies wat het issue vermoedde, nu gemeten.
+**De gesanctioneerde aanroep staat binnen de subquery.** De natuurlijke plek voor
+een extra tak is dus náást hém, één laag dieper — en daar keek de
+bovenste-laag-versie niet.
 
-⚠️ **En tóch is het niet gekozen.** Richting 2 vraagt een uitzonderingsregister
-zodra één legitieme policy die tabellen om een andere reden noemt. Een register
-dat vandaag leeg is, is een register waar de eerste vulling ongemerkt in
-verdwijnt — en dit project heeft er drie die met de hand rood gemaakt moesten
-worden om te bewijzen dat ze iets deden. Een grendel die géén register nodig
-heeft, is een grendel minder die kan rotten.
+📏 Gemeten met precies die vorm plus een derde OR-tak: **0 rijen, het gat
+volledig open.**
 
-### Richting 1 — per bovenste OR-tak toetsen *(gekozen)*
+📏 En het is niet de uitzondering maar de meerderheid: van de **48**
+SELECT/ALL-policies in `public`+`storage` hebben er **35** één bovenste tak,
+waarvan er **8** tóch een ` OR ` dragen. Vier van de acht policies die een
+gesanctioneerde doeltoets noemen, stonden in die blinde vlek.
 
-Dezelfde twee takken als 0259, maar toegepast op elke bovenste `or`-tak apart in
-plaats van op de hele `qual`.
+### En de reden die erbij stond, was gemeten onwaar
 
-## Waarom de bovenste OR-laag precies de juiste korrel is
+De eerste versie schreef dat dieper splitsen *"meldingen zou opleveren over
+takken die door een omsluitende `and` al afgedekt zijn"*.
 
-`and` versmalt en `or` verbreedt.
+📏 Nagemeten op de 48 echte policies: dieper splitsen geeft **nul** meldingen.
+**De gestelde prijs bestaat vandaag niet.**
 
-* Staat er `A and (B or C)`, dan moet `A` óók gelden. Het geheel is minstens zo
-  streng als `A`; een zwakke `C` kan daar niets openzetten wat `A` dichthoudt.
-* Staat er `A or C`, dan volstaat `C` alleen, en is de policy zo zwak als zijn
-  zwakste tak.
+En de redenering meet het verkeerde. `A and (B or C)` is inderdaad minstens zo
+streng als `A` — maar de belofte van deze grendel is niet *"de policy is streng"*,
+het is *"de groepsroute loopt langs de gedeelde toets"*. In
+`g.id = goal_events.goal_id AND (eigenaar OR sterk OR zwak)` is die `A` een
+**join**conditie en geen autorisatietoets: hij versmalt de rijen, niet de
+rechten. Een extra `or` verbreedt daar onverkort.
 
-**Alleen de bovenste `or` verbreedt de toegang, dus alleen daar hoort de toets
-per tak.** Dieper splitsen zou meldingen opleveren over takken die door een
-omsluitende `and` al afgedekt zijn — en een controle die iets meldt wat geen
-probleem is, leer je uitzetten.
+⚠️ **Dit is de duurste fout uit de grondwet, en hij is hier gemaakt:** *"een
+afwijking die je onderbouwt is duurder dan een die je vergeet."* Een omissie was
+opgevallen; een uitgeschreven argument had de volgende lezer een reden gegeven om
+er niet aan te twijfelen. Het staat hier daarom uitgeschreven mét de meting, en
+niet stilzwijgend gecorrigeerd.
 
-⚠️ Postgres vlakt geneste `or` af in de expressieboom, dus `A or (B or C)` komt
-als één vlakke `A OR B OR C` uit `pg_get_expr()` en valt vanzelf in drie takken
-uiteen. Een `or` binnen een subquery staat tussen haakjes en blijft binnen zijn
-tak.
+## Wat het wél geworden is
+
+`or_takken()` geeft twee dingen terug en niets anders:
+
+1. de hele expressie, en
+2. elke disjunct die door een `or` ontstaat, op welke diepte dan ook.
+
+**Een omhulsel is geen tak.** Het lichaam van een `exists` dat geen `or` draagt
+komt er niet uit; er wordt wél doorheen gekeken om een `or` te vinden die dieper
+ligt.
+
+⚠️ **Dat onderscheid is de tweede correctie, en zonder hem meldt de grendel
+veilige policies.** 📏 Gemeten op een versie die élk blad teruggaf: die meldde
+`shares_group_with_goal(goal_id) and exists (select 1 from goal_group_links l
+where …)` — een must-allow — omdat het afdalen het `exists`-lichaam losweekte van
+de sterke aanroep ernaast. **De tabelnaam reisde mee, de aanroep niet.**
+
+Het werkt om één reden: **de tak die een doel ontsluit draagt zijn eigen `from`**.
+De aanvalsvorm is `or exists (select 1 from goal_group_links l join group_members
+m …)`, en die hele `exists` ís de disjunct — inclusief de tabelnamen waarop tak 1
+en tak 2 matchen.
+
+### Waarom niet richting 2 uit het issue
+
+*De `qual` mag de lidmaatschapstabellen niet noemen buiten een gesanctioneerde
+aanroep.* 📏 Van de 48 echte policies noemt er vandaag **nul** die tabellen, dus
+dat zou nul valse meldingen geven.
+
+Maar het breekt een bestaande must-allow: `shares_group_with_goal(goal_id) and
+exists (select 1 from group_members m where m.user_id = auth.uid())` **noemt**
+`group_members` volkomen legitiem, naast een sterke aanroep. Richting 2 zou daar
+een register voor nodig hebben, en dat is precies de vorm die hier vermeden
+wordt.
 
 ## De splitser is zelf een grendel
 
-`string_to_array(qual, ' OR ')` splitst ook binnen een subquery en binnen een
-stringliteral. Dan meldt `leesroute_bewaking()` takken die geen takken zijn, en
-dat is een controle die alles meldt. `bovenste_or_takken()` loopt de tekst teken
-voor teken af met een haakjesdiepte en een vlag voor stringliteralen.
+`string_to_array(qual, ' OR ')` splitst ook binnen een subquery, binnen een
+stringliteral **en binnen een aanhalingstekennaam**. `or_takken()` loopt de tekst
+teken voor teken af met een haakjesdiepte, een vlag voor `'…'` en een vlag voor
+`"…"`.
 
-Dat is dezelfde les als bij de knip die commentaar uit de bron haalt (QS8-412):
-**de knip die een controle scherp houdt, is zelf een grendel** en hoort dus zijn
-eigen toets te hebben. Die staat er.
+⚠️⚠️ **Die laatste vlag is geen netheid, en hij ontbrak in de eerste versie.**
+📏 Gemeten:
 
-📏 Vier proeven, gemeten vóórdat de migratie geschreven werd:
-
-| invoer | takken |
+| vorm | uitkomst zonder `"`-vlag |
 | --- | --- |
-| het geval uit QS8-461 | **2** |
-| `(shares_group_with_goal(goal_id))` | **1** — gelijk aan 0259 |
-| `(EXISTS ( SELECT 1 FROM t WHERE (a OR b)))` | **1** — niet gesplitst |
-| `(naam = 'x OR y')` | **1** — niet gesplitst |
+| kolom `"it's"` in de `qual` | **1 tak in plaats van 3**, en een zwakke kopie erachter bleef **ongemeld** |
+| kolom `"vlag or niet"` | splitste *binnen* de naam en meldde een volstrekt veilige policy |
 
-## De ijking — twee mutaties, twee grendels
+De eerste faalt **open**: één apostrof in een kolomnaam volstond om deze grendel
+uit te zetten. Dat is QS8-461 volledig terug via een andere deur.
 
-⚠️ Eén mutatie voor de hele controle zou hier niets bewijzen: de functie heeft
-twee onafhankelijke grendels achter elkaar (de splitser en de taktoets), en een
-mutatie die door de eerste al afgevangen wordt, zegt niets over de tweede.
+Zelfde les als bij de knip die commentaar uit de bron haalt (QS8-412): **de knip
+die een controle scherp houdt, is zelf een grendel** en hoort zijn eigen toets te
+hebben.
 
-Gemeten met de stand ervóór (18 tests groen, 0 bevindingen op het kale schema):
+## De ijking — drie mutaties, drie grendels
+
+⚠️ Eén mutatie voor de hele controle bewijst hier niets: er zitten drie
+onafhankelijke grendels achter elkaar, en een mutatie die door de eerste al
+afgevangen wordt zegt niets over de tweede.
+
+Gemeten met de stand ervóór (19 tests groen, **0** bevindingen op het echte
+schema):
 
 | mutatie | wat er rood werd |
 | --- | --- |
-| `leesroute_bewaking()` terug op de vorm van 0259 (toets op de hele `qual`) | **precies** de nieuwe OR-taktoets, met `expected '' to be 'proef_leesroute_461.proef_461_ortak'`. De overige 17 bleven groen. |
-| `bovenste_or_takken()` vervangen door `string_to_array(…, ' OR ')` | **precies** de splitsertoets, met `expected '3' to be '2'` — de naïeve vorm splitst binnen de subquery. De overige 17 bleven groen. |
+| `leesroute_bewaking()` terug op de vorm van 0259 | **precies de twee OR-taktoetsen** — de bovenste-laag-vorm én de geneste vorm. De overige 17 bleven groen. |
+| `or_takken()` vervangen door `string_to_array(…, ' OR ')` | **precies de splitsertoets.** De overige 18 bleven groen. |
+| de `"`-vlag uit `or_takken()` gehaald (drie regels) | **precies de splitsertoets**, met `expected '1' to be '3'` — de fail-open-kant. De overige 18 bleven groen. |
 
-⚠️ **Dat de andere zeventien groen bleven is de helft die ertoe doet.** Het laat
-zien dat 0295 geen gedragsverandering is op de bestaande vorm: een `qual` zonder
-bovenste `or` levert precies één tak op die gelijk is aan de hele `qual`, en dan
-doet deze functie letterlijk wat 0259 deed. De bestaande toets uit QS8-459 —
-inclusief zijn must-allow met `shares_group_with_goal(...) and exists(...
-group_members ...)` — blijft onveranderd groen.
+⚠️ **Dat de andere tests groen bleven is de helft die ertoe doet.** Het laat zien
+dat 0295 geen gedragsverandering is op de bestaande vorm: een `qual` zonder enige
+`or` levert precies één tak op die gelijk is aan de hele `qual`, en dan doet deze
+functie letterlijk wat 0259 deed.
 
 ## Wat er buiten bereik blijft, en dat is bewust
 
-📏 QS8-461 meet het zelf en het verandert niet met 0295: een policy die via een
+📏 QS8-461 meet het zelf en 0295 verandert dat niet: een policy die via een
 **nieuwe definer-functie** of een **view** leest (`using (mag_doel_zien_459(goal_id))`)
 wordt niet gemeld. De grendel toetst de spelling van de policy, niet de semantiek
 van de route.
 
-Dat is een grens van deze vorm en hij hoort opgeschreven te staan in plaats van
-stilzwijgend te bestaan. `tests/rls/hulpfunctiemodel.test.ts` heeft een register
-van de hulpfuncties waar zo'n nieuwe functie in hoort te landen; dát register is
-wat deze klasse afvangt, en niet deze functie.
+`tests/rls/hulpfunctiemodel.test.ts` heeft een register van de hulpfuncties waar
+zo'n nieuwe functie in hoort te landen; dát register vangt deze klasse af, niet
+deze functie.
+
+⚠️ En het aantal rijen telt **policies en geen takken** — `union` dedupliceert.
+Een policy met twee zwakke takken in dezelfde categorie geeft één rij; een policy
+die béide takken raakt geeft er twee, want `bezwaar` verschilt.
 
 ## Wat dit voor reviewrij 520 betekent
 
