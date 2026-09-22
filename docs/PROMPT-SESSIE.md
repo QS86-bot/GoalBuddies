@@ -124,6 +124,18 @@ grendel dekt de lópende run; de wachtende is zijn blinde vlek. Dat is QS8-582.
 zeven merges per uur met een uitslag op elke commit. Twee banen halen dat ruim;
 vijf banen leveren bursts, en een burst is precies wat dit kapotmaakt.
 
+⚠️⚠️ **En de oorzaak eronder is op 22-09-2026 weggenomen (QS8-582), maar de
+afspraak blijft tot iemand hem heeft nagemeten.** De concurrency-groep is op
+`main` per commit geworden, dus er staat niets meer in een wachtrij om uit geduwd
+te worden; `hoofdrun:controle` toetst die groep nu tweezijdig en `hoofdrun:stand`
+meldt elke commit op `main` zonder afgeronde uitslag. Dat maakt van de acht
+minuten een **voorspelling**: hij zou niet meer nodig moeten zijn. Een
+voorspelling is hier geen meting. **Wat hem sluit is één waarneming** — twee
+merges binnen acht minuten, en daarna van beide commits vastgesteld dat hun run
+een uitslag hield. Doe je die waarneming, schrijf haar hier op en haal deze
+afspraak weg; tot dan houd je de acht minuten aan. Uitleg in
+`docs/decisions/2026-09-22-de-wachtende-run-is-niemands-uitslag.md`.
+
 ### 1c. Wanneer wél een derde baan, en wanneer terug naar één
 
 **Een derde baan mag alleen als hij het dossier niet aanraakt.** Concreet: hij

@@ -154,7 +154,10 @@ function looptNog(run) {
  *    uitslag nog krijgen. Dat is geen groen — de nieuwste run draagt die stand
  *    al — maar het is ook geen verlies.
  *
- * @param {Array<object>} runs nieuwste eerst, zoals de GitHub-API ze geeft
+ * @param {Array<object>|null|undefined} runs nieuwste eerst, zoals de GitHub-API
+ *        ze geeft. `null`/`undefined` mag: een mislukte of lege ophaal is geen
+ *        verlies, en het is ook geen bewijs dat er niets verloren is — dat
+ *        oordeel draagt `beoordeel()` hierboven, dat er ONGEMETEN van maakt.
  */
 export function commitsZonderUitslag(runs) {
   const perCommit = new Map();

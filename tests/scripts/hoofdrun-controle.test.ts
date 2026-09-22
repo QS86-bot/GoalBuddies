@@ -115,6 +115,15 @@ describe('hoofdrun-controle — de ijking', () => {
     it('geeft null als het blok er niet is', () => {
       expect(concurrencyBlok('name: CI\non:\n  push:\n')).toBeNull();
     });
+
+    // ⚠️ **Dit is de eigen zeef van deze controle, en de reden dat hij met een
+    //    meting in `ZONDER_KNIP` van `knip:controle` staat.** De gedeelde knip is
+    //    een JS-knip en haalt uit YAML niets weg: 📏 gemeten op 22-09-2026 geeft
+    //    `zonderCommentaar()` op deze invoer letterlijk dezelfde tekst terug.
+    it('laat een uitgecommentarieerde regel binnen het blok liggen', () => {
+      const yml = 'concurrency:\n  # group: ci-${{ github.ref }}\n  group: ci-goed\n';
+      expect(groepRegel(yml)).toBe('ci-goed');
+    });
   });
 
   describe('tokeniseer: wat is leesbaar', () => {
