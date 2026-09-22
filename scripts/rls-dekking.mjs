@@ -301,6 +301,92 @@ export function herstelSql(policy) {
 
 const kwoot = (naam) => `"${naam.replace(/"/g, '""')}"`;
 
+/** Een SQL-tekstliteraal. Namen komen uit ons eigen spoor, maar gokken doen we niet. */
+const literaal = (tekst) => `'${String(tekst).replace(/'/g, "''")}'`;
+
+/** De versie die een herstelspoor moet dragen om leesbaar te zijn. */
+export const SPOORVERSIE = 2;
+
+/**
+ * Mag dit herstelspoor afgespeeld worden?
+ *
+ * ⚠️⚠️ **Hiervóór was het antwoord altijd ja, en dat is de fout die dit
+ *    repareert (QS8-588).** `herstelWatOpenstond()` las het spoor, bouwde er een
+ *    `alter policy` uit en draaide die — zonder één keer te vragen of de policy
+ *    vandaag nog dezelfde vorm heeft. Wijzigde een migratie hem tussen de
+ *    afgebroken run en de volgende, dan schreef het herstel de
+ *    **pre-migratiedefinitie** terug. Bij `group_visible_streaks` zou dat een
+ *    besluit onder A41 terugdraaien, stilzwijgend — het herstel meldde alleen
+ *    *"eerst terugzetten"* en niet wát.
+ *
+ * ⚠️ **De vergelijking gaat per conjunct en niet over de hele tekst, en dat is
+ *    geen finesse.** Postgres deparseert een uitdrukking bij het teruglezen, dus
+ *    de tekst die wij schreven komt anders opgemaakt terug. De conjuncten die we
+ *    niet aangeraakt hebben, komen uit dezelfde deparser op dezelfde knoop en
+ *    zijn daarom wél letterlijk gelijk. Een vergelijking op de hele helft zou
+ *    hier weigeren op een verschil dat niemand gemaakt heeft.
+ *
+ * ⚠️ **Elke twijfel is `weiger`, en `weiger` laat het spoor liggen.** Een script
+ *    dat een policy terugzet die een migratie bewust gewijzigd heeft, is precies
+ *    het probleem; slimmer gokken is geen uitweg. Alleen een mens beslist dat.
+ *
+ * @param spoor  `{ versie, policy, helft }` zoals de lus hem wegschrijft
+ * @param huidig `{ qual, wcheck }` uit de database, of `null` als de policy weg is
+ * @returns `{ actie: 'terugzetten' | 'weg' | 'weiger', reden }`
+ */
+export function beoordeelHerstel(spoor, huidig) {
+  if (spoor?.versie !== SPOORVERSIE || typeof spoor?.helft !== 'string' || !spoor?.policy) {
+    // ⚠️ Faalt dicht. Een spoor van vóór QS8-588 draagt geen helft, dus is niet
+    //    vast te stellen welke toestand de database hóórt te hebben.
+    return { actie: 'weiger', reden: 'het spoor komt uit een oudere versie en noemt geen helft' };
+  }
+
+  const { policy, helft: eenheid } = spoor;
+  if (huidig === null) {
+    return { actie: 'weg', reden: 'de policy bestaat niet meer' };
+  }
+
+  const { helft, index } = ontleedEenheid(eenheid);
+  if (helft !== 'using' && helft !== 'check') {
+    return { actie: 'weiger', reden: `\`${eenheid}\` noemt geen enkele helft` };
+  }
+
+  const andere = helft === 'using' ? 'check' : 'using';
+  if (uitdrukkingVan(policy, andere) !== uitdrukkingVan(huidig, andere)) {
+    return {
+      actie: 'weiger',
+      reden: `de \`${andere}\`-helft is veranderd sinds het spoor geschreven werd`,
+    };
+  }
+
+  return beoordeelAangeraakteHelft(uitdrukkingVan(policy, helft), uitdrukkingVan(huidig, helft), index);
+}
+
+/** De helft die de afgebroken run openzette: staat hij open, terug, of anders? */
+function beoordeelAangeraakteHelft(origineel, nu, index) {
+  if (nu === origineel) return { actie: 'weg', reden: 'de policy staat al terug zoals hij was' };
+
+  if (index === null) {
+    if (nu === 'true') return { actie: 'terugzetten', reden: 'de helft staat nog wagenwijd open' };
+    return { actie: 'weiger', reden: 'de helft is noch open noch zoals het spoor hem kent' };
+  }
+
+  const was = conjunctenVan(origineel);
+  const is = conjunctenVan(nu);
+  if (was.length !== is.length) {
+    return { actie: 'weiger', reden: `de helft telt nu ${is.length} conjunct(en) in plaats van ${was.length}` };
+  }
+  for (let i = 0; i < was.length; i += 1) {
+    const hoort = i === index ? 'true' : was[i];
+    if (is[i] !== hoort) {
+      return { actie: 'weiger', reden: `conjunct ${i} is niet wat het spoor verwacht` };
+    }
+  }
+
+  return { actie: 'terugzetten', reden: `conjunct ${index} staat nog open` };
+}
+
+
 /**
  * De testbestanden die deze tabel überhaupt noemen.
  *
@@ -765,13 +851,62 @@ export function kloptDeBestemming({ adres, poort, database }) {
 function herstelWatOpenstond() {
   if (!existsSync(HERSTELBESTAND)) return;
 
-  const policy = JSON.parse(readFileSync(HERSTELBESTAND, 'utf8'));
-  const sql = herstelSql(policy);
-  console.log(
-    `⚠ een vorige run is afgebroken bij ${policy.tabel}.${policy.naam} — eerst terugzetten.\n`,
-  );
-  if (sql !== null) psql(sql);
+  const spoor = JSON.parse(readFileSync(HERSTELBESTAND, 'utf8'));
+  const naam = `${spoor?.policy?.tabel}.${spoor?.policy?.naam}`;
+  const { actie, reden } = beoordeelHerstel(spoor, huidigePolicy(spoor?.policy));
+
+  console.log(`⚠ een vorige run is afgebroken bij ${naam} — ${reden}.`);
+
+  if (actie === 'weiger') {
+    // ⚠️⚠️ **Het spoor blijft liggen, en dat is met opzet.** Weghalen zou de
+    //    enige aanwijzing wissen dat er iets openstond; automatisch terugzetten
+    //    zou een migratie terugdraaien. Allebei zijn erger dan stoppen.
+    console.error(
+      `\n✗ het herstel van ${naam} is niet veilig af te spelen.\n` +
+        `  ${reden}.\n\n` +
+        `  Het spoor blijft staan in \`${HERSTELBESTAND}\`. Kijk zelf welke van twee\n` +
+        '  dingen er aan de hand is: staat de policy open en is de definitie in het\n' +
+        '  spoor nog de juiste, zet hem dan met de hand terug en gooi het spoor weg.\n' +
+        '  Heeft een migratie hem bewust gewijzigd, gooi dan alléén het spoor weg —\n' +
+        '  de definitie erin is dan de oude en hoort nergens meer terug te komen.\n',
+    );
+    process.exit(1);
+  }
+
+  if (actie === 'terugzetten') {
+    const sql = herstelSql(spoor.policy);
+    if (sql !== null) psql(sql);
+  }
+
   rmSync(HERSTELBESTAND);
+  console.log('');
+}
+
+/**
+ * De huidige definitie van één policy, of `null` als hij niet meer bestaat.
+ *
+ * ⚠️ Een verdwenen policy is hier geen fout maar een antwoord. Hiervóór wierp
+ *    `psql` erop, bleef het spoorbestand liggen, en crashte élke volgende run op
+ *    dezelfde regel tot iemand het met de hand weggooide — het herstel dat een
+ *    afgebroken run moest opvangen, werd dan zelf de blokkade (QS8-588).
+ */
+function huidigePolicy(policy) {
+  if (!policy?.tabel || !policy?.naam) return null;
+
+  const uit = psql(`
+    select coalesce(json_agg(json_build_object(
+             'qual',   coalesce(pg_get_expr(p.polqual, p.polrelid), ''),
+             'wcheck', coalesce(pg_get_expr(p.polwithcheck, p.polrelid), ''))), '[]')
+    from pg_policy p
+    join pg_class c on c.oid = p.polrelid
+    join pg_namespace n on n.oid = c.relnamespace
+    where n.nspname = 'public'
+      and c.relname = ${literaal(policy.tabel)}
+      and p.polname = ${literaal(policy.naam)};
+  `).trim();
+
+  const rijen = JSON.parse(uit);
+  return rijen.length === 1 ? rijen[0] : null;
 }
 
 /**
@@ -1383,7 +1518,14 @@ async function hoofd() {
       const terug = herstelSql(policy);
       const label = helften.length > 1 ? `${kop} (${helft})` : kop;
 
-      writeFileSync(HERSTELBESTAND, JSON.stringify(policy), 'utf8');
+      // ⚠️ **De helft gaat mee sinds QS8-588.** Zonder die helft is bij het
+      //    herstellen niet vast te stellen welke toestand de database hóórt te
+      //    hebben, en dus ook niet of er tussendoor iets veranderd is.
+      writeFileSync(
+        HERSTELBESTAND,
+        JSON.stringify({ versie: SPOORVERSIE, policy, helft }),
+        'utf8',
+      );
 
       // ⚠️ **De `alter policy` staat sinds ronde 9 binnen de `try`.** Stond hij
       //    erbuiten en wierp hij ná het committen — een timeout van zestig
