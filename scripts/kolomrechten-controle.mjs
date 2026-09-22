@@ -944,6 +944,9 @@ export function beoordeelSchrijven({ acties, rechten, schrijvers = {} }) {
   const ongemeten = {};
   const zonderAanroeper = [];
 
+  /** Élk `tabel|soort`-paar met een tabelbrede grant — QS8-592. */
+  const tabelbreed = [];
+
   /**
    * Kolommen met een grant die géén leesbaar schrijfpad zet, op een paar waar
    * één pad onleesbaar is — QS8-483.
@@ -960,24 +963,29 @@ export function beoordeelSchrijven({ acties, rechten, schrijvers = {} }) {
     for (const [soort, r] of Object.entries(per)) {
       const sleutel = `${tabel}|${soort}`;
 
-      // ⚠️ De toets staat vóór de `if`-tak en niet erin, zodat de nesting op drie
-      //    blijft (onwrikbare regel 15, `max-depth`).
-      if (r.breed && geschreven[sleutel] === undefined) {
-        zonderAanroeper.push({ tabel, soort, kolommen: [], breed: true });
-      }
-
+      // ⚠️⚠️ **Élke tabelbrede grant, en niet alleen die zonder schrijfpad —
+      //    QS8-592.** Hier stond `r.breed && geschreven[sleutel] === undefined`,
+      //    en dat is de omgekeerde volgorde van het risico: de controle meldde
+      //    een tabelbrede grant alléén op een tabel die de app niet gebruikt, en
+      //    zweeg zodra er wél naartoe geschreven werd.
+      //
+      //    📏 Gemeten op 22-09-2026 door deze functie te voeden met één
+      //    tabelbrede INSERT-grant op `points_ledger`: mét een schrijver in
+      //    `src/` gaf hij **nul** bevindingen, zonder schrijver één.
       if (r.breed) {
+        tabelbreed.push({ tabel, soort, geschreven: geschreven[sleutel] !== undefined });
         ongemeten[sleutel] = 'de grant is tabelbreed';
 
-        // ⚠️⚠️ **Ook hier een bevinding, en dit is de bréédste vorm** — de
-        //    reparatie na de review op deze PR. De controle zweeg het hardst bij
-        //    de ergste fout: 📏 `grant insert on points_ledger to authenticated`
-        //    — een tabelbrede grant op het púntenboek — gaf geen enkele melding.
-        //
-        //    Een tabelbrede grant is niet per kolom te beoordelen en dus ook niet
-        //    per kolom te registreren: hij dekt élke kolom die de tabel ooit
-        //    krijgt. Een registerrij kan hem daarom niet afdekken, en deze
+        // ⚠️ **Een tabelbrede grant is niet per kolom te beoordelen en dus ook
+        //    niet per kolom te registreren:** hij dekt élke kolom die de tabel
+        //    ooit krijgt. Een registerrij kan hem daarom niet afdekken, en de
         //    bevinding wordt met opzet ook gemeld als het paar geregistreerd is.
+        //    📏 De controle zweeg hier ooit het hardst bij de ergste fout:
+        //    `grant insert on points_ledger to authenticated` gaf geen melding.
+        //
+        // ⚠️ En hierna wordt de kolomvergelijking voor dit paar overgeslagen
+        //    (`if (r.breed) continue;` in de lus hierboven), dus er is geen
+        //    tweede net: meldt deze tak niets, dan meldt niets iets.
         continue;
       }
       if (r.kolommen.length === 0) {
@@ -1030,7 +1038,9 @@ export function beoordeelSchrijven({ acties, rechten, schrijvers = {} }) {
     }
   }
 
-  return { ontbrekend, ongeschreven, onleesbaar, ongemeten, zonderAanroeper, onbeoordeeld };
+  return {
+    ontbrekend, ongeschreven, onleesbaar, ongemeten, zonderAanroeper, onbeoordeeld, tabelbreed,
+  };
 }
 
 // ---------------------------------------------------------------------------
@@ -1467,23 +1477,12 @@ function zonderAanroeperMeldingen(zonderAanroeper, register) {
   );
   const uit = [];
 
+  // ⚠️ **De tabelbrede grant wordt hier niet meer gemeld — QS8-592.** Die staat
+  //    sinds dat issue in zijn eigen lijst en wordt onvoorwaardelijk gemeld, ook
+  //    als er wél een schrijfpad is. Hier stond hij achter dezelfde voorwaarde
+  //    als de rest van deze functie (*niets schrijft naar deze tabel*), en dat is
+  //    precies de omgekeerde volgorde van het risico.
   for (const z of zonderAanroeper) {
-    // ⚠️ **Een tabelbrede grant is niet per kolom te beoordelen en dus ook niet
-    //    per kolom te registreren** — hij dekt élke kolom die de tabel ooit
-    //    krijgt. Een registerrij mag hem daarom niet afdekken, en deze melding
-    //    komt met opzet ook als het paar geregistreerd is. 📏 De controle zweeg
-    //    hier het hardst bij de ergste fout: `grant insert on points_ledger`,
-    //    tabelbreed op het puntenboek, gaf geen enkele melding.
-    if (z.breed === true) {
-      uit.push(
-        `\`${z.tabel}\` heeft een **tabelbrede** ${z.soort}-grant en niets in \`src/\` of ` +
-          '`app/` schrijft naar deze tabel. Een tabelbrede grant dekt élke kolom die de tabel ' +
-          'ooit krijgt en is daarom niet per kolom te beoordelen — een registerrij kan hem niet ' +
-          'afdekken. Maak er kolomgrants van, of trek hem in.',
-      );
-      continue;
-    }
-
     // ⚠️⚠️ **Per kolom en niet per paar.** Eerst stond hier alleen "staat dit
     //    paar in het register?". Dan dekt één rij élke kolom die er later bij
     //    komt. 📏 Gemeten met precies de gevaarlijke kolom — `grant update
@@ -1510,6 +1509,48 @@ function zonderAanroeperMeldingen(zonderAanroeper, register) {
   return uit;
 }
 
+/**
+ * De lege standaard voor `tabelbreed` — zelfde reden als `GEEN_ZONDER_AANROEPER`.
+ *
+ * @type {{tabel: string, soort: string, geschreven: boolean}[]}
+ */
+const GEEN_TABELBREED = [];
+
+/**
+ * Meldingen over tabelbrede INSERT- of UPDATE-grants — QS8-592.
+ *
+ * ⚠️⚠️ **Onvoorwaardelijk, en dat is de hele reparatie.** Deze bevinding zat
+ *    hiervóór in `zonderAanroeperMeldingen()` en dus achter de voorwaarde *niets
+ *    in `src/` of `app/` schrijft naar deze tabel*. Daarmee meldde de controle een
+ *    tabelbrede grant alléén op een tabel die de app níet gebruikt, en zweeg hij
+ *    zodra de client er actief naartoe schreef — precies andersom dan het risico
+ *    loopt.
+ *
+ * ⚠️ **Twee gevallen, twee teksten, en dat is geen opmaak.** Zonder schrijfpad is
+ *    dit dood hout en is de opdracht "trek hem in". Mét schrijfpad is de grant in
+ *    gebruik, en dan is het probleem dat hij élke kolom voor deze controle
+ *    onzichtbaar maakt — ook de kolommen die de server hoort te zetten. Eén tekst
+ *    voor allebei stuurt de helft van de lezers de verkeerde kant op, en dat is
+ *    de klasse van QS8-268.
+ *
+ * ⚠️ Een registerrij kan zo'n bevinding niet afdekken: een tabelbrede grant dekt
+ *    élke kolom die de tabel óóit krijgt, dus er valt per kolom niets te
+ *    beoordelen. Daarom kent deze functie geen register.
+ */
+export function tabelbredeMeldingen(tabelbreed) {
+  return tabelbreed.map(({ tabel, soort, geschreven }) =>
+    geschreven
+      ? `\`${tabel}\` heeft een **tabelbrede** ${soort}-grant en \`src/\` of \`app/\` schrijft ` +
+        'er ook naartoe. Daarmee is élke kolom van deze tabel onzichtbaar voor deze controle — ' +
+        'ook de kolommen die de server hoort te zetten, en ook de kolommen die er later ' +
+        'bijkomen. Maak er kolomgrants van; een registerrij kan dit niet afdekken.'
+      : `\`${tabel}\` heeft een **tabelbrede** ${soort}-grant en niets in \`src/\` of ` +
+        '`app/` schrijft naar deze tabel. Een tabelbrede grant dekt élke kolom die de tabel ' +
+        'ooit krijgt en is daarom niet per kolom te beoordelen — een registerrij kan hem niet ' +
+        'afdekken. Maak er kolomgrants van, of trek hem in.',
+  );
+}
+
 export function meldingen(
   {
     ontbrekend,
@@ -1517,6 +1558,7 @@ export function meldingen(
     onleesbaar,
     zonderAanroeper = GEEN_ZONDER_AANROEPER,
     onbeoordeeld = GEEN_ONBEOORDEELD,
+    tabelbreed = GEEN_TABELBREED,
   },
   lijsten = LIJSTEN,
 ) {
@@ -1542,6 +1584,7 @@ export function meldingen(
   // ⚠️ `?? []` en niet `lijsten.geenAanroeper` kaal: de ijkingen geven bewust hun
   //    eigen lijsten mee, en die hoeven niet elke sleutel te dragen. Een
   //    ontbrekende lijst is "niets geregistreerd", niet een crash.
+  uit.push(...tabelbredeMeldingen(tabelbreed));
   uit.push(...zonderAanroeperMeldingen(zonderAanroeper, lijsten.geenAanroeper ?? []));
 
   const gelezen = new Set(lijsten.nietTeLezen.map((r) => leesSleutel(r.pad, r.tabel)));
