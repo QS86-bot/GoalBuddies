@@ -169,6 +169,139 @@ export function ontleed(tekst) {
 }
 
 /**
+ * Per sectie per naam het blok zoals het in het bestand staat — QS8-593.
+ *
+ * ⚠️⚠️ **Waarom dit naast `ontleed()` staat en er niet in zit.** `ontleed()`
+ *    beantwoordt *welke namen staan er*, en dat is de vraag die de drift van 57
+ *    vond (QS8-569). De vraag die daarnáást openbleef is *staat er achter die
+ *    naam hetzelfde*, en die is met namen niet te beantwoorden: 📏 bij het
+ *    sluiten van QS8-569 bleven er **37** veldverschillen onzichtbaar, waaronder
+ *    veertien handedits en veertien regels waarmee `koppelbare_doelen` een vorm
+ *    van `goal_dashboard` beschreef die niet meer bestond.
+ *
+ * ⚠️ De haakjes worden geteld en niet de inspringing. Een `Returns`-blok van een
+ *    functie is genest, en een regex op inspringing knipt dan middenin — zelfde
+ *    reden als waarom `rls-dekking` zijn policies als JSON ophaalt.
+ *
+ * @param {string} tekst
+ * @returns {Record<Sectie, Map<string, string>>}
+ */
+export function blokken(tekst) {
+  const uit = /** @type {Record<Sectie, Map<string, string>>} */ ({});
+  for (const s of SECTIES) uit[s] = new Map();
+
+  let sectie = null;
+  let naam = null;
+  let buffer = [];
+
+  const sluit = () => {
+    if (sectie !== null && naam !== null) uit[sectie].set(naam, buffer.join('\n').trim());
+    naam = null;
+    buffer = [];
+  };
+
+  for (const regel of String(tekst).split('\n')) {
+    const kop = /^ {4}(\w+): \{\s*$/.exec(regel);
+    const kopnaam = /** @type {Sectie} */ (kop?.[1] ?? '');
+    if (kop !== null && SECTIES.includes(kopnaam)) {
+      sluit();
+      sectie = kopnaam;
+      continue;
+    }
+    if (sectie === null) continue;
+
+    // Einde van de sectie: een sluitaccolade op inspringing 4.
+    if (/^ {4}\}/.test(regel)) {
+      sluit();
+      sectie = null;
+      continue;
+    }
+
+    // ⚠️⚠️ **Een nieuwe naam sluit de vorige, en dát is wat een overload dekt.**
+    //    Een blok liep hiervoor tot zijn accolades in balans waren, en bij een
+    //    overload-unie (`f:` zónder `{`) was dat meteen: 📏 gemeten gaf
+    //    `blokken()` voor zo'n functie een **lege** tekst terug, dus een handedit
+    //    bínnen een overload was onzichtbaar — precies het gat dat deze
+    //    vergelijking moest dichten, in zijn eigen reparatie. Er staan er vandaag
+    //    **2** in `src/lib/database.types.ts`. Een naam staat altijd op
+    //    inspringing 6 en genest veld op 8 of meer, dus "de volgende naam" is
+    //    hier een betrouwbaardere grens dan de accoladestand.
+    const begin = /^ {6}(\w+):(.*)$/.exec(regel);
+    if (begin !== null) {
+      sluit();
+      naam = begin[1] ?? '';
+      buffer = [(begin[2] ?? '').trim()];
+      continue;
+    }
+
+    if (naam !== null) buffer.push(regel.trim());
+  }
+
+  sluit();
+  return uit;
+}
+
+/**
+ * Verschillen die de generator zelf maakt en die niets over het schema zeggen.
+ *
+ * ⚠️⚠️ **Een register en geen stille filter, en de reden staat in de rij die dit
+ *    issue aankondigde:** `Relationships`-ruis en generatorverschillen horen deze
+ *    controle niet rood te maken. Maar een filter dat niemand kan lezen, is een
+ *    gat dat niemand kan vinden — dus staat hier per vorm wát er genegeerd wordt
+ *    en waaróm.
+ *
+ * ⚠️ **`Relationships` is vandaag niet nodig en staat er toch.** 📏 Gemeten op
+ *    22-09-2026 tegen productie `0294`: **nul** namen met een afwijkend blok, dus
+ *    ook nul waarvan alleen dit deel verschilt. Hij staat er op grond van de
+ *    meting van 21-09, waar **9** van de 37 verschillen precies deze vorm hadden:
+ *    per generatorversie anders genest, over hetzelfde schema. Dat is een
+ *    aanname over de toekomst en geen meting van vandaag, en zo hoort hij gelezen
+ *    te worden.
+ *
+ * @type {{ naam: string, patroon: RegExp, reden: string }[]}
+ */
+export const GENERATORRUIS = [
+  {
+    naam: 'Relationships',
+    patroon: /Relationships:[\s\S]*$/,
+    reden:
+      'de generator nest dit blok per versie anders over hetzelfde schema — 📏 9 van de ' +
+      '37 verschillen van 21-09-2026 hadden deze vorm, en 0 van de 0 op 22-09-2026',
+  },
+];
+
+/** Het blok zonder de delen die de generator zelf varieert. */
+export function zonderRuis(blok) {
+  let uit = String(blok);
+  for (const { patroon } of GENERATORRUIS) uit = uit.replace(patroon, '');
+  return uit.trimEnd();
+}
+
+/**
+ * De namen die aan beide kanten staan maar iets anders beschrijven — QS8-593.
+ *
+ * ⚠️ Alleen namen die **beide** kanten kennen. Een naam die maar aan één kant
+ *    staat, is al een naamverschil; die hier nog een keer melden maakt van één
+ *    bevinding twee, en een controle die dubbel telt leer je wantrouwen.
+ *
+ * @returns {{ sectie: Sectie, naam: string }[]}
+ */
+export function veldverschillen(gegenereerd, huidig) {
+  const g = blokken(gegenereerd);
+  const h = blokken(huidig);
+  const uit = [];
+
+  for (const s of SECTIES) {
+    for (const [naam, blok] of g[s]) {
+      const ander = h[s].get(naam);
+      if (ander === undefined) continue;
+      if (zonderRuis(blok) !== zonderRuis(ander)) uit.push({ sectie: s, naam });
+    }
+  }
+  return uit;
+}
+
+/**
  * Legt een generatie naast het bestand in de repo.
  *
  * @param {string} gegenereerd
@@ -285,15 +418,45 @@ export function hoofd() {
 
   const huidig = readFileSync(TYPESBESTAND, 'utf8');
   const uitslag = vergelijk(bron.tekst ?? '', huidig);
+  const velden = veldverschillen(bron.tekst ?? '', huidig);
 
-  if (uitslag.totaal === 0) {
-    console.log(`typesdrift-controle: ${TYPESBESTAND} kent dezelfde namen als het schema (bron: ${bron.bron}).`);
+  if (uitslag.totaal === 0 && velden.length === 0) {
+    console.log(
+      `typesdrift-controle: ${TYPESBESTAND} kent dezelfde namen én dezelfde velden als ` +
+        `het schema (bron: ${bron.bron}).`,
+    );
     return 0;
   }
 
-  console.error(`✗ typesdrift-controle: ${uitslag.totaal} naam/namen verschillen.\n`);
-  for (const r of rapport(uitslag, bron.bron ?? '?')) console.error(r);
-  console.error('\n  Hergenereer met `npm run types:db`, of leg per naam vast waarom hij afwijkt.');
+  if (uitslag.totaal > 0) {
+    console.error(`✗ typesdrift-controle: ${uitslag.totaal} naam/namen verschillen.\n`);
+    for (const r of rapport(uitslag, bron.bron ?? '?')) console.error(r);
+  }
+
+  // ⚠️⚠️ **Apart gemeld en niet bij de namen opgeteld — QS8-593.** Dit is een
+  //    andere vraag met een ander antwoord: bij een naamverschil hergenereer je,
+  //    bij een veldverschil is de vraag eerst *wie heeft hier met de hand in
+  //    geschreven*. 📏 Bij QS8-569 bleven er zo 37 onzichtbaar, waaronder
+  //    veertien handedits die bij de eerste hergeneratie verdwenen zonder dat er
+  //    iets rood van werd.
+  if (velden.length > 0) {
+    console.error(
+      `${uitslag.totaal > 0 ? '\n' : ''}✗ typesdrift-controle: ${velden.length} naam/namen ` +
+        'staan aan beide kanten maar beschrijven iets anders.\n',
+    );
+    for (const { sectie, naam } of velden) console.error(`    ${sectie}.${naam}`);
+    console.error(
+      '',
+      '  Een veldverschil is geen naamverschil: hergenereren laat het verdwijnen zónder',
+      '  dat iemand gezien heeft wát er weg ging. Kijk eerst of het handwerk is — een',
+      '  correctie hoort in `src/lib/database.types.correcties.ts`, onder de toets in',
+      '  `tests/beloftes/typecorrecties.test.ts`, en niet in het gegenereerde bestand.',
+    );
+  }
+
+  if (uitslag.totaal > 0) {
+    console.error('\n  Hergenereer met `npm run types:db`, of leg per naam vast waarom hij afwijkt.');
+  }
   return 1;
 }
 
