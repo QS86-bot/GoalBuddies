@@ -19,6 +19,7 @@ import {
   kolomNaam,
   losSpreadOp,
   meldingen,
+  tabelbredeMeldingen,
   objectSleutels,
   ontleedRechten,
   ontleedSchrijfrechten,
@@ -1575,5 +1576,109 @@ describe('selectiesIn knipt commentaar weg', () => {
   it('plakt een kolom uit code niet aan een tabelnaam uit commentaar', () => {
     const bron = "// vroeger: .from('goals')\nconst r = await q.select('secret');";
     expect(selectiesIn('x.ts', bron)).toEqual([]);
+  });
+});
+
+/**
+ * De ijking van de tabelbrede grant — QS8-592.
+ *
+ * ⚠️⚠️ **Deze bevinding had geen enkele toets, en dat is hoe de fout kon
+ *    ontstaan.** De `breed`-melding zat in `zonderAanroeperMeldingen()` en
+ *    dus achter dezelfde voorwaarde als de rest van die functie: *niets in
+ *    `src/` of `app/` schrijft naar deze tabel*. Daarmee meldde de controle een
+ *    tabelbrede grant alléén op een tabel die de app níet gebruikt, en zweeg hij
+ *    zodra de client er actief naartoe schreef. 📏 Gemeten op 22-09-2026 met één
+ *    tabelbrede INSERT-grant op `points_ledger`: mét schrijver **nul**
+ *    bevindingen, zonder schrijver één.
+ *
+ *    Dat de hele suite groen bleef bij het verplaatsen, is het bewijs dat er
+ *    niets op stond.
+ */
+describe('tabelbrede grants — QS8-592', () => {
+  const BREED = { kolommen: ['id', 'user_id', 'punten', 'reden'], breed: true };
+  const SCHRIJFT = {
+    pad: 'src/modules/points/api.ts',
+    tabel: 'points_ledger',
+    soort: 'INSERT',
+    rechten: ['INSERT'],
+    kolommen: ['punten'],
+  };
+  const LEEG = { geenSchrijfpad: [], geenAanroeper: [], nietTeLezen: [] };
+
+  const oordeelMet = (acties: unknown[]) =>
+    beoordeelSchrijven({
+      acties,
+      rechten: { points_ledger: { INSERT: BREED } },
+    } as never) as never as { tabelbreed: { geschreven: boolean }[] };
+
+  // ⚠️ **De must-find die dit issue is.** Hiervóór was dit nul.
+  it('meldt een tabelbrede grant óók als de app naar die tabel schrijft', () => {
+    const oordeel = oordeelMet([SCHRIJFT]);
+    expect(oordeel.tabelbreed).toEqual([
+      { tabel: 'points_ledger', soort: 'INSERT', geschreven: true },
+    ]);
+    expect(meldingen(oordeel as never, LEEG as never)).toHaveLength(1);
+  });
+
+  it('meldt hem nog steeds als niemand naar die tabel schrijft', () => {
+    const oordeel = oordeelMet([]);
+    expect(oordeel.tabelbreed).toEqual([
+      { tabel: 'points_ledger', soort: 'INSERT', geschreven: false },
+    ]);
+    expect(meldingen(oordeel as never, LEEG as never)).toHaveLength(1);
+  });
+
+  // ⚠️⚠️ **Twee gevallen, twee teksten, en dat is geen opmaak.** Zonder
+  //    schrijfpad is dit dood hout en is de opdracht "trek hem in"; mét
+  //    schrijfpad is de grant in gebruik en is het probleem dat hij élke kolom
+  //    onzichtbaar maakt. Eén tekst voor allebei stuurt de helft van de lezers de
+  //    verkeerde kant op — de klasse van QS8-268.
+  it('zegt bij een grant die in gebruik is iets anders dan bij dood hout', () => {
+    const inGebruik = tabelbredeMeldingen([
+      { tabel: 'points_ledger', soort: 'INSERT', geschreven: true },
+    ])[0];
+    const doodHout = tabelbredeMeldingen([
+      { tabel: 'points_ledger', soort: 'INSERT', geschreven: false },
+    ])[0];
+
+    expect(inGebruik).toContain('onzichtbaar voor deze controle');
+    expect(inGebruik).toContain('die de server hoort te zetten');
+    expect(doodHout).toContain('niets in `src/`');
+    expect(doodHout).toContain('trek hem in');
+    expect(inGebruik).not.toEqual(doodHout);
+  });
+
+  // ⚠️ Een registerrij mag dit niet afdekken: een tabelbrede grant dekt élke
+  //    kolom die de tabel óóit krijgt, dus er valt per kolom niets te beoordelen.
+  it('laat zich niet afdekken door een registerrij', () => {
+    const oordeel = oordeelMet([SCHRIJFT]);
+    const register = {
+      geenSchrijfpad: [],
+      geenAanroeper: [{ tabel: 'points_ledger', soort: 'INSERT', reden: 'beoordeeld' }],
+      nietTeLezen: [],
+    };
+    expect(meldingen(oordeel as never, register as never)).toHaveLength(1);
+  });
+
+  // ⚠️ Must-allow. Een versmalde grant is géén tabelbrede grant, en een controle
+  //    die élke grant meldt leer je te negeren.
+  it('laat een versmalde grant met rust', () => {
+    const oordeel = beoordeelSchrijven({
+      acties: [SCHRIJFT],
+      rechten: { points_ledger: { INSERT: { kolommen: ['punten'], breed: false } } },
+    } as never) as never as { tabelbreed: unknown[] };
+    expect(oordeel.tabelbreed).toEqual([]);
+  });
+
+  it('meldt niets als er helemaal geen grant is', () => {
+    const oordeel = beoordeelSchrijven({
+      acties: [],
+      rechten: { points_ledger: { INSERT: { kolommen: [], breed: false } } },
+    } as never) as never as { tabelbreed: unknown[] };
+    expect(oordeel.tabelbreed).toEqual([]);
+  });
+
+  it('geeft een lege lijst terug als de sleutel ontbreekt — geen crash', () => {
+    expect(tabelbredeMeldingen([])).toEqual([]);
   });
 });
