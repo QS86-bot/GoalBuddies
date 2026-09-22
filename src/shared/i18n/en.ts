@@ -2188,6 +2188,29 @@ export const en: Record<Sleutel, string> = {
   'meldingen.niet_van_jou': 'This report is not yours to review.',
   'meldingen.al_afgehandeld': 'Someone has already resolved this report.',
 
+  // The moderation screen — QS8-586.
+  'meldingen.titel': 'Reports',
+  'meldingen.ingang_kop': 'A report is waiting',
+  'meldingen.ingang_tekst': 'Someone reported something you can review.',
+  'meldingen.ingang_knop': 'View reports',
+  'meldingen.leeg_titel': 'Nothing to review',
+  'meldingen.leeg_tekst': 'No report is open. When one comes in, it shows up here.',
+  'meldingen.over': 'About {naam}',
+  'meldingen.in_groep': 'In {groep}',
+  'meldingen.escalatie':
+    'This report is about an admin of the group, so the group cannot review it itself.',
+  'meldingen.toelichting_kop': 'What the reporter wrote',
+  'meldingen.geen_toelichting': 'The reporter did not add any explanation.',
+  'meldingen.bericht_kop': 'The reported message',
+  'meldingen.vaker': 'There are {aantal} open reports about this person.',
+  'meldingen.melder_onbekend':
+    'Who filed the report is deliberately left out. You judge what happened, not who raised it.',
+  'meldingen.actie_knop': 'I have taken action',
+  'meldingen.geen_actie_knop': 'Nothing needs to happen here',
+  'meldingen.acties_uitleg':
+    'Both close the report, with your name and the moment attached. Removing or blocking a member is done on the group screen.',
+  'meldingen.meer_laden': 'Load more',
+
   'melden.verwijder_knop': 'Remove from group',
   'melden.geen_beheerder': 'Only an admin of this group can do this.',
   'melden.niet_bevestigd': 'This action was not confirmed.',

@@ -1,5 +1,5 @@
 import { reportError } from '../../lib/observability';
-import { type Database } from '../../lib/database.types';
+import { type Database } from '../../lib/database.types.correcties';
 import { supabase } from '../../lib/supabase';
 import { type Resultaat } from '../../shared/api';
 import { t, type Sleutel } from '../../shared/i18n';
@@ -250,6 +250,17 @@ export async function verwijderLid(
  *    betaald zet. Wat er wél in zit is `meldingen_over_onderwerp` — *"vijf mensen
  *    melden dezelfde persoon"* is het signaal dat telt, en dat kan zonder één
  *    naam prijs te geven.
+ */
+/**
+ * Eén regel uit de lijst die je mag beoordelen.
+ *
+ * ⚠️ **Uit `database.types.correcties` en niet uit `database.types`**, en dat is
+ *    de enige plek in `src/modules/` waar dat zo is. De reden staat in de rij
+ *    voor `openstaande_meldingen` in dat bestand: 📏 `toelichting` en
+ *    `bericht_kopie` zijn `is_nullable = YES` op `public.reports`, en de
+ *    generator kan dat op een `returns table` niet zien. Een `string` waar
+ *    `null` staat is hier geen typedetail maar de plek waar een beheerder leest
+ *    waaróm er gemeld is.
  */
 export type OpenstaandeMelding =
   Database['public']['Functions']['openstaande_meldingen']['Returns'][number];

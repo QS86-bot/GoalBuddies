@@ -137,6 +137,7 @@ type GecorrigeerdeTabellen = Met<
  * | `verzoekers_eerder_lid` | `op` | komt uit een `left join lateral`, dus leeg als de gebeurtenis ontbreekt |
  * | `zichtbare_reeksen_van_groep` | `best_streak`, `last_cycle_start` | `case when … then … end` **zonder `else`** — de maskering van `0078` |
  * | `zoek_mensen` | `avatar_url` | `profiles.avatar_url` is `is_nullable = YES` |
+ * | `openstaande_meldingen` | `toelichting`, `bericht_kopie` | `reports.toelichting` en `reports.bericht_kopie` zijn `is_nullable = YES` |
  * | `group_overview` | acht kolommen, zie hieronder | drie oorzaken tegelijk |
  *
  * ⚠️⚠️ **`group_overview` is de rij die er bij de eerste ronde niet in stond, en
@@ -211,6 +212,26 @@ type GecorrigeerdeFuncties = Met<
         last_cycle_start: string | null;
         closed_this_period: boolean | null;
       }
+    >;
+    /**
+     * ⚠️ **Klasse 3, en hier is het de tekst die een mens moet lézen.**
+     *    `openstaande_meldingen()` (0296) geeft `r.toelichting` en
+     *    `r.bericht_kopie` rechtstreeks door, en 📏 allebei staan `is_nullable
+     *    = YES` op `public.reports` — een melding zonder toelichting is de
+     *    gewone vorm, en `bericht_kopie` is leeg zodra er geen bericht aan hangt.
+     *    Een type dat `string` zegt, laat het beheerscherm `"null"` of een lege
+     *    aanhaling tonen op de plek waar de aanleiding hoort te staan.
+     *
+     *    De tien andere kolommen blijven niet-nullable en dat is gemeten:
+     *    `id`, `group_id`, `subject_id`, `reden`, `status` en `created_at` zijn
+     *    `not null` op `reports`, `groepsnaam` en `onderwerp_naam` komen via een
+     *    gewone `join` uit `groups.name` en `profiles.display_name` (allebei
+     *    `not null`), en `meldingen_over_onderwerp` en `via_escalatie` zijn een
+     *    `count(*)::integer` en een `not (…)`.
+     */
+    openstaande_meldingen: MetRij<
+      'openstaande_meldingen',
+      { toelichting: string | null; bericht_kopie: string | null }
     >;
     verzoekers_eerder_lid: MetRij<'verzoekers_eerder_lid', { op: string | null }>;
     zichtbare_reeksen_van_groep: MetRij<

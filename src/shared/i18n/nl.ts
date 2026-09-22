@@ -2762,6 +2762,30 @@ export const nl = {
   'meldingen.niet_van_jou': 'Deze melding is niet van jou om te beoordelen.',
   'meldingen.al_afgehandeld': 'Deze melding is al door iemand afgehandeld.',
 
+  // Het beheerscherm — QS8-586. De lezer van `reports`.
+  'meldingen.titel': 'Meldingen',
+  'meldingen.ingang_kop': 'Er wacht een melding',
+  'meldingen.ingang_tekst': 'Iemand heeft iets gemeld dat jij kunt beoordelen.',
+  'meldingen.ingang_knop': 'Meldingen bekijken',
+  'meldingen.leeg_titel': 'Niets te beoordelen',
+  'meldingen.leeg_tekst':
+    'Er staat geen melding open. Komt er een binnen, dan verschijnt hij hier.',
+  'meldingen.over': 'Over {naam}',
+  'meldingen.in_groep': 'In {groep}',
+  'meldingen.escalatie':
+    'Deze melding gaat over een beheerder van de groep, dus de groep kan hem niet zelf beoordelen.',
+  'meldingen.toelichting_kop': 'Toelichting van de melder',
+  'meldingen.geen_toelichting': 'De melder heeft geen toelichting meegegeven.',
+  'meldingen.bericht_kop': 'Het gemelde bericht',
+  'meldingen.vaker': 'Er staan {aantal} meldingen open over deze persoon.',
+  'meldingen.melder_onbekend':
+    'Wie de melding deed, staat er met opzet niet bij. Je beoordeelt wat er gebeurd is, niet wie het aankaartte.',
+  'meldingen.actie_knop': 'Ik heb actie ondernomen',
+  'meldingen.geen_actie_knop': 'Hier hoeft niets te gebeuren',
+  'meldingen.acties_uitleg':
+    'Allebei sluiten de melding, met jouw naam en het moment erbij. Een lid uit de groep zetten of blokkeren doe je op het groepsscherm.',
+  'meldingen.meer_laden': 'Meer laden',
+
   // Een lid verwijderen
   'melden.verwijder_knop': 'Uit de groep zetten',
   'melden.geen_beheerder': 'Alleen een beheerder van deze groep kan dit doen.',
