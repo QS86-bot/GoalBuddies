@@ -586,7 +586,34 @@ jobs:
     name: Alles groen
     runs-on: ubuntu-latest
     needs: [controle, rls, edge, scripts_windows]
-    if: always()
+    # ⚠️⚠️ **`!cancelled()` erbij is de reparatie van QS8-589, en het is QS8-582
+    #    één laag hoger.** Met alleen `always()` draait deze job óók als de rún
+    #    is afgebroken; de jobs in `needs` dragen dan `result = cancelled`, dat
+    #    is `!= "success"`, en de samenvatting maakt er een **failure** van.
+    #    GitHub markeert de run netjes als `cancelled` — het was déze job die
+    #    daar rood van maakte.
+    #
+    #    📏 Gemeten op 22-09-2026 over de laatste 100 CI-runs: 78 `success`,
+    #    **19 `cancelled`**, 3 `failure`. Afbreken is dus bijna een vijfde van
+    #    alle runs, en inherent: `cancel-in-progress` staat aan voor alles
+    #    behalve `main`, dus elke tweede push binnen een paar minuten levert er
+    #    een op. 📏 PR #583 droeg op één commit (`ae82974f`) daardoor twee
+    #    `Alles groen`-checks met tegengestelde uitslag, en is zo gemerged.
+    #
+    # ⚠️ **De twee gevallen die dit uit elkaar houdt, en dat is de hele finesse.**
+    #    `cancelled()` slaat aan op een afgebroken **run** — dan wordt deze job
+    #    overgeslagen, want er is niets gemeten. Loopt een afzonderlijke **job**
+    #    op zijn `timeout-minutes`, dan komt díé terug als `cancelled` terwijl de
+    #    run gewoon doorloopt; deze job draait dan wél en wordt rood. Dat is geen
+    #    theorie: de kop van de RLS-job beschrijft precies dat geval (QS8-518,
+    #    twee runs van QS8-433).
+    #
+    # ⚠️ **En `skipped` blokkeert hier geen merge.** 📏 Gemeten op 22-09-2026 via
+    #    de API: `main` is beschermd, maar `required_status_checks` staat op
+    #    `enforcement_level: off` met lege `contexts` en `checks` — `Alles groen`
+    #    is geen required check. Het bewijs uit de praktijk staat ernaast: PR #583
+    #    is gemerged terwijl deze check op zijn head **rood** stond.
+    if: always() && !cancelled()
     steps:
       - name: Uitslag bepalen
         run: |
