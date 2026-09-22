@@ -397,4 +397,102 @@ describe.skipIf(!beschikbaar)('een leespolicy routeert via de gedeelde groepstoe
         'van beide, dan vangt hij de verruiming niet die de hele suite groen liet',
     ).toBe('proef_leesroute_459.proef_459_kopie,proef_leesroute_459.proef_459_zwak');
   }, 30_000);
+
+  /**
+   * ⚠️⚠️ **De tak erbij — QS8-461, migratie 0295.**
+   *
+   * De vorm hierboven toetst een `qual` die in zijn gehéél te zwak is. Deze
+   * toetst de vorm die daar doorheen kwam: **een sterke aanroep in de ene tak en
+   * een eigen kopie in de andere.** 📏 Gemeten op 22-09-2026, met 0259 nog van
+   * kracht: `leesroute_bewaking()` gaf **0 rijen** — vóór én ná het aanmaken van
+   * de policy. De grendel zweeg omdat `not like` naar de héle `qual` keek en de
+   * eerste tak het gesanctioneerde woord droeg.
+   *
+   * ⚠️ **Waarom juist deze vorm.** Een *vervanging* van de expressie leest in een
+   *    diff als een herschrijving en valt op; een *tak erbij* leest als
+   *    uitbreiding. CLAUDE.md noemt die vorm bij domeinregel 11 als duur betaald.
+   *
+   * ⚠️ **En de must-allow hieronder is de helft die ertoe doet.** `and` versmalt
+   *    en `or` verbreedt: staat er `sterk and <kopie>`, dan moet de sterke toets
+   *    óók gelden en kan de kopie niets openzetten. Meldt de grendel die tóch,
+   *    dan is hij te streng geworden en leert iemand hem uitzetten — precies het
+   *    tegenovergestelde van wat 0295 wil.
+   */
+  it('meldt een zwakke tweede OR-tak naast een sterke aanroep, en laat dezelfde kopie achter een `and` met rust', () => {
+    const uit = psqlMetInvoer(
+      [
+        'begin;',
+        'create table public.proef_leesroute_461 (id uuid primary key default gen_random_uuid(), goal_id uuid);',
+        'alter table public.proef_leesroute_461 enable row level security;',
+        // A — MOET GEMELD: tak 1 is sterk, tak 2 is een eigen kopie zonder
+        //     eigenaar-toets en zonder archieftoets. Dit is het geval van QS8-461.
+        'create policy proef_461_ortak on public.proef_leesroute_461 for select to authenticated',
+        '  using (shares_group_with_goal(goal_id)',
+        '         or exists (select 1 from goal_group_links l',
+        '                    join group_members m on m.group_id = l.group_id',
+        '                                        and m.user_id = (select auth.uid())',
+        '                    where l.goal_id = proef_leesroute_461.goal_id));',
+        // B — MOET MET RUST: dezelfde kopie, maar achter een `and`. Versmalt.
+        'create policy proef_461_andtak on public.proef_leesroute_461 for select to authenticated',
+        '  using (shares_group_with_goal(goal_id)',
+        '         and exists (select 1 from goal_group_links l',
+        '                     where l.goal_id = proef_leesroute_461.goal_id));',
+        // C — MOET MET RUST: een `or` binnen een subquery is geen bovenste tak.
+        'create policy proef_461_subquery on public.proef_leesroute_461 for select to authenticated',
+        '  using (shares_group_with_goal(goal_id)',
+        '         and exists (select 1 from goal_group_links l',
+        '                     where l.goal_id = proef_leesroute_461.goal_id',
+        '                       or l.goal_id is null));',
+        "select 'GEMELD=' || coalesce(string_agg(naam, ',' order by naam), '') from leesroute_bewaking()",
+        "  where naam like '%proef_leesroute_461%';",
+        'rollback;',
+      ].join('\n'),
+    );
+
+    const gemeld = uit
+      .split('\n')
+      .map((r) => r.trim())
+      .find((r) => r.startsWith('GEMELD='))
+      ?.slice('GEMELD='.length);
+
+    expect(
+      gemeld,
+      'alleen de policy met de zwakke tweede OR-tak hoort gemeld te worden. Meldt hij ' +
+        'er nul, dan staat het gat van QS8-461 weer open — een sterke naam in tak 1 ' +
+        'dekt dan opnieuw een kopie in tak 2 af. Meldt hij er meer dan één, dan telt ' +
+        'hij een `and` als verbreding en is hij te streng: dat is een controle die ' +
+        'iemand gaat uitzetten',
+    ).toBe('proef_leesroute_461.proef_461_ortak');
+  }, 30_000);
+
+  /**
+   * ⚠️ **De splitser is zelf een grendel, dus hij staat los onder toets** —
+   *    regel 18, de knip die een controle scherp houdt. Splitst hij binnen een
+   *    subquery of binnen een stringliteral, dan meldt `leesroute_bewaking()`
+   *    takken die geen takken zijn, en dat is een controle die alles meldt.
+   */
+  it('splitst alleen op de bovenste OR-laag, niet in een subquery of een stringliteral', () => {
+    const uit = psqlMetInvoer(
+      [
+        "select 'N1=' || (select count(*) from bovenste_or_takken('(a(x) OR (EXISTS (SELECT 1 FROM t WHERE (p OR q))))'));",
+        "select 'N2=' || (select count(*) from bovenste_or_takken('(shares_group_with_goal(goal_id))'));",
+        "select 'N3=' || (select count(*) from bovenste_or_takken('(naam = ''x OR y'')'));",
+        "select 'N4=' || (select count(*) from bovenste_or_takken('(a OR b OR c)'));",
+      ].join('\n'),
+    );
+
+    const lees = (sleutel: string): string | undefined =>
+      uit
+        .split('\n')
+        .map((r) => r.trim())
+        .find((r) => r.startsWith(sleutel))
+        ?.slice(sleutel.length);
+
+    expect(lees('N1='), 'een OR binnen een subquery is geen bovenste tak').toBe('2');
+    expect(lees('N2='), 'zonder bovenste OR is er precies één tak — gelijk aan 0259').toBe('1');
+    expect(lees('N3='), 'een OR in een stringliteral is geen bovenste tak').toBe('1');
+    expect(lees('N4='), 'Postgres vlakt geneste OR af; drie takken horen er drie te zijn').toBe(
+      '3',
+    );
+  }, 30_000);
 });
