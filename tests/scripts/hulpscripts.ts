@@ -68,6 +68,25 @@ export function lokaleImports(bron: string): string[] {
   return [...new Set([...treffers].flatMap((m) => (m[1] === undefined ? [] : [m[1]])))];
 }
 
+/**
+ * De plekken waar deze bron zélf een script naar een kloon kopieert.
+ *
+ * ⚠️⚠️ **Dit staat hier als functie en niet als regex in de toets, omdat een
+ *    controle die je niet kunt voeden je ook niet kunt ijken.** 📏 Gemeten in de
+ *    ijking van QS8-585: met de knip eruit gehaald werd er **niets** rood — de
+ *    grendel tegen terugkomen kon een uitgecommentarieerde kopieeractie niet van
+ *    een echte onderscheiden, en niemand zou dat gemerkt hebben. Woordelijk de
+ *    les van QS8-412: de knip die een controle scherp houdt, is zelf een grendel.
+ *
+ * ⚠️ De handeling en niet de lijst: een harnas dat zijn `ENTRIES` opschrijft doet
+ *    niets fout — dat is waar die test over gaat. Zelf kopiëren is wat misgaat.
+ */
+export function kopieeracties(bron: string): string[] {
+  const schoon = zonderCommentaar(bron) as string;
+  const treffers = schoon.matchAll(/\b(?:cpSync|copyFileSync)\([^;]*?'scripts'/g);
+  return [...treffers].map((m) => m[0].replace(/\s+/g, ' ').slice(0, 60));
+}
+
 /** Leest een script uit de echte `scripts/`-map. */
 function leesUitScripts(naam: string): string {
   return readFileSync(join(SCRIPTS, naam), 'utf8');

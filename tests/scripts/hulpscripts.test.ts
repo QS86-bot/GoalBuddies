@@ -3,9 +3,7 @@ import { join } from 'node:path';
 
 import { describe, expect, it } from 'vitest';
 
-import { zonderCommentaar } from '../../scripts/zonder-commentaar.mjs';
-
-import { importsluiting, lokaleImports } from './hulpscripts.js';
+import { importsluiting, kopieeracties, lokaleImports } from './hulpscripts.js';
 
 /**
  * De ijking van de gedeelde scriptsluiting — QS8-585.
@@ -167,7 +165,15 @@ describe('de echte scriptmap', () => {
  *    intypt.*
  */
 const ZONDER_SLUITING: Record<string, string> = {
-  // (leeg) — een reden hoort hier te staan mét de meting die haar draagt.
+  // ⚠️ Dit bestand zélf. De `cpSync(… 'scripts' …)` die hier staan zijn de
+  //    **voeding** van `kopieeracties()` — de must-find en de
+  //    uitgecommentarieerde must-allow — en geen echte kopieeractie. 📏 Zonder
+  //    deze rij meldt de grendel er twee, en dan is de enige uitweg om de
+  //    controle niet meer te voeden. Dat is precies de ruil die CLAUDE.md
+  //    afwijst: een controle die een lastig geval omzeilt in plaats van het te
+  //    melden, bewaakt vanaf dat moment de omweg.
+  'tests/scripts/hulpscripts.test.ts':
+    'de kopieeracties hier zijn de voeding van de ijking, niet het echte werk',
 };
 
 describe('geen enkel harnas kopieert zijn scripts nog zelf', () => {
@@ -176,9 +182,8 @@ describe('geen enkel harnas kopieert zijn scripts nog zelf', () => {
     for (const pad of testbestanden(join(process.cwd(), 'tests'))) {
       const kort = pad.slice(process.cwd().length + 1);
       if (kort in ZONDER_SLUITING) continue;
-      const bron = zonderCommentaar(readFileSync(pad, 'utf8')) as string;
-      for (const aanroep of bron.matchAll(/\b(?:cpSync|copyFileSync)\([^;]*?'scripts'/g)) {
-        bevindingen.push(`${kort}: ${aanroep[0].replace(/\s+/g, ' ').slice(0, 60)}`);
+      for (const aanroep of kopieeracties(readFileSync(pad, 'utf8'))) {
+        bevindingen.push(`${kort}: ${aanroep}`);
       }
     }
     expect(bevindingen, 'gebruik kopieerHulpscripts() uit tests/scripts/hulpscripts.ts').toEqual(
@@ -186,11 +191,28 @@ describe('geen enkel harnas kopieert zijn scripts nog zelf', () => {
     );
   });
 
+  it('vindt een kopieeractie uit scripts/ als je hem er een voert', () => {
+    const bron = "cpSync(join(process.cwd(), 'scripts', naam), join(kloon, 'scripts', naam));";
+    expect(kopieeracties(bron)).toHaveLength(1);
+  });
+
   // ⚠️ Must-allow. Een harnas dat `package.json` meekopieert doet iets anders —
   //    dat is geen script en heeft geen importsluiting.
   it('laat een kopie van iets anders dan een script met rust', () => {
     const bron = "cpSync(join(process.cwd(), 'package.json'), join(kloon, 'package.json'));";
-    expect([...bron.matchAll(/\b(?:cpSync|copyFileSync)\([^;]*?'scripts'/g)]).toEqual([]);
+    expect(kopieeracties(bron)).toEqual([]);
+  });
+
+  // ⚠️⚠️ **De grendel op de grendel, en hij is met een mutatie verdiend.** 📏 In
+  //    de ijking van dit issue gaf "de knip eruit" **nul** rode toetsen: de
+  //    grendel kon een uitgecommentarieerde kopieeractie niet van een echte
+  //    onderscheiden. Zonder deze toets is de knip een aanname.
+  it('laat een uitgecommentarieerde kopieeractie liggen', () => {
+    const bron =
+      "// vroeger: cpSync(join(process.cwd(), 'scripts', naam), join(k, 'scripts', naam));\n" +
+      "/* cpSync(join(process.cwd(), 'scripts', 'x.mjs'), join(k, 'scripts', 'x.mjs')); */\n" +
+      'kopieerHulpscripts(kloon, ENTRIES);';
+    expect(kopieeracties(bron)).toEqual([]);
   });
 });
 
