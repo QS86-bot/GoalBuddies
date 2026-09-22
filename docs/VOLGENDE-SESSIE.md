@@ -1842,6 +1842,75 @@ dat een agent overbodig is. Die regel blijft kloppen voor tekstcorrecties, maar
 niet voor iets dat een autorisatiegrendel raakt: **laat de review draaien zodra
 je aan RLS komt, ook als het klein lijkt.**
 
+### 22-09-2026 — wat baan B die dag deed, en wat de voorraad erna is
+
+Vijf issues af (QS8-582, 585, 588, 592, 593) en vier dossierrijen gesloten; de
+vijfde (QS8-594) is gemeten en doorgegeven. Wat er gebouwd is staat per rij in
+`docs/ENGINEER-REVIEW.md` en per issue in Linear; hieronder staat alleen wat een
+vólgende sessie anders zou doen.
+
+⚠️⚠️ **De drie Hoog-rijen zijn alle drie tegen productie hermeten en blijven alle
+drie terecht open.** Twee vallen onder grens 1 (de intrekknop van een straf is
+een besluit van Quinten; de laag vóór PostgREST kost geld of infrastructuur), de
+derde is de agenda voor november zelf. **Begin een volgende baan-B-ronde dus niet
+bovenaan de lijst** — daar staat niets bouwbaars.
+
+⚠️ **En de Middel-rijen lopen dezelfde kant op.** Van de zes die deze dag
+onderzocht zijn, waren er vier bouwbaar en twee niet: rij 763 en rij 623
+concluderen **zelf** dat een script hier niet kan helpen (763 rekent voor dat een
+controle *"één op twee onterecht"* zou zijn). Dat is geen reden om te stoppen,
+maar het betekent dat de leestijd per gesloten rij stijgt — en dat *een rij die
+geen PR oplevert ook een uitkomst is*, geen mislukte ronde.
+
+⚠️ **Eén rij stond al gesloten voordat hij aan de beurt kwam:** rij 545 werd
+diezelfde dag door de ándere baan gesloten (QS8-461). Een lijst Middel-rijen die
+je aan het begin van een ronde maakt, is aan het eind van die ronde al verouderd.
+Hermeet voordat je hem gebruikt om iets te kiezen.
+
+### De valkuilen van die dag — allemaal in de méting, niet in de code
+
+⚠️⚠️ **`git checkout --` tijdens een ijking gooit ongecommit werk weg.** Om een
+mutatie terug te draaien is dat het voor de hand liggende commando, en het wist
+net zo hard de reparatie waar de mutatie op zat. De metingen die eruit kwamen
+waren niet onwaar maar gingen over een ándere boom dan ze beweerden — QS8-411 in
+het klein. **Commit vóór je ijkt**, altijd; dan is terugdraaien gratis.
+
+⚠️⚠️ **Twee `npm run poort`-runs naar hetzelfde logbestand laten zich niet uit
+elkaar houden.** Er is die dag bijna een rode `regel15:controle` gerapporteerd
+die al gerepareerd was: de tweede run overschreef het bestand terwijl de eerste
+er nog in schreef. Draai de poort **op de voorgrond**, of geef elke run zijn
+eigen logbestand.
+
+⚠️⚠️ **Een ijking die niets rood maakt, is eerst verdacht over zichzelf.** Bij
+QS8-593 gaf de eerste handedit-meting *beide* kanten op nul, wat eruitzag als
+"de nieuwe controle vindt het niet". De controle was in orde; de fixture verving
+een regel met een `String.replace` die niet landde. Kijk bij een nul-uitslag
+éérst of je mutatie wel echt in het bestand staat.
+
+⚠️ **Lees een dossierrij helemaal, ook de staart.** Rij 281 opent met een meting
+van 17-09 en draagt in zijn staart een hermeting van 21-09 met andere getallen.
+Wie alleen de kop leest, "ververst" een rij die gisteren al ververst is. Deze
+rijen zijn 1200 tot 6600 tekens lang; de nieuwste meting staat achteraan.
+
+⚠️⚠️ **En de duurste vorm van die dag, over beide banen heen: de reparatie die
+het gat draagt dat hij dicht.** Bij QS8-461 splitste de eerste versie alleen de
+bovenste OR-laag terwijl de echte policies hun aanroep een laag dieper dragen.
+Bij QS8-593 liet de eerste `blokken()` een overload-blok léég — precies de vorm
+die onzichtbaar was en die die controle moest gaan zien. Twee keer op één dag,
+in twee banen, en **geen van beide is door nadenken gevonden**: de één door de
+security-review, de ander door mutatie 1 van de eigen ijking.
+
+De les is niet "beter opletten" maar: **voer je nieuwe grendel de vorm die het
+issue beschrijft, en niet een vorm die erop lijkt.** Als het issue een overload
+noemt, ijk dan op een overload.
+
+⚠️ **Een grendel in `scripts/` kan een reparatie in `src/` afdwingen, en dat is
+een boomgrens.** QS8-594 is daarop blijven staan: de controle hoort in baan B,
+elke correctie die hij afdwingt in baan A. Een controle die meteen twaalf
+bevindingen geeft die zijn eigen baan niet mag oplossen, zet `main` rood.
+**Controleer vóór je bouwt waar de reparatie landt**, niet alleen waar de
+controle landt.
+
 ## WERKAFSPRAKEN — houd deze aan
 
 1. **Werk landt sinds 23-08 via een PR op GitHub**, niet meer met een lokale
