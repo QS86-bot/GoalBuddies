@@ -2757,6 +2757,10 @@ export const nl = {
    */
   'melden.blokkeer_stil': 'Hij krijgt hier geen bericht van en kan het nergens zien.',
   'melden.geblokkeerd': 'Dit kan niet.',
+  'meldingen.laden_mislukt': 'De meldingen konden niet geladen worden.',
+  'meldingen.afhandelen_mislukt': 'Afhandelen lukte niet.',
+  'meldingen.niet_van_jou': 'Deze melding is niet van jou om te beoordelen.',
+  'meldingen.al_afgehandeld': 'Deze melding is al door iemand afgehandeld.',
 
   // Een lid verwijderen
   'melden.verwijder_knop': 'Uit de groep zetten',

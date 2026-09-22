@@ -87,19 +87,16 @@ export const TREFFER_HOORT_ELDERS = {
  * @type {Record<string, string>}
  */
 export const BEWUST_ONGESCHREVEN = {
-  'reports.status=reviewed':
-    'Wacht op een moderatieproces, dat als `phase:v3` op het bord staat (QS8-232). ' +
-    '⚠️ Vandaag is `reports_update` `using (false)` voor élke client, dus deze ' +
-    'waarde is ook niet te schrijven — de kolom bestaat vooruitlopend en niet ' +
-    'half. **Wordt interessant zodra er iemand of iets is dat meldingen ' +
-    'beoordeelt.** Is dat er dan nog steeds niet, dan hoort de waarde weg zoals ' +
-    'in 0082 en 0087, en `status` met hem — een kolom met één bereikbare waarde ' +
-    'is geen kolom.',
-  'reports.status=dismissed':
-    'Idem als `reviewed` (QS8-232): wacht op een moderatieproces (`phase:v3`), ' +
-    'is vandaag voor geen enkele client schrijfbaar, en **wordt interessant ' +
-    'zodra er iemand of iets is dat meldingen beoordeelt.** Is dat er dan nog ' +
-    'niet, dan hoort de waarde weg.',
+  // ⚠️ `reports.status=reviewed` en `=dismissed` stonden hier tot 22-09-2026, met
+  //    als voorwaarde: **"wordt interessant zodra er iemand of iets is dat
+  //    meldingen beoordeelt."** Die voorwaarde is ingetreden — `handel_melding_af()`
+  //    (0296, QS8-586) schrijft beide waarden, en `openstaande_meldingen()` is de
+  //    lezer die er niet was. Ze zijn er daarom uit gehaald en niet herschreven.
+  //
+  //    📏 Dat is het patroon van QS8-123 dat hier werkte: de rij droeg zijn eigen
+  //    vervaldatum, en deze controle werd er rood van op de dag dat hij verliep.
+  //    Zonder die voorwaarde was dit een register dat zegt dat de feature niet
+  //    gebouwd is, náást een feature die gebouwd is.
   'points_ledger.reason=milestone_done':
     // ⚠️ `goal_done` stond hier tot 31-08 naast, met dezelfde reden. Hij is in
     //    migratie 0132 geschrapt na een besluit van Quinten; deze bleef staan

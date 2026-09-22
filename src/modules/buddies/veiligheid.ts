@@ -1,4 +1,5 @@
 import { reportError } from '../../lib/observability';
+import { type Database } from '../../lib/database.types';
 import { supabase } from '../../lib/supabase';
 import { type Resultaat } from '../../shared/api';
 import { t, type Sleutel } from '../../shared/i18n';
@@ -36,6 +37,13 @@ function meldingBijReden(reden: string | undefined): string {
     already_removed: 'melden.al_verwijderd',
     last_admin: 'melden.laatste_beheerder',
     blocked: 'melden.geblokkeerd',
+    // ⚠️ QS8-586 — de afhandelroute. `not_allowed` dekt zowel "je mag deze
+    //    melding niet beoordelen" als "deze melding bestaat niet", en dat is
+    //    met opzet één tekst: anders vertelt de melding of een id bestaat.
+    not_allowed: 'meldingen.niet_van_jou',
+    already_handled: 'meldingen.al_afgehandeld',
+    status_invalid: 'meldingen.afhandelen_mislukt',
+    not_authenticated: 'meldingen.afhandelen_mislukt',
   };
 
   const sleutel = reden === undefined ? undefined : bekend[reden];
@@ -230,4 +238,86 @@ export async function verwijderLid(
   if (uit.ok !== true) return { ok: false, melding: meldingBijReden(uit.reason) };
 
   return { ok: true, waarde: uit.ontkoppelde_doelen ?? 0 };
+}
+
+/**
+ * Een openstaande melding zoals de beoordelaar hem ziet — QS8-586, migratie 0296.
+ *
+ * ⚠️ **Zonder `reporter_id`, en dat is een eigenschap van de RPC en niet van dit
+ *    bestand.** *RLS kan geen kolommen beperken*, dus de kolomlijst zit in
+ *    `openstaande_meldingen()` zelf. Wie er meldde is niet nodig om te
+ *    beoordelen, en weglaten beschermt de melder tegen een beheerder die het hem
+ *    betaald zet. Wat er wél in zit is `meldingen_over_onderwerp` — *"vijf mensen
+ *    melden dezelfde persoon"* is het signaal dat telt, en dat kan zonder één
+ *    naam prijs te geven.
+ */
+export type OpenstaandeMelding =
+  Database['public']['Functions']['openstaande_meldingen']['Returns'][number];
+
+/** Waar de volgende pagina begint. Beide helften of geen van beide. */
+export interface Meldingcursor {
+  at: string;
+  id: string;
+}
+
+/**
+ * De meldingen die jij mag beoordelen.
+ *
+ * ⚠️ **Twee routes, en de RPC bepaalt welke voor jou geldt**: je bent beheerder
+ *    van de groep en niet zelf het onderwerp, óf je bent platformbeheerder en het
+ *    onderwerp is beheerder van die groep — het geval dat de groep per definitie
+ *    niet kan afhandelen. 📏 Dat tweede is gemeten: vóór 0296 kwam een melding
+ *    over de groepsbeheerder bij niemand aan die kon handelen.
+ *
+ * ⚠️ Beide cursorhelften of geen van beide, zelfde vorm als `fetchWachtrij()`:
+ *    de RPC behandelt een half ingevulde cursor als "geen cursor", maar dat is de
+ *    tweede grendel. Deze is de eerste — de fout is hier niet te máken.
+ */
+export async function fetchOpenstaandeMeldingen(
+  opties: { limiet?: number; na?: Meldingcursor | null } = {},
+): Promise<OpenstaandeMelding[]> {
+  const na = opties.na ?? null;
+  const argumenten =
+    na === null
+      ? { p_limit: opties.limiet ?? 20 }
+      : { p_limit: opties.limiet ?? 20, p_na_at: na.at, p_na_id: na.id };
+
+  const { data, error } = await supabase().rpc('openstaande_meldingen', argumenten);
+
+  if (error) {
+    reportError(error, 'safety.reports_queue');
+    throw new Error(t('meldingen.laden_mislukt'));
+  }
+
+  return data ?? [];
+}
+
+/**
+ * Handel een melding af.
+ *
+ * ⚠️ **`reports_update` is `false` en blijft dat.** Deze RPC is de enige weg naar
+ *    een andere status, en hij legt vast wie het besloot en wanneer — een
+ *    afhandeling zonder spoor is administratie en geen bewijs.
+ *
+ * ⚠️ Een tweede oordeel op dezelfde melding geeft `already_handled` en niet
+ *    stilzwijgend succes: anders zou `afgehandeld_door` niet meer wie het besloot.
+ */
+export async function handelMeldingAf(
+  meldingId: string,
+  status: 'reviewed' | 'dismissed',
+): Promise<Resultaat<true>> {
+  const { data, error } = await supabase().rpc('handel_melding_af', {
+    p_report_id: meldingId,
+    p_status: status,
+  });
+
+  if (error) {
+    reportError(error, 'safety.report_handle');
+    return { ok: false, melding: t('meldingen.afhandelen_mislukt') };
+  }
+
+  const uit = data as unknown as Uitkomst;
+  if (uit.ok !== true) return { ok: false, melding: meldingBijReden(uit.reason) };
+
+  return { ok: true, waarde: true };
 }

@@ -2183,6 +2183,10 @@ export const en: Record<Sleutel, string> = {
     'You have blocked a great many people today. Tomorrow you can again. Is someone harassing you right now? Report them; that still works.',
   'melden.blokkeer_stil': 'They get no message about this and cannot see it anywhere.',
   'melden.geblokkeerd': 'This is not possible.',
+  'meldingen.laden_mislukt': 'The reports could not be loaded.',
+  'meldingen.afhandelen_mislukt': 'Could not resolve the report.',
+  'meldingen.niet_van_jou': 'This report is not yours to review.',
+  'meldingen.al_afgehandeld': 'Someone has already resolved this report.',
 
   'melden.verwijder_knop': 'Remove from group',
   'melden.geen_beheerder': 'Only an admin of this group can do this.',
