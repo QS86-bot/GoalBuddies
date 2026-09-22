@@ -80,10 +80,23 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 
 const WORTEL = fileURLToPath(new URL('..', import.meta.url));
 
-const DOCUMENTEN = {
+/**
+ * De documenten die onder tak B vallen.
+ *
+ * ⚠️ **`PROMPT-SESSIE` staat er sinds QS8-583 bij, en dat is de reden dat dit
+ *    een lijst is en geen drietal.** Dat document draagt zelf metingen, en een
+ *    vierde bestand met stand dat níets bewaakt is precies de drift waar QS8-125
+ *    voor bestaat. Het bezit alleen de afspraken tussen gelijktijdige sessies;
+ *    voor de stand verwijst het naar `WERKVOORRAAD`.
+ *
+ * ⚠️ Een document toevoegen is daarmee geen administratieve handeling: vanaf dat
+ *    moment mag het geen enkel feit uit `FEITEN` meer dragen dat een ander bezit.
+ */
+export const DOCUMENTEN = {
   'CLAUDE.md': 'CLAUDE.md',
   WERKVOORRAAD: 'docs/WERKVOORRAAD.md',
   'VOLGENDE-SESSIE': 'docs/VOLGENDE-SESSIE.md',
+  'PROMPT-SESSIE': 'docs/PROMPT-SESSIE.md',
 };
 
 /** Het document dat de stand bezit — zie "Wie bezit welk feit" in CLAUDE.md. */
@@ -355,20 +368,46 @@ function controleerStand() {
   }
 }
 
-/** B — een feit hoort in precies één document te staan. */
-function controleerEigenaarschap() {
-  for (const feit of FEITEN) {
-    const elders = Object.keys(DOCUMENTEN).filter(
-      (sleutel) => sleutel !== feit.eigenaar && feit.patroon.test(lees(sleutel)),
+/**
+ * B — een feit hoort in precies één document te staan.
+ *
+ * ⚠️ **Deze tak is een pure functie en leest zelf niets van schijf, sinds
+ *    QS8-583.** Hij stond hiervoor rechtstreeks op `lees()`, en daarmee was hij
+ *    alleen te ijken door een echt document te verminken. Dat is de vorm die
+ *    CLAUDE.md bij regel 18 afwijst: *een controle die je niet kunt voeden, kun
+ *    je niet ijken* — en de helft die het zwaarst weegt is de tweede, de vormen
+ *    die hij met rúst moet laten.
+ *
+ * @param {Record<string, string>} inhoudPerDocument sleutel uit `DOCUMENTEN` naar
+ *   de tekst van dat document. Een sleutel die ontbreekt wordt overgeslagen, niet
+ *   als leeg gelezen — anders zou een vergeten document als "feit staat er niet"
+ *   tellen.
+ * @param {typeof FEITEN} feiten
+ * @param {Record<string, string>} paden
+ * @returns {string[]}
+ */
+export function eigendomsklachten(inhoudPerDocument, feiten = FEITEN, paden = DOCUMENTEN) {
+  const klachten = [];
+
+  for (const feit of feiten) {
+    const elders = Object.keys(inhoudPerDocument).filter(
+      (sleutel) => sleutel !== feit.eigenaar && feit.patroon.test(inhoudPerDocument[sleutel]),
     );
     if (elders.length === 0) continue;
 
-    fouten.push(
-      `${feit.naam} hoort alleen in ${DOCUMENTEN[feit.eigenaar]} te staan, ` +
-        `maar staat ook in ${elders.map((s) => DOCUMENTEN[s]).join(' en ')}. ` +
+    klachten.push(
+      `${feit.naam} hoort alleen in ${paden[feit.eigenaar] ?? feit.eigenaar} te staan, ` +
+        `maar staat ook in ${elders.map((s) => paden[s] ?? s).join(' en ')}. ` +
         'Verwijs daar in plaats van het te herhalen.',
     );
   }
+
+  return klachten;
+}
+
+function controleerEigenaarschap() {
+  const inhoud = Object.fromEntries(Object.keys(DOCUMENTEN).map((s) => [s, lees(s)]));
+  for (const klacht of eigendomsklachten(inhoud)) fouten.push(klacht);
 }
 
 function hoofd() {
