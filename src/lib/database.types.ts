@@ -3279,6 +3279,14 @@ export type Database = {
         | { Args: { p_owner_id: string; p_vandaag: string }; Returns: number }
       mag_bewijsfoto_lezen: { Args: { pad: string }; Returns: boolean }
       mag_groep_lezen: { Args: { gid: string }; Returns: boolean }
+      mag_melding_als_beheerder: {
+        Args: { p_group_id: string }
+        Returns: boolean
+      }
+      mag_melding_als_escalatie: {
+        Args: { p_group_id: string; p_subject_id: string }
+        Returns: boolean
+      }
       mag_weekdoel_van_mij: { Args: { w: string }; Returns: boolean }
       meld: {
         Args: {
@@ -3316,6 +3324,7 @@ export type Database = {
         }[]
       }
       mijn_datum: { Args: never; Returns: string }
+      moderatiepoort: { Args: never; Returns: boolean }
       ontdek_groepen: {
         Args: {
           p_categorie?: string
