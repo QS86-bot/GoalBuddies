@@ -9,11 +9,18 @@
  * ⚠️ Uitsluitend kleuren uit het Q-Projects navy-stelsel (`src/shared/theme/
  *    tokens.ts`). CLAUDE.md: verzin hier nooit een kleur bij.
  *
- * ⚠️ **Dit is een plaatshouder.** Het merk is bewust geometrisch: twee gekoppelde
- *    ringen, naar De Ketting — het groepsbegrip waar dit product op draait.
- *    Zodra QS8-109 een mascotte oplevert hoort dit vervangen te worden. Beter een
- *    eerlijke plaatshouder die de installatiestroom af maakt dan een ontbrekend
- *    icoon dat iOS met een schermafdruk invult.
+ * ⚠️ **Dit wás een plaatshouder en is er sinds 22-09-2026 geen meer.** Het merk is
+ *    bewust geometrisch: twee gekoppelde ringen, naar De Ketting — het
+ *    groepsbegrip waar dit product op draait.
+ *
+ *    De kop hier zei tot vandaag: *"zodra QS8-109 een mascotte oplevert hoort dit
+ *    vervangen te worden"*. Die mascotte komt er niet. Op QS8-109 is besloten dat
+ *    de zes heldenarchetypes de rol van de Doelcoach overnemen en dat er geen
+ *    zevende figuur bij komt — zie
+ *    `docs/decisions/2026-09-22-vier-besluiten-en-twee-ervan-zijn-een-regel.md` §4.
+ *
+ *    Dit icoon is dus het icoon. Vervangen mag, maar niet meer omdat er iets
+ *    anders op zou komen.
  *
  * Geen dependencies: PNG-codering met de ingebouwde zlib.
  */
