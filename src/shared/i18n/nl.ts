@@ -2767,6 +2767,8 @@ export const nl = {
   'meldingen.ingang_kop': 'Er wacht een melding',
   'meldingen.ingang_tekst': 'Iemand heeft iets gemeld dat jij kunt beoordelen.',
   'meldingen.ingang_knop': 'Meldingen bekijken',
+  'meldingen.ingang_storing': 'We konden niet ophalen of er iets voor je klaarstaat.',
+  'meldingen.ingang_opnieuw': 'Opnieuw proberen',
   'meldingen.leeg_titel': 'Niets te beoordelen',
   'meldingen.leeg_tekst':
     'Er staat geen melding open. Komt er een binnen, dan verschijnt hij hier.',

@@ -31,6 +31,47 @@ import { psql, psqlMetInvoer, stackBeschikbaarOfFaal } from './psql-stack';
  * ⚠️ Deze toetsen draaien via `psql` met `set local role authenticated` en niet
  *    via PostgREST, want ze gaan over wie wát ziet in de database. Alles staat in
  *    één teruggerolde transactie; er blijft niets achter.
+ *
+ * ---------------------------------------------------------------------------
+ *
+ * ⚠️⚠️ **Zes van deze tien zijn er pas na de security-review van 22-09-2026, en
+ *    dat is het leerzame deel van dit bestand.** De vier die er stonden waren
+ *    groen en bleven groen terwijl 0296 vier gaten had — omdat ze een eigenschap
+ *    van het **onderdeel** toetsten waar de belofte er een van het **geheel**
+ *    was. Onwrikbare regel 18 in vier vormen tegelijk:
+ *
+ *    - de fixture bouwde één beheerder, dus *"de escalatie blijft smal"* kón
+ *      niet rood worden (vraag 6: "er is er altijd precies één" → "er kunnen er
+ *      meer zijn");
+ *    - de must-not *"het onderwerp ziet het nooit"* stond op één van de twee
+ *      routes, en juist de andere miste de poort (vraag 2);
+ *    - de `reporter_id`-toets greep naar de **functie**, terwijl de belofte langs
+ *      de **tabel** gebroken werd (vraag 4: grijpt deze test naar een plek?);
+ *    - afhandelen en het wisrecht waren elk af en de naad ertussen stuk
+ *      (vraag 1), net als afhandelen en archiveren.
+ *
+ * IJKING — met de hand, 22-09-2026, tegen een lokaal schema op `0297`. Eén
+ * mutatie per grendel, elke keer terug naar de vórm van 0296, en de stand ervóór
+ * gemeten: **10 groen**.
+ *
+ *   A  de `subject_id <> auth.uid()`-conjunct terug naar alleen route (a)
+ *      -> 1 rood: 'de platformbeheerder beoordeelt geen melding over zichzelf'
+ *   B  de `not exists`-conjunct uit `mag_melding_als_escalatie()`
+ *      -> 1 rood: 'een melding over een beheerder die een mede-beheerder kan
+ *         afhandelen, escaleert niet'
+ *   C  `grant select on public.reports to authenticated` + de oude policy
+ *      -> 1 rood: 'de melder is ook buiten de RPC om niet te lezen'
+ *   D  de oude CHECK (`afgehandeld_door is not null`)
+ *      -> 1 rood: 'wie een melding afhandelde, kan zijn account nog opzeggen'
+ *   E  `is_group_admin()` terug in `mag_melding_als_beheerder()`
+ *      -> 1 rood: 'een open melding overleeft het archiveren van de groep'
+ *   F  `count(*)` terug in plaats van `count(distinct a.reporter_id)`
+ *      -> 1 rood: 'de teller telt melders en geen meldingen'
+ *
+ * ⚠️ Zes mutaties, zes keer precies één rode toets, en elke keer de bedoelde —
+ *    niet "er werd iets rood". Dat onderscheid is hier een regel, want een
+ *    ijking die zijn geval door een pad voert dat een éérdere grendel al
+ *    afvangt, bewaakt niets van wat hij belooft.
  */
 
 const beschikbaar = stackBeschikbaarOfFaal(
@@ -38,12 +79,29 @@ const beschikbaar = stackBeschikbaarOfFaal(
   import.meta.url,
 );
 
-/** Zet drie gebruikers, een groep en een melding neer. Rolt alles terug. */
-function proef(regels: string[]): string {
+/**
+ * Zet de gebruikers, een groep en de regels neer. Rolt alles terug.
+ *
+ * ⚠️⚠️ **`tweedeBeheerder` is er omdat de fixture eerst de bevinding uitsloot.**
+ *    Deze proef bouwde een groep met précies één beheerder, en de toets die
+ *    *"de escalatie blijft smal"* heet kón daarin niet rood worden: de
+ *    escalatieroute van 0296 vuurde bij élke melding over élke beheerder, ook
+ *    als een mede-beheerder hem kon afhandelen, en dat is pas zichtbaar met een
+ *    tweede beheerder. 📏 Gemeten op 22-09-2026, vóór 0297:
+ *    `K2_BEHEERDER_B_KAN_DIT_ZELF=1` én `K2_PLATFORM_ZIET_HEM_OOK=1`.
+ *
+ *    De belofte is *"de platformbeheerder ziet alleen wat de groep niet kan"*;
+ *    wat er getoetst werd was *"hij ziet geen melding over een niet-beheerder"* —
+ *    een eigenschap van het onderdeel. Onwrikbare regel 18, vraag 2 en vraag 6:
+ *    dit tilt "er is er altijd precies één beheerder" naar "er kunnen er meer
+ *    zijn", en de fout stond er al.
+ */
+function proef(regels: string[], opties: { tweedeBeheerder?: boolean } = {}): string {
   return psqlMetInvoer(
     [
       'begin;',
       "select set_config('p.beheerder', public.shim_maak_gebruiker('b586@proef.nl','Beheerder')::text, true);",
+      "select set_config('p.tweede',    public.shim_maak_gebruiker('t586@proef.nl','Tweede')::text, true);",
       "select set_config('p.melder',    public.shim_maak_gebruiker('m586@proef.nl','Melder')::text, true);",
       "select set_config('p.lid',       public.shim_maak_gebruiker('l586@proef.nl','Lid')::text, true);",
       "select set_config('p.platform',  public.shim_maak_gebruiker('x586@proef.nl','Platform')::text, true);",
@@ -55,6 +113,12 @@ function proef(regels: string[]): string {
       'insert into public.group_members(group_id, user_id, role, status) values',
       "  (current_setting('p.groep')::uuid, current_setting('p.melder')::uuid, 'member', 'active'),",
       "  (current_setting('p.groep')::uuid, current_setting('p.lid')::uuid,    'member', 'active');",
+      ...(opties.tweedeBeheerder === true
+        ? [
+            'insert into public.group_members(group_id, user_id, role, status) values',
+            "  (current_setting('p.groep')::uuid, current_setting('p.tweede')::uuid, 'admin', 'active');",
+          ]
+        : []),
       ...regels,
       'rollback;',
     ].join('\n'),
@@ -109,6 +173,183 @@ describe.skipIf(!beschikbaar)('een melding komt aan', () => {
     expect(lees(uit, 'MELDER'), 'de melder mag zijn eigen melding zien via reports_select, maar is geen moderator — de lezer is voor afhandelen').toBe('0');
   }, 60_000);
 
+  /**
+   * ⚠️⚠️ **De toets die 0296 had moeten vangen en niet kon.** Hier staat een
+   *    tweede beheerder in de groep, dus de groep kán een melding over de eerste
+   *    zelf afhandelen — en dan hoort de escalatie níet te vuren. 📏 Vóór 0297
+   *    deed hij dat wél: de platformbeheerder las de toelichting van een melding
+   *    uit een groep waar hij niet in zit, terwijl beheerder B ernaast stond.
+   */
+  it('een melding over een beheerder die een mede-beheerder kan afhandelen, escaleert niet', () => {
+    const uit = proef(
+      [
+        ...als('melder'),
+        "select public.meld(current_setting('p.groep')::uuid, current_setting('p.beheerder')::uuid, null, 'harassment', 'geheime klacht');",
+        'reset role;',
+        ...als('tweede'),
+        "select 'TWEEDE_BEHEERDER=' || count(*) from public.openstaande_meldingen();",
+        'reset role;',
+        ...als('platform'),
+        "select 'PLATFORM=' || count(*) from public.openstaande_meldingen();",
+        'reset role;',
+      ],
+      { tweedeBeheerder: true },
+    );
+
+    expect(lees(uit, 'TWEEDE_BEHEERDER'), 'de groep kan dit zelf — dat is de hele reden dat de escalatie smal hoort te zijn').toBe('1');
+    expect(
+      lees(uit, 'PLATFORM'),
+      'de kop van 0296 belooft "alleen die waar de groep aantoonbaar niets mee kan"; met een mede-beheerder kán de groep het',
+    ).toBe('0');
+  }, 60_000);
+
+  /**
+   * ⚠️⚠️ **K1 — de must-not van de éscalatieroute, en die ontbrak.** De toets
+   *    hieronder zette `ONDERWERP=0` vast voor de groepsbeheerder (route a), en
+   *    route (a) draagt die poort ook. Route (b) droeg hem niet, en route (b)
+   *    vuurt precies wanneer het onderwerp beheerder is — wat een
+   *    platformbeheerder die zelf een groep aanmaakt, ís.
+   *
+   *    📏 Gemeten vóór 0297: `ZIET_OVER_ZICHZELF=1`,
+   *    `LEEST_TOELICHTING=hij bedreigt mij`, `DEMPT_ZELF=true`, en
+   *    `afgehandeld_door` wees naar het onderwerp. De regel *"het onderwerp
+   *    beoordeelt niet"* hoort per róute getoetst te worden en niet per rol.
+   */
+  it('de platformbeheerder beoordeelt geen melding over zichzelf', () => {
+    const uit = proef([
+      // de platformbeheerder wordt beheerder van deze groep — precies het geval
+      // dat route (b) liet vuren
+      "update public.group_members set role = 'admin' where group_id = current_setting('p.groep')::uuid and user_id = current_setting('p.platform')::uuid;",
+      "insert into public.group_members(group_id, user_id, role, status) values (current_setting('p.groep')::uuid, current_setting('p.platform')::uuid, 'admin', 'active') on conflict do nothing;",
+      "delete from public.group_members where group_id = current_setting('p.groep')::uuid and user_id = current_setting('p.beheerder')::uuid;",
+      ...als('melder'),
+      "select public.meld(current_setting('p.groep')::uuid, current_setting('p.platform')::uuid, null, 'harassment', 'hij bedreigt mij');",
+      'reset role;',
+      ...als('platform'),
+      "select 'ZIET_OVER_ZICHZELF=' || count(*) from public.openstaande_meldingen();",
+      'reset role;',
+      "select set_config('p.melding', (select id::text from public.reports limit 1), true);",
+      ...als('platform'),
+      "select 'DEMPT_ZELF=' || ((public.handel_melding_af(current_setting('p.melding')::uuid, 'dismissed'))->>'reason');",
+      'reset role;',
+    ]);
+
+    expect(lees(uit, 'ZIET_OVER_ZICHZELF'), 'wie het onderwerp is, beoordeelt niet — ook niet via de escalatieroute').toBe('0');
+    expect(
+      lees(uit, 'DEMPT_ZELF'),
+      'een onderwerp dat zijn eigen melding kan sluiten, is precies het schaamteloze geval waar de meldknop voor bestaat',
+    ).toBe('not_allowed');
+  }, 60_000);
+
+  /**
+   * ⚠️⚠️ **K3 — de kolombelofte langs het pad dat hem brak.** De toets onderaan
+   *    dit bestand leest `proargnames` van de RPC, en de beloftetest leest het
+   *    TypeScript-type. Allebei correct, allebei over de **functie** — terwijl er
+   *    een tweede weg was: `authenticated` had tabelbrede `select` op
+   *    `public.reports`, en `reports_select` gaf de groepsbeheerder de hele rij.
+   *    📏 Gemeten vóór 0297: `TABEL_GEEFT_MELDER=<uuid>`, `MELDER_NAAM=Melder`.
+   *
+   *    Eén regel in de browserconsole. Regel 18 vraag 4 in zijn duurste vorm: de
+   *    toets greep naar de plek waar de belofte vandaag stond.
+   */
+  it('de melder is ook buiten de RPC om niet te lezen', () => {
+    // ⚠️ **De grant en de policy, en niet een `select` die faalt.** `psql` draait
+    //    hier met `ON_ERROR_STOP=1`, dus een verwachte weigering breekt de hele
+    //    proef af — en een toets die de rest van zijn eigen opstelling opblaast,
+    //    meet niet meer wat hij denkt te meten. Dit zijn de twee lagen zelf:
+    //    het recht dat er niet is, en de policy die het ook niet zou geven.
+    const uit = proef([
+      "select 'GRANT=' || has_table_privilege('authenticated', 'public.reports', 'SELECT')::text;",
+      "select 'POLICY=' || (select pg_get_expr(polqual, polrelid) from pg_policy where polrelid = 'public.reports'::regclass and polname = 'reports_select');",
+    ]);
+
+    expect(
+      lees(uit, 'GRANT'),
+      'RLS kan geen kolommen beperken: zolang `authenticated` de tabel mag lezen, is de kolomlijst van de RPC een suggestie',
+    ).toBe('false');
+    expect(
+      lees(uit, 'POLICY'),
+      'en de policy zakt mee, zodat een teruggekeerde grant de beheerderstak niet opnieuw openzet',
+    ).not.toContain('is_group_admin');
+  }, 60_000);
+
+  /**
+   * ⚠️ **M1 — het gat van dit issue langs de achterdeur.** `is_group_admin()`
+   *    eist `g.status <> 'archived'`, en archiveren is de gewone knop van elke
+   *    beheerder (`verwijder_mijn_account()` doet het zelfs vanzelf met
+   *    solo-groepen). 📏 Gemeten vóór 0297: `GEARCHIVEERD_BEHEERDER_ZIET=0`. Een
+   *    open melding was daarmee opnieuw een melding die nergens aankomt.
+   */
+  it('een open melding overleeft het archiveren van de groep', () => {
+    const uit = proef([
+      ...als('melder'),
+      "select public.meld(current_setting('p.groep')::uuid, current_setting('p.lid')::uuid, null, 'spam', null);",
+      'reset role;',
+      "update public.groups set status = 'archived' where id = current_setting('p.groep')::uuid;",
+      ...als('beheerder'),
+      "select 'NA_ARCHIVEREN=' || count(*) from public.openstaande_meldingen();",
+      'reset role;',
+    ]);
+
+    expect(lees(uit, 'NA_ARCHIVEREN'), 'een gearchiveerde groep krijgt geen nieuwe meldingen; de oude horen afgehandeld te kunnen worden').toBe('1');
+  }, 60_000);
+
+  /**
+   * ⚠️ **M2 — de teller telt melders.** De kop van 0296 legt dit getal uit als
+   *    *"vijf mensen melden dezelfde persoon is het signaal dat telt"*, en dat is
+   *    precies wat `count(*)` niet meet. 📏 Gemeten vóór 0297: één melder,
+   *    drie meldingen, teller op 3 — en het scherm laat met opzet niet zien wie
+   *    er meldde, dus er was geen manier om te zien dat het één iemand was.
+   */
+  it('de teller telt melders en geen meldingen', () => {
+    const uit = proef([
+      ...als('melder'),
+      "select public.meld(current_setting('p.groep')::uuid, current_setting('p.lid')::uuid, null, 'spam', 'een');",
+      "select public.meld(current_setting('p.groep')::uuid, current_setting('p.lid')::uuid, null, 'spam', 'twee');",
+      "select public.meld(current_setting('p.groep')::uuid, current_setting('p.lid')::uuid, null, 'spam', 'drie');",
+      'reset role;',
+      ...als('beheerder'),
+      "select 'TELLING=' || coalesce((select meldingen_over_onderwerp::text from public.openstaande_meldingen() limit 1), '-');",
+      "select 'KAARTEN=' || count(*) from public.openstaande_meldingen();",
+      'reset role;',
+    ]);
+
+    expect(lees(uit, 'KAARTEN'), 'drie meldingen zijn drie kaarten — dat verandert niet').toBe('3');
+    expect(lees(uit, 'TELLING'), 'één pester die twintig keer meldt, is geen twintig mensen die iets vinden').toBe('1');
+  }, 60_000);
+
+  /**
+   * ⚠️⚠️ **K4 — de naad tussen afhandelen en het wisrecht.** `afgehandeld_door`
+   *    draagt `on delete set null`, en de CHECK eiste bij `status <> 'open'`
+   *    juist een `afgehandeld_door`: de referentiële actie schond zijn eigen
+   *    tabelconstraint. 📏 Gemeten vóór 0297: `verwijder_mijn_account()` viel om
+   *    met *violates check constraint "reports_afhandeling_is_heel"*.
+   *
+   *    Twee onderdelen die elk klopten, en de keten ertussen stuk — regel 18
+   *    vraag 1. Geen van beide kanten had een test die de naad raakte.
+   */
+  it('wie een melding afhandelde, kan zijn account nog opzeggen', () => {
+    const uit = proef([
+      ...als('melder'),
+      "select public.meld(current_setting('p.groep')::uuid, current_setting('p.lid')::uuid, null, 'spam', null);",
+      'reset role;',
+      ...als('beheerder'),
+      "select set_config('p.melding', (select id::text from public.openstaande_meldingen() limit 1), true);",
+      "select 'AFGEHANDELD=' || ((public.handel_melding_af(current_setting('p.melding')::uuid, 'reviewed'))->>'ok');",
+      'reset role;',
+      "delete from auth.users where id = current_setting('p.beheerder')::uuid;",
+      "select 'OPZEGGEN=gelukt';",
+      "select 'SPOOR=' || (select (afgehandeld_door is null)::text || '/' || (afgehandeld_op is not null)::text from public.reports where id = current_setting('p.melding')::uuid);",
+    ]);
+
+    expect(lees(uit, 'AFGEHANDELD'), 'eerst moet er iets af te handelen zijn').toBe('true');
+    expect(lees(uit, 'OPZEGGEN'), 'het wisrecht mag niet afhangen van of je ooit moderator geweest bent').toBe('gelukt');
+    expect(
+      lees(uit, 'SPOOR'),
+      'de naam loopt leeg zoals bij een chatbericht (0221); het moment blijft, en dat is wat de afhandeling tot administratie maakt',
+    ).toBe('true/true');
+  }, 60_000);
+
   it('een gewone melding bereikt de groepsbeheerder, en de escalatie blijft smal', () => {
     const uit = proef([
       ...als('melder'),
@@ -138,16 +379,21 @@ describe.skipIf(!beschikbaar)('een melding komt aan', () => {
       ...als('melder'),
       "select public.meld(current_setting('p.groep')::uuid, current_setting('p.lid')::uuid, null, 'spam', null);",
       'reset role;',
+      // ⚠️ Het id buiten de rol om, want sinds 0297 mag géén client `reports`
+      //    lezen — ook de beheerder niet. Het scherm krijgt hem uit
+      //    `openstaande_meldingen()`; deze toets gaat over wie hem mag
+      //    afhandelen als hij hem tóch heeft.
+      "select set_config('p.melding', (select id::text from public.reports limit 1), true);",
       ...als('platform'),
-      "select 'PLATFORM_MAG_NIET=' || ((public.handel_melding_af((select id from public.reports limit 1), 'reviewed'))->>'reason');",
+      "select 'PLATFORM_MAG_NIET=' || ((public.handel_melding_af(current_setting('p.melding')::uuid, 'reviewed'))->>'reason');",
       'reset role;',
       ...als('melder'),
-      "select 'MELDER_MAG_NIET=' || ((public.handel_melding_af((select id from public.reports limit 1), 'reviewed'))->>'reason');",
+      "select 'MELDER_MAG_NIET=' || ((public.handel_melding_af(current_setting('p.melding')::uuid, 'reviewed'))->>'reason');",
       'reset role;',
       ...als('beheerder'),
-      "select 'ONGELDIG=' || ((public.handel_melding_af((select id from public.reports limit 1), 'open'))->>'reason');",
-      "select 'EERSTE=' || ((public.handel_melding_af((select id from public.reports limit 1), 'reviewed'))->>'ok');",
-      "select 'TWEEDE=' || ((public.handel_melding_af((select id from public.reports limit 1), 'dismissed'))->>'reason');",
+      "select 'ONGELDIG=' || ((public.handel_melding_af(current_setting('p.melding')::uuid, 'open'))->>'reason');",
+      "select 'EERSTE=' || ((public.handel_melding_af(current_setting('p.melding')::uuid, 'reviewed'))->>'ok');",
+      "select 'TWEEDE=' || ((public.handel_melding_af(current_setting('p.melding')::uuid, 'dismissed'))->>'reason');",
       'reset role;',
       "select 'SPOOR=' || (select (afgehandeld_door is not null and afgehandeld_op is not null)::text from public.reports limit 1);",
       "select 'WEG_UIT_DE_LIJST=' || (select count(*)::text from public.reports where status = 'open');",

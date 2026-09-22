@@ -1465,12 +1465,35 @@ function Blokkades() {
  */
 function MeldingenIngang() {
   const router = useRouter();
-  const { data, loading, error } = useAsync(
+  const { data, loading, error, herlaad } = useAsync(
     () => fetchOpenstaandeMeldingen({ limiet: 1 }),
     [],
   );
 
-  if (loading || error !== null || data === undefined || data.length === 0) return null;
+  if (loading) return null;
+
+  /*
+    ⚠️⚠️ **Een fout maakt deze kaart níet onzichtbaar, en dat is een bewuste
+       afwijking van `Blokkades` hierboven.** Daar is wegblijven goed: wie op dit
+       scherm komt, kwam voor iets anders. Hier is stilte de gevaarlijke
+       richting — de moderator hoort dan nooit dát er iets wacht, en dat is
+       precies het gat dat QS8-586 dichtte, één laag hoger. De beloftetest zegt
+       het zelf: *de gevaarlijke richting is dat de knop te wéinig verschijnt.*
+       Onwrikbare regel 16 vraagt bovendien een error-state, en `null` is er geen.
+  */
+  if (error !== null) {
+    return (
+      <Card>
+        <Subheading>{t('meldingen.ingang_kop')}</Subheading>
+        <Body muted>{t('meldingen.ingang_storing')}</Body>
+        <Button variant="stil" onPress={herlaad}>
+          {t('meldingen.ingang_opnieuw')}
+        </Button>
+      </Card>
+    );
+  }
+
+  if (data === undefined || data.length === 0) return null;
 
   return (
     <Card>

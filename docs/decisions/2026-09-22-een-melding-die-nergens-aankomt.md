@@ -56,6 +56,12 @@ aanspreken.
 dus dat de melder buiten beeld blijft is een eigenschap van de **returntabel** en
 van niets anders. Een `select *` erbij zou hem stilzwijgend terugbrengen.
 
+⚠️⚠️ **En die alinea was niet genoeg, wat de security-review met een meting liet
+zien — zie §8, K3.** De RPC liet `reporter_id` weg, en `authenticated` had
+ondertussen **tabelbrede** `select` op `public.reports`: één verzoek buiten het
+scherm om gaf de melder alsnog. De kolomlijst was de halve reparatie; `0297`
+brengt de andere helft.
+
 Wie meldde is niet nodig om te beoordelen, en weglaten beschermt de melder tegen
 een beheerder die het hem betaald zet. Zelfde vorm en zelfde reden als
 `getuigenissen()` (`0169`) en `straffen_bij_uitstelverzoek()` (`0218`).
@@ -68,7 +74,8 @@ een beheerder die het hem betaald zet. Zelfde vorm en zelfde reden als
 | b | platformbeheerder | **en** het onderwerp is beheerder van díé groep |
 
 ⚠️ **De escalatie is geen moderatiedienst.** Route (b) geeft uitsluitend de
-gevallen die route (a) per definitie niet kán afhandelen. Zou de
+gevallen die route (a) per definitie niet kán afhandelen. ⚠️⚠️ **In `0296` was
+dat een bewering en geen implementatie** — zie §8, K2. Zou de
 platformbeheerder álles zien, dan leest één account elke melding in elke groep —
 een privacybelofte die niemand gedaan heeft. `tests/rls/melding-komt-aan.test.ts`
 legt die grens vast als must-not, naast de must-allow.
@@ -173,6 +180,75 @@ te twijfelen.
 - **Geen notificatie.** Wie een melding krijgt, ziet hem bij het volgende bezoek
   aan zijn profiel. Een pushmelding erbij is een eigen afweging — en grens 1 van
   de *Beslisbevoegdheid* als hij naar echte mensen gaat.
+
+## 8. Wat de security-review vond, en wat `0297` ermee doet
+
+Onwrikbare regel 19 wil een `security-reviewer` direct bij alles wat auth, RLS en
+gebruikersdata tussen groepsleden raakt. Die ronde liep op 22-09-2026, ná de
+uitrol van `0296` en vóór de PR. **Ze vond vier gaten, en ik heb ze alle vier
+zelf nagemeten voordat ik ze verwerkte** — dat is de andere helft van regel 19.
+
+⚠️⚠️ **Twee ervan zijn een belofte die dit document en de migratiekop uitschrijven
+en niet waarmaken, en dat weegt zwaarder dan een vergeten regel.** Een omissie
+valt op; een uitgeschreven argument leest de volgende persoon als een reden om er
+niet aan te twijfelen — en er stond bovendien een testsuite onder die hem leek te
+bewijzen.
+
+| | wat er mis was | gemeten |
+|---|---|---|
+| K1 | de platformbeheerder las en dempte meldingen **over zichzelf**: route (a) draagt `subject_id <> auth.uid()`, route (b) droeg hem niet | `ZIET_OVER_ZICHZELF=1`, `DEMPT_ZELF=true`, `afgehandeld_door` = het onderwerp |
+| K2 | de escalatie vuurde bij élke melding over élke groepsbeheerder, ook als een mede-beheerder hem kon afhandelen | `BEHEERDER_B_KAN_DIT_ZELF=1` én `PLATFORM_ZIET_HEM_OOK=1` |
+| K3 | `reporter_id` was rechtstreeks van de tabel te lezen; `authenticated` had tabelbrede `select` | `TABEL_GEEFT_MELDER=<uuid>`, `MELDER_NAAM=Melder` |
+| K4 | `afgehandeld_door … on delete set null` schond de CHECK die hem juist eiste | `verwijder_mijn_account()` viel om op `reports_afhandeling_is_heel` |
+
+Plus drie kleinere in dezelfde twee functies: een open melding in een
+**gearchiveerde** groep bereikte niemand (M1), `meldingen_over_onderwerp` telde
+méldingen in plaats van mélders (M2), en de escalatie-`exists` toetste
+`group_members.status` niet (L). En een kostenbevinding: de ingangskaart draaide
+de RPC bij élk profielbezoek, met een filter dat niet te indexeren is — 📏 58 ms
+en `Rows Removed by Filter: 5000` voor nul rijen (M3).
+
+**`0297` sluit ze alle zeven.** De twee routes staan nu elk op één plek
+(`mag_melding_als_beheerder()`, `mag_melding_als_escalatie()`) in plaats van twee
+keer woordelijk uitgeschreven in de lezer én de afhandeling — dat was precies hoe
+K1 in allebei terechtkwam.
+
+⚠️ **Eén meetfout van mijzelf hoort hier ook.** Bij het narekenen van K1 kwam
+`DEMPT_ZELF=false` uit, en ik had dat bijna als weerlegging genoteerd. De fout
+zat in de meting: het melding-id werd via RLS opgehaald, waar de
+platformbeheerder het niet ziet, dus ging er `null` de RPC in. Met het id zoals
+**het scherm** hem krijgt — uit `openstaande_meldingen()` — is het `true`. *Een
+grendel toetsen langs een pad dat het scherm niet loopt, bewaakt niets van wat
+hij belooft.*
+
+### En zes toetsen erbij, want de bestaande vier konden dit niet zien
+
+Dat is geen toeval en het is het leerzaamste van deze ronde. De vier toetsen in
+`tests/rls/melding-komt-aan.test.ts` waren groen en klopten, en ze bewaakten
+alle vier een eigenschap van het **onderdeel** waar de belofte er een van het
+**geheel** was:
+
+- de fixture bouwde één beheerder, dus de toets die *"de escalatie blijft smal"*
+  heet kón niet rood worden (regel 18, vraag 6: dit tilt *"er is er altijd
+  precies één"* naar *"er kunnen er meer zijn"*, en dan staat de fout er al);
+- de must-not *"het onderwerp ziet het nooit"* stond op één van de twee routes,
+  en juist de andere miste de poort (vraag 2);
+- de `reporter_id`-toets greep naar de **functie**, terwijl de belofte langs de
+  **tabel** gebroken werd (vraag 4);
+- afhandelen ↔ opzeggen en afhandelen ↔ archiveren zijn naden tussen twee
+  onderdelen die elk af waren (vraag 1).
+
+De ijking staat in de kop van dat bestand: zes mutaties, elke keer terug naar de
+vorm van `0296`, zes keer precies één rode toets — en elke keer de bedoelde.
+
+## 9. Wat hierna aan Quinten is
+
+**Waar komt een melding over de platformbeheerder wél aan?** Na K1 nergens, en
+dat is met opzet zo gelaten: het bepaalt wat een gebruiker beloofd wordt, en dat
+is grens 1 van de *Beslisbevoegdheid*. Een e-mailroute, een tweede
+platformbeheerder, of een expliciet *"dit kan de app niet oplossen"* zijn alle
+drie verdedigbaar — maar het moet een keuze zijn en geen restant. Wat `0297` wél
+doet, is het onderwerp uit de stoel van de beoordelaar halen.
 
 ## Aannames
 
