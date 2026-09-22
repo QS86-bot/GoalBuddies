@@ -102,31 +102,38 @@ describe('importsluiting: de transitieve sluiting', () => {
 });
 
 /**
- * ⚠️⚠️ **De echte map, en dit is de toets die de vervanging rechtvaardigt.**
- *    De vijf handgetypte lijsten waren op dit moment juist. Dat de afgeleide
- *    sluiting er precies uit komt, is dus geen toeval maar het bewijs dat er
- *    niets verloren gaat bij de omzetting — en tegelijk de kanarie: komt er ooit
- *    nul of alles uit, dan leest deze toets iets anders dan `scripts/`.
+ * ⚠️⚠️ **De echte map — en hier stond eerst de vérkeerde toets, gevonden door de
+ *    ijking van dit issue zelf.**
+ *
+ *    De eerste versie pinde de sluiting als een lijst van acht namen vast, om te
+ *    bewijzen dat de omzetting niets verloor. Dat bewijs klopte — 📏 de afgeleide
+ *    sluiting gaf op 22-09-2026 exact de vijf handgetypte lijsten terug (8, 7, 7,
+ *    4 en 4 scripts) — maar als **staande** toets deed hij precies het verkeerde:
+ *    mutatie 1 van de ijking voegde één import toe aan `scripts/paden.mjs`, alle
+ *    zes de harnassen bleven groen zoals beloofd, en déze toets werd rood.
+ *
+ *    Dat is een toets die de volgende persoon dwingt een handgetypte lijst
+ *    `.mjs`-namen bij te werken zodra hij een import toevoegt — het probleem dat
+ *    dit hele bestand weghaalt, teruggezet in een assertie. De eenmalige meting
+ *    hoort in het beslisdocument; wat hier hoort is de **eigenschap**.
  */
 describe('de echte scriptmap', () => {
-  it('reproduceert de vijf lijsten die hiervoor met de hand stonden', () => {
-    expect(importsluiting(['migratie-nieuw.mjs', 'migraties-controle.mjs'])).toEqual([
-      'letterversies.mjs',
-      'migratie-hernummer.mjs',
-      'migratie-nieuw.mjs',
-      'migratiebranches.mjs',
-      'migratieregister-omgeving.mjs',
-      'migraties-controle.mjs',
-      'paden.mjs',
-      'rollbackpad.mjs',
-    ]);
-    expect(importsluiting(['migraties-controle.mjs'])).toHaveLength(7);
-    expect(importsluiting(['migratie-hernummer.mjs'])).toEqual([
-      'migratie-hernummer.mjs',
-      'migratiebranches.mjs',
-      'migratieregister-omgeving.mjs',
-      'paden.mjs',
-    ]);
+  const ENTRIES = ['migratie-nieuw.mjs', 'migraties-controle.mjs', 'migratie-hernummer.mjs'];
+
+  it('bevat elke entry en elk van zijn directe imports', () => {
+    for (const entry of ENTRIES) {
+      const sluiting = importsluiting([entry]);
+      expect(sluiting, entry).toContain(entry);
+      const direct = lokaleImports(readFileSync(join(process.cwd(), 'scripts', entry), 'utf8'));
+      for (const buur of direct) expect(sluiting, `${entry} → ${buur}`).toContain(buur);
+    }
+  });
+
+  it('gaat dieper dan één niveau — de sluiting is transitief en niet alleen direct', () => {
+    // ⚠️ `migraties-controle` importeert `migratie-hernummer`, en díe importeert
+    //    `paden`. Staat `paden` er niet in, dan is de sluiting één niveau diep en
+    //    is precies de fout van QS8-580 terug.
+    expect(importsluiting(['migraties-controle.mjs'])).toContain('paden.mjs');
   });
 
   it('neemt niet de hele map mee — dan bewees de krappe kloon niets', () => {
