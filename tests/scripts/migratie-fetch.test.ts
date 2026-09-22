@@ -14,6 +14,8 @@ import { join } from 'node:path';
 
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
+import { kopieerHulpscripts } from './hulpscripts.js';
+
 /**
  * De naad tussen "een nummer uitdelen" en "weten wat er elders staat" — QS8-247.
  *
@@ -61,26 +63,13 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
  *    hele mechanisme tegen bestaat, en geen enkele unit-test kon hem zien.
  */
 
-const HULPSCRIPTS = [
-  'migratie-nieuw.mjs',
-  'migratiebranches.mjs',
-  'migraties-controle.mjs',
-  // ⚠️ `migraties-controle` importeert hem sinds QS8-405; zonder deze regel valt
-  //    de kloon om op een ontbrekende module in plaats van op wat je toetst.
-  'rollbackpad.mjs',
-  'migratie-hernummer.mjs',
-  // ⚠️ Sinds QS8-580 importeert `migratie-hernummer.mjs` hieruit. Ontbreekt
-  //    dit bestand, dan valt de opbouw om — en vitest meldt zo'n suite als
-  //    **skipped** en niet als failed.
-  'paden.mjs',
-  'migratieregister-omgeving.mjs',
-  // ⚠️ **Deze ontbrak tot QS8-365, en dat was niet te zien.** Geen enkele test
-  //    liet `migraties-controle.mjs` hier tot het eind lopen: `draai()` vangt de
-  //    exitcode en de bestaande tests kijken alleen of er gefetcht is. De
-  //    controle viel dus om op een ontbrekende import en telde als "rood zoals
-  //    verwacht". Zodra een test zijn úítslag leest, moet de lijst kloppen.
-  'letterversies.mjs',
-];
+/**
+ * De scripts die dit harnas drááit. Wat zij nodig hebben, leidt
+ * `kopieerHulpscripts()` af uit hun imports — met de hand overtypen is drie keer
+ * misgegaan (QS8-365, QS8-405, QS8-580) en kostte op 22-09-2026 in één mutatie
+ * 27 toetsen, waarvan dertien stil als `skipped`. Zie `hulpscripts.ts`.
+ */
+const ENTRIES = ['migratie-nieuw.mjs', 'migraties-controle.mjs'];
 
 let werkmap = '';
 let afstand = '';
@@ -147,10 +136,7 @@ beforeAll(() => {
 
   // 2. De werkkopie kloont — en weet vanaf nu niets meer van wat er later komt.
   git(werkmap, 'clone', afstand, kloon);
-  mkdirSync(join(kloon, 'scripts'), { recursive: true });
-  for (const naam of HULPSCRIPTS) {
-    cpSync(join(process.cwd(), 'scripts', naam), join(kloon, 'scripts', naam));
-  }
+  kopieerHulpscripts(kloon, ENTRIES);
 
   // 3. Een parallelle sessie claimt 0009 op een eigen branch. Precies de
   //    toestand van 31-08: gepusht, maar niet in deze werkkopie.
@@ -306,10 +292,7 @@ describe('QS8-365 — het nummer sluit aan op de eigen map', () => {
     // ⚠️ De CI-kant: één branch, geen andere `origin/…`-refs.
     ciKloon = join(werkmap, 'ci');
     git(werkmap, 'clone', '--single-branch', '--branch', 'main', afstand, ciKloon);
-    mkdirSync(join(ciKloon, 'scripts'), { recursive: true });
-    for (const naam of HULPSCRIPTS) {
-      cpSync(join(process.cwd(), 'scripts', naam), join(ciKloon, 'scripts', naam));
-    }
+    kopieerHulpscripts(ciKloon, ENTRIES);
     // ⚠️ `migraties:controle` leest ook `package.json` — hij toetst of de
     //    Supabase-CLI zichzelf niet tegenspreekt. Zonder dat bestand meldt hij
     //    "ongemeten" en dat is terecht rood, maar het is niet wat déze test
@@ -447,10 +430,7 @@ describe('QS8-435 — een branchbevinding noemt de leeftijd van zijn beeld', () 
   }
 
   function uitrusten(wortel: string) {
-    mkdirSync(join(wortel, 'scripts'), { recursive: true });
-    for (const naam of HULPSCRIPTS) {
-      cpSync(join(process.cwd(), 'scripts', naam), join(wortel, 'scripts', naam));
-    }
+    kopieerHulpscripts(wortel, ENTRIES);
     // ⚠️ De échte `package.json`: `migraties:controle` toetst er de
     //    CLI-tegenspraak op, en een verzonnen versie toetst zichzelf.
     cpSync(join(process.cwd(), 'package.json'), join(wortel, 'package.json'));

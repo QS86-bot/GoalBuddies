@@ -1,9 +1,11 @@
 import { execFileSync } from 'node:child_process';
-import { cpSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+
+import { kopieerHulpscripts } from './hulpscripts.js';
 
 /**
  * Hernummeren tijdens een botsing — QS8-277.
@@ -54,15 +56,13 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
  *    mutatie die meer breekt dan de grendel die je meet, meet die grendel niet.
  */
 
-const HULPSCRIPTS = [
-  'migratie-hernummer.mjs',
-  'migratiebranches.mjs',
-  'migratieregister-omgeving.mjs',
-  // ⚠️ Sinds QS8-580 importeert het script `metSchuineStrepen()` hiervandaan.
-  //    Ontbreekt dit bestand, dan valt `beforeAll` om — en dan meldt vitest de
-  //    toetsen als **skipped** en niet als failed. Ongemeten is niet groen.
-  'paden.mjs',
-];
+/**
+ * De scripts die dit harnas drááit. Wat zij nodig hebben, leidt
+ * `kopieerHulpscripts()` af uit hun imports — met de hand overtypen is drie keer
+ * misgegaan (QS8-365, QS8-405, QS8-580) en kostte op 22-09-2026 in één mutatie
+ * 27 toetsen, waarvan dertien stil als `skipped`. Zie `hulpscripts.ts`.
+ */
+const ENTRIES = ['migratie-hernummer.mjs'];
 
 let werkmap = '';
 let kloon = '';
@@ -125,10 +125,7 @@ beforeAll(() => {
   git(bron, 'push', '-u', 'origin', 'main');
 
   git(werkmap, 'clone', afstand, kloon);
-  mkdirSync(join(kloon, 'scripts'), { recursive: true });
-  for (const naam of HULPSCRIPTS) {
-    cpSync(join(process.cwd(), 'scripts', naam), join(kloon, 'scripts', naam));
-  }
+  kopieerHulpscripts(kloon, ENTRIES);
 
   // De botsing: twee migraties op 0009, allebei in de werkkopie.
   schrijf(
