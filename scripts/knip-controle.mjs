@@ -361,6 +361,15 @@ export const ZONDER_KNIP = {
     'leest YAML-workflows, en de gedeelde knip is een JS-knip — een `#` haalt hij niet weg. ' +
     '📏 Gemeten: een uitgecommentarieerde `# - run: npm run x` telt mee. Dat faalt **dicht** ' +
     '(een handmatige stap melden die er niet is), dus het is ruis en geen gat',
+  'scripts/hoofdrun-controle.mjs':
+    'leest YAML-workflows, net als `ci-controles.mjs` — 📏 gemeten op 22-09-2026 haalt de ' +
+    'gedeelde knip uit `concurrency:\\n  # group: ci-x\\n  group: ci-goed\\n` **niets** weg, ' +
+    'want die kent de `#` niet. ⚠️ Het verschil met die buur is dat deze controle wél knipt, ' +
+    'alleen met zijn eigen zeef: `concurrencyBlok()` gooit de commentaarregels binnen het blok ' +
+    'eruit, en 📏 dezelfde invoer geeft `groepRegel() === "ci-goed"`. Die zeef staat onder toets ' +
+    'in `tests/scripts/hoofdrun-controle.test.ts` — met de meting die hem opleverde: de kop van ' +
+    '`ci.yml` legt `cancel-in-progress` uit en maakte de controle rood op zijn eigen uitleg ' +
+    '(QS8-582, klasse QS8-412)',
   'scripts/padverwijzing-controle.mjs':
     'een pad ín een comment is daar juist het onderwerp en niet de ruis — QS8-412 ontstond bij ' +
     '`src/shared/ui/Foto.tsx`, dat in zijn eigen kop naar een toets wees die nooit geschreven is. ' +
