@@ -305,9 +305,15 @@ describe('hoofdrun-controle — de ijking', () => {
       expect(samenvattendeJobs(metStap)).toEqual([]);
     });
 
-    // ⚠️ Zelfde klasse als de knip hierboven: de uitleg boven een sleutel mag de
-    //    sleutel niet zijn. Deze vorm staat vandaag in `ci.yml` — de kop van de
-    //    poort noemt `always()` vier keer.
+    // ⚠️⚠️ **Deze toets is met de hand rood gemaakt en bléék niet rood te
+    //    worden, en dat staat hier in plaats van dat hij stilletjes blijft
+    //    staan.** Hij leest als de tegenhanger van de knip-toets hierboven —
+    //    de kop van de poort noemt `always()` vier keer — maar hij bewaakt de
+    //    overslag van commentaar niet: 📏 met `if (/^\s*#/) continue` eruit
+    //    blijft hij groen, want `    # ... if: ...` matcht `^ {4}if:` toch niet.
+    //    Wat die overslag wél draagt, staat in de toets hieronder over kolom 0.
+    //    Deze blijft staan als must-allow op de vorm die in `ci.yml` staat, niet
+    //    als grendel.
     it('trapt niet in een comment die de conditie noemt', () => {
       const metKop =
         'jobs:\n' +
@@ -328,6 +334,26 @@ describe('hoofdrun-controle — de ijking', () => {
       const yml =
         'on:\n  push:\n    needs: [x]\n    if: always()\n' +
         'jobs:\n  poort:\n    needs: [controle]\n    if: always()\n';
+      expect(samenvattendeJobs(yml).map((j) => j.naam)).toEqual(['poort']);
+    });
+
+    // ⚠️⚠️ **Deze staat er omdat de ijking hem eiste, en niet andersom.** De
+    //    scanner slaat commentaarregels over, en de eerste toets daarvoor keek
+    //    naar een comment op inspringing 4 die `if:` noemt — die bleef groen
+    //    mét én zónder de overslag, want `    # if:` matcht `^ {4}if:` toch
+    //    niet. 📏 Waar het wél om gaat is kolom 0: zo'n regel telt als nieuwe
+    //    topsleutel en sluit het `jobs:`-blok, waarna de controle groen is
+    //    omdat hij niets meer vindt. Vandaag staan er 46 van die comments in
+    //    `ci.yml` en 0 ervan ná `jobs:` — dat is de stand, geen eigenschap.
+    it('laat een comment op kolom 0 het jobs-blok niet sluiten', () => {
+      const yml =
+        'jobs:\n' +
+        '  controle:\n' +
+        '    steps:\n' +
+        '# ⚠️ hieronder de samenvatting\n' +
+        '  poort:\n' +
+        '    needs: [controle]\n' +
+        '    if: always()\n';
       expect(samenvattendeJobs(yml).map((j) => j.naam)).toEqual(['poort']);
     });
 
