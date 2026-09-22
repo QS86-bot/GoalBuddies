@@ -35,6 +35,31 @@
  *    poort zou hij bovendien een netwerkaanroep zijn in iets dat in CI draait —
  *    precies de grens die CLAUDE.md tussen de twee soorten scripts trekt.
  *
+ * ⚠️⚠️ **Sinds 22-09-2026 leest hij een venster en niet één run — QS8-582.**
+ *    Hij haalde `per_page=1` op en beoordeelde de nieuwste run. Dat beantwoordt
+ *    *"staat `main` nu groen"*, en dat is niet dezelfde vraag als *"heeft elke
+ *    toestand van `main` een uitslag gekregen"*. 📏 Op 21-09-2026 verloren drie
+ *    commits binnen vijftien seconden hun uitslag doordat ze elkaar uit de
+ *    concurrency-wachtrij duwden (runs 2965, 2966, 2967); de run erna was groen,
+ *    en dit script zei dus groen. Niet onwaar — onvolledig, en dat is de klasse
+ *    fout waar de grondwet over gaat.
+ *
+ * ⚠️ **Een venster en geen geschiedenis, en dat is een keuze met een prijs.**
+ *    `VENSTER` staat op de laatste 20 runs op `main` — bij het tempo van 21-09
+ *    (43 merges) is dat ruwweg een halve dag. Een commit die ouder is dan dat,
+ *    valt uit het zicht zonder dat er iets rood wordt. Dat is bewust: een alarm
+ *    over een commit die dertig merges terug ligt, is niet meer te beantwoorden
+ *    met een herstart die iets betekent, en een alarm dat je niet kunt
+ *    beantwoorden leer je negeren. **Maar het is wél de drift die zichzelf
+ *    herstelt uit QS8-411** — hij staat hier opgeschreven in plaats van
+ *    weggepoetst, en dat is het enige wat een venster eerlijk houdt.
+ *
+ * ⚠️ **Dit script is de detectiekant; de preventie staat in `ci.yml`.** Daar is
+ *    de concurrency-groep op `main` per commit, zodat er niets in de wachtrij
+ *    staat om uit geduwd te worden, en `npm run hoofdrun:controle` toetst die
+ *    regel — aan beide kanten. Deze twee horen bij elkaar: de een houdt het
+ *    tegen, de ander merkt het op als het tóch gebeurt.
+ *
  * Draaien: `npm run hoofdrun:stand`, meteen na het mergen.
  */
 import { execFile } from 'node:child_process';
@@ -49,6 +74,9 @@ const WERKSTROOM = 'ci.yml';
 
 /** Hoe lang we op de API wachten voordat we hem opgeven. */
 const TIJDSLIMIET_MS = 15000;
+
+/** Hoeveel runs op `main` we teruglezen op zoek naar een verloren uitslag. */
+const VENSTER = 20;
 
 /**
  * De uitslag van één run, ingedeeld.
@@ -89,9 +117,67 @@ export function beoordeel(run) {
   return { stand: 'ongemeten', reden: `conclusie \`${run.conclusion}\` is geen uitslag`, ...kop };
 }
 
-/** Exitcode die bij een stand hoort. Alleen groen is nul. */
-export function exitcode(stand) {
-  return stand === 'groen' ? 0 : 1;
+/**
+ * Exitcode die bij een stand hoort. Alleen groen is nul — en groen met een
+ * commit zonder uitslag erachter is geen groen.
+ */
+export function exitcode(stand, verloren = []) {
+  return stand === 'groen' && verloren.length === 0 ? 0 : 1;
+}
+
+/**
+ * Heeft deze run iets afgerond waar je op kunt afgaan?
+ *
+ * ⚠️ Dezelfde driedeling als de poort: `cancelled`, `skipped`, `stale` en
+ *    `action_required` zijn geen uitslag, en `queued`/`in_progress` nog niet.
+ */
+function isUitslag(run) {
+  return (
+    run?.status === 'completed' &&
+    ['success', 'failure', 'timed_out'].includes(run?.conclusion ?? '')
+  );
+}
+
+function looptNog(run) {
+  return run?.status !== undefined && run.status !== 'completed';
+}
+
+/**
+ * De commits in dit venster die geen afgeronde uitslag (meer) hebben.
+ *
+ * ⚠️ **Per commit en niet per run, want een sha kan meerdere runs hebben** — een
+ *    herstart is een tweede poging op hetzelfde run-id, maar een `push` en de
+ *    wekelijkse `schedule` zijn twee runs op dezelfde sha. Eén afgeronde uitslag
+ *    is genoeg; dan is die toestand gemeten.
+ *
+ * ⚠️ Een commit waarvan nog een run **draait**, telt hier niet mee: die kan zijn
+ *    uitslag nog krijgen. Dat is geen groen — de nieuwste run draagt die stand
+ *    al — maar het is ook geen verlies.
+ *
+ * @param {Array<object>} runs nieuwste eerst, zoals de GitHub-API ze geeft
+ */
+export function commitsZonderUitslag(runs) {
+  const perCommit = new Map();
+  for (const run of runs ?? []) {
+    const sha = run?.head_sha ?? '';
+    if (sha === '') continue;
+    const eerder = perCommit.get(sha) ?? { gemeten: false, draait: false, run };
+    perCommit.set(sha, {
+      gemeten: eerder.gemeten || isUitslag(run),
+      draait: eerder.draait || looptNog(run),
+      run: eerder.run,
+    });
+  }
+
+  return [...perCommit.values()]
+    .filter((c) => !c.gemeten && !c.draait)
+    .map(({ run }) => ({
+      sha: (run.head_sha ?? '').slice(0, 7),
+      titel: run.display_title ?? '',
+      url: run.html_url ?? '',
+      reden: `conclusie \`${run.conclusion}\``,
+    }))
+    .reverse();
 }
 
 /**
@@ -119,10 +205,10 @@ export function exitcode(stand) {
  *    machine zonder die proxy en zonder token geeft dit script eerlijk "ik weet
  *    het niet" — dat is de enige uitkomst die hier niet mag liegen.
  */
-async function haalRun() {
+async function haalRuns() {
   const url =
     `https://api.github.com/repos/${EIGENAAR}/${REPO}/actions/workflows/${WERKSTROOM}` +
-    '/runs?branch=main&per_page=1';
+    `/runs?branch=main&per_page=${VENSTER}`;
 
   // ⚠️ Elke externe call heeft een timeout (onwrikbare regel 14) — hier die van
   //    `curl` zelf plus een harde grens op het proces eromheen.
@@ -133,7 +219,7 @@ async function haalRun() {
   );
 
   const lijf = JSON.parse(stdout);
-  return lijf?.workflow_runs?.[0] ?? null;
+  return lijf?.workflow_runs ?? [];
 }
 
 const TEKST = {
@@ -142,6 +228,30 @@ const TEKST = {
   draait: '· De run op `main` draait nog — nog niets gemeten.',
   ongemeten: '· ONGEMETEN: de stand van `main` is niet vast te stellen.',
 };
+
+/**
+ * De regels over de commits die hun uitslag kwijt zijn.
+ *
+ * ⚠️ **Het verzoek is een herstart en geen "let volgende keer beter op".** Een
+ *    melding die niet zegt wat je ermee doet, is een melding die je wegklikt.
+ */
+function verlorenRegels(verloren) {
+  if (verloren.length === 0) return [];
+  const regels = [
+    '',
+    `· ${verloren.length} commit(s) op \`main\` zonder uitslag — niet groen, niet rood, er niet.`,
+  ];
+  for (const { sha, titel, reden, url } of verloren) {
+    regels.push(`    ${sha}  ${titel}`, `      ${reden} · ${url}`);
+  }
+  return regels.concat([
+    '',
+    'Herstart elke run hierboven — één tegelijk, want twee herstarts in dezelfde',
+    'concurrency-groep duwen elkaar er weer uit. Dat is QS8-582; de preventie staat',
+    'in `ci.yml` (de groep is op `main` per commit) en `npm run hoofdrun:controle`',
+    'toetst die regel.',
+  ]);
+}
 
 export function melding(uitslag) {
   const regels = [TEKST[uitslag.stand] ?? TEKST.ongemeten];
@@ -163,21 +273,23 @@ export function melding(uitslag) {
     regels.push('', 'Draai dit commando zo nog een keer. Je bent klaar als het groen zegt.');
   }
 
-  return regels.join('\n');
+  return regels.concat(verlorenRegels(uitslag.verloren ?? [])).join('\n');
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
   let uitslag;
 
   try {
-    uitslag = beoordeel(await haalRun());
+    const runs = await haalRuns();
+    uitslag = { ...beoordeel(runs[0] ?? null), verloren: commitsZonderUitslag(runs) };
   } catch (fout) {
     uitslag = { stand: 'ongemeten', reden: fout instanceof Error ? fout.message : String(fout) };
   }
 
+  const code = exitcode(uitslag.stand, uitslag.verloren ?? []);
   const uit = melding(uitslag);
-  if (uitslag.stand === 'groen') process.stdout.write(`${uit}\n`);
+  if (code === 0) process.stdout.write(`${uit}\n`);
   else process.stderr.write(`${uit}\n`);
 
-  process.exit(exitcode(uitslag.stand));
+  process.exit(code);
 }

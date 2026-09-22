@@ -38,8 +38,32 @@ on:
 #    run over de commit ertussen is nooit afgerond, en van de 24 main-runs die dag
 #    zijn er vijf op deze manier afgebroken. Een uitslag die er niet is, is geen
 #    groen en geen rood — hij is er niet.
+#
+# ⚠️⚠️ **En de groep is op `main` per commit, en dat is de reparatie van
+#    QS8-582.** `cancel-in-progress: false` beschermt de **lopende** run; de
+#    **wachtende** beschermt hij niet. GitHub houdt per concurrency-groep maar
+#    één run in de wachtrij, en een volgende run in diezelfde groep annuleert
+#    die wachtende — ook als afbreken uitstaat.
+#
+#    📏 Gemeten op 21-09-2026, uit de GitHub-API:
+#
+#      20:28:42  run 2962  152c0321  LOOPT tot 20:36:36
+#      20:33:23  run 2965  e6cc6e2e  wacht  → afgebroken om 20:33:32 door 2966
+#      20:33:31  run 2966  339f6530  wacht  → afgebroken om 20:33:40 door 2967
+#      20:33:38  run 2967  28542c7c  wacht  → afgebroken om 20:36:37 door 2969
+#
+#    Drie toestanden op `main` zonder uitslag, en `hoofdrun:controle` stond
+#    terecht op groen: de regel die hij toetst was en is juist. Zolang `main`
+#    één groep deelt, is de wachtrij één plek diep en gaat elke merge binnen het
+#    CI-venster van mediaan 8 minuten ten koste van zijn voorganger.
+#
+#    Per commit een eigen groep betekent: op `main` wordt er niet gewacht en dus
+#    ook niets uit de wachtrij geduwd. Buiten `main` blijft de groep per ref, want
+#    daar moet `cancel-in-progress` juist kunnen afbreken — een groep die daar óók
+#    per commit splitst, maakt die regel dode letter. `hoofdrun:controle` toetst
+#    allebei die kanten.
 concurrency:
-  group: ci-${{ github.ref }}
+  group: ci-${{ github.ref }}${{ github.ref == 'refs/heads/main' && format('-{0}', github.sha) || '' }}
   cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
 
 permissions:

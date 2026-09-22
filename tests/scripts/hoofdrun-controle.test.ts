@@ -8,7 +8,13 @@ import {
   bevindingen,
   breektMainAf,
   cancelRegel,
+  concurrencyBlok,
+  deeltGroepOpMain,
   draaitOpMain,
+  evalueerGroep,
+  groepRegel,
+  splitstGroepBuitenMain,
+  tokeniseer,
 } from '../../scripts/hoofdrun-controle.mjs';
 
 /**
@@ -26,6 +32,12 @@ import {
  *    `rollover.yml` af, en dat zijn geplande jobs die `main` niet raken. Een
  *    controle die alles meldt, leer je negeren — dus de must-allows staan er
  *    net zo hard in als de must-finds.
+ *
+ * ⚠️⚠️ **Sinds 22-09-2026 ijkt dit bestand drie grendels en niet één — QS8-582.**
+ *    `cancel-in-progress` beschermt de lopende run; de wáchtende beschermt hij
+ *    niet, en die blinde vlek kostte op 21-09-2026 drie commits op `main` hun
+ *    uitslag. De groep draagt die tweede belofte, en tweezijdig: op `main` moet
+ *    hij per commit splitsen, daarbuiten juist niet.
  */
 describe('hoofdrun-controle — de ijking', () => {
   describe('draaitOpMain: raakt deze workflow main?', () => {
@@ -68,8 +80,155 @@ describe('hoofdrun-controle — de ijking', () => {
 
     it('leest een expressie in zijn geheel', () => {
       expect(
-        cancelRegel("  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}\n"),
+        cancelRegel(
+          "concurrency:\n  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}\n",
+        ),
       ).toBe("${{ github.ref != 'refs/heads/main' }}");
+    });
+
+    // ⚠️⚠️ **De scherpste van dit blok, en hij is gemeten en niet bedacht.**
+    //    Deze lezer las tot 22-09-2026 het hele bestand. Toen `ci.yml` in deze
+    //    ronde een kop kreeg die de sleutel uitlegt, werd de controle rood op
+    //    zijn eigen uitleg. Zelfde klasse als QS8-412: de knip die een controle
+    //    scherp houdt, is zelf een grendel.
+    it('trapt niet in een comment die de sleutel noemt', () => {
+      const ci =
+        '# `cancel-in-progress: true` is op main fout, en daarom staat er:\n' +
+        'concurrency:\n' +
+        '  # ook hier niet: cancel-in-progress: true\n' +
+        '  cancel-in-progress: false\n';
+      expect(cancelRegel(ci)).toBe('false');
+    });
+
+    it('geeft null zonder concurrency-blok — dan valt er niets af te breken', () => {
+      expect(cancelRegel('on:\n  push:\n')).toBeNull();
+    });
+  });
+
+  describe('concurrencyBlok: wat hoort bij het blok', () => {
+    it('neemt de ingesprongen regels en laat de rest liggen', () => {
+      const yml = 'name: CI\nconcurrency:\n  group: ci\n\npermissions:\n  group: nee\n';
+      expect(concurrencyBlok(yml)).toContain('group: ci');
+      expect(concurrencyBlok(yml)).not.toContain('nee');
+    });
+
+    it('geeft null als het blok er niet is', () => {
+      expect(concurrencyBlok('name: CI\non:\n  push:\n')).toBeNull();
+    });
+  });
+
+  describe('tokeniseer: wat is leesbaar', () => {
+    it('leest de vorm die in ci.yml staat', () => {
+      expect(tokeniseer(" github.ref == 'refs/heads/main' && format('-{0}', github.sha) || '' ")).
+        toEqual([
+          'github.ref',
+          '==',
+          "'refs/heads/main'",
+          '&&',
+          'format',
+          '(',
+          "'-{0}'",
+          ',',
+          'github.sha',
+          ')',
+          '||',
+          "''",
+        ]);
+    });
+
+    // ⚠️ Must-find. Een vorm die dit gereedschap niet kent, mag geen groen
+    //    opleveren — `null` betekent hier "onbekend" en wordt verderop een
+    //    bevinding.
+    it('geeft null bij een operator die we niet kennen', () => {
+      expect(tokeniseer('github.run_number > 3')).toBeNull();
+    });
+  });
+
+  describe('evalueerGroep: wat zou GitHub uitrekenen', () => {
+    const ECHT =
+      "ci-${{ github.ref }}${{ github.ref == 'refs/heads/main' && format('-{0}', github.sha) || '' }}";
+
+    it('zet er op main de sha achter', () => {
+      expect(evalueerGroep(ECHT, { 'github.ref': 'refs/heads/main', 'github.sha': 'abc' })).toBe(
+        'ci-refs/heads/main-abc',
+      );
+    });
+
+    it('laat een featurebranch kaal', () => {
+      expect(evalueerGroep(ECHT, { 'github.ref': 'refs/heads/tak', 'github.sha': 'abc' })).toBe(
+        'ci-refs/heads/tak',
+      );
+    });
+
+    it('geeft null bij een contextpad dat we niet invullen', () => {
+      expect(evalueerGroep('ci-${{ github.actor }}', { 'github.ref': 'x' })).toBeNull();
+    });
+  });
+
+  describe('deeltGroepOpMain: is de wachtrij één plek diep?', () => {
+    // ⚠️ Must-find. Dit was de vorm van 21-09-2026, en drie commits verloren
+    //    daaronder hun uitslag.
+    it('vindt de groep per ref — de vorm waaronder QS8-582 gebeurde', () => {
+      expect(deeltGroepOpMain('ci-${{ github.ref }}')).toBe(true);
+    });
+
+    it('vindt een vaste naam', () => {
+      expect(deeltGroepOpMain('ci')).toBe(true);
+    });
+
+    // ⚠️⚠️ **De scherpste van de reeks.** Deze noemt `github.sha` en splitst
+    //    overál behalve op `main` — precies verkeerd om. Een controle die op het
+    //    wóórd `github.sha` zou zoeken, laat hem door, en dat is geen bedacht
+    //    randgeval: de `!=` staat in ci.yml één regel lager.
+    it('vindt een expressie die juist buiten main splitst', () => {
+      expect(
+        deeltGroepOpMain("ci-${{ github.ref != 'refs/heads/main' && github.sha || '' }}"),
+      ).toBe(true);
+    });
+
+    it('vindt een onleesbare expressie — onbekend is geen groen', () => {
+      expect(deeltGroepOpMain('ci-${{ github.run_number > 3 }}')).toBe(true);
+    });
+
+    // ⚠️ Must-allows.
+    it('laat de vorm die in ci.yml staat met rust', () => {
+      expect(
+        deeltGroepOpMain(
+          "ci-${{ github.ref }}${{ github.ref == 'refs/heads/main' && format('-{0}', github.sha) || '' }}",
+        ),
+      ).toBe(false);
+    });
+
+    it('laat een ontbrekend blok met rust — zonder groep is er geen wachtrij', () => {
+      expect(deeltGroepOpMain(null)).toBe(false);
+    });
+  });
+
+  describe('splitstGroepBuitenMain: blijft cancel-in-progress daar levend?', () => {
+    // ⚠️ Must-find. De andere kant van de ratel: zo is afbreken dode letter.
+    it('vindt een groep die overal per commit splitst', () => {
+      expect(splitstGroepBuitenMain('ci-${{ github.sha }}')).toBe(true);
+    });
+
+    it('vindt een onleesbare expressie', () => {
+      expect(splitstGroepBuitenMain('ci-${{ github.run_number > 3 }}')).toBe(true);
+    });
+
+    // ⚠️ Must-allows.
+    it('laat de groep per ref met rust', () => {
+      expect(splitstGroepBuitenMain('ci-${{ github.ref }}')).toBe(false);
+    });
+
+    it('laat de vorm die in ci.yml staat met rust', () => {
+      expect(
+        splitstGroepBuitenMain(
+          "ci-${{ github.ref }}${{ github.ref == 'refs/heads/main' && format('-{0}', github.sha) || '' }}",
+        ),
+      ).toBe(false);
+    });
+
+    it('laat een ontbrekend blok met rust', () => {
+      expect(splitstGroepBuitenMain(null)).toBe(false);
     });
   });
 
@@ -114,6 +273,7 @@ describe('hoofdrun-controle — de ijking', () => {
       const ci = readCi();
       expect(draaitOpMain(ci), 'ci.yml wordt niet meer als main-workflow herkend').toBe(true);
       expect(cancelRegel(ci), 'ci.yml heeft geen cancel-in-progress meer').not.toBeNull();
+      expect(groepRegel(ci), 'ci.yml heeft geen concurrency-groep meer').not.toBeNull();
     });
   });
 });
