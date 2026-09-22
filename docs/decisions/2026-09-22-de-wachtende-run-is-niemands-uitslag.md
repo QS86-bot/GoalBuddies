@@ -180,8 +180,13 @@ want een herstart draait onder de workflow van zijn eigen commit en die draagt d
 oude groep. Uitkomsten:
 
 - `e6cc6e2e` — run 2965, poging 2: **success**
-- `339f6530` — run 2966, poging 2: zie de dossierrij
-- `28542c7c` — run 2967, poging 2: zie de dossierrij
+- `339f6530` — run 2966, poging 2: **success**
+- `28542c7c` — run 2967, poging 2: **success**
+
+⚠️ **Drie keer groen is hier een uitkomst en geen bevestiging vooraf.** Was er
+één rood geweest, dan had `main` een dag lang een gebroken toestand gedragen
+waarvan niemand wist. Dat dit meeviel, is precies wat je niet kunt weten zolang de
+uitslag er niet is — en dat is het hele argument van deze rij.
 
 De drie van 17-09 (`b5f8851e`, `9b674c16`, `3920db87`) zijn **niet** herstart. Ze
 liggen ruim tweehonderd commits terug; een uitslag daarover zegt niets meer over
