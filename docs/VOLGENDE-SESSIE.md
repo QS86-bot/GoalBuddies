@@ -1797,6 +1797,51 @@ is **af**: de bibliotheek staat erin en `_layout` plugt hem in. Wat native nog
 tegenhoudt is een uitgerolde build, niet de bibliotheek. Alles staat in `docs/Q-TODO.docx`, secties H, I en J,
 met de onderbouwing van de groene notities in `docs/GROENE-NOTITIES.md`.
 
+### 22-09-2026 — de `wacht-op-Quinten`-lijst is één keer volledig nagelezen
+
+Alle **22** issues in Backlog en Todo met dat label zijn gelezen **mét hun
+reacties**, en dragen nu elk een triagecomment met een oordeel. De uitkomst is
+het opschrijven waard, want hij is niet wat de vorige ronde hoopte:
+
+> **Geen van de 22 bleek bouwbaar.** Stuk voor stuk geblokkeerd op een
+> dashboardvinkje, een developer-account, een fysiek toestel, een
+> productiesleutel of een productbesluit — en dus niet op capaciteit.
+
+Bij elk issue dat een **besluit** vraagt staat dat besluit nu vóórgeschreven:
+één vraag, twee of drie opties met hun prijs, zodat het antwoord één zin kan
+zijn. Begin daar als je Quinten spreekt — QS8-141 (uitgavenplafond), QS8-25
+(welke OAuth-provider), QS8-536 (speling op de strafklok), QS8-230
+(bekenden of ook onbekenden), QS8-397 (versleutelde foto's).
+
+⚠️ **Vier premissen bleken achterhaald, en ze stonden alle vier als feit.**
+Wie ze overneemt zonder te hermeten, werkt aan het verkeerde:
+
+| issue | wat er stond | wat er gemeten is |
+|---|---|---|
+| QS8-216 | code moet nog | staat sinds 06-09 op `main`; alleen het dashboardvinkje rest |
+| QS8-559 | geblokkeerd op twee dingen | QS8-548 is geland als `0294`; nog één blokkade (de deploy) |
+| QS8-240 | drie oude branches | **27**, en geen enkele draagt een migratie die `main` mist |
+| QS8-142/143 | "de bouwomgeving kan de app niet draaien" | de sleutels zijn er wél; wat ontbreekt is een **lokale GoTrue** |
+
+⚠️ En bij QS8-240 is de meetlat zélf stuk gebleken, voor de tweede keer:
+*"staat alleen op die branch"* betekent net zo goed *"is op `main` weggehaald"*.
+De bestandslijstvergelijking uit 17-09 is beter dan `git diff`, maar hij is niet
+richtinggevoelig.
+
+### En één valkuil uit diezelfde dag, want hij is de duurste soort
+
+QS8-461 is gebouwd (migratie `0295`), maar **de eerste versie was fout en droeg
+een uitgeschreven argument waarom hij goed was.** Hij splitste alleen de bovenste
+OR-laag; 📏 de meeste echte policies dragen hun gesanctioneerde aanroep één laag
+dieper, dus het gat bleef volledig open. Het beslisdocument legde uit waarom
+dieper kijken niet nodig zou zijn — en die reden is nagemeten en was onwaar.
+
+De `security-reviewer` vond het. **Regel 19 heeft dat betaald op een wijziging
+van drie bestanden**, precies het formaat waarbij `docs/PROMPT-SESSIE.md` §6 zegt
+dat een agent overbodig is. Die regel blijft kloppen voor tekstcorrecties, maar
+niet voor iets dat een autorisatiegrendel raakt: **laat de review draaien zodra
+je aan RLS komt, ook als het klein lijkt.**
+
 ## WERKAFSPRAKEN — houd deze aan
 
 1. **Werk landt sinds 23-08 via een PR op GitHub**, niet meer met een lokale
