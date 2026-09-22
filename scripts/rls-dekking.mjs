@@ -841,6 +841,20 @@ export function kloptDeBestemming({ adres, poort, database }) {
 
 
 /**
+ * Legt vast wat de lus op het punt staat open te zetten.
+ *
+ * ⚠️ **De helft gaat mee sinds QS8-588**, en hij staat hier naast de leeskant
+ *    omdat de twee één afspraak delen: zonder die helft kan `beoordeelHerstel()`
+ *    niet vaststellen welke toestand de database hóórt te hebben, en dus ook niet
+ *    of er tussendoor iets veranderd is. Verandert de vorm van dit bestand, dan
+ *    hoort `SPOORVERSIE` mee te verspringen — een spoor dat de lezer niet kent,
+ *    faalt daar dicht.
+ */
+function schrijfSpoor(policy, helft) {
+  writeFileSync(HERSTELBESTAND, JSON.stringify({ versie: SPOORVERSIE, policy, helft }), 'utf8');
+}
+
+/**
  * Zet terug wat een afgebroken run heeft laten liggen.
  *
  * ⚠️ **Dit gebeurt vóór de eerste meting en niet erna**, want een meting tegen
@@ -861,6 +875,12 @@ function herstelWatOpenstond() {
     // ⚠️⚠️ **Het spoor blijft liggen, en dat is met opzet.** Weghalen zou de
     //    enige aanwijzing wissen dat er iets openstond; automatisch terugzetten
     //    zou een migratie terugdraaien. Allebei zijn erger dan stoppen.
+    //
+    // ⚠️ **En stoppen gebeurt met `process.exit` en niet met een `throw`.** Deze
+    //    aanroep staat binnen de `try` die een psql-fout vertaalt naar *"geen
+    //    database"*; een worp zou hier dus als een ontbrekende stack gemeld
+    //    worden terwijl de stack gewoon draait. Dat is woordelijk de klasse van
+    //    QS8-268, waar zes scripts jarenlang de verkeerde oorzaak noemden.
     console.error(
       `\n✗ het herstel van ${naam} is niet veilig af te spelen.\n` +
         `  ${reden}.\n\n` +
@@ -1518,14 +1538,7 @@ async function hoofd() {
       const terug = herstelSql(policy);
       const label = helften.length > 1 ? `${kop} (${helft})` : kop;
 
-      // ⚠️ **De helft gaat mee sinds QS8-588.** Zonder die helft is bij het
-      //    herstellen niet vast te stellen welke toestand de database hóórt te
-      //    hebben, en dus ook niet of er tussendoor iets veranderd is.
-      writeFileSync(
-        HERSTELBESTAND,
-        JSON.stringify({ versie: SPOORVERSIE, policy, helft }),
-        'utf8',
-      );
+      schrijfSpoor(policy, helft);
 
       // ⚠️ **De `alter policy` staat sinds ronde 9 binnen de `try`.** Stond hij
       //    erbuiten en wierp hij ná het committen — een timeout van zestig
