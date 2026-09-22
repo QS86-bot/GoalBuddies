@@ -1,9 +1,11 @@
 import { execFileSync } from 'node:child_process';
-import { cpSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+
+import { kopieerHulpscripts } from './hulpscripts.js';
 
 /**
  * Een gelande branch is geen botsing — QS8-313.
@@ -77,20 +79,13 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
  * niet, en dát is wat er eerst niet klopte.
  */
 
-const HULPSCRIPTS = [
-  'migratiebranches.mjs',
-  'migraties-controle.mjs',
-  // ⚠️ `migraties-controle` importeert hem sinds QS8-405; zonder deze regel valt
-  //    de kloon om op een ontbrekende module in plaats van op wat je toetst.
-  'rollbackpad.mjs',
-  'migratie-hernummer.mjs',
-  // ⚠️ Sinds QS8-580 importeert `migratie-hernummer.mjs` hieruit. Ontbreekt
-  //    dit bestand, dan valt de opbouw om — en vitest meldt zo'n suite als
-  //    **skipped** en niet als failed.
-  'paden.mjs',
-  'migratieregister-omgeving.mjs',
-  'letterversies.mjs',
-];
+/**
+ * De scripts die dit harnas drááit. Wat zij nodig hebben, leidt
+ * `kopieerHulpscripts()` af uit hun imports — met de hand overtypen is drie keer
+ * misgegaan (QS8-365, QS8-405, QS8-580) en kostte op 22-09-2026 in één mutatie
+ * 27 toetsen, waarvan dertien stil als `skipped`. Zie `hulpscripts.ts`.
+ */
+const ENTRIES = ['migraties-controle.mjs'];
 
 let werkmap = '';
 let afstand = '';
@@ -238,10 +233,7 @@ beforeAll(() => {
   //
   // Kloont `main` (0001 + 0003) en gebruikt 0002 zelf onder een eigen naam.
   git(werkmap, 'clone', afstand, kloon);
-  mkdirSync(join(kloon, 'scripts'), { recursive: true });
-  for (const naam of HULPSCRIPTS) {
-    cpSync(join(process.cwd(), 'scripts', naam), join(kloon, 'scripts', naam));
-  }
+  kopieerHulpscripts(kloon, ENTRIES);
   migratie(kloon, '0002_van_mij');
 
   // ── En `main` loopt vooruit ────────────────────────────────────────────
