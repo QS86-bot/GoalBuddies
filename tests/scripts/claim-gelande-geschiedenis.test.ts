@@ -1,9 +1,11 @@
 import { execFileSync } from 'node:child_process';
-import { cpSync, mkdirSync, mkdtempSync, rmSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+
+import { kopieerHulpscripts } from './hulpscripts.js';
 
 /**
  * De naad tussen "wat de claim weet" en "wat de claim doet" — QS8-449.
@@ -46,7 +48,14 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
  *    is geen ijking — zie CLAUDE.md bij regel 18.
  */
 
-const HULPSCRIPTS = ['claim.mjs', 'migratiebranches.mjs'];
+/**
+ * Het script dat dit harnas drááit. Wat het nodig heeft, leidt
+ * `kopieerHulpscripts()` af uit zijn imports — zie `hulpscripts.ts`.
+ *
+ * ⚠️ Dit harnas stond in geen enkele telling: zijn lijst paste op één regel en
+ *    ontsnapte daarmee aan de grep die er vijf vond (QS8-585).
+ */
+const ENTRIES = ['claim.mjs'];
 
 let werkmap = '';
 let afstand = '';
@@ -112,10 +121,7 @@ beforeAll(() => {
   git(kloon, 'config', 'user.name', 'IJking');
   git(kloon, 'config', 'user.email', 'ijking@example.invalid');
 
-  mkdirSync(join(kloon, 'scripts'), { recursive: true });
-  for (const naam of HULPSCRIPTS) {
-    cpSync(join(process.cwd(), 'scripts', naam), join(kloon, 'scripts', naam));
-  }
+  kopieerHulpscripts(kloon, ENTRIES);
 });
 
 afterAll(() => {
