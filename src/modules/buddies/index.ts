@@ -89,10 +89,14 @@ export {
   deblokkeer,
   fetchBlokkades,
   fetchMeldingenOver,
+  fetchOpenstaandeMeldingen,
+  handelMeldingAf,
   meldBericht,
   meldPersoon,
   verwijderLid,
   type Blokkade,
+  type Meldingcursor,
+  type OpenstaandeMelding,
 } from './veiligheid';
 
 export {

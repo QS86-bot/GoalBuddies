@@ -144,7 +144,7 @@ export const CENSUS = {
       'reminder_tone, share_moves_by_default, created_at, updated_at, onboarded_at, ' +
       'wants_own_goal, locale, focus_areas, minutes_per_day, when_i_do_it, what_breaks_it, ' +
       'notify_approval_request, notify_approval_received, notify_cycle_summary, ' +
-      'notify_commitment_witness, quiet_from, quiet_to, vindbaar',
+      'notify_commitment_witness, quiet_from, quiet_to, vindbaar, platform_beheerder',
   },
   ai_jobs: {
     groepszichtbaar: false,
@@ -269,10 +269,14 @@ export const CENSUS = {
     groepszichtbaar: false,
     kolommen: 'id, user_id, token, platform, created_at, last_seen_at, p256dh, auth',
   },
-  reports: {
-    groepszichtbaar: true,
-    kolommen: 'id, reporter_id, subject_id, group_id, message_id, bericht_kopie, reden, toelichting, status, created_at',
-  },
+  // ⚠️ **`reports` stond hier en hoort er niet meer in — QS8-586, 0298.** De
+  //    tabel heeft geen tabelbrede SELECT-grant meer voor `authenticated`, maar
+  //    een kolomgrant zónder `reporter_id` en zonder `afgehandeld_door`, met
+  //    `reports_select` teruggebracht tot `reporter_id = auth.uid()`. Beoordelen
+  //    loopt uitsluitend via `openstaande_meldingen()`, die zijn eigen
+  //    kolomlijst draagt. Een rij laten staan die niets meer dekt is precies wat
+  //    deze controle zelf meldt: hij zou ooit stilletjes een tabel met dezelfde
+  //    naam dekken die de grant wél heeft.
   season_recaps: {
     groepszichtbaar: true,
     kolommen: 'group_id, season_start, season_end, weken, mijlpalen, schakels, created_at',

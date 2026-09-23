@@ -180,6 +180,18 @@ const CORRECTIES = {
   'group_overview.goal_target_date — laag':
     true satisfies Eis<Rij<CorFuncties['group_overview']>['goal_target_date'], string | null>,
 
+  'openstaande_meldingen.toelichting — generator':
+    true satisfies Eis<Rij<GenFuncties['openstaande_meldingen']>['toelichting'], string>,
+  'openstaande_meldingen.toelichting — laag':
+    true satisfies Eis<Rij<CorFuncties['openstaande_meldingen']>['toelichting'], string | null>,
+  'openstaande_meldingen.bericht_kopie — generator':
+    true satisfies Eis<Rij<GenFuncties['openstaande_meldingen']>['bericht_kopie'], string>,
+  'openstaande_meldingen.bericht_kopie — laag':
+    true satisfies Eis<
+      Rij<CorFuncties['openstaande_meldingen']>['bericht_kopie'],
+      string | null
+    >,
+
   'verzoekers_eerder_lid.op — generator':
     true satisfies Eis<Rij<GenFuncties['verzoekers_eerder_lid']>['op'], string>,
   'verzoekers_eerder_lid.op — laag':
@@ -226,6 +238,8 @@ const ONGEMOEID = {
     true satisfies Eis<Rij<CorFuncties['group_overview']>['display_name'], string>,
   'group_overview.total_members blijft niet-nullable':
     true satisfies Eis<Rij<CorFuncties['group_overview']>['total_members'], number>,
+  'openstaande_meldingen.reden blijft niet-nullable':
+    true satisfies Eis<Rij<CorFuncties['openstaande_meldingen']>['reden'], string>,
 
   /**
    * ⚠️ **En de laag laat geen tabel of functie vallen.** Drie steekproeven op
@@ -316,8 +330,8 @@ export function herkomst(bron: string, naam: string): string | null {
 }
 
 describe('de correcties op de gegenereerde types', () => {
-  it('telt drieëntwintig correcties, elk twee kanten op', () => {
-    expect(Object.keys(CORRECTIES)).toHaveLength(46);
+  it('telt vijfentwintig correcties, elk twee kanten op', () => {
+    expect(Object.keys(CORRECTIES)).toHaveLength(50);
     expect(Object.values(CORRECTIES).every((waarde) => waarde === true)).toBe(true);
   });
 

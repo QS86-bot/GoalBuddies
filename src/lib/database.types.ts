@@ -1861,6 +1861,7 @@ export type Database = {
           notify_commitment_witness: boolean
           notify_cycle_summary: boolean
           onboarded_at: string | null
+          platform_beheerder: boolean
           quiet_from: number | null
           quiet_to: number | null
           reminder_enabled: boolean
@@ -1888,6 +1889,7 @@ export type Database = {
           notify_commitment_witness?: boolean
           notify_cycle_summary?: boolean
           onboarded_at?: string | null
+          platform_beheerder?: boolean
           quiet_from?: number | null
           quiet_to?: number | null
           reminder_enabled?: boolean
@@ -1915,6 +1917,7 @@ export type Database = {
           notify_commitment_witness?: boolean
           notify_cycle_summary?: boolean
           onboarded_at?: string | null
+          platform_beheerder?: boolean
           quiet_from?: number | null
           quiet_to?: number | null
           reminder_enabled?: boolean
@@ -1981,6 +1984,8 @@ export type Database = {
       }
       reports: {
         Row: {
+          afgehandeld_door: string | null
+          afgehandeld_op: string | null
           bericht_kopie: string | null
           created_at: string
           group_id: string
@@ -1993,6 +1998,8 @@ export type Database = {
           toelichting: string | null
         }
         Insert: {
+          afgehandeld_door?: string | null
+          afgehandeld_op?: string | null
           bericht_kopie?: string | null
           created_at?: string
           group_id: string
@@ -2005,6 +2012,8 @@ export type Database = {
           toelichting?: string | null
         }
         Update: {
+          afgehandeld_door?: string | null
+          afgehandeld_op?: string | null
           bericht_kopie?: string | null
           created_at?: string
           group_id?: string
@@ -2017,6 +2026,20 @@ export type Database = {
           toelichting?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "reports_afgehandeld_door_fkey"
+            columns: ["afgehandeld_door"]
+            isOneToOne: false
+            referencedRelation: "mijn_profiel"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "reports_afgehandeld_door_fkey"
+            columns: ["afgehandeld_door"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "reports_group_id_fkey"
             columns: ["group_id"]
@@ -3118,6 +3141,10 @@ export type Database = {
           user_id: string
         }[]
       }
+      handel_melding_af: {
+        Args: { p_report_id: string; p_status: string }
+        Returns: Json
+      }
       heeft_nog_beoordelaar: {
         Args: { p_goal_id: string; p_owner: string }
         Returns: boolean
@@ -3177,6 +3204,7 @@ export type Database = {
       is_group_admin: { Args: { gid: string }; Returns: boolean }
       is_group_member: { Args: { gid: string }; Returns: boolean }
       is_kale_auth_uid: { Args: { p_uitdrukking: string }; Returns: boolean }
+      is_platform_beheerder: { Args: never; Returns: boolean }
       is_pushdienst: { Args: { p_endpoint: string }; Returns: boolean }
       join_group_with_code: { Args: { code: string }; Returns: Json }
       kan_beoordeeld_worden: {
@@ -3251,6 +3279,14 @@ export type Database = {
         | { Args: { p_owner_id: string; p_vandaag: string }; Returns: number }
       mag_bewijsfoto_lezen: { Args: { pad: string }; Returns: boolean }
       mag_groep_lezen: { Args: { gid: string }; Returns: boolean }
+      mag_melding_als_beheerder: {
+        Args: { p_group_id: string }
+        Returns: boolean
+      }
+      mag_melding_als_escalatie: {
+        Args: { p_group_id: string; p_subject_id: string }
+        Returns: boolean
+      }
       mag_weekdoel_van_mij: { Args: { w: string }; Returns: boolean }
       meld: {
         Args: {
@@ -3288,6 +3324,7 @@ export type Database = {
         }[]
       }
       mijn_datum: { Args: never; Returns: string }
+      moderatiepoort: { Args: never; Returns: boolean }
       ontdek_groepen: {
         Args: {
           p_categorie?: string
@@ -3337,6 +3374,27 @@ export type Database = {
           weekly_goal_id: string
           weekly_title: string
         }[]
+      }
+      openstaande_meldingen: {
+        Args: { p_limit?: number; p_na_at?: string; p_na_id?: string }
+        Returns: {
+          bericht_kopie: string
+          created_at: string
+          groepsnaam: string
+          group_id: string
+          id: string
+          meldingen_over_onderwerp: number
+          onderwerp_naam: string
+          reden: string
+          status: string
+          subject_id: string
+          toelichting: string
+          via_escalatie: boolean
+        }[]
+      }
+      or_takken: {
+        Args: { p_alleen_dieper?: boolean; p_diepte?: number; p_expr: string }
+        Returns: string[]
       }
       plaats_systeembericht: {
         Args: {

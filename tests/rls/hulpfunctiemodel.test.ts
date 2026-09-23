@@ -86,6 +86,38 @@ const REGISTER: Readonly<Record<string, Rij>> = {
       'De schrijfkant. 0092 zette de archieftoets hier omdat tien schrijfpolicies ' +
       'hierlangs lopen; 0153 splitste de leeskant af als mag_groep_lezen().',
   },
+  mag_melding_als_beheerder: {
+    nietInactief: 1,
+    alleenActief: 0,
+    archief: false,
+    open: false,
+    reden:
+      'Route (a) van het moderatie-oppervlak (0297). ⚠️ **Met opzet géén archieftoets, ' +
+      'anders dan is_group_admin()**: een gearchiveerde groep krijgt geen nieuwe ' +
+      'meldingen, maar de openstaande horen afgehandeld te kunnen worden. 📏 Gemeten ' +
+      'vóór 0297: GEARCHIVEERD_BEHEERDER_ZIET=0 — het gat van QS8-586 langs de achterdeur.',
+  },
+  mag_melding_als_escalatie: {
+    nietInactief: 2,
+    alleenActief: 0,
+    archief: false,
+    open: false,
+    reden:
+      'Route (b) (0297): het onderwerp is de énige actieve beheerder, dus de groep kan ' +
+      'het aantoonbaar niet zelf. Twee lidmaatschapstoetsen, en daarom nietInactief: 2 — ' +
+      'één op het onderwerp en één op "is er nog een ander". Die tweede is K2: zonder hem ' +
+      'las de platformbeheerder elke melding over elke oprichter.',
+  },
+  moderatiepoort: {
+    nietInactief: 1,
+    alleenActief: 0,
+    archief: false,
+    open: false,
+    reden:
+      'Kostenpoort voor openstaande_meldingen() (0297, M3), geen autorisatiepoort: hij ' +
+      'staat niets toe wat de twee routes niet al toestaan. 📏 Zonder hem raakte elk ' +
+      'profielbezoek van een niet-beheerder de hele open-meldingenvoorraad aan (5000 rijen, 58 ms).',
+  },
   is_group_admin: {
     nietInactief: 1,
     alleenActief: 0,
