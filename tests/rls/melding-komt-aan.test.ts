@@ -259,17 +259,28 @@ describe.skipIf(!beschikbaar)('een melding komt aan', () => {
     //    meet niet meer wat hij denkt te meten. Dit zijn de twee lagen zelf:
     //    het recht dat er niet is, en de policy die het ook niet zou geven.
     const uit = proef([
-      "select 'GRANT=' || has_table_privilege('authenticated', 'public.reports', 'SELECT')::text;",
+      "select 'MELDER=' || has_column_privilege('authenticated', 'public.reports', 'id', 'SELECT')::text;",
+      "select 'REPORTER_ID=' || has_column_privilege('authenticated', 'public.reports', 'reporter_id', 'SELECT')::text;",
+      "select 'AFHANDELAAR=' || has_column_privilege('authenticated', 'public.reports', 'afgehandeld_door', 'SELECT')::text;",
       "select 'POLICY=' || (select pg_get_expr(polqual, polrelid) from pg_policy where polrelid = 'public.reports'::regclass and polname = 'reports_select');",
     ]);
 
+    // ⚠️⚠️ **Beide kanten, en de eerste is er bij gekomen omdat 0297 hem brak.**
+    //    Die migratie repareerde de kolombelofte met een kaal
+    //    `revoke select on public.reports` — en nam daarmee het leesrecht van de
+    //    mélder op zijn éigen melding weg. 📏 CI vond dat op twee plekken tegelijk
+    //    (`anonleesrecht` en `veiligheid`), en allebei terecht. **Een revoke is
+    //    geen reparatie tot je gemeten hebt wat hij ook dichttrekt**; 0298 maakt er
+    //    een kolomgrant van, wat CLAUDE.md bij deze klasse ook voorschrijft.
+    expect(lees(uit, 'MELDER'), 'de melder hoort zijn eigen melding te kunnen lezen — dat staat sinds QS8-232 onder toets').toBe('true');
     expect(
-      lees(uit, 'GRANT'),
-      'RLS kan geen kolommen beperken: zolang `authenticated` de tabel mag lezen, is de kolomlijst van de RPC een suggestie',
+      lees(uit, 'REPORTER_ID'),
+      'RLS kan geen kolommen beperken: dit is de kolomgrens zelf, en zonder hem is de kolomlijst van de RPC een suggestie',
     ).toBe('false');
+    expect(lees(uit, 'AFHANDELAAR'), 'wie er oordeelde is moderatie-administratie, niet iets voor de melder of de gemelde').toBe('false');
     expect(
       lees(uit, 'POLICY'),
-      'en de policy zakt mee, zodat een teruggekeerde grant de beheerderstak niet opnieuw openzet',
+      'en de rijgrens zakt mee, zodat een teruggekeerde tabelgrant de beheerderstak niet opnieuw openzet',
     ).not.toContain('is_group_admin');
   }, 60_000);
 
