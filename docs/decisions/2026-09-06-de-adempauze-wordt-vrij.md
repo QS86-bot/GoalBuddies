@@ -138,7 +138,6 @@ noemt rood werd. Een mutatie per grendel, niet één mutatie voor het geheel.
 | 8 | de aankondiging achteraf | een datumfilter in `breathers_select` | is voor een groepsgenoot ook zichtbaar met terugwerkende kracht |
 | 9 | correctie per weekdoel | één correctie per cyclus | draait het minpunt van elk weekdoel in de cyclus apart terug |
 | 10 | de herberekening | `herbereken_reeks()` eruit | herberekent de reeks, zodat een herstelde week hem niet meer breekt |
-
 | 11 | de eigenaarspoort | de poort eruit | een groepsgenoot krijgt not_owner en de gemiste week blijft gemist |
 | 12 | het slot per doel | `pg_advisory_xact_lock` eruit | laat er maar één door, ook als de tweede binnen de transactie van de eerste valt |
 | 13 | het plafond van een jaar | de grens eruit | weigert een adempauze van langer dan een jaar |
