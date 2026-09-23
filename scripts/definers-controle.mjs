@@ -619,6 +619,22 @@ const LEESREGISTER = new Map([
       'en roepen hem aan.',
   ],
   [
+    'openstaande_meldingen',
+    'Poort in drie conjuncten (0297): `r.subject_id <> auth.uid()` én ' +
+      '(`mag_melding_als_beheerder(r.group_id)` óf `mag_melding_als_escalatie(r.group_id, r.subject_id)`), ' +
+      'met `moderatiepoort()` ervóór als kostenpoort. Alle drie scopen op `auth.uid()`. ' +
+      '⚠️ **Definer is hier de reparatie en niet het gemak**: de eis is een expliciete kolomlijst — ' +
+      '`reporter_id` gaat niet mee — en *RLS kan geen kolommen beperken*. Zelfde vorm en zelfde reden als ' +
+      '`getuigenissen()` (0169) en `straffen_bij_uitstelverzoek()` (0218). ' +
+      '⚠️ Domeinregel 7, de twee vragen: uit `reden`, `toelichting` en `bericht_kopie` is geen gemiste week van ' +
+      'een derde af te leiden — het is door een mens getypte tekst over een mélding — en `meld()` weigert ' +
+      'systeemberichten (`v_type = \'system\'`), dus er kan geen app-gegenereerde tegenslag in `bericht_kopie` ' +
+      'belanden. Buiten de UI om uitlezen kan niet: sinds 0298 heeft `authenticated` géén tabelbrede `select` ' +
+      'op `reports` maar een kolomgrant zonder `reporter_id`, en `reports_select` is `reporter_id = auth.uid()`. ' +
+      '⚠️ Een `revoke` kon niet: dit ís het leespad van het beheerscherm. Tien toetsen in ' +
+      '`tests/rls/melding-komt-aan.test.ts`, geijkt met zes mutaties (QS8-586).',
+  ],
+  [
     'groepsdatum',
     '⚠️ **Geen poort.** Geeft de datum van vandaag in de tijdzone van een groep, voor elk uuid. Wat eruit lekt is de ' +
       'tijdzone van de groep en niets anders. Staat in `chain_links_select`, dus `authenticated` móet hem kunnen ' +
