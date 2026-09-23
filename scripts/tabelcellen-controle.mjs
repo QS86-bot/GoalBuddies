@@ -67,7 +67,31 @@ export const BRONNEN = ['docs', 'CLAUDE.md', 'PRD-accountability-app.md'];
  */
 const SCHEIDING = /^\|[\s:|-]+\|$/;
 
-/** @typedef {{ pad: string, regel: number, gevonden: number, verwacht: number, tekst: string }} Klacht */
+/**
+ * Een codefence. Binnen een codeblok is een `|` geen tabelcel maar tekst — daar
+ * staan in dit project SQL-uitvoer en ASCII-tekeningen in.
+ *
+ * ⚠️ **Dit verandert vandaag niets aan de uitslag, en dat staat er met de meting
+ *    bij in plaats van dat het als reparatie leest.** 📏 Gemeten op 22-09-2026:
+ *    mét en zónder deze knip telt de controle **721 tabellen en 4216 rijen** in
+ *    dezelfde 261 bestanden. Er staat vandaag geen markdown-tabel in een
+ *    codeblok onder `docs/`. Hij staat er voor de vorm die dit project wél
+ *    schrijft zodra iemand een tabel als voorbeeld toont — dan is hij een
+ *    grendel tegen vals alarm, en vals alarm is hier de duurste uitkomst.
+ */
+const FENCE = /^(```|~~~)/;
+
+/** @typedef {{ pad: string, regel: number, gevonden: number, verwacht: number, tekst: string }} Cellenklacht */
+/** @typedef {{ pad: string, regel: number, verwacht: number, aantal: number, tekst: string }} Weesklacht */
+/** @typedef {Cellenklacht | Weesklacht} Klacht */
+
+/**
+ * @param {Klacht} k
+ * @returns {k is Weesklacht}
+ */
+export function isWees(k) {
+  return 'aantal' in k;
+}
 
 /**
  * De rijen in dit bestand die niet evenveel cellen tellen als hun kop, plus
@@ -84,38 +108,100 @@ const SCHEIDING = /^\|[\s:|-]+\|$/;
 export function klachtenVan(inhoud, pad = '') {
   /** @type {Klacht[]} */
   const uit = [];
-  let tabellen = 0;
-  let rijen = 0;
+  const telling = { tabellen: 0, rijen: 0 };
   const regels = inhoud.split('\n');
-  let verwacht = null;
+  const staat = { verwacht: null, verlaten: null, inCode: false, wees: null };
 
   for (let i = 0; i < regels.length; i += 1) {
-    const regel = regels[i];
+    const regel = regels[i] ?? '';
 
-    // Geen tabelregel: de lopende tabel is afgelopen.
+    if (FENCE.test(regel.trim())) {
+      sluitFence(uit, staat, pad);
+      continue;
+    }
+    if (staat.inCode) continue;
+
     if (!regel.trimStart().startsWith('|')) {
-      verwacht = null;
+      sluitTabel(uit, staat, pad, regel);
       continue;
     }
 
-    // Een scheidingsregel maakt van de regel erboven een kop.
     if (SCHEIDING.test(regel.trim()) && regels[i - 1]?.trimStart().startsWith('|')) {
-      verwacht = cellenVanRij(regels[i - 1]).length;
-      tabellen += 1;
+      sluitWees(uit, staat, pad);
+      staat.verwacht = cellenVanRij(regels[i - 1] ?? '').length;
+      staat.verlaten = null;
+      telling.tabellen += 1;
       continue;
     }
 
-    // Een tabelregel zonder kop erboven is geen tabel; die telt niet mee.
-    if (verwacht === null) continue;
+    if (staat.verwacht === null) {
+      // ⚠️ **Een regel met een scheidingsregel eronder is een kóp en geen wees.**
+      //    Zo begint een tweede tabel onder een eerste, en dat is in dit project
+      //    de gewone vorm: 📏 twee van de zes eerste treffers waren dit. Een
+      //    controle die de normale vorm meldt, leer je negeren.
+      const kop = SCHEIDING.test((regels[i + 1] ?? '').trim());
+      if (staat.verlaten !== null && !kop) noteerWees(staat, regel, i, staat.verlaten);
+      continue;
+    }
 
-    rijen += 1;
+    telling.rijen += 1;
     const gevonden = cellenVanRij(regel).length;
-    if (gevonden !== verwacht) {
-      uit.push({ pad, regel: i + 1, gevonden, verwacht, tekst: regel.trim().slice(0, 90) });
+    if (gevonden !== staat.verwacht) {
+      uit.push({ pad, regel: i + 1, gevonden, verwacht: staat.verwacht, tekst: kort(regel) });
     }
   }
 
-  return { klachten: uit, tabellen, rijen };
+  sluitWees(uit, staat, pad);
+  return { klachten: uit, ...telling };
+}
+
+/** Een codefence zet de lezer aan of uit; alles wat liep, eindigt. */
+function sluitFence(uit, staat, pad) {
+  sluitWees(uit, staat, pad);
+  staat.inCode = !staat.inCode;
+  staat.verwacht = null;
+  staat.verlaten = null;
+}
+
+/**
+ * Een regel die geen tabelrij is, sluit de lopende tabel.
+ *
+ * ⚠️ **Alleen een lége regel houdt de verlaten kop in leven, en dat is de hele
+ *    precisie van deze controle.** Staat er gewone tekst tussen, dan is de
+ *    tabel echt afgelopen en is een rij erna geen weesrij maar een alinea die
+ *    toevallig met een streep begint — die melden zou de controle laten
+ *    volstromen met vals alarm.
+ */
+function sluitTabel(uit, staat, pad, regel) {
+  if (regel.trim() === '') staat.verlaten = staat.verwacht ?? staat.verlaten;
+  else {
+    sluitWees(uit, staat, pad);
+    staat.verlaten = null;
+  }
+  staat.verwacht = null;
+}
+
+/** @param {string} regel */
+function kort(regel) {
+  return regel.trim().slice(0, 90);
+}
+
+/**
+ * Eén melding per **reeks** weesrijen, en niet per rij.
+ *
+ * ⚠️ 320 losse regels zijn geen bevinding maar een muur, en een controle die een
+ *    muur print leer je overslaan. De reeks heeft één oorzaak — de lege regel
+ *    erboven — dus hij hoort ook één melding te zijn, mét zijn lengte erin.
+ */
+function noteerWees(staat, regel, i, verwacht) {
+  if (staat.wees === null) staat.wees = { regel: i + 1, verwacht, aantal: 0, tekst: kort(regel) };
+  staat.wees.aantal += 1;
+}
+
+function sluitWees(uit, staat, pad) {
+  if (staat.wees === null) return;
+  uit.push({ pad, ...staat.wees });
+  staat.wees = null;
 }
 
 /** Elk `.md`-bestand onder een map, of het bestand zelf. */
@@ -143,6 +229,39 @@ export function loop(bronnen = BRONNEN) {
   return { klachten, tabellen, rijen, bestanden: paden.length };
 }
 
+function meldCellen(cellen) {
+  console.error(`\ntabelcellen-controle: ${cellen.length} rij(en) renderen hun laatste kolom niet.\n`);
+  for (const k of cellen) {
+    console.error(`  ${k.pad}:${k.regel}  ${k.gevonden} cellen in plaats van ${k.verwacht}`);
+    console.error(`    ${k.tekst}\n`);
+  }
+  console.error(
+    '  GFM knipt een rij op élke niet-ontsnapte `|`, ook binnen backticks, en\n' +
+      '  laat de overtollige cellen aan het eind vallen — of vult aan met lege.\n' +
+      '  In beide gevallen gaat de laatste kolom eraan, en dat is hier de kolom\n' +
+      '  die de stand draagt. Schrijf een streep in celinhoud als `\\|`.\n',
+  );
+}
+
+function meldWezen(wezen) {
+  const rijen = wezen.reduce((n, k) => n + k.aantal, 0);
+  console.error(
+    `\ntabelcellen-controle: ${wezen.length} reeks(en) van samen ${rijen} rij(en) ` +
+      'renderen helemaal niet als tabel.\n',
+  );
+  for (const k of wezen) {
+    console.error(`  ${k.pad}:${k.regel}  ${k.aantal} rij(en), kop van ${k.verwacht} cellen`);
+    console.error(`    ${k.tekst}\n`);
+  }
+  console.error(
+    '  Er staat een lege regel tussen deze rijen en hun kop. GFM sluit een\n' +
+      '  tabel op de eerste lege regel, en rijen zonder kop+scheidingsregel zijn\n' +
+      '  een gewone alinea — één doorlopende muur tekst met strepen erin, geen\n' +
+      '  kolommen. 📏 Gemeten met `cmark-gfm`, de renderer van GitHub zelf.\n' +
+      '  Haal de lege regel weg, of geef het tweede stuk een eigen kop.\n',
+  );
+}
+
 function main() {
   const { klachten, tabellen, rijen, bestanden } = loop();
 
@@ -162,17 +281,11 @@ function main() {
     process.exit(0);
   }
 
-  console.error(`\ntabelcellen-controle: ${klachten.length} rij(en) renderen hun laatste kolom niet.\n`);
-  for (const k of klachten) {
-    console.error(`  ${k.pad}:${k.regel}  ${k.gevonden} cellen in plaats van ${k.verwacht}`);
-    console.error(`    ${k.tekst}\n`);
-  }
-  console.error(
-    '  GFM knipt een rij op élke niet-ontsnapte `|`, ook binnen backticks, en\n' +
-      '  laat de overtollige cellen aan het eind vallen — of vult aan met lege.\n' +
-      '  In beide gevallen gaat de laatste kolom eraan, en dat is hier de kolom\n' +
-      '  die de stand draagt. Schrijf een streep in celinhoud als `\\|`.\n',
-  );
+  const wezen = klachten.filter(isWees);
+  const cellen = klachten.filter((k) => !isWees(k));
+
+  if (cellen.length > 0) meldCellen(cellen);
+  if (wezen.length > 0) meldWezen(wezen);
   process.exit(1);
 }
 
