@@ -210,15 +210,25 @@ describe('klachtenVan — de weesrij', () => {
     expect(klachten).toEqual([]);
   });
 
+  // ⚠️⚠️ **Deze toets is met de hand rood gemaakt en bléék niet rood te worden,
+  //    en dat staat hier in plaats van dat hij stilletjes blijft staan.** Met de
+  //    codefence-knip eruit blijft hij groen: de fenceregel zelf is óók een
+  //    niet-tabelregel, dus hij sluit de verlaten kop sowieso. Wat de knip wél
+  //    draagt is de toets hieronder — een hele tabel binnen een codeblok. Deze
+  //    blijft staan als must-allow op de vorm die in `docs/` voorkomt, niet als
+  //    grendel.
   it('laat een streep in een codeblok met rust', () => {
-    // ⚠️ In dit project staan er SQL-uitvoer en ASCII-tekeningen in codeblokken,
-    //    en die dragen strepen. Een controle die die meldt, zet je uit.
     const code = '```\n| dit is uitvoer |\n| en dit ook     |\n```\n';
     const { klachten } = klachtenVan(`${KOP4}| 1 | a | b | ✅ |\n\n${code}`);
 
     expect(klachten).toEqual([]);
   });
 
+  // ⚠️ **Dít is de grendel die de codefence draagt**, en hij bewaakt een vorm die
+  //    vandaag nergens in `docs/` staat: 📏 mét en zónder de knip telt de
+  //    controle 721 tabellen en 4216 rijen. Hij staat er voor het moment dat
+  //    iemand een tabel als voorbeeld toont — vals alarm is hier de duurste
+  //    uitkomst, want een controle die alles meldt leer je overslaan.
   it('telt een tabel binnen een codeblok niet als tabel', () => {
     const uitslag = klachtenVan('```\n| a | b |\n|---|---|\n| 1 | 2 |\n```\n');
 

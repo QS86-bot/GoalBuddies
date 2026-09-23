@@ -70,6 +70,14 @@ const SCHEIDING = /^\|[\s:|-]+\|$/;
 /**
  * Een codefence. Binnen een codeblok is een `|` geen tabelcel maar tekst — daar
  * staan in dit project SQL-uitvoer en ASCII-tekeningen in.
+ *
+ * ⚠️ **Dit verandert vandaag niets aan de uitslag, en dat staat er met de meting
+ *    bij in plaats van dat het als reparatie leest.** 📏 Gemeten op 22-09-2026:
+ *    mét en zónder deze knip telt de controle **721 tabellen en 4216 rijen** in
+ *    dezelfde 261 bestanden. Er staat vandaag geen markdown-tabel in een
+ *    codeblok onder `docs/`. Hij staat er voor de vorm die dit project wél
+ *    schrijft zodra iemand een tabel als voorbeeld toont — dan is hij een
+ *    grendel tegen vals alarm, en vals alarm is hier de duurste uitkomst.
  */
 const FENCE = /^(```|~~~)/;
 
