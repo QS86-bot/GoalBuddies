@@ -5,6 +5,7 @@ import { describe, expect, it } from 'vitest';
 
 // ⚠️ Een `.mjs` zonder eigen typings — zelfde patroon als de andere scriptijkingen.
 import {
+  afbrekingWordtRood,
   bevindingen,
   breektMainAf,
   cancelRegel,
@@ -13,6 +14,7 @@ import {
   draaitOpMain,
   evalueerGroep,
   groepRegel,
+  samenvattendeJobs,
   splitstGroepBuitenMain,
   tokeniseer,
 } from '../../scripts/hoofdrun-controle.mjs';
@@ -267,6 +269,146 @@ describe('hoofdrun-controle — de ijking', () => {
     });
   });
 
+  describe('samenvattendeJobs: welke job vat de andere samen?', () => {
+    const JOB =
+      'jobs:\n' +
+      '  poort:\n' +
+      '    name: Alles groen\n' +
+      '    needs: [controle, rls]\n' +
+      '    if: always()\n' +
+      '    steps:\n' +
+      '      - run: echo\n';
+
+    it('vindt een job met needs én een eigen if', () => {
+      expect(samenvattendeJobs(JOB)).toEqual([{ naam: 'poort', conditie: 'always()' }]);
+    });
+
+    it('vindt ze allebei als er twee zijn — dan is "welke" het eerste wat je wilt weten', () => {
+      const twee = JOB + '\n  tweede:\n    needs: [poort]\n    if: always()\n';
+      expect(samenvattendeJobs(twee).map((j) => j.naam)).toEqual(['poort', 'tweede']);
+    });
+
+    // ⚠️⚠️ **De scherpste van dit blok, en hij staat écht in `ci.yml`.** Regel 575
+    //    draagt een `if: always()` op een **stap**, en die is daar juist goed: zo
+    //    verbergt één rode controle de volgende niet. Het verschil is
+    //    inspringing 8 tegen 4, en een lezer die dat niet aanhoudt, meldt de
+    //    hele poort als fout.
+    it('leest een stap-if op inspringing 8 niet als de conditie van de job', () => {
+      const metStap =
+        'jobs:\n' +
+        '  poort:\n' +
+        '    needs: [controle]\n' +
+        '    steps:\n' +
+        '      - name: Uitslag\n' +
+        '        if: always()\n' +
+        '        run: echo\n';
+      expect(samenvattendeJobs(metStap)).toEqual([]);
+    });
+
+    // ⚠️⚠️ **Deze toets is met de hand rood gemaakt en bléék niet rood te
+    //    worden, en dat staat hier in plaats van dat hij stilletjes blijft
+    //    staan.** Hij leest als de tegenhanger van de knip-toets hierboven —
+    //    de kop van de poort noemt `always()` vier keer — maar hij bewaakt de
+    //    overslag van commentaar niet: 📏 met `if (/^\s*#/) continue` eruit
+    //    blijft hij groen, want `    # ... if: ...` matcht `^ {4}if:` toch niet.
+    //    Wat die overslag wél draagt, staat in de toets hieronder over kolom 0.
+    //    Deze blijft staan als must-allow op de vorm die in `ci.yml` staat, niet
+    //    als grendel.
+    it('trapt niet in een comment die de conditie noemt', () => {
+      const metKop =
+        'jobs:\n' +
+        '  poort:\n' +
+        '    needs: [controle]\n' +
+        '    # ⚠️ met alleen `if: always()` wordt een afbreking rood\n' +
+        '    if: always() && !cancelled()\n';
+      expect(samenvattendeJobs(metKop)).toEqual([
+        { naam: 'poort', conditie: 'always() && !cancelled()' },
+      ]);
+    });
+
+    // ⚠️ Must-allow, en deze is de reden dat de scanner bij `jobs:` begint. Het
+    //    `on:`-blok draagt sleutels op dezelfde inspringing als een job; zonder
+    //    die grens is `push:` een job. Vandaag levert dat niets op omdat `push`
+    //    geen `needs:` draagt — dat is toeval en geen eigenschap.
+    it('laat de sleutels uit het on-blok met rust', () => {
+      const yml =
+        'on:\n  push:\n    needs: [x]\n    if: always()\n' +
+        'jobs:\n  poort:\n    needs: [controle]\n    if: always()\n';
+      expect(samenvattendeJobs(yml).map((j) => j.naam)).toEqual(['poort']);
+    });
+
+    // ⚠️⚠️ **Deze staat er omdat de ijking hem eiste, en niet andersom.** De
+    //    scanner slaat commentaarregels over, en de eerste toets daarvoor keek
+    //    naar een comment op inspringing 4 die `if:` noemt — die bleef groen
+    //    mét én zónder de overslag, want `    # if:` matcht `^ {4}if:` toch
+    //    niet. 📏 Waar het wél om gaat is kolom 0: zo'n regel telt als nieuwe
+    //    topsleutel en sluit het `jobs:`-blok, waarna de controle groen is
+    //    omdat hij niets meer vindt. Vandaag staan er 46 van die comments in
+    //    `ci.yml` en 0 ervan ná `jobs:` — dat is de stand, geen eigenschap.
+    it('laat een comment op kolom 0 het jobs-blok niet sluiten', () => {
+      const yml =
+        'jobs:\n' +
+        '  controle:\n' +
+        '    steps:\n' +
+        '# ⚠️ hieronder de samenvatting\n' +
+        '  poort:\n' +
+        '    needs: [controle]\n' +
+        '    if: always()\n';
+      expect(samenvattendeJobs(yml).map((j) => j.naam)).toEqual(['poort']);
+    });
+
+    // ⚠️ Must-allows. Zonder deze twee is "alles is een treffer" ook groen.
+    it('laat een job zonder needs met rust — die vat niets samen', () => {
+      expect(samenvattendeJobs('jobs:\n  controle:\n    if: always()\n    steps:\n')).toEqual([]);
+    });
+
+    it('laat een job zonder eigen if met rust — die draait bij een afbreking niet', () => {
+      expect(samenvattendeJobs('jobs:\n  poort:\n    needs: [controle]\n    steps:\n')).toEqual(
+        [],
+      );
+    });
+  });
+
+  describe('afbrekingWordtRood: maakt deze conditie een afgebroken run rood?', () => {
+    // ⚠️ Must-find. Dit was de vorm van vóór 22-09-2026, en 19 van de laatste
+    //    100 runs liepen erin.
+    it('vindt het kale always() — de vorm waaronder QS8-589 gebeurde', () => {
+      expect(afbrekingWordtRood('always()')).toBe(true);
+    });
+
+    it('vindt always() met een ándere voorwaarde erachter', () => {
+      expect(afbrekingWordtRood("always() && github.event_name == 'push'")).toBe(true);
+    });
+
+    it('leest de spatie-varianten die GitHub ook accepteert', () => {
+      expect(afbrekingWordtRood('always ( )')).toBe(true);
+    });
+
+    // ⚠️ Must-allows.
+    it('laat de gerepareerde vorm met rust', () => {
+      expect(afbrekingWordtRood('always() && !cancelled()')).toBe(false);
+    });
+
+    it('laat de geschreven variant van diezelfde vorm met rust', () => {
+      expect(afbrekingWordtRood('always() && cancelled() == false')).toBe(false);
+    });
+
+    // ⚠️⚠️ **Dit is de smalle kant, en die is met opzet smal.** Zonder `always()`
+    //    draait de job bij een afbreking niet — er is dan niets te repareren, en
+    //    een melding zou hier een controle zijn die alles meldt.
+    it('laat success() met rust — die draait bij een afbreking niet', () => {
+      expect(afbrekingWordtRood("success() && github.ref == 'refs/heads/main'")).toBe(false);
+    });
+
+    it('laat een lege conditie met rust', () => {
+      expect(afbrekingWordtRood('')).toBe(false);
+    });
+
+    // ⚠️ Een conditie die het wóórd draagt zonder de aanroep is geen always().
+    it('laat een conditie met alleen het woord in een string met rust', () => {
+      expect(afbrekingWordtRood("github.head_ref == 'always'")).toBe(false);
+    });
+  });
   describe('de echte workflows', () => {
     it('geen enkele breekt een run op main af', () => {
       // ⚠️ Dit is de eigenlijke bewering van de controle, tegen de bestanden
@@ -283,6 +425,12 @@ describe('hoofdrun-controle — de ijking', () => {
       expect(draaitOpMain(ci), 'ci.yml wordt niet meer als main-workflow herkend').toBe(true);
       expect(cancelRegel(ci), 'ci.yml heeft geen cancel-in-progress meer').not.toBeNull();
       expect(groepRegel(ci), 'ci.yml heeft geen concurrency-groep meer').not.toBeNull();
+      // ⚠️ En dezelfde kanarie voor QS8-589: vindt de lezer de poort nog? Zonder
+      //    deze regel bewijst de lege lijst hierboven niets over de samenvatting.
+      expect(
+        samenvattendeJobs(ci).map((j) => j.naam),
+        'ci.yml heeft geen samenvattende job meer die hier gelezen wordt',
+      ).toContain('poort');
     });
   });
 });

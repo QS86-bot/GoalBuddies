@@ -315,6 +315,88 @@ export function splitstGroepBuitenMain(waarde) {
 }
 
 /**
+ * De samenvattende jobs: die met een `needs:` én een eigen `if:` — QS8-589.
+ *
+ * ⚠️ **Job-niveau en niet stap-niveau, en dat verschil is inspringing.** Een
+ *    `if: always()` op een stáp (inspringing 8) is iets anders en vaak juist
+ *    goed — `ci.yml` heeft er zo een, zodat één rode controle de volgende niet
+ *    verbergt. Deze functie kijkt alleen naar inspringing 4.
+ *
+ * @returns {{naam: string, conditie: string}[]}
+ */
+export function samenvattendeJobs(inhoud) {
+  const uit = [];
+  for (const [naam, lijf] of jobBlokken(inhoud)) {
+    if (!lijf.some((r) => /^ {4}needs:/.test(r))) continue;
+    const conditie = lijf.map((r) => /^ {4}if:[ \t]*(.+?)[ \t]*$/.exec(r)).find((m) => m !== null);
+    if (conditie !== undefined) uit.push({ naam, conditie: conditie[1] ?? '' });
+  }
+  return uit;
+}
+
+/**
+ * De jobs als losse regelblokken — inspringing 2 voor de naam, ≥4 voor het lijf.
+ *
+ * ⚠️⚠️ **Met opzet een regelscanner en geen tweede reguliere expressie, en dat
+ *    is gemeten en niet gekozen.** De eerste vorm hiervan las het lijf als
+ *    `(?: {4}[^\n]*\n|\n)*` en at daarmee de lege regel op die de vólgende
+ *    `\n  naam:` nodig had. 📏 Gevolg op de echte `ci.yml`: vier jobs gevonden
+ *    en `poort` — de énige die deze controle aangaat — niet, want die staat als
+ *    laatste. De controle was groen omdat hij niets vond.
+ *
+ * ⚠️ **En alleen binnen `jobs:`.** Zonder die grens leest hij `push` en
+ *    `schedule` uit het `on:`-blok ook als job; die dragen vandaag geen `needs:`
+ *    en leveren dus niets op, maar dat is toeval en geen eigenschap.
+ *
+ * @returns {[string, string[]][]}
+ */
+function jobBlokken(inhoud) {
+  const regels = String(inhoud).split('\n');
+  const uit = [];
+  let binnen = false;
+  for (const regel of regels) {
+    if (/^\s*#/.test(regel)) continue;
+    if (/^jobs:\s*$/.test(regel)) {
+      binnen = true;
+      continue;
+    }
+    if (binnen && /^\S/.test(regel)) binnen = false;
+    if (!binnen) continue;
+    const naam = /^ {2}([\w-]+):\s*$/.exec(regel);
+    if (naam !== null) uit.push([naam[1] ?? '', []]);
+    else if (uit.length > 0 && /^ {4}/.test(regel)) uit[uit.length - 1]?.[1].push(regel);
+  }
+  return uit;
+}
+
+/**
+ * Maakt deze conditie van een afgebroken **run** een rode uitslag?
+ *
+ * ⚠️⚠️ **Dit is QS8-582 één laag hoger.** Daar was de les dat een afgebroken run
+ *    niemands uitslag is; hier maakte de samenvattende job er alsnog een rood
+ *    van. Met `always()` draait hij óók bij een afbreking, de jobs in `needs`
+ *    dragen dan `result = cancelled`, dat is `!= "success"`, en de job faalt.
+ *    📏 Gemeten op 22-09-2026: 19 van de laatste 100 runs waren `cancelled`, en
+ *    PR #583 droeg daardoor op één commit twee `Alles groen`-checks met
+ *    tegengestelde uitslag.
+ *
+ * ⚠️ **Alleen `always()` is het probleem, en dat is smal met opzet.** Zonder
+ *    `if:` of met `success()` draait de job bij een afbreking niet — dan is er
+ *    niets te repareren. Het is de combinatie *draai altijd* zónder *behalve bij
+ *    een afbreking* die de fout maakt.
+ *
+ * ⚠️ **Wat dit níet afvangt, en dat hóórt zo:** een afzonderlijke job die op zijn
+ *    `timeout-minutes` loopt komt terug als `cancelled` terwijl de rún doorloopt.
+ *    `cancelled()` is dan onwaar, de samenvatting draait wél en wordt rood — en
+ *    dat is het gewenste gedrag. Dat geval is geen theorie: de kop van de
+ *    RLS-job beschrijft twee runs van QS8-433 waar precies dat gebeurde.
+ */
+export function afbrekingWordtRood(conditie) {
+  if (!/\balways\s*\(\s*\)/.test(conditie)) return false;
+  return !/!\s*cancelled\s*\(\s*\)|cancelled\s*\(\s*\)\s*==\s*false/.test(conditie);
+}
+
+/**
  * De drie eigenschappen die een workflow op `main` moet hebben, elk met de
  * sleutel die hem draagt.
  *
@@ -334,6 +416,14 @@ function bevindingenVoor(naam, inhoud) {
   for (const toets of TOETSEN) {
     const waarde = toets.lees(inhoud);
     if (toets.fout(waarde)) uit.push({ naam, soort: toets.soort, sleutel: toets.sleutel, waarde });
+  }
+
+  // ⚠️ Per samenvattende job en niet per workflow: er kunnen er meer zijn, en
+  //    dan is "welke" het eerste wat je wilt weten.
+  for (const { naam: job, conditie } of samenvattendeJobs(inhoud)) {
+    if (afbrekingWordtRood(conditie)) {
+      uit.push({ naam, soort: 'samenvatting', sleutel: `${job}.if`, waarde: conditie });
+    }
   }
   return uit;
 }
@@ -368,6 +458,19 @@ const UITLEG = Object.freeze({
     '',
     'De vorm die wél klopt:',
     "  group: ci-${{ github.ref }}${{ github.ref == 'refs/heads/main' && format('-{0}', github.sha) || '' }}",
+  ],
+  samenvatting: [
+    'Een samenvattende job draait met `always()` óók als de rún is afgebroken. De',
+    'jobs in `needs` dragen dan `result = cancelled`, dat is `!= "success"`, en de',
+    'samenvatting maakt er een **failure** van — terwijl GitHub de run netjes als',
+    '`cancelled` markeert. 📏 Gemeten op 22-09-2026: 19 van de laatste 100 runs',
+    'waren afgebroken, en PR #583 droeg daardoor op één commit twee tegengestelde',
+    '`Alles groen`-checks. Dat is QS8-582 één laag hoger — zie QS8-589.',
+    '',
+    'De vorm die wél klopt:  if: always() && !cancelled()',
+    '',
+    '⚠️ Een job die op zijn eigen `timeout-minutes` loopt hoort hier níet onder:',
+    '   dan is de run niet afgebroken, draait de samenvatting wél, en is rood juist.',
   ],
   featurebranch: [
     'Buiten `main` krijgt elke push een eigen concurrency-groep, of de groep is',
