@@ -250,6 +250,51 @@ platformbeheerder, of een expliciet *"dit kan de app niet oplossen"* zijn alle
 drie verdedigbaar — maar het moet een keuze zijn en geen restant. Wat `0297` wél
 doet, is het onderwerp uit de stoel van de beoordelaar halen.
 
+## 10. Wat de poort niet kon meten, en CI wel
+
+⚠️⚠️ **Dit is de duurste les van deze ronde, en hij gaat niet over moderatie.**
+`npm run poort` gaf drie keer achter elkaar *"niets staat rood"* — met er
+onmiddellijk onder: **24** controles hebben niets gemeten, en de **RLS-suite**
+was er daar één van. Die suite is in een cloudsessie ongemeten omdat er geen
+PostgREST draait. CI draait hem wél, tegen een schema dat uit de migratiemap
+opgebouwd wordt, en 📏 vond er **vijf rode testbestanden** op `0297` — van de
+189 die er staan. Beide CI-runs, dezelfde sha, dus geen flake.
+
+**De poort deed precies zijn werk.** Hij houdt *ongemeten* en *groen* met opzet
+uit elkaar en faalt op allebei; hij schreef het aantal erbij en hij noemde de
+suite bij naam. De fout zit bij de lezer: ik heb "niets staat rood" gelezen als
+"dit klopt". Dat is dezelfde klasse als de rij hierboven over `0296` — een
+uitspraak die sterker is dan de meting eronder.
+
+Wat CI vond, en wat `0298` ermee doet:
+
+| toets | wat er mis was | van wie |
+|---|---|---|
+| `anonleesrecht` | *"een revoke heeft te ver gegrepen"* | `0297` |
+| `veiligheid` | *"de melder ziet zijn eigen melding: expected [] to have a length of 1"* | `0297` |
+| `indexdekking` | `reports_afgehandeld_door_fkey` zonder index (onwrikbare regel 11) | `0296` |
+| `mijn-profiel-is-volledig` | `platform_beheerder` niet in de view | `0296` |
+| `hulpfunctiemodel` | de drie hulpfuncties van `0297` niet in het register | `0297` (testbestand) |
+
+⚠️⚠️ **De eerste twee zijn één fout, en het is er een van de vorm die dit project
+het duurst betaalt.** `0297` repareerde K3 — *`reporter_id` was van de tabel te
+lezen* — met het grofste instrument dat werkt: `revoke select on public.reports`.
+Dat trok óók het leesrecht dicht van de **melder op zijn eigen melding**, een
+belofte die sinds QS8-232 onder toets stond en die niemand had opgezegd.
+
+CLAUDE.md noemt bij deze klasse drie instrumenten met zoveel woorden: *een
+kolomgrant, een view met expliciete kolomlijst of een rijbeperking.* `0297` koos
+geen van drieën. `0298` maakt er de kolomgrant van, zonder `reporter_id` en
+zonder `afgehandeld_door` — en dat werkt omdat een policy mág verwijzen naar een
+kolom die je niet mag lezen: de `using`-clausule wordt niet door de kolomgrant
+beperkt.
+
+> **Een revoke is geen reparatie tot je gemeten hebt wat hij ook dichttrekt.**
+
+⚠️ Dat het meteen rood werd, is het bewijs dat de grendels werken en niet dat ze
+overbodig waren. Wat ontbrak was dat ik ze liet draaien vóór de push in plaats
+van erna.
+
 ## Aannames
 
 - **Acceptatiecriterium 1 — "met de hand aantoonbaar gelopen" — is níet door mij

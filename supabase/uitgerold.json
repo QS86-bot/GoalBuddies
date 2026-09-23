@@ -1,8 +1,8 @@
 {
   "$toelichting": "De migratiestand van het productieproject, geschreven door `npm run register:controle` (dat is de kant die de service-role-key heeft). Met de hand bijwerken mag, maar dan meet je het ook echt — zie docs/decisions/2026-09-17-de-uitrolstand-is-een-gegeven-en-geen-alinea.md.",
   "project": "wehgocadxehottiiyvsc",
-  "hoogste": "0297",
-  "registerrijen": 300,
+  "hoogste": "0298",
+  "registerrijen": 301,
   "gemeten": "2026-09-22",
-  "bron": "supabase_migrations.schema_migrations via de Supabase-MCP, direct na de uitrol van 0297 — zie docs/decisions/2026-09-22-een-melding-die-nergens-aankomt.md §8"
+  "bron": "supabase_migrations.schema_migrations via de Supabase-MCP, direct na de uitrol van 0298 — zie docs/decisions/2026-09-22-een-melding-die-nergens-aankomt.md §10"
 }
