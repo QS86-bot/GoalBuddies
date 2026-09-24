@@ -68,7 +68,7 @@
 
 import { readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 
 import {
   alsNummer,
@@ -127,332 +127,358 @@ const fouten = [];
  *    hem overslaan.
  */
 const branchfouten = [];
-const bestanden = readdirSync(MAP).filter((n) => n.endsWith('.sql')).sort();
-
-// ---------------------------------------------------------------------------
-// 1. Elke bestandsnaam is te lezen
-// ---------------------------------------------------------------------------
-
-const gezien = new Map();
-
-for (const naam of bestanden) {
-  const ontleed = ontleedNaam(naam);
-  if (ontleed === null) {
-    fouten.push(`Onleesbare bestandsnaam: ${naam} — verwacht NNNN[a-z]_kleine_letters.sql`);
-    continue;
-  }
-
-  const nummer = Number(ontleed.nummer);
-  const deel = ontleed.deel;
-
-  const eerder = gezien.get(`${nummer}${deel}`);
-  if (eerder !== undefined) {
-    fouten.push(`Twee migraties met hetzelfde nummer: ${eerder} en ${naam}`);
-  }
-  gezien.set(`${nummer}${deel}`, naam);
-}
-
-// ---------------------------------------------------------------------------
-// 2. Geen gaten in de reeks
-// ---------------------------------------------------------------------------
-
-const nummers = [...new Set([...gezien.keys()].map((k) => Number.parseInt(k, 10)))].sort(
-  (a, b) => a - b,
-);
-
-if (nummers.length > 0) {
-  const eerste = nummers[0];
-  const laatste = nummers[nummers.length - 1];
+/**
+ * De ontbrekende nummers tussen het eerste en het laatste, als `0000`-tekst.
+ *
+ * ⚠️ Staat los omdat het blok achter de main-guard (QS8-608) een nestingniveau
+ *    toevoegt, en de `if` in deze lus dan vier diep zou staan — coderegel 15.
+ */
+function gatenIn(nummers) {
   const gaten = [];
-
-  for (let n = eerste; n <= laatste; n += 1) {
+  for (let n = nummers[0]; n <= nummers[nummers.length - 1]; n += 1) {
     if (!nummers.includes(n)) gaten.push(String(n).padStart(4, '0'));
   }
-
-  if (gaten.length > 0) {
-    fouten.push(
-      `Gat in de nummering: ${gaten.join(', ')} ontbreken tussen ` +
-        `${String(eerste).padStart(4, '0')} en ${String(laatste).padStart(4, '0')}. ` +
-        'De map kan het schema dus niet opbouwen.',
-    );
-  }
+  return gaten;
 }
 
-// ---------------------------------------------------------------------------
-// 3. Elke migratie draagt een rollback-pad (onwrikbare regel 20)
-// ---------------------------------------------------------------------------
-
-for (const naam of bestanden) {
-  if (ontleedNaam(naam) === null) continue;
-
-  // Alleen het commentaarblok bovenaan. Staat het pad verderop tussen de SQL,
-  // dan is het geen kop maar een losse opmerking.
-  const regels = readFileSync(join(MAP, naam), 'utf8').split('\n');
+/**
+ * Het commentaarblok bovenaan een migratie.
+ *
+ * ⚠️ Los om dezelfde reden als `gatenIn`: binnen het guard-blok zou deze lus
+ *    vier niveaus diep staan. Staat het rollback-pad verderop tussen de SQL,
+ *    dan is het geen kop maar een losse opmerking — vandaar de `break`.
+ */
+function kopVan(regels) {
   const kop = [];
   for (const regel of regels) {
     if (regel.trim() === '' || regel.trimStart().startsWith('--')) kop.push(regel);
     else break;
   }
-
-  if (!ROLLBACK.test(kop.join('\n'))) {
-    fouten.push(`Geen rollback-pad in de kop van ${naam} (onwrikbare regel 20).`);
-    continue;
-  }
-
-  // ⚠️ En dán pas de tweede helft: staat het pad er heel, of loopt het onder het
-  //    lichaam door? De toets hierboven is met het wóórd tevreden — 0233 was
-  //    groen terwijl zijn pad halverwege door live SQL werd opengebroken
-  //    (QS8-405). De meting en de reden dat het één module apart is, staan in
-  //    `rollbackpad.mjs`.
-  const gebroken = meldingVoor(naam, regels.join('\n'));
-  if (gebroken !== null) fouten.push(gebroken);
+  return kop;
 }
 
-// ---------------------------------------------------------------------------
-// 4. Geen gat aan de bovenkant — QS8-238
-// ---------------------------------------------------------------------------
-//
-// ⚠️ Stap 2 kan dit per definitie niet zien: hij telt tússen het laagste en het
-//    hoogste bestand, en wat er boven het hoogste ontbreekt valt daar buiten.
-//    Deze stap kijkt daarom niet naar de map maar naar wat de rémote draagt.
-//
-// ⚠️ Een branch die migraties draagt die hier ontbreken, is in dit project bijna
-//    altijd de gevaarlijke toestand en niet gewoon parallel werk: de volgorde is
-//    toepassen en dán landen (docs/DEPLOY.md), dus zo'n migratie draait meestal
-//    al op productie terwijl deze map hem niet kan afspelen.
-//
-// ⚠️ Zonder git of zonder remote geeft `nummersPerBranch()` `null` en zwijgt deze
-//    stap. Dat is bewust géén "OVERGESLAGEN": de andere drie stappen hebben wél
-//    gemeten, en de hele controle ongemeten noemen om deze ene stap zou de
-//    andere drie verbergen.
+// ⚠️ Het werk staat in een blok achter de main-guard, en niet in een
+//    `hoofd()`: zo doet importeren niets (QS8-608) zonder dat er een lange
+//    functie bijkomt die coderegel 15 zou breken. Top-level `await` mag
+//    binnen dit blok — gemeten, niet aangenomen.
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+  const bestanden = readdirSync(MAP).filter((n) => n.endsWith('.sql')).sort();
 
-const perBranch = nummersPerBranch();
+  // ---------------------------------------------------------------------------
+  // 1. Elke bestandsnaam is te lezen
+  // ---------------------------------------------------------------------------
 
-if (perBranch !== null) {
-  const achterstand = ontbrekendPerBranch({
-    lokaal: nummersUit(bestanden),
-    perBranch,
-  });
+  const gezien = new Map();
 
-  for (const { branch, ontbreekt } of achterstand) {
-    branchfouten.push(
-      `${branch} draagt ${ontbreekt.length} migratie(s) die hier ontbreken: ` +
-        `${ontbreekt.map(alsNummer).join(', ')}. ` +
-        'Deze map kan het schema dus niet opbouwen zoals het elders al staat.',
-    );
-  }
-}
+  for (const naam of bestanden) {
+    const ontleed = ontleedNaam(naam);
+    if (ontleed === null) {
+      fouten.push(`Onleesbare bestandsnaam: ${naam} — verwacht NNNN[a-z]_kleine_letters.sql`);
+      continue;
+    }
 
-// ---------------------------------------------------------------------------
-// 4b. Hetzelfde nummer, een ander bestand — QS8-310
-// ---------------------------------------------------------------------------
-//
-// ⚠️ **Stap 4 kan dit per constructie niet zien, en op precies de verkeerde
-//    manier.** Die vergelijkt nummers: draagt de zusterbranch 0175 en draag ik
-//    ook een 0175, dan ontbreekt er niets en zwijgt hij. Zolang mijn map het
-//    nummer nog níet had, meldde hij het wél — als "0175 ontbreekt hier". De
-//    melding verdween dus op het moment dat de botsing ontstond.
-//
-// ⚠️ **Dit is de fout waar `migratie:nieuw` (QS8-247) en `migratie:hernummer`
-//    (QS8-241) voor gebouwd zijn**, en volgens CLAUDE.md al vier keer gebeurd.
-//    `migratie:nieuw` deelt een nummer uit dat élders vrij is; de eis dat de
-//    eigen map aaneengesloten is, duwt je daarna terug naar het botsende nummer.
-//    De werkwijze eromheen — wie als tweede merget, hernummert — werkt, maar
-//    leunde tot nu toe op een mens die eraan denkt.
-//
-// ⚠️ Zelfde zwijgen als stap 4 zonder git of remote, en om dezelfde reden.
+    const nummer = Number(ontleed.nummer);
+    const deel = ontleed.deel;
 
-const namenElders = namenPerBranch();
-
-if (namenElders !== null) {
-  const botsingen = botsendPerBranch({
-    lokaal: namenPerSleutel(bestanden),
-    perBranch: namenElders,
-  });
-
-  for (const { branch, botsingen: rijen } of botsingen) {
-    const opsomming = rijen
-      .map(({ nummer, hier, daar }) => `${nummer}: hier ${hier}, daar ${daar}`)
-      .join('; ');
-
-    branchfouten.push(
-      `${branch} draagt ${rijen.length} migratienummer(s) onder een andere naam: ` +
-        `${opsomming}. Wie als tweede merget, hernummert — met ` +
-        '`npm run migratie:hernummer -- <bestandsnaam> <nieuw nummer>`.',
-    );
-  }
-}
-
-// ---------------------------------------------------------------------------
-// 5. De kopregel noemt het bestand zelf — QS8-241
-// ---------------------------------------------------------------------------
-//
-// ⚠️ **Dit is de fout die op 31-08 doorglipte, en geen enkele controle zag hem.**
-//    Een migratie werd hernummerd met
-//
-//      sed -i 's/\b0134\b/0136/g' …
-//
-//    en dat laat de kopregel stil staan: `_` is in GNU sed een woordteken, dus
-//    in `0134_een_plan` staat er geen woordgrens achter de `4`. Het bestand
-//    heette daarna `0136_…` terwijl zijn eerste regel `0134_…` zei. Gevonden met
-//    het oog in een grep.
-//
-// ⚠️ **Waarom dit een eigen stap is en niet in `migratie:hernummer` volstaat.**
-//    Die repareert de gevallen die via hém lopen. Deze stap vangt het gevál,
-//    ongeacht de weg — met de hand, met sed, of met een script dat nog niet
-//    bestond. Onwrikbare regel 18: toets de belofte, niet het onderdeel.
-//
-//    De belofte is: **de eerste regel van een migratie noemt zijn eigen naam.**
-//    Dat is de regel die een lezer als eerste gelooft, en die na een verhuizing
-//    als eerste liegt.
-
-for (const naam of bestanden) {
-  if (ontleedNaam(naam) === null) continue;
-
-  const inhoud = readFileSync(join(MAP, naam), 'utf8');
-  const kop = kopNummer(inhoud);
-
-  if (kop === null) {
-    fouten.push(
-      `De kop van ${naam} noemt zijn eigen nummer niet. Zet het in de eerste ` +
-        'commentaarregel, zoals het sjabloon van `migratie:nieuw` doet.',
-    );
-    continue;
+    const eerder = gezien.get(`${nummer}${deel}`);
+    if (eerder !== undefined) {
+      fouten.push(`Twee migraties met hetzelfde nummer: ${eerder} en ${naam}`);
+    }
+    gezien.set(`${nummer}${deel}`, naam);
   }
 
-  if (kop !== naam.slice(0, 4)) {
-    fouten.push(
-      `De kop van ${naam} zegt ${kop}. Dat is precies wat er na een hernummering ` +
-        'met de hand achterblijft; draai `npm run migratie:hernummer -- <van> <naar>`.',
-    );
-  }
-}
+  // ---------------------------------------------------------------------------
+  // 2. Geen gaten in de reeks
+  // ---------------------------------------------------------------------------
 
-// ---------------------------------------------------------------------------
-// 6. Laat geen enkel script de CLI migraties toepassen zolang er letterversies
-//    staan — QS8-251.
-// ---------------------------------------------------------------------------
-//
-// ⚠️ **Waarom hier en niet in een eigen controle.** Dit gaat over de migratiemap
-//    en over niets anders: de tegenspraak bestáát alleen zolang die map een
-//    bestandsnaam bevat die de CLI niet kan lezen. Een aparte `*:controle` zou
-//    dezelfde map een tweede keer moeten inlezen om dezelfde vraag te stellen.
-//
-// ⚠️ **De belofte stond maanden in proza en nergens in code.**
-//    `docs/decisions/004-migratieregister.md` zei "dit project gebruikt de CLI
-//    niet voor het toepassen van migraties", terwijl `package.json` een
-//    `db:push` had die precies dat deed. Regel 18 vraag 4: er was geen test die
-//    de belofte kón raken.
-
-try {
-  const pkg = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8'));
-  fouten.push(...cliTegenspraak({ scripts: pkg.scripts, bestandsnamen: bestanden }));
-} catch {
-  fouten.push('package.json is niet te lezen — de CLI-tegenspraak is dus ongemeten.');
-}
-
-// ---------------------------------------------------------------------------
-
-if (uitslag({ fouten, branchfouten }) === 'groen') {
-  console.log(
-    `migraties-controle: ${bestanden.length} migraties, aaneengesloten en elk met een rollback-pad.` +
-      (perBranch === null ? '' : ' Geen branch draagt een nummer dat hier ontbreekt.'),
+  const nummers = [...new Set([...gezien.keys()].map((k) => Number.parseInt(k, 10)))].sort(
+    (a, b) => a - b,
   );
-  process.exit(0);
-}
 
-// ---------------------------------------------------------------------------
-// Een branchbevinding is een afspraak en geen fout — QS8-552
-// ---------------------------------------------------------------------------
-//
-// ⚠️⚠️ **Dit stond hier fataal en dat maakte `main` structureel rood.** QS8-452
-//    zette `fetch-depth: 0` op de CI-checkout omdat `dossierdrift:controle` de
-//    volledige geschiedenis nodig heeft. Die vlag haalt niet alleen alle
-//    commits op maar ook **alle remote branches** — en deze controle loopt elke
-//    `origin/*`-ref af. 📏 Gevolg op 18-09-2026: `main` stond rood omdat
-//    `origin/…qs8-533` migratie `0290` droeg terwijl `main` op `0289` stond.
-//    Dat is de normale toestand van werk dat nog niet geland is, dus het zou
-//    bij élke migratiebranch opnieuw gebeuren.
-//
-// ⚠️ **En een rood dat altijd aan staat, betekent niets meer.** Dat is precies
-//    wat `hoofdrun:controle` en
-//    `docs/decisions/2026-09-09-twee-groene-prs-samen-rood.md` proberen te
-//    beschermen: rood op `main` hoort werk-nu te betekenen.
-//
-// ⚠️ **De weging komt niet van mij maar uit CLAUDE.md**, die de drie signalen
-//    van deze controle zelf uitschrijft: het nummer, *"de branches die datzelfde
-//    nummer dragen (**een afspraak, geen fout**)"*, en — apart, want dit is de
-//    énige echte fout — dat `origin/main` vóórloopt.
-//
-// ⚠️ **Wat hiermee níét verdwijnt, en dat is nagelopen en niet aangenomen.** Een
-//    gat in de eigen nummering, een duplicaat, een ontbrekend rollback-pad en de
-//    CLI-tegenspraak zitten allemaal in `fouten` en blijven onverkort fataal.
-//    Twee PR's met hetzelfde nummer worden ná de merge een **duplicaat**, en dát
-//    is de grendel die QS8-318 beschrijft. De branchtak waarschuwt vooraf; hij
-//    bewijst niets over de map zoals hij nu is.
-if (uitslag({ fouten, branchfouten }) === 'waarschuwing') {
-  console.log(
-    `migraties-controle: ${bestanden.length} migraties, aaneengesloten en elk met een\n` +
-      '  rollback-pad. Wel een melding over een ándere branch:\n',
+  if (nummers.length > 0) {
+    const gaten = gatenIn(nummers);
+    if (gaten.length > 0) {
+      fouten.push(
+        `Gat in de nummering: ${gaten.join(', ')} ontbreken tussen ` +
+          `${String(nummers[0]).padStart(4, '0')} en ` +
+          `${String(nummers[nummers.length - 1]).padStart(4, '0')}. ` +
+          'De map kan het schema dus niet opbouwen.',
+      );
+    }
+  }
+
+  // ---------------------------------------------------------------------------
+  // 3. Elke migratie draagt een rollback-pad (onwrikbare regel 20)
+  // ---------------------------------------------------------------------------
+
+  for (const naam of bestanden) {
+    if (ontleedNaam(naam) === null) continue;
+
+    // Alleen het commentaarblok bovenaan. Staat het pad verderop tussen de SQL,
+    // dan is het geen kop maar een losse opmerking.
+    const regels = readFileSync(join(MAP, naam), 'utf8').split('\n');
+    const kop = kopVan(regels);
+
+    if (!ROLLBACK.test(kop.join('\n'))) {
+      fouten.push(`Geen rollback-pad in de kop van ${naam} (onwrikbare regel 20).`);
+      continue;
+    }
+
+    // ⚠️ En dán pas de tweede helft: staat het pad er heel, of loopt het onder het
+    //    lichaam door? De toets hierboven is met het wóórd tevreden — 0233 was
+    //    groen terwijl zijn pad halverwege door live SQL werd opengebroken
+    //    (QS8-405). De meting en de reden dat het één module apart is, staan in
+    //    `rollbackpad.mjs`.
+    const gebroken = meldingVoor(naam, regels.join('\n'));
+    if (gebroken !== null) fouten.push(gebroken);
+  }
+
+  // ---------------------------------------------------------------------------
+  // 4. Geen gat aan de bovenkant — QS8-238
+  // ---------------------------------------------------------------------------
+  //
+  // ⚠️ Stap 2 kan dit per definitie niet zien: hij telt tússen het laagste en het
+  //    hoogste bestand, en wat er boven het hoogste ontbreekt valt daar buiten.
+  //    Deze stap kijkt daarom niet naar de map maar naar wat de rémote draagt.
+  //
+  // ⚠️ Een branch die migraties draagt die hier ontbreken, is in dit project bijna
+  //    altijd de gevaarlijke toestand en niet gewoon parallel werk: de volgorde is
+  //    toepassen en dán landen (docs/DEPLOY.md), dus zo'n migratie draait meestal
+  //    al op productie terwijl deze map hem niet kan afspelen.
+  //
+  // ⚠️ Zonder git of zonder remote geeft `nummersPerBranch()` `null` en zwijgt deze
+  //    stap. Dat is bewust géén "OVERGESLAGEN": de andere drie stappen hebben wél
+  //    gemeten, en de hele controle ongemeten noemen om deze ene stap zou de
+  //    andere drie verbergen.
+
+  const perBranch = nummersPerBranch();
+
+  if (perBranch !== null) {
+    const achterstand = ontbrekendPerBranch({
+      lokaal: nummersUit(bestanden),
+      perBranch,
+    });
+
+    for (const { branch, ontbreekt } of achterstand) {
+      branchfouten.push(
+        `${branch} draagt ${ontbreekt.length} migratie(s) die hier ontbreken: ` +
+          `${ontbreekt.map(alsNummer).join(', ')}. ` +
+          'Deze map kan het schema dus niet opbouwen zoals het elders al staat.',
+      );
+    }
+  }
+
+  // ---------------------------------------------------------------------------
+  // 4b. Hetzelfde nummer, een ander bestand — QS8-310
+  // ---------------------------------------------------------------------------
+  //
+  // ⚠️ **Stap 4 kan dit per constructie niet zien, en op precies de verkeerde
+  //    manier.** Die vergelijkt nummers: draagt de zusterbranch 0175 en draag ik
+  //    ook een 0175, dan ontbreekt er niets en zwijgt hij. Zolang mijn map het
+  //    nummer nog níet had, meldde hij het wél — als "0175 ontbreekt hier". De
+  //    melding verdween dus op het moment dat de botsing ontstond.
+  //
+  // ⚠️ **Dit is de fout waar `migratie:nieuw` (QS8-247) en `migratie:hernummer`
+  //    (QS8-241) voor gebouwd zijn**, en volgens CLAUDE.md al vier keer gebeurd.
+  //    `migratie:nieuw` deelt een nummer uit dat élders vrij is; de eis dat de
+  //    eigen map aaneengesloten is, duwt je daarna terug naar het botsende nummer.
+  //    De werkwijze eromheen — wie als tweede merget, hernummert — werkt, maar
+  //    leunde tot nu toe op een mens die eraan denkt.
+  //
+  // ⚠️ Zelfde zwijgen als stap 4 zonder git of remote, en om dezelfde reden.
+
+  const namenElders = namenPerBranch();
+
+  if (namenElders !== null) {
+    const botsingen = botsendPerBranch({
+      lokaal: namenPerSleutel(bestanden),
+      perBranch: namenElders,
+    });
+
+    for (const { branch, botsingen: rijen } of botsingen) {
+      const opsomming = rijen
+        .map(({ nummer, hier, daar }) => `${nummer}: hier ${hier}, daar ${daar}`)
+        .join('; ');
+
+      branchfouten.push(
+        `${branch} draagt ${rijen.length} migratienummer(s) onder een andere naam: ` +
+          `${opsomming}. Wie als tweede merget, hernummert — met ` +
+          '`npm run migratie:hernummer -- <bestandsnaam> <nieuw nummer>`.',
+      );
+    }
+  }
+
+  // ---------------------------------------------------------------------------
+  // 5. De kopregel noemt het bestand zelf — QS8-241
+  // ---------------------------------------------------------------------------
+  //
+  // ⚠️ **Dit is de fout die op 31-08 doorglipte, en geen enkele controle zag hem.**
+  //    Een migratie werd hernummerd met
+  //
+  //      sed -i 's/\b0134\b/0136/g' …
+  //
+  //    en dat laat de kopregel stil staan: `_` is in GNU sed een woordteken, dus
+  //    in `0134_een_plan` staat er geen woordgrens achter de `4`. Het bestand
+  //    heette daarna `0136_…` terwijl zijn eerste regel `0134_…` zei. Gevonden met
+  //    het oog in een grep.
+  //
+  // ⚠️ **Waarom dit een eigen stap is en niet in `migratie:hernummer` volstaat.**
+  //    Die repareert de gevallen die via hém lopen. Deze stap vangt het gevál,
+  //    ongeacht de weg — met de hand, met sed, of met een script dat nog niet
+  //    bestond. Onwrikbare regel 18: toets de belofte, niet het onderdeel.
+  //
+  //    De belofte is: **de eerste regel van een migratie noemt zijn eigen naam.**
+  //    Dat is de regel die een lezer als eerste gelooft, en die na een verhuizing
+  //    als eerste liegt.
+
+  for (const naam of bestanden) {
+    if (ontleedNaam(naam) === null) continue;
+
+    const inhoud = readFileSync(join(MAP, naam), 'utf8');
+    const kop = kopNummer(inhoud);
+
+    if (kop === null) {
+      fouten.push(
+        `De kop van ${naam} noemt zijn eigen nummer niet. Zet het in de eerste ` +
+          'commentaarregel, zoals het sjabloon van `migratie:nieuw` doet.',
+      );
+      continue;
+    }
+
+    if (kop !== naam.slice(0, 4)) {
+      fouten.push(
+        `De kop van ${naam} zegt ${kop}. Dat is precies wat er na een hernummering ` +
+          'met de hand achterblijft; draai `npm run migratie:hernummer -- <van> <naar>`.',
+      );
+    }
+  }
+
+  // ---------------------------------------------------------------------------
+  // 6. Laat geen enkel script de CLI migraties toepassen zolang er letterversies
+  //    staan — QS8-251.
+  // ---------------------------------------------------------------------------
+  //
+  // ⚠️ **Waarom hier en niet in een eigen controle.** Dit gaat over de migratiemap
+  //    en over niets anders: de tegenspraak bestáát alleen zolang die map een
+  //    bestandsnaam bevat die de CLI niet kan lezen. Een aparte `*:controle` zou
+  //    dezelfde map een tweede keer moeten inlezen om dezelfde vraag te stellen.
+  //
+  // ⚠️ **De belofte stond maanden in proza en nergens in code.**
+  //    `docs/decisions/004-migratieregister.md` zei "dit project gebruikt de CLI
+  //    niet voor het toepassen van migraties", terwijl `package.json` een
+  //    `db:push` had die precies dat deed. Regel 18 vraag 4: er was geen test die
+  //    de belofte kón raken.
+
+  try {
+    const pkg = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8'));
+    fouten.push(...cliTegenspraak({ scripts: pkg.scripts, bestandsnamen: bestanden }));
+  } catch {
+    fouten.push('package.json is niet te lezen — de CLI-tegenspraak is dus ongemeten.');
+  }
+
+  // ---------------------------------------------------------------------------
+
+  if (uitslag({ fouten, branchfouten }) === 'groen') {
+    console.log(
+      `migraties-controle: ${bestanden.length} migraties, aaneengesloten en elk met een rollback-pad.` +
+        (perBranch === null ? '' : ' Geen branch draagt een nummer dat hier ontbreekt.'),
+    );
+    process.exit(0);
+  }
+
+  // ---------------------------------------------------------------------------
+  // Een branchbevinding is een afspraak en geen fout — QS8-552
+  // ---------------------------------------------------------------------------
+  //
+  // ⚠️⚠️ **Dit stond hier fataal en dat maakte `main` structureel rood.** QS8-452
+  //    zette `fetch-depth: 0` op de CI-checkout omdat `dossierdrift:controle` de
+  //    volledige geschiedenis nodig heeft. Die vlag haalt niet alleen alle
+  //    commits op maar ook **alle remote branches** — en deze controle loopt elke
+  //    `origin/*`-ref af. 📏 Gevolg op 18-09-2026: `main` stond rood omdat
+  //    `origin/…qs8-533` migratie `0290` droeg terwijl `main` op `0289` stond.
+  //    Dat is de normale toestand van werk dat nog niet geland is, dus het zou
+  //    bij élke migratiebranch opnieuw gebeuren.
+  //
+  // ⚠️ **En een rood dat altijd aan staat, betekent niets meer.** Dat is precies
+  //    wat `hoofdrun:controle` en
+  //    `docs/decisions/2026-09-09-twee-groene-prs-samen-rood.md` proberen te
+  //    beschermen: rood op `main` hoort werk-nu te betekenen.
+  //
+  // ⚠️ **De weging komt niet van mij maar uit CLAUDE.md**, die de drie signalen
+  //    van deze controle zelf uitschrijft: het nummer, *"de branches die datzelfde
+  //    nummer dragen (**een afspraak, geen fout**)"*, en — apart, want dit is de
+  //    énige echte fout — dat `origin/main` vóórloopt.
+  //
+  // ⚠️ **Wat hiermee níét verdwijnt, en dat is nagelopen en niet aangenomen.** Een
+  //    gat in de eigen nummering, een duplicaat, een ontbrekend rollback-pad en de
+  //    CLI-tegenspraak zitten allemaal in `fouten` en blijven onverkort fataal.
+  //    Twee PR's met hetzelfde nummer worden ná de merge een **duplicaat**, en dát
+  //    is de grendel die QS8-318 beschrijft. De branchtak waarschuwt vooraf; hij
+  //    bewijst niets over de map zoals hij nu is.
+  if (uitslag({ fouten, branchfouten }) === 'waarschuwing') {
+    console.log(
+      `migraties-controle: ${bestanden.length} migraties, aaneengesloten en elk met een\n` +
+        '  rollback-pad. Wel een melding over een ándere branch:\n',
+    );
+    for (const f of branchfouten) console.log(`  · ${f}`);
+    console.log('');
+    for (const regel of beeldmelding({ sinds: laatsteFetch() })) console.log(regel);
+    console.log(
+      '\n⚠️ Dit is een afspraak en geen fout: die branch is nog niet geland, en deze\n' +
+        '  map is op zichzelf in orde. Land die branch, of hernummer als jij de tweede\n' +
+        '  bent die merget (QS8-318). Een gat of een duplicaat in déze map is wél\n' +
+        '  fataal en staat hierboven.',
+    );
+    process.exit(0);
+  }
+
+  console.error('migraties-controle: de migratiemap klopt niet.\n');
+  for (const f of fouten) console.error(`  - ${f}`);
+  for (const f of branchfouten) console.error(`  - ${f}`);
+
+  // ---------------------------------------------------------------------------
+  // De leeftijd van het beeld, en alleen bij een branchbevinding — QS8-435
+  // ---------------------------------------------------------------------------
+  //
+  // ⚠️ **Hier stond één vaste zin:** *dit beeld is zo oud als je laatste `git
+  //    fetch`*. Waar, op de goede plek, en hij hielp niet — want hij stond er ook
+  //    als je ref van tien seconden oud was. 📏 Op 11-09-2026 belandde een
+  //    branchbevinding daardoor als bevinding op het issue van iemand anders
+  //    terwijl hij op dat moment al een uur onwaar was: de branch was om 15:03 UTC
+  //    hernummerd en de melding is om 16:13 UTC geschreven. Dat is woordelijk de
+  //    vorm die CLAUDE.md bij QS8-247 al afkeurde — één tekst voor alle gevallen
+  //    leest als een disclaimer, en die leer je overslaan.
+  //
+  // ⚠️ **En hij fetcht nog steeds niet.** De grens uit CLAUDE.md blijft staan: wie
+  //    een nummer uitdeelt fetcht, wie controleert niet — deze draait in de poort
+  //    en in CI, waar een netwerkaanroep de uitslag afhankelijk maakt van
+  //    bereikbaarheid. De leeftijd is zonder netwerk te lezen: `FETCH_HEAD` staat
+  //    op schijf.
+  //
+  // ⚠️ **Waarom de gróene uitslag hem niet draagt.** Die zegt *geen branch draagt
+  //    een nummer dat hier ontbreekt*, en op een oud beeld is dat ook een te ruime
+  //    uitspraak. Maar de schade loopt de andere kant op: een vals **positief**
+  //    kost het issue van iemand anders een onjuiste bevinding, een vals
+  //    **negatief** kost hooguit een rode CI later — en die komt er dan ook, want
+  //    een gat is onverwerkt. Een versheidsregel onder elke groene poortregel is
+  //    bovendien precies de tekst die je leert overslaan.
+
+  if (branchfouten.length > 0) {
+    console.error('');
+    for (const regel of beeldmelding({ sinds: laatsteFetch() })) console.error(regel);
+  }
+
+  console.error(
+    '\nDe migratiebestanden zijn de enige manier om dit schema ergens anders op te\n' +
+      'bouwen — een lokale stack, een tweede project, een herstel. Ontbreekt er één,\n' +
+      'dan toetst de RLS-suite daar een ander schema dan productie. Zie QS8-122, en\n' +
+      'voor het gat 0057–0061 zie QS8-131 en WERKVOORRAAD §2a.\n\n' +
+      '⚠️ Meldt hij een branch die migraties draagt die hier ontbreken, land die\n' +
+      'branch dan — cherry-picken van losse migratiebestanden gaat mis zodra ze op\n' +
+      'iets anders leunen (een shim, een bucket). Zie QS8-237.\n\n' +
+      '⚠️ Twee migraties met hetzelfde nummer, of een kop die zijn eigen naam niet\n' +
+      'noemt? Hernummer met `npm run migratie:hernummer -- <van> <naar>` en niet met\n' +
+      'de hand: die laatste vergeet de kopregel. Zie QS8-241.',
   );
-  for (const f of branchfouten) console.log(`  · ${f}`);
-  console.log('');
-  for (const regel of beeldmelding({ sinds: laatsteFetch() })) console.log(regel);
-  console.log(
-    '\n⚠️ Dit is een afspraak en geen fout: die branch is nog niet geland, en deze\n' +
-      '  map is op zichzelf in orde. Land die branch, of hernummer als jij de tweede\n' +
-      '  bent die merget (QS8-318). Een gat of een duplicaat in déze map is wél\n' +
-      '  fataal en staat hierboven.',
-  );
-  process.exit(0);
+  process.exit(1);
 }
-
-console.error('migraties-controle: de migratiemap klopt niet.\n');
-for (const f of fouten) console.error(`  - ${f}`);
-for (const f of branchfouten) console.error(`  - ${f}`);
-
-// ---------------------------------------------------------------------------
-// De leeftijd van het beeld, en alleen bij een branchbevinding — QS8-435
-// ---------------------------------------------------------------------------
-//
-// ⚠️ **Hier stond één vaste zin:** *dit beeld is zo oud als je laatste `git
-//    fetch`*. Waar, op de goede plek, en hij hielp niet — want hij stond er ook
-//    als je ref van tien seconden oud was. 📏 Op 11-09-2026 belandde een
-//    branchbevinding daardoor als bevinding op het issue van iemand anders
-//    terwijl hij op dat moment al een uur onwaar was: de branch was om 15:03 UTC
-//    hernummerd en de melding is om 16:13 UTC geschreven. Dat is woordelijk de
-//    vorm die CLAUDE.md bij QS8-247 al afkeurde — één tekst voor alle gevallen
-//    leest als een disclaimer, en die leer je overslaan.
-//
-// ⚠️ **En hij fetcht nog steeds niet.** De grens uit CLAUDE.md blijft staan: wie
-//    een nummer uitdeelt fetcht, wie controleert niet — deze draait in de poort
-//    en in CI, waar een netwerkaanroep de uitslag afhankelijk maakt van
-//    bereikbaarheid. De leeftijd is zonder netwerk te lezen: `FETCH_HEAD` staat
-//    op schijf.
-//
-// ⚠️ **Waarom de gróene uitslag hem niet draagt.** Die zegt *geen branch draagt
-//    een nummer dat hier ontbreekt*, en op een oud beeld is dat ook een te ruime
-//    uitspraak. Maar de schade loopt de andere kant op: een vals **positief**
-//    kost het issue van iemand anders een onjuiste bevinding, een vals
-//    **negatief** kost hooguit een rode CI later — en die komt er dan ook, want
-//    een gat is onverwerkt. Een versheidsregel onder elke groene poortregel is
-//    bovendien precies de tekst die je leert overslaan.
-
-if (branchfouten.length > 0) {
-  console.error('');
-  for (const regel of beeldmelding({ sinds: laatsteFetch() })) console.error(regel);
-}
-
-console.error(
-  '\nDe migratiebestanden zijn de enige manier om dit schema ergens anders op te\n' +
-    'bouwen — een lokale stack, een tweede project, een herstel. Ontbreekt er één,\n' +
-    'dan toetst de RLS-suite daar een ander schema dan productie. Zie QS8-122, en\n' +
-    'voor het gat 0057–0061 zie QS8-131 en WERKVOORRAAD §2a.\n\n' +
-    '⚠️ Meldt hij een branch die migraties draagt die hier ontbreken, land die\n' +
-    'branch dan — cherry-picken van losse migratiebestanden gaat mis zodra ze op\n' +
-    'iets anders leunen (een shim, een bucket). Zie QS8-237.\n\n' +
-    '⚠️ Twee migraties met hetzelfde nummer, of een kop die zijn eigen naam niet\n' +
-    'noemt? Hernummer met `npm run migratie:hernummer -- <van> <naar>` en niet met\n' +
-    'de hand: die laatste vergeet de kopregel. Zie QS8-241.',
-);
-process.exit(1);
