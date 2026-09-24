@@ -72,6 +72,10 @@ export const HEEFT_DATABASE_NODIG = new Set([
   'idempotent:controle',
   // ⚠️ Leest `pg_proc`: welke functies zijn `immutable` met nul argumenten (QS8-433).
   'volatiliteit:controle',
+  // ⚠️ Leest `pg_get_function_arguments()`: welke argumenten een `DEFAULT NULL`
+  //    dragen (QS8-594). Zonder database meet hij niets — en het antwoord hangt
+  //    af van het schema, niet van de migratiebestanden.
+  'defaultnull:controle',
   // ⚠️ Leest `pg_get_functiondef()`: de vorm waarin een `app.`-sleutel
   //    vergeleken wordt (QS8-491). Zonder database meet hij niets.
   'sleutelvorm:controle',
