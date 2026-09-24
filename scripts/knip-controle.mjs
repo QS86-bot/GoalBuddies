@@ -81,6 +81,7 @@ export const ZONDER_TOETS = 'tests/scripts';
 
 /** De gedeelde bron; die mag zichzelf definiëren. */
 export const GEDEELD = 'scripts/zonder-commentaar.mjs';
+export const GEDEELD_SQL = 'scripts/zonder-sql-commentaar.mjs';
 
 export const DEFINITIE = /(?:export\s+)?function\s+(zonderCommentaar\w*)\s*\(/g;
 
@@ -350,13 +351,6 @@ export const MET_REDEN = {
  *    Wat elke bronlezer echt doet, blijft handwerk en een ijkingstest.
  */
 export const ZONDER_KNIP = {
-  'scripts/adviseurdrift-controle.mjs':
-    'leest SQL en houdt daarom een eigen knip (`zonderSqlCommentaar`) met een ' +
-    'stringgrens erin: de gedeelde knip is een JS-knip en haalt `--` niet weg. ' +
-    '📏 Gemeten bij QS8-597: zónder die knip leest de rename-regex het ' +
-    'rollback-pad uit de kop van 0234 mee (`-- alter table dagtellers rename to ' +
-    'opslag_dagtellers;`) en verschuift het beeld van de map stil — de ' +
-    'knip-klasse van QS8-412. Geijkt in tests/scripts/adviseurdrift-controle.test.ts',
   'scripts/migratie-hernummer.mjs':
     'herschrijft verwijzingen naar een migratienummer, en een verwijzing ín commentaar ' +
     'hóórt mee te gaan — CLAUDE.md: hij "neemt de verwijzingen mee; de kale die hij niet ' +
@@ -501,9 +495,23 @@ export function leestBronMetNaampatroon(bron) {
   return LEEST_BRON.test(schoon) && NAAMPATROON.test(schoon);
 }
 
-/** Knipt dit bestand — gedeeld, of met een eigen knip die in MET_REDEN staat? */
+/**
+ * Knipt dit bestand — gedeeld, of met een eigen knip die in MET_REDEN staat?
+ *
+ * ⚠️⚠️ **Beide gedeelde knippen tellen, en dat was tot QS8-606 niet zo.** De kop
+ *    van dit bestand zegt sinds QS8-574 met zoveel woorden dat er *twee* zijn —
+ *    `zonder-commentaar.mjs` voor JS/TS en `zonder-sql-commentaar.mjs` voor SQL
+ *    — maar deze functie herkende alleen de eerste. 📏 Gevolg, gemeten op
+ *    24-09-2026: `adviseurdrift-controle.mjs` importeerde de gedéélde SQL-knip
+ *    en kreeg te horen dat hij *"geen commentaar knipt"*, met als enige uitweg
+ *    een registerrij voor iets wat juist goed was.
+ *
+ *    Dat is de vorm waar dit register voor bestaat, omgekeerd: een uitzondering
+ *    die niet over een uitzondering gaat. Een bestand dat de goede knip gebruikt
+ *    hoort nergens in een register te staan.
+ */
 export function knipt(bron, pad) {
-  if (/from '\.\/zonder-commentaar\.mjs'/.test(zonderCommentaar(bron))) return true;
+  if (/from '\.\/zonder(?:-sql)?-commentaar\.mjs'/.test(zonderCommentaar(bron))) return true;
   return Object.keys(MET_REDEN).some((sleutel) => sleutel.startsWith(`${pad}:`));
 }
 
@@ -697,9 +705,12 @@ function meldFouten(klachtenLijst, los) {
     );
   }
   console.error(
-    `\n  De gedeelde knip is \`${GEDEELD}\`, en hij is geijkt in\n` +
+    `\n  Er zijn twee gedeelde knippen: \`${GEDEELD}\` voor JS/TS, geijkt in\n` +
       '  `tests/scripts/zonder-commentaar.test.ts` — mét de URL-vorm die dit\n' +
-      '  project een halve ijking kostte (QS8-412).',
+      '  project een halve ijking kostte (QS8-412) — en\n' +
+      `  \`${GEDEELD_SQL}\` voor SQL, geijkt in\n` +
+      '  `tests/scripts/zonder-sql-commentaar.test.ts`. Een `--` overleeft de\n' +
+      '  eerste en een `//` de tweede, dus kies de knip die bij je bron hoort.',
   );
 }
 

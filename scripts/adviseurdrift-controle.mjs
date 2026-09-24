@@ -33,6 +33,26 @@
  *    zoekt naar het wóórd `false` geeft hier hetzelfde antwoord — maar die
  *    faalt **open** op de eerste view die de optie weglaat. Deze faalt dicht.
  *
+ * ⚠️⚠️ **Hij gebruikt de gedeelde SQL-knip, en dat is een meting en geen
+ *    vanzelfsprekendheid (QS8-606).** Die knip behandelt `$$ … $$` als een
+ *    tekstliteral — met reden: hij is er voor vormen als `v_sql := $q$a--b$q$`,
+ *    waar de inhoud dáta is. In een migratie is `$$ … $$` meestal juist een
+ *    functielichaam, waar `--` wél commentaar is, en de eerste versie van deze
+ *    controle hield daarom een eigen knip die er wél in knipte.
+ *
+ *    📏 Nagemeten op 24-09-2026 over alle **301** migraties: de twee knippen
+ *    geven op **elke** migratie andere tekst, en op **nul** ervan verandert dat
+ *    de telling van wat deze controle zoekt. De eigen knip is daarom weg en de
+ *    registerrij in `knip:controle` ermee — één knip is beter dan twee die
+ *    uiteen kunnen lopen, en dat is precies waarom die knip gedeeld ís.
+ *
+ * ⚠️ **De grens die daarmee bekend is en niet dicht:** een **uitgecommentarieerde**
+ *    `create view` bínnen een `$$`-lichaam leest de gedeelde knip als code, en
+ *    dan meldt deze controle een view die niet bestaat. Dat faalt **luid** —
+ *    iemand krijgt een allowlist-regel gevraagd voor iets wat er niet is — en
+ *    dat is de goede richting. Vandaag komt die vorm in geen enkele migratie
+ *    voor; de toets eronder legt het gedrag vast zodat het geen verrassing is.
+ *
  * ⚠️ **Wat hij niet ziet.** Een bucketpolicy, een `auth`-instelling, of welke
  *    andere adviesregel dan ook. Dit zijn de twee klassen die uit DDL volgen;
  *    de rest blijft van `adviseur:controle` en dus van een mens met een token.
@@ -43,56 +63,10 @@ import process from 'node:process';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 
 import { ALLOWLIST } from './adviseur-controle.mjs';
+import { zonderCommentaarSql } from './zonder-sql-commentaar.mjs';
 
 const WORTEL = fileURLToPath(new URL('..', import.meta.url));
 const MIGRATIEMAP = join(WORTEL, 'supabase/migrations');
-
-/**
- * Commentaar uit SQL, met de stringgrens erin.
- *
- * ⚠️⚠️ **Een eigen knip, en hij staat met reden in het register van
- *    `knip:controle`.** De gedeelde `zonderCommentaar()` is een JS-knip en kent
- *    `--` niet; op SQL haalt hij niets weg.
- *
- * 📏 **En dat dit nodig is, is gemeten en niet bedacht.** Het prototype van dit
- *    issue las de hernoeming uit het **rollback-pad in de kop** van `0234` mee:
- *    `-- alter table dagtellers rename to opslag_dagtellers;`. Het gaf daar
- *    toevallig het juiste antwoord omdat de echte hernoeming de andere kant op
- *    gaat — precies de klasse van QS8-412, waar een knip een controle stil
- *    scheef zet.
- *
- * ⚠️ De stringgrens is er omdat `--` binnen `'…'` gewoon tekst is. Dollar-quoted
- *    functielichamen worden juist **wel** doorzocht: commentaar daarbinnen is
- *    echt commentaar.
- */
-export function zonderSqlCommentaar(bron) {
-  const uit = [];
-  let i = 0;
-  let inString = false;
-  while (i < bron.length) {
-    const teken = bron[i];
-    if (inString) {
-      uit.push(teken);
-      if (teken === "'") inString = false;
-      i += 1;
-    } else if (teken === "'") {
-      inString = true;
-      uit.push(teken);
-      i += 1;
-    } else if (bron.startsWith('--', i)) {
-      const einde = bron.indexOf('\n', i);
-      i = einde === -1 ? bron.length : einde;
-    } else if (bron.startsWith('/*', i)) {
-      const einde = bron.indexOf('*/', i + 2);
-      uit.push(' ');
-      i = einde === -1 ? bron.length : einde + 2;
-    } else {
-      uit.push(teken);
-      i += 1;
-    }
-  }
-  return uit.join('');
-}
 
 const NAAM = '(?:"[^"]+"|\\w+)';
 const VIEW = new RegExp(
@@ -152,7 +126,7 @@ export function objectenUitDeMap(map = MIGRATIEMAP) {
     .filter((n) => n.endsWith('.sql'))
     .sort();
   for (const naam of namen) {
-    verwerk(staat, zonderSqlCommentaar(readFileSync(join(map, naam), 'utf8')).toLowerCase());
+    verwerk(staat, zonderCommentaarSql(readFileSync(join(map, naam), 'utf8')).toLowerCase());
   }
   return {
     definerViews: [...staat.views].filter(([, d]) => d).map(([n]) => n).sort(),
