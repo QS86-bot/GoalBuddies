@@ -75,7 +75,61 @@ const MAPPEN = ['src', 'app', 'scripts', 'supabase', 'tests', 'docs'];
  *    onwaar worden — en dat is deze week één keer gebeurd. Daar helpt geen
  *    padcontrole: zie de kop over wat deze controle structureel niet ziet.
  */
-const BUITEN = ['docs/decisions'];
+const BUITEN = [];
+
+/**
+ * De datum vanaf wanneer een beslisdocument wél meetelt — QS8-591.
+ *
+ * ⚠️⚠️ **`docs/decisions/` stond hier als harde uitsluiting, en die is nu een
+ *    datumgrens.** De kop hierboven droeg daar de meting van QS8-432 bij: tien
+ *    kapotte paden, negen terecht historisch, en de conclusie *"negen keer ruis
+ *    om de tiende te vinden is geen regel"*. Die conclusie klopte en klopt nog.
+ *
+ * 📏 **Hermeten op 24-09-2026 over 250 documenten en 983 padverwijzingen: 19
+ *    kapot, en alle negentien terecht.** Vijf bestonden wél op de dag dat het
+ *    document geschreven werd en zijn later weg — de sentry-module van de Edge
+ *    Functions, het backlogplan, de fotokiezer, de tijdzonekeuze en de
+ *    uitsluitlijst-toets, alle vijf met `git log` nagelopen.
+ *    ⚠️ Geen backticks om die vijf: dit bestand scant zichzelf, en een pad
+ *    tussen backticks in een comment is hier een nieuwe bevinding — dezelfde
+ *    conventie die de rijen in ZONDER_BESTAND al dragen. De andere veertien hebben **nooit** bestaan en staan er als
+ *    cítaat van het probleem, in documenten die er juist over gaan: *"dat
+ *    bestand heeft nooit bestaan"*, *"bestaat niet | juist"*, een afgewezen
+ *    optie, en een verzonnen voorbeeldpad in een document over padverwijzingen.
+ *
+ * ⚠️ **Het issue nam aan dat de helft drift was. Dat is gemeten onwaar: nul.**
+ *    Een register van negentien rijen zou dus geschiedenis beschrijven die
+ *    niemand hoeft te bewaken — precies de inventaris waarvan dit project weet
+ *    dat je hem leert overslaan.
+ *
+ * ⚠️⚠️ **Daarom de datumgrens en geen register.** Een beslisdocument beschrijft
+ *    de toestand op de dag van schrijven; een padcontrole is een uitspraak in de
+ *    tegenwoordige tijd. Die twee zijn niet te verzoenen voor de verleden tijd,
+ *    en wél voor de toekomst: een document dat vandaag geschreven wordt, hoort
+ *    op zijn geboortedag naar bestaande bestanden te wijzen. Dat is de klasse
+ *    die QS8-412 opleverde — *een test waarvan in de bron staat dát hij er is,
+ *    valt niet op* — en `HISTORISCH_JUIST` hieronder vangt het geval dat een
+ *    document ín scope later terecht veroudert. Dat register begint leeg, en dat
+ *    is het verschil met negentien rijen vooraf: één rij per échte vergrijzing,
+ *    op het moment dat hij optreedt.
+ *
+ * ⚠️ Documenten zonder datum in hun naam (`001-datamodel.md` en de zes andere
+ *    genummerde) vallen erbuiten: dat zijn de oudste en ze dragen geen
+ *    geboortedag om aan te toetsen.
+ */
+const VANAF = '2026-09-24';
+
+/**
+ * Beslisdocumenten die op hun eigen datum klopten en intussen verouderd zijn.
+ *
+ * ⚠️ **Leeg, en dat is de bedoeling.** Komt hier ooit een rij, dan is dat een
+ *    document dat ín scope geschreven is en waarvan een pad sindsdien verhuisd
+ *    of verdwenen is. De rij hoort te zeggen wélk pad en wat ermee gebeurd is —
+ *    niet "dit document mag kapotte paden hebben".
+ *
+ * @type {Record<string, string>}
+ */
+export const HISTORISCH_JUIST = {};
 
 /**
  * Het ene bestand dat deze controle **voedt** en er daarom buiten valt.
@@ -243,12 +297,27 @@ export function beoordeel(bestanden, bestaat, register = ZONDER_BESTAND) {
  *    deze controle en hoort onder test te staan in plaats van in een `if` te
  *    verdwijnen.
  */
-export function binnenScope(pad) {
+export function binnenScope(pad, vanaf = VANAF) {
   if (!SOORTEN.test(pad)) return false;
   if (pad === IJKING) return false;
   if (pad.split('/').some((deel) => deel === 'node_modules' || deel.startsWith('.'))) return false;
   if (BUITEN.some((uit) => pad === uit || pad.startsWith(`${uit}/`))) return false;
+  if (pad.startsWith('docs/decisions/')) return geborenVanaf(pad, vanaf);
   return MAPPEN.some((map) => pad === map || pad.startsWith(`${map}/`));
+}
+
+/**
+ * Draagt dit beslisdocument een datum in zijn naam, en is die niet ouder dan
+ * `vanaf`?
+ *
+ * ⚠️ De datum staat vooraan in de bestandsnaam (`2026-09-24-…md`) en is als
+ *    tekst te vergelijken: `YYYY-MM-DD` sorteert lexicografisch gelijk aan
+ *    chronologisch. Geen `Date`, geen tijdzone — en dus ook geen tijdberekening
+ *    buiten `shared/time` (correctheidsregel 7).
+ */
+export function geborenVanaf(pad, vanaf = VANAF) {
+  const m = /(?:^|\/)(\d{4}-\d{2}-\d{2})-[^/]*\.md$/.exec(pad);
+  return m !== null && m[1] >= vanaf;
 }
 
 /** Alle scanbare bestanden onder `MAPPEN`, als repo-relatieve paden. */

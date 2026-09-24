@@ -15,6 +15,7 @@ import { describe, expect, it } from 'vitest';
 import {
   beoordeel,
   binnenScope,
+  geborenVanaf,
   verwijzingenIn,
   ZONDER_BESTAND,
 } from '../../scripts/padverwijzing-controle.mjs';
@@ -287,8 +288,39 @@ describe('binnenScope', () => {
     }
   });
 
-  it('laat een beslisdocument erbuiten', () => {
+  /**
+   * ⚠️⚠️ **De scope van `docs/decisions/` is een datumgrens geworden — QS8-591.**
+   *    📏 Gemeten op 24-09-2026: 250 documenten, 983 padverwijzingen, **19**
+   *    kapot — en alle negentien terecht. Vijf bestonden wél op de dag van
+   *    schrijven en zijn later weg; veertien hebben nooit bestaan en staan er
+   *    als cítaat van het probleem, in documenten die er juist over gaan.
+   *
+   *    Het issue nam aan dat de helft drift was; gemeten is dat **nul**. Een
+   *    register van negentien rijen zou dus geschiedenis beschrijven die niemand
+   *    hoeft te bewaken. Wat wél te bewaken is, is de toekomst: een document dat
+   *    vandaag geschreven wordt, hoort op zijn geboortedag naar bestaande
+   *    bestanden te wijzen.
+   */
+  it('laat een beslisdocument van vóór de grens erbuiten', () => {
     expect(binnenScope('docs/decisions/002-domeinregel7-oppervlakken.md')).toBe(false);
+    expect(binnenScope('docs/decisions/2026-09-10-een-grendel-die-alleen-in-een-comment-staat.md')).toBe(false);
+  });
+
+  it('en neemt een document van ná de grens wél mee', () => {
+    expect(binnenScope('docs/decisions/2026-09-24-een-beslisdocument-is-waar-op-zijn-eigen-dag.md')).toBe(true);
+    expect(binnenScope('docs/decisions/2027-01-01-iets-nieuws.md')).toBe(true);
+  });
+
+  /**
+   * ⚠️ De grens is als tékst te vergelijken: `YYYY-MM-DD` sorteert
+   *    lexicografisch gelijk aan chronologisch. Geen `Date` en geen tijdzone, en
+   *    dus geen tijdberekening buiten `shared/time` (correctheidsregel 7).
+   */
+  it('vergelijkt de geboortedag als tekst, en laat een naamloze datum erbuiten', () => {
+    expect(geborenVanaf('docs/decisions/2026-09-24-x.md', '2026-09-24')).toBe(true);
+    expect(geborenVanaf('docs/decisions/2026-09-23-x.md', '2026-09-24')).toBe(false);
+    expect(geborenVanaf('docs/decisions/001-datamodel.md', '2026-09-24')).toBe(false);
+    expect(geborenVanaf('docs/decisions/zonder-datum.md', '2026-09-24')).toBe(false);
   });
 
   it('laat de eigen ijking erbuiten en geen andere test', () => {
