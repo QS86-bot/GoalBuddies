@@ -1978,6 +1978,79 @@ de browser — 📏 232 kB HTML en **nul** `<table>`. Zonder dit derde pad was "
 rijen renderen niet als tabel" een aanname gebleven; mét is het een meting van
 430 naar 750 `<tr>`.
 
+### 24-09-2026, tweede helft — de dossierbaan, en wat de poort ná groene tests nog vond
+
+Drie Middel-rijen afgewerkt: **QS8-609** (rij 618, tijd in tests), **QS8-610**
+(rij 444, de premisse onder een vrijstelling) en **QS8-612** (rij 601, een
+`drop function` onder een edge-functie).
+
+⚠️⚠️ **De lokale stack draait gewoon in een cloudsessie, en dat scheelt de
+poort vijftien ongemeten controles.** 📏 Gemeten: 25 ongemeten → **10**, en
+niets werd er rood van. Postgres 16 staat in het beeld
+(`/usr/lib/postgresql/16/bin`), de PostgREST-binary is achter de proxy op te
+halen, en `scripts/lokale-stack.sh` is precies voor dit geval geschreven
+(*"Docker Hub is achter de proxy niet bereikbaar"*). De enige stap die het
+script zelf niet doet is het cluster starten: `initdb` + `pg_ctl` op poort
+**5433** als de `postgres`-gebruiker, want als root weigert Postgres te starten
+en de scratchpad-map is voor die gebruiker niet doorloopbaar.
+
+⚠️ **Dit is geen vondst maar een gewoonte die ik te laat aannam.** QS8-268,
+QS8-426 en QS8-523 draaiden er al tegenaan, en QS8-569 beschrijft woordelijk
+dezelfde beweging: een controle **voeden** in plaats van hem ongemeten laten.
+Wat het oplevert is niet dat er een gat gedicht wordt — die twintig controles
+draaien in CI in baan `database` — maar dat je een database-afhankelijke test
+kunt **ijken**, en dat was de voorwaarde voor QS8-609.
+
+### De valkuilen van die middag
+
+⚠️⚠️ **Na 22 groene toetsen vond de poort nog vier dingen in mijn eigen code**
+(QS8-612): `typecheck` (drie `possibly undefined`), `lint` (`max-depth` 4),
+`regel15:controle` (een functie boven de vijftig, plafond omhoog) en
+`jobbereik:controle`. Geen ervan had ik gezien. **Groene unit-tests zijn geen
+poort**, en dat staat niet voor niets zo in CLAUDE.md.
+
+⚠️ **De vierde is de leerzaamste.** `jobbereik:controle` zag de échte naam
+`slaap_stille_groepen` in mijn SQL-*fixtures* en las die — terecht — als een
+globale job zonder grens. Ik had daar een registerrij voor kunnen schrijven, en
+dan had ik een uitzondering vastgelegd die er geen is. **Een verzonnen naam in
+de fixture houdt beide controles scherp.** Een register is voor echte
+uitzonderingen; alles wat je erin zet om van een rood af te komen, verzwakt het.
+
+⚠️⚠️ **Ik miste een geval doordat ik per regel greppte — in het issue dat
+precies die les toepast.** De voormeting van QS8-612 telde drie overlappende
+functies; de controle vond er **vier**. `keur_vastgelopen_goedkeuringen_goed`
+wordt aangeroepen met de naam op de tweede regel:
+
+```ts
+await db.rpc(
+  'keur_vastgelopen_goedkeuringen_goed',
+  { p_termijn_dagen: 7 },
+);
+```
+
+`grep -oE "\.rpc\(\s*'[a-z_]+'"` leest per regel en ziet die vorm niet. Dat is
+woordelijk QS8-414: **een regel die je met de hand handhaaft, handhaaf je op de
+vorm die je toevallig intypt.** Vertrouw een handmatige voormeting dus nooit als
+getal — gebruik hem om te weten waar je moet kijken, en laat het instrument
+tellen.
+
+⚠️ **Een mutatie die niets rood maakt, is nog steeds eerst een verdenking tegen
+de mutatie.** Die valkuil staat hierboven al van de ochtend, en hij kostte mij
+'s middags opnieuw drie ijkingen: mijn shell-lus splitste naam en expressie op
+`:`, en in `2026-01-01T06:59:00Z` staan drie dubbele punten. `sed` kreeg een
+halve expressie, meldde dat, en de suite bleef groen op vijf toetsen. **Muteer
+per regelnummer en print de gewijzigde regel vóór de run.**
+
+⚠️ **Een monitor die zwijgt, heeft misschien niets gevonden in plaats van niets
+gezien.** Een bewaking op de hoofdrun liep dertig minuten zonder één event,
+omdat mijn API-aanroep `branch` en `head_sha` combineerde — dat levert niets op.
+Laat zo'n lus altijd óók melden dát hij niets vond.
+
+⚠️ **En ik schreef zelf een niet-ontsnapte `|` binnen backticks in een tabelcel**
+(`string | null`). `review:controle` en `tabelcellen:controle` werden daar rood
+op — de QS8-415-klasse, gevangen door de grendel die daarvoor bestaat. Die
+grendel werkt; de gewoonte moet nog groeien.
+
 ### 24-09-2026 — de auditronde, en wat er ónder de bevindingen zat
 
 `/audit` gedraaid en de drie punten eruit afgemaakt (QS8-597, QS8-598), plus de
