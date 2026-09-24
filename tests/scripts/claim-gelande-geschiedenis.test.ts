@@ -116,6 +116,30 @@ beforeAll(() => {
   git(bron, 'commit', '-q', '--allow-empty', '-m', 'Nog iets moois (QS8-779) (#901)');
   git(bron, 'commit', '-q', '--allow-empty', '-m', 'main erin gehaald om QS8-778 te kunnen landen');
 
+  // ⚠️ QS8-611: een échte merge waarvan het onderwerp het nummer niet noemt.
+  //    Alleen de claim-commit in de tweede ouder zegt dat QS8-780 hier landde.
+  git(bron, 'checkout', '-q', '-b', 'quintenstrijdonk/qs8-780-zonder-nummer-in-de-titel');
+  git(bron, 'commit', '-q', '--allow-empty', '-m', 'claim: QS8-780 — bezet sinds 12:08 UTC');
+  git(bron, 'commit', '-q', '--allow-empty', '-m', 'Het werk zelf');
+  git(bron, 'checkout', '-q', 'main');
+  git(
+    bron,
+    'merge',
+    '-q',
+    '--no-ff',
+    '-m',
+    'Merge pull request #902 — een titel zonder issuenummer',
+    'quintenstrijdonk/qs8-780-zonder-nummer-in-de-titel',
+  );
+  git(bron, 'branch', '-q', '-D', 'quintenstrijdonk/qs8-780-zonder-nummer-in-de-titel');
+
+  // ⚠️ En de andere helft: een claim die nooit op main kwam. Zijn branch is weg,
+  //    dus hij staat nergens meer — dat issue is vrij.
+  git(bron, 'checkout', '-q', '-b', 'quintenstrijdonk/qs8-781-nooit-geland');
+  git(bron, 'commit', '-q', '--allow-empty', '-m', 'claim: QS8-781 — bezet sinds 09:00 UTC');
+  git(bron, 'checkout', '-q', 'main');
+  git(bron, 'branch', '-q', '-D', 'quintenstrijdonk/qs8-781-nooit-geland');
+
   git(bron, 'clone', '-q', '--bare', bron, afstand);
   git(werkmap, 'clone', '-q', afstand, kloon);
   git(kloon, 'config', 'user.name', 'IJking');
@@ -138,6 +162,21 @@ describe('een claim op een issue waarvoor al werk geland is', () => {
     expect(uit).toContain('Merge pull request #900');
     // ⚠️ **Dit is de belofte.** De melding is het onderdeel; dat er niets
     //    achterblijft is het geheel — en dat was op 13-09 de schade.
+    expect(branchesOpAfstand()).toEqual(voor);
+  });
+
+  /**
+   * 📏 **Het geval van 24-09-2026 (QS8-611).** De merge van QS8-606 heette
+   *    *"een uitzondering die niet over een uitzondering ging"* en noemde het
+   *    nummer niet; de branch was opgeruimd; de claim gaf vrij en pushte.
+   */
+  it('vindt een merge die het nummer niet in zijn titel draagt, aan de claim-commit die hij meenam', () => {
+    const voor = branchesOpAfstand();
+    const { uit, code } = claim('quintenstrijdonk/qs8-780-opnieuw');
+
+    expect(code).toBe(1);
+    expect(uit).toContain('al werk voor QS8-780 op main geland');
+    expect(uit).toContain('claim: QS8-780 — bezet sinds 12:08 UTC');
     expect(branchesOpAfstand()).toEqual(voor);
   });
 
@@ -168,6 +207,13 @@ describe('wat de claim met rúst moet laten', () => {
     expect(code).toBe(0);
     expect(uit).toContain('QS8-778 bezet');
     expect(branchesOpAfstand()).toContain('quintenstrijdonk/qs8-778-nog-niet-gebouwd');
+  });
+
+  it('een claim-commit die nooit op main kwam, geeft het issue niet als geland op', () => {
+    const { uit, code } = claim('quintenstrijdonk/qs8-781-toch-bouwen');
+    expect(code).toBe(0);
+    expect(uit).toContain('QS8-781 bezet');
+    expect(uit).not.toContain('op main geland');
   });
 
   it('een branch die er nog staat weigert nog steeds hard, en op de oude tekst', () => {

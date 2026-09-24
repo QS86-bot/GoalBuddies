@@ -57,11 +57,26 @@
  *    push vóór het lezen kwam. Dus: **niet pushen, melden, en `--vervolg` als
  *    expliciete uitweg** die in de claim-commit belandt.
  *
- * ⚠️ **Waar hij blind is:** een *rebase-merge* laat geen merge-commit en geen
- *    `(#N)` achter, en is dan niet als landing te herkennen. Dit project mergt
- *    met een merge-commit (CLAUDE.md), maar dat is één dashboardinstelling ver
- *    weg. 📏 De elf gelande regels zonder issuenummer zijn alle elf `docs/`-PR's
- *    zonder issue — een grens, geen gat.
+ * ## ⚠️⚠️ Het onderwerp van een merge is een titel, en een titel is vrij — QS8-611
+ *
+ * Tot 24-09-2026 las deze controle alleen het **onderwerp** van een landing, en
+ * dat noemt het issuenummer alleen als iemand het in de PR-titel zette. 📏 Van
+ * de 167 merges sinds 13-09 deden **24** dat niet, en **8** daarvan brachten wél
+ * een claim-commit mee: QS8-589, 595, 596, 597, 598, 599, 606 en 608. Voor deze
+ * controle waren alle acht vrij, en QS8-606 is zo op 24-09 opnieuw geclaimd.
+ *
+ * De claim-commit zelf is het signaal dat de merge meeneemt: elke branch die
+ * met dit script begon draagt er een, en `git log origin/main` loopt ook door
+ * de tweede ouder van een merge. Zo'n commit komt alleen op `main` als zijn
+ * branch daar landt. 📏 Over de hele geschiedenis van `main` voegt die bron
+ * precies die acht toe, en alle acht landden met werk (2 tot 13 bestanden).
+ * Zie `claimVoor()`.
+ *
+ * ⚠️ **Waar hij blind is:** een *squash*- of *rebase-merge* laat geen
+ *    claim-commit op `main` achter, en een rebase-merge ook geen merge-commit of
+ *    `(#N)`. Dit project mergt met een merge-commit (CLAUDE.md), maar dat is één
+ *    dashboardinstelling ver weg. Met een squash blijft alleen de titel over, en
+ *    dan is het onderwerp weer de enige bron.
  *
  * Uitleg in `docs/decisions/2026-09-13-een-opgeruimde-branch-is-geen-vrij-issue.md`.
  */
@@ -138,7 +153,8 @@ export function isGelandeVorm(onderwerp) {
 }
 
 /**
- * De gelande onderwerpregels die dít issuenummer noemen.
+ * De gelande onderwerpregels die dít issuenummer noemen, plus zijn
+ * claim-commit als die op `main` staat (`claimVoor()`, QS8-611).
  *
  * ⚠️ De linkergrens zit in het letterlijke `qs8-`: `qs8-1449` bevat geen
  *    `qs8-449`. De rechtergrens is `(?![0-9])`, anders is `QS8-4491` een
@@ -146,7 +162,28 @@ export function isGelandeVorm(onderwerp) {
  */
 export function gelandVoor(nummer, onderwerpen) {
   const patroon = new RegExp(`${TEAM}-${nummer}(?![0-9])`, 'i');
-  return onderwerpen.filter((regel) => isGelandeVorm(regel) && patroon.test(regel));
+  return onderwerpen.filter(
+    (regel) => (isGelandeVorm(regel) && patroon.test(regel)) || claimVoor(nummer, regel),
+  );
+}
+
+/**
+ * Is deze onderwerpregel de claim-commit van dít issue? — QS8-611.
+ *
+ * Staat hij op `main`, dan is zijn branch daar geland: `zetClaim()` maakt hem
+ * op een eigen branch, en alleen een merge brengt hem naar `main`. Dat hangt
+ * niet af van hoe iemand zijn PR-titel schrijft.
+ *
+ * ⚠️ **Alleen het nummer direct na `claim: `.** Een gestapelde claim noemt ook
+ *    de branch waar hij op staat (*"bezet, gestapeld op QS8-590"*); dat is geen
+ *    claim op 590, en diens eigen claim-commit staat er dan toch al.
+ *
+ * ⚠️ **En alleen aan het begin van de regel.** Dit project citeert in
+ *    commit-teksten volop andere commits; een onderwerp dat `claim: QS8-777`
+ *    middenin noemt, is geen claim.
+ */
+export function claimVoor(nummer, onderwerp) {
+  return new RegExp(`^claim: ${TEAM}-${nummer}(?![0-9])`, 'i').test(onderwerp);
 }
 
 function git(argumenten) {
@@ -274,7 +311,7 @@ function hoofd() {
 
   console.log(`\n✓ claim: ${TEAM.toUpperCase()}-${nummer} bezet op ${naam}`);
   if (gelande.length > 0) {
-    console.log(`⚠ Met --vervolg gezet — er staat ${gelande.length} gelande PR op main voor dit issue.`);
+    console.log(`⚠ Met --vervolg gezet — ${gelande.length} regel(s) op main wijzen op geland werk voor dit issue.`);
   }
   if (!vanLinear) {
     console.log(
