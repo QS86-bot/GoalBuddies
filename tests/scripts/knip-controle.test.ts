@@ -193,6 +193,27 @@ describe('knipt', () => {
     );
   });
 
+  // ⚠️⚠️ **De SQL-knip telt óók, en tot QS8-606 deed hij dat niet.** De kop van
+  //    `knip-controle.mjs` zegt sinds QS8-574 dat er twee gedeelde knippen zijn,
+  //    maar `knipt()` herkende alleen de JS-variant. 📏 Gevolg, gemeten op
+  //    24-09-2026: `adviseurdrift-controle.mjs` importeerde de gedéélde SQL-knip
+  //    en kreeg te horen dat hij "geen commentaar knipt" — met als enige uitweg
+  //    een registerrij voor iets wat juist goed was. Een uitzondering die niet
+  //    over een uitzondering gaat, is de vorm die dit register stuk maakt.
+  it('ziet ook de gedeelde SQL-knip', () => {
+    expect(
+      knipt("import { zonderCommentaarSql } from './zonder-sql-commentaar.mjs';", 'scripts/x.mjs'),
+    ).toBe(true);
+  });
+
+  // ⚠️ Must-allow. Een wíllekeurige import die toevallig op `-commentaar.mjs`
+  //    eindigt is niet de gedeelde knip; de wacht in de regex is er met opzet.
+  it('ziet een andere commentaar-module niet aan voor een gedeelde knip', () => {
+    expect(
+      knipt("import { x } from './mijn-eigen-commentaar.mjs';", 'scripts/x.mjs'),
+    ).toBe(false);
+  });
+
   it('ziet een eigen knip die in MET_REDEN staat', () => {
     const sleutel = Object.keys(MET_REDEN)[0] ?? '';
     const pad = sleutel.slice(0, sleutel.lastIndexOf(':'));
