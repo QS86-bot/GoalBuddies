@@ -41,6 +41,10 @@ import {
   nummersPerBranch as nummersPerBranchVolledig,
   versheidsmelding,
 } from './migratiebranches.mjs';
+// ⚠️ De regel waarmee `migraties:controle` deze naam straks léést — één
+//    definitie, gedeeld met de controle en de herschrijver. Zie QS8-584 en de
+//    kop van `migratie-hernummer.mjs`.
+import { ontleedNaam } from './migratie-hernummer.mjs';
 
 const WORTEL = fileURLToPath(new URL('..', import.meta.url));
 const MAP = 'supabase/migrations';
@@ -164,6 +168,59 @@ function nummersPerBranch() {
   return perBranch;
 }
 
+/**
+ * De titel zoals hij in de bestandsnaam belandt: `[a-z0-9_]` en niets anders.
+ *
+ * ⚠️⚠️ **Tot QS8-584 ging hier alleen `\\s+` → `_` overheen**, en daarmee kwam
+ *    een koppelteken in de titel ongewijzigd in de bestandsnaam terecht. 📏 Op
+ *    22-09-2026 leverde `migratie:nieuw -- "… elke bovenste or-tak apart"` het
+ *    bestand `0295_…_or-tak_apart.sql` op, en dat is een naam die
+ *    `migraties:controle` weigert én waar `migratie-hernummer.test.ts` rood van
+ *    wordt — pás in de poort, dus ná de kop, het beslisdocument en de commit.
+ *
+ * ⚠️ **Wegvallen zou erger zijn dan vervangen.** `or-tak` → `ortak` leest als
+ *    een tikfout en is stil; `or_tak` is wat de schrijver bedoelde. Vandaar
+ *    één liggend streepje per groepje leestekens, en niet per teken — anders
+ *    geeft `"a — b"` drie streepjes achter elkaar.
+ *
+ * ⚠️ Accenten worden hun kale letter (`café` → `cafe`) via NFD; wat daarna nog
+ *    buiten `[a-z0-9]` valt, wordt een streepje. Een teken dat niet decomponeert
+ *    (`ø`, `ß`) valt dus in die tweede categorie, en dat is geen probleem: de
+ *    uitkomst is een geldige naam, alleen niet de mooiste.
+ */
+export function normaliseerTitel(titel) {
+  return (titel ?? '')
+    .normalize('NFD')
+    .replace(/\p{Diacritic}/gu, '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '_')
+    .replace(/^_+|_+$/g, '');
+}
+
+/**
+ * De grendel: mag dit script deze bestandsnaam wegschrijven?
+ *
+ * ⚠️⚠️ **Dit is het punt van QS8-584, en de normalisatie hierboven is het
+ *    niet.** Die is een gewoonte: hij dekt de vormen waar iemand aan gedacht
+ *    heeft, en hij faalt stil op de vorm waar niemand aan dacht. Dit is de
+ *    toets, en hij meet met `ontleedNaam()` — de ééne regel waarmee
+ *    `migraties:controle` het bestand straks léést. Een gereedschap dat bestaat
+ *    om een geldige migratie te beginnen, mag geen ongeldige opleveren.
+ *
+ * ⚠️ Geeft `null` als er niets aan de hand is, en anders de melding — zodat de
+ *    toets één ding kan stellen in plaats van twee.
+ */
+export function keurBestandsnaam(bestandsnaam) {
+  if (ontleedNaam(bestandsnaam) !== null) return null;
+
+  return [
+    `✗ ${bestandsnaam} is geen geldige migratienaam — verwacht NNNN[a-z]_kleine_letters.sql.`,
+    '  Er is niets geschreven. `migraties:controle` weigert zo’n bestand, en dat is',
+    '  een rode poort ná de kop, het beslisdocument en de commit (QS8-584).',
+    '  Geef een titel mee die na normalisatie letters, cijfers of _ overhoudt.',
+  ].join('\n');
+}
+
 /** De kop die onwrikbare regel 20 eist: een rollback-pad, vanaf regel één. */
 export function sjabloon({ nummer, naam }) {
   const bestand = `${String(nummer).padStart(4, '0')}_${naam}.sql`;
@@ -183,10 +240,49 @@ export function sjabloon({ nummer, naam }) {
 `;
 }
 
+/**
+ * De twee meldingen over de omgeving, in deze volgorde en met opzet apart.
+ *
+ * ⚠️ **Een verouderde werkkopie en een botsende branch zien er hetzelfde uit en
+ *    vragen om verschillende handelingen** — de eerste is de enige échte fout
+ *    (er valt te pullen), de tweede is een afspraak (QS8-318: wie als tweede
+ *    merget, hernummert). Één melding met een lijstje leert een lezer ze allebei
+ *    overslaan.
+ *
+ * ⚠️ Staat hier los van `hoofd()` sinds QS8-584, omdat die functie er anders
+ *    over de vijftig van onwrikbare regel 15 heen ging. Het is geen nieuwe laag:
+ *    hij schrijft en beslist niets.
+ */
+function meldOmgeving({ lokaal, volledig, perBranch, nummer }) {
+  const achter = hoofdbranchVoorop({ lokaal, perBranch });
+  if (achter !== null) {
+    process.stdout.write(
+      `⚠ ${achter.hoofd} staat op ${String(achter.hoogste).padStart(4, '0')} en deze werkkopie op ` +
+        `${String(achter.hier).padStart(4, '0')}.\n` +
+        `  ${String(nummer).padStart(4, '0')} is daar al bezet. Haal eerst binnen:\n` +
+        '      git pull origin main\n\n',
+    );
+  }
+
+  const botsend = botsendeBranches({ volledig, nummer });
+  if (botsend.length === 0) return;
+
+  process.stdout.write(
+    `⚠ ${String(nummer).padStart(4, '0')} staat ook op ${botsend.length} nog niet gelande branch(es):\n`,
+  );
+  for (const b of botsend) process.stdout.write(`    ${b}\n`);
+  process.stdout.write(
+    '  Dat is geen reden om een hoger nummer te nemen: een gat naar `main` maakt\n' +
+      '  `migraties:controle` meteen rood, en CI ziet die branches niet. Wie als\n' +
+      '  tweede merget, hernummert (QS8-318).\n\n',
+  );
+}
+
 function hoofd() {
   const argumenten = process.argv.slice(2).filter((a) => a !== '--droog');
   const droog = process.argv.includes('--droog');
-  const naam = (argumenten[0] ?? '').trim().replace(/\s+/g, '_').toLowerCase();
+  const gegeven = (argumenten[0] ?? '').trim();
+  const naam = normaliseerTitel(gegeven);
 
   // ⚠️ Vóór de scan, niet erna: `nummersPerBranch()` leest `refs/remotes/origin`,
   //    en dat is precies wat de fetch bijwerkt.
@@ -199,35 +295,13 @@ function hoofd() {
   const perBranch = nummersPerBranch();
   const nummer = volgendVrijNummer({ lokaal });
 
-  // ⚠️ **De verouderde werkkopie eerst, want dat is de enige echte fout.** Zie
-  //    `hoofdbranchVoorop()`: hier valt niets te hernummeren, er valt te pullen.
-  const achter = hoofdbranchVoorop({ lokaal, perBranch });
-  if (achter !== null) {
-    process.stdout.write(
-      `⚠ ${achter.hoofd} staat op ${String(achter.hoogste).padStart(4, '0')} en deze werkkopie op ` +
-        `${String(achter.hier).padStart(4, '0')}.\n` +
-        `  ${String(nummer).padStart(4, '0')} is daar al bezet. Haal eerst binnen:\n` +
-        '      git pull origin main\n\n',
-    );
-  }
+  meldOmgeving({ lokaal, volledig, perBranch, nummer });
 
-  // ⚠️ **En dan pas de botsing, die geen fout is maar een afspraak.** Een
-  //    feature-branch is niet geland, dus zijn nummer is nog geen feit; QS8-318
-  //    zegt wie er hernummert als jullie allebei landen.
-  const botsend = botsendeBranches({ volledig, nummer });
-  if (botsend.length > 0) {
-    process.stdout.write(
-      `⚠ ${String(nummer).padStart(4, '0')} staat ook op ${botsend.length} nog niet gelande branch(es):\n`,
-    );
-    for (const b of botsend) process.stdout.write(`    ${b}\n`);
-    process.stdout.write(
-      '  Dat is geen reden om een hoger nummer te nemen: een gat naar `main` maakt\n' +
-        '  `migraties:controle` meteen rood, en CI ziet die branches niet. Wie als\n' +
-        '  tweede merget, hernummert (QS8-318).\n\n',
-    );
-  }
-
-  if (naam === '') {
+  // ⚠️ **Geen argument is iets anders dan een argument dat wegnormaliseert.**
+  //    `migratie:nieuw` zonder titel is de vraag "welk nummer is vrij"; een titel
+  //    van louter leestekens is een poging die mislukt, en die verdient de
+  //    melding van de grendel en niet het helpscherm.
+  if (gegeven === '') {
     process.stdout.write(`Eerste vrije nummer: ${String(nummer).padStart(4, '0')}\n`);
     process.stdout.write('Geef een naam mee om het bestand te maken:\n');
     process.stdout.write('  npm run migratie:nieuw -- "de_klok_van_de_groep"\n');
@@ -235,6 +309,16 @@ function hoofd() {
   }
 
   const bestand = `${String(nummer).padStart(4, '0')}_${naam}.sql`;
+
+  // ⚠️ **Vóór `--droog`, niet erna.** Een droge run die een naam goedkeurt die
+  //    de echte run daarna weigert, is een gereedschap dat over zichzelf liegt.
+  const bezwaar = keurBestandsnaam(bestand);
+  if (bezwaar !== null) {
+    process.stderr.write(`${bezwaar}\n`);
+    process.exitCode = 1;
+    return;
+  }
+
   if (droog) {
     process.stdout.write(`(droog) zou aanmaken: ${MAP}/${bestand}\n`);
     return;

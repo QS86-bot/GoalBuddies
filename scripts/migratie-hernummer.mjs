@@ -65,10 +65,41 @@ function verwijzingsPatroon(nummer) {
   return new RegExp(`(?<![0-9a-zA-Z])${nummer}(?![0-9a-z])`, 'g');
 }
 
+/**
+ * De vorm van een migratiebestandsnaam, op één plek.
+ *
+ * ⚠️⚠️ **Dit patroon stond tot QS8-584 twee keer.** `migraties:controle` had een
+ *    eigen `NAAM` en dit bestand zijn eigen regex in `basisUit()`. 📏 Gemeten op
+ *    24-09-2026, differentieel: 301 echte bestandsnamen plus 20 randgevallen
+ *    (koppelteken, hoofdletter, accent, lege slug, twee letters achter het
+ *    nummer, spatie eromheen) — **nul** verschillen. Het samenvoegen verandert
+ *    vandaag dus niets, en dat is precies het moment waarop het nog kan.
+ *
+ * ⚠️ **Waarom het nu moest.** `migratie:nieuw` toetst sinds QS8-584 zijn eigen
+ *    uitvoer vóórdat hij schrijft, en die belofte gaat over wat de póórt straks
+ *    van die naam vindt. Meet de tool met zijn eigen kopie van de regel, dan is
+ *    de overeenkomst een toevalligheid die niemand rood ziet worden zodra er
+ *    één van de twee verschuift.
+ */
+const NAAMPATROON = /^(\d{4})([a-z]?)_([a-z0-9_]+)\.sql$/;
+
+/**
+ * `0039a_weekpas_maximum.sql` → `{ nummer: '0039', deel: 'a', slug: …, basis: … }`,
+ * of `null` als de naam de vorm niet heeft.
+ *
+ * ⚠️ `nummer` blijft een string van vier tekens: de voorloopnullen zijn deel van
+ *    de naam, en `Number('0039')` gooit ze weg.
+ */
+export function ontleedNaam(bestandsnaam) {
+  const m = NAAMPATROON.exec(bestandsnaam ?? '');
+  if (m === null) return null;
+  return { nummer: m[1], deel: m[2], slug: m[3], basis: `${m[1]}${m[2]}_${m[3]}` };
+}
+
 /** `0134_een_plan_uit_een_zin.sql` → `0134_een_plan_uit_een_zin` */
 export function basisUit(bestandsnaam) {
-  const m = /^(\d{4}[a-z]?_[a-z0-9_]+)\.sql$/.exec(bestandsnaam);
-  return m === null ? null : m[1];
+  const ontleed = ontleedNaam(bestandsnaam);
+  return ontleed === null ? null : ontleed.basis;
 }
 
 /**
@@ -655,6 +686,24 @@ async function hoofd() {
   //    dat kan een bestandsnaam zijn geweest.
   const bronNummer = bron.nummer;
   const oudeBasis = basisUit(oud);
+
+  // ⚠️⚠️ **De spiegelzijde van QS8-584.** `migratie:nieuw` kón een onleesbare
+  //    naam wegschrijven; dít script struikelde er vervolgens over. 📏 Gemeten op
+  //    24-09-2026 met `0295_…_or-tak_apart.sql` in de map: `kiesBron()` kíest hem
+  //    (die leest alleen de eerste vier tekens), `basisUit()` geeft `null`, en de
+  //    regel hieronder viel om met `TypeError: Cannot read properties of null` —
+  //    een stacktrace in plaats van een melding, precies op het bestand dat je
+  //    komt repareren. `naar` was al gedekt: `beoordeelHernummering()` eist
+  //    `/^\d{4}$/`. De ééne kant was bewaakt en de andere niet.
+  if (oudeBasis === null) {
+    console.error(
+      `✗ ${oud} kan niet hernummerd worden: de bestandsnaam is niet te lezen.\n` +
+        '  Verwacht NNNN[a-z]_kleine_letters.sql. Hernoem hem eerst met de hand,\n' +
+        '  kopregel mee — dit script verzet het nummer, niet de vorm.',
+    );
+    process.exit(1);
+  }
+
   const nieuweBasis = `${naar}${oudeBasis.slice(4)}`;
 
   console.log(`${oudeBasis}.sql → ${nieuweBasis}.sql\n`);

@@ -86,7 +86,7 @@ import {
 //    Zou deze controle een eigen versie hebben, dan kunnen die twee het oneens
 //    worden en bewaakt de bewaker iets anders dan de schrijver schrijft — de
 //    twee-lijsten-fout uit 0032/0034. Zie de kop van `migratie-hernummer.mjs`.
-import { kopNummer } from './migratie-hernummer.mjs';
+import { kopNummer, ontleedNaam } from './migratie-hernummer.mjs';
 import { meldingVoor } from './rollbackpad.mjs';
 import { cliTegenspraak } from './letterversies.mjs';
 
@@ -97,8 +97,13 @@ const MAP = fileURLToPath(new URL('../supabase/migrations/', import.meta.url));
  *    nummer. `0052a` is de tweede helft van 0052; de letter houdt de map in
  *    toepassingsvolgorde omdat de echte versie in `schema_migrations` een
  *    tijdstempel is. Zie de kop van `0052a_triggerfuncties_bewaking.sql`.
+ *
+ * ⚠️⚠️ **Het patroon zelf staat sinds QS8-584 in `migratie-hernummer.mjs`**, om
+ *    dezelfde reden als `kopNummer()` hierboven: `migratie:nieuw` weigert sinds
+ *    dat issue te schrijven wat déze controle straks weigert te lezen, en die
+ *    belofte is alleen iets waard als het één regel is en niet twee die het
+ *    vandaag toevallig eens zijn.
  */
-const NAAM = /^(\d{4})([a-z]?)_[a-z0-9_]+\.sql$/;
 
 /**
  * ⚠️ Bewust ruim. `ROLLBACK-PAD:` is de vorm die `CLAUDE.md` noemt, maar 0062
@@ -131,14 +136,14 @@ const bestanden = readdirSync(MAP).filter((n) => n.endsWith('.sql')).sort();
 const gezien = new Map();
 
 for (const naam of bestanden) {
-  const m = NAAM.exec(naam);
-  if (m === null) {
+  const ontleed = ontleedNaam(naam);
+  if (ontleed === null) {
     fouten.push(`Onleesbare bestandsnaam: ${naam} — verwacht NNNN[a-z]_kleine_letters.sql`);
     continue;
   }
 
-  const nummer = Number(m[1]);
-  const deel = m[2];
+  const nummer = Number(ontleed.nummer);
+  const deel = ontleed.deel;
 
   const eerder = gezien.get(`${nummer}${deel}`);
   if (eerder !== undefined) {
@@ -178,7 +183,7 @@ if (nummers.length > 0) {
 // ---------------------------------------------------------------------------
 
 for (const naam of bestanden) {
-  if (!NAAM.test(naam)) continue;
+  if (ontleedNaam(naam) === null) continue;
 
   // Alleen het commentaarblok bovenaan. Staat het pad verderop tussen de SQL,
   // dan is het geen kop maar een losse opmerking.
@@ -302,7 +307,7 @@ if (namenElders !== null) {
 //    als eerste liegt.
 
 for (const naam of bestanden) {
-  if (!NAAM.test(naam)) continue;
+  if (ontleedNaam(naam) === null) continue;
 
   const inhoud = readFileSync(join(MAP, naam), 'utf8');
   const kop = kopNummer(inhoud);
