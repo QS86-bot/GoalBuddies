@@ -116,6 +116,6 @@ function hoofd() {
   process.stdout.write('✓ poortstand-blok bijgewerkt in WERKVOORRAAD §2.\n');
 }
 
-if (import.meta.url === pathToFileURL(process.argv[1]).href) {
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
   hoofd();
 }
