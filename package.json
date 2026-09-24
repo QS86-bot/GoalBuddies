@@ -112,6 +112,7 @@
     "definers:controle": "node scripts/definers-controle.mjs",
     "volatiliteit:controle": "node scripts/volatiliteit-controle.mjs",
     "defaultnull:controle": "node scripts/defaultnull-controle.mjs",
+    "eenrij:controle": "node scripts/eenrij-controle.mjs",
     "poortstand": "node scripts/poortstand.mjs",
     "poortstand:controle": "node scripts/poortstand.mjs --controle",
     "edge:types:controle": "node scripts/edge-typecheck.mjs",
