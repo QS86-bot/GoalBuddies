@@ -1978,6 +1978,78 @@ de browser — 📏 232 kB HTML en **nul** `<table>`. Zonder dit derde pad was "
 rijen renderen niet als tabel" een aanname gebleven; mét is het een meting van
 430 naar 750 `<tr>`.
 
+### 24-09-2026 — de auditronde, en wat er ónder de bevindingen zat
+
+`/audit` gedraaid en de drie punten eruit afgemaakt (QS8-597, QS8-598), plus de
+bijvangst die dat opleverde (QS8-599, QS8-606, QS8-608). Wat er per issue
+gebouwd is staat in het dossier en in Linear; hieronder staat alleen wat een
+vólgende ronde anders zou doen.
+
+⚠️⚠️ **Eén van mijn drie auditbevindingen was een misreading, en die vorm is het
+vermelden waard.** Ik schreef op dat `stand:controle` *"niets zegt en niet in CI
+draait"*, en beide helften waren onwaar: hij draait sinds QS8-417 in baan `repo`,
+en zijn stilte is met opzet — `hoofd()` print op de succesweg alleen iets zónder
+`--controle`, en de poort telt hem als gemeten en groen. Ik had hem **los**
+gedraaid en de stilte gelezen als een gebrek. **Draai een controle nooit los om
+te beoordelen of hij werkt; lees wat de poort ervan zegt.**
+
+⚠️⚠️ **Een kop die een regel uitlegt, is geen grendel dat de code hem volgt — en
+dat kwam op één dag twee keer voor.** De kop van `/audit` zei sinds 31-08 dat
+`stand:controle` niet in CI draaide (📏 gemeten: 64 van de 74 draaiden er wél
+in, hij erbij). De kop van `knip-controle.mjs` zei sinds QS8-574 dat er **twee**
+gedeelde knippen zijn, terwijl `knipt()` er één herkende — waardoor een bestand
+dat de gedéélde SQL-knip gebruikt te horen kreeg dat het *"geen commentaar
+knipt"*, met een registerrij als enige uitweg. **Vraag bij een kop die een regel
+uitlegt: staat die regel ook in de code, of alleen in het proza?**
+
+⚠️ **Een controle die een token vraagt is in een cloudsessie ongemeten, en
+daaronder groeit stil iets.** 📏 `adviseur:controle` — de énige controle hier die
+iets kan vinden waar niemand aan gedacht heeft — stond een week rood zonder dat
+iemand het zag: twee objecten van 17-09 misten op de allowlist, waarvan één op
+ERROR-niveau, en een ratel stond op 47 waar de adviseur er 76 meldt. De les is
+niet "zet hem in CI" (hij hoort er met reden buiten) maar: **kijk of er een
+repo-kant van dezelfde vraag is.** Beide klassen volgen uit DDL, dus uit
+`supabase/migrations/`, en die kant draait wél in CI.
+
+### De valkuilen van die dag — drie ervan in mijn eigen gereedschap
+
+⚠️⚠️ **Muteer per regelnummer en niet per string-anker.** 📏 Drie keer op één dag
+landde een mutatie niet doordat mijn `python`-anker miste op de escaping van een
+regex-in-een-string, en drie keer zag de groene suite er even uit als *"deze
+regel doet er niet toe"*. **Druk de regel af (`grep -c`, `sed -n 'Np'`) vóór je
+de suite draait** — dat kost één regel en vangt de hele klasse.
+
+⚠️⚠️ **Commit vóór je ijkt, óók als je vijf minuten geleden al gecommit hebt.**
+Bij QS8-608 is na het verbreden van een selectie geijkt zonder tussentijdse
+commit, en `git checkout --` bij het terugdraaien van de mutatie wiste die
+wijziging. Dezelfde valkuil als 22-09, nu in zijn subtielere vorm: het is niet
+"commit aan het begin" maar "commit ná elke wijziging die je niet wilt verliezen".
+
+⚠️⚠️ **Meet een exitcode nooit door een pijp.** 📏 `node script.mjs 2>&1 | head -1`
+geeft de exitcode van `head`: tien scripts leken op 0 te staan waar er vier op 1
+stonden. En **draai een oude versie op zijn eigen pad**: dezelfde vergelijking
+vanuit een map in `/tmp` gaf zes valse verschillen, want daar kloppen de
+relatieve paden van een script niet. `git stash` heen en terug is de goede vorm.
+
+⚠️ **Een mutatie die niets rood maakt zegt nóg een derde ding, naast de twee van
+23-09.** Bij QS8-608 maakten twee mutaties alleen een toets met een
+hárdgecodeerde namenlijst rood terwijl de eigenlijke belofte-toets groen bleef —
+het gemuteerde script viel buiten de selectie van die toets. **Kijk dus niet
+alleen wélke toets omvalt, maar ook of de toets die de belofte draagt erbij
+zit.** De reparatie was de selectie verbreden; de ijking wees hem aan.
+
+⚠️ **Toets de belofte en niet de huisvorm, en dat verschil is te meten.** Bij
+QS8-599 telde het issue tien scripts met een verkeerde main-guard, en er waren er
+**veertien** stuk: vier droegen de wacht keurig en wierpen tóch, want ze
+importeren een script dat hem miste. **Een regel-voor-regel-controle kent de
+importgraaf niet.** De grendel werd daarom een toets die élk script importeert.
+
+⚠️ **Zit `regel15:controle` een reparatie in de weg, overweeg dan een blok in
+plaats van een functie.** 📏 Bij QS8-608 kostte de `hoofd()`-vorm acht functies
+boven de vijftig regels en liep de ratel van 15 naar 21; een blok achter de
+main-guard voegt geen functie toe. Top-level `await` mag daarin — nagemeten, niet
+aangenomen. De prijs is één nestingniveau, dus `max-depth` kan erop omvallen.
+
 ## WERKAFSPRAKEN — houd deze aan
 
 1. **Werk landt sinds 23-08 via een PR op GitHub**, niet meer met een lokale
