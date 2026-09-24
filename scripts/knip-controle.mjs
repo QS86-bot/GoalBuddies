@@ -350,6 +350,13 @@ export const MET_REDEN = {
  *    Wat elke bronlezer echt doet, blijft handwerk en een ijkingstest.
  */
 export const ZONDER_KNIP = {
+  'scripts/adviseurdrift-controle.mjs':
+    'leest SQL en houdt daarom een eigen knip (`zonderSqlCommentaar`) met een ' +
+    'stringgrens erin: de gedeelde knip is een JS-knip en haalt `--` niet weg. ' +
+    '📏 Gemeten bij QS8-597: zónder die knip leest de rename-regex het ' +
+    'rollback-pad uit de kop van 0234 mee (`-- alter table dagtellers rename to ' +
+    'opslag_dagtellers;`) en verschuift het beeld van de map stil — de ' +
+    'knip-klasse van QS8-412. Geijkt in tests/scripts/adviseurdrift-controle.test.ts',
   'scripts/migratie-hernummer.mjs':
     'herschrijft verwijzingen naar een migratienummer, en een verwijzing ín commentaar ' +
     'hóórt mee te gaan — CLAUDE.md: hij "neemt de verwijzingen mee; de kale die hij niet ' +

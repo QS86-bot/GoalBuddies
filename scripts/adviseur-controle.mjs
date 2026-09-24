@@ -79,6 +79,26 @@ export const ALLOWLIST = [
       'hem er onder A41 weer in.',
   },
   {
+    sleutel: 'security_definer_view_public_mijn_doelvelden',
+    reden:
+      'Bewust — 0236, geland 17-09-2026. De migratie schrijft de afweging zelf ' +
+      'uit: definer kán hier veilig waar het bij goal_dashboard niet kon, want ' +
+      'de `where` geeft uitsluitend rijen van de aanroeper terug. Er is dus geen ' +
+      'kijker voor wie een telling anders zou uitvallen, en dát is waarom ' +
+      '`max_points` hier wél mag staan. Draagt ook `security_barrier = true`. ' +
+      '⚠️ Stond een week niet op deze lijst en niets werd daar rood van — ' +
+      'QS8-597 heeft daar `adviseurdrift:controle` voor gebouwd.',
+  },
+  {
+    sleutel: 'rls_enabled_no_policy_public_dagtellers',
+    reden:
+      'Bewust en getest — 0233, hernoemd in 0234, geland 17-09-2026. Geen policy ' +
+      'is deny-all; alleen definer-functies schrijven hier. Zelfde vorm als ' +
+      'invite_events en invite_preview_limits, en onder test in ' +
+      'tests/rls/anonleesrecht.test.ts, tests/rls/plafonddekking.test.ts en ' +
+      'tests/rls/bewijsfotobucket.test.ts.',
+  },
+  {
     sleutel: 'rls_enabled_no_policy_public_invite_events',
     reden:
       'Bewust en getest. Geen policy is deny-all; tests/rls/policies.test.ts ' +
@@ -106,8 +126,14 @@ export const ALLOWLIST = [
   },
   {
     regel: 'authenticated_security_definer_function_executable',
-    hoogstens: 47,
-    reden: 'Bekend en open — QS8-181, 98 van de 118 functies zijn SECURITY DEFINER.',
+    hoogstens: 76,
+    reden:
+      'Bekend en open — QS8-181. 📏 Gemeten op 24-09-2026: de adviseur meldt er ' +
+      '**76**. Het plafond stond op 47 en is sindsdien met 29 overschreden zonder ' +
+      'dat iemand het zag, want deze controle vraagt een token en draait niet in ' +
+      'CI. ⚠️ Dit getal is een ratel en geen constante: `beoordeel()` faalt óók ' +
+      'als het aantal zákt zonder dat het plafond meezakt, zodat er geen ruimte ' +
+      'vrijkomt waar de volgende definer-functie stil in glijdt.',
   },
 ];
 
@@ -199,7 +225,7 @@ export function beoordeel(bevindingen, allowlist = ALLOWLIST) {
 // ---------------------------------------------------------------------------
 
 /* c8 ignore start */
-if (import.meta.url === pathToFileURL(process.argv[1]).href) {
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
   const token = process.env.SUPABASE_ACCESS_TOKEN;
   const streng = process.argv.includes('--streng');
 
