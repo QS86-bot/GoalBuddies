@@ -16,9 +16,9 @@
  *    De rij concludeerde "geen ervan zit in de bundel", en dat klopte niet meer.
  *
  * ⚠️ **Waarom een register en geen drempel.** Een controle die "nul
- *    kwetsbaarheden" eist, staat hier per definitie rood: `image-size` en
- *    `uuid` hangen onder `expo` en zijn niet weg te krijgen zonder Expo te
- *    downgraden. Een controle die altijd rood staat, leer je uitzetten. Deze
+ *    kwetsbaarheden" eist, staat hier per definitie rood: `uuid` en
+ *    `@xmldom/xmldom` hangen onder `expo` en zijn niet weg te krijgen zonder
+ *    Expo te downgraden. Een controle die altijd rood staat, leer je uitzetten. Deze
  *    meldt daarom alleen **verandering** ten opzichte van wat er nagekeken is —
  *    dezelfde vorm als `GEDEELDE_WAARDEN` in `dode-keten-controle`.
  *
@@ -71,25 +71,24 @@ const WORTEL = fileURLToPath(new URL('..', import.meta.url));
  * over dezelfde gebeurtenis gaat. `advisories` zijn de `source`-nummers uit
  * `npm audit`; `reparatie` is `geen`, `brekend` of `gratis`.
  *
- * ⚠️ **`reparatie: 'gratis'` bij `image-size` en `@xmldom/xmldom` is wat npm
- *    zégt** (`fixAvailable: true`), en niet wat er gebeurt: `npm audit fix
+ * ⚠️ **`reparatie: 'gratis'` bij `@xmldom/xmldom` is wat npm zégt** (`fixAvailable: true`), en niet wat er gebeurt: `npm audit fix
  *    --omit=dev --dry-run` laat de negentien regels staan, want de ouders
  *    pinnen ze. Het veld staat hier om een **verandering** te melden, niet als
  *    advies — sla het niet op als bewijs dat het te repareren is.
  *
  * 📏 Alle vier gemeten op 07-09-2026 tegen `expo-router@57.0.13`.
  */
+/**
+ * ⚠️⚠️ **`image-size` stond hier tot 24-09-2026 en is eruit gehaald omdat npm
+ *    hem niet meer meldt** — geen reparatie in deze repo, maar een advisory die
+ *    verdween. 📏 Gemeten met `npm audit --omit=dev --json`: zijn nummers
+ *    **1138808** en **1138809** komen er niet meer in voor, en de vier
+ *    resterende rijen komen er alle vier nog wel in voor. Dat onderscheid is de
+ *    reden dat de melding van deze controle sinds QS8-616 per richting verschilt:
+ *    een pakket dat wegvalt vraagt een andere handeling dan een pakket dat
+ *    bijkomt.
+ */
 export const NAGEKEKEN = {
-  'image-size': {
-    ernst: 'high',
-    advisories: [1138808, 1138809],
-    reparatie: 'gratis',
-    in_bundel: false,
-    marker: 'detectImageType',
-    reden:
-      'Zit onder `metro`, de bundler — build-tooling en geen app-code. Nul treffers in dist/. ' +
-      '⚠️ De treffer op `imageSize` die je wél vindt is React DOM\'s `imageSizes`/`imageSrcSet`.',
-  },
   uuid: {
     ernst: 'moderate',
     advisories: [1119441],
@@ -135,7 +134,7 @@ export const NAGEKEKEN = {
       'geen YAML: `npm ls` zet hem onder `expo > @expo/cli > @expo/xcpretty`, de opmaak van ' +
       'Xcode-uitvoer, dus bouw-tooling en geen app-code. Verse `npm run build` met dummy-' +
       'EXPO_PUBLIC-waarden en gegrept op drie js-yaml-eigen foutteksten plus de pakketnaam: ' +
-      'nul treffers in dist/. Zelfde klasse als `image-size`.',
+      'nul treffers in dist/. Zelfde klasse als `uuid`: bouw-tooling, geen app-code.',
   },
   'decode-uri-component': {
     ernst: 'moderate',
@@ -160,9 +159,9 @@ export const NAGEKEKEN = {
  * Wat voor reparatie `npm audit` zegt te kennen.
  *
  * ⚠️ **Een boolean is hier te grof, en dat is gemeten.** `fixAvailable` heeft
- *    vandaag drie vormen tegelijk in dit project: `true` bij `image-size` en
- *    `@xmldom/xmldom`, en een object met `isSemVerMajor: true` bij
- *    `decode-uri-component` en `uuid`. `Boolean()` maakt die vier gelijk,
+ *    vandaag twee vormen tegelijk in dit project: `true` bij `@xmldom/xmldom`,
+ *    en een object met `isSemVerMajor: true` bij `decode-uri-component` en
+ *    `uuid`. `Boolean()` maakt die drie gelijk,
  *    terwijl het verschil precies is wat de dossierrij als voorwaarde noemt:
  *    *"zodra `expo-router` een `query-string` ≥9.5 meeneemt, is de override
  *    gratis"*. Dat moment is de overgang `brekend` → `gratis`, niet de
@@ -326,14 +325,47 @@ export function hoofd(leesRapport = leesAudit) {
   for (const naam of verdwenen) {
     console.error(`✗ NAGEKEKEN noemt '${naam}', maar npm audit meldt hem niet meer.`);
   }
-  console.error(
-    '\nEen verandering hier betekent dat de bouw-meting verlopen is, niet dat het\n' +
-      'register bijgewerkt moet worden. Draai `npm run build` met dummy-`EXPO_PUBLIC_*`\n' +
-      'waarden en grep in dist/ op een **stringliteraal** uit het pakket — niet op de\n' +
-      'pakketnaam en niet op een identifier: die eerste staat er nooit in en die tweede\n' +
-      'wordt geminificeerd. Zet daarna de uitkomst mét die marker in NAGEKEKEN.',
-  );
+  slotwoord({ meetbaar: nieuw.length > 0 || anders.length > 0, verdwenen: verdwenen.length > 0 });
   return 1;
+}
+
+/**
+ * Wat je moet doen, per richting waarin de verzameling veranderde.
+ *
+ * ⚠️⚠️ **Eén slotzin voor beide richtingen was fout, en dat is de bevinding van
+ *    QS8-616.** De tekst was geschreven voor *er komt er een bij*: ga bouwen en
+ *    grep in `dist/`. Voor een pakket dat **verdwenen** is, klopt dat niet — er
+ *    is geen kwetsbaarheid meer om een bundel-meting over te doen. Wie dat advies
+ *    tóch opvolgt, bouwt tien minuten en concludeert dan dat de controle onzin
+ *    gaf.
+ *
+ * ⚠️ **En dat is duurder dan een controle die zwijgt.** Een grendel die je naar
+ *    de verkeerde handeling stuurt, verliest zijn gezag — precies de reden dat
+ *    dit project geen controles wil die je leert overslaan.
+ */
+export function slotwoord({ meetbaar, verdwenen }) {
+  if (meetbaar) {
+    console.error(
+      '\nEr is een pakket bijgekomen of veranderd, en dat betekent dat de bouw-meting\n' +
+        'verlopen is — niet dat het register bijgewerkt moet worden. Draai\n' +
+        '`npm run build` met dummy-`EXPO_PUBLIC_*` waarden en grep in dist/ op een\n' +
+        '**stringliteraal** uit het pakket — niet op de pakketnaam en niet op een\n' +
+        'identifier: die eerste staat er nooit in en die tweede wordt geminificeerd.\n' +
+        'Zet daarna de uitkomst mét die marker in NAGEKEKEN.',
+    );
+  }
+
+  if (verdwenen) {
+    console.error(
+      '\nEr staat een rij in NAGEKEKEN waarvoor npm geen melding meer geeft. Hier valt\n' +
+        'niets te bouwen: er is geen kwetsbaarheid meer om een bundel-meting over te\n' +
+        'doen. Die rij mag eruit — maar meet het in plaats van het aan te nemen.\n' +
+        'Draai `npm audit --omit=dev --json` en kijk of de advisory-nummers uit die rij\n' +
+        'er echt niet meer in staan; een pakket dat alleen van naam of van ouder\n' +
+        'wisselde, hoort een rij te houden. Zet de datum en die nummers in het\n' +
+        'commit-bericht, zodat de volgende lezer ziet waaróp hij weg is.',
+    );
+  }
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) process.exit(hoofd());
