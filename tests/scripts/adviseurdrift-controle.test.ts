@@ -10,7 +10,6 @@ import {
   beoordeelDrift,
   objectenUitDeMap,
   sleutelVoor,
-  zonderSqlCommentaar,
 } from '../../scripts/adviseurdrift-controle.mjs';
 
 /**
@@ -28,42 +27,6 @@ import {
  *    definer-views, drie tabellen met RLS zonder policy, en `goal_dashboard`
  *    als enige invoker-view die juist **niet** gemeld mag worden.
  */
-describe('zonderSqlCommentaar — de eigen knip', () => {
-  // ⚠️ Must-find. Dit is het gemeten geval: het rollback-pad in de kop van 0234.
-  it('haalt een regelcommentaar met een statement erin weg', () => {
-    const sql = '-- alter table dagtellers rename to opslag_dagtellers;\nselect 1;';
-
-    expect(zonderSqlCommentaar(sql)).not.toContain('rename to');
-    expect(zonderSqlCommentaar(sql)).toContain('select 1;');
-  });
-
-  it('haalt een blokcommentaar weg', () => {
-    expect(zonderSqlCommentaar('/* create view x */ select 1;')).not.toContain('create view');
-  });
-
-  it('haalt een staartcommentaar weg en laat de regel ervóór staan', () => {
-    expect(zonderSqlCommentaar('select 1; -- uitleg\nselect 2;')).toBe('select 1; \nselect 2;');
-  });
-
-  // ⚠️⚠️ **De scherpste van dit blok.** Een `--` binnen een stringliteral is
-  //    tekst en geen commentaar. Zonder die grens knipt de knip een deel van een
-  //    `insert` weg en verschuift het beeld van de map stil — dezelfde richting
-  //    als de URL-vorm die QS8-412 een halve ijking kostte.
-  it('laat een streepjespaar binnen een stringliteral met rust', () => {
-    const sql = "insert into t values ('a--b'); select 1;";
-
-    expect(zonderSqlCommentaar(sql)).toBe(sql);
-  });
-
-  it('knipt commentaar binnen een dollar-quoted lichaam juist wél', () => {
-    // ⚠️ Must-allow van de andere soort: dáár is `--` echt commentaar.
-    const sql = '$$ begin -- uitleg\n  return 1;\nend $$';
-
-    expect(zonderSqlCommentaar(sql)).not.toContain('uitleg');
-    expect(zonderSqlCommentaar(sql)).toContain('return 1;');
-  });
-});
-
 describe('objectenUitDeMap — de afleiding tegen de echte map', () => {
   // ⚠️ De kanarie, en die staat er om de les die deze week twee keer betaald is:
   //    een lege uitkomst is ook wat je krijgt als de lezer nooit iets vond.
@@ -139,6 +102,29 @@ describe('objectenUitDeMap — op een eigen map', () => {
 
     expect(uitslag.definerViews).toEqual([]);
     expect(uitslag.rlsZonderPolicy).toEqual(['echt']);
+  });
+
+  // ⚠️⚠️ **De bekende grens van de gedeelde knip, vastgelegd zodat hij geen
+  //    verrassing is (QS8-606).** Die knip behandelt `$$ … $$` als tekstliteral,
+  //    met reden: hij is er óók voor vormen als `v_sql := $q$a--b$q$`, waar de
+  //    inhoud data is. In een migratie is een `$$`-blok meestal een
+  //    functielichaam, en dan is een `--` daarbinnen wél commentaar.
+  //
+  //    📏 Gemeten over alle 301 migraties: de twee knippen geven op élke
+  //    migratie andere tekst, en op **nul** ervan raakt dat de telling van deze
+  //    controle. Deze toets legt vast wat er gebeurt als die vorm er ooit wél
+  //    komt: de controle meldt een view die niet bestaat. Dat faalt **luid** —
+  //    iemand krijgt een allowlist-regel gevraagd voor iets wat er niet is — en
+  //    dat is de goede richting.
+  it('meldt een uitgecommentarieerde view in een dollar-quoted lichaam — luid en bekend', () => {
+    const sql =
+      'create function f() returns void as $$\n' +
+      'begin\n' +
+      '  -- create view public.spook with (security_invoker = false) as select 1;\n' +
+      '  return;\n' +
+      'end $$ language plpgsql;\n';
+
+    expect(uitBron(sql).definerViews).toEqual(['spook']);
   });
 
   it('telt een view zónder with-clausule als definer — dat is de default van Postgres', () => {
