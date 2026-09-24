@@ -64,6 +64,7 @@
     "poort:proef:overgeslagen": "node -e \"console.error('proef-controle: OVERGESLAGEN — geen sleutel'); process.exit(0)\"",
     "poort:proef:rood": "node -e \"console.log('op stdout'); console.error('op stderr'); process.exit(1)\"",
     "adviseur:controle": "node scripts/adviseur-controle.mjs",
+    "adviseurdrift:controle": "node scripts/adviseurdrift-controle.mjs",
     "wachtwoord:controle": "node scripts/wachtwoord-controle.mjs",
     "aansluiting:controle": "node scripts/aansluiting-controle.mjs",
     "afstemgetal:controle": "node scripts/afstemgetal-controle.mjs",
