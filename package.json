@@ -76,6 +76,7 @@
     "register:controle": "node scripts/migratieregister-controle.mjs",
     "functies:controle": "node scripts/functies-controle.mjs",
     "keten:controle": "node scripts/dode-keten-controle.mjs",
+    "spiegeling:controle": "node scripts/spiegeling-controle.mjs",
     "schermingang:controle": "node scripts/schermingang-controle.mjs",
     "sleutelvorm:controle": "node scripts/sleutelvorm-controle.mjs",
     "padverwijzing:controle": "node scripts/padverwijzing-controle.mjs",

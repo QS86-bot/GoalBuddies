@@ -1359,7 +1359,15 @@ export const NIET_TE_LEZEN = [
     reden:
       '`update(patch)` waar `patch` uit `spiegelpatch()` komt — een functie en ' +
       'geen literaal. De velden die zij zet zijn een deelverzameling van wat ' +
-      '`wijzigDoel()` schrijft, en die staat hier wél onder de controle.',
+      '`wijzigDoel()` schrijft, en die staat hier wél onder de controle. ' +
+      '⚠️⚠️ **Die laatste zin is een premisse, en sinds QS8-610 wordt hij ' +
+      'getoetst in plaats van beweerd:** `npm run spiegeling:controle` wordt ' +
+      'rood zodra een doelkolom in `SPIEGELING` buiten wat `wijzigDoel()` ' +
+      'schrijft valt. 📏 Gemeten waarom dat nodig is: met een spiegeling naar ' +
+      '`goals.status` erbij blijven `tsc`, `lint` én deze controle groen — deze ' +
+      'laatste omdat hij de hele combinatie vrijstelt — en is die nieuwe ' +
+      'controle het enige dat het ziet. Zie ' +
+      '`docs/decisions/2026-09-24-een-vrijstelling-met-een-toetsbare-premisse.md`.',
   },
 ];
 
