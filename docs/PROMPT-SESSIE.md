@@ -19,28 +19,60 @@ JOUW BAAN: <A | B>
 
 ## 0. De meting die dit document draagt
 
-📏 Gemeten op **22-09-2026**, `origin/main` = `20cc23fc`. Dit is een gedateerde
-momentopname en geen stand; hermeet hem voordat je hem gebruikt om iets te
-besluiten. De commando's staan er per rij bij, zodat hermeten geen zoektocht is.
+📏 Momentopname van `origin/main` = `20cc23fc` (21-09-2026, 20:55 UTC), gemeten op
+**22-09-2026** en **hermeten op 24-09-2026 (QS8-603)** op dezelfde commit. Dit is
+een gedateerde momentopname en geen stand; hermeet hem voordat je hem gebruikt om
+iets te besluiten.
 
-**Van de 152 merges op `main` sinds 13-09:**
+⚠️ **De eerste versie van deze tabel reproduceerde niet**, en dat is bij de
+verificatie van QS8-583 gevonden. Ze noemde 152 merges waar het er 144 zijn, 84%
+waar het 79% is, en *"3 commits op `app/` in zes weken"* waar het er 212 zijn. De
+categorieën stonden er zonder definitie bij: *"raakt `scripts/` + `tests/` en
+verder niets"* letterlijk genomen geeft **3**, omdat bijna elke merge ook `docs/`
+raakt. Hieronder staan de getallen die het script eronder oplevert, mét de
+definities; wie hermeet, draait dat script en niet een eigen lezing.
 
-| | merges | % | hoe |
-| --- | --- | --- | --- |
-| raakt `scripts/` + `tests/` en verder niets | 87 | 57% | `git diff --name-only <merge>^1 <merge>` per merge |
-| raakt `docs/`, migraties of config en verder niets | 37 | 24% | idem |
-| raakt zowel broncode als `scripts/`+`tests/` | 28 | 18% | idem |
-| **raakt broncode zónder `scripts/`+`tests/`** | **0** | **0%** | idem |
-| raakt `app/` | 8 | 5% | idem |
-| **raakt `docs/ENGINEER-REVIEW.md`** | **128** | **84%** | idem |
-| raakt `docs/WERKVOORRAAD.md` | 69 | 45% | idem |
-| raakt `docs/VOLGENDE-SESSIE.md` | 30 | 20% | idem |
+**Van de 144 merges op `main` sinds 13-09 (first-parent, `--since=2026-09-13T00:00:00Z`):**
+
+| | merges | % |
+| --- | --- | --- |
+| raakt gereedschap en geen broncode | 75 | 52% |
+| raakt geen van beide (alleen docs, migraties, config) | 38 | 26% |
+| raakt broncode én gereedschap | 30 | 21% |
+| **raakt broncode zónder gereedschap** | **1** | **1%** |
+| raakt `app/` | 9 | 6% |
+| **raakt `docs/ENGINEER-REVIEW.md`** | **114** | **79%** |
+| raakt `docs/WERKVOORRAAD.md` | 70 | 49% |
+| raakt `docs/VOLGENDE-SESSIE.md` | 20 | 14% |
+
+*Gereedschap* is een pad onder `scripts/` of `tests/`; *broncode* een pad onder
+`app/`, `src/` of `supabase/functions/`. De eerste vier rijen sluiten elkaar uit
+en tellen op tot 144. De ene merge met broncode zónder gereedschap is `58bf8343`
+(PR #464, het heldenpalet): hij raakt `src/shared/theme/` en twee testbestanden
+die ín `src/` staan, dus met deze definitie geen gereedschap.
+
+```bash
+C=20cc23fc; VANAF=2026-09-13T00:00:00Z
+for m in $(git log --merges --first-parent --since=$VANAF --format=%H $C); do
+  f=$(git diff --name-only $m^1 $m)
+  gr=$(echo "$f" | grep -cE '^(scripts|tests)/')
+  br=$(echo "$f" | grep -cE '^(app|src|supabase/functions)/')
+  echo "$gr $br $(echo "$f" | grep -c '^app/') $(echo "$f" | grep -cx 'docs/ENGINEER-REVIEW.md')" \
+       "$(echo "$f" | grep -cx 'docs/WERKVOORRAAD.md') $(echo "$f" | grep -cx 'docs/VOLGENDE-SESSIE.md')"
+done | awk '{ n++; if ($1>0 && $2==0) g++; else if ($1==0 && $2==0) geen++;
+              else if ($1>0) beide++; else bron++;
+              if ($3>0) app++; if ($4>0) rev++; if ($5>0) wv++; if ($6>0) vs++ }
+            END { print n, g, geen, beide, bron, app, rev, wv, vs }'
+# → 144 75 38 30 1 9 114 70 20  (merges, gereedschap, geen van beide, beide,
+#   bron zonder gereedschap, app/, ENGINEER-REVIEW, WERKVOORRAAD, VOLGENDE-SESSIE)
+```
 
 **Verder:**
 
 | meting | waarde | hoe |
 | --- | --- | --- |
-| commits op `app/` in zes weken | **3** | `git log origin/main --since='6 weeks ago' --oneline -- app/` |
+| commits op `app/`, zonder merges, sinds 13-09 | **13** van 423 | `git log 20cc23fc --no-merges --since=2026-09-13T00:00:00Z --oneline -- app/` |
+| commits op `app/`, zonder merges, in zes weken (sinds 11-08) | 212 | idem met `--since=2026-08-11T00:00:00Z` |
 | Linear Backlog + Todo | 22, **waarvan 22 met `wacht-op-Quinten`** | `list_issues` per status |
 | open PR's | 0 | `list_pull_requests` |
 | open rijen in `docs/ENGINEER-REVIEW.md` | 320 — 3 Hoog, 44 Middel, 273 Laag | `grep -oE '\| *(Hoog\|Middel\|Laag\|Kritiek) *\|'` |
@@ -54,8 +86,13 @@ negen dagen gebouwd hebben, hebben ze **zelf gevonden**. De wachtrij is geen
 voorraad die leegloopt — hij wordt door de sessies zelf gevuld, en **meer sessies
 leveren dus meer wachtrij, niet minder.**
 
-**De app zelf beweegt niet.** Nul van de 152 merges raakten broncode zonder ook
-`scripts/`+`tests/` te raken; `app/` kreeg in zes weken drie commits.
+**De app zelf beweegt weinig.** 9 van de 144 merges raakten `app/`, en 13 van
+de 423 commits sinds 13-09. Eén merge raakte broncode zonder gereedschap.
+
+⚠️ Hier stond eerst *"de app beweegt niet"*, met *"drie commits in zes weken"*
+eronder. Dat getal was onwaar (212), en *niet* was te sterk. De richting houdt
+stand, maar alleen als verhouding: het werk van deze periode zat voor het
+overgrote deel in gereedschap en dossier, niet in schermen.
 
 ⚠️ **Wat hier níet uit volgt:** dat het grendelwerk verspild is. Dat werk vindt
 echte fouten, en `docs/ENGINEER-REVIEW.md` telt honderden doorgestreepte rijen
@@ -78,29 +115,34 @@ Raakt jouw werk de andere boom, dan is dat een **vervolgissue** en geen uitstapj
 Dat is dezelfde regel als in `CLAUDE.md`: één branch per Linear-issue, en raakt je
 werk meerdere issues, dan zijn het meerdere branches en meerdere PR's.
 
-📏 De splitsing is gemeten en niet bedacht: 87 van de 152 merges raakten alléén
-`scripts/`+`tests/`, en **nul** raakten broncode zonder die twee. De overlap is 18%.
+📏 De splitsing is gemeten en niet bedacht (§0): 75 van de 144 merges raakten
+gereedschap en geen broncode, en **één** raakte broncode zonder gereedschap. De
+overlap is 21%.
 
 ### 1a. Waarom niet drie, en waarom niet vijf
 
-📏 `docs/ENGINEER-REVIEW.md` wordt geraakt door 84% van alle merges. Dat is geen
-slordigheid maar de grondwet: elke bevinding hoort in het dossier, en `CLAUDE.md`
-schrijft voor dat je bij elk bijgewerkt feit alle drie de overdrachtsdocumenten
-nagrept.
+📏 `docs/ENGINEER-REVIEW.md` wordt geraakt door 79% van alle merges (114 van 144,
+§0). Dat is geen slordigheid maar de grondwet: elke bevinding hoort in het
+dossier, en `CLAUDE.md` schrijft voor dat je bij elk bijgewerkt feit alle drie de
+overdrachtsdocumenten nagrept.
 
 De kans dat minstens twee gelijktijdige branches op dat ene bestand botsen, bij
-p = 0,84 per branch:
+p = 114/144 per branch — `1 − (1−p)ⁿ − n·p·(1−p)ⁿ⁻¹`:
 
-| banen | kans op een conflict in `docs/ENGINEER-REVIEW.md` |
-| --- | --- |
-| 2 | **71%** |
-| 3 | **93%** |
-| 4 | **99%** |
+| banen | kans op een conflict in `docs/ENGINEER-REVIEW.md` | botsende paren per ronde, verwacht |
+| --- | --- | --- |
+| 2 | **63%** | 0,6 |
+| 3 | **89%** | 1,9 |
+| 4 | **97%** | 3,8 |
 
-Bij twee banen is dat één conflict per ronde, additief op te lossen aan het eind
-van het bestand — dat is op 21-09 zes keer achter elkaar gedaan en het werkte
-elke keer. Bij drie banen zijn het er drie per ronde, in een bestand van
-honderden regels.
+⚠️ Deze tabel stond eerst op p = 0,84 (71% / 93% / 99%), een getal dat niet
+reproduceerde (QS8-603). De conclusie verandert er niet door: de sprong zit
+tussen twee en drie banen, en bij vier is een conflict per ronde vrijwel zeker.
+
+Bij twee banen is dat in ongeveer zes van de tien rondes één conflict, additief
+op te lossen aan het eind van het bestand — dat is op 21-09 zes keer achter
+elkaar gedaan en het werkte elke keer. Bij drie banen zijn het er verwacht bijna
+twee per ronde, in een bestand van honderden regels.
 
 ⚠️ **Een conflict is hier niet gratis op te lossen.** 📏 Op 21-09 sneed een
 conflictgrens dwars door het lichaam van een `it()` in
