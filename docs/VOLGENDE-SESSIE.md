@@ -1911,6 +1911,73 @@ bevindingen geeft die zijn eigen baan niet mag oplossen, zet `main` rood.
 **Controleer vóór je bouwt waar de reparatie landt**, niet alleen waar de
 controle landt.
 
+### 23-09-2026 — wat baan B die ronde deed, en de vorm die twee keer terugkwam
+
+Twee issues af (QS8-589 en QS8-595), allebei met een dossierrij. Wat er gebouwd
+is staat per rij in `docs/ENGINEER-REVIEW.md` en per issue in Linear; hieronder
+staat alleen wat een vólgende sessie anders zou doen.
+
+⚠️⚠️ **Een getal dat níét verandert is een bevinding, en het is het goedkoopste
+signaal dat er bestaat.** De hele vondst van QS8-595 begon doordat
+`tabelcellen:controle` **3867 rijen** meldde vóór én ná het toevoegen van een
+dossierrij. Dat getal had niet mogen kloppen. De proef erachteraan kostte één
+regel — een rij met drie cellen onder een kop van vier — en gaf exitcode **0**.
+📏 De controle las 428 van de 748 datarijen van het dossier. **Print een controle
+een aantal, lees dat aantal dan ook**, en vraag je af waarover het gaat.
+
+⚠️⚠️ **Twee keer in twee dagen was een controle groen omdat hij niets vond.** Bij
+QS8-589 vond de jobslezer vier van de vijf jobs en juist `poort` niet — de énige
+die die controle aangaat — omdat zijn reguliere expressie de lege regel opat die
+de volgende job nodig had. Bij QS8-595 las de tabelzeef 428 van de 748 rijen.
+**Geen van beide is door nadenken gevonden.** De eerste door een kanarie die
+eist dat de lezer `poort` bij naam teruggeeft, de tweede door het getal
+hierboven.
+
+De les is concreet: **elke nieuwe controle krijgt een kanarie die noemt wát hij
+gevonden moet hebben**, niet alleen dat zijn bevindingenlijst leeg is. Een lege
+lijst is ook wat je krijgt als de lezer nooit iets zag — dat staat sinds QS8-323
+in dit project en het is nu twee keer opnieuw betaald.
+
+⚠️⚠️ **Een mutatie die niets rood maakt zegt één van twee dingen, en het verschil
+is te meten.** Allebei kwamen ze deze ronde voor, en ze vragen tegengestelde
+reparaties:
+
+- **de mutatie is verkeerd** — hij breekt de belofte niet. Bij QS8-589 zette
+  mutatie 5 een beginwaarde om die de eerstvolgende topsleutel tóch meteen
+  terugzet. Zoek dan de mutatie die de belofte wél breekt; die bijt (5b deed dat).
+- **de toets is verkeerd** — de mutatie klopt en de toets die de grendel bij naam
+  nóemt bewaakt hem niet. Bij QS8-595 bleef *laat een streep in een codeblok met
+  rust* groen mét én zónder de codefence-knip: de fenceregel is zélf ook een
+  niet-tabelregel. Schrijf dan de toets die hem wél draagt — hier een comment op
+  **kolom 0**, want die sluit het `jobs:`-blok.
+
+⚠️ Beide gevallen staan nu **met hun meting** in de suite in plaats van stil
+weggehaald of stil blijven staan: een toets die geen grendel is, zegt dat in zijn
+kop. Stil weghalen wist de meting; stil laten staan laat hem als grendel lezen.
+
+⚠️⚠️ **Een toets kan het defect vástleggen, en dan is hij groen én fout.** De
+suite van `tabelcellen:controle` droeg `expect(uitslag.klachten).toEqual([])` op
+precies de stilte die weg moest. De naam van de toets klopte; de lege lijst
+eromheen was geen belofte maar de stand van toen. **Verander je wat een controle
+vindt, grep de suite dan op toetsen die de óude stilte beweren** — die zijn groen
+en ze houden je tegen. Regel 18 vraag 3 in zijn vervelendste vorm.
+
+⚠️ **Het mechanisme repareren legt instanties bloot die niemand kón zien, en die
+zijn rood.** Zodra die 349 rijen gelezen werden, kwamen er twee kapotte rijen uit
+`docs/decisions/002-domeinregel7-oppervlakken.md` — het document waar CLAUDE.md
+de lezer bij élk nieuw groepszichtbaar oppervlak heen stuurt. **Reken erop dat
+het pas net gelezen gebied rood is**, en plan dat in: de vier lege regels
+weghalen kostte tien seconden, de twee rijen erachter waren het eigenlijke werk.
+
+⚠️ **GFM-rendering meten in een cloudsessie: `npm install cmark-gfm` in een
+wegwerpmap buiten de repo.** Dat is de renderer die GitHub zelf gebruikt, en het
+npm-register is hiervandaan bereikbaar. Twee voor de hand liggende routes werken
+**niet**: `POST /api/markdown` wordt geweigerd (*"sessions are bound to their
+configured repositories"*), en de blobpagina van GitHub rendert tegenwoordig in
+de browser — 📏 232 kB HTML en **nul** `<table>`. Zonder dit derde pad was "die
+rijen renderen niet als tabel" een aanname gebleven; mét is het een meting van
+430 naar 750 `<tr>`.
+
 ## WERKAFSPRAKEN — houd deze aan
 
 1. **Werk landt sinds 23-08 via een PR op GitHub**, niet meer met een lokale
