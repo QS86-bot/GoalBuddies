@@ -19,49 +19,98 @@ JOUW BAAN: <A | B>
 
 ## 0. De meting die dit document draagt
 
-📏 Gemeten op **22-09-2026**, `origin/main` = `20cc23fc`. Dit is een gedateerde
-momentopname en geen stand; hermeet hem voordat je hem gebruikt om iets te
-besluiten. De commando's staan er per rij bij, zodat hermeten geen zoektocht is.
+⚠️⚠️ **Hermeet dit op een vólledige kloon.** Een cloudsessie kloont ondiep:
+📏 op 24-09-2026 begon de geschiedenis hier op **07-09**, en `--since='6 weeks ago'`
+wordt dan stil afgekapt op die horizon in plaats van te melden dat hij niet zover
+terugkijkt. `git rev-parse --is-shallow-repository` moet `false` zeggen vóór je
+één getal hieronder gelooft; `git fetch --unshallow` maakt dat waar.
 
-**Van de 152 merges op `main` sinds 13-09:**
+📏 Gemeten op **22-09-2026**, `origin/main` = `20cc23fc`, en **hermeten op
+24-09-2026 op diezelfde commit** (QS8-603) omdat de vorige reeks niet
+reproduceerde. Dit is een gedateerde momentopname en geen stand. De commando's
+staan er letterlijk bij; ze zijn alle vier gedraaid op een volledige kloon.
 
-| | merges | % | hoe |
-| --- | --- | --- | --- |
-| raakt `scripts/` + `tests/` en verder niets | 87 | 57% | `git diff --name-only <merge>^1 <merge>` per merge |
-| raakt `docs/`, migraties of config en verder niets | 37 | 24% | idem |
-| raakt zowel broncode als `scripts/`+`tests/` | 28 | 18% | idem |
-| **raakt broncode zónder `scripts/`+`tests/`** | **0** | **0%** | idem |
-| raakt `app/` | 8 | 5% | idem |
-| **raakt `docs/ENGINEER-REVIEW.md`** | **128** | **84%** | idem |
-| raakt `docs/WERKVOORRAAD.md` | 69 | 45% | idem |
-| raakt `docs/VOLGENDE-SESSIE.md` | 30 | 20% | idem |
+**Van de 144 merges op `main` sinds 13-09:**
+
+```bash
+git log --merges --first-parent --since=2026-09-13T00:00:00Z --format=%H 20cc23fc
+git diff --name-only <merge>^1 <merge>     # per merge
+```
+
+⚠️ **De vier rijen hieronder zijn een partitie en tellen dus op tot 144.** Twee
+begrippen, en ze staan hier omdat een categorie zonder definitie niet te hermeten
+is:
+
+* **broncode** = `src/`, `app/`, `supabase/migrations/`, `supabase/functions/`
+* **grendel** = `scripts/`, `tests/`
+
+| | merges | % |
+| --- | --- | --- |
+| raakt grendel, geen broncode | 53 | 37% |
+| raakt broncode én grendel | 52 | 36% |
+| raakt geen van beide (alleen `docs/`, `CLAUDE.md` of config) | 38 | 26% |
+| **raakt broncode zónder grendel** | **1** | **1%** |
+
+⚠️ **Die één is `58bf8343`** (PR #464, het heldenpalet): `CLAUDE.md`,
+`src/shared/theme/` en twee `.test.ts` die ín `src/` staan en dus niet onder
+`tests/` vallen. De oude tabel zei hier **0**, en dat is precies het soort nul dat
+je niet moet geloven zonder het bestand erbij.
+
+⚠️⚠️ **De oude rij *"raakt `scripts/` + `tests/` en verder niets" = 87* is niet
+te reconstrueren.** 📏 Letterlijk genomen zijn het er **3** — bijna elke merge
+raakt ook `docs/`. Met `docs/` en config buiten beschouwing worden het er **53**.
+Geen van beide lezingen geeft 87, en er stond geen definitie bij. Daarom staat er
+nu een partitie met de begrippen erboven, in plaats van een categorie die alleen
+de schrijver kon nameten.
+
+**Welke bestanden geraakt worden:**
+
+| | merges | % |
+| --- | --- | --- |
+| **`docs/ENGINEER-REVIEW.md`** | **114** | **79%** |
+| `docs/WERKVOORRAAD.md` | 70 | 49% |
+| `docs/VOLGENDE-SESSIE.md` | 20 | 14% |
+| `app/` | 9 | 6% |
 
 **Verder:**
 
 | meting | waarde | hoe |
 | --- | --- | --- |
-| commits op `app/` in zes weken | **3** | `git log origin/main --since='6 weeks ago' --oneline -- app/` |
-| Linear Backlog + Todo | 22, **waarvan 22 met `wacht-op-Quinten`** | `list_issues` per status |
-| open PR's | 0 | `list_pull_requests` |
-| open rijen in `docs/ENGINEER-REVIEW.md` | 320 — 3 Hoog, 44 Middel, 273 Laag | `grep -oE '\| *(Hoog\|Middel\|Laag\|Kritiek) *\|'` |
-| CI-duur op `main` | mediaan 8 min, spreiding 5:31–16:00 | `created_at` → `updated_at` over 30 runs |
+| commits op `app/` sinds 13-09, zonder merges | **13** | `git log 20cc23fc --no-merges --since=2026-09-13T00:00:00Z --oneline -- app/` |
+| commits op `app/` sinds 11-08, zonder merges | **212** | idem, met `--since=2026-08-11T00:00:00Z` |
+| open rijen in `docs/ENGINEER-REVIEW.md` | 320 — 3 Hoog, 44 Middel, 273 Laag | `git show 20cc23fc:docs/ENGINEER-REVIEW.md \| grep -oE '\\| *(Hoog\|Middel\|Laag\|Kritiek) *\\|'` |
+| Linear Backlog + Todo | 22, waarvan 22 met `wacht-op-Quinten` | `list_issues` per status — ⚠️ op 22-09, en **niet achteraf te hermeten** |
+| open PR's | 0 | idem, en idem |
+| CI-duur op `main` | mediaan 8 min, spreiding 5:31–16:00 | `created_at` → `updated_at` over 30 runs — idem |
+
+⚠️ **De onderste drie rijen dragen geen commit.** Ze zijn op 22-09 met de hand
+gemeten en er is geen manier om ze op `20cc23fc` opnieuw te krijgen; wie ze
+gebruikt, meet ze vandaag opnieuw. De rijen daarboven zijn alle vier op 24-09
+nagemeten en klopten.
 
 ### Wat hieruit volgt
 
 **Er is geen bouwbare Linear-backlog meer.** Alle 22 issues in Backlog en Todo
-dragen `wacht-op-Quinten`, en dat label sluit ze uit. Wat de sessies de afgelopen
-negen dagen gebouwd hebben, hebben ze **zelf gevonden**. De wachtrij is geen
-voorraad die leegloopt — hij wordt door de sessies zelf gevuld, en **meer sessies
-leveren dus meer wachtrij, niet minder.**
+droegen op 22-09 `wacht-op-Quinten`, en dat label sluit ze uit. Wat de sessies de
+afgelopen negen dagen gebouwd hebben, hebben ze **zelf gevonden**. De wachtrij is
+geen voorraad die leegloopt — hij wordt door de sessies zelf gevuld, en **meer
+sessies leveren dus meer wachtrij, niet minder.**
 
-**De app zelf beweegt niet.** Nul van de 152 merges raakten broncode zonder ook
-`scripts/`+`tests/` te raken; `app/` kreeg in zes weken drie commits.
+**De app beweegt weinig, en dat is iets anders dan niet.** 📏 Eén van de 144
+merges raakte broncode zonder ook grendelwerk te bevatten, en 9 van de 144 raakten
+`app/`. Sinds 13-09 kreeg `app/` **13** commits.
+
+⚠️⚠️ **Hier stond *"de app zelf beweegt niet"*, onderbouwd met *nul* merges en
+*drie* commits op `app/` in zes weken.** 📏 Allebei die getallen reproduceren niet:
+het zijn er één en 212. De **richting** — weinig app-werk ten opzichte van
+grendelwerk — houdt stand; het woord *niet* niet. Een conclusie die scherper is
+dan zijn meting, is precies wat dit document van zichzelf vraagt na te gaan.
 
 ⚠️ **Wat hier níet uit volgt:** dat het grendelwerk verspild is. Dat werk vindt
-echte fouten, en `docs/ENGINEER-REVIEW.md` telt honderden doorgestreepte rijen
-die daar staan. Wat er wél uit volgt is dat **het sessieaantal niet is wat de app
-afmaakt** — de finish loopt door die 22 issues, en die zijn geblokkeerd op
-Quinten en niet op capaciteit.
+echte fouten, en `docs/ENGINEER-REVIEW.md` telt honderden doorgestreepte rijen die
+daar staan. Wat er wél uit volgt is dat **het sessieaantal niet is wat de app
+afmaakt** — de finish loopt door die 22 issues, en die zijn geblokkeerd op Quinten
+en niet op capaciteit.
 
 ---
 
@@ -83,19 +132,29 @@ werk meerdere issues, dan zijn het meerdere branches en meerdere PR's.
 
 ### 1a. Waarom niet drie, en waarom niet vijf
 
-📏 `docs/ENGINEER-REVIEW.md` wordt geraakt door 84% van alle merges. Dat is geen
-slordigheid maar de grondwet: elke bevinding hoort in het dossier, en `CLAUDE.md`
-schrijft voor dat je bij elk bijgewerkt feit alle drie de overdrachtsdocumenten
-nagrept.
+📏 `docs/ENGINEER-REVIEW.md` wordt geraakt door **79%** van alle merges (114 van
+de 144, §0). Dat is geen slordigheid maar de grondwet: elke bevinding hoort in het
+dossier, en `CLAUDE.md` schrijft voor dat je bij elk bijgewerkt feit alle drie de
+overdrachtsdocumenten nagrept.
 
-De kans dat minstens twee gelijktijdige branches op dat ene bestand botsen, bij
-p = 0,84 per branch:
+De kans dat **minstens twee** van `n` gelijktijdige branches op dat ene bestand
+botsen, bij p = 0,79 per branch:
+
+```
+P(n) = 1 − (1−p)^n − n·p·(1−p)^(n−1)
+```
 
 | banen | kans op een conflict in `docs/ENGINEER-REVIEW.md` |
 | --- | --- |
-| 2 | **71%** |
-| 3 | **93%** |
-| 4 | **99%** |
+| 2 | **62%** |
+| 3 | **89%** |
+| 4 | **97%** |
+
+⚠️ **Hier stond 71 / 93 / 99, gerekend met p = 0,84**, en dat percentage
+reproduceerde niet (QS8-603). De formule stond er niet bij en is uit de drie
+getallen teruggerekend; ze staat er nu, zodat de volgende hermeting niet opnieuw
+hoeft te raden. **De conclusie — twee banen — verandert er niet door**: ook bij
+62% is het één conflict per ronde bij twee banen en bijna altijd meerdere bij drie.
 
 Bij twee banen is dat één conflict per ronde, additief op te lossen aan het eind
 van het bestand — dat is op 21-09 zes keer achter elkaar gedaan en het werkte
