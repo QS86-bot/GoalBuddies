@@ -123,6 +123,24 @@ describe('objectenUitDeMap — op een eigen map', () => {
     expect(uitBron(sql).definerViews).toEqual(['mijn_doelvelden']);
   });
 
+  // ⚠️⚠️ **Deze toets is er dóór de ijking gekomen, en dat staat hier omdat de
+  //    eerste opzet het niet dekte.** De knip-toetsen hierboven voeden
+  //    `zonderSqlCommentaar()` los; met de knip uit de **pijplijn** gesloopt
+  //    bleven ze alle vijf groen, en de echte map ook — 0234 draagt zijn
+  //    rename-comment toevallig in de onschadelijke richting. Wat de knip
+  //    draagt is dít: een kop die een statement noemt dat er niet staat.
+  it('leest een statement in een commentaarkop niet als een statement', () => {
+    const sql =
+      '-- Rollback:\n' +
+      '--   create view public.spook with (security_invoker = false) as select 1;\n' +
+      '--   alter table public.echt rename to public.spooktabel;\n' +
+      'alter table public.echt enable row level security;\n';
+    const uitslag = uitBron(sql);
+
+    expect(uitslag.definerViews).toEqual([]);
+    expect(uitslag.rlsZonderPolicy).toEqual(['echt']);
+  });
+
   it('telt een view zónder with-clausule als definer — dat is de default van Postgres', () => {
     // ⚠️ Deze richting is de hele reden dat de regel "tenzij invoker" luidt.
     //    Een regel die naar het wóórd `false` zoekt, faalt hier open.
