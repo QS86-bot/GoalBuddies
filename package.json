@@ -118,7 +118,8 @@
     "poortstand:controle": "node scripts/poortstand.mjs --controle",
     "edge:types:controle": "node scripts/edge-typecheck.mjs",
     "pgversie:controle": "node scripts/pg-versie.mjs",
-    "triggeruitzetting:controle": "node scripts/triggeruitzetting-controle.mjs"
+    "triggeruitzetting:controle": "node scripts/triggeruitzetting-controle.mjs",
+    "handtekening:controle": "node scripts/handtekening-controle.mjs"
   },
   "engines": {
     "node": ">=22"
