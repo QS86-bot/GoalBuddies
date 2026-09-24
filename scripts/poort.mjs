@@ -332,6 +332,6 @@ async function hoofd() {
 // ⚠️ `pathToFileURL` en geen sjabloonstring: op Windows levert `file://${...}`
 //    een pad met backslashes op en start het script zichzelf nooit. De CI-job
 //    "Scripts op Windows" bewaakt dat, en hij ving deze fout hier ook echt.
-if (import.meta.url === pathToFileURL(process.argv[1]).href) {
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
   await hoofd();
 }

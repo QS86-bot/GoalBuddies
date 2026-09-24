@@ -786,7 +786,7 @@ async function hoofd() {
 //    een `file:///C:/…`-URL, en dan is de guard altijd onwaar en draait het
 //    script nooit. `tests/scripts/padvormen.test.ts` bewaakt dat — en ving deze
 //    versie ook daadwerkelijk.
-if (import.meta.url === pathToFileURL(process.argv[1]).href) {
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
   hoofd().catch((fout) => {
     console.error(fout.message);
     process.exit(1);
