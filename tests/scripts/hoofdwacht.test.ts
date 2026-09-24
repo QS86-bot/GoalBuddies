@@ -21,19 +21,23 @@ import { describe, expect, it } from 'vitest';
  *    [ERR_INVALID_ARG_TYPE]` uit `pathToFileURL(undefined)`, en `tekst-controle.mjs`
  *    — mét wacht — niet. Dát is wat hier bewaakt wordt.
  *
- * ⚠️ **Alleen scripts mét een main-guard worden geïmporteerd**, en dat is een
- *    veiligheidsgrens en geen gemak. 📏 Gemeten: tien scripts in `scripts/`
- *    hebben géén guard en dóen iets op moduleniveau — `sync-edge-shared.mjs`
- *    kopieert 19 bestanden, `maak-iconen.mjs` schrijft zes PNG's. Die importeren
- *    zou deze toets een schrijfactie op de repo maken. Ze staan alle tien in de
- *    lijst hieronder en worden met opzet niet aangeraakt; dat die klasse
- *    bestaat is een eigen bevinding (zie de dossierrij van 24-09).
+ * ⚠️⚠️ **De veiligheidsgrens is sinds QS8-608 leeg, en dat is de opbrengst van
+ *    dat issue.** Toen deze toets geschreven werd, hadden tien scripts géén
+ *    guard en déden ze iets op moduleniveau — `sync-edge-shared.mjs` kopieerde
+ *    19 bestanden, `maak-iconen.mjs` schreef zes PNG's, en zes andere riepen
+ *    `process.exit()` aan (erger dan werpen: dat kun je niet vangen). Die
+ *    importeren zou van deze toets een schrijfactie op de repo hebben gemaakt.
  *
- * ⚠️ **De restrisico die blijft**, en die schrijf ik liever op dan dat ik hem
- *    wegpoets: zet iemand een guard-regel in zo'n script zónder het werk
- *    eronder te verplaatsen, dan importeert deze toets hem alsnog en draait dat
- *    werk één keer. Hij wordt er wél rood van — de uitvoer is dan niet leeg —
- *    maar de schrijfactie is dan al gebeurd.
+ *    📏 Alle tien dragen nu een guard met hun werk in `hoofd()`, byte-identiek
+ *    in uitvoer en exitcode. **Geen enkel script in `scripts/` doet nog iets bij
+ *    import**, en deze toets selecteert er daarmee 93 van de 105 — de overige
+ *    twaalf zijn echte modules zonder guard (`psql.mjs`, `paden.mjs`, de twee
+ *    knippen, …) en zijn even inert.
+ *
+ * ⚠️ **De grens blijft staan en de toets eronder ook**, want hij bewaakt nu iets
+ *    anders: dat een nieuw script dat werk op moduleniveau zet, niet stilletjes
+ *    buiten deze selectie valt. Zonder guard wordt het niet geïmporteerd en dus
+ *    niet gemeten — en dát is het gat dat QS8-608 een keer heeft gekost.
  */
 const WORTEL = process.cwd();
 const MAP = join(WORTEL, 'scripts');
@@ -51,7 +55,7 @@ describe('een script importeren werpt niet', () => {
   it('vindt genoeg scripts dat een lege uitkomst iets betekent', () => {
     // ⚠️ De kanarie. Een lege lijst is ook wat je krijgt als de zeef stuk is, en
     //    dat is in deze week twee keer voorgekomen.
-    expect(metGuard().length).toBeGreaterThan(70);
+    expect(metGuard().length).toBeGreaterThan(85);
     expect(metGuard()).toContain('poort.mjs');
   });
 
@@ -86,17 +90,27 @@ describe('een script importeren werpt niet', () => {
     expect(`${uit}${fout}`.trim(), 'een script is niet inert bij import').toBe('');
   });
 
-  it('laat scripts zonder main-guard met rust — die doen soms écht iets', () => {
-    // 📏 `sync-edge-shared.mjs` kopieert 19 bestanden en `maak-iconen.mjs`
-    //    schrijft zes PNG's, allebei op moduleniveau. Ze horen niet in de
-    //    selectie, en deze toets legt dat vast in plaats van erop te vertrouwen.
+  // ⚠️⚠️ **Dit was tot QS8-608 de omgekeerde toets**, en het verschil is de hele
+  //    opbrengst van dat issue. Hij legde toen vast dat `sync-edge-shared.mjs`
+  //    en `maak-iconen.mjs` buiten de selectie vielen, want ze kopieerden 19
+  //    bestanden en schreven zes PNG's zodra je ze importeerde. Nu dragen ze een
+  //    guard, staat hun werk in `hoofd()`, en horen ze er juist **in**.
+  it('neemt ook de twee scripts mee die vroeger bij import schreven', () => {
+    expect(metGuard()).toContain('sync-edge-shared.mjs');
+    expect(metGuard()).toContain('maak-iconen.mjs');
+  });
+
+  // ⚠️ De scripts zónder guard zijn er nog — twaalf echte modules — en die horen
+  //    buiten de selectie te blijven. Niet omdat ze gevaarlijk zijn, maar omdat
+  //    deze toets over main-guards gaat; hun inertheid volgt uit dat ze niets
+  //    op moduleniveau doen, en dat is hierboven gemeten.
+  it('laat de modules zonder main-guard buiten de selectie', () => {
     const zonder = readdirSync(MAP)
       .filter((naam) => naam.endsWith('.mjs'))
       .filter((naam) => !readFileSync(join(MAP, naam), 'utf8').includes(GUARD));
 
-    expect(zonder).toContain('sync-edge-shared.mjs');
-    expect(zonder).toContain('maak-iconen.mjs');
-    expect(metGuard()).not.toContain('sync-edge-shared.mjs');
-    expect(metGuard()).not.toContain('maak-iconen.mjs');
+    expect(zonder).toContain('psql.mjs');
+    expect(zonder).toContain('zonder-commentaar.mjs');
+    expect(metGuard()).not.toContain('psql.mjs');
   });
 });
