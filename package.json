@@ -65,6 +65,8 @@
     "poort:proef:rood": "node -e \"console.log('op stdout'); console.error('op stderr'); process.exit(1)\"",
     "adviseur:controle": "node scripts/adviseur-controle.mjs",
     "adviseurdrift:controle": "node scripts/adviseurdrift-controle.mjs",
+    "auditkop": "node scripts/auditkop.mjs",
+    "auditkop:controle": "node scripts/auditkop.mjs --controle",
     "wachtwoord:controle": "node scripts/wachtwoord-controle.mjs",
     "aansluiting:controle": "node scripts/aansluiting-controle.mjs",
     "afstemgetal:controle": "node scripts/afstemgetal-controle.mjs",
