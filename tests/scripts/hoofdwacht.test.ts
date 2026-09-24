@@ -43,7 +43,27 @@ const WORTEL = process.cwd();
 const MAP = join(WORTEL, 'scripts');
 const GUARD = 'import.meta.url === pathToFileURL(';
 
-/** De scripts die een main-guard dragen, en dus inert horen te zijn. */
+/**
+ * Élk script in `scripts/`, want ze horen allemaal inert te zijn.
+ *
+ * ⚠️⚠️ **Tot QS8-608 stonden hier alleen de scripts mét een main-guard**, en dat
+ *    was een veiligheidsgrens: tien scripts déden toen iets op moduleniveau, en
+ *    importeren zou van deze toets een schrijfactie op de repo hebben gemaakt.
+ *    Die tien zijn gerepareerd, dus de grens kan weg — en dat moet ook, want
+ *    zolang hij er stond viel een **nieuw** script zonder guard buiten de
+ *    meting. 📏 Nagemeten bij het weghalen: alle 105 zijn inert.
+ *
+ * ⚠️ De restrisico verhuist mee en blijft opgeschreven: zet iemand werk op
+ *    moduleniveau in een nieuw script, dan draait dat werk hier één keer. De
+ *    toets wordt er luid rood van, maar ná de handeling.
+ */
+function alleScripts(): string[] {
+  return readdirSync(MAP)
+    .filter((naam) => naam.endsWith('.mjs'))
+    .sort();
+}
+
+/** De scripts die een main-guard dragen — een commando en geen module. */
 function metGuard(): string[] {
   return readdirSync(MAP)
     .filter((naam) => naam.endsWith('.mjs'))
@@ -55,12 +75,13 @@ describe('een script importeren werpt niet', () => {
   it('vindt genoeg scripts dat een lege uitkomst iets betekent', () => {
     // ⚠️ De kanarie. Een lege lijst is ook wat je krijgt als de zeef stuk is, en
     //    dat is in deze week twee keer voorgekomen.
-    expect(metGuard().length).toBeGreaterThan(85);
-    expect(metGuard()).toContain('poort.mjs');
+    expect(alleScripts().length).toBeGreaterThan(100);
+    expect(alleScripts()).toContain('poort.mjs');
+    expect(alleScripts()).toContain('sync-edge-shared.mjs');
   });
 
-  it('geen enkel script met een main-guard werpt of print bij import', () => {
-    const namen = metGuard();
+  it('geen enkel script werpt of print bij import', () => {
+    const namen = alleScripts();
     let uit = '';
     let fout = '';
     try {
@@ -90,27 +111,13 @@ describe('een script importeren werpt niet', () => {
     expect(`${uit}${fout}`.trim(), 'een script is niet inert bij import').toBe('');
   });
 
-  // ⚠️⚠️ **Dit was tot QS8-608 de omgekeerde toets**, en het verschil is de hele
-  //    opbrengst van dat issue. Hij legde toen vast dat `sync-edge-shared.mjs`
-  //    en `maak-iconen.mjs` buiten de selectie vielen, want ze kopieerden 19
-  //    bestanden en schreven zes PNG's zodra je ze importeerde. Nu dragen ze een
-  //    guard, staat hun werk in `hoofd()`, en horen ze er juist **in**.
-  it('neemt ook de twee scripts mee die vroeger bij import schreven', () => {
+  // ⚠️ De twaalf zonder main-guard zijn echte modules — `psql.mjs`, `paden.mjs`,
+  //    de twee knippen — en ze worden nu net zo goed geïmporteerd als de rest.
+  //    Deze toets houdt het onderscheid zichtbaar: géén guard hebben is een
+  //    eigenschap om te kennen, geen reden om niet te meten.
+  it("kent het onderscheid tussen modules en commando's, en meet ze allebei", () => {
     expect(metGuard()).toContain('sync-edge-shared.mjs');
-    expect(metGuard()).toContain('maak-iconen.mjs');
-  });
-
-  // ⚠️ De scripts zónder guard zijn er nog — twaalf echte modules — en die horen
-  //    buiten de selectie te blijven. Niet omdat ze gevaarlijk zijn, maar omdat
-  //    deze toets over main-guards gaat; hun inertheid volgt uit dat ze niets
-  //    op moduleniveau doen, en dat is hierboven gemeten.
-  it('laat de modules zonder main-guard buiten de selectie', () => {
-    const zonder = readdirSync(MAP)
-      .filter((naam) => naam.endsWith('.mjs'))
-      .filter((naam) => !readFileSync(join(MAP, naam), 'utf8').includes(GUARD));
-
-    expect(zonder).toContain('psql.mjs');
-    expect(zonder).toContain('zonder-commentaar.mjs');
     expect(metGuard()).not.toContain('psql.mjs');
+    expect(alleScripts()).toContain('psql.mjs');
   });
 });
