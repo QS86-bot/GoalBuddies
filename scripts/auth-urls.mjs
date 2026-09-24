@@ -23,7 +23,7 @@
  */
 import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 
 const WORTEL = join(dirname(fileURLToPath(import.meta.url)), '..');
 const API = 'https://api.supabase.com';
@@ -43,119 +43,125 @@ function leesEnv() {
   return uit;
 }
 
-const env = leesEnv();
-const token = env.SUPABASE_ACCESS_TOKEN;
-const ref = env.SUPABASE_PROJECT_REF ?? 'wehgocadxehottiiyvsc';
-const app = (env.EXPO_PUBLIC_APP_URL ?? 'https://goalbuddies.q-projects.tech').replace(/\/+$/, '');
+// ⚠️ Het werk staat in een blok achter de main-guard, en niet in een
+//    `hoofd()`: zo doet importeren niets (QS8-608) zonder dat er een lange
+//    functie bijkomt die coderegel 15 zou breken. Top-level `await` mag
+//    binnen dit blok — gemeten, niet aangenomen.
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+  const env = leesEnv();
+  const token = env.SUPABASE_ACCESS_TOKEN;
+  const ref = env.SUPABASE_PROJECT_REF ?? 'wehgocadxehottiiyvsc';
+  const app = (env.EXPO_PUBLIC_APP_URL ?? 'https://goalbuddies.q-projects.tech').replace(/\/+$/, '');
 
-if (!token) {
-  console.error(
-    [
-      'SUPABASE_ACCESS_TOKEN ontbreekt.',
-      '',
-      '⚠️ Dit is niet de service-role-key. De Management API vraagt een personal',
-      '   access token: https://supabase.com/dashboard/account/tokens',
-      '',
-      'Zet hem daarna in .env als SUPABASE_ACCESS_TOKEN.',
-    ].join('\n'),
-  );
-  process.exit(1);
-}
-
-/**
- * De adressen waarheen Supabase mag terugsturen na een bevestiging of
- * wachtwoordherstel.
- *
- * ⚠️ Komma-gescheiden string en geen array — zo wil de API het.
- *
- * ⚠️ `localhost` staat erbij zodat aanmelden lokaal blijft werken. Dat is geen
- *    gat: deze lijst zegt alleen waar Supabase naartoe mag terugsturen ná een
- *    geslaagde bevestiging, en wie op jouw localhost kan luisteren zit al op je
- *    machine. De poort is die van `expo start --web`.
- */
-const REDIRECTS = [
-  `${app}/**`,
-  'http://localhost:8081/**',
-  // Voor de latere native build; het schema staat in app.json.
-  'goalbuddies://**',
-].join(',');
-
-async function api(methode, body) {
-  const antwoord = await fetch(`${API}/v1/projects/${ref}/config/auth`, {
-    method: methode,
-    headers: {
-      Authorization: `Bearer ${token}`,
-      ...(body ? { 'Content-Type': 'application/json' } : {}),
-    },
-    ...(body ? { body: JSON.stringify(body) } : {}),
-    // CLAUDE.md coderegel 14: elke externe call heeft een timeout.
-    signal: AbortSignal.timeout(TIMEOUT_MS),
-  });
-
-  const tekst = await antwoord.text();
-  if (!antwoord.ok) {
-    throw new Error(`${methode} config/auth gaf HTTP ${antwoord.status}: ${tekst.slice(0, 400)}`);
+  if (!token) {
+    console.error(
+      [
+        'SUPABASE_ACCESS_TOKEN ontbreekt.',
+        '',
+        '⚠️ Dit is niet de service-role-key. De Management API vraagt een personal',
+        '   access token: https://supabase.com/dashboard/account/tokens',
+        '',
+        'Zet hem daarna in .env als SUPABASE_ACCESS_TOKEN.',
+      ].join('\n'),
+    );
+    process.exit(1);
   }
-  return JSON.parse(tekst);
-}
 
-/**
- * ⚠️ Alles hieronder in één `main()` met een nette afhandeling. Zonder dat drukt
- *    Node een stacktrace af bij een netwerkfout, en dan lijkt een geblokkeerde
- *    host of een verlopen token op een kapot script.
- */
-async function main() {
-const huidig = await api('GET');
+  /**
+   * De adressen waarheen Supabase mag terugsturen na een bevestiging of
+   * wachtwoordherstel.
+   *
+   * ⚠️ Komma-gescheiden string en geen array — zo wil de API het.
+   *
+   * ⚠️ `localhost` staat erbij zodat aanmelden lokaal blijft werken. Dat is geen
+   *    gat: deze lijst zegt alleen waar Supabase naartoe mag terugsturen ná een
+   *    geslaagde bevestiging, en wie op jouw localhost kan luisteren zit al op je
+   *    machine. De poort is die van `expo start --web`.
+   */
+  const REDIRECTS = [
+    `${app}/**`,
+    'http://localhost:8081/**',
+    // Voor de latere native build; het schema staat in app.json.
+    'goalbuddies://**',
+  ].join(',');
 
-console.log('Project        :', ref);
-console.log('Site URL nu    :', huidig.site_url || '(leeg)');
-console.log('Redirects nu   :', huidig.uri_allow_list || '(leeg)');
-console.log('');
-console.log('Site URL straks:', app);
-console.log('Redirects straks:', REDIRECTS);
+  async function api(methode, body) {
+    const antwoord = await fetch(`${API}/v1/projects/${ref}/config/auth`, {
+      method: methode,
+      headers: {
+        Authorization: `Bearer ${token}`,
+        ...(body ? { 'Content-Type': 'application/json' } : {}),
+      },
+      ...(body ? { body: JSON.stringify(body) } : {}),
+      // CLAUDE.md coderegel 14: elke externe call heeft een timeout.
+      signal: AbortSignal.timeout(TIMEOUT_MS),
+    });
 
-if (!process.argv.includes('--zet')) {
-  const klopt = huidig.site_url === app && huidig.uri_allow_list === REDIRECTS;
+    const tekst = await antwoord.text();
+    if (!antwoord.ok) {
+      throw new Error(`${methode} config/auth gaf HTTP ${antwoord.status}: ${tekst.slice(0, 400)}`);
+    }
+    return JSON.parse(tekst);
+  }
+
+  /**
+   * ⚠️ Alles hieronder in één `main()` met een nette afhandeling. Zonder dat drukt
+   *    Node een stacktrace af bij een netwerkfout, en dan lijkt een geblokkeerde
+   *    host of een verlopen token op een kapot script.
+   */
+  async function main() {
+  const huidig = await api('GET');
+
+  console.log('Project        :', ref);
+  console.log('Site URL nu    :', huidig.site_url || '(leeg)');
+  console.log('Redirects nu   :', huidig.uri_allow_list || '(leeg)');
   console.log('');
-  console.log(klopt ? 'Staat al goed. Niets te doen.' : 'Wijkt af. Draai opnieuw met --zet.');
-  process.exit(0);
-}
+  console.log('Site URL straks:', app);
+  console.log('Redirects straks:', REDIRECTS);
 
-await api('PATCH', { site_url: app, uri_allow_list: REDIRECTS });
-
-const na = await api('GET');
-const gelukt = na.site_url === app && na.uri_allow_list === REDIRECTS;
-
-console.log('');
-console.log('Site URL na    :', na.site_url);
-console.log('Redirects na   :', na.uri_allow_list);
-console.log('');
-
-// ⚠️ Teruglezen en vergelijken, niet vertrouwen op HTTP 200. De API accepteert
-//    een veld dat hij niet kent zonder te klagen, en dan denk je dat het staat.
-if (!gelukt) {
-  console.error('⚠️ De waarden na afloop komen niet overeen met wat er is gestuurd.');
-  process.exit(1);
-}
-console.log('Goed gezet en teruggelezen.');
-}
-
-try {
-  await main();
-} catch (fout) {
-  const melding = fout instanceof Error ? fout.message : String(fout);
-  console.error(melding);
-
-  // ⚠️ De netwerkoorzaak eerst. Een proxy geeft ook 403, en dan wijst een
-  //    hint over je token je precies de verkeerde kant op.
-  if (/allowlist|egress|ENOTFOUND|timed out|fetch failed/i.test(melding)) {
-    console.error('');
-    console.error('⚠️ api.supabase.com was niet bereikbaar — dit lijkt een netwerkblokkade');
-    console.error('   en niet je token. Draai dit vanaf je eigen machine.');
-  } else if (/\b(401|403)\b/.test(melding)) {
-    console.error('');
-    console.error('⚠️ Controleer of SUPABASE_ACCESS_TOKEN een personal access token is');
-    console.error('   (sbp_…) en niet de service-role-key, en of hij nog geldig is.');
+  if (!process.argv.includes('--zet')) {
+    const klopt = huidig.site_url === app && huidig.uri_allow_list === REDIRECTS;
+    console.log('');
+    console.log(klopt ? 'Staat al goed. Niets te doen.' : 'Wijkt af. Draai opnieuw met --zet.');
+    process.exit(0);
   }
-  process.exit(1);
+
+  await api('PATCH', { site_url: app, uri_allow_list: REDIRECTS });
+
+  const na = await api('GET');
+  const gelukt = na.site_url === app && na.uri_allow_list === REDIRECTS;
+
+  console.log('');
+  console.log('Site URL na    :', na.site_url);
+  console.log('Redirects na   :', na.uri_allow_list);
+  console.log('');
+
+  // ⚠️ Teruglezen en vergelijken, niet vertrouwen op HTTP 200. De API accepteert
+  //    een veld dat hij niet kent zonder te klagen, en dan denk je dat het staat.
+  if (!gelukt) {
+    console.error('⚠️ De waarden na afloop komen niet overeen met wat er is gestuurd.');
+    process.exit(1);
+  }
+  console.log('Goed gezet en teruggelezen.');
+  }
+
+  try {
+    await main();
+  } catch (fout) {
+    const melding = fout instanceof Error ? fout.message : String(fout);
+    console.error(melding);
+
+    // ⚠️ De netwerkoorzaak eerst. Een proxy geeft ook 403, en dan wijst een
+    //    hint over je token je precies de verkeerde kant op.
+    if (/allowlist|egress|ENOTFOUND|timed out|fetch failed/i.test(melding)) {
+      console.error('');
+      console.error('⚠️ api.supabase.com was niet bereikbaar — dit lijkt een netwerkblokkade');
+      console.error('   en niet je token. Draai dit vanaf je eigen machine.');
+    } else if (/\b(401|403)\b/.test(melding)) {
+      console.error('');
+      console.error('⚠️ Controleer of SUPABASE_ACCESS_TOKEN een personal access token is');
+      console.error('   (sbp_…) en niet de service-role-key, en of hij nog geldig is.');
+    }
+    process.exit(1);
+  }
 }
