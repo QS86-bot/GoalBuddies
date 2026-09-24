@@ -16,6 +16,7 @@ import {
   verdachtePolicies,
   herstelSql,
   beoordeelHerstel,
+  herstelWatOpenstond,
   SPOORVERSIE,
   ontleedPolicies,
   oordeel,
@@ -987,5 +988,96 @@ describe('beoordeelHerstel — mag dit spoor afgespeeld worden?', () => {
     };
     expect(beoordeelHerstel(spoor('using#0'), huidig).actie).toBe('terugzetten');
     expect(beoordeelHerstel(spoor('using#1'), huidig).actie).toBe('weiger');
+  });
+});
+
+/**
+ * De naad tussen oordeel en handeling — QS8-607.
+ *
+ * ⚠️⚠️ **`beoordeelHerstel()` hierboven is het oordeel; dit is wat ermee
+ *    gebeurt.** De belofte van QS8-588 is niet *"het oordeel klopt"* maar *"een
+ *    spoor dat niet veilig is, wordt niet afgespeeld en niet weggegooid"*, en
+ *    die hangt aan `herstelWatOpenstond()`. 📏 Daar stond geen enkele toets op:
+ *    de `weiger`-tak uitzetten liet 2508 van 2508 groen, en dan viel een
+ *    weigering door naar het weggooien van het spoor.
+ *
+ * ⚠️ **De nep houdt bij wát er gebeurt én in welke volgorde.** Weggooien vóór
+ *    terugzetten is dezelfde fout in een andere vorm: faalt het terugzetten,
+ *    dan is het spoor al weg en weet niemand meer wat er openstond.
+ */
+describe('herstelWatOpenstond — het oordeel wordt ook uitgevoerd', () => {
+  const POLICY = {
+    tabel: 'goals',
+    naam: 'goals_update',
+    cmd: 'w',
+    qual: '(owner_id = auth.uid()) AND (status <> \'archived\'::text)',
+    wcheck: '(owner_id = auth.uid())',
+    recht: true,
+  };
+  const SPOOR = JSON.stringify({ versie: SPOORVERSIE, policy: POLICY, helft: 'using#0' });
+
+  /** Een buitenwereld die alleen opschrijft wat er met hem gebeurt. */
+  function nep(huidig: { qual: string; wcheck: string } | null, opties: { bestaat?: boolean; voerUitWerpt?: boolean } = {}) {
+    const gebeurd: string[] = [];
+    const io = {
+      bestaat: () => opties.bestaat ?? true,
+      lees: () => {
+        gebeurd.push('lees');
+        return SPOOR;
+      },
+      huidig: () => huidig,
+      voerUit: (sql: string) => {
+        gebeurd.push(`voerUit:${sql.startsWith('alter policy') ? 'alter policy' : sql}`);
+        if (opties.voerUitWerpt) throw new Error('psql viel om');
+      },
+      gooiWeg: () => gebeurd.push('gooiWeg'),
+      stop: (code: number) => gebeurd.push(`stop:${code}`),
+      log: () => undefined,
+      fout: () => undefined,
+    };
+    return { io, gebeurd };
+  }
+
+  it('MUST-FIND: een weigering stopt, en het spoor blijft liggen', () => {
+    // De ándere helft is veranderd — een migratie. Het oordeel is `weiger`.
+    const { io, gebeurd } = nep({
+      qual: 'true AND (status <> \'archived\'::text)',
+      wcheck: '(owner_id = auth.uid()) AND (zichtbaarheid = \'open\'::text)',
+    });
+    herstelWatOpenstond(io as never);
+    expect(gebeurd).toEqual(['lees', 'stop:1']);
+  });
+
+  it('MUST-FIND: terugzetten gebeurt vóór het weggooien, niet erna', () => {
+    const { io, gebeurd } = nep({ qual: 'true AND (status <> \'archived\'::text)', wcheck: POLICY.wcheck });
+    herstelWatOpenstond(io as never);
+    expect(gebeurd).toEqual(['lees', 'voerUit:alter policy', 'gooiWeg']);
+  });
+
+  it('MUST-FIND: valt het terugzetten om, dan blijft het spoor liggen', () => {
+    const { io, gebeurd } = nep(
+      { qual: 'true AND (status <> \'archived\'::text)', wcheck: POLICY.wcheck },
+      { voerUitWerpt: true },
+    );
+    expect(() => herstelWatOpenstond(io as never)).toThrow('psql viel om');
+    expect(gebeurd).not.toContain('gooiWeg');
+  });
+
+  it('een verdwenen policy: niets terugzetten, wél het spoor weg', () => {
+    const { io, gebeurd } = nep(null);
+    herstelWatOpenstond(io as never);
+    expect(gebeurd).toEqual(['lees', 'gooiWeg']);
+  });
+
+  it('een policy die al terugstaat: niets terugzetten, wél het spoor weg', () => {
+    const { io, gebeurd } = nep({ qual: POLICY.qual, wcheck: POLICY.wcheck });
+    herstelWatOpenstond(io as never);
+    expect(gebeurd).toEqual(['lees', 'gooiWeg']);
+  });
+
+  it('zonder spoor gebeurt er niets, ook geen lezen', () => {
+    const { io, gebeurd } = nep(null, { bestaat: false });
+    herstelWatOpenstond(io as never);
+    expect(gebeurd).toEqual([]);
   });
 });
