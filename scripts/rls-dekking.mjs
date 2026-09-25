@@ -861,15 +861,25 @@ function schrijfSpoor(policy, helft) {
  *    een database met een openstaande policy is geen meting. Dat is precies wat
  *    er de eerste keer gebeurde, en het viel niet op omdat het resultaat er
  *    normaal uitzag.
+ *
+ * ⚠️⚠️ **De I/O komt binnen als parameter, óók het stoppen — QS8-607.**
+ *    `beoordeelHerstel()` was goed getoetst, maar de regel die zijn oordeel
+ *    uitvoert niet: 📏 de `weiger`-tak uitzetten liet 2508 van 2508 toetsen
+ *    groen, en dan valt een weigering door naar het weggooien van het spoor.
+ *    Alleen de beslissing eruit halen had het gat één laag verplaatst — de
+ *    regel die haar uitvoert stond dan nog steeds hier, ongetoetst. Een
+ *    exitcode teruggeven evenmin: dan zit de naad in de aanroeper.
+ *
+ * @param io de buitenwereld; de standaard is de echte, de toets geeft een nep
  */
-function herstelWatOpenstond() {
-  if (!existsSync(HERSTELBESTAND)) return;
+export function herstelWatOpenstond(io = ECHT_HERSTEL) {
+  if (!io.bestaat()) return;
 
-  const spoor = JSON.parse(readFileSync(HERSTELBESTAND, 'utf8'));
+  const spoor = JSON.parse(io.lees());
   const naam = `${spoor?.policy?.tabel}.${spoor?.policy?.naam}`;
-  const { actie, reden } = beoordeelHerstel(spoor, huidigePolicy(spoor?.policy));
+  const { actie, reden } = beoordeelHerstel(spoor, io.huidig(spoor?.policy));
 
-  console.log(`⚠ een vorige run is afgebroken bij ${naam} — ${reden}.`);
+  io.log(`⚠ een vorige run is afgebroken bij ${naam} — ${reden}.`);
 
   if (actie === 'weiger') {
     // ⚠️⚠️ **Het spoor blijft liggen, en dat is met opzet.** Weghalen zou de
@@ -881,7 +891,7 @@ function herstelWatOpenstond() {
     //    database"*; een worp zou hier dus als een ontbrekende stack gemeld
     //    worden terwijl de stack gewoon draait. Dat is woordelijk de klasse van
     //    QS8-268, waar zes scripts jarenlang de verkeerde oorzaak noemden.
-    console.error(
+    io.fout(
       `\n✗ het herstel van ${naam} is niet veilig af te spelen.\n` +
         `  ${reden}.\n\n` +
         `  Het spoor blijft staan in \`${HERSTELBESTAND}\`. Kijk zelf welke van twee\n` +
@@ -890,17 +900,31 @@ function herstelWatOpenstond() {
         '  Heeft een migratie hem bewust gewijzigd, gooi dan alléén het spoor weg —\n' +
         '  de definitie erin is dan de oude en hoort nergens meer terug te komen.\n',
     );
-    process.exit(1);
+    // ⚠️ De `return` is voor de toets: de echte `stop` keert nooit terug, een
+    //    nep wel, en dan mag hij niet doorvallen naar het weggooien.
+    return io.stop(1);
   }
 
   if (actie === 'terugzetten') {
     const sql = herstelSql(spoor.policy);
-    if (sql !== null) psql(sql);
+    if (sql !== null) io.voerUit(sql);
   }
 
-  rmSync(HERSTELBESTAND);
-  console.log('');
+  io.gooiWeg();
+  io.log('');
 }
+
+/** De echte buitenwereld van `herstelWatOpenstond()`. */
+const ECHT_HERSTEL = {
+  bestaat: () => existsSync(HERSTELBESTAND),
+  lees: () => readFileSync(HERSTELBESTAND, 'utf8'),
+  huidig: (policy) => huidigePolicy(policy),
+  voerUit: (sql) => psql(sql),
+  gooiWeg: () => rmSync(HERSTELBESTAND),
+  stop: (code) => process.exit(code),
+  log: (tekst) => console.log(tekst),
+  fout: (tekst) => console.error(tekst),
+};
 
 /**
  * De huidige definitie van één policy, of `null` als hij niet meer bestaat.
