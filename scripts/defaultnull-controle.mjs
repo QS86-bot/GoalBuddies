@@ -351,6 +351,11 @@ export function toetsRij(sleutel, rij, bronnen) {
   //    commentaarregel. Een zin over een functie is geen aanroeper; dat is
   //    dezelfde fout die `schermingang:controle` ooit in zichzelf vond, waar een
   //    toelichting boven een knop als ingang telde.
+  //
+  // ⚠️ **Onder toets sinds QS8-602**, want 📏 tot dan liet deze knip weghalen
+  //    25 van 25 groen: *"het bestand noemt de functie alleen in een
+  //    regelcommentaar"* en *"… in een blokcommentaar"* worden rood zonder knip,
+  //    *"een echte aanroep met een commentaar erbij"* als hij te veel knipt.
   const aanroepers = bronnen.filter((b) => zonderCommentaar(b.inhoud).includes(functie));
 
   if (!aanroepers.some((b) => b.pad === rij.bestand)) {

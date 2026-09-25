@@ -193,6 +193,40 @@ describe('het oordeel', () => {
     expect(uit[0]?.waarom).toContain('noemt `groepschat` niet meer');
   });
 
+  /**
+   * ⚠️⚠️ **De knip in `toetsRij()` — QS8-602.** Mutatie B van QS8-594 (de rij
+   *    naar een bestand wijzen dat de functie niet aanroept) bleef de eerste
+   *    keer groen, omdat dat bestand de functie in een commentaarregel nóemde.
+   *    De knip was de reparatie, en 📏 er stond geen toets op: hem weghalen liet
+   *    25 van 25 groen. Met het echte register maakt hij vandaag geen verschil,
+   *    dus zonder deze toetsen komt het gat stil terug zodra het dat wel doet.
+   */
+  it('MUST-FIND: het bestand noemt de functie alleen in een regelcommentaar', () => {
+    const uit = toetsRij('groepschat.p_before_at', REGISTER['groepschat.p_before_at'], [
+      { pad: 'src/modules/x.ts', inhoud: '// dit roept groepschat() niet meer aan\nexport const x = 1;' },
+    ]);
+
+    expect(uit).toHaveLength(1);
+    expect(uit[0]?.waarom).toContain('noemt `groepschat` niet meer');
+  });
+
+  it('MUST-FIND: en ook alleen in een blokcommentaar', () => {
+    const uit = toetsRij('groepschat.p_before_at', REGISTER['groepschat.p_before_at'], [
+      { pad: 'src/modules/x.ts', inhoud: '/**\n * Vroeger via `groepschat()`.\n */\nexport const x = 1;' },
+    ]);
+
+    expect(uit).toHaveLength(1);
+    expect(uit[0]?.waarom).toContain('noemt `groepschat` niet meer');
+  });
+
+  it('MUST-ALLOW: een echte aanroep met een commentaar erbij blijft een aanroeper', () => {
+    const uit = toetsRij('groepschat.p_before_at', REGISTER['groepschat.p_before_at'], [
+      { pad: 'src/modules/x.ts', inhoud: '// groepschat() laat de cursor weg\nrpc("groepschat", {})' },
+    ]);
+
+    expect(uit).toEqual([]);
+  });
+
   it('MUST-FIND: het bestand klopt, maar er staat intussen een `null` in', () => {
     const uit = toetsRij('groepschat.p_before_at', REGISTER['groepschat.p_before_at'], [
       { pad: 'src/modules/x.ts', inhoud: 'rpc("groepschat", { p_before_at: null })' },
