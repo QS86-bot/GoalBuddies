@@ -951,12 +951,13 @@ describe('beoordeelHerstel — mag dit spoor afgespeeld worden?', () => {
       expect(beoordeelHerstel(spoor('check'), huidig).actie).toBe('weiger');
     });
 
-    // ⚠️ Faalt dicht. Een spoor van vóór QS8-588 draagt geen helft, dus is niet
-    //    vast te stellen welke toestand de database hóórt te hebben.
+    // ⚠️ Faalt dicht. Een spoor van vóór QS8-588 was de kale policy: geen
+    //    versie, geen helft. Hij valt sinds QS8-604 op de versie, en daarvóór op
+    //    de helft — deze toets droeg dus nooit de versietoets, zie hieronder.
     it('een spoor uit een oudere versie — de vorm die vandaag op schijf kan staan', () => {
       const uitslag = beoordeelHerstel(POLICY as never, { qual: 'true', wcheck: POLICY.wcheck });
       expect(uitslag.actie).toBe('weiger');
-      expect(uitslag.reden).toContain('oudere versie');
+      expect(uitslag.reden).toContain('versie geen');
     });
 
     it('een spoor met de juiste versie maar zonder helft', () => {
@@ -966,10 +967,66 @@ describe('beoordeelHerstel — mag dit spoor afgespeeld worden?', () => {
       );
     });
 
+    it('een spoor met de juiste versie en een helft, maar zonder policy', () => {
+      const zonder = { versie: SPOORVERSIE, helft: 'using#0' };
+      expect(beoordeelHerstel(zonder as never, { qual: 'true', wcheck: POLICY.wcheck }).actie).toBe(
+        'weiger',
+      );
+    });
+
     it("een spoor dat 'beide' noemt — daar is geen onaangeraakte helft", () => {
       expect(beoordeelHerstel(spoor('beide'), { qual: 'true', wcheck: 'true' }).actie).toBe(
         'weiger',
       );
+    });
+  });
+
+  /**
+   * De versie draagt zelf een belofte — QS8-604.
+   *
+   * ⚠️⚠️ **Elk spoor hierboven dat de versie mist, mist óók zijn helft**, en
+   *    daarom liet 📏 de versievergelijking weghalen 99 van 99 toetsen groen.
+   *    `SPOORVERSIE` bestaat voor het geval dat de vorm gelijk blijft en de
+   *    betekenis niet: een spoor met een geldige helft en een geldige policy,
+   *    geschreven door een lezer die er iets anders mee bedoelde. Alleen dat
+   *    geval raakt de versietoets en niets anders.
+   *
+   * ⚠️ **Elk geval hier heeft zijn tegenhanger met de juiste versie**, en die
+   *    moet `terugzetten` geven. Anders kan de toets groen worden op iets anders
+   *    dan de versie — de database-toestand, de helft — en bewaakt hij niets
+   *    (regel 18, vraag 3).
+   */
+  describe('de versie — een geldige vorm met een andere versie', () => {
+    const openstaand = { qual: 'true AND (status <> \'archived\'::text)', wcheck: POLICY.wcheck };
+    const metVersie = (versie: unknown) => ({ versie, policy: POLICY, helft: 'using#0' });
+
+    it('de tegenhanger: met de juiste versie is dit gewoon terugzetten', () => {
+      expect(beoordeelHerstel(metVersie(SPOORVERSIE), openstaand).actie).toBe('terugzetten');
+    });
+
+    it('MUST-FIND: een oudere versie weigert, en zegt dat het de versie is', () => {
+      const uitslag = beoordeelHerstel(metVersie(SPOORVERSIE - 1) as never, openstaand);
+      expect(uitslag.actie).toBe('weiger');
+      expect(uitslag.reden).toContain(`versie ${SPOORVERSIE - 1}`);
+    });
+
+    it('MUST-FIND: een nieuwere versie weigert ook — een spoor dat deze lezer niet kent', () => {
+      const uitslag = beoordeelHerstel(metVersie(SPOORVERSIE + 1) as never, openstaand);
+      expect(uitslag.actie).toBe('weiger');
+      expect(uitslag.reden).toContain(`versie ${SPOORVERSIE + 1}`);
+    });
+
+    it('MUST-FIND: een versie als tekst is een andere versie, en de reden laat dat zien', () => {
+      const uitslag = beoordeelHerstel(metVersie(String(SPOORVERSIE)) as never, openstaand);
+      expect(uitslag.actie).toBe('weiger');
+      // ⚠️ Anders leest de melding als "draagt versie 2 en kent alleen versie 2".
+      expect(uitslag.reden).toContain(`versie "${SPOORVERSIE}"`);
+    });
+
+    it('weigert ook als de policy al weg is — de versie gaat vóór alles', () => {
+      // ⚠️ Anders zou een onbekend spoor bij een verdwenen policy stil worden
+      //    weggegooid (`weg`), en dat is een spoor dat niemand gelezen heeft.
+      expect(beoordeelHerstel(metVersie(SPOORVERSIE - 1) as never, null).actie).toBe('weiger');
     });
   });
 
