@@ -89,6 +89,26 @@ const WORTEL = fileURLToPath(new URL('..', import.meta.url));
  *    bijkomt.
  */
 export const NAGEKEKEN = {
+  'image-size': {
+    ernst: 'high',
+    advisories: [1239765, 1239766],
+    reparatie: 'gratis',
+    in_bundel: false,
+    marker: 'detectImageType',
+    reden:
+      'Zit onder `metro`, de bundler — build-tooling en geen app-code. ' +
+      '⚠️⚠️ **Deze rij stond hier tot 24-09-2026, is die dag verwijderd en dezelfde dag ' +
+      'teruggezet, en dat is geen slordigheid maar twee metingen.** 📏 Om ~19:10 UTC meldde ' +
+      '`npm audit` hem niet meer en waren de nummers **1138808** en **1138809** weg (QS8-616). ' +
+      '📏 Om ~20:11 UTC stond hij er weer, ernst `high`, met **andere** nummers: 1239765 en ' +
+      '1239766. Geen flip-flop dus, maar een herpublicatie onder nieuwe ID\'s. ' +
+      '⚠️ Omdat de controle dit terecht als een **nieuw** pakket ziet, is de bundel-meting ' +
+      'opnieuw gedaan in plaats van overgenomen: verse `npx expo export --platform web` met ' +
+      'dummy-EXPO_PUBLIC-waarden, `dist/` van 5,3 MB en twee JS-bestanden, en **nul** treffers ' +
+      'op `detectImageType`. Met een controlegrep op `supabase` ernaast, want een grep die niets ' +
+      'vindt kan ook een kapotte grep zijn. ' +
+      '⚠️ De treffer op `imageSize` die je wél vindt is React DOM\'s `imageSizes`/`imageSrcSet`.',
+  },
   uuid: {
     ernst: 'moderate',
     advisories: [1119441],
