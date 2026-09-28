@@ -89,6 +89,13 @@ het afsluiten van een issue of Linear en de documenten hetzelfde zeggen.
   een cloudsessie krijgt een claim-commit niet meer weg. Uitleg in
   `docs/decisions/2026-09-13-een-opgeruimde-branch-is-geen-vrij-issue.md`.
 
+  ⚠️ **De gelande PR herkent hij sinds 24-09-2026 (QS8-611) ook aan de
+  claim-commit die de merge meenam**, en niet alleen aan de titel. 📏 Van de 24
+  merges sinds 13-09 zonder issuenummer in het onderwerp brachten er 8 een
+  claim-commit mee, en QS8-606 is zo opnieuw geclaimd. Een squash laat die commit
+  niet achter; ook daarom een merge-commit. Uitleg in
+  `docs/decisions/2026-09-24-de-titel-van-een-merge-is-vrij-de-claim-commit-niet.md`.
+
   ⚠️ **Het issue op In Progress zetten is géén claim gebleken.** Bij QS8-214 is
   dat gedáán, vóór de eerste regel code, en de andere sessie begon daarna
   alsnog. Wat wél gelezen wordt is de remote branchlijst, want daar leunen

@@ -1203,6 +1203,13 @@
 > verschil in gewicht is het besluit; het staat in
 > `docs/decisions/2026-09-13-een-opgeruimde-branch-is-geen-vrij-issue.md`.
 >
+> ⚠️ **24-09 (QS8-611): de titel van een PR noemt het issue niet altijd.** Toen
+> zag de claim de landing niet en gaf hij QS8-606 opnieuw vrij. Hij herkent de
+> landing nu ook aan de claim-commit die de merge meenam; de melding toont dan
+> die regel (`claim: QS8-nnn — bezet sinds …`) in plaats van de merge. De meting
+> staat in `CLAUDE.md` bij *Versiebeheer*. **Zet het issuenummer toch in je
+> PR-titel** — bij een squash is de titel het enige wat overblijft.
+>
 > **06-09, punt I: ik heb drie keer een issue gebouwd dat de andere sessie al
 > gebouwd hád** (QS8-287, QS8-286, QS8-214), **en bij de laatste wezen alle
 > signalen die ik had het aan voordat ik begon.** QS8-287 stond op *In

@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import {
   botsendeBranches,
   claimNaam,
+  claimVoor,
   gelandVoor,
   isGelandeVorm,
   nummerUit,
@@ -115,10 +116,14 @@ const ONDERWERPEN = [
   'Merge pull request #425 — een grant is geen slot zodra de aanroep uit het plan verdwijnt (QS8-433, migratie 0254)',
   // Vorm 2 — de squash. Zo landde QS8-294, het issue dat dit script maakte.
   'Claimen is een commando geworden in plaats van een gewoonte (QS8-294) (#232)',
+  // Vorm 3 — de claim-commit die de merge meenam (QS8-611). Het onderwerp van
+  // de merge noemt het issue niet; de tweede ouder draagt deze regel wél.
+  'Merge pull request #603 — een uitzondering die niet over een uitzondering ging',
+  'claim: QS8-606 — bezet sinds 12:08 UTC',
   // ⚠️ Geen van de volgende drie is een landing, en alle drie noemen ze een issue.
   "main erin gehaald om QS8-364 te kunnen landen",
   'Samengaan met main — QS8-174 is geland (0180)',
-  'claim: QS8-449 — bezet sinds 13:41 UTC',
+  'claim: QS8-381 — bezet, gestapeld op QS8-380',
 ];
 
 describe('isGelandeVorm', () => {
@@ -136,6 +141,8 @@ describe('isGelandeVorm', () => {
   it.each([
     ['een merge van main ín een branch', "main erin gehaald om QS8-364 te kunnen landen"],
     ['een samengaan', 'Samengaan met main — QS8-174 is geland (0180)'],
+    // ⚠️ Een claim-commit is geen vórm van een landing; of hij op `main` staat
+    //    en dus meegeland is, beslist `claimVoor()` in `gelandVoor()` (QS8-611).
     ['een claim-commit', 'claim: QS8-449 — bezet sinds 13:41 UTC'],
     ['een gewone commit op een branch', 'De kop noemt de voorwaarde niet (QS8-449)'],
     ['een nummer dat op een PR lijkt maar middenin staat', 'Iets (#232) en daarna nog tekst'],
@@ -173,9 +180,10 @@ describe('gelandVoor', () => {
    *    grendel weg — dezelfde afweging als bij `botsendeBranches` hierboven.
    */
   it.each([
-    ['een issue waar niets voor geland is', 449],
+    ['een issue waar niets voor geland is', 450],
     ['een nummer dat alleen in een merge-van-main staat', 364],
     ['een nummer dat alleen in een samengaan staat', 174],
+    ['de branch waar een gestapelde claim op staat', 380],
   ])('zwijgt bij %s', (_naam, nummer) => {
     expect(gelandVoor(nummer, ONDERWERPEN)).toEqual([]);
   });
@@ -189,5 +197,34 @@ describe('gelandVoor', () => {
 
   it('kijkt niet naar hoofdletters', () => {
     expect(gelandVoor(447, ['Merge pull request #440 — iets (qs8-447)'])).toHaveLength(1);
+  });
+
+  /**
+   * 📏 **Het geval van 24-09-2026 (QS8-611).** Het onderwerp van de merge noemt
+   *    QS8-606 niet, dus de twee vormen van `isGelandeVorm()` zagen niets en de
+   *    claim gaf het issue vrij. De claim-commit die de merge meenam staat wél
+   *    op `main`.
+   */
+  it('MUST-FIND: een landing die alleen aan haar claim-commit te herkennen is', () => {
+    expect(gelandVoor(606, ONDERWERPEN)).toEqual(['claim: QS8-606 — bezet sinds 12:08 UTC']);
+  });
+});
+
+describe('claimVoor', () => {
+  it('herkent de claim-commit van dít issue, in elke vorm die op main staat', () => {
+    expect(claimVoor(606, 'claim: QS8-606 — bezet sinds 12:08 UTC')).toBe(true);
+    expect(claimVoor(381, 'claim: QS8-381 — bezet, gestapeld op QS8-380')).toBe(true);
+    expect(claimVoor(345, 'claim: QS8-345 — herbezet, QS8-342 is intussen geland')).toBe(true);
+    expect(claimVoor(606, 'claim: qs8-606 — bezet sinds 12:08 UTC')).toBe(true);
+  });
+
+  it.each([
+    ['het nummer waar een gestapelde claim op staat', 380, 'claim: QS8-381 — bezet, gestapeld op QS8-380'],
+    ['een langer nummer', 60, 'claim: QS8-606 — bezet sinds 12:08 UTC'],
+    ['een korter nummer', 6061, 'claim: QS8-606 — bezet sinds 12:08 UTC'],
+    ['een claim die middenin geciteerd wordt', 777, 'Terug naar claim: QS8-777 — bezet sinds 10:00 UTC'],
+    ['een claim zonder issuenummer', 449, 'claim: agentsturing naar risico — bezet sinds 15:05 UTC'],
+  ])('laat %s met rust', (_naam, nummer, regel) => {
+    expect(claimVoor(nummer, regel)).toBe(false);
   });
 });
