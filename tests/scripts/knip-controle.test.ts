@@ -12,16 +12,20 @@ import { describe, expect, it } from 'vitest';
 
 import {
   BEOORDEELD,
+  bestandsvormenIn,
   definitiesIn,
+  EIGEN_KNIP,
   GEEN_KNIP,
   isKnipLichaam,
   knipVormenIn,
   GEDEELD,
+  klachtBestandsvorm,
   klachten,
   knipt,
   leestBronMetNaampatroon,
   MET_REDEN,
   verweesdeBeoordelingen,
+  verweesdeEigenKnippen,
   verweesdeRedenen,
   verweesdeVrijstellingen,
   ZONDER_KNIP,
@@ -491,3 +495,102 @@ describe('de derde helft van klachten', () => {
     }
   });
 });
+
+// ---------------------------------------------------------------------------
+
+/**
+ * De vierde helft — een knip die geen benoemde functie is (QS8-576).
+ *
+ * ⚠️⚠️ **Het geval dat deze helft opleverde is de blinde vorm van QS8-412 in
+ *    een pijlketen**: `een-document-voert-niets-uit.test.ts` knipte zijn
+ *    props-blok met een regelcommentaar-regex zonder `:`-wacht, en een verboden
+ *    prop ná een URL op dezelfde regel bleef groen. `knipVormenIn()` zag het
+ *    niet, want het zat niet in een benoemde functie.
+ */
+describe('bestandsvormenIn — een knip waar hij ook staat', () => {
+  it.each([
+    ['een JS-blokknip in een pijlketen', "const x = (b) => b.replace(/\\/\\*[\\s\\S]*?\\*\\//g, '')", 'blok'],
+    ['een regelknip zonder wacht', "tekst.replace(/\\/\\/[^\\n]*/g, '')", 'regel-js'],
+    ['een regelknip mét wacht', "tekst.replace(/(^|[^:])\\/\\/[^\\n]*/g, '$1')", 'regel-js'],
+    ['een SQL-regelknip met split', "regel.split('--')[0]", 'regel-sql'],
+    ['een SQL-regelfilter met startsWith', "regel.trimStart().startsWith('--')", 'regel-sql'],
+  ])('MUST-FIND: %s', (_naam, bron, vorm) => {
+    expect(bestandsvormenIn(bron)).toContain(vorm);
+  });
+
+  it.each([
+    ['het `--` van een git-aanroep', "git('diff', '--name-only', basis)"],
+    ['een CLI-argument', "argumenten.find((a) => !a.startsWith('--'))"],
+    ['een URL-regex', 'const M = /^https?:\\/\\/([^:@/]+)@/;'],
+  ])('MUST-ALLOW: laat %s met rust', (_naam, bron) => {
+    expect(bestandsvormenIn(bron)).toEqual([]);
+  });
+
+  it('MUST-ALLOW: telt een knipvorm in commentaar niet mee', () => {
+    expect(bestandsvormenIn("// ooit: bron.replace(/\\/\\*[\\s\\S]*?\\*\\//g, ' ')")).toEqual([]);
+  });
+});
+
+describe('de vierde helft van klachten', () => {
+  const PIJLKNIP = "const schoon = (b) => b.replace(/\\/\\*[\\s\\S]*?\\*\\//g, '');";
+
+  it('MUST-FIND: meldt een naamloze knip in een bestand zonder pas', () => {
+    const uit = klachten(PIJLKNIP, 'tests/beloftes/nieuw.test.ts');
+    expect(uit).toHaveLength(1);
+    expect(uit[0]).toContain('past een eigen knip toe (blok)');
+  });
+
+  it('MUST-ALLOW: zwijgt over een bestand dat in EIGEN_KNIP staat', () => {
+    const pad = Object.keys(EIGEN_KNIP)[0] ?? '';
+    expect(klachtBestandsvorm(PIJLKNIP, pad)).toBeNull();
+  });
+
+  it('MUST-ALLOW: zwijgt over een bestand dat de gedeelde knip importeert', () => {
+    const bron = `import { zonderCommentaar } from './zonder-commentaar.mjs';\n${PIJLKNIP}`;
+    expect(klachtBestandsvorm(bron, 'scripts/nieuw.mjs')).toBeNull();
+  });
+
+  it('MUST-ALLOW: zwijgt over een bestand zonder knipvorm', () => {
+    expect(klachtBestandsvorm("const a = 'geen knip';", 'tests/beloftes/nieuw.test.ts')).toBeNull();
+  });
+
+  it('elke rij in EIGEN_KNIP zegt waaróm de knip eigen is', () => {
+    for (const [pad, reden] of Object.entries(EIGEN_KNIP)) {
+      expect(reden.length, pad).toBeGreaterThan(40);
+    }
+  });
+});
+
+describe('verweesdeEigenKnippen', () => {
+  const KNIP = "regel.split('--')[0]";
+
+  it('MUST-FIND: meldt een rij waarvan het bestand weg is', () => {
+    expect(verweesdeEigenKnippen(new Map())).toEqual(Object.keys(EIGEN_KNIP));
+  });
+
+  it('MUST-FIND: meldt een rij waarvan het bestand niet meer knipt', () => {
+    const paden = Object.keys(EIGEN_KNIP);
+    const eerste = paden[0] ?? '';
+    const bronnen = new Map(paden.map((p) => [p, p === eerste ? "const a = 1;" : KNIP]));
+    expect(verweesdeEigenKnippen(bronnen)).toEqual([eerste]);
+  });
+
+  it('MUST-FIND: meldt een rij die inmiddels de gedeelde knip importeert', () => {
+    const paden = Object.keys(EIGEN_KNIP);
+    const eerste = paden[0] ?? '';
+    const bronnen = new Map(
+      paden.map((p) => [
+        p,
+        p === eerste ? `import { zonderCommentaar } from './zonder-commentaar.mjs';\n${KNIP}` : KNIP,
+      ]),
+    );
+    expect(verweesdeEigenKnippen(bronnen)).toEqual([eerste]);
+  });
+
+  it('MUST-ALLOW: zwijgt als elk bestand nog zijn eigen knip draagt', () => {
+    expect(verweesdeEigenKnippen(new Map(Object.keys(EIGEN_KNIP).map((p) => [p, KNIP])))).toEqual(
+      [],
+    );
+  });
+});
+
