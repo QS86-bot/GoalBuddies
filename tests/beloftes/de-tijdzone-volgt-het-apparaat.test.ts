@@ -5,6 +5,7 @@ import { describe, expect, it } from 'vitest';
 
 import { moetSynchroniseren } from '../../src/modules/auth/tijdzonesync-regel';
 import { userCycle } from '../../src/shared/time';
+import { zonderCommentaar } from './roept-aan';
 
 const WORTEL = join(__dirname, '..', '..');
 
@@ -192,7 +193,7 @@ describe('geen scherm laat de gebruiker een tijdzone kiezen', () => {
       `${pad} is verdwenen of hernoemd — verhuis deze grendel mee`,
     ).not.toThrow();
 
-    const bron = readFileSync(pad, 'utf8');
+    const bron = zonderCommentaar(readFileSync(pad, 'utf8'));
 
     expect(
       /\bsetTz\b/.test(bron),
@@ -221,18 +222,32 @@ describe('geen scherm laat de gebruiker een tijdzone kiezen', () => {
    *    dezelfde bron.
    */
   it('laat de onboarding zijn zone rechtstreeks uit het apparaat halen', () => {
-    const bron = readFileSync(join(WORTEL, 'app', 'onboarding', 'profiel.tsx'), 'utf8');
+    const bron = zonderCommentaar(
+      readFileSync(join(WORTEL, 'app', 'onboarding', 'profiel.tsx'), 'utf8'),
+    );
 
     expect(bron, 'de onboarding leidt zijn tijdzone niet meer af van het apparaat').toMatch(
       /const tz = apparaatTijdzone\(\);/,
     );
     // ⚠️ **`const [tz` en niet `useState(...tz...)`, en dat is opnieuw de
     //    commentaarval.** De eerste vorm hiervan zocht `useState\([^)]*tz` en
-    //    werd rood op de uitleg hierboven, die die vorm letterlijk cíteert. Een
-    //    comment-knipper ervoor zou een dérde kopie van `ontdaanVanCommentaar()`
-    //    in deze testboom zijn, en QS8-412 is precies het verhaal van dezelfde
-    //    knip die in twee bestanden blind bleek. Een patroon dat niet in proza
-    //    voorkomt is hier het kortere pad.
+    //    werd rood op de uitleg hierboven, die die vorm letterlijk cíteert.
+    //
+    // ⚠️⚠️ **Hier stond dat een comment-knipper een dérde kopie van
+    //    `ontdaanVanCommentaar()` zou zijn, en dat een patroon dat niet in proza
+    //    voorkomt het kortere pad was. Dat argument is bij QS8-574 vervallen en
+    //    de meting eronder klopte ook niet.** Er ís sinds QS8-446 één gedeelde
+    //    knip, dus knippen kost geen kopie meer. En het patroon hield alleen
+    //    *proza* buiten de deur, niet een **uitgecommentarieerde echte regel** —
+    //    precies het geval van QS8-568. 📏 Gemeten vóór de knip: met
+    //    `// const tz = apparaatTijdzone();` in de onboarding bleef dit bestand
+    //    **16 van de 16** groen, en met `{/* <Tijdzonewacht /> */}` in
+    //    `app/_layout.tsx` óók — dan verandert `profiles.tz` na de onboarding
+    //    nergens meer en zegt geen enkele test er iets van.
+    //
+    //    De les die blijft staan: een grendel die op prozatekst matcht, bewaakt
+    //    vanaf dat moment de proza. Daarom blijft de vorm hieronder zoals hij is
+    //    — de knip komt er nu bíj, hij vervangt hem niet.
     expect(
       /const \[tz[,\]]/.test(bron),
       'de onboarding bevriest de tijdzone weer in een useState — dan schrijft hij de waarde van vóór de sync terug',
@@ -249,9 +264,8 @@ describe('geen scherm laat de gebruiker een tijdzone kiezen', () => {
    *    dat `Pushwacht` in hetzelfde bestand als hoofdpad beschrijft.
    */
   it('koppelt de lusgrendel aan de gebruiker en niet alleen aan de zone', () => {
-    const bron = readFileSync(
-      join(WORTEL, 'src', 'modules', 'auth', 'useTijdzoneSync.ts'),
-      'utf8',
+    const bron = zonderCommentaar(
+      readFileSync(join(WORTEL, 'src', 'modules', 'auth', 'useTijdzoneSync.ts'), 'utf8'),
     );
 
     expect(bron, 'de ref draagt geen userId — dan slaat de wacht over na een accountwissel').toMatch(
@@ -265,7 +279,9 @@ describe('geen scherm laat de gebruiker een tijdzone kiezen', () => {
 
   /** Het profieltabblad schrijft helemáál geen zone — daar is niets te vullen. */
   it('laat het profieltabblad zelf geen tz schrijven', () => {
-    const bron = readFileSync(join(WORTEL, 'app', '(tabs)', 'profiel.tsx'), 'utf8');
+    const bron = zonderCommentaar(
+      readFileSync(join(WORTEL, 'app', '(tabs)', 'profiel.tsx'), 'utf8'),
+    );
     const schrijft = /\btz[:,]\s*(?:[A-Za-z_$][A-Za-z0-9_$]*)?\s*\}/.exec(bron);
 
     expect(
@@ -275,7 +291,7 @@ describe('geen scherm laat de gebruiker een tijdzone kiezen', () => {
   });
 
   it('en de enige schrijver bij elke start staat er ook echt', () => {
-    const bron = readFileSync(join(WORTEL, 'app', '_layout.tsx'), 'utf8');
+    const bron = zonderCommentaar(readFileSync(join(WORTEL, 'app', '_layout.tsx'), 'utf8'));
 
     expect(
       bron,

@@ -7,6 +7,7 @@ import { describe, expect, it } from 'vitest';
 import { overzichtsuur } from '../../src/modules/notifications/regels';
 import { closableUserCycle, previousCycle, userCycle } from '../../src/shared/time/cycle';
 import { GRACE_HOURS, type UserClock } from '../../src/shared/time/types';
+import { zonderCommentaar } from './roept-aan';
 
 /**
  * "Een weekpas heeft je reeks gered" bereikt je ook zonder de app te openen — QS8-202.
@@ -33,8 +34,16 @@ const WORTEL = fileURLToPath(new URL('../..', import.meta.url));
 
 const JOB = 'supabase/functions/notificaties/index.ts';
 
+/**
+ * ⚠️ **De knip staat hier en niet per toets — QS8-574.** Zo dekt hij ook de
+ *    toetsen die er later bij komen, en dat is precies waar deze klasse
+ *    vandaan komt. 📏 Gemeten vóór de knip: met
+ *    `// .from('week_pass_events')` in de meldingen-job bleef dit bestand
+ *    **20 van de 20** groen — de keten was door en geen enkele grendel zei
+ *    er iets van.
+ */
 function bron(pad: string): string {
-  return readFileSync(join(WORTEL, pad), 'utf8');
+  return zonderCommentaar(readFileSync(join(WORTEL, pad), 'utf8'));
 }
 
 describe('de meldingen-job vraagt of er een weekpas verbruikt is', () => {

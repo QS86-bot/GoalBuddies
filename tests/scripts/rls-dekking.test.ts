@@ -15,6 +15,8 @@ import {
   weegTegenBaseline,
   verdachtePolicies,
   herstelSql,
+  beoordeelHerstel,
+  SPOORVERSIE,
   ontleedPolicies,
   oordeel,
   verzwakSql,
@@ -849,5 +851,141 @@ describe('het register van helften die per helft niet te meten zijn — QS8-262'
     expect(registersleutel({ tabel: 'a', naam: 'a_delete', helft: 'using' })).toBe(
       'a.a_delete.using',
     );
+  });
+});
+
+/**
+ * De ijking van het herstelspoor — QS8-588.
+ *
+ * ⚠️⚠️ **De belofte is niet "hij zet terug" maar "hij zet niets terug wat
+ *    intussen veranderd is".** `herstelWatOpenstond()` deed het eerste altijd en
+ *    het tweede nooit: het spoor werd onvoorwaardelijk afgespeeld, dus wijzigde
+ *    een migratie de policy tussen de afgebroken run en de volgende, dan schreef
+ *    het herstel de pre-migratiedefinitie terug — bij `group_visible_streaks`
+ *    een besluit onder A41, stilzwijgend.
+ *
+ * ⚠️ **De must-allows tellen hier zwaar.** Een beoordeling die alles weigert,
+ *    maakt van elk afgebroken run een handmatige klus, en dan gooit de volgende
+ *    persoon het spoor ongelezen weg — precies de handeling die dit moet
+ *    voorkomen.
+ */
+describe('beoordeelHerstel — mag dit spoor afgespeeld worden?', () => {
+  /** Een policy met twee conjuncten in `using` en een eigen `check`. */
+  const POLICY = {
+    tabel: 'goals',
+    naam: 'goals_update',
+    cmd: 'w',
+    qual: '(owner_id = auth.uid()) AND (status <> \'archived\'::text)',
+    wcheck: '(owner_id = auth.uid())',
+    recht: true,
+  };
+
+  const spoor = (helft: string) => ({ versie: SPOORVERSIE, policy: POLICY, helft });
+
+  describe('terugzetten — de gewone gang van zaken', () => {
+    it('een conjunct staat nog open en de rest is ongemoeid', () => {
+      const huidig = { qual: 'true AND (status <> \'archived\'::text)', wcheck: POLICY.wcheck };
+      expect(beoordeelHerstel(spoor('using#0'), huidig).actie).toBe('terugzetten');
+    });
+
+    it('de tweede conjunct, want een index die niet nul is telt ook', () => {
+      const huidig = { qual: '(owner_id = auth.uid()) AND true', wcheck: POLICY.wcheck };
+      expect(beoordeelHerstel(spoor('using#1'), huidig).actie).toBe('terugzetten');
+    });
+
+    it('een hele helft die wagenwijd openstaat', () => {
+      const huidig = { qual: POLICY.qual, wcheck: 'true' };
+      expect(beoordeelHerstel(spoor('check'), huidig).actie).toBe('terugzetten');
+    });
+  });
+
+  describe('weg — er valt niets terug te zetten', () => {
+    it('de policy bestaat niet meer, en dan crasht de volgende run niet meer', () => {
+      // ⚠️ Hiervóór wierp `psql` hierop, bleef het spoor liggen, en crashte élke
+      //    volgende run tot iemand het bestand met de hand weggooide.
+      const uitslag = beoordeelHerstel(spoor('using#0'), null);
+      expect(uitslag.actie).toBe('weg');
+      expect(uitslag.reden).toContain('bestaat niet meer');
+    });
+
+    it('de policy staat al terug zoals hij was', () => {
+      const huidig = { qual: POLICY.qual, wcheck: POLICY.wcheck };
+      expect(beoordeelHerstel(spoor('using#0'), huidig).actie).toBe('weg');
+    });
+  });
+
+  describe('weigeren — en dan blijft het spoor liggen', () => {
+    // ⚠️⚠️ **De scherpste van de reeks, en de reden dat dit issue bestaat.** Een
+    //    migratie heeft de ándere helft gewijzigd; het spoor kent hem nog in zijn
+    //    oude vorm. Terugzetten zou die migratie ongedaan maken.
+    it('de onaangeraakte helft is veranderd — dat is een migratie geweest', () => {
+      const huidig = {
+        qual: 'true AND (status <> \'archived\'::text)',
+        wcheck: '(owner_id = auth.uid()) AND (zichtbaarheid = \'open\'::text)',
+      };
+      const uitslag = beoordeelHerstel(spoor('using#0'), huidig);
+      expect(uitslag.actie).toBe('weiger');
+      expect(uitslag.reden).toContain('check');
+    });
+
+    it('de aangeraakte helft telt nu een conjunct meer', () => {
+      const huidig = {
+        qual: 'true AND (status <> \'archived\'::text) AND (deleted_at IS NULL)',
+        wcheck: POLICY.wcheck,
+      };
+      expect(beoordeelHerstel(spoor('using#0'), huidig).actie).toBe('weiger');
+    });
+
+    it('een ándere conjunct is gewijzigd dan de conjunct die openstond', () => {
+      const huidig = { qual: 'true AND (status <> \'draft\'::text)', wcheck: POLICY.wcheck };
+      expect(beoordeelHerstel(spoor('using#0'), huidig).actie).toBe('weiger');
+    });
+
+    it('de conjunct die open hoorde te staan, staat dat niet', () => {
+      const huidig = { qual: '(owner_id = auth.jwt()) AND (status <> \'archived\'::text)', wcheck: POLICY.wcheck };
+      expect(beoordeelHerstel(spoor('using#0'), huidig).actie).toBe('weiger');
+    });
+
+    it('een hele helft die noch open noch de oude vorm is', () => {
+      const huidig = { qual: POLICY.qual, wcheck: '(owner_id = auth.jwt())' };
+      expect(beoordeelHerstel(spoor('check'), huidig).actie).toBe('weiger');
+    });
+
+    // ⚠️ Faalt dicht. Een spoor van vóór QS8-588 draagt geen helft, dus is niet
+    //    vast te stellen welke toestand de database hóórt te hebben.
+    it('een spoor uit een oudere versie — de vorm die vandaag op schijf kan staan', () => {
+      const uitslag = beoordeelHerstel(POLICY as never, { qual: 'true', wcheck: POLICY.wcheck });
+      expect(uitslag.actie).toBe('weiger');
+      expect(uitslag.reden).toContain('oudere versie');
+    });
+
+    it('een spoor met de juiste versie maar zonder helft', () => {
+      const kaal = { versie: SPOORVERSIE, policy: POLICY };
+      expect(beoordeelHerstel(kaal as never, { qual: 'true', wcheck: POLICY.wcheck }).actie).toBe(
+        'weiger',
+      );
+    });
+
+    it("een spoor dat 'beide' noemt — daar is geen onaangeraakte helft", () => {
+      expect(beoordeelHerstel(spoor('beide'), { qual: 'true', wcheck: 'true' }).actie).toBe(
+        'weiger',
+      );
+    });
+  });
+
+  // ⚠️⚠️ **De grens van de meting, opgeschreven in plaats van weggelaten.**
+  //    Postgres deparseert een uitdrukking bij het teruglezen, dus de tekst die
+  //    wij schreven komt anders opgemaakt terug. Daarom gaat de vergelijking per
+  //    conjunct: die komen uit dezelfde deparser op dezelfde knoop. Wat dit
+  //    níet vangt is een migratie die precies de geopende conjunct vervangt door
+  //    iets dat óók `true` deparseert — dan is er geen verschil meer te zien, en
+  //    dat is geen tekortkoming van deze toets maar van wat een tekst kan dragen.
+  it('vergelijkt per conjunct en niet over de hele helft', () => {
+    const huidig = {
+      qual: 'true AND (status <> \'archived\'::text)',
+      wcheck: POLICY.wcheck,
+    };
+    expect(beoordeelHerstel(spoor('using#0'), huidig).actie).toBe('terugzetten');
+    expect(beoordeelHerstel(spoor('using#1'), huidig).actie).toBe('weiger');
   });
 });

@@ -56,6 +56,7 @@ het afsluiten van een issue of Linear en de documenten hetzelfde zeggen.
 | `docs/decisions/NNN-*.md` | Architectuurbeslissingen |
 | `docs/ENGINEER-REVIEW.md` | Agenda voor de engineer-review in november |
 | `docs/DEPLOY.md` | Deploy- en migratiehandleiding |
+| `docs/PROMPT-SESSIE.md` | De afspraken tussen twee gelijktijdige sessies, met de meting die het sessieaantal draagt (QS8-583) |
 
 **Linear:** project GoalBuddies in team `QS86-bot Linear` (prefix `QS8`).
 **Supabase:** project `goalbuddies`, ref `wehgocadxehottiiyvsc`, regio `eu-west-3`.
@@ -355,6 +356,26 @@ Voordat er één feature gebouwd wordt:
    (inzet, verlies, publieke zichtbaarheid) moet expliciet bevestigd zijn,
    auditeerbaar, en nooit stilzwijgend geactiveerd.
 
+   ⚠️⚠️ **Nooit geld — besloten 22-09-2026 (QS8-86).** Een straf legt de gebruiker
+   nooit een geldbedrag op. Geen betaalprovider, geen escrow, geen inzet in euro's.
+   Wat een consequentie wél mag zijn: trakteren, of iets anders dat de gebruiker
+   zelf gekozen heeft — **en ook dat is vrijblijvend.** De app maakt een afspraak
+   zichtbaar; hij dwingt niets af en houdt geen schuld bij.
+
+   📏 De stand klopt daar vandaag al mee: `commitments.body` is vrije tekst, een
+   verstreken deadline zet de straf op `due` en maakt hem **zichtbaar** voor de
+   begunstigde groep of getuige, en er is nergens een inning. **Er hoefde dus
+   niets af — wat er bij kwam is de grens.** PRD 9.4 vervalt.
+
+   ⚠️ Dat het hier staat en niet alleen in een beslisdocument is met opzet: de
+   PRD noemt echte-geld-commitments nog steeds als fase 3, en een regel die
+   alleen in `docs/decisions/` staat wordt gelezen door wie ernaar zoekt.
+   Uitleg in `docs/decisions/2026-09-22-vier-besluiten-en-twee-ervan-zijn-een-regel.md`.
+
+   ⚠️ **Wat hier níet mee besloten is:** of de woorden "straf" en `due` mee
+   moeten veranderen. Die suggereren iets hards, en of dat zo blijft raakt wat de
+   gebruiker te horen krijgt — grens 1, en dus een eigen besluit.
+
 6. **Streaks en voltooiingen zijn append-only.** Corrigeren gebeurt via een
    correctie-record, niet door geschiedenis te overschrijven.
 
@@ -409,6 +430,23 @@ Voordat er één feature gebouwd wordt:
    groep — de belangrijkste vondst uit de Habit Huddle-analyse. Bij zakelijk
    gebruik weegt dat zwaarder, niet lichter: zit er een leidinggevende in de groep,
    dan beschermt de regel niet tegen schaamte maar tegen een beoordelingsgesprek.
+
+   ⚠️⚠️ **En sinds 22-09-2026 (QS8-230) hoeft een groep niet meer uit bekenden te
+   bestaan.** Tot dat besluit was er één weg naar binnen — een uitnodigingscode —
+   en daarmee rustte er een aanname onder dit hele model: elke groep bestaat uit
+   mensen die elkaar gekozen hebben. Die aanname is weg.
+
+   **De regel verandert daar niet van; zijn bereik wel.** Bij een vreemde is de
+   vraag niet "schaamte tegenover een vriend" maar *wie is dit en wat doet hij met
+   wat hij ziet* — en je kunt een groep van onbekenden niet verlaten zonder
+   gezichtsverlies bij mensen aan wie je niets verschuldigd bent. **Dat maakt
+   domeinregel 7 zwaarder, niet lichter**, precies zoals bij zakelijk gebruik.
+
+   ⚠️ Een groep met onbekenden hoort daarom **beschermd** te zijn, en dat is een
+   eigenschap van `groups` en geen keuze in een scherm. Zichtbaarheid `open` is
+   besloten (A41) voor groepen van vrienden; wie die keuze wil uitbreiden naar
+   groepen van vreemden, leest eerst rij en reden in
+   `docs/decisions/002-domeinregel7-oppervlakken.md` §6b.
 
    **Bij élk nieuw ding dat de groep te zien krijgt, twee vragen:** kan hieruit
    iemands gemiste week worden afgeleid, én kan iemand dat met één API-verzoek
@@ -682,6 +720,25 @@ docs/decisions/
     scherm, verlaag dan het plafond in `scripts/regel15-controle.mjs`. Zelfde
     vorm als `levend:controle`.
 16. Elke async view heeft loading-, error- én empty-state.
+
+⚠️⚠️ **Een gegenereerd bestand werk je niet met de hand bij — vastgelegd
+21-09-2026 (QS8-569).** `src/lib/database.types.ts` is een afschrift dat
+`npm run types:db` in zijn geheel overschrijft. Klopt het niet met de database,
+dan is de vraag wélke van twee dingen er aan de hand is:
+
+- **het loopt achter** → hergenereren, en verder niets;
+- **de generator kán het niet weten** — een NOT NULL-kolom zonder `DEFAULT` die
+  een trigger vult, een functieargument dat NULL aanneemt, een
+  `RETURNS TABLE`-kolom die NULL kan zijn → dan hoort de correctie in
+  `src/lib/database.types.correcties.ts`, met de meting erbij, en onder de
+  tweezijdige toets in `tests/beloftes/typecorrecties.test.ts`.
+
+⚠️ **En de reden dat dit een regel is en geen gewoonte:** hij stond sinds `0136`
+al in het commentaar van `src/modules/ai/jobs.ts`, woordelijk en juist. 📏 Er
+kwamen in dat bestand tóch **veertien** handgeschreven correcties bij, over acht
+functies en één view, en ze zijn bij de eerste hergeneratie allemaal verdwenen
+zonder dat er iets rood van werd. Uitleg in
+`docs/decisions/2026-09-21-de-correcties-stonden-in-het-bestand-dat-overschreven-wordt.md`.
 
 ### Proces
 17. Elke feature begint met `spec-planner`.

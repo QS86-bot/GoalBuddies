@@ -14,7 +14,7 @@ import { createHmac, randomUUID } from 'node:crypto';
 
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 
-import type { Database } from '../../src/lib/database.types';
+import type { Database } from '../../src/lib/database.types.correcties';
 import { beoordeelWezen, wezentekst, type VerseGroep } from './wezen';
 
 export type TestDb = SupabaseClient<Database>;
@@ -307,6 +307,37 @@ let andereRunGezien = false;
  */
 export function registreerGroep(groupId: string): void {
   createdGroups.add(groupId);
+}
+
+/**
+ * De gebruikers die deze run zelf heeft aangemaakt — de grens voor een globale
+ * job (QS8-577).
+ *
+ * ⚠️⚠️ **Waarom dit naast de opruimboekhouding staat en er niet los van.**
+ *    `maak_seizoensrecaps()`, `slaap_stille_groepen()` en
+ *    `keur_vastgelopen_goedkeuringen_goed()` draaien zonder hun `uuid[]`-grens
+ *    over élke rij in de database, ook die van een suite die hiernaast draait.
+ *    De vraag *"wat is van ons"* is precies dezelfde vraag die het opruimen
+ *    stelt, en twee antwoorden op één vraag lopen uit elkaar.
+ *
+ * ⚠️⚠️ **Leeg werpt, en dat is geen voorzichtigheid.** Een lege `uuid[]` is
+ *    níet `null`: de job raakt dan niets. Voor een toets die iets moet zién
+ *    gebeuren valt dat meteen op — maar de helft van de toetsen die deze grens
+ *    gebruikt is een *must-deny*: die verwacht juist dat er níets verandert, en
+ *    blijft bij een lege lijst groen **zonder iets te meten**. Dat is regel 18
+ *    vraag 3 in zijn zuiverste vorm, dus de lege lijst is hier een harde fout
+ *    en geen randgeval.
+ */
+export function eigenGebruikers(): string[] {
+  const ids = createdUsers.map((gebruiker) => gebruiker.id);
+  if (ids.length === 0) {
+    throw new Error(
+      'eigenGebruikers(): deze run heeft nog geen gebruikers aangemaakt. Als grens voor ' +
+        'een globale job betekent een lege lijst "raak niets", en dan meet de toets erna ' +
+        'niets terwijl hij groen blijft.',
+    );
+  }
+  return ids;
 }
 
 /**

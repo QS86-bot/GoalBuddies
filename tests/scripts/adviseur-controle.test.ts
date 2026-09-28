@@ -27,17 +27,43 @@ function bevinding(over: Partial<Record<string, unknown>> = {}) {
   };
 }
 
-/** De zes bevindingen die op 31-08-2026 met een eigen sleutel op de lijst staan. */
+/**
+ * De bevindingen die met een eigen sleutel op de lijst staan.
+ *
+ * ⚠️⚠️ **Deze lijst is op 24-09-2026 bijgewerkt en dat is een meting, geen
+ *    reparatie.** 📏 De audit van die dag haalde de adviseur op via de MCP:
+ *    `public.mijn_doelvelden` (0236) en `public.dagtellers` (0233/0234) landden
+ *    op **17-09** en stonden er een week later nog niet op, terwijl de linter ze
+ *    allebei meldde. Niets werd daar rood van, want `adviseur:controle` vraagt
+ *    een token en draait niet in CI. `adviseurdrift:controle` (QS8-597) dekt die
+ *    twee klassen sindsdien vanuit de migratiemap.
+ */
 const BEKENDE_SLEUTELS = [
   'security_definer_view_public_mijn_profiel',
   'security_definer_view_public_group_visible_streaks',
+  'security_definer_view_public_mijn_doelvelden',
   'rls_enabled_no_policy_public_invite_events',
   'rls_enabled_no_policy_public_invite_preview_limits',
+  'rls_enabled_no_policy_public_dagtellers',
   'auth_leaked_password_protection',
 ];
 
-/** De stand van 31-08-2026, volledig: alles verklaard, niets te ruim. */
-function standVan31Augustus() {
+/**
+ * De gemeten stand van 24-09-2026: alles verklaard, niets te ruim.
+ *
+ * 📏 Zeven bevindingen met een eigen sleutel, één oningelogde definer-functie
+ *    (`invite_preview`) en **76** die `authenticated` mag aanroepen. Dat laatste
+ *    getal stond tot deze dag op 47 en is met 29 overschreden zonder dat iemand
+ *    het zag.
+ *
+ * ⚠️ `auth_leaked_password_protection` zit er nog in en de échte adviseur meldt
+ *    hem op 24-09 **niet** meer. Dat is met opzet niet uit de allowlist gehaald:
+ *    *niet meer gerapporteerd* is niet hetzelfde als *gerepareerd* (QS8-411), en
+ *    het verschil is een schakelaar in het dashboard die geen sessie hier kan
+ *    lezen. Deze fixture beschrijft dus de stand zoals de lijst hem verwacht,
+ *    niet wat de linter vandaag toevallig teruggeeft.
+ */
+function gemetenStand() {
   const rijen = BEKENDE_SLEUTELS.map((cache_key) => bevinding({ cache_key }));
   rijen.push(
     bevinding({
@@ -45,7 +71,7 @@ function standVan31Augustus() {
       cache_key: 'anon_security_definer_function_executable_public_invite_preview_code text',
     }),
   );
-  for (let i = 0; i < 47; i += 1) {
+  for (let i = 0; i < 76; i += 1) {
     rijen.push(
       bevinding({
         name: 'authenticated_security_definer_function_executable',
@@ -85,14 +111,14 @@ describe('normaliseer', () => {
 });
 
 describe('beoordeel — wat er met rust gelaten moet worden', () => {
-  it('meldt niets bij de volledige stand van 31-08-2026', () => {
-    const { onverwacht, verouderd } = beoordeel(standVan31Augustus(), ALLOWLIST);
+  it('meldt niets bij de gemeten stand van 24-09-2026', () => {
+    const { onverwacht, verouderd } = beoordeel(gemetenStand(), ALLOWLIST);
     expect(onverwacht).toEqual([]);
     expect(verouderd).toEqual([]);
   });
 
   it('laat een bevinding met een eigen sleutel door, ongeacht zijn niveau', () => {
-    const rijen = standVan31Augustus().map((r) =>
+    const rijen = gemetenStand().map((r) =>
       r.cache_key === 'security_definer_view_public_mijn_profiel' ? { ...r, level: 'ERROR' } : r,
     );
     expect(beoordeel(rijen, ALLOWLIST).onverwacht).toEqual([]);
@@ -102,7 +128,7 @@ describe('beoordeel — wat er met rust gelaten moet worden', () => {
 describe('beoordeel — wat er gevonden moet worden', () => {
   it('meldt een bevinding die op geen enkele regel past', () => {
     const rijen = [
-      ...standVan31Augustus(),
+      ...gemetenStand(),
       bevinding({
         name: 'policy_exists_rls_disabled',
         level: 'ERROR',
@@ -121,7 +147,7 @@ describe('beoordeel — wat er gevonden moet worden', () => {
     //    nieuw besluit en geen herhaling. Dit is de reden dat die vorm bestaat
     //    naast `hoogstens`.
     const rijen = [
-      ...standVan31Augustus(),
+      ...gemetenStand(),
       bevinding({ cache_key: 'rls_enabled_no_policy_public_nog_een_tabel' }),
     ];
     expect(beoordeel(rijen, ALLOWLIST).onverwacht).toHaveLength(1);
@@ -129,7 +155,7 @@ describe('beoordeel — wat er gevonden moet worden', () => {
 
   it('meldt een tweede oningelogde functie — de ratel op hoogstens 1', () => {
     const rijen = [
-      ...standVan31Augustus(),
+      ...gemetenStand(),
       bevinding({
         name: 'anon_security_definer_function_executable',
         cache_key: 'anon_security_definer_function_executable_public_iets_anders_',
@@ -141,9 +167,9 @@ describe('beoordeel — wat er gevonden moet worden', () => {
     expect(onverwacht.at(0)?.detail).toContain('hoogstens 1');
   });
 
-  it('meldt een 48e definer-functie', () => {
+  it('meldt een 77e definer-functie', () => {
     const rijen = [
-      ...standVan31Augustus(),
+      ...gemetenStand(),
       bevinding({
         name: 'authenticated_security_definer_function_executable',
         cache_key: 'authenticated_security_definer_function_executable_public_f99_',
@@ -151,13 +177,13 @@ describe('beoordeel — wat er gevonden moet worden', () => {
     ];
     const { onverwacht } = beoordeel(rijen, ALLOWLIST);
     expect(onverwacht).toHaveLength(1);
-    expect(onverwacht.at(0)?.detail).toContain('48 keer');
+    expect(onverwacht.at(0)?.detail).toContain('77 keer');
   });
 });
 
 describe('beoordeel — de lijst rot ook de andere kant op', () => {
   it('meldt een uitzondering die niets meer aanwijst', () => {
-    const rijen = standVan31Augustus().filter(
+    const rijen = gemetenStand().filter(
       (r) => r.cache_key !== 'auth_leaked_password_protection',
     );
     const { onverwacht, verouderd } = beoordeel(rijen, ALLOWLIST);
@@ -172,7 +198,7 @@ describe('beoordeel — de lijst rot ook de andere kant op', () => {
     //    Zonder deze helft is `hoogstens` geen ratel maar een plafond waar je
     //    onder kunt blijven zitten — en dan legt niemand ooit meer vast wat de
     //    stand is.
-    const rijen = standVan31Augustus().filter(
+    const rijen = gemetenStand().filter(
       (r, i) => r.name !== 'authenticated_security_definer_function_executable' || i % 2 === 0,
     );
     const { verouderd } = beoordeel(rijen, ALLOWLIST);

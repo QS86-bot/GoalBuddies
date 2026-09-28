@@ -76,6 +76,15 @@ export interface Pagina<T> {
  *    ander gedrag geven dan een sleutel die `null` mag zijn. Wat er in de
  *    praktijk gebeurt bij een ontbrekende kolom is `undefined`, maar elke
  *    aanroeper controleert met `??` of een nulcheck, en die vangen allebei.
+ *
+ * ⚠️⚠️ **Verwar hem niet met `src/lib/database.types.correcties.ts` — QS8-569.**
+ *    Die laag zegt van één benoemde kolom dat de **database** er NULL in kan
+ *    zetten (een `left join`, een `case … end` zonder `else`), met de meting
+ *    erbij en onder een toets die rood wordt zodra de correctie overbodig is.
+ *    `RpcRij` zegt iets anders en breders: *de types kunnen achterlopen op de
+ *    functie*, dus élke kolom kan ontbreken. De twee vervangen elkaar niet, en
+ *    **"de correctielaag dekt dat toch" is geen reden om `RpcRij` over te slaan**
+ *    op een nieuwe RPC: die laag is wat er gemeten is, niet wat er is.
  */
 export type RpcRij<T> = { readonly [K in keyof T]: T[K] | null };
 

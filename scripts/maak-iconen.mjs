@@ -9,11 +9,18 @@
  * ⚠️ Uitsluitend kleuren uit het Q-Projects navy-stelsel (`src/shared/theme/
  *    tokens.ts`). CLAUDE.md: verzin hier nooit een kleur bij.
  *
- * ⚠️ **Dit is een plaatshouder.** Het merk is bewust geometrisch: twee gekoppelde
- *    ringen, naar De Ketting — het groepsbegrip waar dit product op draait.
- *    Zodra QS8-109 een mascotte oplevert hoort dit vervangen te worden. Beter een
- *    eerlijke plaatshouder die de installatiestroom af maakt dan een ontbrekend
- *    icoon dat iOS met een schermafdruk invult.
+ * ⚠️ **Dit wás een plaatshouder en is er sinds 22-09-2026 geen meer.** Het merk is
+ *    bewust geometrisch: twee gekoppelde ringen, naar De Ketting — het
+ *    groepsbegrip waar dit product op draait.
+ *
+ *    De kop hier zei tot vandaag: *"zodra QS8-109 een mascotte oplevert hoort dit
+ *    vervangen te worden"*. Die mascotte komt er niet. Op QS8-109 is besloten dat
+ *    de zes heldenarchetypes de rol van de Doelcoach overnemen en dat er geen
+ *    zevende figuur bij komt — zie
+ *    `docs/decisions/2026-09-22-vier-besluiten-en-twee-ervan-zijn-een-regel.md` §4.
+ *
+ *    Dit icoon is dus het icoon. Vervangen mag, maar niet meer omdat er iets
+ *    anders op zou komen.
  *
  * Geen dependencies: PNG-codering met de ingebouwde zlib.
  */
@@ -21,7 +28,7 @@ import { Buffer } from 'node:buffer';
 import { deflateSync } from 'node:zlib';
 import { writeFileSync, mkdirSync } from 'node:fs';
 import { dirname, join } from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 
 const HIER = dirname(fileURLToPath(import.meta.url));
 const PUBLIC = join(HIER, '..', 'public');
@@ -147,24 +154,30 @@ function tekenIcoon(maat, { transparant = false, schaal = 1 } = {}) {
 
 // --- Uitvoeren ---------------------------------------------------------------
 
-mkdirSync(PUBLIC, { recursive: true });
+// ⚠️ Het werk staat in een blok achter de main-guard, en niet in een
+//    `hoofd()`: zo doet importeren niets (QS8-608) zonder dat er een lange
+//    functie bijkomt die coderegel 15 zou breken. Top-level `await` mag
+//    binnen dit blok — gemeten, niet aangenomen.
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+  mkdirSync(PUBLIC, { recursive: true });
 
-const bestanden = [
-  // `purpose: any` — het merk mag tot de rand komen.
-  ['icon-192.png', tekenIcoon(192)],
-  ['icon-512.png', tekenIcoon(512)],
-  // ⚠️ `purpose: maskable` — Android snijdt hier een vorm uit. Het merk staat
-  //    daarom op 62%, ruim binnen de veilige zone van 80%.
-  ['icon-512-maskable.png', tekenIcoon(512, { schaal: 0.62 })],
-  // ⚠️ iOS gebruikt het manifest-icoon níét voor het beginscherm; die wil een
-  //    apple-touch-icon van 180×180. Zonder dit vult iOS een schermafdruk in.
-  ['apple-touch-icon.png', tekenIcoon(180)],
-  ['favicon.png', tekenIcoon(32)],
-  // De badge in de service worker.
-  ['badge-72.png', tekenIcoon(72, { transparant: true })],
-];
+  const bestanden = [
+    // `purpose: any` — het merk mag tot de rand komen.
+    ['icon-192.png', tekenIcoon(192)],
+    ['icon-512.png', tekenIcoon(512)],
+    // ⚠️ `purpose: maskable` — Android snijdt hier een vorm uit. Het merk staat
+    //    daarom op 62%, ruim binnen de veilige zone van 80%.
+    ['icon-512-maskable.png', tekenIcoon(512, { schaal: 0.62 })],
+    // ⚠️ iOS gebruikt het manifest-icoon níét voor het beginscherm; die wil een
+    //    apple-touch-icon van 180×180. Zonder dit vult iOS een schermafdruk in.
+    ['apple-touch-icon.png', tekenIcoon(180)],
+    ['favicon.png', tekenIcoon(32)],
+    // De badge in de service worker.
+    ['badge-72.png', tekenIcoon(72, { transparant: true })],
+  ];
 
-for (const [naam, data] of bestanden) {
-  writeFileSync(join(PUBLIC, naam), data);
-  console.log(`${naam.padEnd(26)} ${String(data.length).padStart(7)} bytes`);
+  for (const [naam, data] of bestanden) {
+    writeFileSync(join(PUBLIC, naam), data);
+    console.log(`${naam.padEnd(26)} ${String(data.length).padStart(7)} bytes`);
+  }
 }

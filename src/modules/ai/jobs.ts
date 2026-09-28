@@ -126,18 +126,22 @@ async function vraagJob(
 ): Promise<Uitkomst<JobVerwijzing>> {
   const { data, error } = await supabase().rpc('vraag_ai_job', {
     p_kind: kind,
-    // ⚠️ **De cast is nodig omdat het gegenereerde type te streng is, niet omdat
-    //    de database het niet aankan.** `vraag_ai_job(p_kind text, p_goal_id
-    //    uuid, p_input jsonb)` accepteert NULL en gaat er expliciet mee om
-    //    (`if p_goal_id is not null and not exists ...`); dat is wat `plan`
-    //    sinds 0136 gebruikt, want daar bestaat het doel nog niet. Supabase'
-    //    typegenerator kan aan een RPC-argument niet zien of het nullable is en
-    //    schrijft overal `string`.
+    // ⚠️ **Hier stond een cast, en die is sinds QS8-569 de laag eronder.**
+    //    `vraag_ai_job(p_kind text, p_goal_id uuid, p_input jsonb)` accepteert
+    //    NULL en gaat er expliciet mee om (`if p_goal_id is not null and not
+    //    exists ...`); dat is wat `plan` sinds 0136 gebruikt, want daar bestaat
+    //    het doel nog niet. Supabase' typegenerator kan aan een RPC-argument
+    //    niet zien of het nullable is en schrijft overal `string`.
     //
-    //    ⚠️ Niet oplossen door `database.types.ts` met de hand bij te werken:
-    //    dat bestand is gegenereerd en de volgende `npm run types:db` gooit het
-    //    weer weg. De cast hoort hier, met deze reden erbij.
-    p_goal_id: goalId as string,
+    //    ⚠️ De reden die hier stond — *niet oplossen door `database.types.ts`
+    //    met de hand bij te werken, want de volgende `npm run types:db` gooit
+    //    het weg* — staat er nog steeds, alleen niet meer als cast per
+    //    aanroepplek. `src/lib/database.types.correcties.ts` zegt het één keer,
+    //    met de meting erbij, en `tests/beloftes/typecorrecties.test.ts` wordt
+    //    rood zodra de correctie overbodig wordt. 📏 Dat er iets anders nodig
+    //    was dan een comment, is gemeten: deze regel stond er sinds 0136 en er
+    //    kwamen in `database.types.ts` tóch veertien handgeschreven correcties bij.
+    p_goal_id: goalId,
     p_input: invoer as never,
   });
 

@@ -72,6 +72,10 @@ export const HEEFT_DATABASE_NODIG = new Set([
   'idempotent:controle',
   // ⚠️ Leest `pg_proc`: welke functies zijn `immutable` met nul argumenten (QS8-433).
   'volatiliteit:controle',
+  // ⚠️ Leest `pg_get_function_arguments()`: welke argumenten een `DEFAULT NULL`
+  //    dragen (QS8-594). Zonder database meet hij niets — en het antwoord hangt
+  //    af van het schema, niet van de migratiebestanden.
+  'defaultnull:controle',
   // ⚠️ Leest `pg_get_functiondef()`: de vorm waarin een `app.`-sleutel
   //    vergeleken wordt (QS8-491). Zonder database meet hij niets.
   'sleutelvorm:controle',
@@ -81,6 +85,11 @@ export const HEEFT_DATABASE_NODIG = new Set([
   // ⚠️ Leest `pg_trigger`, de kolomgrants en `pg_policy`: welke tabellen een
   //    client kan volschrijven en of daar een rem op staat (QS8-522).
   'rem:controle',
+  // ⚠️ Leest `pg_proc` én de uitvoerrechten: welke functies een globale job zijn
+  //    (QS8-577). De lijst komt met opzet niet uit de migratiebestanden — een
+  //    lijst die je met de hand bijhoudt, handhaaf je op de vorm die je
+  //    toevallig intypt.
+  'jobbereik:controle',
 ]);
 
 /**
@@ -323,6 +332,6 @@ async function hoofd() {
 // ⚠️ `pathToFileURL` en geen sjabloonstring: op Windows levert `file://${...}`
 //    een pad met backslashes op en start het script zichzelf nooit. De CI-job
 //    "Scripts op Windows" bewaakt dat, en hij ving deze fout hier ook echt.
-if (import.meta.url === pathToFileURL(process.argv[1]).href) {
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
   await hoofd();
 }

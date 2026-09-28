@@ -3,7 +3,8 @@ import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import { describe, expect, it } from 'vitest';
-import { zonderCommentaar } from '../../scripts/zonder-commentaar.mjs';
+
+import { zonderCommentaar } from './roept-aan';
 
 /**
  * De onboarding schrijft alleen wat ze vraagt — QS8-213.
@@ -54,6 +55,24 @@ import { zonderCommentaar } from '../../scripts/zonder-commentaar.mjs';
  *    7. de knop "Klopt niet" uit het scherm gehaald         → grendel 5 rood.
  *    8. `supabase().from('profiles')` in het scherm         → grendel 3 rood.
  *    9. een import van `verwijderProfiel` uit `@/modules/auth` → grendel 3 rood.
+ *
+ * ⚠️⚠️ **Tiende mutatie, QS8-579 — en die legde een onjuiste bewering bloot.**
+ *    Deze test had een eigen `ontdaanVanCommentaar()` die met één regex knipte
+ *    vanaf een `//` tot het regeleinde: de blinde vorm van QS8-412, die alles
+ *    opeet ná de `//` van een URL. De kop erbij zéi dat grendel 4 dat opving —
+ *    *"een stuk dat deze parser niet leest, is een rode test en geen stilte"*.
+ *
+ *    📏 Gemeten in plaats van geloofd. Met een ongezien veld op de regel die de
+ *    patch sluit — `hulp: 'https://q-projects.tech/hulp' });` — at de knip de
+ *    `});` op, en de suite werd rood op **grendel 2**, niet op grendel 4: de
+ *    accoladetelling liep dóór de aanroep heen en kwam toevallig op een andere
+ *    regel uit. Dicht gefaald, maar niet om de reden die er stond — en een
+ *    toevallige grendel is er morgen niet.
+ *
+ *    Met de gedeelde knip uit `scripts/zonder-commentaar.mjs` valt dezelfde
+ *    mutatie op **grendel 1**, *"schrijft geen veld dat de gebruiker niet
+ *    ziet"*, en dat ís de belofte. CLAUDE.md: *kijk wélke test omvalt, niet dát
+ *    er een omvalt.*
  */
 const WORTEL = fileURLToPath(new URL('../..', import.meta.url));
 
@@ -118,27 +137,6 @@ function bestanden(map: string): string[] {
 }
 
 /**
- * Commentaar weg, zodat de accolades erin niet meetellen.
- *
- * ⚠️ **Stringliteralen blijven staan, en dat is een bekende grens.** Stond hier
- *    eerst "en tekst tussen aanhalingstekens" bij, en dat deed deze functie niet.
- *    Zodra er een `'https://…'` in `app/onboarding/**` komt te staan, eet de
- *    regel-commentaarregex de rest van die regel op — inclusief een `}`. Wat dat
- *    vandaag ophoudt, is grendel 4: een stuk dat deze parser niet leest, is een
- *    rode test en geen stilte.
- */
-/**
- * ⚠️⚠️ **Dit was een eigen knip met de vorm die QS8-412 al eens kostte.** Een
- *    regel-commentaarregex zónder de `:`-wacht eet alles op ná de dubbele
- *    schuine streep van een URL. 📏 De doelbestanden dragen er vandaag geen,
- *    dus de fout was latent — hij stond er wel. Sinds QS8-576 gebruikt deze
- *    toets de gedeelde knip, die de URL-vorm in zijn eigen ijking heeft staan.
- */
-function ontdaanVanCommentaar(bron: string): string {
-  return zonderCommentaar(bron);
-}
-
-/**
  * Wat er als tweede argument aan `updateProfiel()` meegaat, per aanroep.
  *
  * ⚠️ **De haakjes van de aanroep begrenzen de zoektocht, niet de eerste accolade
@@ -150,7 +148,7 @@ function ontdaanVanCommentaar(bron: string): string {
 type Argument = { literaal: string } | { helper: string; binnen: string };
 
 function argumenten(bron: string): readonly Argument[] {
-  const schoon = ontdaanVanCommentaar(bron);
+  const schoon = zonderCommentaar(bron);
   const gevonden: Argument[] = [];
 
   let vanaf = schoon.indexOf('updateProfiel(');
@@ -381,7 +379,7 @@ describe('de onboarding heeft geen schrijfpad buiten de datalaag om', () => {
     });
 
     it(`${pad} haalt alleen bekende dingen uit @/modules/auth`, () => {
-      const bron = ontdaanVanCommentaar(readFileSync(join(WORTEL, pad), 'utf8'));
+      const bron = zonderCommentaar(readFileSync(join(WORTEL, pad), 'utf8'));
       const invoer = /import\s*\{([^}]*)\}\s*from\s*'@\/modules\/auth'/.exec(bron)?.[1];
       if (invoer === undefined) return;
 
@@ -457,7 +455,7 @@ describe('de tijdzone in de onboarding komt uit het apparaat', () => {
  *    zou anders halverwege afgekapt worden.
  */
 export function useStateArgumenten(bron: string): readonly string[] {
-  const schoon = ontdaanVanCommentaar(bron);
+  const schoon = zonderCommentaar(bron);
   const gevonden: string[] = [];
 
   let vanaf = schoon.indexOf('useState');
@@ -525,7 +523,7 @@ describe('een onboardingscherm dat het profiel invult, wacht erop', () => {
 
   it.each(uitHetProfiel)('%s rendert een AsyncView', (pad) => {
     expect(
-      ontdaanVanCommentaar(readFileSync(join(WORTEL, pad), 'utf8')),
+      zonderCommentaar(readFileSync(join(WORTEL, pad), 'utf8')),
       `${pad} vult een useState uit het profiel zonder op het profiel te wachten. ` +
         'Monteert het formulier voordat het profiel er is, dan schrijft Bewaren ' +
         'standaardwaarden over wat er stond — de week-startdag-bug van 28-08.',

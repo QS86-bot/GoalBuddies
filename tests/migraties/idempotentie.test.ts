@@ -2,7 +2,7 @@ import { readFileSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 
-import { argumenttypes, bezwarenIn } from './idempotentie';
+import { argumenttypes, bezwarenIn, zonderCommentaarEnTekst } from './idempotentie';
 
 const MIGRATIES = join(__dirname, '..', '..', 'supabase', 'migrations');
 
@@ -189,6 +189,97 @@ describe('idempotentie van migraties — onwrikbare regel 20', () => {
    *    domeinregel-7-besluit terugdraaien. Die fout is de beveiliging; deze
    *    controle mag hem niet wegnemen en meldt hem daarom ook niet.
    */
+  /**
+   * ⚠️⚠️ **Een drop moet écht code zijn — QS8-570.** `dropsVoor()` zoekt de
+   *    `drop … if exists` die een kale `create` vrijpleit, en die werd gelezen
+   *    uit bron waar alléén `--`-commentaar uit geknipt was. Een drop in een
+   *    blokcommentaar dekte dus een echte `create` af en de grendel onder
+   *    onwrikbare regel 20 zweeg.
+   *
+   * ⚠️ **De eerste rij is de controlerij en die is het punt.** Zonder haar
+   *    bewijst de nul van de derde rij niets — dan kan de grendel gewoon op
+   *    niets aanslaan. 📏 Dezelfde val kostte het onderzoek naar dit issue zijn
+   *    eerste poging: op 0293 gaven mutatie én controle allebei nul, omdat die
+   *    migratie `create or replace` gebruikt en sowieso vroeg terugkeert.
+   */
+  describe('een drop in commentaar pleit niets vrij', () => {
+    const MAAK = 'create function public.f(p uuid) returns void language sql as $$ select 1 $$;';
+    const DROP = 'drop function if exists public.f(uuid);';
+
+    const bezwaren = (sql: string) => bezwarenIn('0999_proef.sql', sql).length;
+
+    it('de controlerij: zonder enige drop wordt de kale create gemeld', () => {
+      expect(bezwaren(MAAK)).toBe(1);
+    });
+
+    it('een échte drop ervoor pleit hem vrij', () => {
+      expect(bezwaren(`${DROP}\n${MAAK}`)).toBe(0);
+    });
+
+    it('⚠️ diezelfde drop in een blokcommentaar pleit hem níet vrij', () => {
+      expect(bezwaren(`/*\n${DROP}\n*/\n${MAAK}`)).toBe(1);
+    });
+
+    it('en op een --regel ook niet', () => {
+      expect(bezwaren(`-- ${DROP}\n${MAAK}`)).toBe(1);
+    });
+
+    it('⚠️ ook niet als hij als tekst in een stringliteral staat', () => {
+      // De kop van dit bestand belooft dat literaalinhoud eruit gaat; vóór
+      // QS8-570 deed de code dat niet.
+      expect(bezwaren(`select '${DROP}';\n${MAAK}`)).toBe(1);
+    });
+  });
+
+  /**
+   * De zeef los aangeboden — CLAUDE.md regel 18: *een controle die je niet kunt
+   * voeden, kun je niet ijken*. Beide kanten: wat hij moet legen én wat hij met
+   * rust moet laten.
+   */
+  describe('zonderCommentaarEnTekst', () => {
+    it('houdt het aantal regels gelijk, want bezwaren dragen regelnummers', () => {
+      const bron = 'a\n/*\nb\nc\n*/\nd';
+      expect(zonderCommentaarEnTekst(bron).split('\n')).toHaveLength(bron.split('\n').length);
+    });
+
+    it('⚠️ nest blokcommentaar, zoals Postgres doet en C niet', () => {
+      // Tellen tot de eerste sluiter zou het blok te vroeg sluiten en de rest
+      // van het bestand als code lezen — dat faalt open.
+      // ⚠️ Onderscheidende woorden en geen losse letters: `not.toContain('a')`
+      //    zou ook aanslaan op de 'a' in `table`, en dan toetst de regel iets
+      //    anders dan hij belooft. Dat is precies hoe deze toets eerst rood
+      //    werd op een scanner die het goed deed.
+      const uit = zonderCommentaarEnTekst('/* buiten /* binnen */ nog-buiten */ create table t (id int);');
+      expect(uit).not.toContain('buiten');
+      expect(uit).not.toContain('binnen');
+      expect(uit).toContain('create table t');
+    });
+
+    it('laat een -- binnen een stringliteral geen commentaar worden', () => {
+      // De oude vorm knipte hier de rest van de regel weg, inclusief de create.
+      expect(zonderCommentaarEnTekst("select 'x -- y'; create table t (id int);")).toContain('create table t');
+    });
+
+    it('leegt de inhoud van een dollar-quote maar houdt de begrenzers', () => {
+      const uit = zonderCommentaarEnTekst('as $$ create table verborgen (id int); $$;');
+      expect(uit).toContain('$$');
+      expect(uit).not.toContain('verborgen');
+    });
+
+    it('⚠️ laat een gequote identifier met rust — dat is een naam en geen tekst', () => {
+      expect(zonderCommentaarEnTekst('create table "mijn tabel" (id int);')).toContain('"mijn tabel"');
+    });
+
+    it('laat gewone code ongemoeid', () => {
+      const bron = "create index if not exists i on t (a);";
+      expect(zonderCommentaarEnTekst(bron)).toBe(bron);
+    });
+
+    it("herkent '' als ontsnapt aanhalingsteken en niet als einde", () => {
+      expect(zonderCommentaarEnTekst("select 'a''b'; create table t (id int);")).toContain('create table t');
+    });
+  });
+
   it('geen enkele migratie in de boom valt bij een tweede ronde op zichzelf om', () => {
     const bestanden = readdirSync(MIGRATIES).filter((n) => n.endsWith('.sql')).sort();
     expect(bestanden.length).toBeGreaterThan(100);

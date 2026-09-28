@@ -19,6 +19,7 @@
 import { spawnSync } from 'node:child_process';
 import { readFileSync, writeFileSync } from 'node:fs';
 import process from 'node:process';
+import { pathToFileURL } from 'node:url';
 
 const DOEL = 'src/lib/database.types.ts';
 const PROJECT_REF = 'wehgocadxehottiiyvsc';
@@ -32,48 +33,54 @@ function fail(bericht, hint) {
   process.exit(1);
 }
 
-const uitvoer = spawnSync(
-  'npx',
-  ['supabase', 'gen', 'types', 'typescript', '--project-id', PROJECT_REF],
-  { encoding: 'utf8', shell: true, maxBuffer: 32 * 1024 * 1024 },
-);
-
-if (uitvoer.error) {
-  fail(
-    `De Supabase CLI kon niet gestart worden: ${uitvoer.error.message}`,
-    'Probeer `npx supabase --version`, of gebruik de MCP-tool generate_typescript_types.',
+// ⚠️ Het werk staat in een blok achter de main-guard, en niet in een
+//    `hoofd()`: zo doet importeren niets (QS8-608) zonder dat er een lange
+//    functie bijkomt die coderegel 15 zou breken. Top-level `await` mag
+//    binnen dit blok — gemeten, niet aangenomen.
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+  const uitvoer = spawnSync(
+    'npx',
+    ['supabase', 'gen', 'types', 'typescript', '--project-id', PROJECT_REF],
+    { encoding: 'utf8', shell: true, maxBuffer: 32 * 1024 * 1024 },
   );
-}
 
-const tekst = uitvoer.stdout ?? '';
-
-if (uitvoer.status !== 0 || !tekst.includes('export type Database')) {
-  fail(
-    'De CLI gaf geen schema terug.',
-    (uitvoer.stderr || tekst || '').trim().split('\n').slice(0, 4).join('\n    ') ||
-      'Geen verdere uitleg. Meestal ontbreekt SUPABASE_ACCESS_TOKEN (Q-TODO C3).',
-  );
-}
-
-if (tekst.length < MINIMAAL_AANTAL_BYTES) {
-  fail(
-    `De uitvoer is maar ${tekst.length} bytes en dat is te klein voor dit schema.`,
-    `${DOEL} is niet aangeraakt.`,
-  );
-}
-
-const oud = (() => {
-  try {
-    return readFileSync(DOEL, 'utf8');
-  } catch {
-    return '';
+  if (uitvoer.error) {
+    fail(
+      `De Supabase CLI kon niet gestart worden: ${uitvoer.error.message}`,
+      'Probeer `npx supabase --version`, of gebruik de MCP-tool generate_typescript_types.',
+    );
   }
-})();
 
-if (oud === tekst) {
-  console.log(`\n  = ${DOEL} was al bij.\n`);
-  process.exit(0);
+  const tekst = uitvoer.stdout ?? '';
+
+  if (uitvoer.status !== 0 || !tekst.includes('export type Database')) {
+    fail(
+      'De CLI gaf geen schema terug.',
+      (uitvoer.stderr || tekst || '').trim().split('\n').slice(0, 4).join('\n    ') ||
+        'Geen verdere uitleg. Meestal ontbreekt SUPABASE_ACCESS_TOKEN (Q-TODO C3).',
+    );
+  }
+
+  if (tekst.length < MINIMAAL_AANTAL_BYTES) {
+    fail(
+      `De uitvoer is maar ${tekst.length} bytes en dat is te klein voor dit schema.`,
+      `${DOEL} is niet aangeraakt.`,
+    );
+  }
+
+  const oud = (() => {
+    try {
+      return readFileSync(DOEL, 'utf8');
+    } catch {
+      return '';
+    }
+  })();
+
+  if (oud === tekst) {
+    console.log(`\n  = ${DOEL} was al bij.\n`);
+    process.exit(0);
+  }
+
+  writeFileSync(DOEL, tekst);
+  console.log(`\n  ✓ ${DOEL} bijgewerkt (${tekst.length} bytes).\n`);
 }
-
-writeFileSync(DOEL, tekst);
-console.log(`\n  ✓ ${DOEL} bijgewerkt (${tekst.length} bytes).\n`);

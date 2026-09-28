@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+  slotwoord,
   NAGEKEKEN,
   hoofd,
   isBruikbaarRapport,
@@ -242,5 +243,60 @@ describe('NAGEKEKEN', () => {
     for (const [naam, v] of Object.entries(NAGEKEKEN)) {
       expect(v.marker, `${naam}: de marker mag niet de pakketnaam zijn`).not.toBe(naam);
     }
+  });
+});
+
+/**
+ * QS8-616 — het slotwoord moet bij de richting passen.
+ *
+ * ⚠️⚠️ **Eén tekst voor beide richtingen stuurde je naar de verkeerde handeling.**
+ *    De oude zin zei bij élke verandering: ga bouwen en grep in `dist/`. Voor een
+ *    pakket dat wégvalt klopt dat niet — er is geen kwetsbaarheid meer om een
+ *    bundel-meting over te doen, dus je bouwt tien minuten en concludeert daarna
+ *    dat de controle onzin gaf. Een grendel die je naar de verkeerde handeling
+ *    stuurt, verliest zijn gezag.
+ */
+describe('slotwoord', () => {
+  function vang(opties: { meetbaar: boolean; verdwenen: boolean }): string {
+    const regels: string[] = [];
+    const echt = console.error;
+    console.error = (...a: unknown[]) => regels.push(a.map(String).join(' '));
+    try {
+      slotwoord(opties);
+    } finally {
+      console.error = echt;
+    }
+    return regels.join('\n');
+  }
+
+  it('stuurt bij een nieuw pakket naar de bouw-meting', () => {
+    const uit = vang({ meetbaar: true, verdwenen: false });
+
+    expect(uit).toContain('npm run build');
+    expect(uit, 'noemde de opruim-instructie terwijl er niets wegviel').not.toContain(
+      'mag eruit',
+    );
+  });
+
+  it('stuurt bij een verdwenen pakket juist níet naar de bouw-meting', () => {
+    const uit = vang({ meetbaar: false, verdwenen: true });
+
+    expect(uit).toContain('niets te bouwen');
+    expect(uit, 'stuurde alsnog naar `npm run build`').not.toContain('npm run build');
+  });
+
+  /**
+   * ⚠️ Allebei tegelijk kan: één pakket erbij en één eruit in dezelfde ronde.
+   *    Dan horen beide instructies er te staan, want er zijn twee handelingen.
+   */
+  it('geeft bij allebei de richtingen allebei de instructies', () => {
+    const uit = vang({ meetbaar: true, verdwenen: true });
+
+    expect(uit).toContain('npm run build');
+    expect(uit).toContain('niets te bouwen');
+  });
+
+  it('zwijgt als er niets veranderde', () => {
+    expect(vang({ meetbaar: false, verdwenen: false })).toBe('');
   });
 });

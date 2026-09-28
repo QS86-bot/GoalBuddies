@@ -844,6 +844,55 @@
 > **Zoek bij een botsing wat er van jouw kant overblijft in plaats van te kiezen
 > tussen twee takken.**
 >
+> **21-09, punt AO: een regel die alleen in een comment staat, kost je veertien
+> regels bij de eerste keer dat iemand meet.** QS8-569 hergenereerde
+> `src/lib/database.types.ts` tegen productie. Wat er uit de naamvergelijking kwam
+> was bekend (57), wat er uit de **veld**vergelijking kwam niet: 📏 **veertien
+> handgeschreven correcties**, over acht functies en één view, in een bestand dat
+> `npm run types:db` in zijn geheel overschrijft — terwijl `src/modules/ai/jobs.ts`
+> sinds `0136` woordelijk opschrijft dat dat niet de manier is. Ze verdwenen bij de
+> hergeneratie zonder een woord.
+>
+> ⚠️ **Het handwerk had inhoudelijk gelijk**, en dat is wat het lastig maakt: de
+> generator kan drie dingen niet weten (een NOT NULL-kolom zonder `DEFAULT` die een
+> trigger vult, een argument dat NULL aanneemt, een `RETURNS TABLE`-kolom die NULL
+> kan zijn). Niet elke afwijking van een gegenereerd bestand is dus rommel — maar de
+> plek was fout. Ze staan nu in `src/lib/database.types.correcties.ts`, met per rij
+> de meting, en onder een tweezijdige toets die óók rood wordt als iemand de
+> correctie terugzet in het gegenereerde bestand.
+>
+> ⚠️⚠️ **De stilste van de drie klassen is de enige die niet compileerfout geeft.**
+> `zichtbare_reeksen_van_groep()` maskeert `best_streak` en `last_cycle_start` met
+> een `case … end` zónder `else` — domeinregel 7 in de functie zelf. De generator
+> typeert die twee als niet-nullable, en dan vertelt het type de schermlaag dat er
+> altijd een reeks is. Klasse 1 en 2 breken de build; deze breekt niets.
+>
+> ⚠️ **En bij het ijken ging de mutatie de eerste keer naar de verkeerde plek.**
+> 📏 `avatar_url: string` staat drie keer in dat bestand; de eerste poging raakte
+> `weekafsluiting_reacties` in plaats van `zoek_mensen` en gaf **nul** fouten — een
+> geslaagd ogende mutatie die niets bewees. *Breek de grendel die de ijking nóemt*,
+> en kijk wélke toets omvalt.
+>
+> **21-09, punt AP: verbreed een vormdetector op precisie en niet op
+> volledigheid.** QS8-572 bood `leestBronMetNaampatroon()` zes vormen aan, elk
+> los gemeten. De twee regexvormen zijn overgenomen omdat ze goedkoop waren
+> (📏 0 en 1 nieuwe treffer). De vier stringmethode-vormen zijn **afgewezen met
+> een meting**: van de vijf treffers op `.includes`, `.split` en `.startsWith`
+> met een template is er **één** een échte bronscan — de rest zijn pad- en
+> sleutelvergelijkingen, waaronder twee in de controle zelf.
+>
+> ⚠️ **Eén op de vijf is precies de precisie waarmee je een controle leert
+> negeren**, en dat staat al in de kop van `scripts/paden.mjs`. De verleiding is
+> groot om een detector "even breder" te maken omdat de vorm verwant lijkt; het
+> verschil zit hier in de **ontvanger** (bron of pad), en dat ziet een
+> tekstpatroon niet.
+>
+> ⚠️ **Een handgeschreven register heeft een ratel die maar één kant op slaat, en
+> dat hoort opgeschreven.** `BEOORDEELD` meldt een rij die weg mág — het bestand
+> is er niet meer, het knipt inmiddels, of het wórdt inmiddels gedetecteerd. 📏
+> Geijkt door het leeg te maken: `knip:controle` bleef groen. Hij kan dus niet
+> zien dat er een rij **mist**, en dat is de prijs van zo'n register.
+
 > ⚠️⚠️ **11-09, punt P: een lintregel kan code laten buigen, en dan verplaats je
 > het probleem naar de lezer.** QS8-422 moest in de rollover een `if` in een `if`
 > vervangen door een ternair met twee guards, puur omdat dat blok toen ín twee
@@ -1748,6 +1797,332 @@ is **af**: de bibliotheek staat erin en `_layout` plugt hem in. Wat native nog
 tegenhoudt is een uitgerolde build, niet de bibliotheek. Alles staat in `docs/Q-TODO.docx`, secties H, I en J,
 met de onderbouwing van de groene notities in `docs/GROENE-NOTITIES.md`.
 
+### 22-09-2026 — de `wacht-op-Quinten`-lijst is één keer volledig nagelezen
+
+Alle **22** issues in Backlog en Todo met dat label zijn gelezen **mét hun
+reacties**, en dragen nu elk een triagecomment met een oordeel. De uitkomst is
+het opschrijven waard, want hij is niet wat de vorige ronde hoopte:
+
+> **Geen van de 22 bleek bouwbaar.** Stuk voor stuk geblokkeerd op een
+> dashboardvinkje, een developer-account, een fysiek toestel, een
+> productiesleutel of een productbesluit — en dus niet op capaciteit.
+
+Bij elk issue dat een **besluit** vraagt staat dat besluit nu vóórgeschreven:
+één vraag, twee of drie opties met hun prijs, zodat het antwoord één zin kan
+zijn. Begin daar als je Quinten spreekt — QS8-141 (uitgavenplafond), QS8-25
+(welke OAuth-provider), QS8-536 (speling op de strafklok), QS8-230
+(bekenden of ook onbekenden), QS8-397 (versleutelde foto's).
+
+⚠️ **Vier premissen bleken achterhaald, en ze stonden alle vier als feit.**
+Wie ze overneemt zonder te hermeten, werkt aan het verkeerde:
+
+| issue | wat er stond | wat er gemeten is |
+|---|---|---|
+| QS8-216 | code moet nog | staat sinds 06-09 op `main`; alleen het dashboardvinkje rest |
+| QS8-559 | geblokkeerd op twee dingen | QS8-548 is geland als `0294`; nog één blokkade (de deploy) |
+| QS8-240 | drie oude branches | **27**, en geen enkele draagt een migratie die `main` mist |
+| QS8-142/143 | "de bouwomgeving kan de app niet draaien" | de sleutels zijn er wél; wat ontbreekt is een **lokale GoTrue** |
+
+⚠️ En bij QS8-240 is de meetlat zélf stuk gebleken, voor de tweede keer:
+*"staat alleen op die branch"* betekent net zo goed *"is op `main` weggehaald"*.
+De bestandslijstvergelijking uit 17-09 is beter dan `git diff`, maar hij is niet
+richtinggevoelig.
+
+### En één valkuil uit diezelfde dag, want hij is de duurste soort
+
+QS8-461 is gebouwd (migratie `0295`), maar **de eerste versie was fout en droeg
+een uitgeschreven argument waarom hij goed was.** Hij splitste alleen de bovenste
+OR-laag; 📏 de meeste echte policies dragen hun gesanctioneerde aanroep één laag
+dieper, dus het gat bleef volledig open. Het beslisdocument legde uit waarom
+dieper kijken niet nodig zou zijn — en die reden is nagemeten en was onwaar.
+
+De `security-reviewer` vond het. **Regel 19 heeft dat betaald op een wijziging
+van drie bestanden**, precies het formaat waarbij `docs/PROMPT-SESSIE.md` §6 zegt
+dat een agent overbodig is. Die regel blijft kloppen voor tekstcorrecties, maar
+niet voor iets dat een autorisatiegrendel raakt: **laat de review draaien zodra
+je aan RLS komt, ook als het klein lijkt.**
+
+### 22-09-2026 — wat baan B die dag deed, en wat de voorraad erna is
+
+Vijf issues af (QS8-582, 585, 588, 592, 593) en vier dossierrijen gesloten; de
+vijfde (QS8-594) is gemeten en doorgegeven. Wat er gebouwd is staat per rij in
+`docs/ENGINEER-REVIEW.md` en per issue in Linear; hieronder staat alleen wat een
+vólgende sessie anders zou doen.
+
+⚠️⚠️ **De drie Hoog-rijen zijn alle drie tegen productie hermeten en blijven alle
+drie terecht open.** Twee vallen onder grens 1 (de intrekknop van een straf is
+een besluit van Quinten; de laag vóór PostgREST kost geld of infrastructuur), de
+derde is de agenda voor november zelf. **Begin een volgende baan-B-ronde dus niet
+bovenaan de lijst** — daar staat niets bouwbaars.
+
+⚠️ **En de Middel-rijen lopen dezelfde kant op.** Van de zes die deze dag
+onderzocht zijn, waren er vier bouwbaar en twee niet: rij 763 en rij 623
+concluderen **zelf** dat een script hier niet kan helpen (763 rekent voor dat een
+controle *"één op twee onterecht"* zou zijn). Dat is geen reden om te stoppen,
+maar het betekent dat de leestijd per gesloten rij stijgt — en dat *een rij die
+geen PR oplevert ook een uitkomst is*, geen mislukte ronde.
+
+⚠️ **Eén rij stond al gesloten voordat hij aan de beurt kwam:** rij 545 werd
+diezelfde dag door de ándere baan gesloten (QS8-461). Een lijst Middel-rijen die
+je aan het begin van een ronde maakt, is aan het eind van die ronde al verouderd.
+Hermeet voordat je hem gebruikt om iets te kiezen.
+
+### De valkuilen van die dag — allemaal in de méting, niet in de code
+
+⚠️⚠️ **`git checkout --` tijdens een ijking gooit ongecommit werk weg.** Om een
+mutatie terug te draaien is dat het voor de hand liggende commando, en het wist
+net zo hard de reparatie waar de mutatie op zat. De metingen die eruit kwamen
+waren niet onwaar maar gingen over een ándere boom dan ze beweerden — QS8-411 in
+het klein. **Commit vóór je ijkt**, altijd; dan is terugdraaien gratis.
+
+⚠️⚠️ **Twee `npm run poort`-runs naar hetzelfde logbestand laten zich niet uit
+elkaar houden.** Er is die dag bijna een rode `regel15:controle` gerapporteerd
+die al gerepareerd was: de tweede run overschreef het bestand terwijl de eerste
+er nog in schreef. Draai de poort **op de voorgrond**, of geef elke run zijn
+eigen logbestand.
+
+⚠️⚠️ **Een ijking die niets rood maakt, is eerst verdacht over zichzelf.** Bij
+QS8-593 gaf de eerste handedit-meting *beide* kanten op nul, wat eruitzag als
+"de nieuwe controle vindt het niet". De controle was in orde; de fixture verving
+een regel met een `String.replace` die niet landde. Kijk bij een nul-uitslag
+éérst of je mutatie wel echt in het bestand staat.
+
+⚠️ **Lees een dossierrij helemaal, ook de staart.** Rij 281 opent met een meting
+van 17-09 en draagt in zijn staart een hermeting van 21-09 met andere getallen.
+Wie alleen de kop leest, "ververst" een rij die gisteren al ververst is. Deze
+rijen zijn 1200 tot 6600 tekens lang; de nieuwste meting staat achteraan.
+
+⚠️⚠️ **En de duurste vorm van die dag, over beide banen heen: de reparatie die
+het gat draagt dat hij dicht.** Bij QS8-461 splitste de eerste versie alleen de
+bovenste OR-laag terwijl de echte policies hun aanroep een laag dieper dragen.
+Bij QS8-593 liet de eerste `blokken()` een overload-blok léég — precies de vorm
+die onzichtbaar was en die die controle moest gaan zien. Twee keer op één dag,
+in twee banen, en **geen van beide is door nadenken gevonden**: de één door de
+security-review, de ander door mutatie 1 van de eigen ijking.
+
+De les is niet "beter opletten" maar: **voer je nieuwe grendel de vorm die het
+issue beschrijft, en niet een vorm die erop lijkt.** Als het issue een overload
+noemt, ijk dan op een overload.
+
+⚠️ **Een grendel in `scripts/` kan een reparatie in `src/` afdwingen, en dat is
+een boomgrens.** QS8-594 is daarop blijven staan: de controle hoort in baan B,
+elke correctie die hij afdwingt in baan A. Een controle die meteen twaalf
+bevindingen geeft die zijn eigen baan niet mag oplossen, zet `main` rood.
+**Controleer vóór je bouwt waar de reparatie landt**, niet alleen waar de
+controle landt.
+
+### 23-09-2026 — wat baan B die ronde deed, en de vorm die twee keer terugkwam
+
+Twee issues af (QS8-589 en QS8-595), allebei met een dossierrij. Wat er gebouwd
+is staat per rij in `docs/ENGINEER-REVIEW.md` en per issue in Linear; hieronder
+staat alleen wat een vólgende sessie anders zou doen.
+
+⚠️⚠️ **Een getal dat níét verandert is een bevinding, en het is het goedkoopste
+signaal dat er bestaat.** De hele vondst van QS8-595 begon doordat
+`tabelcellen:controle` **3867 rijen** meldde vóór én ná het toevoegen van een
+dossierrij. Dat getal had niet mogen kloppen. De proef erachteraan kostte één
+regel — een rij met drie cellen onder een kop van vier — en gaf exitcode **0**.
+📏 De controle las 428 van de 748 datarijen van het dossier. **Print een controle
+een aantal, lees dat aantal dan ook**, en vraag je af waarover het gaat.
+
+⚠️⚠️ **Twee keer in twee dagen was een controle groen omdat hij niets vond.** Bij
+QS8-589 vond de jobslezer vier van de vijf jobs en juist `poort` niet — de énige
+die die controle aangaat — omdat zijn reguliere expressie de lege regel opat die
+de volgende job nodig had. Bij QS8-595 las de tabelzeef 428 van de 748 rijen.
+**Geen van beide is door nadenken gevonden.** De eerste door een kanarie die
+eist dat de lezer `poort` bij naam teruggeeft, de tweede door het getal
+hierboven.
+
+De les is concreet: **elke nieuwe controle krijgt een kanarie die noemt wát hij
+gevonden moet hebben**, niet alleen dat zijn bevindingenlijst leeg is. Een lege
+lijst is ook wat je krijgt als de lezer nooit iets zag — dat staat sinds QS8-323
+in dit project en het is nu twee keer opnieuw betaald.
+
+⚠️⚠️ **Een mutatie die niets rood maakt zegt één van twee dingen, en het verschil
+is te meten.** Allebei kwamen ze deze ronde voor, en ze vragen tegengestelde
+reparaties:
+
+- **de mutatie is verkeerd** — hij breekt de belofte niet. Bij QS8-589 zette
+  mutatie 5 een beginwaarde om die de eerstvolgende topsleutel tóch meteen
+  terugzet. Zoek dan de mutatie die de belofte wél breekt; die bijt (5b deed dat).
+- **de toets is verkeerd** — de mutatie klopt en de toets die de grendel bij naam
+  nóemt bewaakt hem niet. Bij QS8-595 bleef *laat een streep in een codeblok met
+  rust* groen mét én zónder de codefence-knip: de fenceregel is zélf ook een
+  niet-tabelregel. Schrijf dan de toets die hem wél draagt — hier een comment op
+  **kolom 0**, want die sluit het `jobs:`-blok.
+
+⚠️ Beide gevallen staan nu **met hun meting** in de suite in plaats van stil
+weggehaald of stil blijven staan: een toets die geen grendel is, zegt dat in zijn
+kop. Stil weghalen wist de meting; stil laten staan laat hem als grendel lezen.
+
+⚠️⚠️ **Een toets kan het defect vástleggen, en dan is hij groen én fout.** De
+suite van `tabelcellen:controle` droeg `expect(uitslag.klachten).toEqual([])` op
+precies de stilte die weg moest. De naam van de toets klopte; de lege lijst
+eromheen was geen belofte maar de stand van toen. **Verander je wat een controle
+vindt, grep de suite dan op toetsen die de óude stilte beweren** — die zijn groen
+en ze houden je tegen. Regel 18 vraag 3 in zijn vervelendste vorm.
+
+⚠️ **Het mechanisme repareren legt instanties bloot die niemand kón zien, en die
+zijn rood.** Zodra die 349 rijen gelezen werden, kwamen er twee kapotte rijen uit
+`docs/decisions/002-domeinregel7-oppervlakken.md` — het document waar CLAUDE.md
+de lezer bij élk nieuw groepszichtbaar oppervlak heen stuurt. **Reken erop dat
+het pas net gelezen gebied rood is**, en plan dat in: de vier lege regels
+weghalen kostte tien seconden, de twee rijen erachter waren het eigenlijke werk.
+
+⚠️ **GFM-rendering meten in een cloudsessie: `npm install cmark-gfm` in een
+wegwerpmap buiten de repo.** Dat is de renderer die GitHub zelf gebruikt, en het
+npm-register is hiervandaan bereikbaar. Twee voor de hand liggende routes werken
+**niet**: `POST /api/markdown` wordt geweigerd (*"sessions are bound to their
+configured repositories"*), en de blobpagina van GitHub rendert tegenwoordig in
+de browser — 📏 232 kB HTML en **nul** `<table>`. Zonder dit derde pad was "die
+rijen renderen niet als tabel" een aanname gebleven; mét is het een meting van
+430 naar 750 `<tr>`.
+
+### 24-09-2026, tweede helft — de dossierbaan, en wat de poort ná groene tests nog vond
+
+Drie Middel-rijen afgewerkt: **QS8-609** (rij 618, tijd in tests), **QS8-610**
+(rij 444, de premisse onder een vrijstelling) en **QS8-612** (rij 601, een
+`drop function` onder een edge-functie).
+
+⚠️⚠️ **De lokale stack draait gewoon in een cloudsessie, en dat scheelt de
+poort vijftien ongemeten controles.** 📏 Gemeten: 25 ongemeten → **10**, en
+niets werd er rood van. Postgres 16 staat in het beeld
+(`/usr/lib/postgresql/16/bin`), de PostgREST-binary is achter de proxy op te
+halen, en `scripts/lokale-stack.sh` is precies voor dit geval geschreven
+(*"Docker Hub is achter de proxy niet bereikbaar"*). De enige stap die het
+script zelf niet doet is het cluster starten: `initdb` + `pg_ctl` op poort
+**5433** als de `postgres`-gebruiker, want als root weigert Postgres te starten
+en de scratchpad-map is voor die gebruiker niet doorloopbaar.
+
+⚠️ **Dit is geen vondst maar een gewoonte die ik te laat aannam.** QS8-268,
+QS8-426 en QS8-523 draaiden er al tegenaan, en QS8-569 beschrijft woordelijk
+dezelfde beweging: een controle **voeden** in plaats van hem ongemeten laten.
+Wat het oplevert is niet dat er een gat gedicht wordt — die twintig controles
+draaien in CI in baan `database` — maar dat je een database-afhankelijke test
+kunt **ijken**, en dat was de voorwaarde voor QS8-609.
+
+### De valkuilen van die middag
+
+⚠️⚠️ **Na 22 groene toetsen vond de poort nog vier dingen in mijn eigen code**
+(QS8-612): `typecheck` (drie `possibly undefined`), `lint` (`max-depth` 4),
+`regel15:controle` (een functie boven de vijftig, plafond omhoog) en
+`jobbereik:controle`. Geen ervan had ik gezien. **Groene unit-tests zijn geen
+poort**, en dat staat niet voor niets zo in CLAUDE.md.
+
+⚠️ **De vierde is de leerzaamste.** `jobbereik:controle` zag de échte naam
+`slaap_stille_groepen` in mijn SQL-*fixtures* en las die — terecht — als een
+globale job zonder grens. Ik had daar een registerrij voor kunnen schrijven, en
+dan had ik een uitzondering vastgelegd die er geen is. **Een verzonnen naam in
+de fixture houdt beide controles scherp.** Een register is voor echte
+uitzonderingen; alles wat je erin zet om van een rood af te komen, verzwakt het.
+
+⚠️⚠️ **Ik miste een geval doordat ik per regel greppte — in het issue dat
+precies die les toepast.** De voormeting van QS8-612 telde drie overlappende
+functies; de controle vond er **vier**. `keur_vastgelopen_goedkeuringen_goed`
+wordt aangeroepen met de naam op de tweede regel:
+
+```ts
+await db.rpc(
+  'keur_vastgelopen_goedkeuringen_goed',
+  { p_termijn_dagen: 7 },
+);
+```
+
+`grep -oE "\.rpc\(\s*'[a-z_]+'"` leest per regel en ziet die vorm niet. Dat is
+woordelijk QS8-414: **een regel die je met de hand handhaaft, handhaaf je op de
+vorm die je toevallig intypt.** Vertrouw een handmatige voormeting dus nooit als
+getal — gebruik hem om te weten waar je moet kijken, en laat het instrument
+tellen.
+
+⚠️ **Een mutatie die niets rood maakt, is nog steeds eerst een verdenking tegen
+de mutatie.** Die valkuil staat hierboven al van de ochtend, en hij kostte mij
+'s middags opnieuw drie ijkingen: mijn shell-lus splitste naam en expressie op
+`:`, en in `2026-01-01T06:59:00Z` staan drie dubbele punten. `sed` kreeg een
+halve expressie, meldde dat, en de suite bleef groen op vijf toetsen. **Muteer
+per regelnummer en print de gewijzigde regel vóór de run.**
+
+⚠️ **Een monitor die zwijgt, heeft misschien niets gevonden in plaats van niets
+gezien.** Een bewaking op de hoofdrun liep dertig minuten zonder één event,
+omdat mijn API-aanroep `branch` en `head_sha` combineerde — dat levert niets op.
+Laat zo'n lus altijd óók melden dát hij niets vond.
+
+⚠️ **En ik schreef zelf een niet-ontsnapte `|` binnen backticks in een tabelcel**
+(`string | null`). `review:controle` en `tabelcellen:controle` werden daar rood
+op — de QS8-415-klasse, gevangen door de grendel die daarvoor bestaat. Die
+grendel werkt; de gewoonte moet nog groeien.
+
+### 24-09-2026 — de auditronde, en wat er ónder de bevindingen zat
+
+`/audit` gedraaid en de drie punten eruit afgemaakt (QS8-597, QS8-598), plus de
+bijvangst die dat opleverde (QS8-599, QS8-606, QS8-608). Wat er per issue
+gebouwd is staat in het dossier en in Linear; hieronder staat alleen wat een
+vólgende ronde anders zou doen.
+
+⚠️⚠️ **Eén van mijn drie auditbevindingen was een misreading, en die vorm is het
+vermelden waard.** Ik schreef op dat `stand:controle` *"niets zegt en niet in CI
+draait"*, en beide helften waren onwaar: hij draait sinds QS8-417 in baan `repo`,
+en zijn stilte is met opzet — `hoofd()` print op de succesweg alleen iets zónder
+`--controle`, en de poort telt hem als gemeten en groen. Ik had hem **los**
+gedraaid en de stilte gelezen als een gebrek. **Draai een controle nooit los om
+te beoordelen of hij werkt; lees wat de poort ervan zegt.**
+
+⚠️⚠️ **Een kop die een regel uitlegt, is geen grendel dat de code hem volgt — en
+dat kwam op één dag twee keer voor.** De kop van `/audit` zei sinds 31-08 dat
+`stand:controle` niet in CI draaide (📏 gemeten: 64 van de 74 draaiden er wél
+in, hij erbij). De kop van `knip-controle.mjs` zei sinds QS8-574 dat er **twee**
+gedeelde knippen zijn, terwijl `knipt()` er één herkende — waardoor een bestand
+dat de gedéélde SQL-knip gebruikt te horen kreeg dat het *"geen commentaar
+knipt"*, met een registerrij als enige uitweg. **Vraag bij een kop die een regel
+uitlegt: staat die regel ook in de code, of alleen in het proza?**
+
+⚠️ **Een controle die een token vraagt is in een cloudsessie ongemeten, en
+daaronder groeit stil iets.** 📏 `adviseur:controle` — de énige controle hier die
+iets kan vinden waar niemand aan gedacht heeft — stond een week rood zonder dat
+iemand het zag: twee objecten van 17-09 misten op de allowlist, waarvan één op
+ERROR-niveau, en een ratel stond op 47 waar de adviseur er 76 meldt. De les is
+niet "zet hem in CI" (hij hoort er met reden buiten) maar: **kijk of er een
+repo-kant van dezelfde vraag is.** Beide klassen volgen uit DDL, dus uit
+`supabase/migrations/`, en die kant draait wél in CI.
+
+### De valkuilen van die dag — drie ervan in mijn eigen gereedschap
+
+⚠️⚠️ **Muteer per regelnummer en niet per string-anker.** 📏 Drie keer op één dag
+landde een mutatie niet doordat mijn `python`-anker miste op de escaping van een
+regex-in-een-string, en drie keer zag de groene suite er even uit als *"deze
+regel doet er niet toe"*. **Druk de regel af (`grep -c`, `sed -n 'Np'`) vóór je
+de suite draait** — dat kost één regel en vangt de hele klasse.
+
+⚠️⚠️ **Commit vóór je ijkt, óók als je vijf minuten geleden al gecommit hebt.**
+Bij QS8-608 is na het verbreden van een selectie geijkt zonder tussentijdse
+commit, en `git checkout --` bij het terugdraaien van de mutatie wiste die
+wijziging. Dezelfde valkuil als 22-09, nu in zijn subtielere vorm: het is niet
+"commit aan het begin" maar "commit ná elke wijziging die je niet wilt verliezen".
+
+⚠️⚠️ **Meet een exitcode nooit door een pijp.** 📏 `node script.mjs 2>&1 | head -1`
+geeft de exitcode van `head`: tien scripts leken op 0 te staan waar er vier op 1
+stonden. En **draai een oude versie op zijn eigen pad**: dezelfde vergelijking
+vanuit een map in `/tmp` gaf zes valse verschillen, want daar kloppen de
+relatieve paden van een script niet. `git stash` heen en terug is de goede vorm.
+
+⚠️ **Een mutatie die niets rood maakt zegt nóg een derde ding, naast de twee van
+23-09.** Bij QS8-608 maakten twee mutaties alleen een toets met een
+hárdgecodeerde namenlijst rood terwijl de eigenlijke belofte-toets groen bleef —
+het gemuteerde script viel buiten de selectie van die toets. **Kijk dus niet
+alleen wélke toets omvalt, maar ook of de toets die de belofte draagt erbij
+zit.** De reparatie was de selectie verbreden; de ijking wees hem aan.
+
+⚠️ **Toets de belofte en niet de huisvorm, en dat verschil is te meten.** Bij
+QS8-599 telde het issue tien scripts met een verkeerde main-guard, en er waren er
+**veertien** stuk: vier droegen de wacht keurig en wierpen tóch, want ze
+importeren een script dat hem miste. **Een regel-voor-regel-controle kent de
+importgraaf niet.** De grendel werd daarom een toets die élk script importeert.
+
+⚠️ **Zit `regel15:controle` een reparatie in de weg, overweeg dan een blok in
+plaats van een functie.** 📏 Bij QS8-608 kostte de `hoofd()`-vorm acht functies
+boven de vijftig regels en liep de ratel van 15 naar 21; een blok achter de
+main-guard voegt geen functie toe. Top-level `await` mag daarin — nagemeten, niet
+aangenomen. De prijs is één nestingniveau, dus `max-depth` kan erop omvallen.
+
 ## WERKAFSPRAKEN — houd deze aan
 
 1. **Werk landt sinds 23-08 via een PR op GitHub**, niet meer met een lokale
@@ -1837,6 +2212,46 @@ met de onderbouwing van de groene notities in `docs/GROENE-NOTITIES.md`.
    `docs:controle` bewaakt precies dat. Verwijzen mag, herhalen niet.
 
 ## VALKUILEN die deze codebase al een keer gekost hebben
+
+- **⚠️⚠️ Een knip die niet `zonderCommentaar` heet, ontloopt zijn register — 21-09,
+  QS8-579.** `knip:controle` matchte op naam, en 📏 **tien** knippen liepen
+  daaromheen. Twee faalden open: één liet een zelf-opgemaakte datum door zodra er
+  een URL vóór stond, en één verklaarde twee uiteenlopende kopieën van
+  `shared/time` gelijk — correctheidsregel 7.
+
+  **De vorm om te herkennen:** één regex die vanaf een `//` tot het regeleinde
+  knipt. Die eet alles op ná de `//` van een URL. De gedeelde knip uit
+  `scripts/zonder-commentaar.mjs` gooit een regel weg die mét `//` begint en
+  heeft dat probleem niet. `knip:controle` kijkt nu naar het lichaam en meldt de
+  elfde vanzelf.
+
+  ⚠️ **En de les ernaast, voor de tweede keer in twee issues:** een testbestand
+  dat in zijn kop uitschrijft waaróm het geen knip nodig heeft, kan half gelijk
+  hebben. Eén kop noemde grendel 4 als vangnet; gemeten viel de mutatie op
+  grendel 2, via een parser die op hol sloeg. **Meet zo'n kop in plaats van hem
+  te geloven** — en kijk wélke test omvalt, niet dát er een omvalt.
+
+- **⚠️⚠️ Een bevestigende `toContain` op ruwe bron toetst het bestand en niet de
+  belofte — 21-09, QS8-568 en QS8-574.** `expect(bron).toContain('koppel(')` is
+  ook waar als die aanroep uitgecommentarieerd is, en bij een tijdelijke
+  uitschakeling blijft de naam juist wél staan, in de comment. 📏 Acht
+  belofte-tests droegen die vorm en alle acht faalden open — waaronder de twee
+  die bewaken dat de storage-emmers **privé** zijn.
+
+  **Wat je doet:** knip op de leesplek en niet per `expect`, dan dekt hij ook de
+  toetsen die er later bij komen. `zonderCommentaar` uit `tests/beloftes/roept-aan`
+  voor JS/TS, `zonderCommentaarSql` uit `scripts/zonder-sql-commentaar.mjs` voor
+  een migratie. `npm run belofteknip:controle` wordt rood als je het vergeet.
+
+  ⚠️ **Een `.not.toContain()` hoeft niet** — die faalt dicht. Commentaar kan hem
+  alleen rood maken, nooit stil groen.
+
+  ⚠️⚠️ **En de val eronder is de duurdere: twee van deze acht bestanden hadden in
+  hun eigen kop uitgeschreven waaróm ze geen knip nodig hadden.** Het argument
+  was *"een patroon dat niet in proza kán voorkomen"* — en dat klopte voor proza
+  en niet voor een uitgecommentarieerde échte regel. CLAUDE.md zegt het:
+  **een afwijking die je onderbouwt is duurder dan een die je vergeet.** Kom je
+  zo'n kop tegen, meet hem dan in plaats van hem te geloven.
 
 - **⚠️⚠️ Twee blokken in `eslint.config.js` die dezelfde regelnaam zetten zijn
   niet allebei van kracht — 11-09, QS8-423.** Flat config **vervangt** de opties

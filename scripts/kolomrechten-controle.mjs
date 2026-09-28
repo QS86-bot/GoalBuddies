@@ -727,6 +727,112 @@ export function ontleedSchrijfrechten(uitvoer) {
 }
 
 /**
+ * De databasefuncties die naar een tabel schrijven, per `tabel|soort` — QS8-573.
+ *
+ * ⚠️⚠️ **Waarom deze vraag bestaat.** De schrijfkant hierboven leest `src/` en
+ *    `app/`, en dat is de clienthelft van een systeem waarvan de andere helft in
+ *    de database zit. Zonder deze vraag zegt de controle *"niets schrijft naar
+ *    deze tabel"* en maakt de lezer daarvan *"niemand gebruikt dit"*. 📏 Bij
+ *    `group_members` UPDATE klopte die melding en was die conclusie tóch fout:
+ *    het intrekken van de grant maakte 21 tests in zeven bestanden rood, omdat
+ *    0102, 0187 en de audittrigger juist vóór dat pad gebouwd zijn.
+ *
+ * ⚠️⚠️ **`code_zonder_commentaar()` eromheen, en dat is de grendel en geen
+ *    nettigheid.** `prosrc` bevat het commentaar, en dit project schrijft veel
+ *    commentaar. Een regel als *"we schrijven hier bewust NIET naar
+ *    `group_members`"* zou zonder die knip als schrijver tellen — en dan zegt
+ *    deze vraag "de database schrijft hier" waar dat niet zo is, en praat hij
+ *    de lezer van een échte dode grant af. Dezelfde klasse die
+ *    `dagplafondvenster_bewaking()` op zijn eigen invoer trof (QS8-558, 0292),
+ *    en die functie komt uit diezelfde reparatie.
+ *
+ * ⚠️ **`as materialized` is niet cosmetisch.** Zonder dat woord voert Postgres
+ *    de CTE per join-poging opnieuw uit, en `code_zonder_commentaar()` is een
+ *    plpgsql-scanner die per teken loopt. 📏 Gemeten: mét `materialized` **11 s**
+ *    voor alle tabellen; zonder liep dezelfde vraag na twee minuten nog.
+ *
+ * ⚠️ **`\M` sluit de tabelnaam af**, anders telt `update groups` ook als
+ *    schrijver van `group_members`. De `(public\.)?` ervoor dekt beide
+ *    schrijfwijzen, en `(only\s+)?` de vorm die een `update only` gebruikt.
+ */
+export const SCHRIJVERVRAAG = String.raw`
+with schoon as materialized (
+  select p.proname, public.code_zonder_commentaar(p.prosrc) as code
+    from pg_proc p join pg_namespace n on n.oid = p.pronamespace
+   where n.nspname = 'public'
+),
+paren as (
+  select c.relname as tabel, s.soort
+    from pg_class c
+   cross join (values ('INSERT'), ('UPDATE')) as s(soort)
+   where c.relnamespace = 'public'::regnamespace and c.relkind = 'r'
+)
+select p.tabel, p.soort,
+       coalesce(string_agg(distinct f.proname, ',' order by f.proname), '')
+  from paren p
+  left join schoon f on f.code ~* (
+    case p.soort
+      when 'INSERT' then 'insert\s+into\s+(public\.)?' || p.tabel || '\M'
+      else 'update\s+(only\s+)?(public\.)?' || p.tabel || '\M'
+    end)
+ group by p.tabel, p.soort
+ order by p.tabel, p.soort;
+`;
+
+/**
+ * Zet de uitvoer van `SCHRIJVERVRAAG` om in `{ 'tabel|soort': ['fn', …] }`.
+ *
+ * ⚠️ Een paar zonder schrijvers krijgt een **lege lijst** en ontbreekt niet. Dat
+ *    is hetzelfde onderscheid dat `ontleedSchrijfrechten()` maakt: "hier schrijft
+ *    niemand" is een antwoord, "deze tabel kennen we niet" is er geen. De tak in
+ *    `beoordeelSchrijven()` leunt erop — een ontbrekende sleutel betekent daar
+ *    *niet gemeten* en een lege lijst *gemeten en niemand*.
+ */
+export function ontleedSchrijvers(uitvoer) {
+  /** @type {Record<string, string[] | undefined>} */
+  const uit = {};
+  for (const regel of uitvoer.split('\n')) {
+    if (regel.trim().length === 0) continue;
+    const [tabel, soort, functies] = regel.split('|');
+    if (functies === undefined) {
+      throw new Error(`onleesbare regel uit SCHRIJVERVRAAG: ${JSON.stringify(regel)}`);
+    }
+    uit[`${tabel}|${soort}`] = functies.split(',').filter((f) => f.length > 0);
+  }
+  return uit;
+}
+
+/**
+ * De melding voor een paar waar geen enkel pad in `src/` of `app/` naar schrijft.
+ *
+ * ⚠️ Drie uitkomsten en niet twee, en die derde is het verschil tussen *gemeten*
+ *    en *ongemeten*: zonder database is er geen antwoord op de tegenvraag, en
+ *    dan hoort de melding dat te zeggen in plaats van te doen alsof er niemand
+ *    schrijft.
+ */
+export function geenClientSchrijver(schrijvers, sleutel) {
+  const fns = schrijvers[sleutel];
+  if (fns === undefined) {
+    return {
+      reden: 'niets in `src/` of `app/` schrijft naar deze tabel (de database is niet bevraagd)',
+      dbSchrijvers: null,
+    };
+  }
+  if (fns.length === 0) {
+    return {
+      reden: 'niets in `src/` of `app/` schrijft naar deze tabel, en geen enkele databasefunctie ook',
+      dbSchrijvers: [],
+    };
+  }
+  return {
+    reden:
+      'niets in `src/` of `app/` schrijft naar deze tabel, maar ' +
+      `${fns.length} databasefunctie(s) wél`,
+    dbSchrijvers: fns,
+  };
+}
+
+/**
  * Boekt wat één actie schrijft, per `tabel|recht`.
  *
  * ⚠️ Staat los omdat de lus over de kolommen anders vier niveaus diep zit
@@ -778,7 +884,7 @@ function boekOnbeoordeeld(onbeoordeeld, { tabel, soort, r, g }) {
  *    drie sloten bewaakt. **Een rode grendel die je vertelt een grendel te
  *    slopen, is erger dan geen grendel.**
  */
-export function beoordeelSchrijven({ acties, rechten }) {
+export function beoordeelSchrijven({ acties, rechten, schrijvers = {} }) {
   const ontbrekend = [];
   const onleesbaar = [];
 
@@ -827,8 +933,19 @@ export function beoordeelSchrijven({ acties, rechten }) {
   //    tabelbrede grant zou dit `id`, `created_at` en elke triggerkolom melden,
   //    en een controle die alles meldt leer je te negeren.
   const ongeschreven = [];
+  /**
+   * ⚠️ De annotatie is er voor `tsc`: zonder haar leidt hij uit `{}` een type af
+   *    waarop géén sleutel bestaat, en elke toets die `ongemeten['tabel|soort']`
+   *    leest wordt `TS7053`. Dezelfde reparatie als bij `REDENEN` in
+   *    `proefcode-controle.mjs` (QS8-542).
+   *
+   * @type {Record<string, string | undefined>}
+   */
   const ongemeten = {};
   const zonderAanroeper = [];
+
+  /** Élk `tabel|soort`-paar met een tabelbrede grant — QS8-592. */
+  const tabelbreed = [];
 
   /**
    * Kolommen met een grant die géén leesbaar schrijfpad zet, op een paar waar
@@ -846,24 +963,29 @@ export function beoordeelSchrijven({ acties, rechten }) {
     for (const [soort, r] of Object.entries(per)) {
       const sleutel = `${tabel}|${soort}`;
 
-      // ⚠️ De toets staat vóór de `if`-tak en niet erin, zodat de nesting op drie
-      //    blijft (onwrikbare regel 15, `max-depth`).
-      if (r.breed && geschreven[sleutel] === undefined) {
-        zonderAanroeper.push({ tabel, soort, kolommen: [], breed: true });
-      }
-
+      // ⚠️⚠️ **Élke tabelbrede grant, en niet alleen die zonder schrijfpad —
+      //    QS8-592.** Hier stond `r.breed && geschreven[sleutel] === undefined`,
+      //    en dat is de omgekeerde volgorde van het risico: de controle meldde
+      //    een tabelbrede grant alléén op een tabel die de app niet gebruikt, en
+      //    zweeg zodra er wél naartoe geschreven werd.
+      //
+      //    📏 Gemeten op 22-09-2026 door deze functie te voeden met één
+      //    tabelbrede INSERT-grant op `points_ledger`: mét een schrijver in
+      //    `src/` gaf hij **nul** bevindingen, zonder schrijver één.
       if (r.breed) {
+        tabelbreed.push({ tabel, soort, geschreven: geschreven[sleutel] !== undefined });
         ongemeten[sleutel] = 'de grant is tabelbreed';
 
-        // ⚠️⚠️ **Ook hier een bevinding, en dit is de bréédste vorm** — de
-        //    reparatie na de review op deze PR. De controle zweeg het hardst bij
-        //    de ergste fout: 📏 `grant insert on points_ledger to authenticated`
-        //    — een tabelbrede grant op het púntenboek — gaf geen enkele melding.
-        //
-        //    Een tabelbrede grant is niet per kolom te beoordelen en dus ook niet
-        //    per kolom te registreren: hij dekt élke kolom die de tabel ooit
-        //    krijgt. Een registerrij kan hem daarom niet afdekken, en deze
+        // ⚠️ **Een tabelbrede grant is niet per kolom te beoordelen en dus ook
+        //    niet per kolom te registreren:** hij dekt élke kolom die de tabel
+        //    ooit krijgt. Een registerrij kan hem daarom niet afdekken, en de
         //    bevinding wordt met opzet ook gemeld als het paar geregistreerd is.
+        //    📏 De controle zweeg hier ooit het hardst bij de ergste fout:
+        //    `grant insert on points_ledger to authenticated` gaf geen melding.
+        //
+        // ⚠️ En hierna wordt de kolomvergelijking voor dit paar overgeslagen
+        //    (`if (r.breed) continue;` in de lus hierboven), dus er is geen
+        //    tweede net: meldt deze tak niets, dan meldt niets iets.
         continue;
       }
       if (r.kolommen.length === 0) {
@@ -890,8 +1012,15 @@ export function beoordeelSchrijven({ acties, rechten }) {
         //    ongemeten, en de opdracht blijft "herzie hem" in plaats van "haal
         //    hem weg". Dat onderscheid is de reparatie van de review op PR #140
         //    en die blijft staan.
-        ongemeten[sleutel] = 'niets in `src/` of `app/` schrijft naar deze tabel';
-        zonderAanroeper.push({ tabel, soort, kolommen: r.kolommen });
+        // ⚠️⚠️ **De tegenvraag, en niet alleen de constatering — QS8-573.**
+        //    Tot hier stond er één zin: *niets in `src/` of `app/` schrijft naar
+        //    deze tabel*. Die klopt, en de lezer maakt er *"niemand gebruikt
+        //    dit"* van. 📏 Gemeten op stand 0294: van de **13** paren die deze
+        //    tak bereiken hebben er **9** wél een schrijver in de database. Voor
+        //    die negen was de oude melding waar en de conclusie onjuist.
+        const tegen = geenClientSchrijver(schrijvers, sleutel);
+        ongemeten[sleutel] = tegen.reden;
+        zonderAanroeper.push({ tabel, soort, kolommen: r.kolommen, dbSchrijvers: tegen.dbSchrijvers });
         continue;
       }
       if (!g.volledig) {
@@ -909,7 +1038,9 @@ export function beoordeelSchrijven({ acties, rechten }) {
     }
   }
 
-  return { ontbrekend, ongeschreven, onleesbaar, ongemeten, zonderAanroeper, onbeoordeeld };
+  return {
+    ontbrekend, ongeschreven, onleesbaar, ongemeten, zonderAanroeper, onbeoordeeld, tabelbreed,
+  };
 }
 
 // ---------------------------------------------------------------------------
@@ -1228,7 +1359,15 @@ export const NIET_TE_LEZEN = [
     reden:
       '`update(patch)` waar `patch` uit `spiegelpatch()` komt — een functie en ' +
       'geen literaal. De velden die zij zet zijn een deelverzameling van wat ' +
-      '`wijzigDoel()` schrijft, en die staat hier wél onder de controle.',
+      '`wijzigDoel()` schrijft, en die staat hier wél onder de controle. ' +
+      '⚠️⚠️ **Die laatste zin is een premisse, en sinds QS8-610 wordt hij ' +
+      'getoetst in plaats van beweerd:** `npm run spiegeling:controle` wordt ' +
+      'rood zodra een doelkolom in `SPIEGELING` buiten wat `wijzigDoel()` ' +
+      'schrijft valt. 📏 Gemeten waarom dat nodig is: met een spiegeling naar ' +
+      '`goals.status` erbij blijven `tsc`, `lint` én deze controle groen — deze ' +
+      'laatste omdat hij de hele combinatie vrijstelt — en is die nieuwe ' +
+      'controle het enige dat het ziet. Zie ' +
+      '`docs/decisions/2026-09-24-een-vrijstelling-met-een-toetsbare-premisse.md`.',
   },
 ];
 
@@ -1311,29 +1450,47 @@ const LIJSTEN = {
  * @param {{tabel: string, soort: string, kolommen?: string[], reden: string}[]} register
  * @returns {string[]}
  */
+/**
+ * De zin die zegt wát er in de database naar deze tabel schrijft — QS8-573.
+ *
+ * ⚠️⚠️ **Dit is de hele reparatie van rij 634, en hij zit in de woorden en niet
+ *    in de selectie.** De melding wees altijd al het juiste paar aan; wat eraan
+ *    ontbrak was dat *"niets in `src/` of `app/`"* iets anders is dan *"niemand
+ *    gebruikt dit"*. 📏 Gemeten op stand 0294: van de 13 paren die hier komen
+ *    hebben er **9** een schrijver in de database, `group_members\|UPDATE` —
+ *    het geval dat 21 tests kostte — incluis.
+ *
+ * ⚠️ Zonder database is de uitkomst `null`, en dan zegt de zin dat er niets
+ *    gevraagd is. Dat is geen detail: de andere twee vormen zijn een **meting**,
+ *    en een melding die niet zegt dat hij niet gemeten heeft, leest als een die
+ *    wél gemeten heeft.
+ */
+function databasezin(z) {
+  if (z.dbSchrijvers === null || z.dbSchrijvers === undefined) {
+    return 'Of er in de database naar geschreven wordt is hier **niet gevraagd**.';
+  }
+  if (z.dbSchrijvers.length === 0) {
+    return 'Geen enkele databasefunctie schrijft er ook naartoe — dit is dood hout.';
+  }
+  return (
+    `⚠️ Maar ${z.dbSchrijvers.length} databasefunctie(s) schrijven er wél naartoe: ` +
+    `${z.dbSchrijvers.join(', ')}. "Niemand gebruikt dit" is hier dus onwaar — kijk eerst ` +
+    'wat die functies met deze kolommen doen voordat je iets intrekt.'
+  );
+}
+
 function zonderAanroeperMeldingen(zonderAanroeper, register) {
   const beoordeeld = new Map(
     register.map((r) => [paarSleutel(r.tabel, r.soort), new Set(r.kolommen ?? [])]),
   );
   const uit = [];
 
+  // ⚠️ **De tabelbrede grant wordt hier niet meer gemeld — QS8-592.** Die staat
+  //    sinds dat issue in zijn eigen lijst en wordt onvoorwaardelijk gemeld, ook
+  //    als er wél een schrijfpad is. Hier stond hij achter dezelfde voorwaarde
+  //    als de rest van deze functie (*niets schrijft naar deze tabel*), en dat is
+  //    precies de omgekeerde volgorde van het risico.
   for (const z of zonderAanroeper) {
-    // ⚠️ **Een tabelbrede grant is niet per kolom te beoordelen en dus ook niet
-    //    per kolom te registreren** — hij dekt élke kolom die de tabel ooit
-    //    krijgt. Een registerrij mag hem daarom niet afdekken, en deze melding
-    //    komt met opzet ook als het paar geregistreerd is. 📏 De controle zweeg
-    //    hier het hardst bij de ergste fout: `grant insert on points_ledger`,
-    //    tabelbreed op het puntenboek, gaf geen enkele melding.
-    if (z.breed === true) {
-      uit.push(
-        `\`${z.tabel}\` heeft een **tabelbrede** ${z.soort}-grant en niets in \`src/\` of ` +
-          '`app/` schrijft naar deze tabel. Een tabelbrede grant dekt élke kolom die de tabel ' +
-          'ooit krijgt en is daarom niet per kolom te beoordelen — een registerrij kan hem niet ' +
-          'afdekken. Maak er kolomgrants van, of trek hem in.',
-      );
-      continue;
-    }
-
     // ⚠️⚠️ **Per kolom en niet per paar.** Eerst stond hier alleen "staat dit
     //    paar in het register?". Dan dekt één rij élke kolom die er later bij
     //    komt. 📏 Gemeten met precies de gevaarlijke kolom — `grant update
@@ -1346,17 +1503,60 @@ function zonderAanroeperMeldingen(zonderAanroeper, register) {
     uit.push(
       gedekt === undefined
         ? `\`${z.tabel}\` heeft ${z.kolommen.length} ${z.soort}-kolomgrant(s) en niets in ` +
-            '`src/` of `app/` schrijft naar deze tabel — trek de grant in, of zet het paar met ' +
-            'een reden in `GEEN_AANROEPER`. Noem daarin de grendel (weigert de policy het?) en ' +
-            'niet de gewoonte ("dat doet een RPC"): zie QS8-327.'
+            '`src/` of `app/` schrijft naar deze tabel. ' + databasezin(z) +
+            ' Trek de grant in, of zet het paar met een reden in `GEEN_AANROEPER`. Noem daarin ' +
+            'de grendel (weigert de policy het?) en niet de gewoonte ("dat doet een RPC"): zie ' +
+            'QS8-327.'
         : `\`${z.tabel}\` (${z.soort}) staat in \`GEEN_AANROEPER\`, maar heeft kolommen die ` +
             `daar niet beoordeeld zijn: ${nieuweKolommen.join(', ')}. Er schrijft nog steeds ` +
-            'niets naar deze tabel — beoordeel de nieuwe kolommen en vul ze aan, of trek de ' +
-            'grant in.',
+            'niets uit `src/` of `app/` naar deze tabel — beoordeel de nieuwe kolommen en vul ' +
+            'ze aan, of trek de grant in.',
     );
   }
 
   return uit;
+}
+
+/**
+ * De lege standaard voor `tabelbreed` — zelfde reden als `GEEN_ZONDER_AANROEPER`.
+ *
+ * @type {{tabel: string, soort: string, geschreven: boolean}[]}
+ */
+const GEEN_TABELBREED = [];
+
+/**
+ * Meldingen over tabelbrede INSERT- of UPDATE-grants — QS8-592.
+ *
+ * ⚠️⚠️ **Onvoorwaardelijk, en dat is de hele reparatie.** Deze bevinding zat
+ *    hiervóór in `zonderAanroeperMeldingen()` en dus achter de voorwaarde *niets
+ *    in `src/` of `app/` schrijft naar deze tabel*. Daarmee meldde de controle een
+ *    tabelbrede grant alléén op een tabel die de app níet gebruikt, en zweeg hij
+ *    zodra de client er actief naartoe schreef — precies andersom dan het risico
+ *    loopt.
+ *
+ * ⚠️ **Twee gevallen, twee teksten, en dat is geen opmaak.** Zonder schrijfpad is
+ *    dit dood hout en is de opdracht "trek hem in". Mét schrijfpad is de grant in
+ *    gebruik, en dan is het probleem dat hij élke kolom voor deze controle
+ *    onzichtbaar maakt — ook de kolommen die de server hoort te zetten. Eén tekst
+ *    voor allebei stuurt de helft van de lezers de verkeerde kant op, en dat is
+ *    de klasse van QS8-268.
+ *
+ * ⚠️ Een registerrij kan zo'n bevinding niet afdekken: een tabelbrede grant dekt
+ *    élke kolom die de tabel óóit krijgt, dus er valt per kolom niets te
+ *    beoordelen. Daarom kent deze functie geen register.
+ */
+export function tabelbredeMeldingen(tabelbreed) {
+  return tabelbreed.map(({ tabel, soort, geschreven }) =>
+    geschreven
+      ? `\`${tabel}\` heeft een **tabelbrede** ${soort}-grant en \`src/\` of \`app/\` schrijft ` +
+        'er ook naartoe. Daarmee is élke kolom van deze tabel onzichtbaar voor deze controle — ' +
+        'ook de kolommen die de server hoort te zetten, en ook de kolommen die er later ' +
+        'bijkomen. Maak er kolomgrants van; een registerrij kan dit niet afdekken.'
+      : `\`${tabel}\` heeft een **tabelbrede** ${soort}-grant en niets in \`src/\` of ` +
+        '`app/` schrijft naar deze tabel. Een tabelbrede grant dekt élke kolom die de tabel ' +
+        'ooit krijgt en is daarom niet per kolom te beoordelen — een registerrij kan hem niet ' +
+        'afdekken. Maak er kolomgrants van, of trek hem in.',
+  );
 }
 
 export function meldingen(
@@ -1366,6 +1566,7 @@ export function meldingen(
     onleesbaar,
     zonderAanroeper = GEEN_ZONDER_AANROEPER,
     onbeoordeeld = GEEN_ONBEOORDEELD,
+    tabelbreed = GEEN_TABELBREED,
   },
   lijsten = LIJSTEN,
 ) {
@@ -1391,6 +1592,7 @@ export function meldingen(
   // ⚠️ `?? []` en niet `lijsten.geenAanroeper` kaal: de ijkingen geven bewust hun
   //    eigen lijsten mee, en die hoeven niet elke sleutel te dragen. Een
   //    ontbrekende lijst is "niets geregistreerd", niet een crash.
+  uit.push(...tabelbredeMeldingen(tabelbreed));
   uit.push(...zonderAanroeperMeldingen(zonderAanroeper, lijsten.geenAanroeper ?? []));
 
   const gelezen = new Set(lijsten.nietTeLezen.map((r) => leesSleutel(r.pad, r.tabel)));
@@ -1530,9 +1732,17 @@ function hoofd() {
   //    zo goed.
   let uitLezen;
   let uitSchrijven;
+  let uitSchrijvers;
   try {
     uitLezen = vraag(VRAAG);
     uitSchrijven = vraag(SCHRIJFVRAAG);
+    // ⚠️ **In dezelfde `try`, en dat is met opzet.** `SCHRIJVERVRAAG` leunt op
+    //    `code_zonder_commentaar()` uit 0292. Staat die er niet, dan is dit geen
+    //    database van dit project en hoort de hele controle *ongemeten* te zijn
+    //    — met de psql-fout die de functienaam noemt. Een eigen `try` eromheen
+    //    zou hem stil laten terugvallen op "de database is niet bevraagd", en
+    //    dan meldt de controle groen wat hij niet gemeten heeft.
+    uitSchrijvers = vraag(SCHRIJVERVRAAG);
   } catch (fout) {
     // ⚠️ **`OVERGESLAGEN` én exitcode 1, en dat is met opzet allebei.** De poort
     //    herkent de overslag aan deze regel; wie alleen naar de exitcode kijkt,
@@ -1561,7 +1771,11 @@ function hoofd() {
   const leesfouten = beoordeel(selecties, rechten);
 
   const acties = schrijfacties(paden, lees);
-  const oordeel = beoordeelSchrijven({ acties, rechten: schrijfrechten });
+  const oordeel = beoordeelSchrijven({
+    acties,
+    rechten: schrijfrechten,
+    schrijvers: ontleedSchrijvers(uitSchrijvers),
+  });
   const schrijffouten = [...meldingen(oordeel), ...verlopenRegels(oordeel)];
 
   if (leesfouten.length > 0) {

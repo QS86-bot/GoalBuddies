@@ -35,7 +35,39 @@ export type { Resultaat };
  *    kunt.
  */
 
-export type Commitment = Tables<'commitments'>;
+/**
+ * ⚠️ **Een `Pick` en niet de hele rij, en dat volgt de kolomgrant.** Sinds
+ *    `0280` staat de SELECT-grant op `commitments` per kolom en ligt `tz`
+ *    erbuiten — 📏 gemeten op productie: `authenticated` leest precies deze tien
+ *    kolommen en verder niets. Elke `.select()` hieronder noemt dezelfde lijst,
+ *    want een `*` geeft `42501`.
+ *
+ * ⚠️ De generator spiegelt kólommen en geen kolomgrants (`ENGINEER-REVIEW.md`,
+ *    rij 09-09-2026), dus `Tables<'commitments'>` belooft een veld dat deze
+ *    client nooit binnenkrijgt. Dát verschil hoort hier en niet in
+ *    `database.types.correcties.ts`: daar staat wat de generator niet kán weten,
+ *    hier staat wat déze client mag.
+ *
+ * ⚠️⚠️ **`Pick` en niet `Omit<…, 'tz'>`, en dat is niet hetzelfde.** Een grant is
+ *    een opsomming; `Omit` is een uitsluiting. Komt er ooit een kolom bij
+ *    `commitments` die níét in de grant komt, dan krijgt dit type hem er
+ *    stilzwijgend bij — niet-optioneel getypeerd, `undefined` op runtime, want de
+ *    `.select()` hieronder vraagt hem niet op. Met een `Pick` is die kolom er
+ *    gewoon niet. Bevinding van de security-ronde op QS8-569.
+ */
+export type Commitment = Pick<
+  Tables<'commitments'>,
+  | 'id'
+  | 'goal_id'
+  | 'type'
+  | 'body'
+  | 'image_url'
+  | 'beneficiary_group_id'
+  | 'beneficiary_user_id'
+  | 'status'
+  | 'confirmed_at'
+  | 'created_at'
+>;
 export type CommitmentGebeurtenis = Tables<'commitment_events'>;
 
 

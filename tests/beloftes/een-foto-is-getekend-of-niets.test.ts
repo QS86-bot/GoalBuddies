@@ -25,6 +25,8 @@
  */
 import { describe, expect, it, vi } from 'vitest';
 
+import { zonderCommentaar } from './roept-aan';
+
 /**
  * Wat `createSignedUrls()` deze keer teruggeeft. Per test gezet.
  *
@@ -62,7 +64,13 @@ const { metGetekendeBewijsfotos, BEWIJSFOTO_BUCKET } = await import(
 
 const { readFileSync } = await import('node:fs');
 
-const FOTO_TSX = readFileSync('src/shared/ui/Foto.tsx', 'utf8');
+/**
+ * ⚠️ **Geknipt op de leesplek — QS8-574.** 📏 Gemeten vóór de knip: met
+ *    `// if (stand === 'mislukt') …` in `Foto.tsx` bleef dit bestand **13 van
+ *    de 13** groen. De belofte is dat het component een mislukking tékent, en
+ *    een uitgeschakelde tak laat zijn voorwaarde juist in de comment staan.
+ */
+const FOTO_TSX = zonderCommentaar(readFileSync('src/shared/ui/Foto.tsx', 'utf8'));
 
 /**
  * `Foto.tsx` zonder commentaar.

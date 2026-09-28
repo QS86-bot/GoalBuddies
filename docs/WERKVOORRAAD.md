@@ -7,7 +7,7 @@
 > Bijwerken is onderdeel van het werk. Sluit je een issue af, werk dan ook dit
 > bestand bij — anders begint de volgende sessie met verouderde informatie.
 
-**Laatst bijgewerkt:** 17-09-2026 (na QS8-531 — de verlooppoort van een uitstelverzoek meet aan de bevroren strafklok; daarvóór QS8-515 — `create_group()` stelt dezelfde vraag als de CHECK, met QS8-526 als gemeten bijvangst; daarvóór QS8-508; daarvóór QS8-451 — het besluit over `U+200C` aan de rand van een naam, met QS8-508 als bijvangst; daarvóór QS8-500; daarvóór QS8-505 — productie stond 58 migraties achter en staat nu gelijk aan de map; daarvóór QS8-499, migratie 0282; daarvóór QS8-450, QS8-482 en QS8-494 uit deze sessie, en QS8-493, QS8-495, QS8-496, QS8-498, QS8-501, QS8-502, QS8-503 en QS8-504 uit de parallelle; daarvóór QS8-488; daarvóór QS8-471; daarvóór QS8-485; daarvóór QS8-484 en QS8-483; daarvóór QS8-480; daarvóór QS8-479; daarvóór QS8-467; daarvóór QS8-465, QS8-463, QS8-462 en QS8-460; daarvóór QS8-449; daarvóór QS8-448 uit de parallelle sessie; daarvóór QS8-447, QS8-446, QS8-439 en QS8-182; daarvóór QS8-441; daarvóór QS8-443; daarvóór QS8-445; daarvóór QS8-438; daarvóór QS8-434, QS8-435, QS8-431, QS8-416 en QS8-432; diezelfde dag QS8-419, QS8-420, QS8-423, QS8-425, QS8-426, QS8-427, QS8-428, QS8-430 en QS8-432 uit deze sessie en QS8-262 ronde 9, QS8-421 en QS8-422 uit de parallelle; daarvóór de hele novemberronde, alle tien — QS8-180, QS8-181, QS8-183, QS8-184, QS8-189 en QS8-194 uit deze sessie, QS8-179, QS8-182, QS8-187 en QS8-204 uit de parallelle; daarvóór QS8-24; daarvóór QS8-92; daarvóór QS8-392 en QS8-393; daarvóór QS8-396 en QS8-402; daarvóór QS8-404, QS8-399, QS8-400 en QS8-401; daarvóór QS8-403, QS8-140 en QS8-320; daarvóór QS8-243 en QS8-220; daarvóór QS8-314; daarvóór QS8-147, QS8-174, QS8-191, QS8-297, QS8-298, QS8-299, QS8-303 en QS8-304; daarvóór QS8-287, QS8-288, QS8-289 en QS8-291;daarvóór QS8-266, QS8-202 en QS8-196, en het toepassen van `0139` t/m `0149` op
+**Laatst bijgewerkt:** 24-09-2026 (QS8-603 — §0 van `docs/PROMPT-SESSIE.md` hermeten op zijn eigen commit: 144 merges en geen 152, 79% en geen 84%, en de categorie van 87 is vervangen door een partitie die optelt; QS8-605 — `eenrij:controle` houdt vast dat elke `.single()`/`.maybeSingle()` een garantie draagt dat er hoogstens één rij terugkomt, met een leeg register en de partiële index als scherpste geval; QS8-587 — onderzocht of de Doelcoach zonder de Anthropic-API kan: ja, en dat pad is al gebouwd — maar de aanbeveling is eerst meten, want 📏 de gedeployde functie boekt elke job op 1,5× de lijstprijs en er is één gemeten job in totaal; QS8-584 — `migratie:nieuw` toetst zijn eigen bestandsnaam vóórdat hij schrijft, met de éne regel waarmee `migraties:controle` hem straks leest, en `migratie:hernummer` meldt een onleesbare naam in plaats van erover te struikelen; QS8-591 — `docs/decisions/` valt in `padverwijzing:controle` vanaf de geboortedag van het document, met de meting dat alle negentien kapotte paden terecht waren; QS8-586 — `reports` heeft een lezer, een beheerscherm en een ingang, migraties `0296` t/m `0298`, en de security-ronde erop vond vier gaten die in dezelfde ronde gesloten zijn; QS8-594 — `defaultnull:controle` houdt vast dat een `DEFAULT NULL`-argument óf getypt is óf nergens `null` ontvangt, met zestien natoetste registerrijen. En in de tweede helft van diezelfde dag de dossierbaan: QS8-609 — de twee laatste kandidaten van rij 618 zijn **niet** blind voor tijd (`seizoensgrens()` neemt zijn moment als argument, `herbereken_reeks()` draagt geen enkele `now()`-vergelijking), en wat er wél lag was een dekkingsgat plus één vondst: **stilte breekt een reeks niet** — twaalf cycli, zesentwintig zonder rij, twaalf cycli geeft 24 en niet 12, en dat staat nergens als besluit; QS8-610 — `spiegeling:controle` toetst de premisse waarop de vrijstelling `interview.ts → goals` rust, want een kolomsleutel kan daar niet (het pad is juist onleesbaar); QS8-612 — `handtekening:controle` legt elke `drop function` naast de RPC's van de edge-functies, en vond een vierde geval dat mijn handmatige grep miste. 📏 Alle drie geijkt tegen een **lokale stack**, die in een cloudsessie gewoon te bouwen is: de poort gaat daarmee van 25 naar **10** ongemeten controles. Hoe dat moet en wat het wél en niet oplevert staat in `docs/VOLGENDE-SESSIE.md`. Diezelfde dag de auditronde van baan B: QS8-597 — een nieuw adviseur-object kan niet meer landen zonder de allowlist, want `adviseurdrift:controle` leidt de SECURITY DEFINER-views en de RLS-zonder-policy-tabellen af uit de migratiemap en draait dus wél in CI, waar `adviseur:controle` een token nodig heeft en daarom altijd ongemeten is; QS8-598 — het blok "Niet in CI" in `.claude/commands/audit.md` genereert zichzelf uit `ci-controles.mjs` in plaats van met de hand bijgehouden te worden, 65 van de 75 stonden in CI; QS8-599 en QS8-608 — géén script in `scripts/` doet nog iets bij import, want tien deden hun werk op moduleniveau, waarvan twee naar de repo schreven en zes `process.exit()` aanriepen, en `tests/scripts/hoofdwacht.test.ts` importeert nu alle 105; QS8-606 — `knipt()` herkent beide gedeelde knippen en het register in `ZONDER_KNIP` gaat van zes rijen naar vijf. ⚠️ Eén van de drie auditbevindingen was een misreading van mijn kant en is als zodanig rechtgezet: `stand:controle` draait wél in CI, in baan `repo`, en zijn zwijgen is opzet. Daarvóór 23-09-2026, na de tweede grendelronde van baan B — QS8-589 `Alles groen` maakt van een afgebroken run geen rode uitslag meer, en `hoofdrun:controle` bewaakt dat nu ook op jobniveau; QS8-595 een tabelrij die zijn kop kwijt is wordt gemeld in plaats van overgeslagen — `tabelcellen:controle` las 428 van de 748 rijen van het dossier en telt er nu 4216 in plaats van 3867 over de hele boom, met vier herstelde documenten en twee kapotte rijen in `docs/decisions/002-domeinregel7-oppervlakken.md` die pas zichtbaar werden toen hun regio gelezen wérd. QS8-594 staat nog steeds op Todo — de reparatie landt in `src/lib/` en dat is de andere baan. Wat er per rij gemeten is staat in `docs/ENGINEER-REVIEW.md`; de valkuilen van die ronde in `docs/VOLGENDE-SESSIE.md`; daarvóór 22-09-2026 met QS8-582 de concurrency-groep is op `main` per commit en `hoofdrun:stand` meldt elke commit zonder uitslag; QS8-585 de integratieharnassen leiden hun scriptlijst af in plaats van hem te typen; QS8-588 het herstelspoor van `rls:dekking` wordt beoordeeld vóór het afgespeeld wordt; QS8-592 elke tabelbrede grant is een bevinding, ook met een schrijver; QS8-593 `typesdrift:controle` vergelijkt ook de velden achter een naam. QS8-594 is gemeten en doorgegeven, niet gebouwd — de reparatie landt in `src/lib/` en dat is de andere baan. Wat er per rij gemeten is staat in `docs/ENGINEER-REVIEW.md`; de valkuilen van die dag in `docs/VOLGENDE-SESSIE.md`; daarvóór 21-09-2026 met QS8-572 — de detector van `knip:controle` is op twee regexvormen verbreed en op vier stringmethode-vormen bewust niet, met de meting per vorm; daarvóór QS8-569 — `src/lib/database.types.ts` is hergenereerd tegen productie en de handgeschreven correcties zijn naar een eigen laag verhuisd; daarvóór 17-09-2026 met QS8-531 — de verlooppoort van een uitstelverzoek meet aan de bevroren strafklok; daarvóór QS8-515 — `create_group()` stelt dezelfde vraag als de CHECK, met QS8-526 als gemeten bijvangst; daarvóór QS8-508; daarvóór QS8-451 — het besluit over `U+200C` aan de rand van een naam, met QS8-508 als bijvangst; daarvóór QS8-500; daarvóór QS8-505 — productie stond 58 migraties achter en staat nu gelijk aan de map; daarvóór QS8-499, migratie 0282; daarvóór QS8-450, QS8-482 en QS8-494 uit deze sessie, en QS8-493, QS8-495, QS8-496, QS8-498, QS8-501, QS8-502, QS8-503 en QS8-504 uit de parallelle; daarvóór QS8-488; daarvóór QS8-471; daarvóór QS8-485; daarvóór QS8-484 en QS8-483; daarvóór QS8-480; daarvóór QS8-479; daarvóór QS8-467; daarvóór QS8-465, QS8-463, QS8-462 en QS8-460; daarvóór QS8-449; daarvóór QS8-448 uit de parallelle sessie; daarvóór QS8-447, QS8-446, QS8-439 en QS8-182; daarvóór QS8-441; daarvóór QS8-443; daarvóór QS8-445; daarvóór QS8-438; daarvóór QS8-434, QS8-435, QS8-431, QS8-416 en QS8-432; diezelfde dag QS8-419, QS8-420, QS8-423, QS8-425, QS8-426, QS8-427, QS8-428, QS8-430 en QS8-432 uit deze sessie en QS8-262 ronde 9, QS8-421 en QS8-422 uit de parallelle; daarvóór de hele novemberronde, alle tien — QS8-180, QS8-181, QS8-183, QS8-184, QS8-189 en QS8-194 uit deze sessie, QS8-179, QS8-182, QS8-187 en QS8-204 uit de parallelle; daarvóór QS8-24; daarvóór QS8-92; daarvóór QS8-392 en QS8-393; daarvóór QS8-396 en QS8-402; daarvóór QS8-404, QS8-399, QS8-400 en QS8-401; daarvóór QS8-403, QS8-140 en QS8-320; daarvóór QS8-243 en QS8-220; daarvóór QS8-314; daarvóór QS8-147, QS8-174, QS8-191, QS8-297, QS8-298, QS8-299, QS8-303 en QS8-304; daarvóór QS8-287, QS8-288, QS8-289 en QS8-291;daarvóór QS8-266, QS8-202 en QS8-196, en het toepassen van `0139` t/m `0149` op
 productie in twee rondes)
 
 ⚠️ **De uitrolstand staat sinds 17-09-2026 (QS8-517) in
@@ -39,6 +39,20 @@ en gold al voor de zin die hier stond.
 landde tijdens de uitrol. Dat is het venster van QS8-318 — het getal was juist
 toen het opgeschreven werd — en het is precies waarom de regel hieronder staat.
 De drie zijn er in dezelfde ronde bij toegepast.
+
+⚠️ **En de types zijn een dérde lijn, met een eigen meetmoment — sinds
+21-09-2026 (QS8-569).** `src/lib/database.types.ts` is een afschrift van
+productie en staat daar vandaag gelijk aan; `typesdrift:controle` zegt het, maar
+alléén als je hem voedt, en in een cloudsessie doet niemand dat vanzelf. Het
+recept staat in de kop van `scripts/typesdrift-controle.mjs`: schrijf de uitvoer
+van de MCP-tool `generate_typescript_types` naar een bestand en zet
+`TYPES_GENERATIE` erop. **Doe dat in elke ronde waarin je de migratiemap of
+productie aanraakt.**
+
+⚠️ Correcties op dat afschrift horen sinds die datum in
+`src/lib/database.types.correcties.ts` en niet in het gegenereerde bestand; de
+regel staat in CLAUDE.md, de onderbouwing in
+`docs/decisions/2026-09-21-de-correcties-stonden-in-het-bestand-dat-overschreven-wordt.md`.
 
 ⚠️ **Lees dit nooit als getal maar meet het.** De lijn is op 09-09 twee keer op
 één dag verschoven en tussen 09-09 en 14-09 nog een keer, telkens doordat er
@@ -222,8 +236,8 @@ staat er iets bij dat uitleg nodig heeft, dan hoort die uitleg in §2, §3b of �
    **Meet ze dus, tel ze niet op:** bij het samengaan met `main` is het antwoord
    `npm run poort` of `npm run tellers`, nooit het hoogste van twee getallen.
 <!-- POORTSTAND:BEGIN — gegenereerd door `npm run poortstand` -->
-Typecheck, lint en alle 70 controlescripts groen;
-`npm run poort` meldt 74 stappen.
+Typecheck, lint en alle 78 controlescripts groen;
+`npm run poort` meldt 82 stappen.
 <!-- POORTSTAND:EINDE -->
    ⚠️ **Vier ervan meten niets zonder de credentials van het échte project**
    (`adviseur`, `functies`, `register`, `wachtwoord`), en de poort noemt dat
@@ -307,7 +321,7 @@ schemaname = 'public'` gaf `41|41`. Vraag het aan de database en niet aan deze
 regel — net als bij het aantal migraties in §0.
 
 <!-- STAND:BEGIN — gegenereerd door `npm run stand` -->
-Migraties `0001` t/m `0294` staan in de map: **297 bestanden**,
+Migraties `0001` t/m `0298` staan in de map: **301 bestanden**,
 waarvan 3 met een letter-achtervoegsel (`0039a`, `0041a`, `0052a`).
 De nummering is aaneengesloten.
 <!-- STAND:EINDE -->
@@ -1012,6 +1026,82 @@ Drie keer dezelfde klasse, en hij keert terug omdat er geen signaal op staat maa
 alleen een gewoonte. Het signaal wordt gebouwd in **QS8-385**; dat issue is
 afgesplitst omdat de meting en het gereedschap twee dingen zijn.
 
+### De commentaarval in `tests/beloftes/` — gesloten op 21-09-2026 (QS8-574)
+
+✅ **Er staat een grendel op de vorm die QS8-568 vond.**
+`npm run belofteknip:controle` wordt rood zodra een belofte-test bevestigend
+toetst op ruwe bestandsinhoud — `expect(bron).toContain(…)` zonder knip op de
+leesplek. Die toets is ook waar als de aanroep uitgecommentarieerd is, en bij een
+tijdelijke uitschakeling blijft de naam juist ín de comment staan.
+
+📏 **Acht bestanden gemeten met elf eigen mutaties, en alle elf faalden open.**
+Alle acht zijn gerepareerd; het register van de controle is daarom **leeg**, en
+dat is een uitkomst en geen omissie. De tabel met de mutaties, de twee die iets
+anders maten dan ze leken te meten, en de afweging *eigen controle of tweede
+helft van `knip:controle`* staan in
+`docs/decisions/2026-09-21-het-mechanisme-onder-de-commentaarval.md`.
+
+⚠️ **Twee van de elf waren onwrikbare regel 3.** De toetsen die bewaken dat de
+storage-emmers `avatars` en `chatdocs` **privé** zijn, bleven groen met `public`
+op `true` — een openbare bucket omzeilt RLS volledig. Eén raakte domeinregel 2:
+met `<Tijdzonewacht />` uitgecommentarieerd verandert `profiles.tz` na de
+onboarding nergens meer.
+
+⚠️ **De SQL-knip is verhuisd en niet gekopieerd.** Hij stond in
+`scripts/sleutelvorm-controle.mjs`, waar `dml-controle.mjs` hem al uit
+importeerde, en heet nu `zonderCommentaarSql` in
+`scripts/zonder-sql-commentaar.mjs`. Er zijn dus twee gedeelde knippen — JS en
+SQL — en de derde blijft een keuze die je verantwoordt.
+
+⚠️ **Wat open blijft: vier knippen die `knip:controle` niet ziet**, omdat zijn
+`DEFINITIE` alleen namen matcht die met `zonderCommentaar` beginnen. Twee zijn
+nagemeten en falen dicht, twee zijn **ongemeten**. Dat staat als **QS8-579**.
+
+### De knip die anders heet — gesloten op 21-09-2026 (QS8-579)
+
+✅ **`knip:controle` vindt een knip nu ook aan zijn lichaam en niet alleen aan
+zijn naam.** `DEFINITIE` matchte `function zonderCommentaar\w*(`; 📏 **tien**
+knippen liepen daaromheen — vier in `tests/beloftes/`, zes in `scripts/` — en
+geen van tien stond in een register.
+
+📏 **Twee ervan faalden open, allebei met een tegenproef gemeten.**
+`ontdaanVanCommentaar()` in `datumopmaak.test.ts` liet een zelf-opgemaakte datum
+door zodra er een URL vóór stond op dezelfde regel, en `normaliseer()` in
+`edge-tijd-controle.mjs` verklaarde twee uiteenlopende kopieën van `shared/time`
+gelijk op precies diezelfde vorm. Die tweede is **correctheidsregel 7**: de
+rollover en de app zouden 's nachts met andere weekgrenzen rekenen. Allebei de
+blinde vorm van QS8-412.
+
+⚠️ **De reparatie is per geval verschillend, en dat is het punt.** `datumopmaak`
+en `onboarding` delen nu de gedeelde knip; `edge-tijd-controle` houdt zijn eigen
+en kreeg alleen de `(^|[^:])`-wacht erbij — die controle vergelijkt twee kopieën
+en commentaar mág daar verschillen. 📏 De eerste, bottere reparatie brak zijn
+ijking, en de poort ving dat. **"Deel de gedeelde knip" is niet het doel; het doel
+is dat elke knip een keuze is met een reden.**
+
+⚠️ **Een derde faalde dicht om de verkéérde reden.**
+`onboarding-schrijft-niets-over.test.ts` betoogde in zijn kop dat grendel 4 de
+URL-vorm opving; gemeten viel hij op grendel 2, via een accoladetelling die door
+de aanroep heen liep. Na de omzetting valt dezelfde mutatie op grendel 1, en dát
+is de belofte. **Tweede keer in twee issues dat een uitgeschreven verdediging
+half bleek te kloppen.**
+
+⚠️ **Er is een derde register bijgekomen: `GEEN_KNIP`.** Een vormdetector zonder
+plek voor zijn eigen valse treffers wordt een controle die je uitzet. Er staan er
+drie in, alle drie dezelfde vorm: ze **selecteren** commentaarregels in plaats van
+ze weg te gooien — de kop van een migratie ís commentaar.
+
+📏 **En `belofteknip:controle` uit QS8-574 ving bij de merge meteen een elfde
+instantie** — een belofte-test uit de parallelle sessie (QS8-436) die een pin op
+de bron van `expo-image-picker` ruw toetste. Gemeten: faalt open, gerepareerd,
+rood na de reparatie. Dat bestand importeerde de gedeelde knip al en gebruikte
+hem voor ónze bron maar niet voor de pin.
+
+⚠️ **Wat de rand is, staat in de kop van het script en als rij in
+`ENGINEER-REVIEW.md`:** een pijlfunctie, een methode, twee parameters en de
+teken-voor-teken-vorm ziet hij niet. Afweging in
+`docs/decisions/2026-09-21-een-knip-die-anders-heet.md`.
+
 ## 3. Wat een nieuwe sessie als eerste doet
 
 1. Lees `CLAUDE.md`. Dat is de grondwet en die wint van alles hieronder.
@@ -1199,7 +1289,6 @@ Werk de epics in deze volgorde af. Binnen een epic: op prioriteit, hoog eerst.
 | 15 | **QS8-394 — hoe privé is een gedeelde foto** | Losgetrokken uit de doorlichting van 09-09. Drie stappen, en ze staan los van elkaar: QS8-395 (metadata eraf vóór het uploaden, In Review), QS8-396 (bewaartermijn van 21 dagen + de leesgrens aan het bericht, migratie 0235), QS8-397 (end-to-end-versleuteling — **een besluit van Quinten**, sleutelbeheer, niet op eigen gezag te bouwen). ⚠️ De bewaartermijn leunt op de uurlijkse rollover uit `.github/workflows/rollover.yml`; het restrisico staat in §6 en in `ENGINEER-REVIEW.md`. QS8-396 en QS8-399 zijn op 09-09 samengevoegd op één branch — de teller is die van 399, zie QS8-402 | 1 en 2 gebouwd, 3 wacht op Quinten |
 | 16 | **EPIC — De Lijst** (QS8-378) | Wens van Quinten, 09-09-2026: losse to-do's op de taakbalk, getypt of ingesproken, privé of gedeeld. Staat naast de kernlus en niet erin: De Lijst levert nooit punten, een reeks of goedkeuring op, want de week blijft de enige eenheid die telt (domeinregel 9 en 10) | ✅ **Beide beslispunten zijn op 09-09 beslist.** Een **vijfde tabblad** (de kop van `_layout.tsx` zei "vier en niet vijf" en is herschreven met de reden erbij), en **per taak aanvinken** wat de groep ziet — variant B, bewust niet de C die de wens letterlijk vroeg. Daarmee is er géén verruiming van domeinregel 7 nodig. Deel 1 af: **QS8-379**, migratie `0246` — de tabel `todo_items`, eigenaar-only, met een dagplafond en een `visibility` die voor geen enkele client schrijfbaar is. Deel 2 af: **QS8-380** — het tabblad, het scherm en de datalaag, alles prive. Deel 3 af: **QS8-381**, migratie `0248` — delen per taak met **één gekozen groep** (B2, niet "iedereen met wie je een groep deelt"), via de RPC `zet_taakzichtbaarheid()` en beide kanten op. ⚠️ De security-ronde daar vond dat een gedeelde taak het lidmaatschap eronder overleefde; dat is gesloten met een trigger op `group_members` en niet met een regel in `verwijder_lid()` en `verlaat_groep()` — die twee eindigen een lidmaatschap verschillend. ✅ **QS8-386** is de staart en is op 10-09 af: een taak is te hernoemen via hetzelfde gedeelde `Field`, dus het schrijfrecht op `todo_items.body` heeft nu een aanroeper en de rij is uit `GEEN_SCHRIJFPAD` van `kolomrechten-controle.mjs` weg. Gebouwd en niet ingetrokken — de afweging staat in `docs/decisions/2026-09-10-een-typefout-hoort-geen-verwijderknop-te-vragen.md`. Daarmee is de epic in zijn geheel af |
 | 17 | **De novemberronde** (label `review:november`) | Tien bevindingen die bewust waren weggelegd tot de engineer er zou zijn. ⚠️ **Op 10-09 heeft Quinten gevraagd ze nú uit te voeren**, en daarmee verviel het parkeerbesluit | ✅ **Alle tien Done** — QS8-179, 180, 181, 182, 183, 184, 187, 189, 194, 204, over twee sessies. ⚠️ QS8-180 droeg het label niet en is op 11-09 alsnog gelabeld; het waren er negen zolang je op het label afging. ⚠️ **De aanname dat het "een oordeel en geen meting" was, hield bij geen van de tien stand.** Er bleek telkens iets te meten of te grendelen: QS8-181 was een lidmaatschapsorakel (migratie 0249) en leverde `definers:controle` op, QS8-182 een goedkeuring die aan een gedenormaliseerde kolom hing (0252), QS8-184 drie beloftes van domeinregel 9 die alleen als afwezigheid bestonden, QS8-189 een pushtoken dat over te nemen was, QS8-180 de twee klokken die typematig niet gescheiden waren. Wat er als produktvraag overblijft — of gebruikers de Dagzet als "de check-in die telt" gaan zien — is gedrag en staat als zodanig in `docs/ENGINEER-REVIEW.md` |
-
 | 18 | **QS8-416 — `copy` is een INSERT** | Uit de audit van 10-09. 0239 trok elk UPDATE-pad op `storage.objects` in en schreef erbij dat daarmee ook het move/copy-eindpunt dicht was; dat dekt `move` en niet `copy`, want een `copy` schrijft een **nieuwe rij**. Dezelfde zin stond in 0235, 0240 en twee dossierrijen | ✅ **af op 11-09**, migratie `0255` — en hij doet mínder dan het issue aannam. 📏 De securityronde vond dat de extensieregex géén enkele kruisrichting sluit: bij een `copy` kiest de client de **doelnaam** (`sourceKey` en `destinationKey` zijn twee losse parameters in `@supabase/storage-js` 2.112.3), dus een pdf uit `chatdocs` heet in `chatfotos` gewoon `onschuldig.jpg`. Zelf nagemeten als `authenticated` ná 0255: alle vier de emmers laten een vrij gekozen doelnaam door. **Wat 0255 wél oplevert:** de naamvorm is in alle vier de emmers een databaseeigenschap in plaats van een clienteigenschap — dezelfde belofte die 0240 voor `chatdocs` waarmaakte, met `evil.html` als meting. De open copy-route staat op **Middel** in `docs/ENGINEER-REVIEW.md`, met `chatdocs` → fotoemmer als zwaarste richting (5 MB tegen 1 MB): op databaseniveau niet te sluiten, want een INSERT-policy ziet alleen de nieuwe rij. ⚠️ De bijbehorende test heette naar `0237` terwijl de drops in `0239` staan — zes keer, inclusief de naam van het `describe`. Uitleg in `docs/decisions/2026-09-11-een-copy-is-geen-move.md` |
 
 **Exit:** een groep van drie draait ≥4 opeenvolgende cycli.

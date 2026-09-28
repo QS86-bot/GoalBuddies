@@ -101,7 +101,7 @@ export function vergelijk({ schema, server }) {
 }
 
 /* c8 ignore start */
-if (import.meta.url === pathToFileURL(process.argv[1]).href) {
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
   const token = process.env.SUPABASE_ACCESS_TOKEN;
   const streng = process.argv.includes('--streng');
 

@@ -97,7 +97,7 @@ describe('ontleed', () => {
 });
 
 describe('de census zelf', () => {
-  it('draagt de drieënveertig relaties met een tabelbrede SELECT-grant', () => {
+  it('draagt de tweeënveertig relaties met een tabelbrede SELECT-grant', () => {
     // 📏 Gemeten op 14-09-2026 tegen een verse opbouw (269 migraties): 40
     //    tabellen én 4 views. Die views ontbraken tot de security-ronde —
     //    `relkind in ('r','p')` sloot ze uit terwijl `pg_default_acl` objtype
@@ -110,7 +110,15 @@ describe('de census zelf', () => {
     //    dus is het recht per kolom teruggegeven zónder `tz`. Een censusrij voor
     //    een tabel zonder tabelbrede grant dekt ooit stilletjes een tabel die hem
     //    wél heeft — de controle wordt daar zelf rood op.
-    expect(Object.keys(CENSUS)).toHaveLength(43);
+    // ⚠️ **42 sinds 0298, en dat was 43.** `reports` is eruit, om precies
+    //    dezelfde reden als `commitments` bij 0280 — en dat die reden zich
+    //    herhaalt is het punt. QS8-586 beloofde dat `reporter_id` niet bij de
+    //    beoordelaar terechtkomt; 0296 maakte daarvoor een RPC met een
+    //    kolomlijst en liet de tabelbrede grant staan, dus 📏 was de melder in
+    //    één verzoek op te vragen. 0298 geeft het recht per kolom terug, zonder
+    //    `reporter_id` en zonder `afgehandeld_door`. Beoordelen loopt
+    //    uitsluitend via `openstaande_meldingen()`.
+    expect(Object.keys(CENSUS)).toHaveLength(42);
   });
 
   it('heeft de vier views erin', () => {
@@ -121,7 +129,7 @@ describe('de census zelf', () => {
     }
   });
 
-  it('merkt er vierentwintig als groepszichtbaar', () => {
+  it('merkt er drieëntwintig als groepszichtbaar', () => {
     // ⚠️ `groups` is makkelijk te missen: `groups_select` is
     //    `mag_groep_lezen(id)` en delegeert naar een functie.
     const groeps = Object.entries(CENSUS)
@@ -131,7 +139,9 @@ describe('de census zelf', () => {
     // ⚠️ 24 sinds 0280 en dat was 25 — `commitments` telde als groepszichtbaar
     //    en staat nu niet meer in de census. Hij ís nog steeds groepszichtbaar;
     //    wat verdween is de tabelbrede grant waar deze census over gaat.
-    expect(groeps).toHaveLength(24);
+    // ⚠️ 23 sinds 0298: `reports` stond als groepszichtbaar in de census en
+    //    heeft geen tabelbrede grant meer. Zie de toets hierboven.
+    expect(groeps).toHaveLength(23);
     expect(groeps).toContain('groups');
     expect(groeps).toContain('weekly_goals');
     expect(groeps).not.toContain('points_ledger');

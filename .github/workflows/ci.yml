@@ -38,8 +38,32 @@ on:
 #    run over de commit ertussen is nooit afgerond, en van de 24 main-runs die dag
 #    zijn er vijf op deze manier afgebroken. Een uitslag die er niet is, is geen
 #    groen en geen rood — hij is er niet.
+#
+# ⚠️⚠️ **En de groep is op `main` per commit, en dat is de reparatie van
+#    QS8-582.** `cancel-in-progress: false` beschermt de **lopende** run; de
+#    **wachtende** beschermt hij niet. GitHub houdt per concurrency-groep maar
+#    één run in de wachtrij, en een volgende run in diezelfde groep annuleert
+#    die wachtende — ook als afbreken uitstaat.
+#
+#    📏 Gemeten op 21-09-2026, uit de GitHub-API:
+#
+#      20:28:42  run 2962  152c0321  LOOPT tot 20:36:36
+#      20:33:23  run 2965  e6cc6e2e  wacht  → afgebroken om 20:33:32 door 2966
+#      20:33:31  run 2966  339f6530  wacht  → afgebroken om 20:33:40 door 2967
+#      20:33:38  run 2967  28542c7c  wacht  → afgebroken om 20:36:37 door 2969
+#
+#    Drie toestanden op `main` zonder uitslag, en `hoofdrun:controle` stond
+#    terecht op groen: de regel die hij toetst was en is juist. Zolang `main`
+#    één groep deelt, is de wachtrij één plek diep en gaat elke merge binnen het
+#    CI-venster van mediaan 8 minuten ten koste van zijn voorganger.
+#
+#    Per commit een eigen groep betekent: op `main` wordt er niet gewacht en dus
+#    ook niets uit de wachtrij geduwd. Buiten `main` blijft de groep per ref, want
+#    daar moet `cancel-in-progress` juist kunnen afbreken — een groep die daar óók
+#    per commit splitst, maakt die regel dode letter. `hoofdrun:controle` toetst
+#    allebei die kanten.
 concurrency:
-  group: ci-${{ github.ref }}
+  group: ci-${{ github.ref }}${{ github.ref == 'refs/heads/main' && format('-{0}', github.sha) || '' }}
   cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
 
 permissions:
@@ -562,7 +586,34 @@ jobs:
     name: Alles groen
     runs-on: ubuntu-latest
     needs: [controle, rls, edge, scripts_windows]
-    if: always()
+    # ⚠️⚠️ **`!cancelled()` erbij is de reparatie van QS8-589, en het is QS8-582
+    #    één laag hoger.** Met alleen `always()` draait deze job óók als de rún
+    #    is afgebroken; de jobs in `needs` dragen dan `result = cancelled`, dat
+    #    is `!= "success"`, en de samenvatting maakt er een **failure** van.
+    #    GitHub markeert de run netjes als `cancelled` — het was déze job die
+    #    daar rood van maakte.
+    #
+    #    📏 Gemeten op 22-09-2026 over de laatste 100 CI-runs: 78 `success`,
+    #    **19 `cancelled`**, 3 `failure`. Afbreken is dus bijna een vijfde van
+    #    alle runs, en inherent: `cancel-in-progress` staat aan voor alles
+    #    behalve `main`, dus elke tweede push binnen een paar minuten levert er
+    #    een op. 📏 PR #583 droeg op één commit (`ae82974f`) daardoor twee
+    #    `Alles groen`-checks met tegengestelde uitslag, en is zo gemerged.
+    #
+    # ⚠️ **De twee gevallen die dit uit elkaar houdt, en dat is de hele finesse.**
+    #    `cancelled()` slaat aan op een afgebroken **run** — dan wordt deze job
+    #    overgeslagen, want er is niets gemeten. Loopt een afzonderlijke **job**
+    #    op zijn `timeout-minutes`, dan komt díé terug als `cancelled` terwijl de
+    #    run gewoon doorloopt; deze job draait dan wél en wordt rood. Dat is geen
+    #    theorie: de kop van de RLS-job beschrijft precies dat geval (QS8-518,
+    #    twee runs van QS8-433).
+    #
+    # ⚠️ **En `skipped` blokkeert hier geen merge.** 📏 Gemeten op 22-09-2026 via
+    #    de API: `main` is beschermd, maar `required_status_checks` staat op
+    #    `enforcement_level: off` met lege `contexts` en `checks` — `Alles groen`
+    #    is geen required check. Het bewijs uit de praktijk staat ernaast: PR #583
+    #    is gemerged terwijl deze check op zijn head **rood** stond.
+    if: always() && !cancelled()
     steps:
       - name: Uitslag bepalen
         run: |

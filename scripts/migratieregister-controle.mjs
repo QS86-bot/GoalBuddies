@@ -52,7 +52,7 @@
 
 import { writeFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 
 import { beoordeelOmgeving } from './migratieregister-omgeving.mjs';
 import { migratiesInMap, standUitRegister, vergelijk } from './migratieregister-vergelijk.mjs';
@@ -60,94 +60,100 @@ import { STANDBESTAND } from './uitrolstand-controle.mjs';
 
 const WORTEL = fileURLToPath(new URL('..', import.meta.url));
 
-const url = process.env.EXPO_PUBLIC_SUPABASE_URL;
-const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-const streng =
-  process.argv.includes('--streng') || process.env.REGISTER_CONTROLE_STRENG === '1';
+// ⚠️ Het werk staat in een blok achter de main-guard, en niet in een
+//    `hoofd()`: zo doet importeren niets (QS8-608) zonder dat er een lange
+//    functie bijkomt die coderegel 15 zou breken. Top-level `await` mag
+//    binnen dit blok — gemeten, niet aangenomen.
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+  const url = process.env.EXPO_PUBLIC_SUPABASE_URL;
+  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  const streng =
+    process.argv.includes('--streng') || process.env.REGISTER_CONTROLE_STRENG === '1';
 
-const ONTBREEKT =
-  'geen EXPO_PUBLIC_SUPABASE_URL en SUPABASE_SERVICE_ROLE_KEY in de omgeving.\n' +
-  '  Dit is de enige controle die het échte project nodig heeft; zie docs/DEPLOY.md.';
+  const ONTBREEKT =
+    'geen EXPO_PUBLIC_SUPABASE_URL en SUPABASE_SERVICE_ROLE_KEY in de omgeving.\n' +
+    '  Dit is de enige controle die het échte project nodig heeft; zie docs/DEPLOY.md.';
 
-const oordeel = beoordeelOmgeving({ url, sleutel: serviceRoleKey, streng });
+  const oordeel = beoordeelOmgeving({ url, sleutel: serviceRoleKey, streng });
 
-if (oordeel === 'ontbreekt') {
-  // ⚠️ Streng draaien betekent: hier hóórden credentials te zijn. Dat is het
-  //    geval direct na `supabase db push`, en dan is zwijgen geen afspraak maar
-  //    een gemiste controle.
-  console.error(`✗ migratieregister-controle kon niet draaien — ${ONTBREEKT}`);
-  process.exit(1);
-}
-
-if (oordeel === 'overslaan') {
-  // ⚠️ Naar stderr en met een teken ervoor. Op stdout stond hij tussen de
-  //    geslaagde controles en las `overgeslagen` als `gelukt`.
-  console.error(`⚠ migratieregister-controle: OVERGESLAGEN — ${ONTBREEKT}`);
-  process.exit(0);
-}
-
-/**
- * De meting opschrijven zodat een sessie zónder sleutel hem kan nalezen.
- *
- * ⚠️ **Ook als de vergelijking daarna rood wordt.** Wat er op productie staat
- *    is waar, ongeacht of het bevalt — en juist bij een verschil is dit getal
- *    het eerste dat iemand wil zien. Eerst schrijven, dan oordelen.
- *
- * ⚠️ De vórm komt uit `standUitRegister()` in `migratieregister-vergelijk.mjs`,
- *    en dat is met opzet: deze functie draait alleen mét de productiesleutel en
- *    is hier dus nooit te ijken. De naad tussen schrijver en lezer staat onder
- *    test in `tests/scripts/migratieregister.test.ts`.
- *
- * @param {readonly {versie: string, naam: string}[]} project
- */
-function schrijfStand(project) {
-  const stand = standUitRegister(
-    project,
-    new URL(url).hostname.split('.')[0],
-    new Date().toISOString().slice(0, 10),
-  );
-  writeFileSync(join(WORTEL, STANDBESTAND), `${JSON.stringify(stand, null, 2)}\n`);
-  console.log(`migratieregister-controle: ${STANDBESTAND} bijgewerkt (${stand.hoogste}).`);
-}
-
-async function uitHetProject() {
-  const antwoord = await fetch(`${url}/rest/v1/rpc/migratieregister`, {
-    method: 'POST',
-    headers: {
-      apikey: serviceRoleKey,
-      Authorization: `Bearer ${serviceRoleKey}`,
-      'Content-Type': 'application/json',
-    },
-    body: '{}',
-    // ⚠️ Elke externe call heeft een timeout — CLAUDE.md, coderegel 14.
-    signal: AbortSignal.timeout(15_000),
-  });
-
-  if (!antwoord.ok) {
-    throw new Error(
-      `Het register lezen lukte niet (${antwoord.status}). Bestaat migratie 0072 ` +
-        'al op dit project, en draai je met de service-role-key?',
-    );
+  if (oordeel === 'ontbreekt') {
+    // ⚠️ Streng draaien betekent: hier hóórden credentials te zijn. Dat is het
+    //    geval direct na `supabase db push`, en dan is zwijgen geen afspraak maar
+    //    een gemiste controle.
+    console.error(`✗ migratieregister-controle kon niet draaien — ${ONTBREEKT}`);
+    process.exit(1);
   }
 
-  return antwoord.json();
+  if (oordeel === 'overslaan') {
+    // ⚠️ Naar stderr en met een teken ervoor. Op stdout stond hij tussen de
+    //    geslaagde controles en las `overgeslagen` als `gelukt`.
+    console.error(`⚠ migratieregister-controle: OVERGESLAGEN — ${ONTBREEKT}`);
+    process.exit(0);
+  }
+
+  /**
+   * De meting opschrijven zodat een sessie zónder sleutel hem kan nalezen.
+   *
+   * ⚠️ **Ook als de vergelijking daarna rood wordt.** Wat er op productie staat
+   *    is waar, ongeacht of het bevalt — en juist bij een verschil is dit getal
+   *    het eerste dat iemand wil zien. Eerst schrijven, dan oordelen.
+   *
+   * ⚠️ De vórm komt uit `standUitRegister()` in `migratieregister-vergelijk.mjs`,
+   *    en dat is met opzet: deze functie draait alleen mét de productiesleutel en
+   *    is hier dus nooit te ijken. De naad tussen schrijver en lezer staat onder
+   *    test in `tests/scripts/migratieregister.test.ts`.
+   *
+   * @param {readonly {versie: string, naam: string}[]} project
+   */
+  function schrijfStand(project) {
+    const stand = standUitRegister(
+      project,
+      new URL(url).hostname.split('.')[0],
+      new Date().toISOString().slice(0, 10),
+    );
+    writeFileSync(join(WORTEL, STANDBESTAND), `${JSON.stringify(stand, null, 2)}\n`);
+    console.log(`migratieregister-controle: ${STANDBESTAND} bijgewerkt (${stand.hoogste}).`);
+  }
+
+  async function uitHetProject() {
+    const antwoord = await fetch(`${url}/rest/v1/rpc/migratieregister`, {
+      method: 'POST',
+      headers: {
+        apikey: serviceRoleKey,
+        Authorization: `Bearer ${serviceRoleKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: '{}',
+      // ⚠️ Elke externe call heeft een timeout — CLAUDE.md, coderegel 14.
+      signal: AbortSignal.timeout(15_000),
+    });
+
+    if (!antwoord.ok) {
+      throw new Error(
+        `Het register lezen lukte niet (${antwoord.status}). Bestaat migratie 0072 ` +
+          'al op dit project, en draai je met de service-role-key?',
+      );
+    }
+
+    return antwoord.json();
+  }
+
+  const repo = migratiesInMap(WORTEL);
+  const project = await uitHetProject();
+
+  schrijfStand(project);
+
+  const klachten = vergelijk(repo, project);
+
+  if (klachten.length === 0) {
+    console.log(
+      `migratieregister-controle: ${repo.length} migraties, repo en project zeggen hetzelfde.`,
+    );
+    process.exit(0);
+  }
+
+  console.error(`migratieregister-controle: ${klachten.length} verschil(len).\n`);
+  for (const k of klachten) console.error(`  • ${k}`);
+  console.error('\nZie QS8-122 en docs/DEPLOY.md.');
+  process.exit(1);
 }
-
-const repo = migratiesInMap(WORTEL);
-const project = await uitHetProject();
-
-schrijfStand(project);
-
-const klachten = vergelijk(repo, project);
-
-if (klachten.length === 0) {
-  console.log(
-    `migratieregister-controle: ${repo.length} migraties, repo en project zeggen hetzelfde.`,
-  );
-  process.exit(0);
-}
-
-console.error(`migratieregister-controle: ${klachten.length} verschil(len).\n`);
-for (const k of klachten) console.error(`  • ${k}`);
-console.error('\nZie QS8-122 en docs/DEPLOY.md.');
-process.exit(1);

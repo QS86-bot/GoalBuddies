@@ -19,9 +19,13 @@ import {
   kolomNaam,
   losSpreadOp,
   meldingen,
+  tabelbredeMeldingen,
   objectSleutels,
   ontleedRechten,
   ontleedSchrijfrechten,
+  ontleedSchrijvers,
+  geenClientSchrijver,
+  SCHRIJVERVRAAG,
   rechtenVoor,
   schrijfacties,
   schrijfIn,
@@ -1102,8 +1106,17 @@ describe('een grant zonder aanroeper — QS8-349', () => {
       rechten: { chat_messages: { UPDATE: { breed: false, kolommen: ['body', 'attachment_url'] } } },
     });
 
+    // ⚠️ `dbSchrijvers: null` is sinds QS8-573 onderdeel van de vorm, en het
+    //    betekent hier *niet gevraagd* — deze aanroep geeft geen `schrijvers`
+    //    mee. Dat is iets anders dan `[]`, en dat onderscheid hoort in de toets
+    //    te staan in plaats van weggelaten te worden met een losser matcher.
     expect(oordeel.zonderAanroeper).toEqual([
-      { tabel: 'chat_messages', soort: 'UPDATE', kolommen: ['body', 'attachment_url'] },
+      {
+        tabel: 'chat_messages',
+        soort: 'UPDATE',
+        kolommen: ['body', 'attachment_url'],
+        dbSchrijvers: null,
+      },
     ]);
     expect(meldingen(oordeel, lijsten)).toHaveLength(1);
     expect(meldingen(oordeel, lijsten)[0]).toContain('chat_messages');
@@ -1395,6 +1408,135 @@ describe('de vragen lezen het effectieve recht en niet de boekhouding — QS8-33
   });
 });
 
+/**
+ * De tegenvraag van QS8-573 — rij 634 van `docs/ENGINEER-REVIEW.md`.
+ *
+ * ⚠️⚠️ **Beide helften staan hieronder, en de tweede draagt de reparatie.** Een
+ *    melding die zegt *"de database schrijft hier"* waar dat niet zo is, praat de
+ *    lezer van een échte dode grant af — en dat is precies wat er gebeurt als de
+ *    tabelnaam in een **comment** meetelt.
+ */
+describe('ontleedSchrijvers', () => {
+  it('leest een paar met schrijvers en een paar zonder', () => {
+    expect(ontleedSchrijvers('groups|INSERT|create_group\ngroups|UPDATE|\n')).toEqual({
+      'groups|INSERT': ['create_group'],
+      'groups|UPDATE': [],
+    });
+  });
+
+  it('splitst meerdere schrijvers', () => {
+    const uit = ontleedSchrijvers('group_members|UPDATE|verlaat_groep,verwijder_lid\n');
+
+    expect(uit['group_members|UPDATE']).toEqual(['verlaat_groep', 'verwijder_lid']);
+  });
+
+  /** ⚠️ Een halve regel is een fout en geen lege lijst — zelfde vorm als `ontleedSchrijfrechten()`. */
+  it('werpt op een onleesbare regel in plaats van hem als leeg te lezen', () => {
+    expect(() => ontleedSchrijvers('groups|INSERT\n')).toThrow(/onleesbare regel/);
+  });
+});
+
+describe('geenClientSchrijver — welk van de drie gevallen', () => {
+  it('zegt "dood hout" als de database er ook niet naar schrijft', () => {
+    const uit = geenClientSchrijver({ 'reports|UPDATE': [] }, 'reports|UPDATE');
+
+    expect(uit.dbSchrijvers).toEqual([]);
+    expect(uit.reden).toContain('geen enkele databasefunctie ook');
+  });
+
+  /**
+   * ⚠️⚠️ **Het geval dat 21 tests kostte.** `group_members` UPDATE: niets in
+   *    `src/` of `app/` schrijft ernaar, en de database wél.
+   */
+  it('noemt de databaseschrijvers als die er zijn', () => {
+    const uit = geenClientSchrijver(
+      { 'group_members|UPDATE': ['beslis_lidmaatschapsverzoek', 'verlaat_groep'] },
+      'group_members|UPDATE',
+    );
+
+    expect(uit.dbSchrijvers).toEqual(['beslis_lidmaatschapsverzoek', 'verlaat_groep']);
+    expect(uit.reden).toContain('2 databasefunctie(s) wél');
+  });
+
+  /**
+   * ⚠️ **Ongemeten is niet hetzelfde als niemand.** Zonder database is er geen
+   *    antwoord, en dan mag de melding niet klinken alsof er wél gemeten is.
+   */
+  it('zegt dat er niet gevraagd is als het paar ontbreekt', () => {
+    const uit = geenClientSchrijver({}, 'groups|INSERT');
+
+    expect(uit.dbSchrijvers).toBeNull();
+    expect(uit.reden).toContain('niet bevraagd');
+  });
+});
+
+describe('SCHRIJVERVRAAG — de vorm van de vraag', () => {
+  /**
+   * ⚠️⚠️ **Zonder deze knip telt een comment als schrijver.** `prosrc` bevat het
+   *    commentaar, en dit project schrijft er veel. Dit is de grendel die de hele
+   *    reparatie draagt; hem weglaten laat de controle "de database schrijft
+   *    hier" zeggen over een functie die dat juist níet doet.
+   */
+  it('knipt commentaar weg vóór hij naar een schrijver zoekt', () => {
+    expect(SCHRIJVERVRAAG).toContain('code_zonder_commentaar(p.prosrc)');
+  });
+
+  /**
+   * ⚠️ `as materialized` is een meting en geen smaak: 📏 zonder dat woord voert
+   *    Postgres de scanner per join-poging opnieuw uit en liep dezelfde vraag na
+   *    twee minuten nog; mét duurt hij 11 seconden.
+   */
+  it('rekent de knip één keer uit', () => {
+    expect(SCHRIJVERVRAAG).toContain('as materialized');
+  });
+
+  /**
+   * ⚠️⚠️ **`\M` sluit de tabelnaam af.** Zonder die grens telt `update groups`
+   *    ook als schrijver van `group_members`, en dan draagt élk paar op een
+   *    tabel met een langere naamgenoot een schrijver die er niet is.
+   */
+  it('sluit de tabelnaam af, zodat `groups` geen `group_members` matcht', () => {
+    expect(SCHRIJVERVRAAG).toContain(String.raw`|| '\M'`);
+  });
+});
+
+describe('beoordeelSchrijven met de tegenvraag', () => {
+  const RECHTEN = {
+    group_members: { UPDATE: { kolommen: ['role', 'status'], totaal: 6, breed: false } },
+  };
+
+  it('hangt de databaseschrijvers aan het paar zonder clientschrijver', () => {
+    const uit = beoordeelSchrijven({
+      acties: [],
+      rechten: RECHTEN,
+      schrijvers: { 'group_members|UPDATE': ['verlaat_groep'] },
+    });
+
+    expect(uit.zonderAanroeper[0]?.dbSchrijvers).toEqual(['verlaat_groep']);
+    expect(uit.ongemeten['group_members|UPDATE']).toContain('1 databasefunctie(s) wél');
+  });
+
+  /** ⚠️ De must-allow: een paar zonder enige schrijver blijft gewoon dood hout. */
+  it('laat een paar zonder enige schrijver dood hout heten', () => {
+    const uit = beoordeelSchrijven({
+      acties: [],
+      rechten: RECHTEN,
+      schrijvers: { 'group_members|UPDATE': [] },
+    });
+
+    expect(uit.zonderAanroeper[0]?.dbSchrijvers).toEqual([]);
+    expect(uit.ongemeten['group_members|UPDATE']).toContain('geen enkele databasefunctie ook');
+  });
+
+  /** ⚠️ Zonder `schrijvers` verandert er niets aan wélke paren gemeld worden. */
+  it('meldt hetzelfde paar ook zonder database, met een andere reden', () => {
+    const uit = beoordeelSchrijven({ acties: [], rechten: RECHTEN });
+
+    expect(uit.zonderAanroeper).toHaveLength(1);
+    expect(uit.ongemeten['group_members|UPDATE']).toContain('niet bevraagd');
+  });
+});
+
 // ---------------------------------------------------------------------------
 
 /**
@@ -1434,5 +1576,109 @@ describe('selectiesIn knipt commentaar weg', () => {
   it('plakt een kolom uit code niet aan een tabelnaam uit commentaar', () => {
     const bron = "// vroeger: .from('goals')\nconst r = await q.select('secret');";
     expect(selectiesIn('x.ts', bron)).toEqual([]);
+  });
+});
+
+/**
+ * De ijking van de tabelbrede grant — QS8-592.
+ *
+ * ⚠️⚠️ **Deze bevinding had geen enkele toets, en dat is hoe de fout kon
+ *    ontstaan.** De `breed`-melding zat in `zonderAanroeperMeldingen()` en
+ *    dus achter dezelfde voorwaarde als de rest van die functie: *niets in
+ *    `src/` of `app/` schrijft naar deze tabel*. Daarmee meldde de controle een
+ *    tabelbrede grant alléén op een tabel die de app níet gebruikt, en zweeg hij
+ *    zodra de client er actief naartoe schreef. 📏 Gemeten op 22-09-2026 met één
+ *    tabelbrede INSERT-grant op `points_ledger`: mét schrijver **nul**
+ *    bevindingen, zonder schrijver één.
+ *
+ *    Dat de hele suite groen bleef bij het verplaatsen, is het bewijs dat er
+ *    niets op stond.
+ */
+describe('tabelbrede grants — QS8-592', () => {
+  const BREED = { kolommen: ['id', 'user_id', 'punten', 'reden'], breed: true };
+  const SCHRIJFT = {
+    pad: 'src/modules/points/api.ts',
+    tabel: 'points_ledger',
+    soort: 'INSERT',
+    rechten: ['INSERT'],
+    kolommen: ['punten'],
+  };
+  const LEEG = { geenSchrijfpad: [], geenAanroeper: [], nietTeLezen: [] };
+
+  const oordeelMet = (acties: unknown[]) =>
+    beoordeelSchrijven({
+      acties,
+      rechten: { points_ledger: { INSERT: BREED } },
+    } as never) as never as { tabelbreed: { geschreven: boolean }[] };
+
+  // ⚠️ **De must-find die dit issue is.** Hiervóór was dit nul.
+  it('meldt een tabelbrede grant óók als de app naar die tabel schrijft', () => {
+    const oordeel = oordeelMet([SCHRIJFT]);
+    expect(oordeel.tabelbreed).toEqual([
+      { tabel: 'points_ledger', soort: 'INSERT', geschreven: true },
+    ]);
+    expect(meldingen(oordeel as never, LEEG as never)).toHaveLength(1);
+  });
+
+  it('meldt hem nog steeds als niemand naar die tabel schrijft', () => {
+    const oordeel = oordeelMet([]);
+    expect(oordeel.tabelbreed).toEqual([
+      { tabel: 'points_ledger', soort: 'INSERT', geschreven: false },
+    ]);
+    expect(meldingen(oordeel as never, LEEG as never)).toHaveLength(1);
+  });
+
+  // ⚠️⚠️ **Twee gevallen, twee teksten, en dat is geen opmaak.** Zonder
+  //    schrijfpad is dit dood hout en is de opdracht "trek hem in"; mét
+  //    schrijfpad is de grant in gebruik en is het probleem dat hij élke kolom
+  //    onzichtbaar maakt. Eén tekst voor allebei stuurt de helft van de lezers de
+  //    verkeerde kant op — de klasse van QS8-268.
+  it('zegt bij een grant die in gebruik is iets anders dan bij dood hout', () => {
+    const inGebruik = tabelbredeMeldingen([
+      { tabel: 'points_ledger', soort: 'INSERT', geschreven: true },
+    ])[0];
+    const doodHout = tabelbredeMeldingen([
+      { tabel: 'points_ledger', soort: 'INSERT', geschreven: false },
+    ])[0];
+
+    expect(inGebruik).toContain('onzichtbaar voor deze controle');
+    expect(inGebruik).toContain('die de server hoort te zetten');
+    expect(doodHout).toContain('niets in `src/`');
+    expect(doodHout).toContain('trek hem in');
+    expect(inGebruik).not.toEqual(doodHout);
+  });
+
+  // ⚠️ Een registerrij mag dit niet afdekken: een tabelbrede grant dekt élke
+  //    kolom die de tabel óóit krijgt, dus er valt per kolom niets te beoordelen.
+  it('laat zich niet afdekken door een registerrij', () => {
+    const oordeel = oordeelMet([SCHRIJFT]);
+    const register = {
+      geenSchrijfpad: [],
+      geenAanroeper: [{ tabel: 'points_ledger', soort: 'INSERT', reden: 'beoordeeld' }],
+      nietTeLezen: [],
+    };
+    expect(meldingen(oordeel as never, register as never)).toHaveLength(1);
+  });
+
+  // ⚠️ Must-allow. Een versmalde grant is géén tabelbrede grant, en een controle
+  //    die élke grant meldt leer je te negeren.
+  it('laat een versmalde grant met rust', () => {
+    const oordeel = beoordeelSchrijven({
+      acties: [SCHRIJFT],
+      rechten: { points_ledger: { INSERT: { kolommen: ['punten'], breed: false } } },
+    } as never) as never as { tabelbreed: unknown[] };
+    expect(oordeel.tabelbreed).toEqual([]);
+  });
+
+  it('meldt niets als er helemaal geen grant is', () => {
+    const oordeel = beoordeelSchrijven({
+      acties: [],
+      rechten: { points_ledger: { INSERT: { kolommen: [], breed: false } } },
+    } as never) as never as { tabelbreed: unknown[] };
+    expect(oordeel.tabelbreed).toEqual([]);
+  });
+
+  it('geeft een lege lijst terug als de sleutel ontbreekt — geen crash', () => {
+    expect(tabelbredeMeldingen([])).toEqual([]);
   });
 });

@@ -1,3 +1,4 @@
+import { useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { Platform, StyleSheet, View } from 'react-native';
 
@@ -12,7 +13,7 @@ import {
   type Profiel as ProfielRij,
 } from '@/modules/auth';
 import { useAvatarKeuze } from '@/modules/auth/react';
-import { deblokkeer, fetchBlokkades } from '@/modules/buddies';
+import { deblokkeer, fetchBlokkades, fetchOpenstaandeMeldingen } from '@/modules/buddies';
 import { fetchBuddyBijdrage } from '@/modules/completions';
 import {
   herinneringVelden,
@@ -120,6 +121,8 @@ export default function Profiel() {
                  overtyp-bevestiging. Dat is met opzet moeilijk bereikbaar.
             */}
             <Uitloggen />
+
+            <MeldingenIngang />
 
             {/*
               ⚠️ Hier stond een `StreakCounter` met een hardgecodeerde `cycles={0}`.
@@ -1434,6 +1437,69 @@ function Blokkades() {
       ))}
 
       {fout === null ? null : <Caption danger>{fout}</Caption>}
+    </Card>
+  );
+}
+
+/**
+ * De ingang naar `/meldingen` — QS8-586.
+ *
+ * ⚠️⚠️ **Dit is het schakeltje dat ontbrak.** `reports` had sinds QS8-232 een
+ *    schrijfpad, policies, indexen en grendels, en 📏 **geen enkele lezer**: een
+ *    melding werd netjes weggeschreven en er keek niemand naar. Een scherm
+ *    zonder ingang is precies even onbereikbaar — dat is waarom
+ *    `npm run schermingang:controle` bestaat — dus de lezer en zijn knop horen
+ *    in dezelfde wijziging.
+ *
+ * ⚠️ **De vraag is "is er iets voor mij" en niet "ben ik beheerder".** Deze kaart
+ *    vraagt de RPC om één rij en verschijnt alleen als die er is. Zo staat de rol
+ *    nergens in de schermlaag: wie niets mag beoordelen, krijgt een lege lijst
+ *    terug en ziet dus niets — en dat is dezelfde waarheid als op het scherm
+ *    erachter, omdat het dezelfde functie is die hem geeft.
+ *
+ * ⚠️ Bij een storing blijft de kaart weg in plaats van met een foutbalk te
+ *    staan, zelfde afweging als bij `Blokkades`: dit is een blok naast de
+ *    instellingen, en wie hier komt kwam voor iets anders. De fout wordt wél
+ *    gemeld — `fetchOpenstaandeMeldingen()` stuurt hem naar Sentry voordat hij
+ *    werpt.
+ */
+function MeldingenIngang() {
+  const router = useRouter();
+  const { data, loading, error, herlaad } = useAsync(
+    () => fetchOpenstaandeMeldingen({ limiet: 1 }),
+    [],
+  );
+
+  if (loading) return null;
+
+  /*
+    ⚠️⚠️ **Een fout maakt deze kaart níet onzichtbaar, en dat is een bewuste
+       afwijking van `Blokkades` hierboven.** Daar is wegblijven goed: wie op dit
+       scherm komt, kwam voor iets anders. Hier is stilte de gevaarlijke
+       richting — de moderator hoort dan nooit dát er iets wacht, en dat is
+       precies het gat dat QS8-586 dichtte, één laag hoger. De beloftetest zegt
+       het zelf: *de gevaarlijke richting is dat de knop te wéinig verschijnt.*
+       Onwrikbare regel 16 vraagt bovendien een error-state, en `null` is er geen.
+  */
+  if (error !== null) {
+    return (
+      <Card>
+        <Subheading>{t('meldingen.ingang_kop')}</Subheading>
+        <Body muted>{t('meldingen.ingang_storing')}</Body>
+        <Button variant="stil" onPress={herlaad}>
+          {t('meldingen.ingang_opnieuw')}
+        </Button>
+      </Card>
+    );
+  }
+
+  if (data === undefined || data.length === 0) return null;
+
+  return (
+    <Card>
+      <Subheading>{t('meldingen.ingang_kop')}</Subheading>
+      <Body muted>{t('meldingen.ingang_tekst')}</Body>
+      <Button onPress={() => router.push('/meldingen')}>{t('meldingen.ingang_knop')}</Button>
     </Card>
   );
 }

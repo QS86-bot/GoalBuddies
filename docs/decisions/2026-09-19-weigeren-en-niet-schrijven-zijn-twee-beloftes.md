@@ -91,7 +91,7 @@ is nette afhandeling van een legitieme herhaling, geen misbruikgrendel.
 ⚠️ **Dat onderscheid is de reden dat dit document herschreven is in plaats van
 aangevuld.** Een beslisdocument dat een open **Hoog**-rij geruststelt, is
 duurder dan geen document: de volgende lezer concludeert *"dat is geregeld"*
-terwijl rij 609 openstaat.
+terwijl de rij *Er staat geen rate limit vóór PostgREST* (08-09-2026) openstaat.
 
 ## De toets, en de fout in de eerste ijking
 

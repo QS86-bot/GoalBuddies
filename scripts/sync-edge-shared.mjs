@@ -23,6 +23,7 @@
 import { mkdirSync, readdirSync, readFileSync, writeFileSync, statSync } from 'node:fs';
 import { join } from 'node:path';
 import process from 'node:process';
+import { pathToFileURL } from 'node:url';
 
 // ⚠️ `--check` (via `npm run edge:sync:controle`) schrijft niets: het rekent uit
 //    wat `edge:sync` zóu wegschrijven en vergelijkt dat met wat er nu op schijf
@@ -134,78 +135,6 @@ function kop(bron) {
   ].join('\n');
 }
 
-let totaal = 0;
-
-for (const set of SETS) {
-  if (!bestaat(set.bron)) {
-    console.error(`  ✗ Bron ontbreekt: ${set.bron}`);
-    process.exit(1);
-  }
-
-  if (!CONTROLE) mkdirSync(set.doel, { recursive: true });
-
-  const bestanden = readdirSync(set.bron).filter((naam) => {
-    if (!naam.endsWith('.ts') || naam.endsWith('.test.ts')) return false;
-    return set.alleen === undefined || set.alleen.includes(naam);
-  });
-
-  if (set.alleen !== undefined && bestanden.length !== set.alleen.length) {
-    // ⚠️ Luid falen en niet stil minder kopiëren. Een hernoemd bestand zou
-    //    anders een Edge Function opleveren die een oude kopie blijft gebruiken.
-    console.error(
-      `  ✗ Verwacht ${set.alleen.join(', ')} in ${set.bron}, gevonden: ${bestanden.join(', ') || 'niets'}`,
-    );
-    process.exit(1);
-  }
-
-  for (const naam of bestanden) {
-    const inhoud = readFileSync(join(set.bron, naam), 'utf8');
-
-    // Deno wil expliciete extensies in relatieve imports.
-    const metExtensies = inhoud
-      .replace(/from '\.\/([a-zA-Z0-9_-]+)'/g, (_treffer, module) => `from './${module}.ts'`)
-      // ⚠️⚠️ **En een import naar een buurmap moet van diepte veranderen** —
-      //    sinds QS8-475. In `src/` staat `modules/helden/` twee niveaus onder
-      //    `shared/`, dus daar leest een import `../../shared/time`. In
-      //    `_shared/` liggen `helden/` en `time/` naast elkaar, dus daar moet
-      //    hetzelfde bestand `../time/index.ts` zeggen. Zonder deze regel
-      //    verwijst de kopie naar `functions/shared/time`, dat niet bestaat, en
-      //    valt `edge:types:controle` erop om — luid, en dat is de goede kant.
-      //
-      // ⚠️ **Map of bestand wordt van schijf gelezen en niet geraden.** De voor
-      //    de hand liggende heuristiek — "een schuine streep erin betekent een
-      //    bestand" — klopt vandaag toevallig voor `i18n/types` en `time`, en
-      //    breekt op de eerste geneste map. `statSync` weet het gewoon.
-      .replace(/from '\.\.\/\.\.\/shared\/([a-zA-Z0-9_/-]+)'/g, (_treffer, pad) => {
-        const bron = join('src', 'shared', pad);
-        const isMap = statSync(bron, { throwIfNoEntry: false })?.isDirectory() ?? false;
-        return `from '../${pad}${isMap ? '/index.ts' : '.ts'}'`;
-      });
-
-    const doelpad = join(set.doel, naam);
-    const verwacht = kop(set.bron) + metExtensies;
-
-    if (CONTROLE) meldAfwijking(afwijkingen, doelpad, verwacht, join(set.bron, naam));
-    else writeFileSync(doelpad, verwacht);
-
-    totaal += 1;
-  }
-
-  if (!CONTROLE) console.log(`  ✓ ${bestanden.length} bestanden gekopieerd naar ${set.doel}`);
-}
-
-if (CONTROLE) {
-  if (afwijkingen.length > 0) {
-    console.error(`  ✗ ${afwijkingen.length} kopie(ën) lopen niet gelijk met src/:`);
-    for (const regel of afwijkingen) console.error(`    - ${regel}`);
-    console.error('  → Draai `npm run edge:sync` en commit het verschil vóór je deployt.');
-    process.exit(1);
-  }
-
-  console.log(`  ✓ alle ${totaal} gedeelde kopieën lopen gelijk met src/`);
-  process.exit(0);
-}
-
 function lees(pad) {
   try {
     return readFileSync(pad, 'utf8');
@@ -222,5 +151,102 @@ function bestaat(pad) {
   }
 }
 
-console.log(`  ✓ ${totaal} bestanden in totaal`);
-process.exit(0);
+/**
+ * Schrijft of toetst één gedeelde kopie.
+ *
+ * ⚠️ Staat los omdat het blok achter de main-guard (QS8-608) een
+ *    nestingniveau toevoegt, en de `if (CONTROLE)` hieronder dan vier diep
+ *    zou staan — coderegel 15. Zelfde reden als `meldAfwijking` ernaast.
+ */
+function kopieerBestand(set, naam, afwijkingen) {
+  const inhoud = readFileSync(join(set.bron, naam), 'utf8');
+
+  // Deno wil expliciete extensies in relatieve imports.
+  const metExtensies = inhoud
+    .replace(/from '\.\/([a-zA-Z0-9_-]+)'/g, (_treffer, module) => `from './${module}.ts'`)
+    // ⚠️⚠️ **En een import naar een buurmap moet van diepte veranderen** —
+    //    sinds QS8-475. In `src/` staat `modules/helden/` twee niveaus onder
+    //    `shared/`, dus daar leest een import `../../shared/time`. In
+    //    `_shared/` liggen `helden/` en `time/` naast elkaar, dus daar moet
+    //    hetzelfde bestand `../time/index.ts` zeggen. Zonder deze regel
+    //    verwijst de kopie naar `functions/shared/time`, dat niet bestaat, en
+    //    valt `edge:types:controle` erop om — luid, en dat is de goede kant.
+    //
+    // ⚠️ **Map of bestand wordt van schijf gelezen en niet geraden.** De voor
+    //    de hand liggende heuristiek — "een schuine streep erin betekent een
+    //    bestand" — klopt vandaag toevallig voor `i18n/types` en `time`, en
+    //    breekt op de eerste geneste map. `statSync` weet het gewoon.
+    .replace(/from '\.\.\/\.\.\/shared\/([a-zA-Z0-9_/-]+)'/g, (_treffer, pad) => {
+      const bron = join('src', 'shared', pad);
+      const isMap = statSync(bron, { throwIfNoEntry: false })?.isDirectory() ?? false;
+      return `from '../${pad}${isMap ? '/index.ts' : '.ts'}'`;
+    });
+
+  const doelpad = join(set.doel, naam);
+  const verwacht = kop(set.bron) + metExtensies;
+
+  if (CONTROLE) meldAfwijking(afwijkingen, doelpad, verwacht, join(set.bron, naam));
+  else writeFileSync(doelpad, verwacht);
+}
+
+/**
+ * De uitslag van `--check`.
+ *
+ * ⚠️ Los om dezelfde reden als `kopieerBestand`: binnen het guard-blok zou
+ *    de `for` hieronder vier niveaus diep staan.
+ */
+function meldControleUitslag(afwijkingen, totaal) {
+  if (afwijkingen.length > 0) {
+    console.error(`  ✗ ${afwijkingen.length} kopie(ën) lopen niet gelijk met src/:`);
+    for (const regel of afwijkingen) console.error(`    - ${regel}`);
+    console.error('  → Draai `npm run edge:sync` en commit het verschil vóór je deployt.');
+    process.exit(1);
+  }
+
+  console.log(`  ✓ alle ${totaal} gedeelde kopieën lopen gelijk met src/`);
+  process.exit(0);
+}
+
+// ⚠️ Het werk staat in een blok achter de main-guard, en niet in een
+//    `hoofd()`: zo doet importeren niets (QS8-608) zonder dat er een lange
+//    functie bijkomt die coderegel 15 zou breken. Top-level `await` mag
+//    binnen dit blok — gemeten, niet aangenomen.
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+  let totaal = 0;
+
+  for (const set of SETS) {
+    if (!bestaat(set.bron)) {
+      console.error(`  ✗ Bron ontbreekt: ${set.bron}`);
+      process.exit(1);
+    }
+
+    if (!CONTROLE) mkdirSync(set.doel, { recursive: true });
+
+    const bestanden = readdirSync(set.bron).filter((naam) => {
+      if (!naam.endsWith('.ts') || naam.endsWith('.test.ts')) return false;
+      return set.alleen === undefined || set.alleen.includes(naam);
+    });
+
+    if (set.alleen !== undefined && bestanden.length !== set.alleen.length) {
+      // ⚠️ Luid falen en niet stil minder kopiëren. Een hernoemd bestand zou
+      //    anders een Edge Function opleveren die een oude kopie blijft gebruiken.
+      console.error(
+        `  ✗ Verwacht ${set.alleen.join(', ')} in ${set.bron}, gevonden: ${bestanden.join(', ') || 'niets'}`,
+      );
+      process.exit(1);
+    }
+
+    for (const naam of bestanden) {
+      kopieerBestand(set, naam, afwijkingen);
+      totaal += 1;
+    }
+
+    if (!CONTROLE) console.log(`  ✓ ${bestanden.length} bestanden gekopieerd naar ${set.doel}`);
+  }
+
+  if (CONTROLE) meldControleUitslag(afwijkingen, totaal);
+
+
+  console.log(`  ✓ ${totaal} bestanden in totaal`);
+  process.exit(0);
+}

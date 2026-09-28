@@ -76,170 +76,176 @@ function gemaskeerd(sleutel) {
   return sleutel.length <= 8 ? '********' : `${sleutel.slice(0, 4)}…${sleutel.slice(-4)}`;
 }
 
-const droog = process.argv.includes('--droog');
-const app = process.argv.includes('--app');
-const env = leesEnv();
+// ⚠️ Het werk staat in een blok achter de main-guard, en niet in een
+//    `hoofd()`: zo doet importeren niets (QS8-608) zonder dat er een lange
+//    functie bijkomt die coderegel 15 zou breken. Top-level `await` mag
+//    binnen dit blok — gemeten, niet aangenomen.
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+  const droog = process.argv.includes('--droog');
+  const app = process.argv.includes('--app');
+  const env = leesEnv();
 
-/**
- * ⚠️ **De twee kanten lezen een andere variabele, en dat is geen slordigheid.**
- *    De Edge Functions krijgen `SENTRY_DSN` uit hun eigen omgeving
- *    (`npx supabase secrets set`); de app leest `EXPO_PUBLIC_SENTRY_DSN`, en die
- *    heeft sinds 30-08 een standaard in `src/lib/env.ts` — dus voor `--app` is
- *    er niets meer te configureren. Dezelfde volgorde als `clientEnv()`: een
- *    expliciet gezette waarde wint, ook een lege.
- */
-function dsnVoorDeApp() {
-  const gezet = env['EXPO_PUBLIC_SENTRY_DSN'];
-  if (gezet !== undefined) return gezet;
+  /**
+   * ⚠️ **De twee kanten lezen een andere variabele, en dat is geen slordigheid.**
+   *    De Edge Functions krijgen `SENTRY_DSN` uit hun eigen omgeving
+   *    (`npx supabase secrets set`); de app leest `EXPO_PUBLIC_SENTRY_DSN`, en die
+   *    heeft sinds 30-08 een standaard in `src/lib/env.ts` — dus voor `--app` is
+   *    er niets meer te configureren. Dezelfde volgorde als `clientEnv()`: een
+   *    expliciet gezette waarde wint, ook een lege.
+   */
+  function dsnVoorDeApp() {
+    const gezet = env['EXPO_PUBLIC_SENTRY_DSN'];
+    if (gezet !== undefined) return gezet;
 
-  const standaard = standaardDsnUit(readFileSync(join(WORTEL, 'src', 'lib', 'env.ts'), 'utf8'));
-  if (standaard === null) {
-    console.error('  ✗ Kon STANDAARD_SENTRY_DSN niet vinden in src/lib/env.ts.');
-    console.error('    Is de constante hernoemd? Werk standaardDsnUit() bij.');
+    const standaard = standaardDsnUit(readFileSync(join(WORTEL, 'src', 'lib', 'env.ts'), 'utf8'));
+    if (standaard === null) {
+      console.error('  ✗ Kon STANDAARD_SENTRY_DSN niet vinden in src/lib/env.ts.');
+      console.error('    Is de constante hernoemd? Werk standaardDsnUit() bij.');
+      process.exit(1);
+    }
+    return standaard;
+  }
+
+  const dsn = app ? dsnVoorDeApp() : (env['SENTRY_DSN'] ?? '');
+
+  if (dsn === '') {
+    if (app) {
+      console.error('  ✗ EXPO_PUBLIC_SENTRY_DSN staat expliciet op leeg — de app meldt dan niets.');
+      console.error('    Haal hem uit .env om op de standaard uit src/lib/env.ts terug te vallen.');
+    } else {
+      console.error('  ✗ SENTRY_DSN ontbreekt. Zet hem in .env of in de omgeving:');
+      console.error("      SENTRY_DSN='https://<sleutel>@<host>/<project-id>'");
+    }
     process.exit(1);
   }
-  return standaard;
-}
 
-const dsn = app ? dsnVoorDeApp() : (env['SENTRY_DSN'] ?? '');
+  console.log(`  · kant       ${app ? 'app (server_name: app, runtime: web)' : 'edge (server_name: edge, runtime: deno)'}`);
 
-if (dsn === '') {
-  if (app) {
-    console.error('  ✗ EXPO_PUBLIC_SENTRY_DSN staat expliciet op leeg — de app meldt dan niets.');
-    console.error('    Haal hem uit .env om op de standaard uit src/lib/env.ts terug te vallen.');
-  } else {
-    console.error('  ✗ SENTRY_DSN ontbreekt. Zet hem in .env of in de omgeving:');
-    console.error("      SENTRY_DSN='https://<sleutel>@<host>/<project-id>'");
-  }
-  process.exit(1);
-}
-
-console.log(`  · kant       ${app ? 'app (server_name: app, runtime: web)' : 'edge (server_name: edge, runtime: deno)'}`);
-
-let rapport;
-try {
-  // ⚠️ **Een `file://`-URL en niet het kale pad.** Op Windows begint dat pad met
-  //    een stationsletter, en Node's ESM-lader leest `C:` dan als een protocol:
-  //    "Only URLs with a scheme in: file, data, and node are supported. Received
-  //    protocol 'c:'". Op Linux werkt het kale pad wél, dus CI en deze
-  //    ontwikkelomgeving zagen er niets van — het brak pas op de machine waar
-  //    het script juist gedraaid moest worden, op 26-08-2026, bij de allereerste
-  //    echte run.
-  //
-  //    Vijf andere scripts in deze map gebruiken `pathToFileURL` al voor hun
-  //    entrypoint-controle. Het huispatroon was er; dit script volgde het niet.
-  rapport = await import(pathToFileURL(KOPIE).href);
-} catch (fout) {
-  console.error(`  ✗ Kon ${KOPIE} niet laden: ${fout instanceof Error ? fout.message : 'onbekend'}`);
-  console.error('    Draai `npm run edge:sync` — de kopie voor de Edge Functions ontbreekt of is stuk.');
-  process.exit(1);
-}
-
-const ontleed = rapport.ontleedDsn(dsn);
-if (ontleed === null) {
-  console.error('  ✗ SENTRY_DSN is onbruikbaar. Verwacht: https://<sleutel>@<host>/<project-id>');
-  process.exit(1);
-}
-
-console.log(`  · host       ${ontleed.host}`);
-console.log(`  · project    ${ontleed.projectId}`);
-console.log(`  · sleutel    ${gemaskeerd(ontleed.sleutel)}`);
-
-const fout = new Error(
-  "proefmelding van npm run sentry:proef voor iemand@voorbeeld.nl " +
-    "met token eyJhbGciOi.JIUzI1NiJ9.abc en waarde 'Mijn gemiste week'",
-);
-fout.stack = `Error: ${fout.message}\n    at proef (file:///scripts/sentry-proef.mjs:1:1)`;
-
-const beschrijving = rapport.beschrijf(fout, {
-  code: '23514',
-  notitie: 'deze notitie hoort er niet doorheen te komen',
-});
-const id = rapport.gebeurtenisId(crypto.randomUUID());
-
-/**
- * ⚠️ **`runtime` en `server` stonden hier tot 30-08-2026 niet in, en dat was een
- *    stille fout.** `maakVerzending()` eist ze allebei, maar dit is een `.mjs`
- *    met type-stripping: TypeScript kijkt er niet naar, dus ze waren `undefined`
- *    en vielen uit de JSON. De proef van 26-08 kwam dus aan met HTTP 200 — maar
- *    zónder `server_name` en zónder de `runtime`-tag, precies de twee velden
- *    waaraan je app van edge onderscheidt.
- *
- *    Dat is de vorm die dit project kent: een controle die groen was en iets
- *    anders bewees dan hij beloofde. De ingest accepteert een envelope zonder
- *    die velden nu eenmaal.
- */
-const kant = app
-  ? { waar: 'proef.app', runtime: 'web', server: 'app', release: releaseVanDeApp() }
-  : { waar: 'proef.edge', runtime: 'deno', server: 'edge' };
-
-const verzending = rapport.maakVerzending(
-  ontleed,
-  { id, ...kant, ...beschrijving, omgeving: 'proef' },
-  new Date(),
-);
-
-/** `goalbuddies@<versie>` uit `app.json`, of `undefined`. Zelfde vorm als de app. */
-function releaseVanDeApp() {
+  let rapport;
   try {
-    const versie = JSON.parse(readFileSync(join(WORTEL, 'app.json'), 'utf8')).expo?.version;
-    return typeof versie === 'string' && versie.trim() !== ''
-      ? `goalbuddies@${versie.trim()}`
-      : undefined;
-  } catch {
-    return undefined;
+    // ⚠️ **Een `file://`-URL en niet het kale pad.** Op Windows begint dat pad met
+    //    een stationsletter, en Node's ESM-lader leest `C:` dan als een protocol:
+    //    "Only URLs with a scheme in: file, data, and node are supported. Received
+    //    protocol 'c:'". Op Linux werkt het kale pad wél, dus CI en deze
+    //    ontwikkelomgeving zagen er niets van — het brak pas op de machine waar
+    //    het script juist gedraaid moest worden, op 26-08-2026, bij de allereerste
+    //    echte run.
+    //
+    //    Vijf andere scripts in deze map gebruiken `pathToFileURL` al voor hun
+    //    entrypoint-controle. Het huispatroon was er; dit script volgde het niet.
+    rapport = await import(pathToFileURL(KOPIE).href);
+  } catch (fout) {
+    console.error(`  ✗ Kon ${KOPIE} niet laden: ${fout instanceof Error ? fout.message : 'onbekend'}`);
+    console.error('    Draai `npm run edge:sync` — de kopie voor de Edge Functions ontbreekt of is stuk.');
+    process.exit(1);
   }
-}
 
-console.log(`  · url        ${verzending.url}`);
-console.log('\n  Wat er over de lijn gaat:\n');
-for (const regel of verzending.body.split('\n')) console.log(`    ${regel}`);
+  const ontleed = rapport.ontleedDsn(dsn);
+  if (ontleed === null) {
+    console.error('  ✗ SENTRY_DSN is onbruikbaar. Verwacht: https://<sleutel>@<host>/<project-id>');
+    process.exit(1);
+  }
 
-const VUIL = [
-  'iemand@voorbeeld.nl',
-  'voorbeeld.nl',
-  'eyJhbGciOi',
-  'Mijn gemiste week',
-  'deze notitie hoort er niet doorheen te komen',
-];
-const gelekt = VUIL.filter((stuk) => verzending.body.includes(stuk));
+  console.log(`  · host       ${ontleed.host}`);
+  console.log(`  · project    ${ontleed.projectId}`);
+  console.log(`  · sleutel    ${gemaskeerd(ontleed.sleutel)}`);
 
-console.log('');
-if (gelekt.length > 0) {
-  console.error(`  ✗ Er gaat gebruikerstekst mee: ${gelekt.join(', ')}`);
-  process.exit(1);
-}
-console.log('  ✓ Geen e-mailadres, token, geciteerde waarde of notitie in de bytes');
+  const fout = new Error(
+    "proefmelding van npm run sentry:proef voor iemand@voorbeeld.nl " +
+      "met token eyJhbGciOi.JIUzI1NiJ9.abc en waarde 'Mijn gemiste week'",
+  );
+  fout.stack = `Error: ${fout.message}\n    at proef (file:///scripts/sentry-proef.mjs:1:1)`;
 
-if (droog) {
-  console.log('  · --droog: niets verstuurd');
+  const beschrijving = rapport.beschrijf(fout, {
+    code: '23514',
+    notitie: 'deze notitie hoort er niet doorheen te komen',
+  });
+  const id = rapport.gebeurtenisId(crypto.randomUUID());
+
+  /**
+   * ⚠️ **`runtime` en `server` stonden hier tot 30-08-2026 niet in, en dat was een
+   *    stille fout.** `maakVerzending()` eist ze allebei, maar dit is een `.mjs`
+   *    met type-stripping: TypeScript kijkt er niet naar, dus ze waren `undefined`
+   *    en vielen uit de JSON. De proef van 26-08 kwam dus aan met HTTP 200 — maar
+   *    zónder `server_name` en zónder de `runtime`-tag, precies de twee velden
+   *    waaraan je app van edge onderscheidt.
+   *
+   *    Dat is de vorm die dit project kent: een controle die groen was en iets
+   *    anders bewees dan hij beloofde. De ingest accepteert een envelope zonder
+   *    die velden nu eenmaal.
+   */
+  const kant = app
+    ? { waar: 'proef.app', runtime: 'web', server: 'app', release: releaseVanDeApp() }
+    : { waar: 'proef.edge', runtime: 'deno', server: 'edge' };
+
+  const verzending = rapport.maakVerzending(
+    ontleed,
+    { id, ...kant, ...beschrijving, omgeving: 'proef' },
+    new Date(),
+  );
+
+  /** `goalbuddies@<versie>` uit `app.json`, of `undefined`. Zelfde vorm als de app. */
+  function releaseVanDeApp() {
+    try {
+      const versie = JSON.parse(readFileSync(join(WORTEL, 'app.json'), 'utf8')).expo?.version;
+      return typeof versie === 'string' && versie.trim() !== ''
+        ? `goalbuddies@${versie.trim()}`
+        : undefined;
+    } catch {
+      return undefined;
+    }
+  }
+
+  console.log(`  · url        ${verzending.url}`);
+  console.log('\n  Wat er over de lijn gaat:\n');
+  for (const regel of verzending.body.split('\n')) console.log(`    ${regel}`);
+
+  const VUIL = [
+    'iemand@voorbeeld.nl',
+    'voorbeeld.nl',
+    'eyJhbGciOi',
+    'Mijn gemiste week',
+    'deze notitie hoort er niet doorheen te komen',
+  ];
+  const gelekt = VUIL.filter((stuk) => verzending.body.includes(stuk));
+
+  console.log('');
+  if (gelekt.length > 0) {
+    console.error(`  ✗ Er gaat gebruikerstekst mee: ${gelekt.join(', ')}`);
+    process.exit(1);
+  }
+  console.log('  ✓ Geen e-mailadres, token, geciteerde waarde of notitie in de bytes');
+
+  if (droog) {
+    console.log('  · --droog: niets verstuurd');
+    process.exit(0);
+  }
+
+  let antwoord;
+  try {
+    antwoord = await fetch(verzending.url, {
+      method: 'POST',
+      headers: verzending.headers,
+      body: verzending.body,
+      signal: AbortSignal.timeout(TIMEOUT_MS),
+    });
+  } catch (netwerk) {
+    console.error(`  ✗ De ingest was niet te bereiken: ${netwerk instanceof Error ? netwerk.message : 'onbekend'}`);
+    process.exit(1);
+  }
+
+  const tekst = await antwoord.text();
+
+  if (!antwoord.ok) {
+    // ⚠️ Dit is het geval dat de code tot 26-08 als 'verstuurd' meldde.
+    console.error(`  ✗ De ingest weigerde de melding: HTTP ${antwoord.status}`);
+    console.error(`    ${tekst.slice(0, 300)}`);
+    process.exit(1);
+  }
+
+  console.log(`  ✓ HTTP ${antwoord.status} — de ingest heeft hem aangenomen`);
+  console.log(`    antwoord: ${tekst.slice(0, 200)}`);
+  console.log(`\n  Zoek in Sentry op event-id ${id}.`);
+  console.log('  Staat hij er, dan is de draadvorm bewezen in plaats van aangenomen.');
   process.exit(0);
 }
-
-let antwoord;
-try {
-  antwoord = await fetch(verzending.url, {
-    method: 'POST',
-    headers: verzending.headers,
-    body: verzending.body,
-    signal: AbortSignal.timeout(TIMEOUT_MS),
-  });
-} catch (netwerk) {
-  console.error(`  ✗ De ingest was niet te bereiken: ${netwerk instanceof Error ? netwerk.message : 'onbekend'}`);
-  process.exit(1);
-}
-
-const tekst = await antwoord.text();
-
-if (!antwoord.ok) {
-  // ⚠️ Dit is het geval dat de code tot 26-08 als 'verstuurd' meldde.
-  console.error(`  ✗ De ingest weigerde de melding: HTTP ${antwoord.status}`);
-  console.error(`    ${tekst.slice(0, 300)}`);
-  process.exit(1);
-}
-
-console.log(`  ✓ HTTP ${antwoord.status} — de ingest heeft hem aangenomen`);
-console.log(`    antwoord: ${tekst.slice(0, 200)}`);
-console.log(`\n  Zoek in Sentry op event-id ${id}.`);
-console.log('  Staat hij er, dan is de draadvorm bewezen in plaats van aangenomen.');
-process.exit(0);
