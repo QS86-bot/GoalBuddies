@@ -1083,6 +1083,82 @@ export type Database = {
           },
         ]
       }
+      goal_match_queue: {
+        Row: {
+          created_at: string
+          decided_at: string | null
+          expires_at: string
+          goal_id: string
+          group_id: string | null
+          id: string
+          status: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          decided_at?: string | null
+          expires_at: string
+          goal_id: string
+          group_id?: string | null
+          id?: string
+          status?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          decided_at?: string | null
+          expires_at?: string
+          goal_id?: string
+          group_id?: string | null
+          id?: string
+          status?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "goal_match_queue_goal_id_fkey"
+            columns: ["goal_id"]
+            isOneToOne: false
+            referencedRelation: "goal_dashboard"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "goal_match_queue_goal_id_fkey"
+            columns: ["goal_id"]
+            isOneToOne: false
+            referencedRelation: "goals"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "goal_match_queue_goal_id_fkey"
+            columns: ["goal_id"]
+            isOneToOne: false
+            referencedRelation: "mijn_doelvelden"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "goal_match_queue_group_id_fkey"
+            columns: ["group_id"]
+            isOneToOne: false
+            referencedRelation: "groups"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "goal_match_queue_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "mijn_profiel"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "goal_match_queue_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       goal_risk: {
         Row: {
           computed_at: string
@@ -2770,6 +2846,7 @@ export type Database = {
           notify_commitment_witness: boolean | null
           notify_cycle_summary: boolean | null
           onboarded_at: string | null
+          platform_beheerder: boolean | null
           quiet_from: number | null
           quiet_to: number | null
           reminder_enabled: boolean | null
@@ -2797,6 +2874,7 @@ export type Database = {
           notify_commitment_witness?: boolean | null
           notify_cycle_summary?: boolean | null
           onboarded_at?: string | null
+          platform_beheerder?: boolean | null
           quiet_from?: number | null
           quiet_to?: number | null
           reminder_enabled?: boolean | null
@@ -2824,6 +2902,7 @@ export type Database = {
           notify_commitment_witness?: boolean | null
           notify_cycle_summary?: boolean | null
           onboarded_at?: string | null
+          platform_beheerder?: boolean | null
           quiet_from?: number | null
           quiet_to?: number | null
           reminder_enabled?: boolean | null
@@ -2926,6 +3005,17 @@ export type Database = {
       }
       blokkades_plafond: { Args: never; Returns: number }
       blokkeer: { Args: { p_user: string }; Returns: Json }
+      buddyzoek_stand: {
+        Args: { p_goal_id: string; p_vandaag: string }
+        Returns: {
+          group_id: string
+          nog_nodig: number
+          sinds: string
+          status: string
+          verloopt: string
+        }[]
+      }
+      buddyzoekopdrachten_over: { Args: never; Returns: number }
       check_waarden: {
         Args: { p_constraint: string; p_tabel: string }
         Returns: string[]
@@ -3002,6 +3092,10 @@ export type Database = {
       doelgebeurtenissen_plafond: { Args: never; Returns: number }
       doelinterviews_plafond: { Args: never; Returns: number }
       doelkoppelingen_plafond: { Args: never; Returns: number }
+      doelperiode: {
+        Args: { p_target: string; p_vandaag: string }
+        Returns: number
+      }
       domeinregel3_bewaking: {
         Args: never
         Returns: {
@@ -3813,6 +3907,11 @@ export type Database = {
           user_id: string
         }[]
       }
+      zoek_buddies_aan: {
+        Args: { p_bevestigd: boolean; p_goal_id: string }
+        Returns: Json
+      }
+      zoek_buddies_uit: { Args: { p_goal_id: string }; Returns: Json }
       zoek_mensen: {
         Args: { p_limit?: number; p_offset?: number; p_term: string }
         Returns: {

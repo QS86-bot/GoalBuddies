@@ -2676,6 +2676,47 @@ export const nl = {
   'ontdek.eerder_vertrokken': 'Was eerder lid van deze groep en is op {datum} zelf vertrokken.',
   'ontdek.zonder_bericht': 'Zonder bericht',
 
+  // Buddy's zoeken via de wachtrij — QS8-233, migraties 0299 en 0300.
+  'buddyzoek.titel': 'Buddy\u2019s zoeken',
+  'buddyzoek.uitleg':
+    'We zoeken mensen met een doel in dezelfde categorie, een vergelijkbare streefdatum en dezelfde week-startdag. Zodra er genoeg zijn, maken we samen een groep.',
+  'buddyzoek.knop': 'Zoek buddy\u2019s voor mij',
+  'buddyzoek.leeg': 'Je zoekt nu geen buddy\u2019s.',
+
+  'buddyzoek.bevestig_titel': 'Voordat we gaan zoeken',
+  'buddyzoek.bevestig_onbekenden':
+    'Je komt in een groep met mensen die je niet kent. Zij zien je naam, je profielfoto en de weekdoelen van dit doel.',
+  'buddyzoek.bevestig_beschermd':
+    'Zo\u2019n groep is altijd beschermd: een gemiste week, een verbroken reeks of een achterstand van jou is er nooit te zien.',
+  'buddyzoek.bevestig_lopende_week':
+    'Let op: zodra je gekoppeld bent, telt de week die nu loopt mee. Haal je die niet, dan kost dat een punt \u2014 ook als je al halverwege was toen je je aanmeldde.',
+  'buddyzoek.bevestig_weekstart':
+    'We koppelen je alleen aan mensen met dezelfde week-startdag als jij, anders lopen jullie weken uit de pas.',
+  'buddyzoek.bevestig_stoppen':
+    'Je kunt altijd stoppen met zoeken. Dat kost niets en niemand ziet het.',
+  'buddyzoek.bevestig_knop': 'Ja, zoek buddy\u2019s',
+  'buddyzoek.bevestig_annuleer': 'Nog niet',
+
+  'buddyzoek.wachtend': 'We zoeken buddy\u2019s voor je.',
+  'buddyzoek.nog_nodig_een': 'Er is nog \u00e9\u00e9n iemand nodig.',
+  'buddyzoek.nog_nodig_meer': 'Er zijn nog {aantal} mensen nodig.',
+  'buddyzoek.nog_nodig_genoeg': 'Er zijn genoeg mensen. Je groep wordt binnenkort gemaakt.',
+  'buddyzoek.zoeken_tot': 'We zoeken tot {datum}.',
+  'buddyzoek.stop_knop': 'Stop met zoeken',
+  'buddyzoek.gekoppeld': 'Je hebt buddy\u2019s. Je doel staat nu in een groep.',
+  'buddyzoek.naar_groep': 'Naar de groep',
+  'buddyzoek.over_vandaag': 'Je kunt vandaag nog {aantal} keer zoeken.',
+
+  'buddyzoek.te_veel': 'Je hebt vandaag al vaak gezocht. Probeer het morgen opnieuw.',
+  'buddyzoek.niet_gevonden': 'Dit doel bestaat niet of is niet van jou.',
+  'buddyzoek.niet_bevestigd': 'Lees eerst wat er gebeurt, en bevestig daarna.',
+  'buddyzoek.doel_niet_actief': 'Dit doel loopt niet meer, dus we zoeken er geen buddy\u2019s bij.',
+  'buddyzoek.datum_verstreken': 'De streefdatum van dit doel is verstreken. Zet er een nieuwe voordat je buddy\u2019s zoekt.',
+  'buddyzoek.te_veel_open': 'Je zoekt al voor drie doelen tegelijk. Stop er eerst \u00e9\u00e9n.',
+  'buddyzoek.te_veel_groepen': 'Je zit al in het maximale aantal groepen.',
+  'buddyzoek.al_gekoppeld': 'Je bent al gekoppeld. Wil je eruit, dan verlaat je de groep.',
+  'buddyzoek.mislukt': 'Dat lukte niet. Probeer het zo nog eens.',
+
   'voertaal.nl': 'Nederlands',
   'voertaal.en': 'Engels',
 

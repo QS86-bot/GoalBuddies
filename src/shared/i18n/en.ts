@@ -2130,6 +2130,47 @@ export const en: Record<Sleutel, string> = {
   'ontdek.eerder_vertrokken': 'Was a member of this group before and left on {datum}.',
   'ontdek.zonder_bericht': 'No message',
 
+  // Finding buddies through the queue — QS8-233, migrations 0299 and 0300.
+  'buddyzoek.titel': 'Find buddies',
+  'buddyzoek.uitleg':
+    'We look for people with a goal in the same category, a similar target date and the same week start day. Once there are enough, we create a group together.',
+  'buddyzoek.knop': 'Find buddies for me',
+  'buddyzoek.leeg': 'You are not looking for buddies right now.',
+
+  'buddyzoek.bevestig_titel': 'Before we start looking',
+  'buddyzoek.bevestig_onbekenden':
+    'You will join a group with people you do not know. They will see your name, your profile picture and the weekly goals of this goal.',
+  'buddyzoek.bevestig_beschermd':
+    'Such a group is always protected: a missed week, a broken streak or a setback of yours is never visible there.',
+  'buddyzoek.bevestig_lopende_week':
+    'Note: once you are matched, the week that is running now counts. If you do not make it, that costs a point \u2014 even if you were already halfway when you signed up.',
+  'buddyzoek.bevestig_weekstart':
+    'We only match you with people whose week starts on the same day as yours, otherwise your weeks drift apart.',
+  'buddyzoek.bevestig_stoppen':
+    'You can stop looking at any time. It costs nothing and nobody sees it.',
+  'buddyzoek.bevestig_knop': 'Yes, find buddies',
+  'buddyzoek.bevestig_annuleer': 'Not yet',
+
+  'buddyzoek.wachtend': 'We are looking for buddies for you.',
+  'buddyzoek.nog_nodig_een': 'One more person is needed.',
+  'buddyzoek.nog_nodig_meer': '{aantal} more people are needed.',
+  'buddyzoek.nog_nodig_genoeg': 'There are enough people. Your group will be created shortly.',
+  'buddyzoek.zoeken_tot': 'We will keep looking until {datum}.',
+  'buddyzoek.stop_knop': 'Stop looking',
+  'buddyzoek.gekoppeld': 'You have buddies. Your goal is now in a group.',
+  'buddyzoek.naar_groep': 'Go to the group',
+  'buddyzoek.over_vandaag': 'You can search {aantal} more times today.',
+
+  'buddyzoek.te_veel': 'You have searched a lot today. Try again tomorrow.',
+  'buddyzoek.niet_gevonden': 'This goal does not exist or is not yours.',
+  'buddyzoek.niet_bevestigd': 'Read what happens first, then confirm.',
+  'buddyzoek.doel_niet_actief': 'This goal is no longer running, so we will not look for buddies for it.',
+  'buddyzoek.datum_verstreken': 'The target date of this goal has passed. Set a new one before looking for buddies.',
+  'buddyzoek.te_veel_open': 'You are already searching for three goals at once. Stop one first.',
+  'buddyzoek.te_veel_groepen': 'You are already in the maximum number of groups.',
+  'buddyzoek.al_gekoppeld': 'You are already matched. To get out, leave the group.',
+  'buddyzoek.mislukt': 'That did not work. Please try again in a moment.',
+
   'voertaal.nl': 'Dutch',
   'voertaal.en': 'English',
 
