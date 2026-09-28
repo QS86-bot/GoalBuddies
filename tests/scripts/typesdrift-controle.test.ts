@@ -1,8 +1,13 @@
+import { mkdtempSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+
 import { describe, expect, it } from 'vitest';
 
 import {
   blokken,
   GENERATORRUIS,
+  hoofd,
   kiesBron,
   ontleed,
   rapport,
@@ -358,5 +363,74 @@ describe('blokken — wat er achter een naam staat', () => {
       ),
     );
     expect([...b.Functions.keys()]).toEqual(['f', 'g']);
+  });
+});
+
+/**
+ * De pijplijn van twee bestanden naar een exitcode — QS8-601.
+ *
+ * ⚠️⚠️ **`veldverschillen()` hierboven is goed getoetst; de regel die zijn
+ *    uitslag in de exitcode zet was dat niet.** 📏 `const velden = []` in
+ *    `hoofd()` liet 30 van 30 groen, en met een echte handedit gaf de controle
+ *    dan exit 0 met *"dezelfde namen én dezelfde velden"*. Wat QS8-593 beloofde
+ *    is dat een handedit de **controle** rood maakt, en dat is deze naad.
+ *
+ * ⚠️ De generatie loopt via `TYPES_GENERATIE` en een echt bestand, want dat is
+ *    de route die `kiesBron()` in een cloudsessie neemt. Alleen het typebestand
+ *    van de repo komt via `leesHuidig` binnen.
+ */
+describe('hoofd — van twee typebestanden naar een uitslag', () => {
+  const omheen = (binnen: string) => `export type Database = {\n  public: {\n${binnen}  }\n}\n`;
+  const SCHEMA = omheen(
+    '    Functions: {\n      vraag_ai_job: { Args: { p_goal_id: string }; Returns: Json }\n    }\n',
+  );
+
+  function draai(huidig: string, generatie: string | null = SCHEMA) {
+    const omgeving: Record<string, string> = {};
+    if (generatie !== null) {
+      const pad = join(mkdtempSync(join(tmpdir(), 'typesdrift-')), 'generatie.ts');
+      writeFileSync(pad, generatie, 'utf8');
+      omgeving.TYPES_GENERATIE = pad;
+    }
+    const uit: string[] = [];
+    const code = hoofd({
+      omgeving,
+      leesHuidig: () => huidig,
+      log: (t: string) => uit.push(t),
+      fout: (t: string) => uit.push(t),
+    });
+    return { code, uit: uit.join('\n') };
+  }
+
+  it('MUST-FIND: een handedit bínnen een naam maakt de controle rood, en noemt de naam', () => {
+    const { code, uit } = draai(SCHEMA.replace('p_goal_id: string', 'p_goal_id: string | null'));
+    expect(code).toBe(1);
+    expect(uit).toContain('Functions.vraag_ai_job');
+    expect(uit).not.toContain('dezelfde namen én dezelfde velden');
+  });
+
+  it('MUST-FIND: een naam die maar aan één kant staat, blijft ook rood', () => {
+    const { code, uit } = draai(SCHEMA.replace('vraag_ai_job', 'vraag_ai_opdracht'));
+    expect(code).toBe(1);
+    expect(uit).toContain('naam/namen verschillen');
+  });
+
+  it('MUST-ALLOW: twee gelijke bestanden zijn groen', () => {
+    const { code, uit } = draai(SCHEMA);
+    expect(code).toBe(0);
+    expect(uit).toContain('dezelfde namen én dezelfde velden');
+  });
+
+  it('zonder generatie is het ongemeten en niet groen — exit 0, maar met die woorden', () => {
+    const { code, uit } = draai(SCHEMA, null);
+    expect(code).toBe(0);
+    expect(uit).toContain('OVERGESLAGEN');
+    expect(uit).toContain('ongemeten en niet groen');
+  });
+
+  it('de uitleg onder een veldmelding staat op eigen regels', () => {
+    const { uit } = draai(SCHEMA.replace('p_goal_id: string', 'p_goal_id: string | null'));
+    expect(uit).toMatch(/\n {2}Een veldverschil is geen naamverschil/);
+    expect(uit).toMatch(/\n {2}dat iemand gezien heeft/);
   });
 });

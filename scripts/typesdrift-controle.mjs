@@ -87,11 +87,12 @@
  * migratiemap of productie aanraakt** — dat is het enige moment waarop dit gat
  * kan ontstaan, en de enige keer dat iemand keek stond het op 57.
  *
- * ⚠️ En wat hij níét ziet: hij vergelijkt **namen** en geen velden. Een
- * handgeschreven `| null` op een bestaand argument of een kolom die aan een
- * handtekening ontbreekt, komt hier nooit uit. 📏 Op 21-09-2026 waren dat er
- * veertien, allemaal in namen die deze controle groen noemde. Die kant staat in
- * `src/lib/database.types.correcties.ts` en `tests/beloftes/typecorrecties.test.ts`.
+ * ⚠️ Hij vergelijkt sinds QS8-593 **namen én velden**. Tot dan zag hij alleen
+ * namen: een handgeschreven `| null` op een bestaand argument of een kolom die
+ * aan een handtekening ontbrak, kwam hier nooit uit. 📏 Op 21-09-2026 waren dat
+ * er veertien, allemaal in namen die deze controle groen noemde. Een correctie
+ * die de generator niet kán weten, hoort in `src/lib/database.types.correcties.ts`,
+ * onder `tests/beloftes/typecorrecties.test.ts` — niet in het gegenereerde bestand.
  *
  * ⚠️ Een generatie vanaf de **map** vraagt `supabase gen types --db-url`, en dat
  *    commando start een Docker-container. 📏 Gemeten in een cloudsessie: de CLI
@@ -179,9 +180,12 @@ export function ontleed(tekst) {
  *    veertien handedits en veertien regels waarmee `koppelbare_doelen` een vorm
  *    van `goal_dashboard` beschreef die niet meer bestond.
  *
- * ⚠️ De haakjes worden geteld en niet de inspringing. Een `Returns`-blok van een
- *    functie is genest, en een regex op inspringing knipt dan middenin — zelfde
- *    reden als waarom `rls-dekking` zijn policies als JSON ophaalt.
+ * ⚠️ Een blok loopt tot de volgende naam op de inspringing van een naam, en niet
+ *    tot de sluitende accolade. Dat stond hier eerst andersom (*"de haakjes
+ *    worden geteld"*), en 📏 die eerste vorm liet een overload-blok leeg: de
+ *    generator schrijft een overload als unie zonder `{` op de naamregel. De
+ *    ijking van QS8-593 vond dat, en de toets
+ *    `vergelijkt ook de inhoud van een overload-unie` houdt het vast.
  *
  * @param {string} tekst
  * @returns {Record<Sectie, Map<string, string>>}
@@ -406,22 +410,40 @@ export function rapport(uitslag, bron) {
  *    `dml-controle` en `audit-controle`. Zo is de uitslag ook in een toets te
  *    lezen zonder het proces te beëindigen.
  *
+ * ⚠️⚠️ **En hij krijgt zijn buitenwereld als parameter — QS8-601.** Een
+ *    exitcode teruggeven was de helft: `hoofd()` las de omgeving en het
+ *    typebestand zelf, dus geen toets kon hem voeden. 📏 Daardoor liet
+ *    `const velden = []` hieronder 30 van 30 toetsen groen, en gaf de controle
+ *    met een echte handedit exit 0 met *"dezelfde namen én dezelfde velden"*.
+ *    `veldverschillen()` was goed getoetst; de regel die zijn uitslag in de
+ *    exitcode zet niet.
+ *
+ * @param {object} [io]
+ * @param {Record<string, string | undefined>} [io.omgeving]
+ * @param {() => string} [io.leesHuidig] het typebestand van de repo
+ * @param {(tekst: string) => void} [io.log]
+ * @param {(tekst: string) => void} [io.fout]
  * @returns {number} 0 als er niets te melden is of niets te meten viel, 1 bij drift
  */
-export function hoofd() {
-  const bron = kiesBron();
+export function hoofd({
+  omgeving = process.env,
+  leesHuidig = () => readFileSync(TYPESBESTAND, 'utf8'),
+  log = (tekst) => console.log(tekst),
+  fout = (tekst) => console.error(tekst),
+} = {}) {
+  const bron = kiesBron(omgeving);
   if (bron.soort === 'geen') {
-    console.log(`typesdrift-controle: OVERGESLAGEN — ${bron.reden}.`);
-    console.log('  Dat is ongemeten en niet groen.');
+    log(`typesdrift-controle: OVERGESLAGEN — ${bron.reden}.`);
+    log('  Dat is ongemeten en niet groen.');
     return 0;
   }
 
-  const huidig = readFileSync(TYPESBESTAND, 'utf8');
+  const huidig = leesHuidig();
   const uitslag = vergelijk(bron.tekst ?? '', huidig);
   const velden = veldverschillen(bron.tekst ?? '', huidig);
 
   if (uitslag.totaal === 0 && velden.length === 0) {
-    console.log(
+    log(
       `typesdrift-controle: ${TYPESBESTAND} kent dezelfde namen én dezelfde velden als ` +
         `het schema (bron: ${bron.bron}).`,
     );
@@ -429,8 +451,8 @@ export function hoofd() {
   }
 
   if (uitslag.totaal > 0) {
-    console.error(`✗ typesdrift-controle: ${uitslag.totaal} naam/namen verschillen.\n`);
-    for (const r of rapport(uitslag, bron.bron ?? '?')) console.error(r);
+    fout(`✗ typesdrift-controle: ${uitslag.totaal} naam/namen verschillen.\n`);
+    for (const r of rapport(uitslag, bron.bron ?? '?')) fout(r);
   }
 
   // ⚠️⚠️ **Apart gemeld en niet bij de namen opgeteld — QS8-593.** Dit is een
@@ -440,22 +462,26 @@ export function hoofd() {
   //    veertien handedits die bij de eerste hergeneratie verdwenen zonder dat er
   //    iets rood van werd.
   if (velden.length > 0) {
-    console.error(
+    fout(
       `${uitslag.totaal > 0 ? '\n' : ''}✗ typesdrift-controle: ${velden.length} naam/namen ` +
         'staan aan beide kanten maar beschrijven iets anders.\n',
     );
-    for (const { sectie, naam } of velden) console.error(`    ${sectie}.${naam}`);
-    console.error(
-      '',
-      '  Een veldverschil is geen naamverschil: hergenereren laat het verdwijnen zónder',
-      '  dat iemand gezien heeft wát er weg ging. Kijk eerst of het handwerk is — een',
-      '  correctie hoort in `src/lib/database.types.correcties.ts`, onder de toets in',
-      '  `tests/beloftes/typecorrecties.test.ts`, en niet in het gegenereerde bestand.',
+    for (const { sectie, naam } of velden) fout(`    ${sectie}.${naam}`);
+    // ⚠️ Eén tekst met regeleinden en niet losse argumenten: `console.error`
+    //    zet losse argumenten met een spatie op één regel.
+    fout(
+      [
+        '',
+        '  Een veldverschil is geen naamverschil: hergenereren laat het verdwijnen zónder',
+        '  dat iemand gezien heeft wát er weg ging. Kijk eerst of het handwerk is — een',
+        '  correctie hoort in `src/lib/database.types.correcties.ts`, onder de toets in',
+        '  `tests/beloftes/typecorrecties.test.ts`, en niet in het gegenereerde bestand.',
+      ].join('\n'),
     );
   }
 
   if (uitslag.totaal > 0) {
-    console.error('\n  Hergenereer met `npm run types:db`, of leg per naam vast waarom hij afwijkt.');
+    fout('\n  Hergenereer met `npm run types:db`, of leg per naam vast waarom hij afwijkt.');
   }
   return 1;
 }
