@@ -33,9 +33,31 @@ staan er letterlijk bij; ze zijn alle vier gedraaid op een volledige kloon.
 **Van de 144 merges op `main` sinds 13-09:**
 
 ```bash
-git log --merges --first-parent --since=2026-09-13T00:00:00Z --format=%H 20cc23fc
-git diff --name-only <merge>^1 <merge>     # per merge
+C=20cc23fc; VANAF=2026-09-13T00:00:00Z
+BRON='^(src|app|supabase/migrations|supabase/functions)/'
+GRENDEL='^(scripts|tests)/'
+for m in $(git log --merges --first-parent --since=$VANAF --format=%H $C); do
+  f=$(git diff --name-only $m^1 $m)
+  echo "$(echo "$f" | grep -cE "$GRENDEL") $(echo "$f" | grep -cE "$BRON")" \
+       "$(echo "$f" | grep -c '^app/')" \
+       "$(echo "$f" | grep -cx 'docs/ENGINEER-REVIEW.md')" \
+       "$(echo "$f" | grep -cx 'docs/WERKVOORRAAD.md')" \
+       "$(echo "$f" | grep -cx 'docs/VOLGENDE-SESSIE.md')"
+done | awk '{ n++
+  if ($1>0 && $2==0) alleen_g++; else if ($1>0 && $2>0) beide++
+  else if ($1==0 && $2>0) alleen_b++; else geen++
+  if ($3>0) app++; if ($4>0) rev++; if ($5>0) wv++; if ($6>0) vs++ }
+  END { printf "merges=%d  grendel-zonder-bron=%d  beide=%d  geen-van-beide=%d  bron-zonder-grendel=%d\n", n, alleen_g, beide, geen, alleen_b
+        printf "app/=%d  ENGINEER-REVIEW=%d  WERKVOORRAAD=%d  VOLGENDE-SESSIE=%d\n", app, rev, wv, vs }'
+
+# Verwacht op 20cc23fc, en op 28-09-2026 opnieuw zo uitgekomen:
+#   merges=144  grendel-zonder-bron=53  beide=52  geen-van-beide=38  bron-zonder-grendel=1
+#   app/=9  ENGINEER-REVIEW=114  WERKVOORRAAD=70  VOLGENDE-SESSIE=20
 ```
+
+⚠️ **De twee regexen zijn de definities hieronder, woordelijk** — verander je de
+ene, dan liegt de andere. Ze staan met opzet bovenaan het blok en niet verstopt
+in de lus.
 
 ⚠️ **De vier rijen hieronder zijn een partitie en tellen dus op tot 144.** Twee
 begrippen, en ze staan hier omdat een categorie zonder definitie niet te hermeten
