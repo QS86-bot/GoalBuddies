@@ -91,6 +91,25 @@ describe('beginfase', () => {
     expect(beginfase([], null)).toEqual({ fase: 'kiezen' });
   });
 
+  it('is kiezen bij meerdere koppelingen zonder gevraagde groep', () => {
+    // ⚠️⚠️ **De vondst van regel 18, vraag 6 — QS8-233.** Hier stond
+    //    `gekoppeld[0]`, en dat was onschuldig zolang elke koppeling een eigen
+    //    keuze was: dan is de eerste de enige. Automatisch koppelen tilt die
+    //    aanname van "er is er precies één" naar "er kunnen er meer zijn", en
+    //    dan opent dit scherm op "gedeeld met <een groep die je nooit koos>",
+    //    bepaald door rijvolgorde.
+    //
+    //    Het eerlijke antwoord is `kiezen`: het scherm beweert dan niets over
+    //    wélke groep je bedoelt.
+    expect(beginfase([groep('a'), groep('b')], null)).toEqual({ fase: 'kiezen' });
+    expect(beginfase([groep('a'), groep('b')], '')).toEqual({ fase: 'kiezen' });
+  });
+
+  it('kiest nog steeds de groep die je expliciet vraagt, ook bij meerdere', () => {
+    // De must-allow ernaast: de reparatie mag de bestaande weg niet dichtzetten.
+    expect(beginfase([groep('a'), groep('b')], 'a')).toEqual({ fase: 'gedeeld', groupId: 'a' });
+  });
+
   it('behandelt een lege parameter als geen parameter', () => {
     // Een URL met `?groep=` erin maar zonder waarde mag niet anders uitpakken
     // dan een URL zonder die parameter.

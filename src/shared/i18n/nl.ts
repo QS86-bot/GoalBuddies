@@ -2695,7 +2695,6 @@ export const nl = {
   'buddyzoek.bevestig_stoppen':
     'Je kunt altijd stoppen met zoeken. Dat kost niets en niemand ziet het.',
   'buddyzoek.bevestig_knop': 'Ja, zoek buddy\u2019s',
-  'buddyzoek.bevestig_annuleer': 'Nog niet',
 
   'buddyzoek.wachtend': 'We zoeken buddy\u2019s voor je.',
   'buddyzoek.nog_nodig_een': 'Er is nog \u00e9\u00e9n iemand nodig.',

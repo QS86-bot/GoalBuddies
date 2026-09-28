@@ -2149,7 +2149,6 @@ export const en: Record<Sleutel, string> = {
   'buddyzoek.bevestig_stoppen':
     'You can stop looking at any time. It costs nothing and nobody sees it.',
   'buddyzoek.bevestig_knop': 'Yes, find buddies',
-  'buddyzoek.bevestig_annuleer': 'Not yet',
 
   'buddyzoek.wachtend': 'We are looking for buddies for you.',
   'buddyzoek.nog_nodig_een': 'One more person is needed.',
