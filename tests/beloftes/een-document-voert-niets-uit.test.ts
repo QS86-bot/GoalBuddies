@@ -426,7 +426,10 @@ describe('Document.tsx kan zijn eigen pad niet openen', () => {
     expect(props, 'geen DocumentProps gevonden').not.toBeNull();
     const zonderCommentaar = (props?.[1] ?? '')
       .replace(/\/\*[\s\S]*?\*\//g, '')
-      .replace(/\/\/[^\n]*/g, '');
+      // ⚠️ Mét de `:`-wacht van QS8-412, net als de knip bovenaan dit bestand.
+      //    Zonder die wacht at hij alles op ná de `//` van een URL, en liet hij
+      //    een verboden prop op dezelfde regel door (QS8-576).
+      .replace(/(^|[^:])\/\/[^\n]*/g, '$1');
     expect(zonderCommentaar).not.toMatch(/\b(url|pad|href|uri)\b\s*:/);
   });
 

@@ -417,6 +417,123 @@ export const BEOORDEELD = {
     'het makkelijkst te missen. Faalt dus bewust **open** in de veilige richting',
 };
 
+/**
+ * ## De vierde helft — een knip die geen benoemde functie is (QS8-576)
+ *
+ * `knipVormenIn()` hierboven ziet een knip in het lichaam van een benoemde
+ * functie met één parameter, en schrijft er zelf bij wat hij mist: een
+ * pijlfunctie, een methode, een knip die teken voor teken loopt, en een knip
+ * met twee parameters. Deze helft vult dat gat per **bestand**: ze kijkt of een
+ * bestand ergens een commentaar-afbakening op bron toepast, waar die ook staat.
+ *
+ * 📏 **Gemeten op 28-09-2026** (`origin/main` = `daa22b64`): **acht** bestanden
+ *    passen een eigen knip toe die geen van de andere helften ziet en geen
+ *    register noemt. Twee daarvan droegen de blinde vorm van QS8-412 —
+ *    `een-document-voert-niets-uit.test.ts` en
+ *    `een-foto-is-getekend-of-niets.test.ts` knipten het props-blok met een
+ *    regelcommentaar-regex zónder de `:`-wacht, in hetzelfde bestand dat twee
+ *    regels hoger de goede vorm gebruikte.
+ *
+ * ⚠️ **Drie vormen en niet één**, want een SQL-knip is een andere belofte dan
+ *    een JS-knip, en een registerrij hoort te kunnen zeggen welke hij heeft.
+ *
+ * ⚠️⚠️ **En met opzet niet "alles".** 📏 Een ruwer signaal meldde op 21-09
+ *    er **29**, waarvan tien geen knip waren: het `--` van een git-aanroep, een
+ *    CLI-argument, `https://` in een URL-regex, een regex die sterretjes uit
+ *    vetgedrukte tekst haalt. Vandaar de eis dat een SQL-knip op iets
+ *    bron-achtigs werkt (`regel`, `bron`, `inhoud`, `sql`, …).
+ *
+ * ⚠️ **De rand, want die hoort erbij.** Deze helft oordeelt per bestand. Een
+ *    bestand dat al een pas heeft (het importeert een gedeelde knip, of het
+ *    staat in `MET_REDEN` of `GEEN_KNIP`), krijgt die pas ook voor een tweede,
+ *    naamloze knip ernaast. Dat is dezelfde grens die `knipt()` al had.
+ */
+export const BESTANDSVORM = {
+  blok: /\\\/\\\*|\\\*\\\//,
+  'regel-js': /\(\^\|\[\^:\]\)\\\/\\\/|\\\/\\\/(?:\[\^\\n\]|\.\*)/,
+  'regel-sql':
+    /(?:regel|bron|inhoud|sql|tekst|line|body|definitie|kop)\w*\s*(?:\.\w+\(\))?\s*\.(?:startsWith|split|indexOf)\(\s*'--'|\/\^\\s\*--|\|--\)/i,
+};
+
+/** Welke knipvormen dit bestand ergens toepast, met commentaar eerst weggeknipt. */
+export function bestandsvormenIn(bron) {
+  const schoon = zonderCommentaar(bron);
+  return Object.entries(BESTANDSVORM)
+    .filter(([, patroon]) => patroon.test(schoon))
+    .map(([naam]) => naam);
+}
+
+/**
+ * De bestanden met een eigen knip die geen van de andere helften ziet — mét de
+ * reden waarom die knip daar eigen is.
+ *
+ * ⚠️ Zelfde bedoeling als `MET_REDEN`, andere ingang: dáár staat een knip op
+ *    functienaam, hier op bestand. Een bestand dat al in `MET_REDEN` of
+ *    `GEEN_KNIP` staat, hoort hier niet nog eens.
+ */
+export const EIGEN_KNIP = {
+  'scripts/logboek-controle.mjs':
+    'loopt teken voor teken door SQL en kijkt op elke positie of er `--` staat — ' +
+    'een regelvorm zou de quote-afhandeling eromheen breken',
+  'scripts/migraties-controle.mjs':
+    'verzámelt de kopregels in plaats van ze weg te knippen: de kop is waar het ' +
+    'rollback-pad staat. Andere belofte dan een knip',
+  'tests/beloftes/een-document-voert-niets-uit.test.ts':
+    'blok plus een regelvorm mét `:`-wacht die óók een áchterlopend `//` weghaalt — ' +
+    'strenger dan de gedeelde knip, die alleen hele commentaarregels filtert. Het ' +
+    'props-blok had de wacht niet (QS8-576) en heeft hem nu',
+  'tests/beloftes/een-foto-is-getekend-of-niets.test.ts':
+    'dezelfde vorm als een-document-voert-niets-uit, en hetzelfde gat in het ' +
+    'props-blok, dicht sinds QS8-576',
+  'tests/beloftes/geen-foto-verlaat-de-app-met-metadata.test.ts':
+    'alleen blokken, met opzet: deze toets zoekt naar aanroepen, en een ' +
+    'regelcommentaar kan er geen verbergen die de regel erna niet ook draagt',
+  'tests/beloftes/pushdienst-allowlist.test.ts':
+    'SQL-regelfilter op een migratie; JS-commentaar komt er niet in voor',
+  'tests/migraties/bewaking-zonder-lijst.test.ts':
+    'SQL, regelbehoudend (`split` op `--`), zodat de regelindeling van de query heel blijft',
+  'tests/rls/functiegrants.test.ts':
+    'SQL, regelbehoudend (`split` op `--`) over een functiedefinitie uit de database',
+};
+
+/**
+ * Wordt dit bestand al door een andere helft gedekt?
+ *
+ * ⚠️ Een benoemde knip meldt de eerste of de derde helft al, of hij staat daar
+ *    in een register. Zonder die stap krijgt hetzelfde bestand twee klachten
+ *    voor één knip, en een controle die dubbel meldt leer je lezen als ruis.
+ */
+function heeftPas(bron, pad) {
+  if (pad === GEDEELD || pad === GEDEELD_SQL || pad === 'scripts/knip-controle.mjs') return true;
+  if (knipt(bron, pad)) return true;
+  if (definitiesIn(bron).length > 0 || knipVormenIn(bron).length > 0) return true;
+  return Object.keys(GEEN_KNIP).some((sleutel) => sleutel.startsWith(`${pad}:`));
+}
+
+/** De klacht van de vierde helft voor dit bestand, of `null`. */
+export function klachtBestandsvorm(bron, pad) {
+  const vormen = bestandsvormenIn(bron);
+  if (vormen.length === 0 || EIGEN_KNIP[pad] !== undefined || heeftPas(bron, pad)) return null;
+  return (
+    `${pad}: past een eigen knip toe (${vormen.join(', ')}) die geen benoemde functie is — ` +
+    `importeer \`${GEDEELD}\` of \`${GEDEELD_SQL}\`, of zet het bestand met zijn reden in ` +
+    'EIGEN_KNIP.'
+  );
+}
+
+/**
+ * Rijen in `EIGEN_KNIP` die hun reden kwijt zijn: het bestand is weg, het knipt
+ * niet meer, of het heeft inmiddels een pas uit een ander register.
+ */
+export function verweesdeEigenKnippen(bronnen) {
+  const genormaliseerd = new Map([...bronnen].map(([p, b]) => [metSchuineStrepen(p), b]));
+  return Object.keys(EIGEN_KNIP).filter((pad) => {
+    const bron = genormaliseerd.get(pad);
+    if (bron === undefined) return true;
+    return bestandsvormenIn(bron).length === 0 || heeftPas(bron, pad);
+  });
+}
+
 /** Leest dit bestand überhaupt bronbestanden? */
 export const LEEST_BRON = /readFileSync\(|readFile\(/;
 
@@ -585,6 +702,9 @@ export function klachten(bron, ruwPad) {
     );
   }
 
+  const vierde = klachtBestandsvorm(bron, pad);
+  if (vierde !== null) uit.push(vierde);
+
   return uit;
 }
 
@@ -683,6 +803,7 @@ function verweesd({ gevonden, bronnen }) {
     redenen: verweesdeRedenen(gevonden),
     vrijstellingen: verweesdeVrijstellingen(bronnen),
     beoordelingen: verweesdeBeoordelingen(bronnen),
+    eigenKnippen: verweesdeEigenKnippen(bronnen),
   };
 }
 
@@ -702,6 +823,12 @@ function meldFouten(klachtenLijst, los) {
     console.error(
       `  ${pad} staat in BEOORDEELD maar hoort daar niet meer — hij knipt, of hij wordt ` +
         'inmiddels gedetecteerd (dan is ZONDER_KNIP de plek), of hij leest geen bron meer.',
+    );
+  }
+  for (const pad of los.eigenKnippen) {
+    console.error(
+      `  ${pad} staat in EIGEN_KNIP maar hoort daar niet meer — het bestand is weg, ` +
+        'knipt niet meer, of heeft een pas uit een ander register.',
     );
   }
   console.error(
@@ -738,7 +865,8 @@ function meldStand(paden, bronnen) {
       `In scripts/ lezen ${bronlezers.length} bestanden bron; ${lezers.length} bouwen daar een ` +
       `patroon uit een naam mee, waarvan ${Object.keys(ZONDER_KNIP).length} met reden zonder knip. ` +
       `${beoordeeld} ${beoordeeld === 1 ? 'staat' : 'staan'} als beoordeeld in een vorm die deze ` +
-      'detector met opzet niet ziet.',
+      `detector met opzet niet ziet. ${Object.keys(EIGEN_KNIP).length} bestanden knippen zelf ` +
+      'buiten een benoemde functie, met reden.',
   );
 }
 
@@ -750,7 +878,8 @@ export function hoofd() {
     klachtenLijst.length > 0 ||
     los.redenen.length > 0 ||
     los.vrijstellingen.length > 0 ||
-    los.beoordelingen.length > 0
+    los.beoordelingen.length > 0 ||
+    los.eigenKnippen.length > 0
   ) {
     meldFouten(klachtenLijst, los);
     return 1;
