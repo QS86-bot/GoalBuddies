@@ -79,14 +79,16 @@ const WORTEL = fileURLToPath(new URL('..', import.meta.url));
  * 📏 Alle vier gemeten op 07-09-2026 tegen `expo-router@57.0.13`.
  */
 /**
- * ⚠️⚠️ **`image-size` stond hier tot 24-09-2026 en is eruit gehaald omdat npm
- *    hem niet meer meldt** — geen reparatie in deze repo, maar een advisory die
- *    verdween. 📏 Gemeten met `npm audit --omit=dev --json`: zijn nummers
- *    **1138808** en **1138809** komen er niet meer in voor, en de vier
- *    resterende rijen komen er alle vier nog wel in voor. Dat onderscheid is de
- *    reden dat de melding van deze controle sinds QS8-616 per richting verschilt:
- *    een pakket dat wegvalt vraagt een andere handeling dan een pakket dat
- *    bijkomt.
+ * ⚠️ **Een rij kan wegvallen en terugkomen, en dan vragen beide richtingen een
+ *    andere handeling.** `image-size` deed dat op 24-09-2026 binnen een uur:
+ *    eruit toen npm hem niet meer meldde (QS8-616), terug onder nieuwe
+ *    advisory-nummers (QS8-618). De metingen staan in de `reden` van die rij en
+ *    niet hier, zodat er maar één plek is die bijgewerkt moet worden. Dat de
+ *    melding per richting verschilt, is de les van QS8-616: zie `slotwoord()`.
+ *
+ * ⚠️ Dit blok zei tot QS8-622 dat `image-size` eruit wás, tien regels boven de
+ *    rij die het tegendeel liet zien. De rij werd bijgewerkt en het commentaar
+ *    erboven niet.
  */
 export const NAGEKEKEN = {
   'image-size': {

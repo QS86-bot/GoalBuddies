@@ -134,6 +134,108 @@ describe('hoofd', () => {
   });
 });
 
+/**
+ * De naad `hoofd()` → `slotwoord()` — QS8-622.
+ *
+ * ⚠️⚠️ **`slotwoord()` is los geijkt, en dat bewees niet dat `hoofd()` hem de
+ *    juiste richting meegeeft.** 📏 Op `c17b4f9d` bleef deze suite 24/24 groen
+ *    met `verdwenen: false` of `meetbaar: false` vast in `hoofd()`, terwijl de
+ *    CLI het advies dan kwijt was en tóch exitcode 1 gaf. Dat is precies de fout
+ *    van QS8-616: de uitslag klopt en de handeling die hij voorschrijft is weg.
+ *
+ * ⚠️ **Het rapport is een afschrift van `NAGEKEKEN`, en één toets bewijst dat.**
+ *    Zonder die tegenproef kan "er is iets verdwenen" groen worden op een
+ *    rapport waarin álles verschilt, en dan toetst de richting niets.
+ */
+describe('hoofd — het advies per richting', () => {
+  type Rij = { ernst: string; advisories: number[]; reparatie: string };
+
+  function rapportUit(rijen: Record<string, Rij>) {
+    const fix = { geen: false, gratis: true, brekend: { isSemVerMajor: true } } as const;
+    const vulnerabilities: Record<string, unknown> = {};
+    for (const [naam, v] of Object.entries(rijen)) {
+      vulnerabilities[naam] = {
+        severity: v.ernst,
+        via: v.advisories.map((source) => ({ source, title: 't' })),
+        fixAvailable: fix[v.reparatie as keyof typeof fix],
+      };
+    }
+    return { vulnerabilities };
+  }
+
+  function draai(rijen: Record<string, Rij>): { code: number; fout: string; uit: string } {
+    const fout: string[] = [];
+    const uit: string[] = [];
+    const [echtFout, echtUit] = [console.error, console.log];
+    console.error = (...a: unknown[]) => fout.push(a.map(String).join(' '));
+    console.log = (...a: unknown[]) => uit.push(a.map(String).join(' '));
+    try {
+      const code = hoofd(() => rapportUit(rijen));
+      return { code, fout: fout.join('\n'), uit: uit.join('\n') };
+    } finally {
+      [console.error, console.log] = [echtFout, echtUit];
+    }
+  }
+
+  const register = (): Record<string, Rij> => structuredClone(NAGEKEKEN);
+
+  it('is groen en zwijgt over advies bij een rapport gelijk aan het register', () => {
+    const { code, fout, uit } = draai(register());
+
+    expect(code).toBe(0);
+    expect(fout).toBe('');
+    expect(uit).toContain('allemaal nagekeken');
+  });
+
+  it('stuurt een verdwenen pakket naar het opruimen en níet naar de bouw', () => {
+    const rijen = register();
+    delete rijen.uuid;
+    const { code, fout } = draai(rijen);
+
+    expect(code).toBe(1);
+    expect(fout).toContain("NAGEKEKEN noemt 'uuid'");
+    expect(fout, 'het advies voor een verdwenen pakket ontbrak').toContain('niets te bouwen');
+    expect(fout, 'stuurde een verdwenen pakket naar `npm run build`').not.toContain(
+      'npm run build',
+    );
+  });
+
+  it('stuurt een nieuw pakket naar de bouw en níet naar het opruimen', () => {
+    const rijen = register();
+    rijen['nieuw-pakket'] = { ernst: 'high', advisories: [1], reparatie: 'geen' };
+    const { code, fout } = draai(rijen);
+
+    expect(code).toBe(1);
+    expect(fout).toContain("'nieuw-pakket' (high) is nieuw");
+    expect(fout, 'het advies voor een nieuw pakket ontbrak').toContain('npm run build');
+    expect(fout, 'noemde het opruimen terwijl er niets wegviel').not.toContain('mag eruit');
+  });
+
+  it('stuurt een veranderd pakket ook naar de bouw', () => {
+    // ⚠️ `anders` telt mee voor `meetbaar`: een nieuwe advisory onder een bekende
+    //    naam maakt de bundel-meting net zo goed ongeldig als een nieuw pakket.
+    const rijen = register();
+    const uuid = rijen.uuid!;
+    uuid.advisories = [...uuid.advisories, 9999999];
+    const { code, fout } = draai(rijen);
+
+    expect(code).toBe(1);
+    expect(fout).toContain("'uuid' is veranderd");
+    expect(fout, 'het advies voor een veranderd pakket ontbrak').toContain('npm run build');
+    expect(fout).not.toContain('mag eruit');
+  });
+
+  it('geeft bij een pakket erbij én een eruit allebei de instructies', () => {
+    const rijen = register();
+    delete rijen.uuid;
+    rijen['nieuw-pakket'] = { ernst: 'high', advisories: [1], reparatie: 'geen' };
+    const { fout } = draai(rijen);
+
+    expect(fout).toContain('npm run build');
+    expect(fout).toContain('niets te bouwen');
+  });
+});
+
 describe('verschil', () => {
   const register = {
     a: {
