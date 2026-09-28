@@ -335,10 +335,22 @@ export const SPOORVERSIE = 2;
  * @returns `{ actie: 'terugzetten' | 'weg' | 'weiger', reden }`
  */
 export function beoordeelHerstel(spoor, huidig) {
-  if (spoor?.versie !== SPOORVERSIE || typeof spoor?.helft !== 'string' || !spoor?.policy) {
-    // ⚠️ Faalt dicht. Een spoor van vóór QS8-588 draagt geen helft, dus is niet
-    //    vast te stellen welke toestand de database hóórt te hebben.
-    return { actie: 'weiger', reden: 'het spoor komt uit een oudere versie en noemt geen helft' };
+  // ⚠️⚠️ **De versie staat apart en eerst — QS8-604.** Hij stond hier met de
+  //    twee vormtoetsen in één `if`, en 📏 toen droeg hij niets: de versie
+  //    weghalen liet 99 van 99 toetsen groen, want elk spoor in de suite dat de
+  //    versie miste, miste óók zijn helft. Een spoor dat `helft` en `policy`
+  //    behoudt maar hun betekenis verandert, is precies het geval waarvoor
+  //    `SPOORVERSIE` bestaat, en dat viel door beide andere toetsen heen.
+  if (spoor?.versie !== SPOORVERSIE) {
+    return {
+      actie: 'weiger',
+      reden: `het spoor draagt versie ${JSON.stringify(spoor?.versie) ?? 'geen'} en deze lezer kent alleen versie ${SPOORVERSIE}`,
+    };
+  }
+  if (typeof spoor?.helft !== 'string' || !spoor?.policy) {
+    // ⚠️ Faalt dicht. Zonder helft is niet vast te stellen welke toestand de
+    //    database hóórt te hebben.
+    return { actie: 'weiger', reden: 'het spoor noemt geen helft of geen policy' };
   }
 
   const { policy, helft: eenheid } = spoor;
