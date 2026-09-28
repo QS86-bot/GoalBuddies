@@ -34,13 +34,16 @@
  *    hier overblijft is geen verwijzing maar een **bewering over de repo**, en
  *    die is te toetsen.
  *
- * ⚠️⚠️ **`docs/decisions/` valt erbuiten, en dat is geen gemak.** Een
- *    beslisdocument is een gedateerd verslag van wat er tóen was: dat
- *    supabase/functions/_shared/sentry/index.ts op 26-08-2026 gedeployd stond
- *    zonder ooit in een branch te staan, is waar, en het bestand hoort er
- *    vandaag juist níet te zijn. Zo'n zin repareren zou het verslag onwaar
- *    maken. `docs/DEPLOY.md`, `docs/ENGINEER-REVIEW.md` en `docs/WERKVOORRAAD.md`
- *    vallen er wél onder: die beschrijven het heden.
+ * ⚠️⚠️ **`docs/decisions/` valt erbinnen vanaf zijn geboortedag, en dat is geen
+ *    gemak — QS8-591.** Een beslisdocument is een gedateerd verslag van wat er
+ *    tóen was: dat supabase/functions/_shared/sentry/index.ts op 26-08-2026
+ *    gedeployd stond zonder ooit in een branch te staan, is waar, en het bestand
+ *    hoort er vandaag juist níet te zijn. Zo'n zin repareren zou het verslag
+ *    onwaar maken. Daarom tellen alleen documenten met een datum vanaf `VANAF`
+ *    mee: die horen op hún dag naar bestaande bestanden te wijzen. Veroudert er
+ *    later een pad, dan is dat een rij in `HISTORISCH_JUIST` en geen reparatie.
+ *    `docs/DEPLOY.md`, `docs/ENGINEER-REVIEW.md` en `docs/WERKVOORRAAD.md`
+ *    vallen er altijd onder: die beschrijven het heden.
  *
  * Draaien: `npm run padverwijzing:controle`. Hoort mee in de poort.
  */
@@ -127,9 +130,23 @@ const VANAF = '2026-09-24';
  *    of verdwenen is. De rij hoort te zeggen wélk pad en wat ermee gebeurd is —
  *    niet "dit document mag kapotte paden hebben".
  *
- * @type {Record<string, string>}
+ * ⚠️⚠️ **Dit register deed tot QS8-600 niets.** Hij stond hier als leeg object,
+ *    `beoordeel()` las hem niet, en 📏 een rij erin voor een kapot pad liet de
+ *    controle rood op precies dezelfde melding. De dossierrij en het
+ *    beslisdocument van QS8-591 stuurden de lezer er wél naartoe.
+ *
+ * ⚠️ **Zelfde vorm als `ZONDER_BESTAND`, andere betekenis, en die betekenis is
+ *    afgedwongen.** `ZONDER_BESTAND` is *met opzet kapot* — een verhuizing die
+ *    zijn herkomst noemt, een voorstel. Dit is *klopte toen, veroudert nu*, en
+ *    dat kan alleen een beslisdocument: een rij met een `in` buiten
+ *    `docs/decisions/` dekt niets en wordt rood als ongebruikt.
+ *
+ * @type {{ pad: string, in: string, reden: string }[]}
  */
-export const HISTORISCH_JUIST = {};
+export const HISTORISCH_JUIST = [];
+
+/** Is dit bestand een beslisdocument — de enige plek waar `HISTORISCH_JUIST` telt? */
+const isBeslisdocument = (pad) => pad.startsWith('docs/decisions/');
 
 /**
  * Het ene bestand dat deze controle **voedt** en er daarom buiten valt.
@@ -271,31 +288,39 @@ export function verwijzingenIn(tekst) {
  *
  * ⚠️ Geëxporteerd en zonder bestandssysteem: `bestaat` komt van de aanroeper.
  *    Een controle die je niet kunt voeden, kun je niet ijken.
+ *
+ * ⚠️ De twee registers komen apart terug (`ongebruikt` en
+ *    `historischOngebruikt`), zodat de melding kan zeggen uit wélk register een
+ *    rij weg moet. Eén lijst voor beide stuurt de lezer naar het verkeerde.
  */
-export function beoordeel(bestanden, bestaat, register = ZONDER_BESTAND) {
+export function beoordeel(bestanden, bestaat, register = ZONDER_BESTAND, historisch = HISTORISCH_JUIST) {
   const gebruikt = new Set();
   const kapot = [];
+  const dekt = (bron, pad) => (r) => r.pad === pad && r.in === bron;
 
   for (const { pad: bron, tekst } of bestanden) {
     for (const { pad, regel } of verwijzingenIn(tekst)) {
       if (bestaat(pad)) continue;
-      const rij = register.find((r) => r.pad === pad && r.in === bron);
+      const rij =
+        register.find(dekt(bron, pad)) ??
+        (isBeslisdocument(bron) ? historisch.find(dekt(bron, pad)) : undefined);
       if (rij === undefined) kapot.push({ bron, regel, pad });
-      else gebruikt.add(`${rij.in}|${rij.pad}`);
+      else gebruikt.add(rij);
     }
   }
 
-  const ongebruikt = register.filter((r) => !gebruikt.has(`${r.in}|${r.pad}`));
-  return { kapot, ongebruikt };
+  const ongebruikt = register.filter((r) => !gebruikt.has(r));
+  const historischOngebruikt = historisch.filter((r) => !gebruikt.has(r));
+  return { kapot, ongebruikt, historischOngebruikt };
 }
 
 /**
  * Of een repo-relatief pad gescand wordt.
  *
  * ⚠️ Geëxporteerd omdat de scope zélf een besluit is en geen bijkomstigheid: dat
- *    `docs/decisions/` erbuiten valt en `docs/DEPLOY.md` erbinnen, is de kern van
- *    deze controle en hoort onder test te staan in plaats van in een `if` te
- *    verdwijnen.
+ *    een beslisdocument pas vanaf zijn geboortedag meetelt (QS8-591) en
+ *    `docs/DEPLOY.md` altijd, is de kern van deze controle en hoort onder test
+ *    te staan in plaats van in een `if` te verdwijnen.
  */
 export function binnenScope(pad, vanaf = VANAF) {
   if (!SOORTEN.test(pad)) return false;
@@ -341,39 +366,52 @@ function hoofd() {
     pad,
     tekst: readFileSync(join(WORTEL, pad), 'utf8'),
   }));
-  const { kapot, ongebruikt } = beoordeel(bestanden, (p) => existsSync(join(WORTEL, p)));
+  const { kapot, ongebruikt, historischOngebruikt } = beoordeel(bestanden, (p) =>
+    existsSync(join(WORTEL, p)),
+  );
 
-  if (kapot.length === 0 && ongebruikt.length === 0) {
+  if (kapot.length === 0 && ongebruikt.length === 0 && historischOngebruikt.length === 0) {
     console.log(
       `padverwijzing-controle: elk genoemd pad bestaat (${bestanden.length} bestanden).`,
     );
     process.exit(0);
   }
 
-  if (kapot.length > 0) {
-    console.error(`padverwijzing-controle: ${kapot.length} verwijzing(en) naar een bestand dat`);
-    console.error('er niet is.\n');
-    for (const k of kapot) console.error(`  ${k.bron}:${k.regel}  →  ${k.pad}`);
-    console.error(
-      '\nNoemt de zin een grendel, ga dan éérst na of die grendel bestaat onder een\n' +
-        'andere naam. Bestaat hij niet, dan is de belofte onbewaakt en is de zin het\n' +
-        'probleem, niet de verwijzing. Is de verwijzing met opzet kapot — een\n' +
-        'verhuizing die zijn herkomst noemt, of een voorstel — zet hem dan mét reden\n' +
-        'in ZONDER_BESTAND in dit script.',
-    );
-  }
-
-  if (ongebruikt.length > 0) {
-    console.error(`\npadverwijzing-controle: ${ongebruikt.length} registerrij(en) dekken niets`);
-    console.error('meer.\n');
-    for (const r of ongebruikt) console.error(`  ${r.in}  →  ${r.pad}`);
-    console.error(
-      '\nHet bestand is er weer, of de zin is weg. Haal de rij uit ZONDER_BESTAND:\n' +
-        'een vrijbrief die niemand nodig heeft, dekt straks iets anders af.',
-    );
-  }
-
+  if (kapot.length > 0) meldKapot(kapot);
+  meldOngebruikt(ongebruikt, 'ZONDER_BESTAND');
+  meldOngebruikt(historischOngebruikt, 'HISTORISCH_JUIST');
   process.exit(1);
+}
+
+function meldKapot(kapot) {
+  console.error(`padverwijzing-controle: ${kapot.length} verwijzing(en) naar een bestand dat`);
+  console.error('er niet is.\n');
+  for (const k of kapot) console.error(`  ${k.bron}:${k.regel}  →  ${k.pad}`);
+  console.error(
+    '\nNoemt de zin een grendel, ga dan éérst na of die grendel bestaat onder een\n' +
+      'andere naam. Bestaat hij niet, dan is de belofte onbewaakt en is de zin het\n' +
+      'probleem, niet de verwijzing. Is de verwijzing met opzet kapot — een\n' +
+      'verhuizing die zijn herkomst noemt, of een voorstel — zet hem dan mét reden\n' +
+      'in ZONDER_BESTAND in dit script. Staat hij in een beslisdocument dat op zijn\n' +
+      'eigen dag klopte en is het pad sindsdien verhuisd of verdwenen, dan hoort\n' +
+      'hij mét reden in HISTORISCH_JUIST — en alleen dan.',
+  );
+}
+
+/** Registerrijen die niets meer dekken, met het register bij naam. */
+function meldOngebruikt(rijen, register) {
+  if (rijen.length === 0) return;
+  console.error(`\npadverwijzing-controle: ${rijen.length} rij(en) in ${register} dekken niets`);
+  console.error('meer.\n');
+  for (const r of rijen) console.error(`  ${r.in}  →  ${r.pad}`);
+  console.error(
+    `\nHet bestand is er weer, of de zin is weg. Haal de rij uit ${register}:\n` +
+      'een vrijbrief die niemand nodig heeft, dekt straks iets anders af.' +
+      (register === 'HISTORISCH_JUIST'
+        ? '\nStaat de rij in een bestand buiten docs/decisions/, dan telt hij nooit:\n' +
+          'daar is ZONDER_BESTAND het register.'
+        : ''),
+  );
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {

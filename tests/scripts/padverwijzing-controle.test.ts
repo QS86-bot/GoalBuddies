@@ -18,6 +18,7 @@ import {
   geborenVanaf,
   verwijzingenIn,
   ZONDER_BESTAND,
+  HISTORISCH_JUIST,
 } from '../../scripts/padverwijzing-controle.mjs';
 
 /** Alles bestaat, behalve wat er expliciet in `WEG` staat. */
@@ -242,6 +243,87 @@ describe('het register dekt precies één paar en niet meer', () => {
   });
 });
 
+/**
+ * Het register voor wat op zijn eigen dag klopte — QS8-600.
+ *
+ * ⚠️⚠️ **Tot QS8-600 las `beoordeel()` dit register niet**, en 📏 een rij erin
+ *    liet de controle rood op precies dezelfde melding. Een register dat alleen
+ *    in een comment bestaat, is QS8-412 in zijn zuiverste vorm: de dossierrij
+ *    stuurde de lezer ernaartoe, en wie dat deed, bleef rood.
+ *
+ * ⚠️ **Zelfde vorm als `ZONDER_BESTAND`, maar alleen geldig in een
+ *    beslisdocument.** Buiten `docs/decisions/` is *"klopte toen"* geen reden:
+ *    daar beschrijft een bestand het heden. Die grens is hier een must-find en
+ *    geen afspraak.
+ */
+describe('HISTORISCH_JUIST — een beslisdocument dat later veroudert', () => {
+  const DOC = 'docs/decisions/2026-10-01-iets.md';
+  const rij = { pad: 'scripts/verhuisd.mjs', in: DOC, reden: 'verhuisd in QS8-999' };
+  const doc = [{ pad: DOC, tekst: 'zie `scripts/verhuisd.mjs`' }];
+  const weg = bestaatBehalve(['scripts/verhuisd.mjs']);
+
+  it('MUST-FIND: zonder rij is het verouderde pad een bevinding', () => {
+    const { kapot } = beoordeel(doc, weg, [], []);
+    expect(kapot).toEqual([{ bron: DOC, regel: 1, pad: 'scripts/verhuisd.mjs' }]);
+  });
+
+  it('MUST-ALLOW: met een rij is het geen bevinding, en de rij telt als gebruikt', () => {
+    const uitslag = beoordeel(doc, weg, [], [rij]);
+    expect(uitslag.kapot).toEqual([]);
+    expect(uitslag.historischOngebruikt).toEqual([]);
+  });
+
+  it('MUST-FIND: een rij buiten een beslisdocument dekt niets en is zelf rood', () => {
+    const elders = { ...rij, in: 'docs/DEPLOY.md' };
+    const uitslag = beoordeel(
+      [{ pad: 'docs/DEPLOY.md', tekst: 'zie `scripts/verhuisd.mjs`' }],
+      weg,
+      [],
+      [elders],
+    );
+    expect(uitslag.kapot).toEqual([{ bron: 'docs/DEPLOY.md', regel: 1, pad: 'scripts/verhuisd.mjs' }]);
+    expect(uitslag.historischOngebruikt).toEqual([elders]);
+  });
+
+  it('MUST-FIND: een rij die niets meer dekt, komt apart terug en niet bij ZONDER_BESTAND', () => {
+    const uitslag = beoordeel([{ pad: DOC, tekst: 'de zin is weg' }], weg, [], [rij]);
+    expect(uitslag.historischOngebruikt).toEqual([rij]);
+    expect(uitslag.ongebruikt).toEqual([]);
+  });
+
+  it('dekt precies het paar: hetzelfde pad in een ánder beslisdocument blijft rood', () => {
+    const ander = 'docs/decisions/2026-10-02-iets-anders.md';
+    const { kapot } = beoordeel([{ pad: ander, tekst: 'zie `scripts/verhuisd.mjs`' }], weg, [], [rij]);
+    expect(kapot).toEqual([{ bron: ander, regel: 1, pad: 'scripts/verhuisd.mjs' }]);
+  });
+
+  /**
+   * ⚠️⚠️ **Dit is de naad waar het misging: het register bestond, de aanroep
+   *    las hem niet.** `hoofd()` geeft geen registers mee, dus de standaard ís de
+   *    koppeling. Het echte register is leeg, en dan zegt een standaard van `[]`
+   *    precies hetzelfde — daarom zet deze toets er tijdelijk een rij in.
+   */
+  it('de standaard is het echte register — een rij erin telt zonder dat iemand hem meegeeft', () => {
+    const echt = HISTORISCH_JUIST as { pad: string; in: string; reden: string }[];
+    echt.push(rij);
+    try {
+      expect(beoordeel(doc, weg, []).kapot).toEqual([]);
+    } finally {
+      echt.pop();
+    }
+    expect(HISTORISCH_JUIST).not.toContain(rij);
+  });
+
+  it('elke echte rij staat in een beslisdocument dat bestaat, met een reden', async () => {
+    const { existsSync } = await import('node:fs');
+    for (const r of HISTORISCH_JUIST as readonly { pad: string; in: string; reden: string }[]) {
+      expect(r.in.startsWith('docs/decisions/'), `${r.in} is geen beslisdocument`).toBe(true);
+      expect(existsSync(r.in), `${r.in} bestaat niet`).toBe(true);
+      expect(r.reden.length, `reden te kort bij ${r.pad}`).toBeGreaterThan(60);
+    }
+  });
+});
+
 describe('het echte register', () => {
   it('draagt een reden per rij', () => {
     expect(ZONDER_BESTAND.length).toBeGreaterThan(0);
@@ -267,10 +349,10 @@ describe('het echte register', () => {
 
 /**
  * ⚠️⚠️ **De scope is een besluit en geen bijkomstigheid.** Dat een
- *    beslisdocument erbuiten valt en `docs/DEPLOY.md` erbinnen, is de kern van
- *    deze controle: het eerste is een gedateerd verslag waarin een verdwenen
- *    bestand wáár is, het tweede beschrijft het heden en stuurt een mens langs
- *    een commando dat moet bestaan.
+ *    beslisdocument pas vanaf zijn geboortedag meetelt (QS8-591) en
+ *    `docs/DEPLOY.md` altijd, is de kern van deze controle: het eerste is een
+ *    gedateerd verslag waarin een later verdwenen bestand wáár is, het tweede
+ *    beschrijft het heden en stuurt een mens langs een commando dat moet bestaan.
  */
 describe('binnenScope', () => {
   it('neemt code, migraties, scripts, tests en de levende documenten mee', () => {
