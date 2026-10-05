@@ -601,14 +601,16 @@ jobs:
     #    `Alles groen`-checks met tegengestelde uitslag, en is zo gemerged.
     #
     # ⚠️ **De twee gevallen die dit uit elkaar houdt, en dat is de hele finesse.**
-    #    `cancelled()` slaat aan op een afgebroken **run** — dan wordt deze job
-    #    overgeslagen, want er is niets gemeten. Loopt een afzonderlijke **job**
+    #    `cancelled()` slaat aan op een afgebroken **run** — dan draait deze job
+    #    niet en eindigt hij als `cancelled` (zonder stappen), want er is niets
+    #    gemeten. 📏 Gemeten op run 35976046281: job `Alles groen` →
+    #    `conclusion: cancelled`, niet `skipped` en niet `failure`. Loopt een afzonderlijke **job**
     #    op zijn `timeout-minutes`, dan komt díé terug als `cancelled` terwijl de
     #    run gewoon doorloopt; deze job draait dan wél en wordt rood. Dat is geen
     #    theorie: de kop van de RLS-job beschrijft precies dat geval (QS8-518,
     #    twee runs van QS8-433).
     #
-    # ⚠️ **En `skipped` blokkeert hier geen merge.** 📏 Gemeten op 22-09-2026 via
+    # ⚠️ **En `cancelled` blokkeert hier geen merge.** 📏 Gemeten op 22-09-2026 via
     #    de API: `main` is beschermd, maar `required_status_checks` staat op
     #    `enforcement_level: off` met lege `contexts` en `checks` — `Alles groen`
     #    is geen required check. Het bewijs uit de praktijk staat ernaast: PR #583

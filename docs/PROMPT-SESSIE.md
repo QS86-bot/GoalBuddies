@@ -149,8 +149,29 @@ Raakt jouw werk de andere boom, dan is dat een **vervolgissue** en geen uitstapj
 Dat is dezelfde regel als in `CLAUDE.md`: één branch per Linear-issue, en raakt je
 werk meerdere issues, dan zijn het meerdere branches en meerdere PR's.
 
-📏 De splitsing is gemeten en niet bedacht: 87 van de 152 merges raakten alléén
-`scripts/`+`tests/`, en **nul** raakten broncode zonder die twee. De overlap is 18%.
+📏 De splitsing is gemeten en niet bedacht, over dezelfde 144 merges als §0
+(sinds 13-09, op `20cc23fc`), met de bomen van de tabel hierboven: **baan B** =
+`scripts/` en `tests/scripts/`, **baan A** = `app/`, `src/`,
+`supabase/migrations/` en `supabase/functions/`. Daarvan raakten er **41**
+alleen baan B, **32** alleen baan A, **50** geen van beide, en **21 (15%)**
+beide. Die 21 zijn de plek waar de banen elkaar werkelijk raken; ze zijn niet
+nul, en ook niet de 36% uit §0 — die telt álle van `tests/` mee, dus ook de
+tests die bij baan A horen.
+
+⚠️ Hier stond *"87 van de 152 merges raakten alléén `scripts/`+`tests/`, en nul
+raakten broncode zonder die twee, overlap 18%"*. Geen van die getallen
+reproduceert (§0), en het 18%-getal kwam uit een definitie die er niet bij
+stond (QS8-627). Het commando:
+
+```bash
+C=20cc23fc; B='^(scripts|tests/scripts)/'; A='^(app|src|supabase/migrations|supabase/functions)/'
+for m in $(git log --merges --first-parent --since=2026-09-13T00:00:00Z --format=%H $C); do
+  f=$(git diff --name-only $m^1 $m)
+  echo "$(echo "$f" | grep -cE "$B") $(echo "$f" | grep -cE "$A")"
+done | awk '{n++; if($1>0&&$2>0)o++; else if($1>0)b++; else if($2>0)a++; else z++}
+  END{print "n="n" beide="o" alleenB="b" alleenA="a" geen="z}'
+# Verwacht: n=144 beide=21 alleenB=41 alleenA=32 geen=50
+```
 
 ### 1a. Waarom niet drie, en waarom niet vijf
 
@@ -180,8 +201,8 @@ hoeft te raden. **De conclusie — twee banen — verandert er niet door**: ook 
 
 Bij twee banen is dat één conflict per ronde, additief op te lossen aan het eind
 van het bestand — dat is op 21-09 zes keer achter elkaar gedaan en het werkte
-elke keer. Bij drie banen zijn het er drie per ronde, in een bestand van
-honderden regels.
+elke keer. Bij drie banen zijn het er verwacht bijna twee per ronde (3·p², bij
+p = 114/144 is dat 1,9), in een bestand van honderden regels.
 
 ⚠️ **Een conflict is hier niet gratis op te lossen.** 📏 Op 21-09 sneed een
 conflictgrens dwars door het lichaam van een `it()` in
