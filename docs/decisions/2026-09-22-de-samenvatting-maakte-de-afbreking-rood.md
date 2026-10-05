@@ -48,9 +48,17 @@ leer je overslaan.
 if: always() && !cancelled()
 ```
 
-`!cancelled()` slaat alleen aan op een afgebroken **run**. Dan wordt de job
-overgeslagen, en dat klopt: er is niets gemeten, dus er valt niets samen te
-vatten.
+`!cancelled()` slaat alleen aan op een afgebroken **run**. Dan draait de job
+niet, en dat klopt: er is niets gemeten, dus er valt niets samen te vatten.
+
+⚠️ **Correctie van 05-10-2026 (QS8-628): de job eindigt als `cancelled` en niet
+als `skipped`.** Dit document, de kop in `ci.yml` en het issue zelf gingen uit
+van `skipped`. 📏 Gemeten op een afgebroken run mét deze reparatie (run
+`35976046281`, 24-09-2026, `list_workflow_jobs`): job `Alles groen` heeft
+`conclusion: cancelled`, geen stappen, en begin en einde op dezelfde seconde.
+Het doel van de reparatie is daarmee wél gehaald — geen `failure` — maar de
+stand die ontstaat is een andere dan hier eerst stond. Wat daaronder volgt is
+op dezelfde manier aangepast.
 
 ⚠️ **Wat er met opzet níet onder valt.** Loopt een afzonderlijke **job** op
 zijn eigen `timeout-minutes`, dan komt díé terug als `cancelled` terwijl de run
@@ -64,13 +72,14 @@ in `ci.yml` beschrijft twee runs van QS8-433 waar precies dat gebeurde
 ## 4. De vraag die het issue blokkeerde, en waarom er niet gevraagd is
 
 Acceptatiecriterium 5 vroeg of `Alles groen` een **required check** is. Zo ja,
-dan zou een `skipped` een merge kunnen blokkeren en is de reparatie duurder dan
-de fout. Dat is een vraag met een meetbaar antwoord, en dus geen grens 1.
+dan zou een job die niet draait een merge kunnen blokkeren (het issue ging uit
+van `skipped`; gemeten is het `cancelled`, zie de correctie in §3) en is de
+reparatie duurder dan de fout. Dat is een vraag met een meetbaar antwoord, en dus geen grens 1.
 
 📏 Gemeten via de API op 22-09-2026:
 `GET /repos/QS86-bot/GoalBuddies/branches/main` geeft
 `"protection": {"enabled": true, "required_status_checks": {"enforcement_level": "off", "contexts": [], "checks": []}}`.
-`Alles groen` is dus **geen** required check, en een `skipped` blokkeert niets.
+`Alles groen` is dus **geen** required check, en een `cancelled` blokkeert niets.
 
 📏 Bevestigd uit de praktijk, want een leeg lijstje is ook wat je krijgt als je
 het verkeerde veld leest: PR #583 is gemerged terwijl deze check op zijn head
