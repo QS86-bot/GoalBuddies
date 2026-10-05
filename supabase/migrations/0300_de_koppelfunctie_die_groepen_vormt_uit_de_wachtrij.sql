@@ -6,8 +6,8 @@
 --   drop function if exists public.vorm_buddygroepen(date, integer);
 --   drop function if exists public.vorm_een_buddygroep(uuid[]);
 --   drop function if exists public.verloop_buddyzoekopdrachten(timestamptz);
---   drop function if exists public.blokkade_tussen(uuid, uuid);
---   -- blokkade_met_groep(uuid, uuid) woordelijk terug uit 0145 §2
+--   -- blokkade_met_groep(uuid, uuid) woordelijk terug uit 0145 §2  ⚠️ eerst
+--   drop function if exists public.blokkade_tussen(uuid, uuid);     --  dan deze
 --   -- guard_group_update() woordelijk terug uit 0265
 --   -- zet_groepszichtbaarheid(uuid, text, boolean) woordelijk terug uit 0076/0265
 --   -- zet_groepsontdekbaarheid(uuid, boolean, boolean) woordelijk terug uit 0144
@@ -18,6 +18,22 @@
 --   ⚠️ De volgorde is bindend: eerst de constraints, dan de kolom. Andersom
 --      weigert Postgres, en `idempotent:controle` speelt elke migratie direct ná
 --      zichzelf af — dat is de klasse van 0252.
+--
+--   ⚠️⚠️ **En de twee blokkadefuncties staan in deze volgorde om de omgekeerde
+--      reden: Postgres weigert hier níets.** De `blokkade_met_groep()` van deze
+--      migratie róept `blokkade_tussen()` aan, en plpgsql zoekt een functie pas
+--      op bij uitvoering — dus de drop slaagt en het gat is stil. 📏 Gemeten op
+--      05-10-2026 met de drop vóór de terugzet: `ontdek_groepen`,
+--      `invite_preview`, `join_group_with_code` en `vraag_lidmaatschap_aan`
+--      geven alle vier `function public.blokkade_tussen(uuid, uuid) does not
+--      exist` waar ze er ervóór een antwoord gaven. `beslis_lidmaatschapsverzoek`
+--      is de vijfde aanroeper; die kwam in de meting niet tot de aanroep, dus
+--      over hém staat hier niets.
+--
+--      De les is de reden dat dit in de kop staat en niet in een comment ergens
+--      verderop: een rollback-pad dat je volgorde-fout *meldt* is te herstellen,
+--      een dat hem doorlaat laat vijf routes achter die pas rood worden als een
+--      gebruiker ze aanraakt.
 --
 -- ---------------------------------------------------------------------------
 -- Waar dit vandaan komt
