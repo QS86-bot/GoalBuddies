@@ -5,10 +5,10 @@ description: Wekelijkse gezondheidscheck van de codebase — draai dit elke vrij
 Voer een wekelijkse audit uit. Schrijf zelf geen code; lever een rapport.
 
 <!-- AUDITKOP:BEGIN — gegenereerd door `npm run auditkop` -->
-> De meeste controles draaien in CI, bij elke push: **68 van de 78**
+> De meeste controles draaien in CI, bij elke push: **68 van de 79**
 > (52 op de repo, 16 op de database). Deze audit hoeft die
 > niet over te doen; ga er langs als een uitkomst je verbaast, en besteed de tijd
-> aan de **10** die CI niet kan draaien.
+> aan de **11** die CI niet kan draaien.
 >
 > | Niet in CI | Waarom |
 > |---|---|
@@ -20,6 +20,7 @@ Voer een wekelijkse audit uit. Schrijf zelf geen code; lever een rapport.
 > | `realtime-identiteit:controle` | Leest `realtime_bewaking()` van het échte project om te zien of een realtime-tabel REPLICA IDENTITY FULL draagt. Vraagt de productiesleutel, en meet iets dat per definitie over productie gaat. |
 > | `register:controle` | Leest `supabase_migrations.schema_migrations` op productie om te zien hoe ver die achterloopt. Vraagt de productiesleutel. |
 > | `typesdrift:controle` | Legt `src/lib/database.types.ts` naast een generatie van het schema. Een generatie vanaf de map vraagt `supabase gen types --db-url`, en dat start een Docker-container; een generatie vanaf productie vraagt de productiesleutel. CI heeft geen van beide, dus hij zou daar altijd OVERGESLAGEN printen — en een stap die nooit meet, hoort niet in de baan. |
+> | `uurjobs:controle` | Vraagt de runlijst van GitHub naar de laatste geslaagde run van elke uurjob. Een netwerkaanroep maakt de uitslag afhankelijk van bereikbaarheid, en een push zegt niets over of een geplande job gelopen heeft. Hij draait in een eigen geplande workflow, `uurjobs.yml`, die door GitHub gemaild wordt als hij rood is. |
 > | `vapid:controle` | Toetst het VAPID-sleutelpaar uit `.env`. Dat staat met opzet niet in CI, en een sleutel die er niet is kan niet fout zijn. |
 > | `wachtwoord:controle` | Leest `password_min_length` uit het Supabase-dashboard van het echte project. Vraagt de productiesleutel. |
 <!-- AUDITKOP:EINDE -->

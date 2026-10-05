@@ -100,6 +100,7 @@
     "deleterecht:controle": "node scripts/deleterecht-controle.mjs",
     "kolomrechten:controle": "node scripts/kolomrechten-controle.mjs",
     "pin:controle": "node scripts/pinuitzonderingen-controle.mjs",
+    "uurjobs:controle": "node scripts/uurjobs-controle.mjs",
     "vapid:controle": "node scripts/vapid-controle.mjs",
     "zichtbaarheid:controle": "node scripts/zichtbaarheid-controle.mjs",
     "sentry:proef": "node --experimental-strip-types --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/sentry-proef.mjs",

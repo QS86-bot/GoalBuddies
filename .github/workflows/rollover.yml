@@ -22,6 +22,14 @@ on:
     #    (acceptatiecriterium van QS8-49), dus vaker draaien kost niets behalve
     #    een paar seconden rekentijd.
     - cron: '0 * * * *'
+    #
+    # ⚠️ **Elk uur is wat hij vraagt en niet wat GitHub levert.** `schedule:` is
+    #    best-effort. 📏 Gemeten op 05-10-2026 over zeven dagen: 31 runs in
+    #    plaats van ~168 (18,5%), grootste gat 9,0 uur, alle runs `success`
+    #    (QS8-637). De rollover haalt bij de volgende run in wat hij miste, dus een
+    #    trage job schuift het afschrijven later en nooit eerder. `npm run
+    #    uurjobs:controle` en `uurjobs.yml` bewaken dat hij niet langer dan 12 uur
+    #    wegblijft; afweging in `docs/decisions/2026-10-05-schedule-is-best-effort-en-de-hartslag-is-de-runlijst.md`.
   # Handmatig starten, om te testen en om een gemiste run in te halen.
   workflow_dispatch:
 
