@@ -750,7 +750,11 @@ cache vangt herhaalde vragen af.
 ## 2.9 De bewaartermijn van chatfoto's — en wat een rollback níet terugdraait
 
 Sinds migratie 0235 (QS8-396) is de fotobucket een doorgeefluik en geen archief.
-De rollover-functie haalt elk uur op wat weg mag en wist het:
+De rollover-functie haalt bij elke run op wat weg mag en wist het. ⚠️ *Elke run* is
+bedoeld als *elk uur*, maar GitHub's `schedule:` is best-effort: 📏 gemeten op
+05-10-2026 draaide hij over zeven dagen 31 keer in plaats van ~168, met een
+grootste gat van 9 uur (QS8-637). Een foto verdwijnt dus uiterlijk een paar uur
+later dan de termijn, en nooit eerder:
 
 ```sql
 select * from verlopen_chatfotos(500);   -- als service_role
@@ -803,8 +807,11 @@ opruimfuncties terug. **Het zet geen foto's terug.**
   as $$ select interval '3650 days' $$;
   ```
 
-⚠️ **Draai die stap vóór een rollback en niet erna.** De rollover draait elk uur;
-tussen "ik ga terugdraaien" en "het is teruggedraaid" past een ronde.
+⚠️ **Draai die stap vóór een rollback en niet erna.** De rollover is bedoeld elk uur
+en draait in de praktijk gemiddeld om de ~5 uur (QS8-637); tussen "ik ga
+terugdraaien" en "het is teruggedraaid" kan dus een ronde vallen, en wie wacht
+tot hij zeker weet dat er geen komt, wacht langer dan een uur. `npm run
+uurjobs:controle` zegt hoe lang geleden de laatste geslaagde run was.
 
 ---
 

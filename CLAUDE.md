@@ -96,6 +96,19 @@ het afsluiten van een issue of Linear en de documenten hetzelfde zeggen.
   niet achter; ook daarom een merge-commit. Uitleg in
   `docs/decisions/2026-09-24-de-titel-van-een-merge-is-vrij-de-claim-commit-niet.md`.
 
+  ⚠️⚠️ **Werk je op één vaste branch, claim dan met `--hier` — sinds 05-10-2026
+  (QS8-620).** Een opgelegde sessiebranch (`claude/…`) draagt per constructie
+  nooit een issuenummer, en de branchlijst zag zulk werk daarom niet; QS8-603 is
+  zo twee keer gebouwd. `--hier` zet de claim-commit op de branch waar je al
+  staat en pusht hem, en een derde bron leest die commits terug.
+
+  ⚠️ **De standaardweg weigert nu op zo'n branch**, met `--hier` en
+  `git checkout main` als de twee uitwegen. Dat is geen pesterij: `zetClaim()`
+  doet `checkout -b … origin/main` en haalt je anders van je eigen werk af —
+  precies de reden dat zo'n sessie dit gereedschap niet gebruikte. Uitleg en de
+  meting in
+  `docs/decisions/2026-10-05-de-claim-ziet-een-vaste-sessiebranch-nooit.md`.
+
   ⚠️ **Het issue op In Progress zetten is géén claim gebleken.** Bij QS8-214 is
   dat gedáán, vóór de eerste regel code, en de andere sessie begon daarna
   alsnog. Wat wél gelezen wordt is de remote branchlijst, want daar leunen
