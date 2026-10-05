@@ -590,7 +590,7 @@ function WatJeDeelt({
   return (
     <>
       <Body>{t('buddyzoek.bevestig_onbekenden')}</Body>
-      <Body>{t('buddyzoek.bevestig_beschermd')}</Body>
+      <Body>{t('buddyzoek.bevestig_bescherming')}</Body>
       <Body>{t('buddyzoek.bevestig_weekstart')}</Body>
       <Body>{t('buddyzoek.bevestig_stoppen')}</Body>
       <Bevestiging

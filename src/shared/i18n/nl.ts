@@ -2686,7 +2686,7 @@ export const nl = {
   'buddyzoek.bevestig_titel': 'Voordat we gaan zoeken',
   'buddyzoek.bevestig_onbekenden':
     'Je komt in een groep met mensen die je niet kent. Zij zien je naam, je profielfoto en de weekdoelen van dit doel.',
-  'buddyzoek.bevestig_beschermd':
+  'buddyzoek.bevestig_bescherming':
     'Zo\u2019n groep is altijd beschermd: een gemiste week, een verbroken reeks of een achterstand van jou is er nooit te zien.',
   'buddyzoek.bevestig_lopende_week':
     'Let op: zodra je gekoppeld bent, telt de week die nu loopt mee. Haal je die niet, dan kost dat een punt \u2014 ook als je al halverwege was toen je je aanmeldde.',

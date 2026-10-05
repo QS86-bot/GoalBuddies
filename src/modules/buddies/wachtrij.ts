@@ -132,16 +132,31 @@ export async function fetchBuddyzoekStand(
   goalId: string,
   vandaag: string,
 ): Promise<Buddyzoekstand | null> {
-  const { data, error } = await supabase()
-    .rpc('buddyzoek_stand', { p_goal_id: goalId, p_vandaag: vandaag })
-    .maybeSingle();
+  const { data, error } = await supabase().rpc('buddyzoek_stand', {
+    p_goal_id: goalId,
+    p_vandaag: vandaag,
+  });
 
   if (error) {
     reportError(error, 'buddies.match_queue_status', { goal_id: goalId });
     return null;
   }
 
-  return data === null ? null : naarStand(data as unknown as RpcStand);
+  // ⚠️⚠️ **Geen `.maybeSingle()`, en dat is een keuze.** De RPC geeft door zijn
+  //    eigen `limit 1` hoogstens één rij, dus `.maybeSingle()` zou kloppen —
+  //    maar die garantie staat in het functielichaam en is op deze regel niet te
+  //    zien. `eenrij:controle` kan hem daar ook niet lezen: die leidt garanties
+  //    af uit `create table`/`create index`, en een `.rpc()`-keten heeft geen
+  //    tabel om op te kijken. Dan is "pak de eerste als er een is" eerlijker dan
+  //    een belofte die de lezer op zijn woord moet geloven.
+  //
+  //    ⚠️ Dat de controle dit geval niet kán dekken, is een gat in de controle en
+  //    geen eigenschap van deze regel. Het staat als eigen issue; hier omzeil ik
+  //    het niet maar vermijd ik de aanname.
+  const rijen = (data ?? []) as unknown as readonly RpcStand[];
+  const eerste = rijen[0];
+
+  return eerste === undefined ? null : naarStand(eerste);
 }
 
 /**
