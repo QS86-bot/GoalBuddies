@@ -9,6 +9,9 @@ import {
 } from './harness';
 import { psql } from './psql-stack';
 
+import { en } from '../../src/shared/i18n/en';
+import { nl } from '../../src/shared/i18n/nl';
+
 /**
  * De wachtrij voor buddy's die je niet kent — QS8-233, migraties 0299 en 0300.
  *
@@ -478,4 +481,200 @@ describe.skipIf(!rlsTestsConfigured)('de wachtrij voor onbekende buddys', () => 
       TEST_TIMEOUT,
     );
   });
+
+  /**
+   * ⚠️⚠️ **De naad tussen de bevestigingstekst en de kolomrechten.**
+   *
+   * Vóór de verzendknop staat één alinea die zegt wat onbekenden straks van je
+   * lezen, en die alinea was onwaar: hij noemde de naam, de foto en de
+   * weekdoelen, en niet de **titel** en de **notitie** van het doel. 📏 Gemeten
+   * op 05-10-2026 met een gevormde automatische groep: een groepsgenoot leest
+   * `goals.title` en `goals.description` van twee onbekenden met één verzoek —
+   * `goals_select` laat `shares_group_with_goal(id)` toe en `authenticated`
+   * heeft `SELECT` op beide kolommen.
+   *
+   * Deze toets grijpt niet naar de alinea in `app/doel/samen.tsx` maar naar de
+   * **belofte**: hij leest uit de database welke vrije-tekstkolommen een
+   * groepsgenoot werkelijk kan lezen, en eist dat de tekst elk daarvan noemt —
+   * in beide catalogi. Verruimt een latere migratie de leeskant, dan wordt deze
+   * test rood omdat de tekst achterloopt, en niet pas als iemand het merkt.
+   *
+   * ⚠️ En hij faalt dicht: een leesbare vrije-tekstkolom die het register
+   * hieronder niet kent, is een fout en geen stilte.
+   */
+  const VRIJE_TEKST: Record<string, { nl: RegExp; en: RegExp }> = {
+    title: { nl: /titel/i, en: /title/i },
+    description: { nl: /notitie/i, en: /notes?/i },
+    identity_statement: { nl: /identiteits?verklaring|wie je wilt zijn/i, en: /identity/i },
+  };
+
+  it(
+    'de bevestigingstekst noemt elke vrije-tekstkolom die een groepsgenoot kan lezen',
+    async () => {
+      const hans = await createTestUser('wachtrij-hans');
+      const ilse = await createTestUser('wachtrij-ilse');
+      const joost = await createTestUser('wachtrij-joost');
+
+      const ids = [hans.id, ilse.id, joost.id].map((i) => `'${i}'`).join(',');
+      psql(`update profiles set week_start_day = 3 where id in (${ids})`);
+
+      await maakDoel(hans, 'tekst-h', 70);
+      await maakDoel(ilse, 'tekst-i', 72);
+      await maakDoel(joost, 'tekst-j', 74);
+
+      for (const [gebruiker, titel] of [
+        [hans, 'tekst-h'],
+        [ilse, 'tekst-i'],
+        [joost, 'tekst-j'],
+      ] as const) {
+        await gebruiker.db.rpc('zoek_buddies_aan', {
+          p_goal_id: doelen.get(titel) ?? '',
+          p_bevestigd: true,
+        });
+      }
+
+      draaiMatcher();
+
+      // ⚠️ Toetsen op **deze** groep en niet op het aantal automatische groepen
+      //    in de database: eerdere tests in dit bestand vormen er ook, en een
+      //    teller over het geheel zegt niets over de drie van hierboven.
+      const mijnGroep = psql(
+        `select count(distinct a.group_id) from group_members a
+           join groups g on g.id = a.group_id
+          where g.automatisch and a.user_id = '${hans.id}'`,
+      ).trim();
+      expect(mijnGroep).toBe('1');
+
+      // Wélke vrije-tekstkolommen mag `authenticated` überhaupt lezen?
+      const gegund = psql(
+        `select column_name from information_schema.column_privileges
+          where table_name = 'goals' and grantee = 'authenticated'
+            and privilege_type = 'SELECT' order by column_name`,
+      )
+        .split('\n')
+        .map((r) => r.trim())
+        .filter(Boolean);
+
+      // En wat komt er dan werkelijk door PostgREST terug, als groepsgenoot?
+      const kolommen = gegund.filter((k) => k in VRIJE_TEKST);
+      expect(kolommen.length).toBeGreaterThan(0);
+
+      const gelezen: string[] = [];
+      for (const kolom of kolommen) {
+        const { data } = await hans.db
+          .from('goals')
+          .select(`id,${kolom}`)
+          .neq('owner_id', hans.id);
+        const rijen = data ?? [];
+        if (rijen.length > 0) gelezen.push(kolom);
+      }
+
+      // ⚠️ Twee onbekenden, niet één: de belofte gaat over de groep en niet over
+      //    een toevallige rij. Vraag 6 van onwrikbare regel 18.
+      const aantal = (
+        await hans.db.from('goals').select('id').neq('owner_id', hans.id)
+      ).data?.length;
+      expect(aantal).toBe(2);
+
+      expect(gelezen.sort()).toEqual(kolommen.sort());
+
+      for (const kolom of gelezen) {
+        const woord = VRIJE_TEKST[kolom];
+        if (woord === undefined) {
+          throw new Error(
+            `\`goals.${kolom}\` is leesbaar voor een groepsgenoot maar staat niet in ` +
+              'VRIJE_TEKST. Zet hem erbij met het woord waarmee de tekst hem noemt, ' +
+              'of stel vast dat de kolom geen vrije tekst draagt.',
+          );
+        }
+        expect(nl['buddyzoek.bevestig_onbekenden']).toMatch(woord.nl);
+        expect(en['buddyzoek.bevestig_onbekenden']).toMatch(woord.en);
+      }
+    },
+    TEST_TIMEOUT,
+  );
+  /**
+   * ⚠️⚠️ **De wrapper van 0301 gooit `p_vandaag` weg, en dit is de meting die
+   * dat staande houdt.**
+   *
+   * `buddyzoek_stand(uuid, date)` nam zijn peildag als argument, en die bepaalde
+   * niet alleen de band van de áánvrager maar ook die waartegen anderen
+   * vergeleken werden. `nog_nodig` is afgekapt op 0/1/2, maar dat begrenst de
+   * amplitude en niet de resolutie: schuif de peildag dag voor dag en op de
+   * bandgrens kantelt het getal — en uit het kantelpunt volgt de streefdatum van
+   * een vreemde.
+   *
+   * 0301 laat de handtekening staan (vorm van 0294 en 0186, zodat een gedeployde
+   * client de reparatie meteen krijgt) maar geeft het argument nergens meer door.
+   *
+   * 📏 Geijkt op 05-10-2026 met twee wachtenden aan weerszijden van de
+   * 90-dagengrens, streefdatums op +85 en +95 dagen:
+   *
+   *     peildag          lek      wrapper
+   *     vandaag           2          2
+   *     vandaag  -5       2          2
+   *     vandaag -10       1          2
+   *     vandaag -20       1          2
+   *     vandaag -90       2          2
+   *
+   * Die opzet is met opzet gekozen: met twee willekeurige streefdatums beweegt
+   * ook de lekke variant niet, en dan toetst deze test niets. Geef `p_vandaag`
+   * door aan `doelperiode()` en hij wordt rood.
+   */
+  it(
+    'de peildag van de oude handtekening beweegt de uitkomst niet',
+    async () => {
+      const kaat = await createTestUser('wachtrij-kaat');
+      const lars = await createTestUser('wachtrij-lars');
+
+      const ids = [kaat.id, lars.id].map((i) => `'${i}'`).join(',');
+      psql(`update profiles set week_start_day = 5 where id in (${ids})`);
+
+      // ⚠️ +85 en +95: de één onder en de ander boven de 90-dagengrens van
+      //    `doelperiode()`. Bij een peildag tien dagen terug vallen ze in
+      //    dezelfde band, en dáár kantelt het getal als de peildag doorwerkt.
+      await maakDoel(kaat, 'peil-k', 85, 'study');
+      await maakDoel(lars, 'peil-l', 95, 'study');
+
+      for (const [gebruiker, titel] of [
+        [kaat, 'peil-k'],
+        [lars, 'peil-l'],
+      ] as const) {
+        const aan = await gebruiker.db.rpc('zoek_buddies_aan', {
+          p_goal_id: doelen.get(titel) ?? '',
+          p_bevestigd: true,
+        });
+        expect(antwoord(aan.data)).toBe('ok');
+      }
+
+      const dag = (verschuiving: number): string =>
+        new Date(Date.now() + verschuiving * 86_400_000).toISOString().slice(0, 10);
+
+      const uitkomsten: (number | undefined)[] = [];
+      for (const verschuiving of [0, -5, -10, -20, -90]) {
+        const { data, error } = await kaat.db.rpc('buddyzoek_stand', {
+          p_goal_id: doelen.get('peil-k') ?? '',
+          p_vandaag: dag(verschuiving),
+        });
+        expect(uitkomst(error)).toBe('toegelaten');
+        const rij = (data ?? [])[0] as { nog_nodig?: number } | undefined;
+        uitkomsten.push(rij?.nog_nodig);
+      }
+
+      // ⚠️ Eén uitkomst, en niet "allemaal ≤ 2": dat laatste blijft groen terwijl
+      //    het getal tussen 1 en 2 heen en weer gaat, en dát ís het orakel.
+      expect(new Set(uitkomsten).size).toBe(1);
+      expect(uitkomsten[0]).toBeDefined();
+
+      // En de kale versie geeft hetzelfde — anders is de wrapper niet inert maar
+      // alleen constant.
+      const { data: kaal } = await kaat.db.rpc('buddyzoek_stand', {
+        p_goal_id: doelen.get('peil-k') ?? '',
+      });
+      const kaleRij = (kaal ?? [])[0] as { nog_nodig?: number } | undefined;
+      expect(kaleRij?.nog_nodig).toBe(uitkomsten[0]);
+    },
+    TEST_TIMEOUT,
+  );
+
 });

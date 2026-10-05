@@ -91,9 +91,18 @@ begin
   --    partiële unieke index remt alleen een tweede rij op hetzelfde dóel, dus
   --    twaalf verschillende doelen komen er langs.
   --
-  --    📏 Gemeten vóór dit slot, twaalf gesynchroniseerde aanroepen op twaalf
-  --    doelen van één gebruiker: **acht** rijen `wachtend`, waar het plafond 3
-  --    gelijktijdig en 5 per dag is. Beide grenzen doorbroken met één burst.
+  --    📏 Gemeten vóór dit slot, twaalf aanroepen op twaalf doelen van één
+  --    gebruiker met een gedeeld startsignaal (werkelijke spreiding 9 ms):
+  --    **10** rijen `wachtend`, waar het plafond 3 gelijktijdig en 5 per dag is.
+  --    Beide grenzen doorbroken met één burst; mét het slot 3 rijen en negen
+  --    keer `too_many_queued`.
+  --
+  --    ⚠️ Een eerdere meting gaf 8, en een derde gaf 3 — die laatste zónder het
+  --    slot, en dus een uitslag die niets bewees. Daar startten de twaalf
+  --    psql-processen niet samen: elk moest nog verbinden, dus ze liepen achter
+  --    elkaar en de race trad niet op. **Een uitslag die zonder de reparatie
+  --    hetzelfde is, meet de reparatie niet** — zelfde klasse als de rode die
+  --    niet jouw rode is.
   --
   --    Dit is woordelijk de klasse die QS8-296 in `vraag_ai_job()` sloot (0182),
   --    en dezelfde vorm: `hashtextextended(auth.uid()::text, 0)`. CLAUDE.md bij

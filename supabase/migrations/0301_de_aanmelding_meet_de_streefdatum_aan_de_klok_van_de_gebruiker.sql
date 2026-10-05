@@ -4,12 +4,13 @@
 --
 -- ROLLBACK-PAD:
 --   -- zoek_buddies_aan(uuid, boolean) woordelijk terug uit 0299 §6.
---   drop function if exists public.buddyzoek_stand(uuid);
 --   -- buddyzoek_stand(uuid, date) woordelijk terug uit 0299 §8.
+--   drop function if exists public.buddyzoek_stand(uuid);
 --
---   ⚠️ De drop hoort er bij `buddyzoek_stand` wél: zijn handtekening verandert
---      van (uuid, date) naar (uuid), en `or replace` kan dat niet. Terugzetten is
---      dus ook een drop en een create, en de clientcode moet mee.
+--   ⚠️ **In deze volgorde**, en om de reden die 0300 nu ook in zijn kop heeft: de
+--      wrapper róept de eenargumentige versie aan, en plpgsql noch SQL zoekt een
+--      functie op vóór uitvoering. Eerst droppen laat de wrapper staan met een
+--      aanroep naar iets wat er niet meer is.
 --
 -- ---------------------------------------------------------------------------
 -- Waar dit vandaan komt
@@ -176,8 +177,6 @@ grant execute on function public.zoek_buddies_aan(uuid, boolean) to authenticate
 --    gebruikers en hoort één nulpunt te hebben; deze is er van de kijker en hoort
 --    de zijne te zijn.
 
-drop function if exists public.buddyzoek_stand(uuid, date);
-
 create or replace function public.buddyzoek_stand(p_goal_id uuid)
   returns table (
     status    text,
@@ -235,3 +234,67 @@ comment on function public.buddyzoek_stand(uuid) is
   '(eigenaarsdatum) en niet van de client: als argument was hij een orakel op de '
   'streefdatum van een vreemde — zie de kop van deze migratie. Expliciete '
   'kolomlijst omdat RLS geen kolommen kan beperken (vorm van getuigenissen(), 0169).';
+
+-- ---------------------------------------------------------------------------
+-- De oude handtekening blijft staan, als wrapper die zijn argument weggooit
+-- ---------------------------------------------------------------------------
+--
+-- ⚠️⚠️ **Dit is de vorm van 0294 en 0186 en geen nieuwe uitvinding.** De eerste
+--    versie van deze migratie dropte `buddyzoek_stand(uuid, date)`, want een
+--    `or replace` kan een handtekening niet inkorten. Twee redenen om dat niet te
+--    doen, en de tweede is de zwaarste:
+--
+--    1. **Een drop is een destructief statement**, en de route waarlangs dit
+--       project deployt vraagt daar bevestiging voor. Een migratie die op een
+--       bevestiging wacht, deployt niet — en dan staat de reparatie nergens.
+--
+--    2. **De wrapper past de reparatie óók toe op wat er al gedeployd is.**
+--       Precies het argument dat 0294 opschrijft. Een client die nog de oude
+--       handtekening aanroept — en dat is vandaag `fetchBuddyzoekStand()` in
+--       `src/modules/buddies/wachtrij.ts` — leest na deze migratie hetzelfde
+--       getal als via de nieuwe. Met een drop was die aanroep stuk geweest tot
+--       de typehergeneratie en de clientwijziging erachteraan kwamen, en dát
+--       venster is precies waar een half uitgerolde reparatie in valt.
+--
+-- ⚠️⚠️ **`p_vandaag` is hier niet "genegeerd" maar wéggegooid, en dat is het
+--    verschil tussen een lek en een dood argument.** Het orakel van de kop
+--    hierboven zat niet in de naam van het argument maar in het feit dat de
+--    **bandberekening** ervan afhing. De wrapper geeft hem nergens aan door, dus
+--    er is geen pad waarlangs een meegestuurde dag de uitkomst nog kan bewegen.
+--    📏 Dat is geen gevolgtrekking maar een meting: `tests/rls/buddywachtrij.test.ts`
+--    vraagt dezelfde stand met vier ver uiteenliggende peildagen en eist één
+--    uitkomst. Breek je de wrapper — geef `p_vandaag` door aan `doelperiode()` —
+--    dan wordt die test rood.
+--
+-- ⚠️ **Wanneer de wrapper weg mag.** Zodra `wachtrij.ts` de eenargumentige versie
+--    aanroept én `src/lib/database.types.ts` daarop hergenereerd is. Dan is dit
+--    één regel in een volgende migratie, mét de bevestiging die een drop hoort te
+--    hebben. Niet eerder: zolang er één aanroeper is, is weghalen een kapotte
+--    client en geen opruiming.
+
+create or replace function public.buddyzoek_stand(p_goal_id uuid, p_vandaag date)
+  returns table (
+    status    text,
+    nog_nodig smallint,
+    sinds     timestamptz,
+    verloopt  timestamptz,
+    group_id  uuid
+  )
+  language sql
+  stable
+  security definer
+  set search_path = public, pg_temp
+as $$
+  -- ⚠️ `p_vandaag` gaat hier nergens naartoe. Dat is de hele functie.
+  select s.status, s.nog_nodig, s.sinds, s.verloopt, s.group_id
+  from public.buddyzoek_stand(p_goal_id) s;
+$$;
+
+revoke all on function public.buddyzoek_stand(uuid, date) from public, anon, authenticated;
+grant execute on function public.buddyzoek_stand(uuid, date) to authenticated;
+
+comment on function public.buddyzoek_stand(uuid, date) is
+  'Wrapper op buddyzoek_stand(uuid) die p_vandaag weggooit. Staat er zodat een '
+  'gedeployde client de reparatie meteen krijgt (vorm van 0294 en 0186); mag weg '
+  'zodra wachtrij.ts de eenargumentige versie aanroept. Getoetst in '
+  'tests/rls/buddywachtrij.test.ts: vier peildagen, een uitkomst.';

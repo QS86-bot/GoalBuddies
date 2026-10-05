@@ -2139,7 +2139,7 @@ export const en: Record<Sleutel, string> = {
 
   'buddyzoek.bevestig_titel': 'Before we start looking',
   'buddyzoek.bevestig_onbekenden':
-    'You will join a group with people you do not know. They will see your name, your profile picture and the weekly goals of this goal.',
+    'You will join a group with people you do not know. They will see your name, your profile picture, the title and the notes of this goal, and the weekly goals under it.',
   'buddyzoek.bevestig_bescherming':
     'Such a group is always protected: a missed week, a broken streak or a setback of yours is never visible there.',
   'buddyzoek.bevestig_lopende_week':

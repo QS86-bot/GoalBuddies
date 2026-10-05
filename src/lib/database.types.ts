@@ -1459,6 +1459,7 @@ export type Database = {
         Row: {
           approval_quorum: number | null
           approval_rule: string
+          automatisch: boolean
           categorie: string | null
           created_at: string
           created_by: string | null
@@ -1481,6 +1482,7 @@ export type Database = {
         Insert: {
           approval_quorum?: number | null
           approval_rule?: string
+          automatisch?: boolean
           categorie?: string | null
           created_at?: string
           created_by?: string | null
@@ -1503,6 +1505,7 @@ export type Database = {
         Update: {
           approval_quorum?: number | null
           approval_rule?: string
+          automatisch?: boolean
           categorie?: string | null
           created_at?: string
           created_by?: string | null
@@ -3003,18 +3006,30 @@ export type Database = {
         Args: { p_group_id: string; p_user: string }
         Returns: boolean
       }
+      blokkade_tussen: { Args: { p_a: string; p_b: string }; Returns: boolean }
       blokkades_plafond: { Args: never; Returns: number }
       blokkeer: { Args: { p_user: string }; Returns: Json }
-      buddyzoek_stand: {
-        Args: { p_goal_id: string; p_vandaag: string }
-        Returns: {
-          group_id: string
-          nog_nodig: number
-          sinds: string
-          status: string
-          verloopt: string
-        }[]
-      }
+      buddyzoek_stand:
+        | {
+            Args: { p_goal_id: string }
+            Returns: {
+              group_id: string
+              nog_nodig: number
+              sinds: string
+              status: string
+              verloopt: string
+            }[]
+          }
+        | {
+            Args: { p_goal_id: string; p_vandaag: string }
+            Returns: {
+              group_id: string
+              nog_nodig: number
+              sinds: string
+              status: string
+              verloopt: string
+            }[]
+          }
       buddyzoekopdrachten_over: { Args: never; Returns: number }
       check_waarden: {
         Args: { p_constraint: string; p_tabel: string }
@@ -3716,6 +3731,7 @@ export type Database = {
         }
         Returns: Json
       }
+      verloop_buddyzoekopdrachten: { Args: { p_nu: string }; Returns: number }
       verlopen_chatdocs: {
         Args: { p_limiet?: number }
         Returns: {
@@ -3775,6 +3791,11 @@ export type Database = {
         }[]
       }
       voltooiingen_plafond: { Args: never; Returns: number }
+      vorm_buddygroepen: {
+        Args: { p_max_groepen?: number; p_vandaag: string }
+        Returns: Json
+      }
+      vorm_een_buddygroep: { Args: { p_rijen: string[] }; Returns: string }
       vraag_ai_job: {
         Args: { p_goal_id: string; p_input: Json; p_kind: string }
         Returns: Json

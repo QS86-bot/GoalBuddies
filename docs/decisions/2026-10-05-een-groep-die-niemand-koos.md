@@ -31,7 +31,8 @@ gemeten:
 | --- | --- | --- |
 | `groups_automatisch_is_beschermd` | `zichtbaarheid = 'open'` | als `service_role` geprobeerd → `23514` |
 | `groups_automatisch_niet_ontdekbaar` | `ontdekbaar = true` | idem → `23514` |
-| de derde pin in `guard_group_update()` | de kolom zelf op `false` zetten | op een **gewone** groep geprobeerd, want op een automatische vangt RLS het al eerder af |
+| de kolomgrant op `groups.automatisch` | élke UPDATE door `authenticated` | 📏 `permission denied for table groups` — en dit is de grendel die vandaag bindt |
+| de derde pin in `guard_group_update()` | de kolom zelf op `false` zetten | op een **gewone** groep, en pas nadat de kolomgrant met de hand gegeven is — zie hieronder |
 | een tak in beide zet-RPC's | geeft `reason = 'automatisch'` i.p.v. een kale 23514 | — |
 
 ⚠️ **Die derde rij is de belangrijkste en de makkelijkste om te vergeten.** De
@@ -46,6 +47,34 @@ rijen en de UPDATE raakt niets — geen fout, geen wijziging. Dat ziet eruit als
 "de pin werkt". 📏 Pas op een gewone groep, waar de gebruiker wél beheerder is,
 vuurt de pin echt. Dat is CLAUDE.md's eis letterlijk: *breek de grendel die de
 ijking nóemt, niet zomaar iets.*
+
+⚠️⚠️ **En de eerste versie van deze sectie liet één handeling weg, die er
+precies de ijking van maakt.** 📏 Nagemeten op 05-10-2026: `authenticated` heeft
+UPDATE op negen kolommen van `groups` — `approval_quorum`, `approval_rule`,
+`categorie`, `evidence_policy`, `icon`, `name`, `omschrijving`, `season_cadence`,
+`voertaal` — en `automatisch` staat er niet bij. Een beheerder die de kolom
+uitzet krijgt daarom `permission denied for table groups`, en de pin komt niet
+aan de beurt. Om hém te meten is in de ijking eerst
+`grant update (automatisch) on public.groups to authenticated` gegeven; mét die
+grant vuurt hij, op `guard_group_update() line 104 at RAISE`, met *"Of een groep
+automatisch gevormd is, ligt vast"*.
+
+**Dat die regel hier eerst niet stond, is een echt gebrek en niet een
+formaliteit.** Een lezer die de ijking narekent zonder de grant, ziet
+`permission denied` en concludeert dat de pin niet bestaat — of erger, hij ziet
+*iets* roods en vinkt de pin af. ⚠️ **De security-ronde noemde dit anders dan
+het is:** zij stelde dat de ijking de kolomgrant gemeten had in plaats van de
+pin. Dat is onjuist — de pin vúurde, en de regel met het regelnummer staat
+hierboven. Wat klopt is de onderliggende klacht: de meting was niet na te lopen
+uit wat er stond. **De bevinding raakt dus een echt gebrek, alleen niet het
+gebrek dat hij noemt** — en dat is precies waarom CLAUDE.md zegt elke bevinding
+zelf te verifiëren voordat je hem verwerkt.
+
+⚠️ **Wat hieruit volgt voor de stand:** er staan twéé grendels voor deze kolom en
+niet één, de kolomgrant is de buitenste, en die is stil kwijt te raken — een
+tabelbrede UPDATE-grant zou hem in één keer wegnemen. Dat is dezelfde klasse als
+de rij van 14-09 in `docs/ENGINEER-REVIEW.md` over een nieuwe kolom onder een
+tabelbrede SELECT-grant. `kolomrechten:controle` bewaakt die kant.
 
 ## Het gat dat deze migratie zelf zou slaan
 

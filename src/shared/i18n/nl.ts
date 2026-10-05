@@ -2685,7 +2685,7 @@ export const nl = {
 
   'buddyzoek.bevestig_titel': 'Voordat we gaan zoeken',
   'buddyzoek.bevestig_onbekenden':
-    'Je komt in een groep met mensen die je niet kent. Zij zien je naam, je profielfoto en de weekdoelen van dit doel.',
+    'Je komt in een groep met mensen die je niet kent. Zij zien je naam, je profielfoto, de titel \u00e9n de notitie van dit doel, en de weekdoelen eronder.',
   'buddyzoek.bevestig_bescherming':
     'Zo\u2019n groep is altijd beschermd: een gemiste week, een verbroken reeks of een achterstand van jou is er nooit te zien.',
   'buddyzoek.bevestig_lopende_week':

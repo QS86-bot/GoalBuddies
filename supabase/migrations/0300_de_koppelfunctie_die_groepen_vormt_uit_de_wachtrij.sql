@@ -754,7 +754,15 @@ comment on function public.vorm_buddygroepen(date, integer) is
 -- ⚠️ De verbreding is zo smal als hij kan: **alleen** een platformbeheerder, en
 --    **alleen** bij een groep zonder énige actieve beheerder. Een groep mét
 --    beheerder verandert hier niet van, en een gewone gebruiker krijgt er niets
---    bij. Rij 39 in `docs/decisions/002-domeinregel7-oppervlakken.md`.
+--    bij. Rij 43 in `docs/decisions/002-domeinregel7-oppervlakken.md`; de
+--    groep zelf is rij 42 en de wachtrij rij 41.
+--
+--    ⚠️ Hier stond **rij 39**, en die bestond niet: 39 is `verzoekers_eerder_lid()`
+--       en 40 was het hoogste nummer. Gevonden door de security-ronde. Een
+--       verwijzing naar een dossierrij die er niet is, leest als een
+--       onderbouwing die iemand anders al gegeven heeft — en dat is precies de
+--       klasse die `padverwijzing:controle` voor bestandspaden afvangt en voor
+--       rijnummers niet kan.
 
 create or replace function public.mag_melding_als_escalatie(p_group_id uuid, p_subject_id uuid)
  RETURNS boolean
