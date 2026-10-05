@@ -58,6 +58,44 @@ describe('lokaleImports: wat telt als een lokale import', () => {
     expect(lokaleImports(bron)).toEqual(['paden.mjs']);
   });
 
+  // ⚠️ **QS8-629: de dubbele quote.** Vóór die reparatie gaf dit `[]` — en dan
+  //    kopieert het harnas het script niet mee zonder dat iets er rood van wordt.
+  it('vindt een import met dubbele quotes', () => {
+    expect(lokaleImports('import { x } from "./paden.mjs";')).toEqual(['paden.mjs']);
+    expect(lokaleImports('import "./opstart.mjs";')).toEqual(['opstart.mjs']);
+    expect(lokaleImports('const m = await import("./laat.mjs");')).toEqual(['laat.mjs']);
+  });
+
+  it('vindt een import met een backtick zonder interpolatie', () => {
+    expect(lokaleImports('const m = await import(`./laat.mjs`);')).toEqual(['laat.mjs']);
+  });
+
+  it('noemt een script één keer, ook als het in twee quotevormen wordt geïmporteerd', () => {
+    const bron = 'import { a } from "./paden.mjs";\nimport { b } from \'./paden.mjs\';';
+    expect(lokaleImports(bron)).toEqual(['paden.mjs']);
+  });
+
+  // ⚠️ Must-allows van dezelfde reparatie: een te ruime quote-klasse is een
+  //    detector die alles meeneemt, en dan bewijst de krappe kloon niets meer.
+  it('laat een backtick met interpolatie liggen — dat pad is niet statisch te volgen', () => {
+    expect(lokaleImports('const m = await import(`./${naam}.mjs`);')).toEqual([]);
+  });
+
+  it('laat een import met ongelijke quotes liggen — dat is geen geldige syntax', () => {
+    expect(lokaleImports('import { x } from "./paden.mjs\';')).toEqual([]);
+  });
+
+  it('laat een dubbel-gequote bare specifier en een andere map liggen', () => {
+    expect(
+      lokaleImports('import { join } from "node:path";\nimport { x } from "../src/a.ts";'),
+    ).toEqual([]);
+  });
+
+  it('laat een uitgecommentarieerde import met dubbele quotes liggen', () => {
+    const bron = '// vroeger: import { oud } from "./weg.mjs";\nimport { echt } from "./paden.mjs";';
+    expect(lokaleImports(bron)).toEqual(['paden.mjs']);
+  });
+
   it('laat een pad in een gewone string liggen — dat is geen import', () => {
     expect(lokaleImports("const uitleg = 'zie ./paden.mjs voor de rest';")).toEqual([]);
   });
@@ -174,6 +212,11 @@ const ZONDER_SLUITING: Record<string, string> = {
   //    melden, bewaakt vanaf dat moment de omweg.
   'tests/scripts/hulpscripts.test.ts':
     'de kopieeracties hier zijn de voeding van de ijking, niet het echte werk',
+  // ⚠️ **De enige implementatie, en dat is de bedoeling.** De grendel kijkt sinds
+  //    QS8-629 naar elk `.ts`-bestand in `tests/` en niet alleen naar
+  //    `*.test.ts`: een hulpbestand dat zelf scripts kopieert, was daarvoor
+  //    onzichtbaar. 📏 Gemeten bij het verbreden: **één** treffer, en dat is dit.
+  'tests/scripts/hulpscripts.ts': 'kopieerHulpscripts() zelf — de ene plek waar gekopieerd mag worden',
 };
 
 describe('geen enkel harnas kopieert zijn scripts nog zelf', () => {
@@ -191,9 +234,51 @@ describe('geen enkel harnas kopieert zijn scripts nog zelf', () => {
     );
   });
 
+  // ⚠️ **De ratel naar de andere kant, en hij is er om de verbreding vast te
+  //    houden (QS8-629).** De scan kijkt naar élk `.ts`-bestand in `tests/`;
+  //    zonder deze toets kan iemand hem stilletjes weer op `*.test.ts` zetten en
+  //    blijft alles groen, want de enige treffer buiten die bestanden staat als
+  //    vrijstelling. 📏 Gemeten met precies die mutatie: vóór deze toets **0**
+  //    rood. Een vrijstelling die niets meer vrijstelt, is rood.
+  it('elke vrijstelling dekt nog een kopieeractie die de scan zou vinden', () => {
+    const gevonden = new Set(
+      testbestanden(join(process.cwd(), 'tests'))
+        .filter((pad) => kopieeracties(readFileSync(pad, 'utf8')).length > 0)
+        .map((pad) => pad.slice(process.cwd().length + 1)),
+    );
+    const verweesd = Object.keys(ZONDER_SLUITING).filter((rij) => !gevonden.has(rij));
+    expect(verweesd, 'haal de rij weg, of de scan ziet het bestand niet meer').toEqual([]);
+  });
+
   it('vindt een kopieeractie uit scripts/ als je hem er een voert', () => {
     const bron = "cpSync(join(process.cwd(), 'scripts', naam), join(kloon, 'scripts', naam));";
     expect(kopieeracties(bron)).toHaveLength(1);
+  });
+
+  // ⚠️ **QS8-629: de dubbele quote en de backtick.** Vóór die reparatie bleef de
+  //    grendel groen op een harnas dat zijn scripts met `"scripts"` kopieerde.
+  it('vindt een kopieeractie uit scripts/ met dubbele quotes', () => {
+    const bron = 'cpSync(join(process.cwd(), "scripts", naam), join(kloon, "scripts", naam));';
+    expect(kopieeracties(bron)).toHaveLength(1);
+  });
+
+  it('vindt een kopieeractie uit scripts/ met een backtick', () => {
+    const bron = 'copyFileSync(join(process.cwd(), `scripts`, naam), join(kloon, naam));';
+    expect(kopieeracties(bron)).toHaveLength(1);
+  });
+
+  it('laat een kopie van iets anders met dubbele quotes met rust', () => {
+    const bron = 'cpSync(join(process.cwd(), "package.json"), join(kloon, "package.json"));';
+    expect(kopieeracties(bron)).toEqual([]);
+  });
+
+  it('laat een kopie met ongelijke quotes rond scripts met rust', () => {
+    expect(kopieeracties('cpSync(a, "scripts\', b);')).toEqual([]);
+  });
+
+  it('laat een uitgecommentarieerde kopieeractie met dubbele quotes liggen', () => {
+    const bron = '// vroeger: cpSync(a, "scripts", b);\nkopieerHulpscripts(kloon, ENTRIES);';
+    expect(kopieeracties(bron)).toEqual([]);
   });
 
   // ⚠️ Must-allow. Een harnas dat `package.json` meekopieert doet iets anders —
@@ -221,7 +306,7 @@ function testbestanden(map: string): string[] {
   for (const item of readdirSync(map, { withFileTypes: true })) {
     const pad = join(map, item.name);
     if (item.isDirectory()) uit.push(...testbestanden(pad));
-    else if (item.name.endsWith('.test.ts')) uit.push(pad);
+    else if (/\.tsx?$/.test(item.name)) uit.push(pad);
   }
   return uit;
 }
