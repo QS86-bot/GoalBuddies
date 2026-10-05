@@ -2148,6 +2148,14 @@ aangenomen. De prijs is één nestingniveau, dus `max-depth` kan erop omvallen.
    naam — en toen koppelde Linear niets, dus zijn alle acht statussen met de hand
    bijgewerkt. Leunt een issue op een ander, gebruik dan de blokkeerrelatie in
    Linear en land ze in volgorde.
+
+   ⚠️⚠️ **Krijg je één vaste branch opgelegd, dan kun je deze afspraak niet
+   houden — en dan claim je met `--hier`.** Dat is sinds QS8-620 de weg; de regel
+   staat in `CLAUDE.md` bij *Versiebeheer* en de onderbouwing in
+   `docs/decisions/2026-10-05-de-claim-ziet-een-vaste-sessiebranch-nooit.md`.
+   Draai je de claim níet, dan ziet de andere sessie je werk nergens: dat is wat
+   QS8-603 twee keer liet bouwen. **De naam van je branch is dan geen nalatigheid
+   maar een gegeven; het overslaan van de claim wél een keuze.**
 2. `gh` werkt (ingelogd als QS86-bot, scopes repo, workflow, read:org, gist).
    Roep hem aan via het volledige pad: `"C:\Program Files\GitHub CLI\gh.exe"` —
    de PATH van een sessie is ouder dan de installatie. PR's kunnen dus, maar we
