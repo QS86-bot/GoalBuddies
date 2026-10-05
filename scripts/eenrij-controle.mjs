@@ -43,6 +43,7 @@ import { join, relative } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 
 import { zonderCommentaar } from './zonder-commentaar.mjs';
+import { zonderCommentaarSql } from './zonder-sql-commentaar.mjs';
 
 const WORTEL = fileURLToPath(new URL('..', import.meta.url));
 const BRONMAPPEN = ['src', 'app'];
@@ -181,23 +182,34 @@ export function tabelLichamen(sql) {
       if (sql[i] === '(') diepte += 1;
       else if (sql[i] === ')') diepte -= 1;
     }
-    if (diepte === 0) uit.push({ tabel: kop[1], lichaam: sql.slice(kop.index + kop[0].length, i - 1) });
+    if (diepte === 0) {
+      uit.push({
+        tabel: kop[1],
+        lichaam: sql.slice(kop.index + kop[0].length, i - 1),
+        index: kop.index,
+      });
+    }
   }
 
   return uit;
 }
 const UNIEKE_INDEX =
-  /create\s+unique\s+index\s+(?:concurrently\s+)?(?:if\s+not\s+exists\s+)?\w+\s+on\s+(?:public\.)?(\w+)\s*\(([^)]*)\)\s*(where\s+[^;]+)?;/gi;
-const ALTER_UNIQUE =
-  /alter\s+table\s+(?:only\s+)?(?:public\.)?(\w+)[\s\S]{0,200}?add\s+constraint\s+\w+\s+unique\s*\(([^)]*)\)/gi;
+  /create\s+unique\s+index\s+(?:concurrently\s+)?(?:if\s+not\s+exists\s+)?(\w+)\s+on\s+(?:public\.)?(\w+)\s*\(([^)]*)\)\s*(where\s+[^;]+)?;/gi;
 const KOLOM_PK = /^\s*(\w+)\s+[\w ()]*?\bprimary\s+key\b/gim;
-const TABEL_PK = /(?:^|,)\s*(?:constraint\s+\w+\s+)?primary\s+key\s*\(([^)]*)\)/gim;
-const TABEL_UNIQUE = /(?:^|,)\s*(?:constraint\s+\w+\s+)?unique\s*\(([^)]*)\)/gim;
+const TABEL_PK = /(?:^|,)\s*(?:constraint\s+(\w+)\s+)?primary\s+key\s*\(([^)]*)\)/gim;
+const TABEL_UNIQUE = /(?:^|,)\s*(?:constraint\s+(\w+)\s+)?unique\s*\(([^)]*)\)/gim;
+const DROP_INDEX = /drop\s+index\s+(?:concurrently\s+)?(?:if\s+exists\s+)?([\w.]+(?:\s*,\s*[\w.]+)*)/gi;
+const ALTER_TABLE = /alter\s+table\s+(?:if\s+exists\s+)?(?:only\s+)?(?:public\.)?(\w+)\s+([^;]*);/gi;
 
 function kolommen(ruw) {
   return ruw
     .split(',')
-    .map((k) => k.trim().replace(/\s+(asc|desc)$/i, '').replace(/^"|"$/g, ''))
+    .map((k) =>
+      k
+        .trim()
+        .replace(/\s+(asc|desc)$/i, '')
+        .replace(/^"|"$/g, ''),
+    )
     .filter((k) => /^\w+$/.test(k));
 }
 
@@ -297,31 +309,178 @@ export function viewBasisUit(ruw) {
   return { basis: basis[1], kolommen: kolommen.filter((k) => k !== null) };
 }
 
+/** Een garantie mét de naam waaronder het schema haar kent — een `drop` zoekt op die naam. */
+function garantie(naam, kolommenLijst, predicaat = null) {
+  return { naam, kolommen: kolommenLijst, predicaat };
+}
+
 /**
- * Per tabel elke verzameling kolommen waarvan het schema belooft dat ze hoogstens
- * één rij aanwijzen.
+ * De garanties die één `create table` in zijn lichaam draagt.
  *
  * ⚠️ Zowel de kolomvorm (`goal_id uuid primary key ...`) als de tabelvorm
  *    (`primary key (group_id, user_id)`) telt. 📏 Bij het schrijven meldde een
  *    eerdere versie `goal_risk` en `hero_profiles` als ongedekt, en dat was de
  *    lezer en niet het schema: allebei dragen hun sleutel inline op de kolom.
+ *
+ * Zonder `constraint naam` geeft Postgres de standaardnaam: `<tabel>_pkey` en
+ * `<tabel>_<kolommen>_key`. Een latere `drop constraint` noemt die naam.
  */
-export function garantiesUit(sqlTeksten) {
-  const perTabel = new Map();
-  const zet = (tabel, kolommenLijst, predicaat = null) => {
-    if (kolommenLijst.length === 0) return;
-    if (!perTabel.has(tabel)) perTabel.set(tabel, []);
-    perTabel.get(tabel).push({ kolommen: kolommenLijst, predicaat });
-  };
+function garantiesInLichaam(tabel, lichaam) {
+  const uit = [];
+  for (const k of lichaam.matchAll(KOLOM_PK)) uit.push(garantie(`${tabel}_pkey`, [k[1]]));
+  for (const k of lichaam.matchAll(TABEL_PK)) {
+    uit.push(garantie(k[1] ?? `${tabel}_pkey`, kolommen(k[2])));
+  }
+  for (const k of lichaam.matchAll(TABEL_UNIQUE)) {
+    const kol = kolommen(k[2]);
+    uit.push(garantie(k[1] ?? `${tabel}_${kol.join('_')}_key`, kol));
+  }
+  return uit.filter((g) => g.kolommen.length > 0);
+}
 
-  for (const sql of sqlTeksten) {
-    for (const { tabel, lichaam } of tabelLichamen(sql)) {
-      for (const k of lichaam.matchAll(KOLOM_PK)) zet(tabel, [k[1]]);
-      for (const k of lichaam.matchAll(TABEL_PK)) zet(tabel, kolommen(k[1]));
-      for (const k of lichaam.matchAll(TABEL_UNIQUE)) zet(tabel, kolommen(k[1]));
+/** Per `alter table`-actie de gebeurtenis die ze voor de garanties betekent; wat hier niet staat, doet er niets mee. */
+const ALTER_ACTIES = [
+  [/^rename\s+to\s+(\w+)/i, (tabel, m) => ({ soort: 'hernoemTabel', tabel, nieuw: m[1] })],
+  [
+    /^rename\s+column\s+(\w+)\s+to\s+(\w+)/i,
+    (tabel, m) => ({ soort: 'hernoemKolom', tabel, oud: m[1], nieuw: m[2] }),
+  ],
+  [
+    /^drop\s+constraint\s+(?:if\s+exists\s+)?(\w+)/i,
+    (tabel, m) => ({ soort: 'dropNaam', tabel, namen: [m[1]] }),
+  ],
+  [/^drop\s+column\s+(?:if\s+exists\s+)?(\w+)/i, (tabel, m) => ({ soort: 'dropKolom', tabel, kolom: m[1] })],
+  [
+    /^add\s+constraint\s+(\w+)\s+(?:unique|primary\s+key)\s*\(([^)]*)\)/i,
+    (tabel, m) => ({
+      soort: 'maak',
+      tabel,
+      garanties: [garantie(m[1], kolommen(m[2]))],
+    }),
+  ],
+];
+
+function alterGebeurtenissen(tabel, acties, index) {
+  const uit = [];
+  for (const actie of opDiepteNul(acties, ',')) {
+    for (const [patroon, maak] of ALTER_ACTIES) {
+      const m = patroon.exec(actie.trim());
+      if (m !== null) uit.push({ index, ...maak(tabel, m) });
     }
-    for (const m of sql.matchAll(UNIEKE_INDEX)) zet(m[1], kolommen(m[2]), predicaatUit(m[3]));
-    for (const m of sql.matchAll(ALTER_UNIQUE)) zet(m[1], kolommen(m[2]));
+  }
+  return uit;
+}
+
+/**
+ * Wat één migratie met de garanties doet, in de volgorde waarin het in het
+ * bestand staat.
+ *
+ * ⚠️⚠️ **De volgorde binnen een bestand is de eerste helft van de reparatie.**
+ *    0094 en 0266 doen `drop index if exists x;` en daarna `create unique index
+ *    x …` met een andere kolomverzameling. Sorteer je de gebeurtenissen per soort
+ *    in plaats van op positie, dan staat de drop achter de create en verdwijnt de
+ *    nieuwe index.
+ */
+export function gebeurtenissenIn(sql) {
+  const uit = [];
+  for (const { tabel, lichaam, index } of tabelLichamen(sql)) {
+    uit.push({
+      index,
+      soort: 'maak',
+      tabel,
+      garanties: garantiesInLichaam(tabel, lichaam),
+    });
+  }
+  for (const m of sql.matchAll(UNIEKE_INDEX)) {
+    const g = garantie(m[1], kolommen(m[3]), predicaatUit(m[4]));
+    uit.push({ index: m.index, soort: 'maak', tabel: m[2], garanties: [g] });
+  }
+  for (const m of sql.matchAll(DROP_INDEX)) {
+    // ⚠️ Een naam met een ander schema (`storage.objects_…`) is geen index van
+    //    `public` en kan er dus ook geen garantie van afhalen.
+    const namen = m[1].split(',').map((n) => n.trim().replace(/^public\./, ''));
+    uit.push({
+      index: m.index,
+      soort: 'dropNaam',
+      tabel: null,
+      namen: namen.filter((n) => !n.includes('.')),
+    });
+  }
+  for (const m of sql.matchAll(ALTER_TABLE)) uit.push(...alterGebeurtenissen(m[1], m[2], m.index));
+  return uit.sort((x, y) => x.index - y.index);
+}
+
+/** Alles in `lijst` behalve wat `weg` aanwijst, als nieuwe lijst. */
+const zonder = (lijst, weg) => lijst.filter((g) => !weg(g));
+
+const TOEPASSERS = {
+  // ⚠️ Een tweede definitie onder dezelfde naam doet niets: `create … if not
+  //    exists` slaat over, en zonder `if not exists` had Postgres geweigerd.
+  maak: (schema, e) => {
+    const lijst = schema.get(e.tabel) ?? [];
+    for (const g of e.garanties) if (!lijst.some((x) => x.naam === g.naam)) lijst.push(g);
+    if (lijst.length > 0) schema.set(e.tabel, lijst);
+  },
+  dropNaam: (schema, e) => {
+    const draagtNaam = (g) => e.namen.includes(g.naam);
+    // `tabel: null` is een `drop index`: een indexnaam is er één per schema, dus overal zoeken.
+    const tabellen = e.tabel === null ? [...schema.keys()] : [e.tabel];
+    for (const tabel of tabellen) schema.set(tabel, zonder(schema.get(tabel) ?? [], draagtNaam));
+  },
+  hernoemTabel: (schema, e) => {
+    if (!schema.has(e.tabel)) return;
+    schema.set(e.nieuw, schema.get(e.tabel));
+    schema.delete(e.tabel);
+  },
+  hernoemKolom: (schema, e) => {
+    const noem = (k) => (k === e.oud ? e.nieuw : k);
+    for (const g of schema.get(e.tabel) ?? []) {
+      g.kolommen = g.kolommen.map(noem);
+      if (g.predicaat?.kolom !== undefined) g.predicaat = { ...g.predicaat, kolom: noem(g.predicaat.kolom) };
+    }
+  },
+  // ⚠️ Postgres haalt bij `drop column` elke index en constraint mee waar die
+  //    kolom in zit — ook de helft van een samengestelde sleutel.
+  dropKolom: (schema, e) => {
+    const raakt = (g) => g.kolommen.includes(e.kolom) || g.predicaat?.kolom === e.kolom;
+    schema.set(e.tabel, zonder(schema.get(e.tabel) ?? [], raakt));
+  },
+};
+
+/**
+ * Per tabel elke verzameling kolommen waarvan het schema belooft dat ze hoogstens
+ * één rij aanwijzen — zoals het schema er ná alle migraties uitziet.
+ *
+ * ⚠️⚠️ **De migraties worden afgespeeld en niet opgeteld — QS8-639.** Tot die
+ *    datum werd elke `create unique index` een garantie en bleef hij er een, ook
+ *    als een latere migratie hem dropte of de tabel hernoemde. 📏 Gemeten tegen
+ *    `pg_index` van een database uit alle 301 migraties: 71 garanties uit de
+ *    tekst, waarvan **drie** niet bestonden — twee oude varianten van
+ *    `points_ledger_dedupe_idx` (0094 en 0266 droppen hem en bouwen hem opnieuw
+ *    mét `ronde`) en `opslag_dagtellers` (0234 hernoemt tabel én kolom). Geen
+ *    aanroep leunde erop; dat is geluk. `tests/rls/eenrij-garanties.test.ts`
+ *    legt het afspelen naast de echte database.
+ *
+ * ⚠️ **Wat hij volgt:** `drop index`, `drop constraint`, `drop column`,
+ *    `rename to`, `rename column`, en `add constraint … unique|primary key`.
+ *    Wat hij niet volgt is `drop table`, `rename constraint` en een
+ *    `alter index … rename`; geen ervan komt in de migraties voor, en komt er
+ *    een bij, dan is de databasetoets de eerste die het ziet. Een statement
+ *    binnen een `do $$ … if … then`-blok telt als uitgevoerd, want dat is wat
+ *    een database die uit de map is opgebouwd doet.
+ */
+export function garantiesUit(ruweSqlTeksten) {
+  // ⚠️ **Het commentaar gaat eruit, en dat is hier geen formaliteit.** Elke migratie
+  //    draagt in zijn kop een rollback-pad als commentaar, vol `drop index` en
+  //    `create unique index`. Gelezen als code haalt zo'n regel een echte garantie
+  //    weg (een rollback die een index uit een eerdere migratie dropt) of voegt er
+  //    een toe (een rollback die er een terugzet). 📏 Vandaag verandert het niets:
+  //    69 garanties met én zonder. De gedeelde SQL-knip, want `knip:controle`
+  //    eist er één voor wie SQL leest.
+  const sqlTeksten = ruweSqlTeksten.map(zonderCommentaarSql);
+  const schema = new Map();
+  for (const sql of sqlTeksten) {
+    for (const gebeurtenis of gebeurtenissenIn(sql)) TOEPASSERS[gebeurtenis.soort](schema, gebeurtenis);
   }
 
   // ⚠️ **Ná de tabellen, en in bestandsvolgorde.** Een view wordt herdefinieerd;
@@ -334,14 +493,24 @@ export function garantiesUit(sqlTeksten) {
 
   for (const [naam, view] of views) {
     if (view === null) continue;
-    for (const garantie of perTabel.get(view.basis) ?? []) {
-      if (!garantie.kolommen.every((k) => view.kolommen.includes(k))) continue;
-      if (garantie.predicaat !== null && !view.kolommen.includes(garantie.predicaat.kolom)) continue;
-      zet(naam, garantie.kolommen, garantie.predicaat);
+    for (const g of schema.get(view.basis) ?? []) {
+      if (!g.kolommen.every((k) => view.kolommen.includes(k))) continue;
+      if (g.predicaat !== null && !view.kolommen.includes(g.predicaat.kolom)) continue;
+      TOEPASSERS.maak(schema, {
+        tabel: naam,
+        garanties: [garantie(`${naam}:${g.naam}`, g.kolommen, g.predicaat)],
+      });
     }
   }
 
-  return perTabel;
+  return new Map(
+    [...schema]
+      .filter(([, lijst]) => lijst.length > 0)
+      .map(([tabel, lijst]) => [
+        tabel,
+        lijst.map(({ kolommen: k, predicaat }) => ({ kolommen: k, predicaat })),
+      ]),
+  );
 }
 
 // ---------------------------------------------------------------------------
