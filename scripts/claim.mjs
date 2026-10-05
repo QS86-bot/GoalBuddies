@@ -79,6 +79,32 @@
  *    dan is het onderwerp weer de enige bron.
  *
  * Uitleg in `docs/decisions/2026-09-13-een-opgeruimde-branch-is-geen-vrij-issue.md`.
+ *
+ * ## ⚠️⚠️ Een branchnaam is vrij, en een vaste sessiebranch draagt nooit een nummer — QS8-620
+ *
+ * De eerste bron leest het **issuenummer in de branchnaam**. Een sessie die een
+ * vaste branch opgelegd krijgt (`claude/…`) bouwt elk issue op een naam die per
+ * constructie geen nummer draagt, dus haar werk was voor niemand zichtbaar. 📏 Op
+ * 28-09-2026 is QS8-603 daardoor twee keer gebouwd.
+ *
+ * ⚠️ **En de oorzaak lag een laag lager dan de blinde leeskant.** `zetClaim()`
+ *    doet `checkout -b … origin/main` en haalt zo'n sessie van haar eigen werk
+ *    af — zij kón dit script niet draaien. Daarom zijn er twee helften:
+ *    `--hier` claimt op de branch waar je al staat, en `meldVasteBranch()`
+ *    weigert de standaardweg zodra die een sessie van haar branch zou halen.
+ *
+ * De derde bron is daarmee de **claim-commit op een andere branch dan `main`**:
+ * `bezetteNaamlozeBranches()` leest wat er vóór `origin/main` op elke remote
+ * branch staat. Geen extra netwerkaanroep — de fetch hierboven haalt élke branch
+ * op.
+ *
+ * ⚠️⚠️ **Met een grens, en zonder die grens is de bron onbruikbaar.** 📏 Op
+ *    05-10-2026 stonden er **176** unieke claim-commits vóór `main`, die over de
+ *    34 branches samen **533** branch-claimparen opleveren — terwijl er **acht**
+ *    issues echt in uitvoering waren. Vijf afgedwaalde branches dragen er 47 tot
+ *    154 per stuk. Zie `MAX_ONAFGERONDE_CLAIMS`.
+ *
+ * Uitleg in `docs/decisions/2026-10-05-de-claim-ziet-een-vaste-sessiebranch-nooit.md`.
  */
 import { execFileSync } from 'node:child_process';
 import { fileURLToPath, pathToFileURL } from 'node:url';
@@ -186,6 +212,70 @@ export function claimVoor(nummer, onderwerp) {
   return new RegExp(`^claim: ${TEAM}-${nummer}(?![0-9])`, 'i').test(onderwerp);
 }
 
+/**
+ * Hoeveel onafgeronde claims een branch mag dragen om nog een wérkbank te zijn
+ * — QS8-620.
+ *
+ * ⚠️⚠️ **Zonder deze grens is de bron onbruikbaar, en dat is gemeten en niet
+ *    gevreesd.** 📏 Op 05-10-2026 stonden er **176** unieke claim-commits vóór
+ *    `main`. Per branch geteld — en dat is hoe deze grens kijkt — zijn het
+ *    **533** paren over 34 branches, want de twee grootste delen bijna hun hele
+ *    geschiedenis. Het overgrote deel zit in vijf afgedwaalde branches die nooit
+ *    geland zijn:
+ *
+ *      qs8-438-…                          154 claims, 1832 commits vóór main
+ *      overdracht-13-09                   153 claims, 1832
+ *      qs8-388-…                           83 claims, 1466
+ *      qs8-375-…                           70 claims, 1401
+ *      claude/linear-backlog-plan-erjwv1   47 claims, 1269
+ *
+ *    Werk dat écht in uitvoering is, draagt er **één**, op 1 tot 3 commits —
+ *    gemeten over qs8-631, qs8-624, qs8-623, qs8-621, qs8-606, qs8-603, qs8-525
+ *    en qs8-233. Een regel zonder grens zou dus 176 bezettingen melden waar er
+ *    acht zijn, en een controle die alles meldt leer je te negeren.
+ *
+ * ⚠️ **De grens is structureel en niet een datum, met opzet.** Een tipdatum zou
+ *    hier vandaag ook werken, maar een datumdrempel wordt vanzelf onwaar zonder
+ *    dat er iets rood van gaat — dezelfde klasse als de prijstabel die een datum
+ *    in een commentaarregel droeg (QS8-187). Het aantal onafgeronde claims is
+ *    een eigenschap van het ding zelf: een sessie werkt aan één issue, een
+ *    kerkhof draagt er honderdvijftig.
+ *
+ * ⚠️ **En de bron ruimt zichzelf op.** `origin/main..<branch>` krimpt zodra werk
+ *    landt, dus de claim van een afgerond issue valt er vanzelf uit. Dat is
+ *    precies het verschil met `gelandVoor()`, die de ándere kant leest.
+ */
+export const MAX_ONAFGERONDE_CLAIMS = 3;
+
+/**
+ * De branches die dít issue bezet houden zonder het in hun naam te dragen —
+ * QS8-620.
+ *
+ * `takken` is een lijst van `{ naam, claims }`, waarin `claims` de
+ * onderwerpregels zijn die vóór `origin/main` op die branch staan. Puur en
+ * apart geëxporteerd, want een grens die je niet los kunt aanbieden kun je niet
+ * ijken.
+ *
+ * ⚠️ **Een branch die het nummer wél in zijn naam heeft, valt hier af.** Die
+ *    vindt `botsendeBranches()` al, en twee meldingen over dezelfde branch maken
+ *    de melding slechter in plaats van beter.
+ *
+ * ⚠️ `tip` staat in het type omdat `meldNaamlozeBezetting()` hem leest: een
+ *    branchbevinding noemt de ouderdom van zijn bewijs (QS8-435). Deze functie
+ *    gebruikt hem zelf niet — hij reist mee.
+ *
+ * @param {number} nummer
+ * @param {Array<{naam: string, tip: string, claims: string[]}>} takken
+ */
+export function bezetteNaamlozeBranches(nummer, takken) {
+  return takken.filter(
+    (tak) =>
+      botsendeBranches(nummer, [tak.naam]).length === 0 &&
+      tak.claims.length <= MAX_ONAFGERONDE_CLAIMS &&
+      tak.claims.some((regel) => claimVoor(nummer, regel)),
+  );
+}
+
 function git(argumenten) {
   return execFileSync('git', argumenten, { cwd: WORTEL, encoding: 'utf8' });
 }
@@ -223,6 +313,42 @@ function onderwerpenOpMain() {
   return git(['log', 'origin/main', '--format=%s']).split('\n').filter((regel) => regel !== '');
 }
 
+/** Elke remote branch behalve `main` zelf. `origin/HEAD` is een verwijzing. */
+function remoteTakken() {
+  return git(['for-each-ref', '--format=%(refname:short)', 'refs/remotes/origin'])
+    .split('\n')
+    .map((regel) => regel.trim())
+    .filter((ref) => ref !== '' && ref !== 'origin/HEAD' && ref !== 'origin/main');
+}
+
+/**
+ * Wat er per remote branch vóór `main` staat — QS8-620.
+ *
+ * ⚠️ **Geen netwerkaanroep.** `haalRemoteOp()` doet `git fetch --prune origin`
+ *    en dat haalt élke branch op, dus de objecten staan al lokaal. Dat is
+ *    dezelfde eigenschap waarop de tweede bron van QS8-449 leunt.
+ *
+ * ⚠️ **De claims worden hier in JS gefilterd en niet met `git log --grep`.** Die
+ *    zoekt in het hele bericht, dus een commit die `claim: QS8-N` in zijn *body*
+ *    citeert zou meetellen in de telling waar `MAX_ONAFGERONDE_CLAIMS` op
+ *    beslist — en dan kan een citaat een échte bezetting onzichtbaar maken door
+ *    de branch over de grens te duwen. `%s` is het onderwerp, en dat is wat
+ *    `claimVoor()` leest.
+ *
+ * ⚠️ Eén `git log` per branch, lokaal. 📏 34 branches op 05-10-2026, waarvan de
+ *    vijf grootste 1832 regels teruggeven; dat is onder een seconde en het staat
+ *    naast een fetch die al over het netwerk ging.
+ */
+function takkenMetClaims() {
+  return remoteTakken().map((ref) => ({
+    naam: ref.replace(/^origin\//, ''),
+    tip: git(['log', '-1', '--format=%cs', ref]).trim(),
+    claims: git(['log', '--format=%s', `origin/main..${ref}`])
+      .split('\n')
+      .filter((regel) => /^claim: /i.test(regel)),
+  }));
+}
+
 /** De branchlijst zegt dat hier iemand zit. Dat weigert hard. */
 function meldBezet(nummer, botsingen) {
   console.error(`\n✗ claim: ${TEAM.toUpperCase()}-${nummer} is al bezet — ${botsingen.length} branch(es):`);
@@ -256,30 +382,107 @@ function meldGeland(nummer, gelande) {
   );
 }
 
-function zetClaim(naam, nummer, vervolg) {
-  const nu = new Date().toISOString().slice(11, 16);
+/**
+ * Er zit iemand op een branch die het nummer niet in zijn naam draagt — QS8-620.
+ *
+ * Weigert hard, net als `meldBezet()`: dit is bezetting *nu* en geen gelande
+ * geschiedenis. De tipdatum staat erbij omdat een branchbevinding zonder de
+ * ouderdom van zijn bewijs een disclaimer is (QS8-435).
+ */
+function meldNaamlozeBezetting(nummer, takken) {
+  console.error(
+    `\n✗ claim: ${TEAM.toUpperCase()}-${nummer} is al bezet — ${takken.length} branch(es) zónder het nummer in hun naam:`,
+  );
+  for (const tak of takken) {
+    console.error(`    ${tak.naam}  (laatste commit ${tak.tip}, ${tak.claims.length} onafgeronde claim(s))`);
+  }
+  console.error(
+    '\n  Die naam draagt geen issuenummer, dus de branchlijst zag dit issue als\n' +
+      '  vrij — maar de claim-commit op die branch zegt dat er iemand zit. Dat is\n' +
+      '  het gat waardoor QS8-603 op 28-09 twee keer gebouwd is.\n' +
+      '\n  Bouw dit issue niet. Een sessie die op één vaste branch werkt, claimt\n' +
+      '  daar met `--hier`; dat is wat je hier ziet.',
+  );
+}
+
+/**
+ * De twee berichtdelen van een claim-commit. Puur, zodat een toets ze kan lezen
+ * zonder een repo te bouwen.
+ *
+ * ⚠️ Het onderwerp is wat `claimVoor()` en `bezetteNaamlozeBranches()` straks
+ *    lezen. Verander je de vorm hier, dan verandert hij daar mee — en dat is de
+ *    reden dat beide kanten dezelfde functie delen in plaats van elk hun eigen
+ *    letterlijke tekst te dragen.
+ *
+ * ⚠️ **Het returntype is een tuple en geen `string[]`, met opzet.** Onder
+ *    `noUncheckedIndexedAccess` geeft `const [a, b] = …` op een array
+ *    `string | undefined`, en dan moet elke aanroeper een `undefined` wegwerken
+ *    die er niet kan zijn. Twee velden met een vaste volgorde zijn een tuple.
+ *
+ * @param {number} nummer
+ * @param {string} nu Uur en minuut in UTC, als `HH:MM`.
+ * @param {boolean} vervolg
+ * @returns {[string, string]} Het onderwerp en de body.
+ */
+export function claimBericht(nummer, nu, vervolg) {
   const staart = vervolg
     ? '\n\nMet --vervolg gezet: er is al werk voor dit issue op main geland en de\nclaimende sessie heeft vastgesteld dat er een echt vervolg open staat.'
     : '';
 
-  git(['checkout', '-b', naam, 'origin/main']);
-  git([
-    'commit',
-    '--allow-empty',
-    '-m',
+  return [
     `claim: ${TEAM.toUpperCase()}-${nummer} — bezet sinds ${nu} UTC`,
-    '-m',
     'Lege claim-commit, zie scripts/claim.mjs en QS8-294. Er werken twee sessies\n' +
       'in deze backlog; een branch op de remote is het enige signaal dat ze\n' +
       'allebei aantoonbaar lezen.' +
       staart,
-  ]);
+  ];
+}
+
+/** De branch waar de sessie nu op staat. */
+function huidigeBranch() {
+  return git(['rev-parse', '--abbrev-ref', 'HEAD']).trim();
+}
+
+/** Het uur en de minuut in UTC, zoals de claim-commit ze draagt. */
+function nuInUtc() {
+  return new Date().toISOString().slice(11, 16);
+}
+
+function zetClaim(naam, nummer, vervolg) {
+  const [onderwerp, body] = claimBericht(nummer, nuInUtc(), vervolg);
+
+  git(['checkout', '-b', naam, 'origin/main']);
+  git(['commit', '--allow-empty', '-m', onderwerp, '-m', body]);
   git(['push', '-u', 'origin', naam]);
+}
+
+/**
+ * De claim op de branch waar de sessie al staat — QS8-620.
+ *
+ * ⚠️ **Waarom dit nodig is.** Een sessie kan een vaste branch opgelegd krijgen
+ *    en mag er niet af; `zetClaim()` doet `checkout -b … origin/main` en haalt
+ *    zo'n sessie van haar eigen werk af. Die kan het gereedschap dus niet
+ *    gebruiken, en gebruikte het ook niet: 📏 van de 33 merges sinds 13-09
+ *    zonder claim-commit waren de zeven recentste issue-bouwen alle zeven van
+ *    zo'n sessie.
+ *
+ * ⚠️ **En de claim moet gepusht worden om iets te zijn.** Een claim-commit die
+ *    alleen lokaal staat, is voor de andere sessie niet te zien — dan is het een
+ *    aantekening en geen claim.
+ */
+function zetClaimHier(nummer, vervolg) {
+  const naam = huidigeBranch();
+  const [onderwerp, body] = claimBericht(nummer, nuInUtc(), vervolg);
+
+  git(['commit', '--allow-empty', '-m', onderwerp, '-m', body]);
+  git(['push', '-u', 'origin', naam]);
+  return naam;
 }
 
 function hoofd() {
   const argumenten = process.argv.slice(2);
   const vervolg = argumenten.includes('--vervolg');
+  const hier = argumenten.includes('--hier');
   const argument = argumenten.find((a) => !a.startsWith('--'));
   const nummer = nummerUit(argument);
 
@@ -300,20 +503,41 @@ function hoofd() {
     process.exit(1);
   }
 
+  const naamloos = bezetteNaamlozeBranches(nummer, takkenMetClaims());
+  if (naamloos.length > 0) {
+    meldNaamlozeBezetting(nummer, naamloos);
+    process.exit(1);
+  }
+
   const gelande = gelandVoor(nummer, onderwerpenOpMain());
   if (gelande.length > 0 && !vervolg) {
     meldGeland(nummer, gelande);
     process.exit(1);
   }
 
+  if (hier) {
+    meldGeslaagd(nummer, zetClaimHier(nummer, gelande.length > 0), gelande.length, true);
+    return;
+  }
+
+  const eigen = huidigeBranch();
+  if (eigen !== 'main' && nummerUit(eigen) === null) {
+    meldVasteBranch(eigen);
+    process.exit(1);
+  }
+
   const { naam, vanLinear } = claimNaam(argument, nummer);
   zetClaim(naam, nummer, gelande.length > 0);
+  meldGeslaagd(nummer, naam, gelande.length, vanLinear);
+}
 
+/** Wat er na een geslaagde claim op het scherm hoort. */
+function meldGeslaagd(nummer, naam, gelande, naamIsBesloten) {
   console.log(`\n✓ claim: ${TEAM.toUpperCase()}-${nummer} bezet op ${naam}`);
-  if (gelande.length > 0) {
-    console.log(`⚠ Met --vervolg gezet — ${gelande.length} regel(s) op main wijzen op geland werk voor dit issue.`);
+  if (gelande > 0) {
+    console.log(`⚠ Met --vervolg gezet — ${gelande} regel(s) op main wijzen op geland werk voor dit issue.`);
   }
-  if (!vanLinear) {
+  if (!naamIsBesloten) {
     console.log(
       '⚠ Dit is een terugvalnaam. Linear koppelt branch, PR en issue alleen\n' +
         '  automatisch aan elkaar bij de naam die hij zelf voorstelt — plak die\n' +
@@ -321,6 +545,26 @@ function hoofd() {
     );
   }
   console.log('  Zet het issue nu ook op In Progress in Linear.');
+}
+
+/**
+ * De sessie staat op een branch zonder issuenummer — QS8-620.
+ *
+ * ⚠️ **Weigeren en niet waarschuwen, want de standaardweg haalt zo'n sessie van
+ *    haar eigen werk af.** `zetClaim()` doet `checkout -b … origin/main`. Dat is
+ *    precies de reden dat een sessie met een opgelegde branch dit gereedschap
+ *    niet kón gebruiken, en dus niet gebruikte.
+ */
+function meldVasteBranch(eigen) {
+  console.error(
+    `\n✗ claim: je staat op \`${eigen}\`, en die naam draagt geen issuenummer.\n` +
+      '\n  De gewone weg maakt een branch per issue vanaf origin/main, en dat zou\n' +
+      '  je van deze branch af halen. Twee uitwegen:\n' +
+      '\n    npm run claim -- <issue> --hier     claim op déze branch, en push hem\n' +
+      '    git checkout main                   en daarna de gewone weg\n' +
+      '\n  Met --hier draagt je sessiebranch de claim-commit, en dan ziet de\n' +
+      '  andere sessie je werk wél — dat is wat QS8-620 repareert.',
+  );
 }
 
 /**
