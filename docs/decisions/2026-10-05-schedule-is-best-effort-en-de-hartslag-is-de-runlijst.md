@@ -139,7 +139,53 @@ toets op het commentaar achter de cron), in een kopie van de werkboom:
 | 6 | een fout bij het ophalen wordt een lege lijst | 1 — *zegt OVERGESLAGEN en geen groen* |
 | 7 | een handmatige run telt als gepland | 1 — *telt een handmatige run als hartslag maar niet als gepland ritme* |
 
-⚠️ **Wat niet gedaan kon worden:** `uurjobs.yml` is nog nooit gedraaid. Hij bestaat
-pas op `main` en draait voor het eerst bij de eerstvolgende `schedule:` of via
-`workflow_dispatch`. De controle zelf is wél tegen de echte runlijst gedraaid
-(§1), maar niet vanuit die workflow.
+⚠️ **Wat niet gedaan kon worden toen dit geschreven werd:** `uurjobs.yml` was nog nooit
+gedraaid. Dat is op 05-10-2026 gebeurd, met een rode eerste run als gevolg; zie §8. Een
+run vanuit de echte `schedule:` (:47) is nog niet gezien.
+
+## 8. De eerste run werd rood op een lijst die achterliep — QS8-644
+
+📏 **Wat er gebeurde.** Op 05-10-2026 om 09:08 UTC, een paar seconden na de merge van
+#636, werd de allereerste run van `uurjobs.yml` rood (`37288102981`): *rollover.yml:
+laatste geslaagde run 34,4 u geleden, 23 geplande runs in 7 dagen*. De rollover-runs
+360 t/m 367 bestonden en waren allemaal `success`; 34,4 u vóór 09:09 is precies run
+359. De lijst miste dus de **nieuwste acht** runs, en alleen voor de rollover (notificaties
+gaf 1,8 u en 31 runs). Run 2 (`37292753804`, 09:51) gaf groen: 1,1 u, 31 runs.
+
+**Wat niet vaststaat: de oorzaak.** Kandidaten waren een achterlopende index achter het
+`status`-filter, een cache per token of IP, of iets aan het `GITHUB_TOKEN` binnen een run.
+Geen van de drie is bewezen. Op afroep zijn ze niet te onderscheiden: de drie vragen
+(`?status=success`, zonder filter, `?event=schedule`) gaven op 09:51 hetzelfde antwoord,
+en bij de steekproeven die daarna liepen ook (zie hieronder). Eén waarneming is geen
+frequentie, en dit document schrijft er geen oorzaak bij die er niet is.
+
+**Wat wél kan: de regel veranderen in plaats van de oorzaak te raden.** *Een run die
+bestaat is bewijs; een run die in één lijst ontbreekt is dat niet.* De controle stelt nu
+dezelfde vraag in drie varianten (`VARIANTEN` in `scripts/uurjobs-controle.mjs`) en neemt de
+**vereniging** van de geslaagde runs:
+
+* Een vals **groen** is daarmee onmogelijk: een run die in een lijst staat, bestaat.
+* Een vals **rood** vraagt dat alle drie de lijsten tegelijk achterlopen.
+* Loopt er één uiteen, dan blijft de uitslag groen en staat er een `⚠`-regel met de
+  variant, het aantal en het moment van de nieuwste gemiste run. Zo bouwt het patroon zich
+  op in de runlogs van het uur-voor-uur-schema, in plaats van uit één waarneming.
+* Is een variant niet op te halen (rate limit), dan telt ze niet mee en staat dat erbij;
+  zijn **alle** drie niet op te halen, dan blijft het `OVERGESLAGEN`.
+
+Een variant hoort alleen te zien wat haar filter toelaat, en een volle pagina (100) is
+afgekapt: wat ouder is dan haar oudste run telt niet als gemist.
+
+⚠️ **Wat dit niet kan, en dat staat erbij.** Lopen alle drie de lijsten tegelijk achter,
+dan is dat van een echt gat niet te onderscheiden en wordt de controle rood. Het
+acceptatiecriterium zei dat een verouderde lijst *ongemeten* moest worden; dat kan alleen als er
+een onafhankelijke waarheid is om haar naast te leggen, en die is er niet: `total_count`
+loopt mee met dezelfde index. Dit is dus de eerlijke grens, geen oplossing.
+
+⚠️ **De ijking** (zeven mutaties, één per grendel, stand ervóór 30/30): geen vereniging
+(alleen het oude filter) → 4 rood; `mist` nooit gemeld → 2; schedule-variant moet ook
+handmatige runs zien → 1; een mislukte variant gooit → 2; een mislukte run telt als bewijs
+→ 1; niets op te halen is geen overslag meer → 1. **Eén mutatie, het afkappen van een volle
+pagina, maakte eerst niets rood**: mijn test bouwde een situatie waarin de oudere run in geen
+enkele lijst stond. Hij is herschreven (een lijst met mislukte runs die eerder ophoudt dan de
+lijst met alleen geslaagde) en valt nu om op `telt wat ouder is dan het einde van een volle
+pagina niet als gemist`.

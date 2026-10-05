@@ -140,17 +140,95 @@ function leesWorkflows() {
 }
 
 /**
- * De geslaagde runs van één workflow, nieuwste eerst.
+ * De drie vragen die we aan GitHub stellen over dezelfde workflow — QS8-644.
+ *
+ * ⚠️⚠️ **Eén vraag was te weinig, en dat is een waarneming en geen theorie.** 📏 De
+ *    eerste run van `uurjobs.yml` (05-10-2026, `37288102981`) werd rood op een
+ *    runlijst die de **nieuwste acht** runs van de rollover niet bevatte: *34,4 u
+ *    geleden, 23 geplande runs*, terwijl de runs 360 t/m 367 er wél waren en
+ *    allemaal `success`. 43 minuten later gaf dezelfde controle groen, en op afroep
+ *    geven de drie vragen hieronder hetzelfde antwoord. De oorzaak is niet
+ *    vastgesteld; zie `docs/decisions/2026-10-05-schedule-is-best-effort-en-de-hartslag-is-de-runlijst.md`.
+ *
+ * ⚠️ **De regel die dit wél kan afdwingen: een run die bestaat is bewijs, en een run
+ *    die in één lijst ontbreekt is dat niet.** De drie vragen hebben elk een eigen
+ *    filter en dus een eigen kans om achter te lopen. De controle neemt de
+ *    **vereniging** van wat ze samen zien. Dat kan nooit een vals groen geven — een
+ *    run die in een lijst staat, bestaat — en een vals rood vraagt dat alle drie
+ *    tegelijk achterlopen. Loopt er één uiteen, dan staat dat in de uitvoer, zodat
+ *    het patroon zich in de runlogs opbouwt in plaats van uit één waarneming.
+ */
+export const VARIANTEN = {
+  'zonder filter': '',
+  'status=success': '&status=success',
+  'event=schedule': '&event=schedule',
+};
+
+const PAGINA = 100;
+
+/** Welke runs een variant hoort te zien — waar zijn filter ze niet uitsluit. */
+const ZIET = {
+  'zonder filter': () => true,
+  'status=success': (r) => r.conclusion === 'success',
+  'event=schedule': (r) => r.event === 'schedule',
+};
+
+/**
+ * De geslaagde runs van alle varianten samen, zonder dubbelen, en wat elke variant
+ * miste.
+ *
+ * @param {Record<string, object[] | Error>} lijsten  per variant de runs, of de fout
+ */
+export function samenvoegen(lijsten) {
+  const perId = new Map();
+  for (const lijst of Object.values(lijsten)) {
+    if (!Array.isArray(lijst)) continue;
+    for (const r of lijst) if (r.conclusion === 'success') perId.set(r.id, r);
+  }
+  const successen = [...perId.values()];
+
+  const mist = [];
+  for (const [variant, lijst] of Object.entries(lijsten)) {
+    if (!Array.isArray(lijst)) continue;
+    // ⚠️ Een volle pagina is afgekapt: wat ouder is dan haar oudste run hoort er
+    //    niet in te staan en telt dus niet als gemist.
+    const afkap = lijst.length >= PAGINA ? Math.min(...lijst.map((r) => Date.parse(r.created_at))) : -Infinity;
+    const gezien = new Set(lijst.map((r) => r.id));
+    const gemist = successen.filter(
+      (r) => ZIET[variant](r) && !gezien.has(r.id) && Date.parse(r.created_at) > afkap,
+    );
+    if (gemist.length) mist.push({ variant, aantal: gemist.length, nieuwste: gemist.map((r) => r.created_at).sort().at(-1) });
+  }
+  return { successen, mist };
+}
+
+/** De meldingen over varianten die uiteenliepen of niet op te halen waren. */
+export function afwijkingsRegels(naam, lijsten, mist) {
+  const regels = [];
+  for (const m of mist) {
+    regels.push(
+      `⚠ ${naam}: de runlijst '${m.variant}' mist ${m.aantal} geslaagde run(s) die een andere lijst wél ziet ` +
+        `(de nieuwste van ${m.nieuwste}). De uitslag leunt op de vereniging van de lijsten.`,
+    );
+  }
+  for (const [variant, lijst] of Object.entries(lijsten)) {
+    if (!Array.isArray(lijst)) regels.push(`⚠ ${naam}: de runlijst '${variant}' was niet op te halen (${lijst.message}).`);
+  }
+  return regels;
+}
+
+/**
+ * De runs van één workflow in één variant, nieuwste eerst, alle uitslagen.
  *
  * ⚠️ Coderegel 14: elke externe call heeft een timeout. Een mislukte of
  *    afgewezen aanvraag wordt geen lege lijst maar een fout met de reden — een
  *    lege lijst is "de job is nooit gelopen", en dat is een bevinding die deze
  *    controle niet mag verzinnen.
  */
-async function haalRuns(naam) {
+async function haalRuns(naam, variant) {
   const repo = process.env.GITHUB_REPOSITORY || 'QS86-bot/GoalBuddies';
   const token = process.env.GITHUB_TOKEN || process.env.GH_TOKEN;
-  const url = `https://api.github.com/repos/${repo}/actions/workflows/${naam}/runs?status=success&per_page=100`;
+  const url = `https://api.github.com/repos/${repo}/actions/workflows/${naam}/runs?per_page=${PAGINA}${VARIANTEN[variant]}`;
   const antwoord = await fetch(url, {
     headers: {
       Accept: 'application/vnd.github+json',
@@ -163,6 +241,15 @@ async function haalRuns(naam) {
     throw new Error(`HTTP ${antwoord.status}: ${json.message ?? 'geen runlijst in het antwoord'}`);
   }
   return json.workflow_runs;
+}
+
+/** Alle varianten voor één workflow; een mislukte variant wordt haar fout, geen uitzondering. */
+async function haalAlle(naam, haal) {
+  const namen = Object.keys(VARIANTEN);
+  const uitslagen = await Promise.all(
+    namen.map((v) => haal(naam, v).catch((fout) => (fout instanceof Error ? fout : new Error(String(fout))))),
+  );
+  return Object.fromEntries(namen.map((v, i) => [v, uitslagen[i]]));
 }
 
 function meldOverslag(reden) {
@@ -178,7 +265,7 @@ function meldOverslag(reden) {
 
 /**
  * @param {() => Record<string, string>} leesBestanden  de workflows, naam → tekst
- * @param {(naam: string) => Promise<object[]>} haal  de geslaagde runs van één workflow
+ * @param {(naam: string, variant: string) => Promise<object[]>} haal  de runs van één workflow in één variant
  */
 export async function hoofd(leesBestanden = leesWorkflows, haal = haalRuns, nu = Date.now()) {
   const jobs = uurjobsUit(leesBestanden());
@@ -188,21 +275,24 @@ export async function hoofd(leesBestanden = leesWorkflows, haal = haalRuns, nu =
   }
 
   const regels = [];
+  const waarschuwingen = [];
   let rood = false;
   for (const naam of jobs) {
-    let runs;
-    try {
-      runs = await haal(naam);
-    } catch (fout) {
-      meldOverslag(String(fout?.message ?? fout));
+    const lijsten = await haalAlle(naam, haal);
+    const gelukt = Object.values(lijsten).filter(Array.isArray);
+    if (gelukt.length === 0) {
+      meldOverslag(Object.values(lijsten)[0].message);
       return 0;
     }
-    const b = beoordeelRuns(runs, nu);
+    const { successen, mist } = samenvoegen(lijsten);
+    waarschuwingen.push(...afwijkingsRegels(naam, lijsten, mist));
+    const b = beoordeelRuns(successen, nu);
     rood ||= b.oordeel !== 'ok';
     regels.push(regelVoor(naam, b));
   }
 
   for (const r of regels) (r.startsWith('✗') ? console.error : console.log)(r);
+  for (const w of waarschuwingen) console.error(w);
   if (!rood) console.log(`uurjobs-controle: ${jobs.length} uurjob(s) hebben binnen ${GETOLEREERDE_VERTRAGING_UUR} u gelopen.`);
   return rood ? 1 : 0;
 }
