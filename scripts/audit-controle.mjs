@@ -175,6 +175,55 @@ export const NAGEKEKEN = {
       'en 8.x is ESM-only, wat onder Metro een ander en groter risico is dan deze DoS. ' +
       '📏 Beide takken nagemeten op 07-09-2026 met `npm view`.',
   },
+  'brace-expansion': {
+    ernst: 'high',
+    advisories: [1240103, 1240107, 1240111],
+    reparatie: 'gratis',
+    in_bundel: false,
+    marker: '^[a-zA-Z]\\.\\.[a-zA-Z](?:\\.\\.-?\\d+)?$',
+    reden:
+      'Nieuw op 05-10-2026 (QS8-625): drie DoS-varianten op brace-expansie van onvertrouwde ' +
+      'patronen. 📏 `npm ls` zet hem onder `expo > @expo/fingerprint > minimatch@10.2.6` — de ' +
+      'vingerafdruk van een native bouw, dus bouw-tooling en geen app-code. Verse `npx expo ' +
+      'export --platform web` met dummy-EXPO_PUBLIC-waarden, dist/ van 5,3 MB met twee ' +
+      'JS-bestanden: **nul** treffers op de marker, met een controlegrep op `supabase` ernaast. ' +
+      '⚠️ De marker is de regex-letterlijke voor een lettersequentie en geen tekst: het pakket ' +
+      'heeft geen foutmeldingen, en `PERIOD`/`SLASH` komen ook in `picomatch` en `fbjs` voor. ' +
+      '📏 Dat een regex-letterlijke de minificatie overleeft is gemeten en niet aangenomen: ' +
+      "`/[!'()*]/g` uit `strict-uri-encode` (via `query-string`) staat letterlijk in dist/. " +
+      '⚠️ **`reparatie: gratis` is hier wél waar**, anders dan bij `@xmldom/xmldom`: 📏 ' +
+      '`minimatch@10.2.6` vraagt `^5.0.8`, en `npm audit fix --omit=dev --dry-run` zet hem binnen ' +
+      'dat bereik van 5.0.9 naar 5.0.12. Bewust niet in QS8-625 gedaan — dat issue raakt de ' +
+      'lockfile niet — en de controle meldt het zodra de reparatie verandert of de rij wegvalt.',
+  },
+  braces: {
+    ernst: 'high',
+    advisories: [1240992],
+    reparatie: 'brekend',
+    in_bundel: false,
+    marker: 'expanded array length exceeds range limit',
+    reden:
+      'Nieuw op 05-10-2026 (QS8-625): stack-uitputting op diep geneste patronen. 📏 `npm ls` zet ' +
+      'hem onder `expo > @expo/cli > @expo/metro-file-map > micromatch@4.0.8` — het ' +
+      'bestandsoverzicht van de bundler. Zelfde verse bouw als `brace-expansion`: **nul** ' +
+      'treffers op de foutmelding uit `braces/lib/expand.js`. npm biedt alleen `expo@44.0.6` als ' +
+      'reparatie, een downgrade van dertien majors, en dat is geen reparatie.',
+  },
+  'node-forge': {
+    ernst: 'high',
+    advisories: [1240912],
+    reparatie: 'brekend',
+    in_bundel: false,
+    marker: 'Too few bytes to read ASN.1',
+    reden:
+      'Nieuw op 05-10-2026 (QS8-625): RSA PKCS#1 v1.5-handtekeningverificatie accepteert extra ' +
+      'geneste DigestAlgorithm-elementen. 📏 `npm ls` zet hem onder `expo > @expo/cli` en ' +
+      '`@expo/code-signing-certificates` — het ondertekenen van updates door de CLI. Zelfde verse ' +
+      'bouw: **nul** treffers op de foutmelding uit `node-forge/lib/asn1.js`. ⚠️ Dit is de enige ' +
+      'van de drie die over vertrouwen gaat en niet over beschikbaarheid: hij telt zodra de app of ' +
+      'een edge-functie een handtekening verifieert met deze bibliotheek. 📏 Vandaag doet niets ' +
+      'in `src/`, `app/` of `supabase/functions/` dat — geen import van `node-forge`.',
+  },
 };
 
 /**
