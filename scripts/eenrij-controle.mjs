@@ -25,9 +25,20 @@
  *    predicaat telt hier daarom mee.
  *
  * ⚠️ **Wat hij niet kan lezen, meldt hij — hij slaat het niet over.** Een keten
- *    zonder leesbare `.from(...)` komt eruit als `onleesbaar` en maakt de
- *    controle rood. Ongemeten is niet groen; dat is de les van QS8-268 en
- *    QS8-270, en die geldt bínnen een controle net zo goed als ertussen.
+ *    zonder leesbare `.from(...)` of `.rpc(...)` komt eruit als `onleesbaar` en
+ *    maakt de controle rood. Ongemeten is niet groen; dat is de les van QS8-268
+ *    en QS8-270, en die geldt bínnen een controle net zo goed als ertussen.
+ *
+ * ⚠️⚠️ **Maar een melding moet wél een uitweg noemen die bestaat, en dat was tot
+ *    QS8-626 niet zo.** Een keten die met `.rpc(...)` begint heeft geen tabel,
+ *    viel daarom in `onleesbaar`, en die tak gaat er in `beoordeel()` uit **vóór**
+ *    de registerlookup — die bovendien op `{pad, tabel}` matcht. De melding zei
+ *    *"zet hem leesbaar neer of in het register"* en dat tweede kón niet. 📏 Een
+ *    poging tot registreren gaf gemeten **twee** bevindingen in plaats van nul.
+ *
+ *    Een RPC is nu leesbaar en heeft zijn eigen garantie: het **retourtype**.
+ *    Zie `rpcGarantiesUit()`, inclusief de meting waarom een `limit 1` in het
+ *    functielichaam daar níet bij hoort.
  *
  * ⚠️ **Geen regelnummers, en dat is een keuze en geen omissie.** De gedeelde
  *    knip `zonderCommentaar()` laat `//`-regels vallen en plet een blokcommentaar
@@ -43,6 +54,7 @@ import { join, relative } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 
 import { zonderCommentaar } from './zonder-commentaar.mjs';
+import { zonderCommentaarSql } from './zonder-sql-commentaar.mjs';
 
 const WORTEL = fileURLToPath(new URL('..', import.meta.url));
 const BRONMAPPEN = ['src', 'app'];
@@ -108,6 +120,7 @@ export function statementsIn(bron) {
 
 const AFSLUITER = /\.(maybeSingle|single)\(\)/;
 const TABEL = /\.from\(\s*['"]([\w.]+)['"]\s*\)/;
+const RPC = /\.rpc\(\s*['"](\w+)['"]/;
 const EQ = /\.eq\(\s*['"](\w+)['"]\s*,\s*([^)]*)\)/g;
 const IS_NULL = /\.is\(\s*['"](\w+)['"]\s*,\s*null\s*\)/g;
 const SCHRIJFT = /\.insert\(/;
@@ -125,6 +138,15 @@ function fragment(statement) {
  *    voorbeeld boven de functie is geen filter, en een `.single()` in een
  *    uitlegregel is geen aanroep — precies de fout die de ijking van QS8-594 vond
  *    en het schrijven niet.
+ *
+ * ⚠️⚠️ **Een keten die met `.rpc(...)` begint is sinds QS8-626 leesbaar, en dat
+ *    was hij nodig.** Daarvóór viel hij in `onleesbaar`, en dat is een tak die
+ *    `beoordeel()` eruit gooit **vóór** de registerlookup — terwijl het register
+ *    op `{pad, tabel}` matcht en een onleesbare keten geen tabel draagt. 📏 Een
+ *    `.rpc(...).maybeSingle()` was daarmee niet groen te krijgen: niet met een
+ *    garantie, en niet met een registerrij. Gemeten gaf een poging tot
+ *    registreren zelfs **twee** bevindingen in plaats van nul — de keten bleef
+ *    onleesbaar en de rij heette ongebruikt.
  */
 export function ketensIn(bron) {
   const uit = [];
@@ -134,14 +156,23 @@ export function ketensIn(bron) {
     if (afsluiter === null) continue;
 
     const tabel = TABEL.exec(statement);
-    if (tabel === null) {
-      uit.push({ soort: afsluiter[1], tabel: null, onleesbaar: true, fragment: fragment(statement) });
+    const rpc = RPC.exec(statement);
+
+    if (tabel === null && rpc === null) {
+      uit.push({
+        soort: afsluiter[1],
+        tabel: null,
+        rpc: null,
+        onleesbaar: true,
+        fragment: fragment(statement),
+      });
       continue;
     }
 
     uit.push({
       soort: afsluiter[1],
-      tabel: tabel[1].replace(/^public\./, ''),
+      tabel: tabel === null ? null : tabel[1].replace(/^public\./, ''),
+      rpc: tabel === null ? rpc[1] : null,
       onleesbaar: false,
       schrijft: SCHRIJFT.test(statement),
       heeftLimiet1: LIMIET1.test(statement),
@@ -181,23 +212,34 @@ export function tabelLichamen(sql) {
       if (sql[i] === '(') diepte += 1;
       else if (sql[i] === ')') diepte -= 1;
     }
-    if (diepte === 0) uit.push({ tabel: kop[1], lichaam: sql.slice(kop.index + kop[0].length, i - 1) });
+    if (diepte === 0) {
+      uit.push({
+        tabel: kop[1],
+        lichaam: sql.slice(kop.index + kop[0].length, i - 1),
+        index: kop.index,
+      });
+    }
   }
 
   return uit;
 }
 const UNIEKE_INDEX =
-  /create\s+unique\s+index\s+(?:concurrently\s+)?(?:if\s+not\s+exists\s+)?\w+\s+on\s+(?:public\.)?(\w+)\s*\(([^)]*)\)\s*(where\s+[^;]+)?;/gi;
-const ALTER_UNIQUE =
-  /alter\s+table\s+(?:only\s+)?(?:public\.)?(\w+)[\s\S]{0,200}?add\s+constraint\s+\w+\s+unique\s*\(([^)]*)\)/gi;
+  /create\s+unique\s+index\s+(?:concurrently\s+)?(?:if\s+not\s+exists\s+)?(\w+)\s+on\s+(?:public\.)?(\w+)\s*\(([^)]*)\)\s*(where\s+[^;]+)?;/gi;
 const KOLOM_PK = /^\s*(\w+)\s+[\w ()]*?\bprimary\s+key\b/gim;
-const TABEL_PK = /(?:^|,)\s*(?:constraint\s+\w+\s+)?primary\s+key\s*\(([^)]*)\)/gim;
-const TABEL_UNIQUE = /(?:^|,)\s*(?:constraint\s+\w+\s+)?unique\s*\(([^)]*)\)/gim;
+const TABEL_PK = /(?:^|,)\s*(?:constraint\s+(\w+)\s+)?primary\s+key\s*\(([^)]*)\)/gim;
+const TABEL_UNIQUE = /(?:^|,)\s*(?:constraint\s+(\w+)\s+)?unique\s*\(([^)]*)\)/gim;
+const DROP_INDEX = /drop\s+index\s+(?:concurrently\s+)?(?:if\s+exists\s+)?([\w.]+(?:\s*,\s*[\w.]+)*)/gi;
+const ALTER_TABLE = /alter\s+table\s+(?:if\s+exists\s+)?(?:only\s+)?(?:public\.)?(\w+)\s+([^;]*);/gi;
 
 function kolommen(ruw) {
   return ruw
     .split(',')
-    .map((k) => k.trim().replace(/\s+(asc|desc)$/i, '').replace(/^"|"$/g, ''))
+    .map((k) =>
+      k
+        .trim()
+        .replace(/\s+(asc|desc)$/i, '')
+        .replace(/^"|"$/g, ''),
+    )
     .filter((k) => /^\w+$/.test(k));
 }
 
@@ -297,31 +339,178 @@ export function viewBasisUit(ruw) {
   return { basis: basis[1], kolommen: kolommen.filter((k) => k !== null) };
 }
 
+/** Een garantie mét de naam waaronder het schema haar kent — een `drop` zoekt op die naam. */
+function garantie(naam, kolommenLijst, predicaat = null) {
+  return { naam, kolommen: kolommenLijst, predicaat };
+}
+
 /**
- * Per tabel elke verzameling kolommen waarvan het schema belooft dat ze hoogstens
- * één rij aanwijzen.
+ * De garanties die één `create table` in zijn lichaam draagt.
  *
  * ⚠️ Zowel de kolomvorm (`goal_id uuid primary key ...`) als de tabelvorm
  *    (`primary key (group_id, user_id)`) telt. 📏 Bij het schrijven meldde een
  *    eerdere versie `goal_risk` en `hero_profiles` als ongedekt, en dat was de
  *    lezer en niet het schema: allebei dragen hun sleutel inline op de kolom.
+ *
+ * Zonder `constraint naam` geeft Postgres de standaardnaam: `<tabel>_pkey` en
+ * `<tabel>_<kolommen>_key`. Een latere `drop constraint` noemt die naam.
  */
-export function garantiesUit(sqlTeksten) {
-  const perTabel = new Map();
-  const zet = (tabel, kolommenLijst, predicaat = null) => {
-    if (kolommenLijst.length === 0) return;
-    if (!perTabel.has(tabel)) perTabel.set(tabel, []);
-    perTabel.get(tabel).push({ kolommen: kolommenLijst, predicaat });
-  };
+function garantiesInLichaam(tabel, lichaam) {
+  const uit = [];
+  for (const k of lichaam.matchAll(KOLOM_PK)) uit.push(garantie(`${tabel}_pkey`, [k[1]]));
+  for (const k of lichaam.matchAll(TABEL_PK)) {
+    uit.push(garantie(k[1] ?? `${tabel}_pkey`, kolommen(k[2])));
+  }
+  for (const k of lichaam.matchAll(TABEL_UNIQUE)) {
+    const kol = kolommen(k[2]);
+    uit.push(garantie(k[1] ?? `${tabel}_${kol.join('_')}_key`, kol));
+  }
+  return uit.filter((g) => g.kolommen.length > 0);
+}
 
-  for (const sql of sqlTeksten) {
-    for (const { tabel, lichaam } of tabelLichamen(sql)) {
-      for (const k of lichaam.matchAll(KOLOM_PK)) zet(tabel, [k[1]]);
-      for (const k of lichaam.matchAll(TABEL_PK)) zet(tabel, kolommen(k[1]));
-      for (const k of lichaam.matchAll(TABEL_UNIQUE)) zet(tabel, kolommen(k[1]));
+/** Per `alter table`-actie de gebeurtenis die ze voor de garanties betekent; wat hier niet staat, doet er niets mee. */
+const ALTER_ACTIES = [
+  [/^rename\s+to\s+(\w+)/i, (tabel, m) => ({ soort: 'hernoemTabel', tabel, nieuw: m[1] })],
+  [
+    /^rename\s+column\s+(\w+)\s+to\s+(\w+)/i,
+    (tabel, m) => ({ soort: 'hernoemKolom', tabel, oud: m[1], nieuw: m[2] }),
+  ],
+  [
+    /^drop\s+constraint\s+(?:if\s+exists\s+)?(\w+)/i,
+    (tabel, m) => ({ soort: 'dropNaam', tabel, namen: [m[1]] }),
+  ],
+  [/^drop\s+column\s+(?:if\s+exists\s+)?(\w+)/i, (tabel, m) => ({ soort: 'dropKolom', tabel, kolom: m[1] })],
+  [
+    /^add\s+constraint\s+(\w+)\s+(?:unique|primary\s+key)\s*\(([^)]*)\)/i,
+    (tabel, m) => ({
+      soort: 'maak',
+      tabel,
+      garanties: [garantie(m[1], kolommen(m[2]))],
+    }),
+  ],
+];
+
+function alterGebeurtenissen(tabel, acties, index) {
+  const uit = [];
+  for (const actie of opDiepteNul(acties, ',')) {
+    for (const [patroon, maak] of ALTER_ACTIES) {
+      const m = patroon.exec(actie.trim());
+      if (m !== null) uit.push({ index, ...maak(tabel, m) });
     }
-    for (const m of sql.matchAll(UNIEKE_INDEX)) zet(m[1], kolommen(m[2]), predicaatUit(m[3]));
-    for (const m of sql.matchAll(ALTER_UNIQUE)) zet(m[1], kolommen(m[2]));
+  }
+  return uit;
+}
+
+/**
+ * Wat één migratie met de garanties doet, in de volgorde waarin het in het
+ * bestand staat.
+ *
+ * ⚠️⚠️ **De volgorde binnen een bestand is de eerste helft van de reparatie.**
+ *    0094 en 0266 doen `drop index if exists x;` en daarna `create unique index
+ *    x …` met een andere kolomverzameling. Sorteer je de gebeurtenissen per soort
+ *    in plaats van op positie, dan staat de drop achter de create en verdwijnt de
+ *    nieuwe index.
+ */
+export function gebeurtenissenIn(sql) {
+  const uit = [];
+  for (const { tabel, lichaam, index } of tabelLichamen(sql)) {
+    uit.push({
+      index,
+      soort: 'maak',
+      tabel,
+      garanties: garantiesInLichaam(tabel, lichaam),
+    });
+  }
+  for (const m of sql.matchAll(UNIEKE_INDEX)) {
+    const g = garantie(m[1], kolommen(m[3]), predicaatUit(m[4]));
+    uit.push({ index: m.index, soort: 'maak', tabel: m[2], garanties: [g] });
+  }
+  for (const m of sql.matchAll(DROP_INDEX)) {
+    // ⚠️ Een naam met een ander schema (`storage.objects_…`) is geen index van
+    //    `public` en kan er dus ook geen garantie van afhalen.
+    const namen = m[1].split(',').map((n) => n.trim().replace(/^public\./, ''));
+    uit.push({
+      index: m.index,
+      soort: 'dropNaam',
+      tabel: null,
+      namen: namen.filter((n) => !n.includes('.')),
+    });
+  }
+  for (const m of sql.matchAll(ALTER_TABLE)) uit.push(...alterGebeurtenissen(m[1], m[2], m.index));
+  return uit.sort((x, y) => x.index - y.index);
+}
+
+/** Alles in `lijst` behalve wat `weg` aanwijst, als nieuwe lijst. */
+const zonder = (lijst, weg) => lijst.filter((g) => !weg(g));
+
+const TOEPASSERS = {
+  // ⚠️ Een tweede definitie onder dezelfde naam doet niets: `create … if not
+  //    exists` slaat over, en zonder `if not exists` had Postgres geweigerd.
+  maak: (schema, e) => {
+    const lijst = schema.get(e.tabel) ?? [];
+    for (const g of e.garanties) if (!lijst.some((x) => x.naam === g.naam)) lijst.push(g);
+    if (lijst.length > 0) schema.set(e.tabel, lijst);
+  },
+  dropNaam: (schema, e) => {
+    const draagtNaam = (g) => e.namen.includes(g.naam);
+    // `tabel: null` is een `drop index`: een indexnaam is er één per schema, dus overal zoeken.
+    const tabellen = e.tabel === null ? [...schema.keys()] : [e.tabel];
+    for (const tabel of tabellen) schema.set(tabel, zonder(schema.get(tabel) ?? [], draagtNaam));
+  },
+  hernoemTabel: (schema, e) => {
+    if (!schema.has(e.tabel)) return;
+    schema.set(e.nieuw, schema.get(e.tabel));
+    schema.delete(e.tabel);
+  },
+  hernoemKolom: (schema, e) => {
+    const noem = (k) => (k === e.oud ? e.nieuw : k);
+    for (const g of schema.get(e.tabel) ?? []) {
+      g.kolommen = g.kolommen.map(noem);
+      if (g.predicaat?.kolom !== undefined) g.predicaat = { ...g.predicaat, kolom: noem(g.predicaat.kolom) };
+    }
+  },
+  // ⚠️ Postgres haalt bij `drop column` elke index en constraint mee waar die
+  //    kolom in zit — ook de helft van een samengestelde sleutel.
+  dropKolom: (schema, e) => {
+    const raakt = (g) => g.kolommen.includes(e.kolom) || g.predicaat?.kolom === e.kolom;
+    schema.set(e.tabel, zonder(schema.get(e.tabel) ?? [], raakt));
+  },
+};
+
+/**
+ * Per tabel elke verzameling kolommen waarvan het schema belooft dat ze hoogstens
+ * één rij aanwijzen — zoals het schema er ná alle migraties uitziet.
+ *
+ * ⚠️⚠️ **De migraties worden afgespeeld en niet opgeteld — QS8-639.** Tot die
+ *    datum werd elke `create unique index` een garantie en bleef hij er een, ook
+ *    als een latere migratie hem dropte of de tabel hernoemde. 📏 Gemeten tegen
+ *    `pg_index` van een database uit alle 301 migraties: 71 garanties uit de
+ *    tekst, waarvan **drie** niet bestonden — twee oude varianten van
+ *    `points_ledger_dedupe_idx` (0094 en 0266 droppen hem en bouwen hem opnieuw
+ *    mét `ronde`) en `opslag_dagtellers` (0234 hernoemt tabel én kolom). Geen
+ *    aanroep leunde erop; dat is geluk. `tests/rls/eenrij-garanties.test.ts`
+ *    legt het afspelen naast de echte database.
+ *
+ * ⚠️ **Wat hij volgt:** `drop index`, `drop constraint`, `drop column`,
+ *    `rename to`, `rename column`, en `add constraint … unique|primary key`.
+ *    Wat hij niet volgt is `drop table`, `rename constraint` en een
+ *    `alter index … rename`; geen ervan komt in de migraties voor, en komt er
+ *    een bij, dan is de databasetoets de eerste die het ziet. Een statement
+ *    binnen een `do $$ … if … then`-blok telt als uitgevoerd, want dat is wat
+ *    een database die uit de map is opgebouwd doet.
+ */
+export function garantiesUit(ruweSqlTeksten) {
+  // ⚠️ **Het commentaar gaat eruit, en dat is hier geen formaliteit.** Elke migratie
+  //    draagt in zijn kop een rollback-pad als commentaar, vol `drop index` en
+  //    `create unique index`. Gelezen als code haalt zo'n regel een echte garantie
+  //    weg (een rollback die een index uit een eerdere migratie dropt) of voegt er
+  //    een toe (een rollback die er een terugzet). 📏 Vandaag verandert het niets:
+  //    69 garanties met én zonder. De gedeelde SQL-knip, want `knip:controle`
+  //    eist er één voor wie SQL leest.
+  const sqlTeksten = ruweSqlTeksten.map(zonderCommentaarSql);
+  const schema = new Map();
+  for (const sql of sqlTeksten) {
+    for (const gebeurtenis of gebeurtenissenIn(sql)) TOEPASSERS[gebeurtenis.soort](schema, gebeurtenis);
   }
 
   // ⚠️ **Ná de tabellen, en in bestandsvolgorde.** Een view wordt herdefinieerd;
@@ -334,14 +523,90 @@ export function garantiesUit(sqlTeksten) {
 
   for (const [naam, view] of views) {
     if (view === null) continue;
-    for (const garantie of perTabel.get(view.basis) ?? []) {
-      if (!garantie.kolommen.every((k) => view.kolommen.includes(k))) continue;
-      if (garantie.predicaat !== null && !view.kolommen.includes(garantie.predicaat.kolom)) continue;
-      zet(naam, garantie.kolommen, garantie.predicaat);
+    for (const g of schema.get(view.basis) ?? []) {
+      if (!g.kolommen.every((k) => view.kolommen.includes(k))) continue;
+      if (g.predicaat !== null && !view.kolommen.includes(g.predicaat.kolom)) continue;
+      TOEPASSERS.maak(schema, {
+        tabel: naam,
+        garanties: [garantie(`${naam}:${g.naam}`, g.kolommen, g.predicaat)],
+      });
     }
   }
 
-  return perTabel;
+  return new Map(
+    [...schema]
+      .filter(([, lijst]) => lijst.length > 0)
+      .map(([tabel, lijst]) => [
+        tabel,
+        lijst.map(({ kolommen: k, predicaat }) => ({ kolommen: k, predicaat })),
+      ]),
+  );
+}
+
+const FUNCTIEKOP = /create\s+(?:or\s+replace\s+)?function\s+(?:public\.)?(\w+)\s*\(/gi;
+const RETOUR = /\)\s*returns\s+([\s\S]{0,60})/i;
+const MEERRIJ = /^(?:setof\b|table\s*\()/i;
+const SQL_REGELCOMMENTAAR = /--[^\n]*/g;
+
+/**
+ * Per functienaam of het schema belooft dat er hoogstens één rij uit komt.
+ *
+ * **De garantie is het retourtype en niets anders.** Een functie die geen
+ * `setof` en geen `table(...)` teruggeeft, levert over PostgREST per constructie
+ * precies één waarde. Dat is even structureel als een unieke index, en het is
+ * niet te omzeilen door wat er in het lichaam staat.
+ *
+ * ⚠️⚠️ **Een `limit 1` in het functielichaam telt hier níet mee, en dat wijkt af
+ *    van wat QS8-626 als acceptatie voorstelde. De reden is een meting.** 📏 Van
+ *    de 123 meerrijdefinities in de migratiemap heeft er **geen enkele** een
+ *    `limit 1` als laatste clausule van zijn lichaam. Zestien hebben er wél een
+ *    ergens in het lichaam, en bij **alle zestien** zit hij in een laterale
+ *    subquery — elk wordt gevolgd door `) d on true`, `) k on true`, `) g(regel)`
+ *    of `) s`. Een regex die "`limit 1` in het lichaam" leest, zou dus
+ *    `group_overview` en `openstaande_beoordelingen` als gedekt aanmerken, en dat
+ *    zijn juist de **gepagineerde** functies. Dat is een vals groen op precies de
+ *    aanroep die mis kan gaan.
+ *
+ *    De `limit 1` die wél telt is die op de **aanroep** (`.limit(1)` in de
+ *    keten): die staat op de buitenste query en is op de aanroeproep te zien.
+ *    `dekkingVoor()` leest hem al.
+ *
+ * ⚠️⚠️ **Een naam is pas gedekt als élke definitie ervan gedekt is.** Niet de
+ *    laatste, zoals bij views. CLAUDE.md waarschuwt er met zoveel woorden voor
+ *    dat een drop van `f(uuid, text, text)` geen nieuwe `f` met zes argumenten
+ *    dekt — overloads delen een naam en leven naast elkaar, en PostgREST kiest op
+ *    de meegegeven parameternamen. Een vals negatief kost een registerrij, een
+ *    vals positief een productiefout; de regel staat dus aan de veilige kant.
+ *
+ *    📏 Vandaag kost die keuze niets: van de **307** namen valt er **geen enkele**
+ *    in beide klassen, en de 246 gedekte namen zijn precies de namen waarvan élke
+ *    definitie enkelrij is. De regel is er voor de dag dat dat wél gebeurt.
+ */
+export function rpcGarantiesUit(sqlTeksten) {
+  const perNaam = new Map();
+
+  for (const ruw of sqlTeksten) {
+    // ⚠️⚠️ **Commentaar gaat eruit, en de zoektocht naar `returns` stopt bij de
+    //    volgende kop.** Allebei nodig, en allebei met een gemeten geval. 📏 In
+    //    `0276` staat een rollbackpad als `--   create or replace function
+    //    public.sleutelzetters() …`. Zonder de knip is dat een kop, en de
+    //    `returns` die er dan bij gezocht wordt is die van een **andere** functie
+    //    verderop in hetzelfde bestand — `returns integer`. `sleutelzetters`
+    //    kwam er zo uit als enkelrij-definitie die nooit geschreven is.
+    const sql = ruw.replace(SQL_REGELCOMMENTAAR, '');
+    const koppen = [...sql.matchAll(FUNCTIEKOP)];
+
+    for (const [i, m] of koppen.entries()) {
+      const eind = koppen[i + 1]?.index ?? sql.length;
+      const retour = RETOUR.exec(sql.slice(m.index, eind));
+      if (retour === null) continue;
+
+      const eenrij = !MEERRIJ.test(retour[1].trim());
+      perNaam.set(m[1], (perNaam.get(m[1]) ?? true) && eenrij);
+    }
+  }
+
+  return perNaam;
 }
 
 // ---------------------------------------------------------------------------
@@ -368,9 +633,17 @@ function predicaatGedekt(predicaat, keten) {
  *    "precies één" de definitie; een sleutel in het schema is een belofte van de
  *    database. Alle drie zijn structureel — er zit geen "ziet er goed uit" bij.
  */
-export function dekkingVoor(keten, garanties) {
+export function dekkingVoor(keten, garanties, rpcGaranties = new Map()) {
   if (keten.schrijft) return 'insert geeft zijn eigen rij terug';
   if (keten.heeftLimiet1) return 'limit(1) maakt precies één de definitie';
+
+  // ⚠️ Een RPC heeft geen tabel en dus geen sleutel; zijn garantie is het
+  //    retourtype. Zie `rpcGarantiesUit()` voor waarom het lichaam niet telt.
+  if (keten.rpc !== null && keten.rpc !== undefined) {
+    return rpcGaranties.get(keten.rpc) === true
+      ? `${keten.rpc}() geeft geen setof of table terug`
+      : null;
+  }
 
   const gefilterd = new Set(keten.eq.map((f) => f.kolom));
   for (const kolom of keten.isNull) gefilterd.add(kolom);
@@ -387,6 +660,17 @@ export function dekkingVoor(keten, garanties) {
 }
 
 /**
+ * Waar een registerrij over gaat: een tabel óf een RPC, nooit allebei.
+ *
+ * ⚠️ Sinds QS8-626, want een rij op `{pad, tabel}` kon een `.rpc()`-keten niet
+ *    aanwijzen. De naamruimtes staan los van elkaar: een tabel en een functie
+ *    mogen dezelfde naam dragen, en dan zijn het twee rijen.
+ */
+function registersleutel(pad, r) {
+  return r.rpc === null || r.rpc === undefined ? `${pad}|tabel:${r.tabel}` : `${pad}|rpc:${r.rpc}`;
+}
+
+/**
  * De ongedekte ketens, de onleesbare, en de registerrijen die niets meer dekken.
  *
  * ⚠️ **De ratel slaat twee kanten op**, zoals bij `levend:controle` en
@@ -397,7 +681,7 @@ export function dekkingVoor(keten, garanties) {
  * ⚠️ Geëxporteerd en zonder bestandssysteem: de aanroeper voedt hem. Een controle
  *    die je niet kunt voeden, kun je niet ijken.
  */
-export function beoordeel(bestanden, garanties, register = ZONDER_GARANTIE) {
+export function beoordeel(bestanden, garanties, register = ZONDER_GARANTIE, rpcGaranties = new Map()) {
   const gebruikt = new Set();
   const ongedekt = [];
   const onleesbaar = [];
@@ -409,15 +693,16 @@ export function beoordeel(bestanden, garanties, register = ZONDER_GARANTIE) {
         continue;
       }
 
-      if (dekkingVoor(keten, garanties) !== null) continue;
+      if (dekkingVoor(keten, garanties, rpcGaranties) !== null) continue;
 
-      const rij = register.find((r) => r.pad === pad && r.tabel === keten.tabel);
+      const sleutel = registersleutel(pad, keten);
+      const rij = register.find((r) => registersleutel(r.pad, r) === sleutel);
       if (rij === undefined) ongedekt.push({ pad, ...keten });
-      else gebruikt.add(`${rij.pad}|${rij.tabel}`);
+      else gebruikt.add(sleutel);
     }
   }
 
-  const ongebruikt = register.filter((r) => !gebruikt.has(`${r.pad}|${r.tabel}`));
+  const ongebruikt = register.filter((r) => !gebruikt.has(registersleutel(r.pad, r)));
   return { ongedekt, onleesbaar, ongebruikt };
 }
 
@@ -447,6 +732,24 @@ function bestandenOnder(map, achtervoegsels) {
   return uit.sort();
 }
 
+/** Eén bevinding over een leesbare keten — tabel of RPC. */
+function meldOngedekt(r) {
+  if (r.rpc !== null && r.rpc !== undefined) {
+    return (
+      `✗ ${r.pad} — ${r.rpc}().${r.soort}() zonder garantie dat er hoogstens één rij is.\n` +
+      `    De functie geeft setof of table(…) terug. Zet .limit(1) op de aanroep, lees de\n` +
+      `    array en pak [0] met een undefined-toets, of zet hem met reden in het register.\n` +
+      `    ${r.fragment}…`
+    );
+  }
+
+  return (
+    `✗ ${r.pad} — ${r.tabel}.${r.soort}() zonder garantie dat er hoogstens één rij is.\n` +
+    `    filters: ${[...r.eq.map((f) => f.kolom), ...r.isNull].join(', ') || 'geen'}\n` +
+    `    ${r.fragment}…`
+  );
+}
+
 export function hoofd() {
   const bestanden = BRONMAPPEN.flatMap((map) =>
     bestandenOnder(join(WORTEL, map), ['.ts', '.tsx']).map((pad) => ({
@@ -460,29 +763,36 @@ export function hoofd() {
   );
 
   const garanties = garantiesUit(migraties);
-  const { ongedekt, onleesbaar, ongebruikt } = beoordeel(bestanden, garanties);
+  const rpcGaranties = rpcGarantiesUit(migraties);
+  const { ongedekt, onleesbaar, ongebruikt } = beoordeel(
+    bestanden,
+    garanties,
+    ZONDER_GARANTIE,
+    rpcGaranties,
+  );
   const geteld = bestanden.reduce((n, b) => n + ketensIn(b.inhoud).length, 0);
 
   const fouten = [];
 
   for (const r of ongedekt) {
-    fouten.push(
-      `✗ ${r.pad} — ${r.tabel}.${r.soort}() zonder garantie dat er hoogstens één rij is.\n` +
-        `    filters: ${[...r.eq.map((f) => f.kolom), ...r.isNull].join(', ') || 'geen'}\n` +
-        `    ${r.fragment}…`,
-    );
+    fouten.push(meldOngedekt(r));
   }
 
   for (const r of onleesbaar) {
+    // ⚠️ Hier staat géén verwijzing naar het register, en dat is sinds QS8-626
+    //    met opzet: een keten zonder `.from(…)` én zonder `.rpc(…)` draagt niets
+    //    waar een rij op kan matchen. Een melding die naar een uitweg wijst die
+    //    er niet is, is erger dan geen melding.
     fouten.push(
-      `✗ ${r.pad} — een keten op .${'single'}() zonder leesbare .from(…).\n` +
-        `    Ongemeten is niet groen; zet hem leesbaar neer of in het register.\n` +
+      `✗ ${r.pad} — een keten op .single()/.maybeSingle() zonder leesbare .from(…) of .rpc(…).\n` +
+        `    Ongemeten is niet groen; zet de tabel- of functienaam letterlijk in de keten.\n` +
         `    ${r.fragment}…`,
     );
   }
 
   for (const r of ongebruikt) {
-    fouten.push(`✗ ${r.pad} — registerrij voor ${r.tabel} dekt niets meer; haal hem weg.`);
+    const waarover = r.rpc === null || r.rpc === undefined ? r.tabel : `${r.rpc}()`;
+    fouten.push(`✗ ${r.pad} — registerrij voor ${waarover} dekt niets meer; haal hem weg.`);
   }
 
   if (fouten.length > 0) {
@@ -492,9 +802,11 @@ export function hoofd() {
     return;
   }
 
+  const enkelrij = [...rpcGaranties.values()].filter(Boolean).length;
   console.log(
     `eenrij-controle: ${geteld} aanroepen van .single()/.maybeSingle(), elk met een garantie ` +
-      `dat er hoogstens één rij terugkomt (${garanties.size} tabellen met een sleutel gelezen).`,
+      `dat er hoogstens één rij terugkomt (${garanties.size} tabellen met een sleutel gelezen, ` +
+      `${enkelrij} van ${rpcGaranties.size} functies geven per constructie één rij).`,
   );
 }
 
