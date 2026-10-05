@@ -58,14 +58,23 @@ const SCRIPTS = join(process.cwd(), 'scripts');
  *
  * ⚠️ Alleen `./naam.mjs`. Een bare specifier (`node:fs`, een package) hoort niet
  *    in de kloon: die komt uit `node_modules` of uit Node zelf.
+ *
+ * ⚠️⚠️ **Elke aanhalingsvorm, en dat is sinds QS8-629.** Tot dan stond hier alleen
+ *    de enkele quote. 📏 Gemeten op 05-10-2026: een import met dubbele quotes gaf
+ *    **0** treffers, en er is in `scripts/` geen lintregel of Prettier-config die
+ *    enkele quotes afdwingt — de conventie was de enige rem. Dan komt de oude
+ *    faalvorm van QS8-585 stil terug: het harnas kopieert het script niet mee en
+ *    de toetsen komen terug als `skipped` in plaats van rood. De sluitende quote
+ *    moet dezelfde zijn als de openende (`\1`); een backtick telt alleen zonder
+ *    `${…}`, want een samengesteld pad is niet statisch te volgen.
  */
 export function lokaleImports(bron: string): string[] {
   const schoon = zonderCommentaar(bron) as string;
-  const treffers = schoon.matchAll(/(?:from|import)\s*\(?\s*'\.\/([A-Za-z0-9_-]+\.mjs)'/g);
+  const treffers = schoon.matchAll(/(?:from|import)\s*\(?\s*(['"`])\.\/([A-Za-z0-9_-]+\.mjs)\1/g);
   // ⚠️ `flatMap` en geen `map`: onder strict is een capture-groep `string |
   //    undefined`, en een `as string` zou hier een aanname verbergen die de
   //    regex toevallig waarmaakt.
-  return [...new Set([...treffers].flatMap((m) => (m[1] === undefined ? [] : [m[1]])))];
+  return [...new Set([...treffers].flatMap((m) => (m[2] === undefined ? [] : [m[2]])))];
 }
 
 /**
@@ -80,10 +89,16 @@ export function lokaleImports(bron: string): string[] {
  *
  * ⚠️ De handeling en niet de lijst: een harnas dat zijn `ENTRIES` opschrijft doet
  *    niets fout — dat is waar die test over gaat. Zelf kopiëren is wat misgaat.
+ *
+ * ⚠️⚠️ **Ook hier elke aanhalingsvorm — QS8-629.** Met `"scripts"` bleef de
+ *    grendel groen (📏 20/20 op 24-09-2026, nagemeten door de verificatie van
+ *    QS8-585). Wat dit nog steeds niet ziet staat als rij in
+ *    `docs/ENGINEER-REVIEW.md`: een samengesteld pad (`${…}`), `copyFile` en
+ *    `cp` zonder `Sync`, en `writeFileSync(…, readFileSync(…))`.
  */
 export function kopieeracties(bron: string): string[] {
   const schoon = zonderCommentaar(bron) as string;
-  const treffers = schoon.matchAll(/\b(?:cpSync|copyFileSync)\([^;]*?'scripts'/g);
+  const treffers = schoon.matchAll(/\b(?:cpSync|copyFileSync)\([^;]*?(['"`])scripts\1/g);
   return [...treffers].map((m) => m[0].replace(/\s+/g, ' ').slice(0, 60));
 }
 
