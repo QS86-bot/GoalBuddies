@@ -132,6 +132,32 @@ een dat er een toevoegt:
 De bestaande stand is dus al *zichtbaarheid als consequentie, niets meer*. Domeinregel 5
 en 11 blijven onverkort gelden; er hoeft niets af.
 
+### Het verworpen argument
+
+*Toegevoegd op 05-10-2026 (QS8-636). Het argument hieronder is niet achteraf
+bedacht: het staat in de twee reacties op QS8-86 die aan het besluit voorafgingen.*
+
+**Wat er opgegeven is, is de zwaarste vorm van een commitment device die de PRD
+kende.** PRD 9.4 beschreef *"echte straffen laten verwerken via een
+vergunninghoudende betaalprovider"*. De reactie op QS8-86 van 28-08 noemde dat
+*"domeinregel 5 in zijn zwaarste vorm: het is het enige onderdeel van de app dat
+een gebruiker iets kán kosten"*. Met *nooit* verdwijnt die prikkel voorgoed. De
+sterkste consequentie die de app nog kent, is een afspraak die zichtbaar wordt
+voor de begunstigde groep of getuige.
+
+**En het alternatief dat voorlag, was goedkoop om open te houden.** De triage van
+22-09 stelde geen afwijzing voor, maar uitstel: *"Dit issue komt pas op tafel als
+er een gebruiker is die om een geldstraf vraagt."* 📏 Toen gemeten: **1 gebruiker,
+0 voltooiingen** op productie. Er stond geen regel code voor, dus openhouden kostte
+niets. En dezelfde triage stelde vast dat 9.4 maar één ding toevoegt: *"dat de
+consequentie geld is in plaats van zichtbaarheid of een afspraak met een
+getuige"*. De rest van het commitment-systeem werkte al zonder geld.
+
+**Dat argument is afgewogen en niet gevolgd.** *Nooit* sluit ook de deur voor de
+gebruiker die er wél om vraagt. Wie hem ooit weer wil openen, neemt een nieuw
+besluit van dezelfde zwaarte (grens 1), en kan dit besluit niet opvatten als een
+uitstel dat vanzelf afloopt.
+
 ### Wat hieruit volgt en bewust niet meegenomen is
 
 De woorden **"straf"** en **`due`** suggereren een hardere consequentie dan dit
