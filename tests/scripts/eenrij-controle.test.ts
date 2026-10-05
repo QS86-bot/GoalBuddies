@@ -7,6 +7,7 @@ import {
   garantiesUit,
   ketensIn,
   predicaatUit,
+  rpcGarantiesUit,
   statementsIn,
   viewBasisUit,
 } from '../../scripts/eenrij-controle.mjs';
@@ -83,9 +84,15 @@ describe('ketensIn', () => {
   });
 
   // MUST-FIND: wat hij niet kan lezen, meldt hij.
-  it('meldt een keten zonder leesbare from() als onleesbaar', () => {
+  it('meldt een keten zonder leesbare from() of rpc() als onleesbaar', () => {
     const [keten] = ketensIn(`const x = await query.maybeSingle();`);
     expect(keten?.onleesbaar).toBe(true);
+  });
+
+  // MUST-ALLOW: een rpc-keten is sinds QS8-626 juist wél leesbaar.
+  it('leest de functienaam uit een rpc-keten en noemt hem niet onleesbaar', () => {
+    const [keten] = ketensIn(`const x = await db.rpc('mijn_stand', { p_id: id }).maybeSingle();`);
+    expect(keten).toMatchObject({ rpc: 'mijn_stand', tabel: null, onleesbaar: false });
   });
 
   it('leest twee ketens in één functielichaam', () => {
@@ -260,5 +267,175 @@ describe('het register', () => {
   //    inventaris, en die leer je overslaan.
   it('begint leeg', () => {
     expect(ZONDER_GARANTIE).toEqual([]);
+  });
+});
+
+/**
+ * De RPC-tak — QS8-626.
+ *
+ * ⚠️⚠️ **Het gat dat hier gedicht is, was niet "hij mist een geval" maar "hij
+ *    wijst naar een uitweg die niet bestaat".** Een `.rpc(...).maybeSingle()`
+ *    viel in `onleesbaar`, en die tak gaat er vóór de registerlookup uit; het
+ *    register matchte bovendien op `{pad, tabel}` en een onleesbare keten draagt
+ *    geen tabel. 📏 Een poging tot registreren gaf twee bevindingen in plaats van
+ *    nul: de keten bleef onleesbaar én de rij heette ongebruikt.
+ */
+const RPC_SQL = [
+  `create or replace function public.mijn_stand(p_user_id uuid)
+     returns jsonb language sql stable as $$ select '{}'::jsonb $$;`,
+  `create or replace function public.groepsrijen(p_id uuid)
+     returns table (a uuid, b text) language sql stable as $$
+       select g.a, g.b from t g
+       left join lateral (select x from y where y.a = g.a order by y.d desc limit 1) d on true
+     $$;`,
+];
+
+describe('rpcGarantiesUit', () => {
+  // MUST-ALLOW: geen setof en geen table() is per constructie één rij.
+  it('dekt een functie met een scalair of samengesteld retourtype', () => {
+    expect(rpcGarantiesUit(RPC_SQL).get('mijn_stand')).toBe(true);
+  });
+
+  // MUST-FIND: setof en table() zijn meerrij, ook mét een limit 1 in het lichaam.
+  it('dekt een table()-functie niet, ook niet met limit 1 in een subquery', () => {
+    // ⚠️⚠️ Dit is de meting die de vorm van deze grendel bepaalt. 📏 Van de 123
+    //    meerrijdefinities in de migratiemap heeft er géén één een `limit 1` als
+    //    laatste clausule; zestien hebben er een, en alle zestien in een laterale
+    //    subquery. Zou het lichaam meetellen, dan golden `group_overview` en
+    //    `openstaande_beoordelingen` als gedekt — en dat zijn juist de
+    //    gepagineerde functies.
+    expect(rpcGarantiesUit(RPC_SQL).get('groepsrijen')).toBe(false);
+  });
+
+  it('dekt setof net zomin als table()', () => {
+    const sql = [`create function public.f() returns setof uuid language sql as $$ select 1 $$;`];
+    expect(rpcGarantiesUit(sql).get('f')).toBe(false);
+  });
+
+  // MUST-FIND: een naam is pas gedekt als élke definitie gedekt is.
+  it('laat één meerrijdefinitie de hele naam ongedekt maken', () => {
+    // ⚠️ Niet "de laatste wint", zoals bij views: overloads delen een naam en
+    //    leven naast elkaar, en PostgREST kiest op de meegegeven parameternamen.
+    // 📏 Vandaag valt geen van de 307 namen in beide klassen, dus deze regel kost
+    //    niets; hij staat er voor de dag dat dat wél gebeurt.
+    const sql = [
+      `create function public.f(a uuid) returns jsonb language sql as $$ select '{}'::jsonb $$;`,
+      `create function public.f(a uuid, b text) returns setof uuid language sql as $$ select 1 $$;`,
+    ];
+    expect(rpcGarantiesUit(sql).get('f')).toBe(false);
+  });
+
+  it('leest de volgorde andersom net zo', () => {
+    const sql = [
+      `create function public.f(a uuid) returns setof uuid language sql as $$ select 1 $$;`,
+      `create function public.f(a uuid, b text) returns jsonb language sql as $$ select '{}' $$;`,
+    ];
+    expect(rpcGarantiesUit(sql).get('f')).toBe(false);
+  });
+});
+
+describe('beoordeel met een rpc-keten', () => {
+  const rpc = rpcGarantiesUit(RPC_SQL);
+  const leeg = new Map();
+  const bestand = (inhoud: string) => [{ pad: 'src/a.ts', inhoud }];
+
+  // MUST-ALLOW: een enkelrijfunctie is gedekt zonder registerrij.
+  it('dekt een rpc met een enkelrij-retourtype', () => {
+    const uit = beoordeel(
+      bestand(`const x = await db.rpc('mijn_stand', { p_user_id: id }).maybeSingle();`),
+      leeg,
+      [],
+      rpc,
+    );
+    expect(uit).toMatchObject({ ongedekt: [], onleesbaar: [], ongebruikt: [] });
+  });
+
+  // MUST-FIND: een meerrijfunctie is een bevinding, en géén onleesbare.
+  it('meldt een rpc met een table()-retourtype als ongedekt', () => {
+    const uit = beoordeel(
+      bestand(`const x = await db.rpc('groepsrijen', { p_id: id }).maybeSingle();`),
+      leeg,
+      [],
+      rpc,
+    );
+    expect(uit.onleesbaar).toEqual([]);
+    expect(uit.ongedekt).toHaveLength(1);
+    expect(uit.ongedekt[0]).toMatchObject({ rpc: 'groepsrijen', tabel: null });
+  });
+
+  // MUST-ALLOW: .limit(1) staat op de buitenste query en telt dus wél.
+  it('dekt een meerrij-rpc met .limit(1) op de aanroep', () => {
+    const uit = beoordeel(
+      bestand(`const x = await db.rpc('groepsrijen', { p_id: id }).limit(1).maybeSingle();`),
+      leeg,
+      [],
+      rpc,
+    );
+    expect(uit.ongedekt).toEqual([]);
+  });
+
+  // ⚠️⚠️ De kern van QS8-626: dit was onmogelijk.
+  it('laat een registerrij een rpc-keten dekken', () => {
+    const uit = beoordeel(
+      bestand(`const x = await db.rpc('groepsrijen', { p_id: id }).maybeSingle();`),
+      leeg,
+      [{ pad: 'src/a.ts', rpc: 'groepsrijen', reden: 'gemeten: het lichaam heeft een limit 1' }],
+      rpc,
+    );
+    expect(uit).toMatchObject({ ongedekt: [], onleesbaar: [], ongebruikt: [] });
+  });
+
+  // MUST-FIND: de ratel geldt ook voor een rpc-rij.
+  it('meldt een rpc-registerrij die niets meer dekt', () => {
+    const uit = beoordeel(
+      bestand(`const x = await db.rpc('mijn_stand', { p_user_id: id }).maybeSingle();`),
+      leeg,
+      [{ pad: 'src/a.ts', rpc: 'groepsrijen', reden: 'oud' }],
+      rpc,
+    );
+    expect(uit.ongebruikt).toHaveLength(1);
+  });
+
+  // MUST-FIND: een tabelrij dekt geen gelijknamige rpc, en omgekeerd.
+  it('houdt de naamruimtes van een tabel en een functie uit elkaar', () => {
+    const uit = beoordeel(
+      bestand(`const x = await db.rpc('groepsrijen', { p_id: id }).maybeSingle();`),
+      leeg,
+      [{ pad: 'src/a.ts', tabel: 'groepsrijen', reden: 'de tabel, niet de functie' }],
+      rpc,
+    );
+    expect(uit.ongedekt).toHaveLength(1);
+    expect(uit.ongebruikt).toHaveLength(1);
+  });
+});
+
+describe('rpcGarantiesUit leest geen uitgecommentarieerde SQL', () => {
+  // ⚠️⚠️ **Dit gat zat in de eerste versie van deze grendel en is bij het ijken
+  //    gevonden, niet bij het schrijven.** 📏 In `0276` staat een rollbackpad als
+  //    `--   create or replace function public.sleutelzetters() …`. Zonder knip
+  //    telt die regel als kop, en de `returns` die er dan bij gezocht wordt is
+  //    die van een **andere** functie verderop in hetzelfde bestand. Er kwam zo
+  //    een enkelrij-definitie uit die nooit geschreven is.
+  it('maakt van een kop in commentaar geen spookfunctie', () => {
+    // ⚠️⚠️ **Deze fixture is de tweede poging, en de eerste bewaakte niets.** Daar
+    //    stond het commentaar bóven een echte, meerrijige definitie van dezelfde
+    //    naam — en omdat een naam pas gedekt is als élke definitie dat is, kwam
+    //    er ook zónder knip `false` uit. De mutatie maakte niets rood.
+    //    Het gevaar is een naam die **alleen** in commentaar staat: zonder knip
+    //    is dat een gedekte functie die nooit geschreven is, en een
+    //    `.rpc('spook').maybeSingle()` zou er stilzwijgend door komen.
+    const sql = [`--   create or replace function public.spook() returns jsonb language sql\n`];
+    expect(rpcGarantiesUit(sql).has('spook')).toBe(false);
+  });
+
+  // ⚠️ De tweede helft van dezelfde reparatie: de zoektocht naar `returns` stopt
+  //    bij de volgende kop, zodat hij er nooit eentje van een buurfunctie pakt.
+  it('pakt de returns van een buurfunctie niet', () => {
+    const sql = [
+      `create or replace function public.zonder_returns(\n` +
+        `create or replace function public.g() returns integer language sql as $$ select 1 $$;`,
+    ];
+    expect(rpcGarantiesUit(sql).get('zonder_returns')).toBeUndefined();
+    expect(rpcGarantiesUit(sql).get('g')).toBe(true);
   });
 });
