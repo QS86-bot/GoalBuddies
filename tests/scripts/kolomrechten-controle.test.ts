@@ -1582,17 +1582,24 @@ describe('selectiesIn knipt commentaar weg', () => {
 /**
  * De ijking van de tabelbrede grant — QS8-592.
  *
- * ⚠️⚠️ **Deze bevinding had geen enkele toets, en dat is hoe de fout kon
- *    ontstaan.** De `breed`-melding zat in `zonderAanroeperMeldingen()` en
- *    dus achter dezelfde voorwaarde als de rest van die functie: *niets in
- *    `src/` of `app/` schrijft naar deze tabel*. Daarmee meldde de controle een
- *    tabelbrede grant alléén op een tabel die de app níet gebruikt, en zweeg hij
- *    zodra de client er actief naartoe schreef. 📏 Gemeten op 22-09-2026 met één
- *    tabelbrede INSERT-grant op `points_ledger`: mét schrijver **nul**
- *    bevindingen, zonder schrijver één.
+ * ⚠️⚠️ **Deze bevinding had geen toets voor het geval dat ertoe deed, en dat is
+ *    hoe de fout kon ontstaan.** De `breed`-melding zat in
+ *    `zonderAanroeperMeldingen()` en dus achter dezelfde voorwaarde als de rest
+ *    van die functie: *niets in `src/` of `app/` schrijft naar deze tabel*.
+ *    Daarmee meldde de controle een tabelbrede grant alléén op een tabel die de
+ *    app níet gebruikt, en zweeg hij zodra de client er actief naartoe schreef.
+ *    📏 Gemeten op 22-09-2026 met één tabelbrede INSERT-grant op
+ *    `points_ledger`: mét schrijver **nul** bevindingen, zonder schrijver één.
  *
- *    Dat de hele suite groen bleef bij het verplaatsen, is het bewijs dat er
- *    niets op stond.
+ *    Er stónd wél een toets op de melding zelf: *"meldt een tabelbrede grant, ook
+ *    als het paar geregistreerd is"* (QS8-349). Hij voedde `acties: []`, dus
+ *    precies het geval dat werkte. Daarom bleef de hele suite groen bij het
+ *    verplaatsen: er was geen toets met een **schrijver**.
+ *
+ *    📏 Nagemeten op 05-10-2026 (QS8-640) met de regel
+ *    `uit.push(...tabelbredeMeldingen(tabelbreed))` uitgezet: **vier** toetsen
+ *    vallen om — de bestaande van QS8-349 en de drie hieronder. Zonder de drie
+ *    hieronder was het er één geweest, en dat was het geval zonder schrijver.
  */
 describe('tabelbrede grants — QS8-592', () => {
   const BREED = { kolommen: ['id', 'user_id', 'punten', 'reden'], breed: true };
