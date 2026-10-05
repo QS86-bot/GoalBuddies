@@ -28,6 +28,11 @@ on:
     #    gebruiker in zijn eigen tijdzone. Met een dagelijkse job krijgt de helft
     #    van je gebruikers zijn nudge op het verkeerde moment.
     - cron: '30 * * * *'
+    #
+    # ⚠️ **Elk uur is wat hij vraagt en niet wat GitHub levert** — 📏 over zeven
+    #    dagen 31 runs in plaats van ~168, grootste gat 7,4 uur (QS8-637). Een nudge
+    #    komt dus tot een paar uur later binnen dan het gekozen tijdstip. Zie
+    #    `rollover.yml` en `docs/decisions/2026-10-05-schedule-is-best-effort-en-de-hartslag-is-de-runlijst.md`.
   workflow_dispatch:
 
 # Twee runs tegelijk is niet gevaarlijk — de unieke index op

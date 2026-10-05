@@ -73,6 +73,11 @@ export const ZONDER_CI = {
     'een Docker-container; een generatie vanaf productie vraagt de ' +
     'productiesleutel. CI heeft geen van beide, dus hij zou daar altijd ' +
     'OVERGESLAGEN printen — en een stap die nooit meet, hoort niet in de baan.',
+  'uurjobs:controle':
+    'Vraagt de runlijst van GitHub naar de laatste geslaagde run van elke uurjob. ' +
+    'Een netwerkaanroep maakt de uitslag afhankelijk van bereikbaarheid, en een ' +
+    'push zegt niets over of een geplande job gelopen heeft. Hij draait in een ' +
+    'eigen geplande workflow, `uurjobs.yml`, die door GitHub gemaild wordt als hij rood is.',
   'bundel:controle':
     'Vraagt het npm-register naar de gepubliceerde bundelgroottes. Een ' +
     'netwerkaanroep maakt de uitslag afhankelijk van bereikbaarheid.',
