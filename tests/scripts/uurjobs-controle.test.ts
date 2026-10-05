@@ -7,7 +7,9 @@ import {
   GETOLEREERDE_VERTRAGING_UUR,
   beoordeelRuns,
   hoofd,
+  afwijkingsRegels,
   regelVoor,
+  samenvoegen,
   uurjobsUit,
 } from '../../scripts/uurjobs-controle.mjs';
 
@@ -143,6 +145,94 @@ describe('regelVoor', () => {
   });
 });
 
+// ⚠️ Het id hangt van de argumenten af: dezelfde run in drie varianten is dezelfde run.
+const succes = (uren: number, event = 'schedule') => ({
+  id: Math.round(uren * 100) * 10 + (event === 'schedule' ? 1 : 2),
+  event,
+  conclusion: 'success',
+  created_at: uurGeleden(uren),
+});
+
+describe('samenvoegen — een run die bestaat is bewijs', () => {
+  it('voegt de lijsten samen zonder dubbelen en laat mislukte runs buiten het bewijs', () => {
+    const a = succes(2);
+    const mislukt = { id: 900, event: 'schedule', conclusion: 'failure', created_at: uurGeleden(1) };
+    const { successen } = samenvoegen({
+      'zonder filter': [a, mislukt],
+      'status=success': [a],
+      'event=schedule': [a, mislukt],
+    });
+    expect(successen.map((r) => r.id)).toEqual([a.id]);
+  });
+
+  it('meldt de variant die de nieuwste run mist, met aantal en moment', () => {
+    const nieuw = succes(1);
+    const oud = succes(30);
+    const { successen, mist } = samenvoegen({
+      'zonder filter': [nieuw, oud],
+      'status=success': [oud],
+      'event=schedule': [nieuw, oud],
+    });
+    expect(successen).toHaveLength(2);
+    expect(mist).toEqual([{ variant: 'status=success', aantal: 1, nieuwste: nieuw.created_at }]);
+  });
+
+  it('verwacht een handmatige run niet in de variant die alleen geplande runs toont', () => {
+    const handmatig = succes(1, 'workflow_dispatch');
+    const { mist } = samenvoegen({
+      'zonder filter': [handmatig],
+      'status=success': [handmatig],
+      'event=schedule': [],
+    });
+    expect(mist).toEqual([]);
+  });
+
+  it('telt wat ouder is dan het einde van een volle pagina niet als gemist', () => {
+    // De lijst mét mislukte runs is na 100 runs vol en houdt eerder op dan de lijsten
+    // met alleen geslaagde: die laatste reiken verder terug, en dat is geen gat.
+    const recent = Array.from({ length: 50 }, (_, i) => succes(1 + i));
+    const mislukt = Array.from({ length: 50 }, (_, i) => ({
+      id: 70_000 + i,
+      event: 'schedule',
+      conclusion: 'failure',
+      created_at: uurGeleden(51 + i),
+    }));
+    const oud = Array.from({ length: 50 }, (_, i) => succes(110 + i));
+    const { mist } = samenvoegen({
+      'zonder filter': [...recent, ...mislukt],
+      'status=success': [...recent, ...oud],
+      'event=schedule': [...recent, ...oud],
+    });
+    expect(mist).toEqual([]);
+  });
+
+  it('slaat een variant over die een fout gaf in plaats van haar als leeg te lezen', () => {
+    const a = succes(2);
+    const { successen, mist } = samenvoegen({
+      'zonder filter': [a],
+      'status=success': new Error('HTTP 403'),
+      'event=schedule': [a],
+    });
+    expect(successen).toHaveLength(1);
+    expect(mist).toEqual([]);
+  });
+});
+
+describe('afwijkingsRegels', () => {
+  it('noemt de workflow en de variant, en het woord OVERGESLAGEN komt er niet in voor', () => {
+    const regels = afwijkingsRegels(
+      'rollover.yml',
+      { 'zonder filter': [], 'status=success': new Error('HTTP 403: rate limit') },
+      [{ variant: 'event=schedule', aantal: 8, nieuwste: uurGeleden(1) }],
+    );
+    const tekst = regels.join('\n');
+    expect(tekst).toContain('rollover.yml');
+    expect(tekst).toContain("'event=schedule' mist 8");
+    expect(tekst).toContain('rate limit');
+    expect(tekst).not.toContain('OVERGESLAGEN');
+  });
+});
+
 describe('hoofd — de uitslag voor de echte workflows', () => {
   let uit: string[];
   let fout: string[];
@@ -155,7 +245,7 @@ describe('hoofd — de uitslag voor de echte workflows', () => {
   });
   afterEach(() => vi.restoreAllMocks());
 
-  const vers = async () => [{ event: 'schedule', created_at: uurGeleden(2) }];
+  const vers = async () => [succes(2)];
 
   it('is groen als elke uurjob recent gelopen heeft', async () => {
     const code = await hoofd(echteWorkflows, vers, NU);
@@ -165,8 +255,7 @@ describe('hoofd — de uitslag voor de echte workflows', () => {
   });
 
   it('wordt rood als alleen de rollover uitblijft, en noemt die bij naam', async () => {
-    const haal = async (naam: string) =>
-      naam === 'rollover.yml' ? [{ event: 'schedule', created_at: uurGeleden(30) }] : vers();
+    const haal = async (naam: string) => (naam === 'rollover.yml' ? [succes(30)] : [succes(2)]);
     const code = await hoofd(echteWorkflows, haal, NU);
     expect(code).toBe(1);
     expect(fout.join('\n')).toContain('rollover.yml');
@@ -174,14 +263,45 @@ describe('hoofd — de uitslag voor de echte workflows', () => {
   });
 
   it('wordt rood als alleen notificaties uitblijft', async () => {
-    const haal = async (naam: string) =>
-      naam === 'notificaties.yml' ? [] : vers();
+    const haal = async (naam: string) => (naam === 'notificaties.yml' ? [] : [succes(2)]);
     const code = await hoofd(echteWorkflows, haal, NU);
     expect(code).toBe(1);
     expect(fout.join('\n')).toContain('notificaties.yml');
   });
 
-  it('zegt OVERGESLAGEN en geen groen als de runlijst niet op te halen is', async () => {
+  it('QS8-644: één runlijst die achterloopt geeft geen vals rood, maar wel een melding', async () => {
+    // De eerste run van uurjobs.yml: de lijst miste de nieuwste runs van de rollover.
+    const verse = succes(1);
+    const oude = succes(34);
+    const haal = async (naam: string, variant: string) => {
+      if (naam !== 'rollover.yml') return [succes(2)];
+      return variant === 'status=success' ? [oude] : [verse, oude];
+    };
+    const code = await hoofd(echteWorkflows, haal, NU);
+    expect(code).toBe(0);
+    expect(fout.join('\n')).toContain("'status=success' mist 1");
+    expect(uit.join('\n')).toContain('rollover.yml: laatste geslaagde run 1.0 u geleden');
+  });
+
+  it('wordt wel rood als alle drie de lijsten achterlopen — dat valt niet van echt te onderscheiden', async () => {
+    const haal = async (naam: string) => (naam === 'rollover.yml' ? [succes(34)] : [succes(2)]);
+    const code = await hoofd(echteWorkflows, haal, NU);
+    expect(code).toBe(1);
+    expect(fout.join('\n')).toContain('34.0 u');
+  });
+
+  it('blijft groen als één lijst niet op te halen is, en zegt dat', async () => {
+    const haal = async (_naam: string, variant: string) => {
+      if (variant === 'status=success') throw new Error('HTTP 403: API rate limit exceeded');
+      return [succes(2)];
+    };
+    const code = await hoofd(echteWorkflows, haal, NU);
+    expect(code).toBe(0);
+    expect(fout.join('\n')).toContain('niet op te halen');
+    expect(fout.join('\n')).not.toContain('OVERGESLAGEN');
+  });
+
+  it('zegt OVERGESLAGEN en geen groen als geen enkele runlijst op te halen is', async () => {
     const haal = async () => {
       throw new Error('HTTP 403: API rate limit exceeded');
     };
