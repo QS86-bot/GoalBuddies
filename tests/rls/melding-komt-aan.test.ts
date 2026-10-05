@@ -442,4 +442,97 @@ describe.skipIf(!beschikbaar)('een melding komt aan', () => {
       'wie er meldde hoort niet bij de beoordeling, en weglaten beschermt de melder tegen een beheerder die het hem betaald zet',
     ).not.toContain('reporter_id');
   }, 30_000);
+  /**
+   * ⚠️⚠️ **De derde groepssoort, en 0300 maakte hem bestaanbaar: een groep met
+   *    helemaal géén beheerder.**
+   *
+   *    De twee toetsen hierboven gaan over een melding over een **beheerder** —
+   *    één beheerder (escaleert) en twee (escaleert niet). Een automatisch
+   *    gevormde buddygroep heeft er nul: er was niemand die er eerder was, dus
+   *    er is niemand die iemand binnenliet, en `vorm_een_buddygroep()` zet
+   *    uitsluitend `member`-rollen.
+   *
+   *    📏 Gemeten vóór 0300: `mag_melding_als_beheerder()` is onwaar voor elk lid
+   *    (er is geen beheerder) en `mag_melding_als_escalatie()` eiste dat het
+   *    **onderwerp** beheerder is — ook onwaar. Een melding over een lid van zo'n
+   *    groep kwam dus bij **niemand** aan. Dat is het gat dat 0296 net gedicht
+   *    had, heropend in de groepssoort waar het het zwaarst weegt: mensen die
+   *    elkaar niet gekozen hebben.
+   *
+   * ⚠️ De fixture gebruikt de **echte** matcher en niet een met de hand
+   *    neergezette groep. Een groep zonder beheerder is hier geen verzonnen
+   *    toestand maar de uitkomst van `vorm_buddygroepen()`, en als die ooit wél
+   *    iemand beheerder maakt, hoort deze toets dat te merken in plaats van
+   *    zijn eigen aanname te blijven toetsen.
+   */
+  it('een melding over een lid van een groep zonder beheerder bereikt de platformbeheerder', () => {
+    const uit = psqlMetInvoer(
+      [
+        'begin;',
+        "select set_config('p.a', public.shim_maak_gebruiker('a233@proef.nl','A')::text, true);",
+        "select set_config('p.b', public.shim_maak_gebruiker('b233@proef.nl','B')::text, true);",
+        "select set_config('p.c', public.shim_maak_gebruiker('c233@proef.nl','C')::text, true);",
+        "select set_config('p.platform', public.shim_maak_gebruiker('x233@proef.nl','Platform')::text, true);",
+        "update public.profiles set platform_beheerder = true where id = current_setting('p.platform')::uuid;",
+        "update public.profiles set week_start_day = 2 where id in (current_setting('p.a')::uuid, current_setting('p.b')::uuid, current_setting('p.c')::uuid);",
+
+        // Drie doelen in dezelfde bak, en de matcher vormt de groep.
+        'insert into public.goals (id, owner_id, title, target_date, category) values',
+        "  (gen_random_uuid(), current_setting('p.a')::uuid, 'M233A', current_date + 100, 'fitness'),",
+        "  (gen_random_uuid(), current_setting('p.b')::uuid, 'M233B', current_date + 101, 'fitness'),",
+        "  (gen_random_uuid(), current_setting('p.c')::uuid, 'M233C', current_date + 102, 'fitness');",
+        'insert into public.goal_match_queue (goal_id, user_id, status, created_at, expires_at)',
+        "  select id, owner_id, 'wachtend', now(), now() + interval '14 days'",
+        "  from public.goals where title like 'M233%';",
+        'select public.vorm_buddygroepen(current_date, 3);',
+        "select set_config('p.groep', (select id::text from public.groups where automatisch order by created_at desc limit 1), true);",
+
+        // ⚠️ De fixture toetst zichzelf: nul beheerders en drie leden. Zonder
+        //    deze twee regels is "de escalatie vuurt" ook waar als de matcher
+        //    stilletjes iemand beheerder maakte, en dan meet de toets iets anders.
+        "select 'BEHEERDERS=' || count(*) from public.group_members where group_id = current_setting('p.groep')::uuid and role = 'admin' and status <> 'inactive';",
+        "select 'LEDEN=' || count(*) from public.group_members where group_id = current_setting('p.groep')::uuid;",
+
+        // A meldt B.
+        "select set_config('request.jwt.claim.sub', current_setting('p.a'), true);",
+        'set local role authenticated;',
+        "select public.meld(current_setting('p.groep')::uuid, current_setting('p.b')::uuid, null, 'spam', 'doet naar');",
+        "select 'MELDER=' || count(*) from public.openstaande_meldingen();",
+        'reset role;',
+
+        "select set_config('request.jwt.claim.sub', current_setting('p.b'), true);",
+        'set local role authenticated;',
+        "select 'ONDERWERP=' || count(*) from public.openstaande_meldingen();",
+        'reset role;',
+
+        "select set_config('request.jwt.claim.sub', current_setting('p.c'), true);",
+        'set local role authenticated;',
+        "select 'ANDER_LID=' || count(*) from public.openstaande_meldingen();",
+        'reset role;',
+
+        "select set_config('request.jwt.claim.sub', current_setting('p.platform'), true);",
+        'set local role authenticated;',
+        "select 'PLATFORM=' || count(*) from public.openstaande_meldingen();",
+        "select 'ESCALATIE=' || coalesce((select via_escalatie::text from public.openstaande_meldingen() limit 1), '-');",
+        'reset role;',
+        'rollback;',
+      ].join('\n'),
+    );
+
+    expect(lees(uit, 'BEHEERDERS'), 'een automatisch gevormde groep heeft er per constructie geen').toBe('0');
+    expect(lees(uit, 'LEDEN'), 'drie leden, anders is de bak niet gevormd en meet de toets niets').toBe('3');
+
+    expect(lees(uit, 'PLATFORM'), 'zonder deze route komt de melding bij niemand aan').toBe('1');
+    expect(lees(uit, 'ESCALATIE'), 'de lezer hoort te zeggen dat dit via de escalatie komt').toBe('true');
+
+    // ⚠️ De must-nots, en ze dragen hier meer dan elders: de verbreding van 0300
+    //    is "alleen een platformbeheerder, alleen bij een groep zonder énige
+    //    actieve beheerder". Zonder deze helft is "hij ziet hem" ook waar als de
+    //    hele groep hem ziet — en dan is een groep van onbekenden het laatste
+    //    oppervlak waar je dat wilt.
+    expect(lees(uit, 'ONDERWERP'), 'het onderwerp mag een melding over zichzelf nooit zien').toBe('0');
+    expect(lees(uit, 'ANDER_LID'), 'een gewoon lid van zo n groep is geen moderator').toBe('0');
+    expect(lees(uit, 'MELDER'), 'de melder is geen moderator; de lezer is voor afhandelen').toBe('0');
+  }, 60_000);
+
 });

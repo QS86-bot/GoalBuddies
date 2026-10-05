@@ -385,19 +385,29 @@ describe.skipIf(!rlsTestsConfigured)('de wachtrij voor onbekende buddys', () => 
         const groep = automatischeGroepen()[0];
         if (groep === undefined) throw new Error('geen groep');
 
+        // ⚠️⚠️ **`toBe('automatisch')` en niet `not.toBe('ok')`, en dat verschil
+        //    is een bevinding uit de security-ronde.** De zwakke vorm bleef groen
+        //    terwijl de reden `not_admin` was — en dát was bug B6: de
+        //    `automatisch`-tak stond ná `is_group_admin()`, en zo'n groep heeft
+        //    per constructie geen beheerder, dus de tak was onbereikbaar voor
+        //    precies de groepen waarvoor hij bestaat. De uitkomst was goed en de
+        //    grendel die hem moest dragen vuurde nooit.
+        //
+        //    Regel 18 vraag 3 in zijn zuiverste vorm: deze test kón groen blijven
+        //    terwijl de belofte brak, dus hij bewaakte niets.
         const open = await alice.db.rpc('zet_groepszichtbaarheid', {
           p_group_id: groep.id,
           p_naar: 'open',
           p_bevestigd: true,
         });
-        expect(antwoord(open.data)).not.toBe('ok');
+        expect(antwoord(open.data)).toBe('automatisch');
 
         const vindbaar = await alice.db.rpc('zet_groepsontdekbaarheid', {
           p_group_id: groep.id,
           p_naar: true,
           p_bevestigd: true,
         });
-        expect(antwoord(vindbaar.data)).not.toBe('ok');
+        expect(antwoord(vindbaar.data)).toBe('automatisch');
 
         const na = automatischeGroepen()[0];
         expect({ z: na?.zichtbaarheid, o: na?.ontdekbaar }).toEqual({

@@ -90,7 +90,22 @@ niets geprint wordt.
 
 ⚠️ **De restrisico verhuist mee en blijft opgeschreven**: zet iemand werk op
 moduleniveau in een nieuw script, dan draait dat werk hier één keer. De toets
-wordt er luid rood van, maar ná de handeling.
+wordt er rood van, maar ná de handeling.
+
+⚠️⚠️ **Die zin klopte op 24-09 maar voor één derde, en dat is op 05-10-2026
+nagemeten (QS8-638).** *"Luid rood"* gold alleen voor een script dat bij import
+**print of werpt**. 📏 Stand ervóór 3/3 groen; een stille `process.exit(0)` of
+`process.exit(1)` bovenaan `auth-urls.mjs` liet de toets **3/3 groen**, en een
+stille `writeFileSync(…)` bovenaan `psql.mjs` óók — mét het bestand op schijf.
+Twee oorzaken die elkaar versterkten: de `catch` rond `execFileSync` las alleen
+`stdout` en `stderr` en liet de exitstatus liggen, en omdat de lus alles in één
+proces importeert kapte zo'n exit de rest van de lus af zonder een woord.
+
+**Dat de tien scripts van QS8-608 wél gevonden zouden zijn, is dus geluk
+geweest en geen eigenschap van de grendel** — ze printten toevallig ook. De
+toets draagt sinds QS8-638 drie grendels met elk een eigen `it`; de meting en
+wat grendel 3 níet dekt staan in
+`docs/decisions/2026-10-05-de-grendel-zag-alleen-de-luide-helft.md`.
 
 ## 6. De ijking
 
