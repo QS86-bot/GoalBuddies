@@ -39,11 +39,22 @@ git grep -n -i -E '\b([0-9]+|een|twee|drie|vier|vijf|zes|zeven|acht|negen|tien)\
 ```
 
 ⚠️ **De derde regel is de ruimere vorm, en die bestaat wél.** 📏 21 dossierregels
-dragen een getal of telwoord bij *kolommen*, *kolomrechten* of *schrijfrechten*,
-bijvoorbeeld *"23 ongebruikte kolomrechten"*, *"pint negen kolommen"* en *"Zeven
-schrijfrechten staan open"*. Elk staat in een eigen zinsvorm. Dat maakt de conclusie
-hieronder sterker en niet zwakker: er zijn veel telbare beweringen, en geen
-gedeelde vorm om er een controle op te bouwen.
+dragen een getal of telwoord bij *kolommen*, *kolomrechten* of *schrijfrechten*, en
+**11** daarvan gaan over een grant: de regels 150, 169, 174, 222, 228, 369, 441,
+479, 554, 627 en 629 op `abe6dda^`. Bijvoorbeeld *"23 ongebruikte kolomrechten"*
+(554), *"UPDATE op vier kolommen van `approval_withdrawals`"* (479) en *"Zeven
+schrijfrechten staan open"* (627). Elk staat in een eigen zinsvorm. Dat maakt de
+conclusie hieronder sterker en niet zwakker: er zijn veel telbare beweringen, en
+geen gedeelde vorm om er een controle op te bouwen.
+
+⚠️ **De andere tien gaan niet over een grant, en het commando onderscheidt dat
+niet.** 📏 Met de hand gelezen: twee over een trigger (482, 605), drie over de vorm
+van een tabel (507, 721, 730), één over een tekstlengte (219) en vier over iets
+anders (243, 313, 744, 808). Hier stond tot QS8-645 *"pint negen kolommen"* (605)
+als voorbeeld van een grantvorm; dat gaat over `guard_group_update`, een trigger.
+Het commando telt wat het belooft, een telwoord bij een van drie woorden, en niet
+of de zin over een grant gaat. Dat onderscheid is handwerk, en dat is opnieuw de
+reden dat hier geen controle op te bouwen is.
 
 ⚠️ Hier stond tot QS8-632 *"138 bestanden — 53 in `docs/`, 50 in `tests/`, 25 in
 `src/`, 10 in `scripts/`"*, zonder het criterium waarmee geteld was. 📏 Geen enkel
