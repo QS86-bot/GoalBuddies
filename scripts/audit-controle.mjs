@@ -224,6 +224,40 @@ export const NAGEKEKEN = {
       'een edge-functie een handtekening verifieert met deze bibliotheek. 📏 Vandaag doet niets ' +
       'in `src/`, `app/` of `supabase/functions/` dat — geen import van `node-forge`.',
   },
+  compression: {
+    ernst: 'high',
+    advisories: [1241221],
+    reparatie: 'gratis',
+    in_bundel: false,
+    marker: 'size below threshold',
+    reden:
+      'Nieuw op 06-10-2026 (QS8-648): DoS via een geheugenlek bij een voortijdig gesloten ' +
+      'respons (`<1.8.2`). 📏 `npm ls` zet hem onder `expo > @expo/cli > compression@1.8.1` — ' +
+      'de dev-server van de CLI, dus bouw-tooling en geen app-code. Verse `npx expo export ' +
+      '--platform web` met dummy-EXPO_PUBLIC-waarden, dist/ van 5,3 MB met twee JS-bestanden: ' +
+      '**nul** treffers op de debugtekst uit `compression/index.js`, tegen 51 op de controlegrep ' +
+      '`supabase`. Niets in `src/`, `app/` of `supabase/functions/` importeert hem. ⚠️ ' +
+      '**`reparatie: gratis` is binnen het bereik waar, maar niet klein**: 📏 `@expo/cli` vraagt ' +
+      '`^1.7.4` en 1.8.2 bestaat, maar `npm audit fix --omit=dev --dry-run` doet 196 wijzigingen, ' +
+      'waaronder `expo` 57.0.13 → 57.0.26. Bewust niet in QS8-648 gedaan — dat issue raakt de ' +
+      'lockfile niet.',
+  },
+  'source-map-js': {
+    ernst: 'high',
+    advisories: [1241209],
+    reparatie: 'gratis',
+    in_bundel: false,
+    marker: 'Subclasses must implement _parseMappings',
+    reden:
+      'Nieuw op 06-10-2026 (QS8-648): event-loop-DoS via de sectie-offsets van een ' +
+      'geïndexeerde source map (`1.0.0 – 1.2.1`). 📏 `npm ls` zet hem onder `expo > ' +
+      '@expo/metro-config > postcss > source-map-js@1.2.1` — de CSS-verwerking van de bundler. ' +
+      'Zelfde verse bouw als `compression`: **nul** treffers op de foutmelding uit ' +
+      '`source-map-js/lib/source-map-consumer.js`. ⚠️ Die tekst staat ook in het `source-map`-pakket ' +
+      'waar `source-map-js` een fork van is; bij nul treffers maakt dat niet uit, bij een treffer ' +
+      'wel — dan is de marker niet genoeg om te zeggen wélk pakket in de bundel zit. 📏 `postcss` ' +
+      'vraagt `^1.2.1` en 1.2.2 bestaat; dezelfde dry-run als bij `compression` neemt hem mee.',
+  },
 };
 
 /**
