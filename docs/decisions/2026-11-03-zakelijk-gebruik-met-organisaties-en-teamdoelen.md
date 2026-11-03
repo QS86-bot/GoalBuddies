@@ -2,9 +2,9 @@
 
 **Datum:** 03-11-2026 · **Issue:** nog geen — het Linear-issue volgt op de spec ·
 **Raakt:** `PRD-accountability-app.md` §2.4, domeinregel 3, 4, 7 en 10
-**Status:** **besloten door Quinten, niet gebouwd en nog niet gespecificeerd.**
-De spec staat als aparte stap open; dit document legt vast wat er beslist is en
-wat niet.
+**Status:** **besloten door Quinten en niet gebouwd.** De spec staat als *voorstel*
+in `docs/decisions/2026-11-03-spec-organisaties-en-teamdoelen.md`; daarin wacht een
+reeks keuzes nog op Quinten. Dit document legt vast wat er beslist is en wat niet.
 
 ## Wat dit is, en wat niet
 
