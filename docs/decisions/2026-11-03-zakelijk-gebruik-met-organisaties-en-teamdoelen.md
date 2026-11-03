@@ -75,6 +75,8 @@ en is **richtinggevend, geen bewijs**:
 | 21 | **Aandeeldoelen blijven in elke teamgroep beschermd**, ook in een open teamgroep: een gemist aandeel en de voortgang per persoon blijven voor collega's onzichtbaar | idem | nee |
 | 22 | **Nooit een klassement in een teamgroep**, ook niet in een open | idem | nee |
 | 23 | Een teamgroep krijgt een **hoger plafond dan twaalf leden**. Het getal is niet besloten | het plafond van twaalf houden | **ja** |
+| 24 | A44 herzien: **eerst positionering en onboarding zakelijk**; de Doelcoach-prompt en de voorbeelden volgen pas na meting met echte gebruikers, elk als eigen besluit | idem | nee |
+| 25 | **A57 krijgt een uitzondering voor teamgroepen**, ook beschermde: het klassement geldt in groepen zonder organisatie. Besluit 22 blijft staan | idem | nee |
 
 ### Wat de afwijkingen kosten
 
@@ -139,8 +141,13 @@ Linear-issue, door de issues en reacties te lezen die er al lagen.
   issue."* Dit besluit is die andere lezing, en de PRD is herzien. ⚠️ **Wat A44
   verder noemde is niet besloten:** het raakt de Doelcoach-prompt, de voorbeelden en de
   copy door de hele app heen, en het noemt dit *een koerswijziging en geen feature*.
-  Dit document legt alleen organisaties en teamdoelen vast. Of de rest van de app
-  (prompt, voorbeelden, copy, positionering) mee verschuift is een eigen besluit.
+  Dit document legt alleen organisaties en teamdoelen vast. **Beantwoord op
+  03-11-2026 (besluit 24):** eerst positionering en onboarding zakelijk; de
+  Doelcoach-prompt en de voorbeelden volgen pas na meting, als eigen besluit per
+  onderdeel. ⚠️ **QS8-128 verwijst voor A44 naar `docs/decisions/006-besluitenronde-24-08.md`,
+  maar dat document bevat A44 niet** (de titel noemt A37, A41, A42, A43 en A46). Het
+  besluit van 24-08 leefde dus alleen in Linear; dit document legt nu vast wat er
+  vandaag over besloten is.
 - **A57 (QS8-272, 03-09-2026): een klassement in elke groep, ook een beschermde.**
   📏 Het besluit staat op Done, maar **de bouw is er niet**: migratie 0141 is de enige
   definitie van `groep_klassement()` en de poort staat daar nog op
@@ -148,7 +155,8 @@ Linear-issue, door de issues en reacties te lezen die er al lagen.
   beschrijving van het issue zegt zelf *"De bouw staat nog open."* Zodra A57 landt,
   botst het met besluit 22 (nooit een klassement in een teamgroep): dan geeft ook een
   **beschermde** teamgroep een klassement, tenzij teamgroepen er expliciet uit worden
-  gehouden. Hoe die twee samengaan is niet besloten.
+  gehouden. **Beantwoord op 03-11-2026 (besluit 25):** A57 krijgt een uitzondering voor
+  teamgroepen, ook beschermde; besluit 22 blijft staan.
 
 ## Wat het raakt
 
@@ -186,12 +194,13 @@ Dit zijn geen aanname-gaten die iemand stilzwijgend moet vullen. Ze staan open t
 Quinten ze beantwoordt, en de spec presenteert ze als vraag met een voorgestelde
 standaard:
 
-- **Hoe A57 en besluit 22 samengaan.** A57 geeft elke groep een klassement, besluit
-  22 sluit het uit voor een teamgroep. Er moet een poort komen die teamgroepen
-  expliciet uitzondert, óók als ze beschermd zijn; of A57 die uitzondering krijgt of
-  besluit 22 vervalt, is niet gezegd.
-- **Of de rest van de app mee verschuift** (A44): Doelcoach-prompt, voorbeelden, copy
-  en positionering.
+- **De Doelcoach-prompt en de voorbeelden** (besluit 24). Dat ze later volgen, na
+  meting met echte gebruikers, is besloten; wat er dan verandert en wanneer niet. Elk
+  onderdeel is een eigen besluit.
+- **De vier vragen die A57 zelf nog openliet** (QS8-272, §7 van het A57-document): een
+  uitknop, een lid dat zich eruit houdt, wat er met bestaande beschermde groepen
+  gebeurt, en één scherm of één ranglijst. Besluit 25 laat ze ongemoeid; ze gelden
+  voor groepen zonder organisatie.
 - **Het getal van het hogere plafond voor teamgroepen** (besluit 23). Besloten is
   alleen dat teamgroepen een hoger plafond dan twaalf krijgen. Welk getal, moet eerst gemeten worden op chat,
   groepsoverzicht en realtime. Tot dan geldt in de code het bestaande plafond; dat is

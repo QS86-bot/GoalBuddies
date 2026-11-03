@@ -6,6 +6,12 @@
 **Status:** besloten, **nog niet gebouwd** — er staan vier vragen open die vóór de
 migratie beantwoord moeten zijn (§7)
 
+**Aangevuld 03-11-2026:** het klassement geldt niet in een teamgroep, een groep die aan
+een organisatie hangt, ook niet als die beschermd is. De nieuwe poort die dit besluit
+invoert moet die groepen uitsluiten. Zie
+`docs/decisions/2026-11-03-zakelijk-gebruik-met-organisaties-en-teamdoelen.md`,
+besluit 25.
+
 ---
 
 ## 1. Het besluit

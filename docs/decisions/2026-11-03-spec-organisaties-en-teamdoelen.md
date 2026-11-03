@@ -166,8 +166,9 @@ dezelfde dubbeltelling die 0132 r.93 heeft weggehaald. Besluit 22: nooit een
 klassement in een teamgroep. Omdat een teamgroep open mag zijn (besluit 18), komt die
 garantie niet meer gratis uit een beschermd-CHECK: `groep_klassement()` moet
 teamgroepen expliciet uitsluiten, met een test. Dat geldt ook voor een beschermde
-teamgroep zodra A57 (QS8-272, besloten maar nog niet gebouwd) de poort
-`lid_van_open_groep()` vervangt.
+teamgroep: A57 (QS8-272, besloten maar nog niet gebouwd) krijgt een uitzondering voor
+teamgroepen (besluit 25), dus de nieuwe poort die A57 invoert moet groepen van een
+organisatie uitsluiten.
 
 ### Systeemberichten (domeinregel 7)
 
@@ -235,7 +236,8 @@ belofte toetst en niet een onderdeel (regel 18).
    nieuwe tabellen staan niet in de publicatie. (c) De teambalk is vóór en na de
    gemiste week gelijk, en ook nadat een mijlpaal van gedaan terug naar te doen
    gaat. (d) `groep_klassement()` geeft nul rijen, ook voor een open teamgroep
-   (besluit 22) en, zodra A57 (QS8-272) gebouwd is, ook voor een beschermde. (e) Er is geen view over de nieuwe tabellen zonder expliciete
+   (besluit 22) en ook voor een beschermde teamgroep: A57 (QS8-272) krijgt een
+   uitzondering voor teamgroepen (besluit 25). (e) Er is geen view over de nieuwe tabellen zonder expliciete
    kolomlijst. (f) In een open teamgroep ziet een teamgenoot een gemist aandeel niet
    en niet hoe ver een ander met zijn aandeel is (besluit 21).
 7. **Twee week-starts (N).** Gebruiker A op maandag, B op zondag, een derde in

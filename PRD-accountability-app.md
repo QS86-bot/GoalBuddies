@@ -70,6 +70,7 @@ Decided by the product owner on 2026-11-03. The reasoning, the cost of each devi
 - **What colleagues see:** the team bar and their own share. A missed share, and how far another member is with theirs, stay invisible to colleagues, in open team groups as well.
 - **Commitments:** a team group may be the beneficiary or witness of a commitment under the existing rules. What a colleague sees of it is not yet worked out.
 - **Leaving:** a person's goals stay with them; only the link to the organization ends.
+- **Positioning:** positioning and onboarding go business-first. The Doelcoach prompt and the examples follow only after measurement with real users, each as a separate decision.
 
 The domain rules in `CLAUDE.md` (approval by a group member and never by yourself, failing is never public, the points model) keep applying unchanged. Which phase this belongs to is **not set in this PRD**.
 
