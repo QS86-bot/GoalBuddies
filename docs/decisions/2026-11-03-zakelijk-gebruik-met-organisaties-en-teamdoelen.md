@@ -22,7 +22,9 @@ te twijfelen.
   persona**. De niche is dus geen nieuwe richting maar een bestaande die smaller of
   breder wordt gemaakt.
 - 📏 PRD §2.4 zet gedeelde teamdoelen **buiten scope**, met de toevoeging
-  *"unless revisited"*. Dit besluit is die herziening.
+  *"unless revisited"*. Dit besluit is die herziening. **De PRD is op 03-11-2026
+bijgewerkt:** teamdoelen staan niet meer in §2.4 en er is een nieuwe §2.5. De fasering
+staat daar bewust niet in.
 - 📏 Er is al een doelcategorie `business` in `src/shared/categorieen/index.ts`.
 - ⚠️ **Een organisatie- of teamlaag in het schema is niet gevonden, maar niet
   volledig nagelopen.** Een grep op `organization`, `organisatie`, `team_goal` en

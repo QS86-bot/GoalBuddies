@@ -6,6 +6,7 @@
 | **Owner** | Quinten Strijdonk (Q-Projects) |
 | **Status** | Draft v1.0 — ready for Linear project setup |
 | **Date** | 2026-07-31 |
+| **Revised** | 2026-11-03 — §2.4: shared/team goals are no longer out of scope; new §2.5 (see `docs/decisions/2026-11-03-zakelijk-gebruik-met-organisaties-en-teamdoelen.md`) |
 | **Intended reader** | Claude Code, for scaffolding the Linear project (teams, epics, issues) and building the app |
 
 ---
@@ -38,6 +39,8 @@ No existing competitor (Habit Huddle, Habitica, Kept, Nudge, StickK, Habitat, Da
 - **The Founder/Freelancer (primary):** solo operator with a big, vague business goal (e.g., "launch my website," "land 3 new clients") who needs it broken down and someone checking in.
 - **The Student:** studying for a certification/exam with a fixed deadline, wants weekly structure and peer pressure.
 - **The Buddy:** may or may not have their own goal in the App; primary role is approving/encouraging a friend's progress inside a shared group.
+- **The Team Member (added 2026-11-03):** works in a small team or an organization; keeps personal goals and works on a shared team goal with a share of their own.
+- **The Organization Administrator (added 2026-11-03):** sets up the organization and its teams. Sees no more of anyone's progress than any other member.
 
 ---
 
@@ -53,7 +56,22 @@ Photo/document attachments in chat and as completion proof, linking **one goal t
 Real-money commitment device via a licensed payment/escrow provider, advanced analytics/dashboards, calendar integration, streak freezes/vacation mode, moderation tooling for chat/attachments, native performance polish.
 
 ### 2.4 Out of scope (all phases, unless revisited)
-Shared/team goals (a group *co-owning* one goal), public/discoverable groups or social feed, coaching marketplace, native desktop apps beyond a responsive web app, non-English/non-Dutch localization at launch.
+Public/discoverable groups or social feed, coaching marketplace, native desktop apps beyond a responsive web app, non-English/non-Dutch localization at launch.
+
+*Revised 2026-11-03:* shared/team goals (a group co-owning one goal) were removed from this list; see §2.5.
+
+### 2.5 In scope — organizations and team goals (added 2026-11-03)
+Decided by the product owner on 2026-11-03. The reasoning, the cost of each deviation from the advice given, and the open points are in `docs/decisions/2026-11-03-zakelijk-gebruik-met-organisaties-en-teamdoelen.md`; a spec proposal is in `docs/decisions/2026-11-03-spec-organisaties-en-teamdoelen.md`. **Nothing here is built yet.**
+
+- **Audiences:** solo founders and freelancers, small teams, and employees, served together rather than in sequence.
+- **Organizations:** a new level above buddy groups. A person can belong to several. The only roles are administrator and member. The administrator can invite members, remove members, create teams and archive the organization, and sees no more of anyone's progress than any other member. Billing is not part of this scope.
+- **Teams:** a team is a buddy group that belongs to an organization. It can be protected or open, chosen by the organization at creation. A team group never has a leaderboard. It may have more than twelve members; the number is not set.
+- **Team goals:** any team member can create one. Every member has a *share*, an ordinary personal goal linked to the team goal, approved by a teammate and never by themselves. The team bar counts achieved milestones only, has no denominator and never goes down.
+- **What colleagues see:** the team bar and their own share. A missed share, and how far another member is with theirs, stay invisible to colleagues, in open team groups as well.
+- **Commitments:** a team group may be the beneficiary or witness of a commitment under the existing rules. What a colleague sees of it is not yet worked out.
+- **Leaving:** a person's goals stay with them; only the link to the organization ends.
+
+The domain rules in `CLAUDE.md` (approval by a group member and never by yourself, failing is never public, the points model) keep applying unchanged. Which phase this belongs to is **not set in this PRD**.
 
 ---
 
