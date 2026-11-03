@@ -1,6 +1,6 @@
 # Spec-voorstel: organisaties en teamdoelen
 
-**Datum:** 03-11-2026 · **Issue:** nog geen · **Raakt:** het schema, RLS en de schermlaag
+**Datum:** 03-11-2026 · **Issue:** QS8-649 is "issue 0" uit de knip hieronder; de andere negen bestaan nog niet · **Raakt:** het schema, RLS en de schermlaag
 **Status:** **voorstel van de spec-planner.** Niets hiervan is besloten behalve wat
 in `docs/decisions/2026-11-03-zakelijk-gebruik-met-organisaties-en-teamdoelen.md`
 staat. Elke "voorgestelde standaard" hieronder wacht op een antwoord van Quinten.

@@ -1,6 +1,6 @@
 # Zakelijk gebruik met organisaties en teamdoelen
 
-**Datum:** 03-11-2026 · **Issue:** nog geen — het Linear-issue volgt op de spec ·
+**Datum:** 03-11-2026 · **Issue:** QS8-649 (poort-issue; de vervolgissues volgen daarna) ·
 **Raakt:** `PRD-accountability-app.md` §2.4, domeinregel 3, 4, 7 en 10
 **Status:** **besloten door Quinten en niet gebouwd.** De spec staat als *voorstel*
 in `docs/decisions/2026-11-03-spec-organisaties-en-teamdoelen.md`; daarin wacht een
