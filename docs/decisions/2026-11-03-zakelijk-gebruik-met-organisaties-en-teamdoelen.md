@@ -127,6 +127,29 @@ te houden, zodat er geen nieuwe schaalvraag opent. Die is nu open: een groter te
 raakt de chat, het groepsoverzicht (N+1-risico, regel 12) en realtime. Er is **geen
 getal besloten**; dat komt pas na meting.
 
+## Eerder besloten, en wat dit daarmee doet
+
+Dit stond niet in het eerste voorstel. Het kwam boven bij het aanmaken van het
+Linear-issue, door de issues en reacties te lezen die er al lagen.
+
+- **A44 (QS8-128, 24-08-2026): "de PRD blijft leidend, er komt géén koerswijziging
+  naar zakelijke doelen."** Dat was een lezing van een opdracht (*"Maak deze zoals
+  omschreven in de PDR"*) en geen uitdrukkelijk besluit, en het zegt zelf: *"Lees je
+  het anders, zeg het — dan is de eerste stap een herziening van het PRD en niet een
+  issue."* Dit besluit is die andere lezing, en de PRD is herzien. ⚠️ **Wat A44
+  verder noemde is niet besloten:** het raakt de Doelcoach-prompt, de voorbeelden en de
+  copy door de hele app heen, en het noemt dit *een koerswijziging en geen feature*.
+  Dit document legt alleen organisaties en teamdoelen vast. Of de rest van de app
+  (prompt, voorbeelden, copy, positionering) mee verschuift is een eigen besluit.
+- **A57 (QS8-272, 03-09-2026): een klassement in elke groep, ook een beschermde.**
+  📏 Het besluit staat op Done, maar **de bouw is er niet**: migratie 0141 is de enige
+  definitie van `groep_klassement()` en de poort staat daar nog op
+  `lid_van_open_groep()` (r.267), dus vandaag geeft een beschermde groep nul rijen. De
+  beschrijving van het issue zegt zelf *"De bouw staat nog open."* Zodra A57 landt,
+  botst het met besluit 22 (nooit een klassement in een teamgroep): dan geeft ook een
+  **beschermde** teamgroep een klassement, tenzij teamgroepen er expliciet uit worden
+  gehouden. Hoe die twee samengaan is niet besloten.
+
 ## Wat het raakt
 
 - **Domeinregel 3** (goedkeuring door een groepslid, nooit jezelf): besluit 5 houdt
@@ -148,7 +171,7 @@ getal besloten**; dat komt pas na meting.
   stelt voor van niet.
 - **Domeinregel 1** (twee klokken): een teamdoel volgt de groepsperiode, een aandeel
   de persoonlijke cyclus van zijn eigenaar (besluit 17). Er komt geen derde klok.
-- **A41 en A54** (groepszichtbaarheid en klassement): besluit 18 laat een teamgroep
+- **A41, A54 en A57** (groepszichtbaarheid en klassement): besluit 18 laat een teamgroep
   open zijn, besluit 21 houdt aandeeldoelen er toch beschermd en besluit 22 sluit het
   klassement uit. Die twee uitzonderingen volgen niet vanzelf uit de regels voor een
   open groep; ze moeten expliciet in de leesregels en in `groep_klassement()` komen,
@@ -163,6 +186,12 @@ Dit zijn geen aanname-gaten die iemand stilzwijgend moet vullen. Ze staan open t
 Quinten ze beantwoordt, en de spec presenteert ze als vraag met een voorgestelde
 standaard:
 
+- **Hoe A57 en besluit 22 samengaan.** A57 geeft elke groep een klassement, besluit
+  22 sluit het uit voor een teamgroep. Er moet een poort komen die teamgroepen
+  expliciet uitzondert, óók als ze beschermd zijn; of A57 die uitzondering krijgt of
+  besluit 22 vervalt, is niet gezegd.
+- **Of de rest van de app mee verschuift** (A44): Doelcoach-prompt, voorbeelden, copy
+  en positionering.
 - **Het getal van het hogere plafond voor teamgroepen** (besluit 23). Besloten is
   alleen dat teamgroepen een hoger plafond dan twaalf krijgen. Welk getal, moet eerst gemeten worden op chat,
   groepsoverzicht en realtime. Tot dan geldt in de code het bestaande plafond; dat is
