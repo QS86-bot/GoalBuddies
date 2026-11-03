@@ -58,8 +58,12 @@ en is **richtinggevend, geen bewijs**:
 | 6 | Een leidinggevende of beheerder ziet van de voortgang **hetzelfde als elk lid** | idem | nee |
 | 7 | De teamvoortgang telt **alleen wat gehaald is**; een gemist aandeel is alleen voor de eigenaar zichtbaar | idem | nee |
 | 8 | Eerst beslisdocument en spec, **nog niet bouwen** | idem | nee |
+| 9 | Een team is een **bestaande groep met een organisatie-kolom**, geen aparte teamtabel | idem | nee |
+| 10 | Een aandeel is een **gewoon persoonlijk doel** dat aan het teamdoel hangt, geen getal of percentage | idem | nee |
+| 11 | Collega's zien **alleen de teambalk en hun eigen aandeel**, niet hoe ver een ander met zijn aandeel is | idem | nee |
+| 12 | Een commitment mag in een werkcontext een **teamgroep als begunstigde of getuige** hebben, onder dezelfde regels als nu (nooit geld, vrijblijvend, expliciet bevestigd, auditeerbaar) | geen teamgroep als begunstigde tot er een apart besluit is | **ja** |
 
-### Wat de drie afwijkingen kosten
+### Wat de afwijkingen kosten
 
 ⚠️ **Besluit 2 (alles tegelijk).** Het advies leunde op niche-first positionering.
 De doelgroep wordt hier breder, niet smaller, en tegelijk raakt het werk het
@@ -75,6 +79,21 @@ organisatie voegt een entiteit toe, waarschijnlijk een beheerdersrol, en
 AVG-verhoudingen tussen organisatie, werknemer en de app. Wat dat in tabellen
 betekent hoort in de spec; hier staat alleen dat het een bewuste keuze voor meer
 is.
+
+⚠️ **Besluit 12 (commitments met een teamgroep).** Het advies was de teamgroep als
+begunstigde of getuige uit te sluiten tot er een apart besluit lag, omdat een
+vrijblijvende afspraak tegenover een collega of werkgever een ander gewicht heeft
+dan tegenover een vriend. Quinten liet het toe. De regels van domeinregel 5 en 11
+blijven gelden: nooit geld, vrijblijvend, expliciet bevestigd, auditeerbaar, en de
+begunstigde groep krijgt pas leesrecht op het moment dat de straf verschuldigd
+wordt. **Wat de afwijking kost:** het moment waarop een commitment `due` wordt is
+dat van een verstreken streefdatum, en bij een teamgroep is de lezer een collega.
+Dat past binnen de uitzondering van domeinregel 7 (een straf die de gebruiker zelf
+vooraf instelde en bevestigde), maar het is precies het schaamtemoment waar de
+regel voor bestaat, in een groep waar je niet vrijwillig bij hoort. Wat die
+collega te zien krijgt, en wanneer, is **niet uitgewerkt**; de spec krijgt hier een
+eigen issue voor met `security-reviewer` direct, en de spec-standaard "geen
+teamgroep als begunstigde" vervalt.
 
 ## Wat het raakt
 
@@ -114,10 +133,10 @@ standaard:
 - **Wat een aandeel is:** een getal, een percentage of vrije tekst.
 - **Of één persoon in meerdere organisaties kan zitten.**
 - **Hoe organisatie, buddygroep en bestaande groepen zich tot elkaar verhouden.**
-- **Wat een commitment device in een werkcontext betekent.** Domeinregel 5 en 11
-  zeggen dat een straf nooit geld is en altijd vrijblijvend; tegenover een
-  collega of werkgever is dat een ander gesprek, en het raakt wat een mens
-  beloofd wordt — grens 1.
+- **Wat een collega te zien krijgt van een commitment in een teamgroep.** Besluit
+  12 staat de teamgroep als begunstigde of getuige toe; wat er zichtbaar wordt, bij
+  welke stand en voor wie, is niet uitgewerkt. Het raakt wat een mens beloofd wordt
+  (grens 1).
 - **Juridisch.** Een organisatie maakt van GoalBuddies een systeem dat gegevens
   van werknemers verwerkt voor een werkgever. Of daar, in Nederland, een
   instemmingsrecht van een ondernemingsraad of een bepaalde AVG-rolverdeling bij

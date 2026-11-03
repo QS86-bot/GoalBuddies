@@ -38,16 +38,23 @@ gedeployde functie is de waarheid.
 
 De voorgestelde standaard staat tussen haakjes.
 
-1. **De vorm van een team.** Een bestaande groep met een kolom `organization_id`, of
+**Bijgewerkt na de antwoorden van Quinten (03-11-2026):** beslissing 1, 2 en 5 en
+open vraag 3, 8 en 9 zijn beantwoord; zie besluit 9 tot en met 12 in het
+beslisdocument. Bij 1, 2 en 9 koos Quinten de voorgestelde standaard. **Bij 5 en 8
+(commitments) wees hij de standaard af:** een teamgroep mag begunstigde of getuige
+zijn, onder dezelfde regels als nu.
+
+1. **De vorm van een team (besloten: bestaande groep met organisatie-kolom).** Een bestaande groep met een kolom `organization_id`, of
    een nieuwe tabel? (Hergebruik groepen: lidmaatschap, peer-goedkeuring, chat en
    RLS blijven ongewijzigd, en de organisatie is de laag erboven.)
-2. **Wat een aandeel is.** (Een gewoon persoonlijk doel van de werknemer, gekoppeld
+2. **Wat een aandeel is (besloten: een gewoon persoonlijk doel).** (Een gewoon persoonlijk doel van de werknemer, gekoppeld
    aan het teamdoel. Geen getal en geen percentage.)
 3. **Waarop de teambalk telt** en of er een noemer is.
 4. **Een derde klok of niet.** (Geen organisatieklok; het teamdoel volgt de
    huddledag van de teamgroep.)
-5. **Commitments in een werkcontext** (grens 1). (Tot er een besluit is mag een
-   straf geen teamgroep als begunstigde hebben.)
+5. **Commitments in een werkcontext** (grens 1). **Besloten, anders dan de
+   standaard:** een teamgroep mag begunstigde of getuige zijn. (De standaard was: tot
+   er een besluit is mag een straf geen teamgroep als begunstigde hebben; die vervalt.)
 6. **Herbevestiging van besluit 2 en 4** uit het beslisdocument.
 
 ## Bestaande stand (door de spec-planner gelezen)
@@ -180,6 +187,7 @@ terugzakt is precies het signaal dat besluit 7 verbiedt. Een nieuwe module
 | 7a | Organisatieschermen, module en i18n | 7b | UI: licht; de RLS-tests uit 2 dekken de ledenlijst |
 | 7b | Teamdoelscherm en teambalk | | UI: licht |
 | 8 | Accountverwijdering en verlaten met aandelen | | Wisrecht: direct, mogelijk grens 2 |
+| 9 | **Commitments met een teamgroep als begunstigde of getuige** (nieuw na besluit 12): wat een collega ziet bij `unlocked`, `due` en `resolved`, en dat het niets lekt dat een aandeel op `missed` staat | | Geld, straffen en groepsdata: volledige kritische review, `security-reviewer` direct, grens 1 |
 
 Volgorde: 0, dan 1 (kan parallel met 2), 2, 3, 4, 5, 6, 7a, 7b, en 8 na 4. Elk issue
 werkt `docs/decisions/002-domeinregel7-oppervlakken.md` bij voor zijn eigen nieuwe
@@ -257,7 +265,7 @@ belofte toetst en niet een onderdeel (regel 18).
    van de gebruiker; alleen de koppeling vervalt en de teller blijft staan. De teller
    bevat geen gebruiker, dus er hoeft niets uit. Of een anonieme telling na
    verwijdering mag blijven staan is juridisch.
-3. **Wat is een aandeel?** Een persoonlijk doel per persoon per teamdoel. Een getal
+3. **Wat is een aandeel? (Besloten: een persoonlijk doel.)** Een persoonlijk doel per persoon per teamdoel. Een getal
    of percentage maakt een gemist aandeel eerder afleidbaar.
 4. **De teambalk.** Een teller van behaalde mijlpalen die alleen optelt, zonder
    noemer. Een groeiende noemer laat de balk dalen en botst met besluit 7. Een
@@ -271,12 +279,15 @@ belofte toetst en niet een onderdeel (regel 18).
    met terugwerkende kracht wat er zichtbaar is (zoals bij A41).
 7. **Kan een teamgroep `open` zijn?** Nee, met een CHECK. CLAUDE.md zegt dat
    domeinregel 7 bij zakelijk gebruik zwaarder weegt.
-8. **Commitments in een werkcontext.** Tot er een besluit is geen teamgroep als
-   begunstigde en geen getuige via een teamgroep. Grens 1.
-9. **Zichtbaarheid van het aandeel per persoon.** Een gekoppeld doel toont in
-   `group_overview()` de mijlpaalvoortgang per persoon (002, rij 1). Op de werkvloer
-   is "1 van 5" naast "4 van 5" een vergelijking van prestaties. Standaard als elk
-   gekoppeld doel, maar dit moet expliciet bevestigd worden.
+8. **Commitments in een werkcontext. (Besloten, anders dan de standaard.)** De
+   standaard was geen teamgroep als begunstigde en geen getuige via een teamgroep.
+   Quinten staat het toe onder dezelfde regels als nu; zie besluit 12 en issue 9
+   hierboven. Grens 1.
+9. **Zichtbaarheid van het aandeel per persoon. (Besloten: niet zichtbaar.)** Een
+   gekoppeld doel toont in `group_overview()` de mijlpaalvoortgang per persoon (002,
+   rij 1). Collega's zien alleen de teambalk en hun eigen aandeel. **Gevolg:** een
+   aandeeldoel moet in het groepsoverzicht anders getoond worden dan een gewoon
+   gekoppeld doel, en dat hoort in issue 4 of 5 met een eigen toets op de naad.
 10. **Leidinggevende als rol?** Niet modelleren: een rol die geen extra zicht geeft
     heeft geen functie, en minder gegevens is beter.
 11. **Wie maakt een teamdoel, en wat met de streefdatum van een aandeel?** Elk
