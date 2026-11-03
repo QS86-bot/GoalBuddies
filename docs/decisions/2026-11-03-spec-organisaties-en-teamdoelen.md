@@ -44,6 +44,13 @@ beslisdocument. Bij 1, 2 en 9 koos Quinten de voorgestelde standaard. **Bij 5 en
 (commitments) wees hij de standaard af:** een teamgroep mag begunstigde of getuige
 zijn, onder dezelfde regels als nu.
 
+**Tweede ronde (03-11-2026):** ook beslissing 3 (teambalk: teller zonder noemer) en
+4 (geen derde klok) en open vraag 1, 2, 4, 5, 7, 10, 11 en 12 zijn beantwoord; zie
+besluit 13 tot en met 23. Open vraag 6 volgt uit besluit 9. **Afwijkend van de
+standaard: vraag 7 (een open teamgroep is toegestaan) en vraag 12 (een hoger plafond,
+het getal is niet besloten).** Wat daarvan hieronder nog als standaard staat, is bij
+die twee vervallen.
+
 1. **De vorm van een team (besloten: bestaande groep met organisatie-kolom).** Een bestaande groep met een kolom `organization_id`, of
    een nieuwe tabel? (Hergebruik groepen: lidmaatschap, peer-goedkeuring, chat en
    RLS blijven ongewijzigd, en de organisatie is de laag erboven.)
@@ -109,7 +116,9 @@ ongewijzigd van toepassing, zonder tweede pad.
    De rol komt **nooit** in een SELECT-policy van voortgangsdata (besluit 6).
 3. **groups.organization_id** (nullable). Partiële index. Niet schrijfbaar voor
    clients (revoke plus trigger, patroon 0019/0076). CHECK: een groep met een
-   organisatie is `beschermd` en niet vindbaar (0144). Trigger: wie lid wordt van
+   organisatie is niet vindbaar (0144). De zichtbaarheid (beschermd of open) kiest de
+   organisatie bij het aanmaken (besluit 18); de eerdere CHECK 'altijd beschermd'
+   vervalt. Trigger: wie lid wordt van
    zo'n groep moet actief lid van de organisatie zijn.
 4. **team_goals:** id, organisatie, teamgroep (NOT NULL), titel, beschrijving,
    streefdatum, status, aanmaker. Indexen op groep en organisatie. Trigger: de
@@ -153,8 +162,10 @@ authenticated` gevolgd door een expliciete `grant`.
 Een aandeel is een gewoon doel: plus twee, plus een, min een of nul voor de
 eigenaar, privé. De groep op de goedkeuringsboeking wordt de teamgroep. **Geen
 nieuwe reden, geen teampunten en geen bonus bij een afgerond teamdoel**: dat is
-dezelfde dubbeltelling die 0132 r.93 heeft weggehaald. Omdat de CHECK een teamgroep
-beschermd houdt, geeft `groep_klassement()` daar nul rijen.
+dezelfde dubbeltelling die 0132 r.93 heeft weggehaald. Besluit 22: nooit een
+klassement in een teamgroep. Omdat een teamgroep open mag zijn (besluit 18), komt die
+garantie niet meer gratis uit een beschermd-CHECK: `groep_klassement()` moet
+teamgroepen expliciet uitsluiten, met een test.
 
 ### Systeemberichten (domeinregel 7)
 
@@ -188,8 +199,10 @@ terugzakt is precies het signaal dat besluit 7 verbiedt. Een nieuwe module
 | 7b | Teamdoelscherm en teambalk | | UI: licht |
 | 8 | Accountverwijdering en verlaten met aandelen | | Wisrecht: direct, mogelijk grens 2 |
 | 9 | **Commitments met een teamgroep als begunstigde of getuige** (nieuw na besluit 12): wat een collega ziet bij `unlocked`, `due` en `resolved`, en dat het niets lekt dat een aandeel op `missed` staat | | Geld, straffen en groepsdata: volledige kritische review, `security-reviewer` direct, grens 1 |
+| 10 | **Open teamgroep** (nieuw na besluit 18, 21 en 22): leesregels met een uitzondering die aandeeldoelen in elke teamgroep beschermd houdt, geen klassement in een teamgroep, en per open leesroute een toets op de naad die een gemist aandeel of de voortgang per persoon zou kunnen tonen | | Zichtbaarheid tussen leden van een groep: volledige kritische review, `security-reviewer` direct |
 
-Volgorde: 0, dan 1 (kan parallel met 2), 2, 3, 4, 5, 6, 7a, 7b, en 8 na 4. Elk issue
+Volgorde: 0, dan 1 (kan parallel met 2), 2, 3, 4, 5, 6, 7a, 7b, en 8 na 4. Issue 9 en
+10 komen na 4. Elk issue
 werkt `docs/decisions/002-domeinregel7-oppervlakken.md` bij voor zijn eigen nieuwe
 oppervlak. `src/lib/database.types.ts` wordt alleen met `npm run types:db`
 hergenereerd, nooit met de hand.
@@ -219,8 +232,10 @@ belofte toetst en niet een onderdeel (regel 18).
    weekdoelen. (b) `realtime_bewaking()` toont geen `REPLICA IDENTITY FULL` en de
    nieuwe tabellen staan niet in de publicatie. (c) De teambalk is vóór en na de
    gemiste week gelijk, en ook nadat een mijlpaal van gedaan terug naar te doen
-   gaat. (d) `groep_klassement()` geeft nul rijen. (e) Er is geen view over de
-   nieuwe tabellen zonder expliciete kolomlijst.
+   gaat. (d) `groep_klassement()` geeft nul rijen, ook voor een open teamgroep
+   (besluit 22). (e) Er is geen view over de nieuwe tabellen zonder expliciete
+   kolomlijst. (f) In een open teamgroep ziet een teamgenoot een gemist aandeel niet
+   en niet hoe ver een ander met zijn aandeel is (besluit 21).
 7. **Twee week-starts (N).** Gebruiker A op maandag, B op zondag, een derde in
    `America/New_York`, teamgroep met huddledag woensdag. De cyclusstart van elk
    aandeelweekdoel is de persoonlijke cyclus van de eigenaar; een "deze
@@ -251,7 +266,8 @@ belofte toetst en niet een onderdeel (regel 18).
 7. `points_ledger.group_id`, `commitments.beneficiary_group_id` en
    `completion_approvals.group_id` zijn enkelvoudig: in orde zolang een aandeel
    maar één groep heeft.
-8. Het ledenplafond van twaalf beperkt de teamgrootte.
+8. Het ledenplafond van twaalf beperkt vandaag de teamgrootte; besluit 23 verhoogt
+   het voor teamgroepen, zonder getal.
 9. **Niet gemeten:** `limit 1` in SQL-functies over lidmaatschappen en
    groepskoppelingen. `eenrij:controle` dekt alleen `.single()` en `.maybeSingle()`
    aan de clientkant.
@@ -277,8 +293,10 @@ belofte toetst en niet een onderdeel (regel 18).
    een organisatie; bestaande groepen blijven zonder en worden nooit stil omgezet;
    een groep kan niet later aan een organisatie worden gehangen, want dat verandert
    met terugwerkende kracht wat er zichtbaar is (zoals bij A41).
-7. **Kan een teamgroep `open` zijn?** Nee, met een CHECK. CLAUDE.md zegt dat
-   domeinregel 7 bij zakelijk gebruik zwaarder weegt.
+7. **Kan een teamgroep `open` zijn? (Besloten, anders dan de standaard: ja.)** De
+   standaard was nee, met een CHECK. De organisatie kiest bij het aanmaken (besluit
+   18); aandeeldoelen blijven in elke teamgroep beschermd (besluit 21) en er is nooit
+   een klassement (besluit 22).
 8. **Commitments in een werkcontext. (Besloten, anders dan de standaard.)** De
    standaard was geen teamgroep als begunstigde en geen getuige via een teamgroep.
    Quinten staat het toe onder dezelfde regels als nu; zie besluit 12 en issue 9
@@ -293,7 +311,9 @@ belofte toetst en niet een onderdeel (regel 18).
 11. **Wie maakt een teamdoel, en wat met de streefdatum van een aandeel?** Elk
     teamlid. Het aandeel neemt bij het koppelen de datum over en verschuift daarna
     via A7 met akkoord van een teamgenoot.
-12. **Teams groter dan twaalf?** Het plafond houden.
+12. **Teams groter dan twaalf? (Besloten, anders dan de standaard: een hoger
+    plafond.)** De standaard was het plafond houden. Het getal is niet besloten en
+    moet eerst gemeten worden (besluit 23).
 
 ## Juridisch en privacy
 
