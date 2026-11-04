@@ -3,8 +3,8 @@
 **Datum:** 03-09-2026
 **Besluit:** A57
 **Vervangt de open rij uit:** A54 (`2026-08-31-ritme-klassement-en-kleur.md` §2)
-**Status:** besloten, **nog niet gebouwd** — er staan vier vragen open die vóór de
-migratie beantwoord moeten zijn (§7)
+**Status:** besloten, **nog niet gebouwd** — de vier vragen uit §7 zijn op 04-11-2026
+beantwoord (zie "Beantwoord op 04-11-2026" onder §7)
 
 **Aangevuld 03-11-2026:** het klassement geldt niet in een teamgroep, een groep die aan
 een organisatie hangt, ook niet als die beschermd is. De nieuwe poort die dit besluit
@@ -218,6 +218,39 @@ antwoord verzinnen zou hier precies de fout zijn die A41 wilde voorkomen.
    `service_role`.
 4. **Wat betekent "hetzelfde klassement" in A57b?** Zie §8 — ik heb daar een
    aanname gedaan, en dat is de enige plek in dit document waar ik dat doe.
+
+### Beantwoord op 04-11-2026
+
+Quinten beantwoordde de vier vragen hierboven, en de vraag of A57 nog gewenst is nu de
+koers zakelijk is. Dit zijn besluit 39 t/m 44.
+
+| # | Vraag | Antwoord | Advies gevolgd? |
+|---|---|---|---|
+| 39 | A57 houden? | Ja, voor groepen zonder organisatie. Een teamgroep valt eruit (besluit 25) | ja |
+| 40 | Een uitknop? | Ja, als beheerdershandeling met bevestiging, een rij in `group_events` en een systeembericht, in beide richtingen | ja |
+| 41 | Mag een lid zich eruit houden? | Nee, iedereen in de groep staat erin | ja |
+| 42 | Bestaande groepen | **Alleen nieuwe groepen krijgen het klassement standaard** | **nee**: het advies was eenmalig een systeembericht per bestaande groep |
+| 43 | Hoe de knop werkt | Eén knop voor elke groep, in beide richtingen: nieuwe groepen staan aan, bestaande beschermde groepen staan uit en kunnen het zelf aanzetten, open groepen houden hun klassement uit A54 en kunnen het uitzetten | ja |
+| 44 | A57b | Lezing A uit §8: één scherm met een klassement per groep en een filter, geen ranglijst over groepen heen | ja |
+
+⚠️ **Wat besluit 42 kost.** Het haalt het zwaarste bezwaar van §5b voor bestaande groepen
+weg: er worden geen oude punten met terugwerkende kracht zichtbaar, tenzij een beheerder het
+aanzet, en dan met bevestiging. Wat het kost: er zijn twee soorten beschermde groepen naast
+elkaar, een bestaande groep merkt niets tot iemand het aanzet, en de uitleg in de app moet
+dat verschil kunnen dragen. Het advies diende ervoor dat een groep *merkt dat dit erbij
+komt* (§5a); dat is nu vervangen door *het komt er niet bij, tenzij je het zelf aanzet*.
+
+**Wat de antwoorden aan de bouw toevoegen** (afgeleid, niet apart besloten):
+* Een schakelaar per groep, bijvoorbeeld een kolom op `groups` die voor geen enkele client
+  schrijfbaar is (het patroon van `zichtbaarheid`, migratie 0076), met een RPC naar het
+  voorbeeld van `zet_groepszichtbaarheid()`. Bij de migratie: nieuwe groepen aan, bestaande
+  beschermde groepen uit, bestaande open groepen aan.
+* De nieuwe poort uit §3 toetst dan ook die schakelaar, en sluit teamgroepen uit.
+* Twee nieuwe systeemberichttypen (aan en uit) vragen een migratie van de allowlist
+  `chat_messages_system_event_bekend` en van de kopie in `src/modules/buddies/chat-schemas.ts`.
+
+⚠️ **Nog open voor de bouwronde:** wordt het klassement automatisch aangezet als een
+beschermde groep via `zet_groepszichtbaarheid()` open wordt? Niet besloten.
 
 ---
 

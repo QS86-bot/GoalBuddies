@@ -90,6 +90,7 @@ en is **richtinggevend, geen bewijs**:
 | 36 | De organisatiebeheerder wordt groepsbeheerder **zonder lid van het team te zijn**, via een uitgebreide `is_group_admin()`, en niet als lid met de rol beheerder | idem | nee |
 | 37 | Het label voor de nieuwe fase is **`phase:zakelijk`** | idem | nee |
 | 38 | De vervolgissues komen in **één epic met sub-issues en blokkeerrelaties** | idem | nee |
+| 39 | **A57 blijft staan** voor groepen zonder organisatie, en de vier vragen uit §7 van het A57-document zijn beantwoord (besluit 39 t/m 44 daar). Alleen nieuwe groepen krijgen het klassement standaard; een bestaande beschermde groep zet het zelf aan | eenmalig een systeembericht aan elke bestaande groep | **ja**, op dat ene punt |
 
 ### Wat de afwijkingen kosten
 
@@ -295,10 +296,10 @@ standaard:
 - **De Doelcoach-prompt en de voorbeelden** (besluit 24). Dat ze later volgen, na
   meting met echte gebruikers, is besloten; wat er dan verandert en wanneer niet. Elk
   onderdeel is een eigen besluit.
-- **De vier vragen die A57 zelf nog openliet** (QS8-272, §7 van het A57-document): een
-  uitknop, een lid dat zich eruit houdt, wat er met bestaande beschermde groepen
-  gebeurt, en één scherm of één ranglijst. Besluit 25 laat ze ongemoeid; ze gelden
-  voor groepen zonder organisatie.
+- **De interactie tussen de zichtbaarheid van een groep en de klassement-schakelaar van
+  A57**: wordt het klassement automatisch aangezet als een beschermde groep via
+  `zet_groepszichtbaarheid()` open wordt? De vier vragen van A57 zelf zijn beantwoord
+  (besluit 39, en 39 t/m 44 in het A57-document); deze komt daar nieuw uit voort.
 - **De meting achter het voorlopige plafond van 25** (besluit 27): chat,
   groepsoverzicht en realtime bij grotere groepen. Tot er gemeten is, is 25 een keuze
   en geen uitkomst.
