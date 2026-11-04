@@ -1,6 +1,6 @@
 # Spec-voorstel: organisaties en teamdoelen
 
-**Datum:** 03-11-2026 · **Issue:** QS8-649 is "issue 0" uit de knip hieronder; de andere negen bestaan nog niet · **Raakt:** het schema, RLS en de schermlaag
+**Datum:** 03-11-2026 · **Issues:** epic QS8-650 met sub-issues QS8-651 t/m QS8-666 (zie "Linear" onder de knip); QS8-649 is de poort · **Raakt:** het schema, RLS en de schermlaag
 **Status:** **voorstel van de spec-planner.** Niets hiervan is besloten behalve wat
 in `docs/decisions/2026-11-03-zakelijk-gebruik-met-organisaties-en-teamdoelen.md`
 staat. Elke "voorgestelde standaard" hieronder wacht op een antwoord van Quinten.
@@ -228,7 +228,25 @@ terugzakt is precies het signaal dat besluit 7 verbiedt. Een nieuwe module
 | 11 | **Afronden en teambonus** (nieuw na besluit 28 en 30): een lid rondt een teamdoel af, een teamgenoot keurt goed (nooit jezelf), en pas dan wordt de bonus geboekt: een nieuwe reden in `points_ledger_reason_valid`, eenmalig per persoon per teamdoel | | Punten en goedkeuring: volledige kritische review, `security-reviewer` direct. Raakt domeinregel 10, dus CLAUDE.md moet mee |
 
 Volgorde: 0, dan 1 (kan parallel met 2), 2, 3, 4, 5, 6, 7a, 7b, en 8 na 4. Issue 9, 10
-en 11 komen na 4. Elk issue
+en 11 komen na 4.
+
+**Linear (aangemaakt 04-11-2026).** Dit zijn twaalf sub-issues, niet elf: nummer 7 is in
+twee gesplitst. De epic is QS8-650.
+
+| Knip | Linear | | Knip | Linear |
+|---|---|---|---|---|
+| 0 (poort) | QS8-649 | | 7b | QS8-658 |
+| 1 | QS8-651 | | 8 | QS8-659 |
+| 2 | QS8-652 | | 9 | QS8-660 |
+| 3 | QS8-653 | | 10 | QS8-661 |
+| 4 | QS8-654 | | 11 | QS8-662 |
+| 5 | QS8-655 | | extra: positionering | QS8-663 |
+| 6 | QS8-656 | | extra: CLAUDE.md domeinregel 10 | QS8-664 |
+| 7a | QS8-657 | | extra: plafond meten | QS8-665 |
+| | | | extra: A57 bouwen | QS8-666 |
+
+De eerste organisatie-migratie (QS8-652) is geblokkeerd door QS8-649. QS8-662 is ook
+geblokkeerd door QS8-664, en QS8-666 door QS8-653 en door de eigen vragen van A57. Elk issue
 werkt `docs/decisions/002-domeinregel7-oppervlakken.md` bij voor zijn eigen nieuwe
 oppervlak. `src/lib/database.types.ts` wordt alleen met `npm run types:db`
 hergenereerd, nooit met de hand.
