@@ -51,6 +51,12 @@ standaard: vraag 7 (een open teamgroep is toegestaan) en vraag 12 (een hoger pla
 het getal is niet besloten).** Wat daarvan hieronder nog als standaard staat, is bij
 die twee vervallen.
 
+**Derde ronde (04-11-2026):** besluit 26 tot en met 30 zijn genomen (omzetten van de
+zichtbaarheid, voorlopig plafond van 25, een teambonus, een commitment met een
+teamgroep, afronden met goedkeuring). **Afwijkend van de standaard: 26, 27 en 28.**
+Vooral de punten hieronder zijn daardoor veranderd: er is nu wél een bonus bij een
+afgerond teamdoel.
+
 1. **De vorm van een team (besloten: bestaande groep met organisatie-kolom).** Een bestaande groep met een kolom `organization_id`, of
    een nieuwe tabel? (Hergebruik groepen: lidmaatschap, peer-goedkeuring, chat en
    RLS blijven ongewijzigd, en de organisatie is de laag erboven.)
@@ -160,9 +166,13 @@ authenticated` gevolgd door een expliciete `grant`.
 ### Punten (domeinregel 10)
 
 Een aandeel is een gewoon doel: plus twee, plus een, min een of nul voor de
-eigenaar, privé. De groep op de goedkeuringsboeking wordt de teamgroep. **Geen
-nieuwe reden, geen teampunten en geen bonus bij een afgerond teamdoel**: dat is
-dezelfde dubbeltelling die 0132 r.93 heeft weggehaald. Besluit 22: nooit een
+eigenaar, privé. De groep op de goedkeuringsboeking wordt de teamgroep. **Besluit 28
+wijkt hier af van de spec-standaard:** er komt een eenmalige teambonus van +2 voor
+iedereen met een aandeel bij een afgerond teamdoel, ook bij een gemist aandeel. Dat
+vraagt een nieuwe reden in de CHECK `points_ledger_reason_valid` (0132), dus een
+migratie, en het is de dubbeltelling die 0132 r.93 voor `goal_done` juist heeft
+weggehaald. De spec-standaard (geen bonus) vervalt. De bonus staat in
+`points_ledger`, dus alleen de eigenaar ziet hem. Besluit 22: nooit een
 klassement in een teamgroep. Omdat een teamgroep open mag zijn (besluit 18), komt die
 garantie niet meer gratis uit een beschermd-CHECK: `groep_klassement()` moet
 teamgroepen expliciet uitsluiten, met een test. Dat geldt ook voor een beschermde
@@ -203,9 +213,10 @@ terugzakt is precies het signaal dat besluit 7 verbiedt. Een nieuwe module
 | 8 | Accountverwijdering en verlaten met aandelen | | Wisrecht: direct, mogelijk grens 2 |
 | 9 | **Commitments met een teamgroep als begunstigde of getuige** (nieuw na besluit 12): wat een collega ziet bij `unlocked`, `due` en `resolved`, en dat het niets lekt dat een aandeel op `missed` staat | | Geld, straffen en groepsdata: volledige kritische review, `security-reviewer` direct, grens 1 |
 | 10 | **Open teamgroep** (nieuw na besluit 18, 21 en 22): leesregels met een uitzondering die aandeeldoelen in elke teamgroep beschermd houdt, geen klassement in een teamgroep, en per open leesroute een toets op de naad die een gemist aandeel of de voortgang per persoon zou kunnen tonen | | Zichtbaarheid tussen leden van een groep: volledige kritische review, `security-reviewer` direct |
+| 11 | **Afronden en teambonus** (nieuw na besluit 28 en 30): een lid rondt een teamdoel af, een teamgenoot keurt goed (nooit jezelf), en pas dan wordt de bonus geboekt: een nieuwe reden in `points_ledger_reason_valid`, eenmalig per persoon per teamdoel | | Punten en goedkeuring: volledige kritische review, `security-reviewer` direct. Raakt domeinregel 10, dus CLAUDE.md moet mee |
 
-Volgorde: 0, dan 1 (kan parallel met 2), 2, 3, 4, 5, 6, 7a, 7b, en 8 na 4. Issue 9 en
-10 komen na 4. Elk issue
+Volgorde: 0, dan 1 (kan parallel met 2), 2, 3, 4, 5, 6, 7a, 7b, en 8 na 4. Issue 9, 10
+en 11 komen na 4. Elk issue
 werkt `docs/decisions/002-domeinregel7-oppervlakken.md` bij voor zijn eigen nieuwe
 oppervlak. `src/lib/database.types.ts` wordt alleen met `npm run types:db`
 hergenereerd, nooit met de hand.
@@ -253,6 +264,13 @@ belofte toetst en niet een onderdeel (regel 18).
 11. **Allowlist.** Een onbekend systeembericht-type wordt geweigerd, ook voor
     `service_role`; een teambericht bevat geen titel.
 12. **Dagteller** op uitnodigen en lid worden.
+13. **Teambonus (N).** (a) Een lid kan zijn eigen afronding van een teamdoel niet
+    goedkeuren: geweigerd in RLS, en via `service_role` op de constraint. (b) De bonus
+    boekt eenmalig per persoon per teamdoel, ook bij een tweede afronding of een
+    herhaalde goedkeuring. (c) De boeking staat alleen in `points_ledger` van de
+    eigenaar; geen bericht, overzicht of RPC laat een teamgenoot zien wie hem kreeg.
+    (d) Een teamdoel dat nooit wordt goedgekeurd boekt niets. IJking: de eigen-
+    goedkeuringscheck weghalen moet (a) rood maken.
 
 ## Aannames die breken (regel 18, vraag 6)
 

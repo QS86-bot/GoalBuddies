@@ -77,6 +77,11 @@ en is **richtinggevend, geen bewijs**:
 | 23 | Een teamgroep krijgt een **hoger plafond dan twaalf leden**. Het getal is niet besloten | het plafond van twaalf houden | **ja** |
 | 24 | A44 herzien: **eerst positionering en onboarding zakelijk**; de Doelcoach-prompt en de voorbeelden volgen pas na meting met echte gebruikers, elk als eigen besluit | idem | nee |
 | 25 | **A57 krijgt een uitzondering voor teamgroepen**, ook beschermde: het klassement geldt in groepen zonder organisatie. Besluit 22 blijft staan | idem | nee |
+| 26 | De zichtbaarheid van een teamgroep wordt omgezet **zoals bij gewone groepen**: de beheerder zet om met één bevestiging, met spoor en systeembericht | alleen strenger maken, nooit alsnog openen | **ja** |
+| 27 | Het plafond voor een teamgroep is **voorlopig 25 leden**; niet gemeten, na meting bij te stellen | eerst meten, tot dan twaalf laten gelden | **ja** |
+| 28 | Een afgerond teamdoel geeft **iedereen die een aandeel had eenmalig +2**, ook bij een gemist aandeel | alleen een systeembericht en geen extra punten; als er punten komen, +1 en alleen voor wie zijn aandeel haalde | **ja** |
+| 29 | Een commitment met een teamgroep als begunstigde of getuige is **pas leesbaar als de straf verschuldigd is**, zoals bij elke begunstigde groep | idem | nee |
+| 30 | Een teamdoel is **afgerond** als een lid het afrondt en een **teamgenoot het goedkeurt, nooit jezelf** | idem | nee |
 
 ### Wat de afwijkingen kosten
 
@@ -105,10 +110,11 @@ wordt. **Wat de afwijking kost:** het moment waarop een commitment `due` wordt i
 dat van een verstreken streefdatum, en bij een teamgroep is de lezer een collega.
 Dat past binnen de uitzondering van domeinregel 7 (een straf die de gebruiker zelf
 vooraf instelde en bevestigde), maar het is precies het schaamtemoment waar de
-regel voor bestaat, in een groep waar je niet vrijwillig bij hoort. Wat die
-collega te zien krijgt, en wanneer, is **niet uitgewerkt**; de spec krijgt hier een
-eigen issue voor met `security-reviewer` direct, en de spec-standaard "geen
-teamgroep als begunstigde" vervalt.
+regel voor bestaat, in een groep waar je niet vrijwillig bij hoort. **Wanneer** een
+collega het ziet is sinds besluit 29 vastgelegd (pas als de straf verschuldigd is);
+**wat** er in het scherm komt is niet uitgewerkt. De spec heeft hier een eigen issue
+voor met `security-reviewer` direct, en de spec-standaard "geen teamgroep als
+begunstigde" vervalt.
 
 ⚠️ **Besluit 18 (open teamgroep).** Het advies was een teamgroep altijd beschermd te
 houden en dat met een CHECK af te dwingen: domeinregel 7 weegt bij zakelijk gebruik
@@ -126,8 +132,49 @@ die CHECK: ze moet expliciet gebouwd en getoetst worden.
 
 ⚠️ **Besluit 23 (hoger plafond).** Het advies was het bestaande plafond van twaalf
 te houden, zodat er geen nieuwe schaalvraag opent. Die is nu open: een groter team
-raakt de chat, het groepsoverzicht (N+1-risico, regel 12) en realtime. Er is **geen
-getal besloten**; dat komt pas na meting.
+raakt de chat, het groepsoverzicht (N+1-risico, regel 12) en realtime. Het getal is voorlopig 25
+(besluit 27) en niet gemeten.
+
+⚠️ **Besluit 26 (omzetten zoals bij gewone groepen).** Het advies was alleen strenger
+maken: van open naar beschermd mag, van beschermd naar open niet. 📏 Het bestaande
+mechanisme, `zet_groepszichtbaarheid()` in migratie 0076, laat **één groepsbeheerder
+met één bevestiging** omzetten, zonder instemming van de leden. Het legt een rij in
+`group_events` vast, roept een systeembericht aan (de inhoud heb ik niet nagelezen) en
+laat omzetten naar open maar één keer per dag toe. **Wat het kost:** in een team kan
+één persoon met terugwerkende kracht openen wat de anderen als beschermd hebben
+aangenomen, in een groep waar je niet vrijwillig bij zit. Besluit 21 beperkt de schade
+(aandeeldoelen blijven beschermd), maar elk ander doel dat een lid aan de teamgroep
+koppelde wordt zichtbaar. De functie toetst `is_group_admin()` van de groep; of de
+beheerder van de organisatie automatisch groepsbeheerder van elk team is, is niet
+besloten.
+
+⚠️ **Besluit 27 (voorlopig plafond van 25).** Het advies was eerst meten en tot dan
+twaalf laten gelden. Quinten koos een voorlopig getal. 25 is de kleinste van de drie
+getallen die ik voorlegde en is **niet gemeten**: het raakt de chat, het
+groepsoverzicht (N+1, regel 12) en realtime, en moet getoetst worden voordat het in
+productie komt.
+
+⚠️ **Besluit 28 (teambonus).** Het advies was alleen een systeembericht en geen extra
+punten; kwamen er toch punten, dan +1 en alleen voor wie zijn eigen aandeel haalde.
+Quinten koos +2 voor iedereen die een aandeel had, ook bij een gemist aandeel. **Wat
+het kost:** (1) dubbeltelling: migratie 0132 haalde `goal_done` om die reden uit
+`points_ledger`, en een aandeel levert al punten per weekdoel; (2) voor dit deel van de
+score maakt een gehaald of gemist aandeel geen verschil, en dat is de reden achter
+domeinregel 10 dat een weekpas de reeks beschermt en niet het punt; (3) een nieuw
+redentype in de CHECK `points_ledger_reason_valid` (0132), dus een migratie, en een
+uitbreiding van het puntenmodel die in CLAUDE.md bij domeinregel 10 hoort en daar nog
+niet staat; (4) het misbruikgat bij besluit 30. **Wat blijft:** `points_ledger` is
+alleen voor de eigenaar leesbaar, dus de bonus lekt niets aan collega's zolang geen
+bericht of overzicht laat zien wie hem kreeg. Een eerdere kostenregel van mij,
+dat een gemist aandeel uit het puntenverloop af te leiden zou zijn, was daarom
+overdreven.
+
+⚠️ **Besluit 30 (afronden met goedkeuring).** Zonder noemer (besluit 16) kan het
+systeem niet zelf zien dat een teamdoel af is, dus afronden is een handeling. Met
+besluit 20 (elk lid maakt een teamdoel aan) en besluit 28 kon één lid anders een
+teamdoel aanmaken, afronden en iedereen +2 geven, zichzelf ook. De goedkeuring door een
+teamgenoot, nooit jezelf, stopt dat voor één persoon. **Twee leden die samenspannen
+kunnen het nog wel**; een limiet op het aantal teamdoelen per periode is niet besloten.
 
 ## Eerder besloten, en wat dit daarmee doet
 
@@ -175,8 +222,9 @@ Linear-issue, door de issues en reacties te lezen die er al lagen.
   buiten de UI om? De regel is pas afgedwongen als de database hem afdwingt.
 - **Domeinregel 10** (puntenmodel): besluit 7 sluit aan op *voortgang loopt alleen
   omhoog*. Een aandeel is een gewoon doel (besluit 10), dus het gewone puntenmodel
-  geldt. Of een afgerond teamdoel iets extra oplevert is **niet besloten**; de spec
-  stelt voor van niet.
+  geldt. Besluit 28 voegt daar een eenmalige teambonus aan toe (+2 voor iedereen met een
+  aandeel, ook bij een gemist aandeel). Dat is een uitbreiding van het puntenmodel
+  die in CLAUDE.md bij domeinregel 10 hoort en daar nog niet is bijgewerkt.
 - **Domeinregel 1** (twee klokken): een teamdoel volgt de groepsperiode, een aandeel
   de persoonlijke cyclus van zijn eigenaar (besluit 17). Er komt geen derde klok.
 - **A41, A54 en A57** (groepszichtbaarheid en klassement): besluit 18 laat een teamgroep
@@ -201,21 +249,17 @@ standaard:
   uitknop, een lid dat zich eruit houdt, wat er met bestaande beschermde groepen
   gebeurt, en één scherm of één ranglijst. Besluit 25 laat ze ongemoeid; ze gelden
   voor groepen zonder organisatie.
-- **Het getal van het hogere plafond voor teamgroepen** (besluit 23). Besloten is
-  alleen dat teamgroepen een hoger plafond dan twaalf krijgen. Welk getal, moet eerst gemeten worden op chat,
-  groepsoverzicht en realtime. Tot dan geldt in de code het bestaande plafond; dat is
-  de huidige stand en geen besluit.
-- **Wie de zichtbaarheid van een teamgroep kiest, en of ze later omgezet mag worden**
-  (besluit 18). Besloten is dat de organisatie bij het aanmaken kiest. Of dat de
-  beheerder alleen is of dat de leden moeten instemmen, en of een teamgroep later van
-  beschermd naar open mag via `zet_groepszichtbaarheid()` (A41: omzetten verandert met
-  terugwerkende kracht wat er over anderen zichtbaar wordt), is niet gezegd.
-- **Of een afgerond teamdoel iets extra oplevert** aan punten of een melding. De spec
-  stelt voor van niet.
-- **Wat een collega te zien krijgt van een commitment in een teamgroep.** Besluit
-  12 staat de teamgroep als begunstigde of getuige toe; wat er zichtbaar wordt, bij
-  welke stand en voor wie, is niet uitgewerkt. Het raakt wat een mens beloofd wordt
-  (grens 1).
+- **De meting achter het voorlopige plafond van 25** (besluit 27): chat,
+  groepsoverzicht en realtime bij grotere groepen. Tot er gemeten is, is 25 een keuze
+  en geen uitkomst.
+- **Of de beheerder van de organisatie automatisch groepsbeheerder van elk team is.**
+  Besluit 26 laat de beheerder omzetten via `zet_groepszichtbaarheid()`, en die toetst
+  `is_group_admin()` van de groep, niet de rol in de organisatie.
+- **Een limiet tegen samenspanning bij de teambonus** (besluit 28 en 30), en wie als
+  'had een aandeel' telt als iemand de organisatie verlaat vóór de afronding.
+- **Hoe het commitment van een teamgroep er in het scherm uitziet.** Besluit 29 zegt
+  wanneer een collega het ziet (pas als de straf verschuldigd is); de tekst en vorm in
+  het scherm zijn niet uitgewerkt.
 - **Juridisch.** Een organisatie maakt van GoalBuddies een systeem dat gegevens
   van werknemers verwerkt voor een werkgever. Of daar, in Nederland, een
   instemmingsrecht van een ondernemingsraad of een bepaalde AVG-rolverdeling bij

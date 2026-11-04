@@ -65,14 +65,14 @@ Decided by the product owner on 2026-11-03. The reasoning, the cost of each devi
 
 - **Audiences:** solo founders and freelancers, small teams, and employees, served together rather than in sequence.
 - **Organizations:** a new level above buddy groups. A person can belong to several. The only roles are administrator and member. The administrator can invite members, remove members, create teams and archive the organization, and sees no more of anyone's progress than any other member. Billing is not part of this scope.
-- **Teams:** a team is a buddy group that belongs to an organization. It can be protected or open, chosen by the organization at creation. A team group never has a leaderboard. It may have more than twelve members; the number is not set.
-- **Team goals:** any team member can create one. Every member has a *share*, an ordinary personal goal linked to the team goal, approved by a teammate and never by themselves. The team bar counts achieved milestones only, has no denominator and never goes down.
+- **Teams:** a team is a buddy group that belongs to an organization. It can be protected or open, chosen by the organization at creation. A team group never has a leaderboard. It may have up to 25 members for now; that number is provisional and not measured. The administrator can change a team group's visibility with one confirmation, as for ordinary groups.
+- **Team goals:** any team member can create one. Every member has a *share*, an ordinary personal goal linked to the team goal, approved by a teammate and never by themselves. The team bar counts achieved milestones only, has no denominator and never goes down. A team goal is completed when a member completes it and a teammate approves, never the same person. Everyone who had a share then gets 2 points once, a missed share included.
 - **What colleagues see:** the team bar and their own share. A missed share, and how far another member is with theirs, stay invisible to colleagues, in open team groups as well.
-- **Commitments:** a team group may be the beneficiary or witness of a commitment under the existing rules. What a colleague sees of it is not yet worked out.
+- **Commitments:** a team group may be the beneficiary or witness of a commitment under the existing rules. A colleague sees it only once the penalty is due, as with any beneficiary group.
 - **Leaving:** a person's goals stay with them; only the link to the organization ends.
 - **Positioning:** positioning and onboarding go business-first. The Doelcoach prompt and the examples follow only after measurement with real users, each as a separate decision.
 
-The domain rules in `CLAUDE.md` (approval by a group member and never by yourself, failing is never public, the points model) keep applying unchanged. Which phase this belongs to is **not set in this PRD**.
+The domain rules in `CLAUDE.md` (approval by a group member and never by yourself, failing is never public, the points model) keep applying, with one extension: the team bonus above, which `CLAUDE.md` does not mention yet. Which phase this belongs to is **not set in this PRD**.
 
 ---
 
