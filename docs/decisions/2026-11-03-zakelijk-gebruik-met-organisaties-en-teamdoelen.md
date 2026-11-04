@@ -87,6 +87,9 @@ en is **richtinggevend, geen bewijs**:
 | 33 | De juridische toets is een **voorwaarde voor verkoop aan organisaties**; er wordt ondertussen gebouwd. De vragenlijst voor de jurist staat in `docs/research/vragen-voor-de-jurist-organisaties-en-teamdoelen.md` | idem | nee |
 | 34 | **Elke organisatiebeheerder is automatisch groepsbeheerder van elk team** | idem | nee |
 | 35 | De teambonus is **beperkt tot één per persoon per seizoen** | idem | nee |
+| 36 | De organisatiebeheerder wordt groepsbeheerder **zonder lid van het team te zijn**, via een uitgebreide `is_group_admin()`, en niet als lid met de rol beheerder | idem | nee |
+| 37 | Het label voor de nieuwe fase is **`phase:zakelijk`** | idem | nee |
+| 38 | De vervolgissues komen in **één epic met sub-issues en blokkeerrelaties** | idem | nee |
 
 ### Wat de afwijkingen kosten
 
@@ -188,16 +191,27 @@ risico is herwerk:** eist de toets iets van het datamodel, dan is dat achteraf d
 Daarom staan de vragen die het datamodel raken bovenaan in de vragenlijst. Het is geen
 juridisch advies, en de enige externe bron erin (artikel 27 WOR) is een zoeksamenvatting.
 
-⚠️ **Besluit 34 (organisatiebeheerder is groepsbeheerder).** Het volgt het advies. Het
-kost wel iets dat uit de meting van vandaag komt: 📏 de functies die `is_group_admin()`
-toetsen (namen uit de migraties; sommige zijn later vervangen) laten een groepsbeheerder
-leden verwijderen, lidmaatschapsverzoeken beslissen, de uitnodigcode roteren of
-intrekken, de groep archiveren en heropenen, de huddledag zetten, de zichtbaarheid en
-vindbaarheid zetten, en volgens hun naam meldingen afhandelen. **Wat elke functie
-precies doet heb ik niet nagelezen.** De organisatiebeheerder krijgt dat alles in elk
-team. Hoe het gerealiseerd wordt is een ontwerpvraag: als lid met de rol beheerder (dan
-staat hij in de ledenlijst en de chat en telt hij mee voor het plafond), of via een
-uitgebreide `is_group_admin()` voor wie geen lid is.
+⚠️ **Besluit 34 (organisatiebeheerder is groepsbeheerder) en 36 (zonder lid te zijn).**
+Besluit 34 volgt het advies. Besluit 36 koos hoe: beheerrechten zonder lid te worden,
+zodat hij de chat en het overzicht van teams waar hij geen lid van is niet leest. Dat
+houdt besluit 6 intact; als lid van elk team had hij meer gelezen dan een gewoon lid.
+**Wat het kost:** de helper `is_group_admin()` moet ook gelden voor een niet-lid met een
+organisatierol, en 📏 die helper staat gemeten (laatste definities per migratie, 04-11-2026)
+in **twaalf functies en drie policies**: `archiveer_groep`,
+`beslis_lidmaatschapsverzoek`, `guard_group_member_update`, `heropen_groep`,
+`rotate_invite_code`, `set_invite_revoked`, `verlaat_groep`, `verwijder_lid`,
+`verzoekers_eerder_lid`, `zet_groepsontdekbaarheid`, `zet_groepszichtbaarheid` en
+`zet_huddledag`, plus de policies `groups_update`, `group_members_update` en
+`group_join_requests_select`. Een fout in die ene helper geeft beheerrechten waar ze niet
+horen, en kan dat ook doen voor groepen buiten elke organisatie. **Dat vraagt
+`security-reviewer` direct en een test die een groep zonder organisatie expliciet
+toetst.** Wat elke functie precies doet heb ik niet nagelezen. De meting is bij
+benadering: een script las de functiebodies per migratie, niet de database, en een
+aanroep via een andere helper telt het niet. ⚠️ **Een eerdere versie van deze alinea
+noemde ook meldingsfuncties en deed dat ten onrechte**: mijn eerste teller wees een
+treffer toe aan de laatste functiedefinitie erboven, en daardoor kwamen er namen in die
+`is_group_admin()` niet aanroepen. 📏 De laatste definities van de meldingsfuncties
+roepen hem niet aan.
 
 ⚠️ **Besluit 35 (één teambonus per seizoen).** Het volgt het advies. De limiet stopt
 samenspannen niet, maar maakt het een kwartaal waard: hoogstens +2 per persoon per
@@ -288,15 +302,18 @@ standaard:
 - **De meting achter het voorlopige plafond van 25** (besluit 27): chat,
   groepsoverzicht en realtime bij grotere groepen. Tot er gemeten is, is 25 een keuze
   en geen uitkomst.
-- **Hoe een organisatiebeheerder groepsbeheerder wordt** (besluit 34): als lid met de
-  rol beheerder, of via een uitgebreide `is_group_admin()` voor een niet-lid. En of
-  bijvoorbeeld meldingen over leden daardoor voor hem leesbaar worden, wat ik niet heb
-  nagelezen.
+- **Hoe de uitgebreide `is_group_admin()` eruitziet** (besluit 36): één wijziging aan de
+  bestaande helper, of een tweede helper naast haar. Het eerste raakt twaalf functies
+  en drie policies tegelijk; het tweede vraagt dat elk van die vijftien plekken bewust
+  wordt omgezet.
 - **Of `seizoensgrens()` geschikt is voor de limiet van besluit 35**, en wie als 'had een
   aandeel' telt als iemand de organisatie verlaat vóór de afronding.
-- **De naam van de nieuwe fase** (besluit 32). Een `phase:`-label en een regel in de
-  PRD volgen zodra Quinten de naam kiest.
-- **De vier bronnen lezen** (besluit 31). Wacht op het toestaan van de domeinen.
+- **Het label `phase:zakelijk`** (besluit 37) bestaat nog niet in Linear en wordt
+  aangemaakt bij de epic.
+- **De vier bronnen lezen** (besluit 31). Een poging op 04-11-2026 mislukte: de proxy
+  antwoordt `403` op de verbinding naar alle vier de hosts, dus het netwerkbeleid van de
+  sessie laat ze niet toe, ook niet na de wijziging die Quinten aangaf. Of de instelling
+  pas voor een nieuwe sessie geldt, is niet vastgesteld.
 - **Hoe het commitment van een teamgroep er in het scherm uitziet.** Besluit 29 zegt
   wanneer een collega het ziet (pas als de straf verschuldigd is); de tekst en vorm in
   het scherm zijn niet uitgewerkt.

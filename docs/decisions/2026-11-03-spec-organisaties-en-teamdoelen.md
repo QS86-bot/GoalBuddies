@@ -63,6 +63,12 @@ vraagt een ontwerpkeuze die nog niet gemaakt is: als lid met de rol beheerder, o
 een uitgebreide `is_group_admin()` voor een niet-lid. **Besluit 35** beperkt de
 teambonus tot één per persoon per seizoen, wat in issue 11 en in criterium 14 landt.
 
+**Vijfde ronde (04-11-2026):** besluit 36 tot en met 38. Voor dit voorstel: **besluit 36**
+laat de organisatiebeheerder groepsbeheerder worden zonder lid te zijn, dus de helper
+`is_group_admin()` wordt uitgebreid. Gemeten staat hij in twaalf functies en drie
+policies, dus dat zit in issue 3 en vraagt `security-reviewer` direct, met criterium 15.
+**Besluit 38**: de elf issues komen als sub-issues in één epic, met blokkeerrelaties.
+
 1. **De vorm van een team (besloten: bestaande groep met organisatie-kolom).** Een bestaande groep met een kolom `organization_id`, of
    een nieuwe tabel? (Hergebruik groepen: lidmaatschap, peer-goedkeuring, chat en
    RLS blijven ongewijzigd, en de organisatie is de laag erboven.)
@@ -210,7 +216,7 @@ terugzakt is precies het signaal dat besluit 7 verbiedt. Een nieuwe module
 | 0 | Herbevestiging en antwoorden op de open vragen in het beslisdocument | 1-8 | Grens 1, besluit van Quinten |
 | 1 | **Expliciete groepskeuze in plaats van `groepen[0]`** bij hulpvraag, straf-begunstigde, getuige en taak delen | 6, 7 | Raakt de tegenslagroutes van domeinregel 7: `security-reviewer` direct |
 | 2 | Organisaties en lidmaatschappen met RLS, RPC's en RLS-tests | 3 | Datamodel en auth: zwaarste model, `security-reviewer` direct |
-| 3 | Organisatiekolom op groepen, CHECKs, lidmaatschapstrigger, vertrek-cascade | 4 | RLS en lidmaatschap: direct |
+| 3 | Organisatiekolom op groepen, CHECKs, lidmaatschapstrigger, vertrek-cascade, **en de uitgebreide `is_group_admin()` voor organisatiebeheerders (12 functies en 3 policies hangen eraan)** | 4 | RLS en lidmaatschap: direct |
 | 4 | Teamdoelen en aandelen, koppelgrendel op groepskoppelingen, RLS-tests | 5 | Goedkeuring en groepsoppervlak: direct |
 | 5 | Voortgangsteller en teambalk-RPC, RLS-tests | 7 | Nieuw groepsoppervlak: direct |
 | 6 | Twee systeembericht-typen | 7 | Allowlist: direct |
@@ -282,6 +288,13 @@ belofte toetst en niet een onderdeel (regel 18).
     een andere teamgroep van dezelfde persoon. Getoetst met twee leden die elkaars
     afronding goedkeuren. De seizoensgrens komt uit `shared/time`, nooit uit een eigen
     berekening.
+15. **Organisatiebeheerder zonder lidmaatschap (N).** (a) Een organisatiebeheerder die
+    geen lid van een team is, kan dat team beheren (verzoeken beslissen, de uitnodigcode
+    roteren, de zichtbaarheid zetten) maar leest er geen chat, geen overzicht en geen
+    teambalk. (b) Een beheerder van een andere organisatie heeft in dit team geen enkel
+    recht. (c) Voor een groep zonder organisatie verandert er niets aan wie beheerder is.
+    IJking: de uitbreiding van `is_group_admin()` weghalen moet (a) rood maken, en een
+    te brede uitbreiding moet (b) of (c) rood maken.
 
 ## Aannames die breken (regel 18, vraag 6)
 
