@@ -57,6 +57,12 @@ teamgroep, afronden met goedkeuring). **Afwijkend van de standaard: 26, 27 en 28
 Vooral de punten hieronder zijn daardoor veranderd: er is nu wél een bonus bij een
 afgerond teamdoel.
 
+**Vierde ronde (04-11-2026):** besluit 31 tot en met 35. Voor dit voorstel zijn er twee
+gevolgen. **Besluit 34** (elke organisatiebeheerder is groepsbeheerder van elk team)
+vraagt een ontwerpkeuze die nog niet gemaakt is: als lid met de rol beheerder, of via
+een uitgebreide `is_group_admin()` voor een niet-lid. **Besluit 35** beperkt de
+teambonus tot één per persoon per seizoen, wat in issue 11 en in criterium 14 landt.
+
 1. **De vorm van een team (besloten: bestaande groep met organisatie-kolom).** Een bestaande groep met een kolom `organization_id`, of
    een nieuwe tabel? (Hergebruik groepen: lidmaatschap, peer-goedkeuring, chat en
    RLS blijven ongewijzigd, en de organisatie is de laag erboven.)
@@ -271,6 +277,11 @@ belofte toetst en niet een onderdeel (regel 18).
     eigenaar; geen bericht, overzicht of RPC laat een teamgenoot zien wie hem kreeg.
     (d) Een teamdoel dat nooit wordt goedgekeurd boekt niets. IJking: de eigen-
     goedkeuringscheck weghalen moet (a) rood maken.
+14. **Limiet op de teambonus (N).** Een tweede teambonus voor dezelfde persoon in
+    hetzelfde seizoen boekt niet (besluit 35), ook niet via een ander teamdoel of
+    een andere teamgroep van dezelfde persoon. Getoetst met twee leden die elkaars
+    afronding goedkeuren. De seizoensgrens komt uit `shared/time`, nooit uit een eigen
+    berekening.
 
 ## Aannames die breken (regel 18, vraag 6)
 

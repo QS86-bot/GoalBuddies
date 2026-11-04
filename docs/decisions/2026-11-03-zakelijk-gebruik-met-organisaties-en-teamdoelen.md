@@ -82,6 +82,11 @@ en is **richtinggevend, geen bewijs**:
 | 28 | Een afgerond teamdoel geeft **iedereen die een aandeel had eenmalig +2**, ook bij een gemist aandeel | alleen een systeembericht en geen extra punten; als er punten komen, +1 en alleen voor wie zijn aandeel haalde | **ja** |
 | 29 | Een commitment met een teamgroep als begunstigde of getuige is **pas leesbaar als de straf verschuldigd is**, zoals bij elke begunstigde groep | idem | nee |
 | 30 | Een teamdoel is **afgerond** als een lid het afrondt en een **teamgenoot het goedkeurt, nooit jezelf** | idem | nee |
+| 31 | Besluit 2 en 4 zijn **herbevestigd, onder één voorwaarde:** de vier tot nu toe geblokkeerde bronnen worden gelezen vóór de eerste organisatie-migratie | idem | nee |
+| 32 | Het zakelijke werk krijgt een **nieuwe fase** naast fase 1 t/m 3. De naam is nog niet gekozen | idem | nee |
+| 33 | De juridische toets is een **voorwaarde voor verkoop aan organisaties**; er wordt ondertussen gebouwd. De vragenlijst voor de jurist staat in `docs/research/vragen-voor-de-jurist-organisaties-en-teamdoelen.md` | idem | nee |
+| 34 | **Elke organisatiebeheerder is automatisch groepsbeheerder van elk team** | idem | nee |
+| 35 | De teambonus is **beperkt tot één per persoon per seizoen** | idem | nee |
 
 ### Wat de afwijkingen kosten
 
@@ -169,6 +174,37 @@ bericht of overzicht laat zien wie hem kreeg. Een eerdere kostenregel van mij,
 dat een gemist aandeel uit het puntenverloop af te leiden zou zijn, was daarom
 overdreven.
 
+⚠️ **Besluit 31 (herbevestigd onder een voorwaarde).** Besluit 2 (alles tegelijk) en 4
+(organisatie boven groepen) rusten op twee dingen die niet gemeten zijn: de markt, en
+de kosten van de organisatielaag. Quinten herbevestigde ze, maar wil eerst de vier
+bronnen lezen die in de onderzoekssessie geblokkeerd waren (goalgeniee.com, habi.app,
+goalsandprogress.com, habithuddle.com). **Dat vraagt dat die vier domeinen in de
+netwerkinstellingen van de sessie worden toegestaan.** De kostenvraag van de
+organisatielaag blijft een oordeel; de bronnen toetsen alleen de markt.
+
+⚠️ **Besluit 33 (juridisch: bouwen, verkopen later).** Het alternatief was eerst
+toetsen. Er zijn nog geen organisaties als klant, dus bouwen raakt geen mensen. **Het
+risico is herwerk:** eist de toets iets van het datamodel, dan is dat achteraf duurder.
+Daarom staan de vragen die het datamodel raken bovenaan in de vragenlijst. Het is geen
+juridisch advies, en de enige externe bron erin (artikel 27 WOR) is een zoeksamenvatting.
+
+⚠️ **Besluit 34 (organisatiebeheerder is groepsbeheerder).** Het volgt het advies. Het
+kost wel iets dat uit de meting van vandaag komt: 📏 de functies die `is_group_admin()`
+toetsen (namen uit de migraties; sommige zijn later vervangen) laten een groepsbeheerder
+leden verwijderen, lidmaatschapsverzoeken beslissen, de uitnodigcode roteren of
+intrekken, de groep archiveren en heropenen, de huddledag zetten, de zichtbaarheid en
+vindbaarheid zetten, en volgens hun naam meldingen afhandelen. **Wat elke functie
+precies doet heb ik niet nagelezen.** De organisatiebeheerder krijgt dat alles in elk
+team. Hoe het gerealiseerd wordt is een ontwerpvraag: als lid met de rol beheerder (dan
+staat hij in de ledenlijst en de chat en telt hij mee voor het plafond), of via een
+uitgebreide `is_group_admin()` voor wie geen lid is.
+
+⚠️ **Besluit 35 (één teambonus per seizoen).** Het volgt het advies. De limiet stopt
+samenspannen niet, maar maakt het een kwartaal waard: hoogstens +2 per persoon per
+seizoen. Of `seizoensgrens()` (genoemd in `docs/WERKVOORRAAD.md`) hiervoor geschikt is,
+heb ik niet nagelezen; dat hoort bij de bouw. Een tijdsberekening buiten `shared/time`
+is verboden (correctheidsregel 7).
+
 ⚠️ **Besluit 30 (afronden met goedkeuring).** Zonder noemer (besluit 16) kan het
 systeem niet zelf zien dat een teamdoel af is, dus afronden is een handeling. Met
 besluit 20 (elk lid maakt een teamdoel aan) en besluit 28 kon één lid anders een
@@ -252,11 +288,15 @@ standaard:
 - **De meting achter het voorlopige plafond van 25** (besluit 27): chat,
   groepsoverzicht en realtime bij grotere groepen. Tot er gemeten is, is 25 een keuze
   en geen uitkomst.
-- **Of de beheerder van de organisatie automatisch groepsbeheerder van elk team is.**
-  Besluit 26 laat de beheerder omzetten via `zet_groepszichtbaarheid()`, en die toetst
-  `is_group_admin()` van de groep, niet de rol in de organisatie.
-- **Een limiet tegen samenspanning bij de teambonus** (besluit 28 en 30), en wie als
-  'had een aandeel' telt als iemand de organisatie verlaat vóór de afronding.
+- **Hoe een organisatiebeheerder groepsbeheerder wordt** (besluit 34): als lid met de
+  rol beheerder, of via een uitgebreide `is_group_admin()` voor een niet-lid. En of
+  bijvoorbeeld meldingen over leden daardoor voor hem leesbaar worden, wat ik niet heb
+  nagelezen.
+- **Of `seizoensgrens()` geschikt is voor de limiet van besluit 35**, en wie als 'had een
+  aandeel' telt als iemand de organisatie verlaat vóór de afronding.
+- **De naam van de nieuwe fase** (besluit 32). Een `phase:`-label en een regel in de
+  PRD volgen zodra Quinten de naam kiest.
+- **De vier bronnen lezen** (besluit 31). Wacht op het toestaan van de domeinen.
 - **Hoe het commitment van een teamgroep er in het scherm uitziet.** Besluit 29 zegt
   wanneer een collega het ziet (pas als de straf verschuldigd is); de tekst en vorm in
   het scherm zijn niet uitgewerkt.
@@ -275,6 +315,8 @@ voorwaarde moet worden opgeschreven. Het besluit hier rust op twee dingen die no
 niet gemeten zijn: dat de markt niet aan de bestaande founder-apps genoeg heeft, en
 dat een organisatielaag de kosten waard is boven een buddygroep met een teamdoel.
 Wordt een van beide weerlegd, dan is besluit 4 of 2 het eerste dat terug moet.
+**Herbevestigd op 04-11-2026 (besluit 31), onder de voorwaarde dat de vier bronnen eerst
+gelezen worden.**
 
 ## Het onderzoek erachter
 
