@@ -35,3 +35,13 @@ Naar het oordeel van de `security-reviewer` (bron nagelezen, niet door de batchs
 ## Terugdraaien
 
 `zod` terug naar `^4.4.3` in `package.json` en het blok in `package-lock.json` terugzetten naar 4.4.3. Advisory 1243066 staat dan weer in de bundel. Geen migratie, geen data.
+
+## Vervolg — 05-11-2026, later die dag
+
+De drie punten onder *Wat hiermee niet besloten is* zijn in **QS8-673**
+opgepakt, op één correctie na: het bijwerken van de commentaren hoorde bij
+QS8-673 en niet bij QS8-672, dat alleen het wachtwoord raakt. De test die Zod's
+telling vastlegt is `tests/beloftes/zod-telt-codepunten.test.ts`; de
+`CLAUDE.md`-regel is vervangen; de tweede aanname (elke CHECK heeft hetzelfde
+getal als de client) is per kolom gemeten. Alles in
+`docs/decisions/2026-11-05-zod-telt-codepunten-en-dat-staat-nu-onder-test.md`.

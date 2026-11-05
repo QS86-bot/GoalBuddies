@@ -309,8 +309,8 @@ describe('de weergavenaam telt zoals de database telt', () => {
    * 📏 Het gemeten geval uit `docs/ENGINEER-REVIEW.md` regel 480: de trigger doet
    *    `left(…, 80)` (codepunten) en maakt dus een naam van 80 emoji aan.
    *    `app/onboarding/profiel.tsx` vult het veld met die waarde en stuurt hem
-   *    onveranderd terug. Met `.max(80)` — dat UTF-16-eenheden telt en er 160
-   *    ziet — weigerde het schema hem, en kon de gebruiker zijn onboarding niet
+   *    onveranderd terug. Met `.max(80)` — dat onder zod 4.4.3 UTF-16-eenheden
+   *    telde en er 160 zag — weigerde het schema hem, en kon de gebruiker zijn onboarding niet
    *    afronden op een veld dat hij nooit had aangeraakt.
    */
   it('accepteert een naam van 80 emoji-codepunten, zoals de trigger hem aanmaakt', () => {

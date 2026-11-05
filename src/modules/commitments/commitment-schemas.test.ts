@@ -36,9 +36,11 @@ describe('commitmentSchema — de grenzen', () => {
 
 /**
  * ⚠️ Migratie 0063 zette de grens ook in de database, met `char_length` — en dat
- *    telt codepunten. Zou dit schema `.min(3)` houden, dan telde het
- *    UTF-16-eenheden en lieten twee emoji de client passeren terwijl Postgres ze
- *    weigert. Dat is de bug uit QS8-118, hier dan nieuw geïntroduceerd.
+ *    telt codepunten. Had dit schema `.min(3)` gehouden, dan telde het onder
+ *    zod 4.4.3 UTF-16-eenheden en lieten twee emoji de client passeren terwijl
+ *    Postgres ze weigert. Dat is de bug uit QS8-118, hier dan nieuw
+ *    geïntroduceerd. Sinds zod 4.6 telt `.min()` codepunten (QS8-673); deze
+ *    test toetst het schema en blijft ook groen als Zod ooit terugwisselt.
  */
 describe('commitmentSchema — telt zoals de database telt', () => {
   it('weigert twee emoji, ook al zijn dat vier UTF-16-eenheden', () => {
