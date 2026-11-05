@@ -330,16 +330,16 @@ describe('NAGEKEKEN', () => {
     }
   });
 
-  it('noemt `decode-uri-component` en `zod` als de enige die de bundel halen', () => {
+  it('noemt `decode-uri-component` als de enige die de bundel haalt', () => {
     // 📏 Letterlijk in dist/: `new RegExp("(%[a-f0-9]{2})|([^%]+?)",'gi')`, via
     //    query-string@7.1.3 via expo-router. De rij concludeerde het tegendeel.
-    //    `zod` is sinds QS8-669 de tweede: directe dependency, foutmelding uit
-    //    `zod/v4/core/checks.js` letterlijk in dist/. Een derde erbij is een besluit
-    //    en geen bijvangst — vandaar dat de lijst hier uitgeschreven staat.
+    //    `zod` was sinds QS8-669 de tweede en is met QS8-670 weer weg: de directe
+    //    dependency is bijgewerkt, de kopie onder `@expo/cli` is tooling. Een tweede
+    //    erbij is een besluit en geen bijvangst — vandaar dat de lijst hier staat.
     const inBundel = Object.entries(NAGEKEKEN)
       .filter(([, v]) => v.in_bundel)
       .map(([naam]) => naam);
-    expect(inBundel).toEqual(['decode-uri-component', 'zod']);
+    expect(inBundel).toEqual(['decode-uri-component']);
   });
 
   it('gebruikt geen pakketnaam als marker', () => {
