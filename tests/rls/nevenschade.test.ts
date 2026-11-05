@@ -1,6 +1,6 @@
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 
-import { addDays, now, userCycle } from '../../src/shared/time';
+import { addDays, maandErbij, now, userCycle, type IsoDate } from '../../src/shared/time';
 import { adminDb, createTestUser, removeTestUsers, rlsTestsConfigured } from './harness';
 
 /**
@@ -105,6 +105,55 @@ interface Vreemd {
 interface Eigen {
   doelId: string;
   weekdoelId: string;
+}
+
+/**
+ * Een moment waarop de seizoensgrens voor de vreemde groep openstaat én het
+ * seizoen dat er dan afgesloten wordt de weken van de fixture bevat.
+ *
+ * ⚠️⚠️ **Dit wordt gezocht en niet gekozen, en dat is de reparatie van 05-11-2026.**
+ *    De fixture is `now()`-relatief (zijn weken liggen 7 tot 28 dagen vóór de
+ *    huidige cyclus), een vaste `p_op` niet. Vanaf de week van 2 november 2026
+ *    liggen alle weken in Q4, terwijl `2026-10-01` het venster juli–september
+ *    aanwijst: de groep telde als stil, de voorwaardetoets viel luid om en de
+ *    zusjestest bleef stil groen op een grens die niets meer tegenhield.
+ *    📏 Gemeten in de CI-run van 05-11 (`expected 0 to be greater than 0`).
+ *
+ *    De zoektocht gebruikt de database zelf als bron: het eerste kandidaatmoment
+ *    waarop `maak_seizoensrecaps()` voor deze ene groep een recap schrijft, ís
+ *    een moment waarop de grens open staat en het venster de fixture dekt. Er
+ *    wordt dus geen kwartaalgrens, zomertijd of tijdzone nagerekend. Kandidaten
+ *    zijn de eerste van elk van de komende vier maanden, op 08:30 in Amsterdam
+ *    in zomer- (06:30Z) én wintertijd (07:30Z); de tijd die niet klopt levert
+ *    nul recaps op en is dus onschadelijk.
+ *
+ * ⚠️ De recap die de zoektocht schrijft wordt weer weggehaald voordat de
+ *    functie terugkeert: de aanroeper meet daarna een schone toestand, en een
+ *    tweede poging op hetzelfde seizoen botst op de primaire sleutel.
+ */
+async function openSeizoensmoment(
+  groepId: string,
+): Promise<{ dag: IsoDate; moment: string }> {
+  const admin = adminDb();
+  let dag = addDays(userCycle({ weekStartDay: 1, tz: 'Europe/Amsterdam' }, now()).startDate, -7);
+
+  for (let maand = 0; maand < 4; maand += 1) {
+    dag = maandErbij(dag, 1);
+    for (const tijd of ['06:30:00Z', '07:30:00Z']) {
+      const moment = `${dag}T${tijd}`;
+      const poging = await admin.rpc('maak_seizoensrecaps', {
+        p_op: moment,
+        p_group_ids: [groepId],
+      });
+      if (poging.error) throw new Error(`seizoensmoment zoeken: ${poging.error.message}`);
+      if ((poging.data as unknown as { recaps: number }).recaps > 0) {
+        const weg = await admin.from('season_recaps').delete().eq('group_id', groepId);
+        if (weg.error) throw new Error(`seizoensmoment opruimen: ${weg.error.message}`);
+        return { dag, moment };
+      }
+    }
+  }
+  throw new Error('geen enkel seizoensmoment in de komende vier maanden dekt de weken van de fixture');
 }
 
 describe.skipIf(!rlsTestsConfigured)('een globale schrijver raakt geen vreemde fixture', () => {
@@ -521,18 +570,20 @@ describe.skipIf(!rlsTestsConfigured)('een globale schrijver raakt geen vreemde f
   it(
     'maak_seizoensrecaps schrijft niets voor een vreemde groep buiten zijn grens',
     async () => {
+      // ⚠️ **Het moment is zorgvuldig gekozen en dat is de helft van de test.**
+      //    `seizoensgrens()` geeft het vórige afgesloten seizoen, dus de dag moet
+      //    de eerste van een seizoen zijn dat de weken van de vreemde fixture
+      //    afsluit. `openSeizoensmoment()` zoekt die dag; half drie 's nachts is
+      //    daarop nooit "acht uur", dus de grens houdt hem tegen — en niets anders.
+      //
+      //    Hier stond eerst 2026-05-13: venster januari–maart, de groep telde als
+      //    stil en de test bleef gróén toen de grens er met de hand uit gehaald
+      //    werd (met de hand gemeten op 31-08). Daarna een vaste 2026-11-15, en
+      //    die schoof op 05-11-2026 op dezelfde manier onder de fixture uit.
+      const { dag } = await openSeizoensmoment(vreemd.groepId);
+
       const { error } = await adminDb().rpc('maak_seizoensrecaps', {
-        // ⚠️ **Het moment is zorgvuldig gekozen en dat is de helft van de test.**
-        //    `seizoensgrens()` geeft het vórige afgesloten seizoen, dus een
-        //    `p_op` in Q4 levert het venster juli–september: precies waar de
-        //    weken van de vreemde fixture in liggen. Half drie 's nachts is
-        //    nooit "acht uur", dus de grens houdt hem tegen — en niets anders.
-        //
-        //    Hier stond eerst 2026-05-13. Dat leverde het venster januari–maart
-        //    op, en dan telt de groep als stil: de test bleef gróén toen de
-        //    grens er met de hand uit gehaald werd, en bewaakte dus niet wat
-        //    zijn naam belooft. Met de hand gemeten op 31-08.
-        p_op: '2026-11-15T02:30:00Z',
+        p_op: `${dag}T02:30:00Z`,
       });
       expect(error).toBeNull();
 
@@ -585,7 +636,7 @@ describe.skipIf(!rlsTestsConfigured)('een globale schrijver raakt geen vreemde f
         //    Dus: eerst mét de vreemde groep in het bereik, en dán pas de echte
         //    toets. Slaat de eerste helft niet aan, dan valt de test luid om in
         //    plaats van stilzwijgend te slagen.
-        const MOMENT = '2026-10-01T06:30:00Z';
+        const { moment: MOMENT } = await openSeizoensmoment(vreemd.groepId);
 
         const open = await adminDb().rpc('maak_seizoensrecaps', {
           p_op: MOMENT,
