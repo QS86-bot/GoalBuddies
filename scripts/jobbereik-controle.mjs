@@ -167,7 +167,7 @@ export const ZONDER_GRENS = {
     'vorm die in productie draait.',
   "tests/rls/nevenschade.test.ts: .rpc('keur_vastgelopen_goedkeuringen_goed', { p_termijn_dagen: 7, })":
     'Idem, de NULL-tak van de tweede job.',
-  "tests/rls/nevenschade.test.ts: .rpc('maak_seizoensrecaps', { p_op: '2026-11-15T02:30:00Z', })":
+  "tests/rls/nevenschade.test.ts: .rpc('maak_seizoensrecaps', { p_op: momenten.dicht, })":
     'Idem, de NULL-tak van de derde job. ⚠️ Hier komt er één ding bij: de kop ' +
     'van die toets zegt *niet "hij doet nooit iets" maar "hij doet niets voor ' +
     'een groep waar de aanroeper niet op wees"*. De vreemde groep noemen zou ' +
