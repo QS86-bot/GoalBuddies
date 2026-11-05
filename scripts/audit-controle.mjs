@@ -270,32 +270,6 @@ export const NAGEKEKEN = {
       'vraagt `^1.2.1` en 1.2.2 bestaat; dezelfde dry-run als bij `compression` neemt hem mee.',
   },
 
-  'shell-quote': {
-    ernst: 'critical',
-    advisories: [1241332],
-    reparatie: 'gratis',
-    in_bundel: false,
-    marker: '`comment` must not contain line terminators',
-    reden:
-      'Nieuw op 05-11-2026 (QS8-669): **critical** — `quote()` laat command injection toe via ' +
-      'een regeleinde in een token na een `{ comment }`-token (`>=1.8.4 <1.11.0`). ' +
-      '📏 GEMETEN: `npm ls` zet hem onder `react-native > react-devtools-core > shell-quote@1.10.0` ' +
-      '— de devtools-bridge van React Native, dev-tooling. Verse `npx expo export --platform web` ' +
-      'met dummy-EXPO_PUBLIC-waarden, dist/ van 5,3 MB: **nul** treffers op deze letterlijke ' +
-      'foutmelding uit `shell-quote/quote.js` én **nul** op twee andere foutteksten uit hetzelfde ' +
-      'pakket (`glob token requires a string \`pattern\``, `Bad substitution: `), met ' +
-      '`supabase` als positieve controlegrep. Niets in `src/`, `app/` of ' +
-      '`supabase/functions/` importeert hem, en geen enkele edge-functie bouwt een shell-opdracht. ' +
-      '⚠️ NIET GEMETEN: of een dev-server of CLI-stap op de machine van de ontwikkelaar of in CI ' +
-      '`quote()` ooit met onvertrouwde invoer aanroept. Dat is de enige route naar de ' +
-      'kwetsbaarheid en ze valt buiten wat `dist/` kan tonen. De aanname is dat de aanroepers ' +
-      '(Metro-devtools) alleen eigen, vaste argumenten doorgeven; die is hier niet nagelezen. ' +
-      '⚠️ **`reparatie: gratis` is binnen het bereik waar**: `react-devtools-core` vraagt ' +
-      '`^1.6.1` en 1.12.0 bestaat. Dezelfde `npm audit fix --omit=dev` als bij ' +
-      '`node-forge` (127 toevoegingen, 37 verwijderingen, 64 wijzigingen) neemt hem mee. ' +
-      'Niet gedaan: dit issue raakt de lockfile niet — een besluit voor Quinten, en bij een ' +
-      '**critical** raadt dit register aan het snel te nemen.',
-  },
   zod: {
     ernst: 'high',
     advisories: [1243066],
