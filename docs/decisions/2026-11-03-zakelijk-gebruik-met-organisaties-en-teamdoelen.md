@@ -311,10 +311,9 @@ standaard:
 - **De Doelcoach-prompt en de voorbeelden** (besluit 24). Dat ze later volgen, na
   meting met echte gebruikers, is besloten; wat er dan verandert en wanneer niet. Elk
   onderdeel is een eigen besluit.
-- **De interactie tussen de zichtbaarheid van een groep en de klassement-schakelaar van
-  A57**: wordt het klassement automatisch aangezet als een beschermde groep via
-  `zet_groepszichtbaarheid()` open wordt? De vier vragen van A57 zelf zijn beantwoord
-  (besluit 39, en 39 t/m 44 in het A57-document); deze komt daar nieuw uit voort.
+- **De tekst van de bevestiging bij het openzetten van een groep**: die moet het
+  klassement noemen, want het gaat automatisch aan (besluit 45 in het A57-document). De
+  tekst zelf is niet geschreven.
 - **De meting achter het voorlopige plafond van 25** (besluit 27): chat,
   groepsoverzicht en realtime bij grotere groepen. Tot er gemeten is, is 25 een keuze
   en geen uitkomst.

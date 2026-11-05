@@ -25,7 +25,8 @@ Gebruik `WebFetch` en `WebSearch`. Nooit `mcp__claude-in-chrome__*`.
 - **Naam:** GoalBuddies
 - **Doel:** Accountability- en doelen-app: AI-gestuurde doelopsplitsing, buddy-groepen
   met onafhankelijke doelen, peer-goedkeuring van voltooiingen, commitment devices,
-  en een instelbare start-van-de-week per gebruiker.
+  en een instelbare start-van-de-week per gebruiker, en sinds 04-11-2026
+  organisaties met teams en teamdoelen.
 - **Schaaldoel:** 100k+ users.
 - **Team:** Quinten (product owner, architect én enige developer).
   Claude Code is de primaire implementer. Engineer-review vanaf eind okt/nov 2026.
@@ -372,6 +373,11 @@ Voordat er één feature gebouwd wordt:
    van anderen alleen voor zover de groepsinstellingen dat toestaan — RLS bepaalt
    dit, niet de UI.
 
+   ⚠️ **Eén gedeeld object, sinds 04-11-2026: een teamdoel.** De aandelen eronder
+   blijven persoonlijke doelen. Collega's zien de teambalk en hun eigen aandeel,
+   nooit hoe ver een ander is (besluit 11 en 21 in
+   `docs/decisions/2026-11-03-zakelijk-gebruik-met-organisaties-en-teamdoelen.md`).
+
 5. **Commitment devices raken vertrouwen.** Alles wat een consequentie oplegt
    (inzet, verlies, publieke zichtbaarheid) moet expliciet bevestigd zijn,
    auditeerbaar, en nooit stilzwijgend geactiveerd.
@@ -468,6 +474,16 @@ Voordat er één feature gebouwd wordt:
    groepen van vreemden, leest eerst rij en reden in
    `docs/decisions/002-domeinregel7-oppervlakken.md` §6b.
 
+   ⚠️ **Teamgroepen (04-11-2026).** Voor een groep van een organisatie geldt deze
+   regel zwaarder, niet lichter. Aandeeldoelen blijven ook in een **open** teamgroep
+   beschermd, er is in een teamgroep nooit een klassement, een organisatiebeheerder
+   ziet niet meer dan een lid, en de teamteller bevat geen persoon. Een commitment met
+   een teamgroep als begunstigde wordt leesbaar zodra de straf verschuldigd is, zoals
+   bij elke begunstigde groep. Dat is het schaamtemoment waar deze regel voor bestaat,
+   in een groep die niet vrijwillig gekozen is, en het is een bewuste afwijking
+   (besluit 12, 18, 21, 22 en 29 in
+   `docs/decisions/2026-11-03-zakelijk-gebruik-met-organisaties-en-teamdoelen.md`).
+
    **Bij élk nieuw ding dat de groep te zien krijgt, twee vragen:** kan hieruit
    iemands gemiste week worden afgeleid, én kan iemand dat met één API-verzoek
    uitlezen buiten de UI om? De les van EPIC 5 is dat de schermen de regel netjes
@@ -555,6 +571,17 @@ Voordat er één feature gebouwd wordt:
 
     - **Score en voortgang zijn twee dingen.** Voortgang is mijlpaalgebaseerd en loopt
       alleen omhoog; de score kan dalen. Nooit in één balk tonen.
+
+    ⚠️ **De teambonus (besluit 28, 30 en 35, 04-11-2026): een uitzondering op
+    "missen is niet gratis".** Bij een afgerond teamdoel (een lid rondt af, een
+    teamgenoot keurt goed, nooit jezelf) krijgt iedereen die een aandeel had
+    **eenmalig `+2`, ook bij een gemist aandeel**, en ten hoogste één teambonus per
+    persoon per seizoen. Dat is een tweede beloning voor werk dat al punten opleverde
+    (de dubbeltelling die 0132 voor `goal_done` wegnam), en voor dit deel maakt een
+    gehaald of gemist aandeel geen verschil. Quinten koos dat bewust. De bonus staat
+    alleen in `points_ledger` van de eigenaar; geen bericht of overzicht noemt wie hem
+    kreeg. Uitleg in
+    `docs/decisions/2026-11-03-zakelijk-gebruik-met-organisaties-en-teamdoelen.md`.
 
     ⚠️ **Een deadline verschuiven kost geen punten** — een besluit, geen omissie
     (A7, herbevestigd 24-08-2026 als A43). De rem is het akkoord van een buddy en

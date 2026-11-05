@@ -249,8 +249,14 @@ komt* (§5a); dat is nu vervangen door *het komt er niet bij, tenzij je het zelf
 * Twee nieuwe systeemberichttypen (aan en uit) vragen een migratie van de allowlist
   `chat_messages_system_event_bekend` en van de kopie in `src/modules/buddies/chat-schemas.ts`.
 
-⚠️ **Nog open voor de bouwronde:** wordt het klassement automatisch aangezet als een
-beschermde groep via `zet_groepszichtbaarheid()` open wordt? Niet besloten.
+**Besluit 45 (05-11-2026), volgens het advies:** het klassement gaat automatisch aan als een
+beschermde groep via `zet_groepszichtbaarheid()` open wordt, zoals A54 het bedoelde, en de
+bevestigingstekst bij het openzetten noemt dat. Het gebeurt dus niet stilzwijgend. De
+beheerder kan het klassement daarna met de schakelaar weer uitzetten. Dit geldt voor groepen
+zonder organisatie; een teamgroep heeft nooit een klassement.
+
+⚠️ **Nog open voor de bouwronde:** de tekst van de bevestiging bij het openzetten is niet
+geschreven en moet het klassement noemen.
 
 ---
 
