@@ -33,7 +33,7 @@ export {
   type Vertrek,
 } from './api';
 
-export { beslissendeGroep, koppelbareGroepen, type DoelGroep } from './deling';
+export { beslissendeGroep, enigeOfGekozen, koppelbareGroepen, type DoelGroep } from './deling';
 
 export { beginfase, deelbareUitnodiging, type Beginfase } from './samen';
 
