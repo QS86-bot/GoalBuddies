@@ -2148,6 +2148,8 @@ en allebei met `git merge-tree` schoon tegen `main` = `b7586a11`:
 | QS8-651 | `claude/awesome-fermat-pp7z2v` | `31fd0ab4` | `enigeOfGekozen()` in `src/modules/buddies/deling.ts`: bij twee of meer groepen of mensen geen stille eerste meer bij de hulpvraag, de begunstigde van een straf, de vervangende getuige en de deelknop van De Lijst. Rij 41 in beslisdocument 002 |
 | QS8-668 | `quintenstrijdonk/qs8-668-nevenschadetestts-valt-sinds-november-om-op-een-vaste-moment` | `66cdcfee` | `nevenschade.test.ts` rekent haar seizoensmomenten uit de fixture met de helper `seizoensmomenten()` (bestand seizoensmoment.ts in tests/rls, alleen op die tak tot de batch landt); de registerrij in `scripts/jobbereik-controle.mjs` volgt mee |
 
+✅ **Na de merge van PR #651 (batchsessie, 05-11-2026 10:25 UTC, `1d5ae19b`):** punt 1 en 2 hieronder zijn geland. QS8-669 en QS8-668 zitten in de batch, de CI was groen op `80c1c7fd`, en de ER-rijen zijn ingevouwen. Punt 3 en 4 staan nog open. Erbij kwam: `zod` (high) zit in de webbundel, `npm update zod` is aan Quinten.
+
 ⚠️ **Wat er open bleef, in volgorde van wat het blokkeert:**
 
 1. **QS8-669 — `audit:controle` rood op `main` en op elke tak** (`shell-quote`
