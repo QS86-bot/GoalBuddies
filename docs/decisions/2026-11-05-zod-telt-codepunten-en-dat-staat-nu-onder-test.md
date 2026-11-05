@@ -44,18 +44,24 @@ tijdelijk door die map vervangen (niets aan `package.json` of het lockfile).
 📏 **12 van de 15 tests rood**, elk met *"zod 4.4.3 telt hier geen codepunten
 meer …"* in de melding. Daarna hersteld: 4.6.7, 15 groen.
 
-De drie die groen bleven zeggen iets over de test zelf:
+De drie die groen bleven zeggen iets over de test zelf, en de `code-critic`
+wees erop dat twee ervan de **andere** richting bewaken:
 
-| test | waarom hij onder beide tellingen slaagt |
-|---|---|
-| de fixtures zijn wat ze beweren te zijn | toetst `.length` en `telTekens()`, niet Zod |
-| `.max(1)` weigert het gezin | 7 én 11 zijn > 1 |
-| `.min(7)` laat het gezin door | 7 én 11 zijn ≥ 7 |
+| test | tegen UTF-16 (4.4.3) | tegen grafemen (het gezin = 1) |
+|---|---|---|
+| de fixtures zijn wat ze beweren te zijn | groen — toetst `.length` en `telTekens()`, niet Zod | groen |
+| `.max(1)` weigert het gezin | groen — 11 is ook > 1 | **rood** — 1 is niet > 1 |
+| `.min(7)` laat het gezin door | groen — 11 is ook ≥ 7 | **rood** |
+| `.length(7)` laat het gezin door, en de `telTekens()`-lus | rood | **rood** |
 
-Die twee gezinsgevallen staan er voor de volledigheid van de tabel uit het
-issue; ze bewaken de naad niet, en dat staat hier zodat niemand ze ervoor
-aanziet. Het omgekeerde — `.max(7)` laat het gezin door, `.min(8)` weigert
-het — is wél onderscheidend en staat er ook.
+De twee gezinsgevallen zijn dus niet overbodig: tegen een terugval naar UTF-16
+zeggen ze niets, tegen een sprong naar grafemen zijn ze precies de bewaking die
+de kop van de test belooft. ⚠️ **Die grafeem-richting is beredeneerd en niet
+geijkt** — er is geen zod-versie die grafemen telt om in `node_modules` te
+zetten; de UTF-16-richting is wél met de hand gemeten. Ook de tweede assertie
+in elk geval van blok 2 (`n + 1` emoji wordt geweigerd) slaagt onder UTF-16:
+die bewaakt een andere belofte, namelijk dat de grens er nog ís, en staat
+naast een eerste assertie die wél onderscheidend is.
 
 ## Punt 4: heeft elke kale `.max()` dezelfde grens als de CHECK?
 
