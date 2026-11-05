@@ -150,6 +150,16 @@ het afsluiten van een issue of Linear en de documenten hetzelfde zeggen.
   de blokkeerrelatie in Linear en land ze in volgorde. Bundelen mag alleen als de
   issues één ondeelbare wijziging zijn — en dan hoort er één issue te zijn, geen
   acht.
+
+  ⚠️ **Eén benoemde uitzondering sinds 05-11-2026: de batch-PR van
+  `docs/PROMPT-SESSIE.md` §12.** De batchsessie mag meerdere afgeleverde issues
+  in één PR naar `main` brengen, mits elk issue zijn eigen tak houdt en met een
+  eigen `--no-ff`-merge landt waarvan het onderwerp het issuenummer draagt
+  (`Merge QS8-nnn: titel`). Het zijn dan nog steeds aparte takken en aparte
+  merge-commits; wat gedeeld wordt is de PR en dus de CI-uitslag. De afweging
+  staat in
+  `docs/decisions/2026-11-05-orchestrator-en-batchsessie-zonder-gedeelde-tak.md`.
+  Buiten §12 geldt de regel hierboven onverkort.
 - Nooit rechtstreeks op `main` committen zodra er code staat.
 - **Werk landt via een PR op GitHub**, met een merge-commit en niet met een
   squash: de commit-berichten in dit project dragen het waaróm, en squashen slaat
