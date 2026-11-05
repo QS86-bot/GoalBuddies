@@ -7,6 +7,11 @@ Ga verder met bouwen aan GoalBuddies. Argument (optioneel): $ARGUMENTS
 Is er een argument meegegeven, dan is dat het issue of het onderwerp waar je aan
 werkt. Zonder argument bepaal je zelf wat er aan de beurt is.
 
+> **Werk je in opdracht van de orchestrator** (de bouwprompt zegt `ROL: BOUWSESSIE`)?
+> Dan geldt `docs/PROMPT-SESSIE.md` §12 in plaats van stap 5 hieronder: geen PR,
+> één push aan het eind, een afleverregel in het issue, en de drie gedeelde
+> documenten blijven onaangeroerd. Alle andere stappen blijven zoals ze staan.
+
 ## Stap 1 — Oriënteer je
 
 `CLAUDE.md` is de grondwet en wint van alles. Hij staat al in je context — niet

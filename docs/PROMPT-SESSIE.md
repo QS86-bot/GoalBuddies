@@ -506,3 +506,73 @@ te vragen welke.
 
 Aan het eind van je sessie: werk `docs/VOLGENDE-SESSIE.md` bij, en noem wat er
 open bleef staan en waarom.
+
+---
+
+## 12. Orchestrator en batchsessie — sinds 05-11-2026
+
+Quinten werkt in de Status Tracker met een orchestrator die de banen bewaakt, bouwsessies die zonder PR afleveren, en een batchsessie die het ochtendwerk naar `main` brengt. Dit hoofdstuk zet dezelfde rolverdeling hier neer, met de aanpassingen die dit project vraagt (§12c). Het **vult §1 tot en met §11 aan en vervangt ze niet**: een sessie die buiten dit model werkt, volgt die hoofdstukken ongewijzigd.
+
+De uitvoerbare stappen staan in `.claude/commands/orkestrator.md` en `.claude/commands/batch.md`. De stand van de banen staat in Linear, in het logboek-issue "Orkestratie zondagreview 08-11-2026", en **niet hier** (de stand heeft één eigenaar, zie `CLAUDE.md`).
+
+### 12a. Wie doet wat
+
+| rol | aantal | schrijft | doet nooit |
+| --- | --- | --- | --- |
+| **Orchestrator** | 1 | Linear (logboek-issue, beslispakket, klikpad), bouwprompts | code, mergen, migraties, sessies starten zonder Quintens woord |
+| **Bouwsessie** | hoogstens twee tegelijk (§1) | code en tests op de eigen tak, een afleverregel in het issue | een PR openen, naar `main` pushen of mergen, op productie schrijven, de drie gedeelde documenten aanraken |
+| **Batchsessie** | 1 per ronde | de batchtak, één PR, daarna één keer de stand in `docs/WERKVOORRAAD.md` | features, migraties zonder Quintens "backup gedaan", mergen |
+
+Orchestrator en batchsessie tellen niet als baan in §1: ze hebben geen eigen boom en leveren geen broncode. Het plafond van §1 en de voorwaarden van §1c gelden voor de bouwsessies.
+
+### 12b. De ronde
+
+1. **Orchestrator.** Voert §1d uit op alle issues met `wacht-op-Quinten` en schrijft het resultaat in het logboek-issue: het *beslispakket* (categorie 1: per vraag één zin, twee opties, de meting erbij), het *klikpad* (categorie 2) en de *bouwbare set* (categorie 3, na het lezen van de reacties). Kiest hoogstens twee banen met verschillende bomen en schrijft per baan een bouwprompt. Quinten start de bouwsessie, of zegt de orchestrator dat die het zelf mag.
+2. **Bouwsessie.** `npm run claim -- <gitBranchName>` (op een vaste sessiebranch: `--hier`, §2), bouwt tegen de acceptatiecriteria, draait `npm run poort` (ongemeten is geen groen), draait de reviewagents naar risico (§6) en **pusht één keer, aan het eind**. Zet het issue op In Review met een afleverregel als comment:
+
+   > AFGELEVERD · tak `<naam>` · sha `<40 tekens>` · lokaal gedraaid: … · ongemeten: … · migratie wacht: ja/nee (+ `git hash-object` van beide bestanden)
+
+   Er komt **geen PR**. De tak blijft op de remote staan tot de batch gemerged is: `npm run claim` leest hem dan als bezet, en dat is waar.
+3. **Batchsessie.** Leest de afleverregels, controleert per tak dat de sha klopt, en bouwt de batchtak vanaf `origin/main` met één `git merge --no-ff` per tak (onderwerp: `Merge QS8-nnn: titel`, zodat `npm run claim` de gelande PR herkent, §2). Voor elke tak eerst `git merge-tree --write-tree`; een conflict wordt gemeld en niet opgelost buiten de conflictzone. Push, PR, CI-groen op de exacte head-sha (§9, punt 1), één ronde `code-critic` op de PR als geheel — plus `security-reviewer` als de batch auth, RLS, punten, goedkeuring, commitments of een groepszichtbaar oppervlak raakt. Daarna is het aan Quinten.
+4. **Quinten.** Merget de batch-PR met een merge-commit, laat acht minuten tussen twee merges (§1b), draait `npm run deploy` (zijn machine; het token staat niet in een cloudsessie) en reviewt. De batchsessie draait na de merge `npm run hoofdrun:stand` en vouwt de stand één keer in `docs/WERKVOORRAAD.md` en `docs/VOLGENDE-SESSIE.md`.
+
+⚠️ **Done is aan Quinten** (§11). Ook de batchsessie zet een issue niet op Done.
+
+⚠️ **De bouwsessie raakt de drie gedeelde documenten niet** (§4 blijft de regel voor wie buiten dit model werkt). Wat een bouwsessie anders in `docs/ENGINEER-REVIEW.md` zou zetten, gaat als regel "ER-rij:" in haar afleverregel; de batchsessie vouwt ze in één commit in. Dat is de uitwerking van §1c voor een extra baan.
+
+### 12c. Waar dit afwijkt van de Status Tracker, en waarom
+
+| Status Tracker | hier | reden |
+| --- | --- | --- |
+| Gedeelde tak `integratie`, elke sessie mergt er lokaal in | Geen gedeelde tak: elke bouwsessie levert op haar eigen tak, de batchsessie voegt samen | Een tak waar meerdere sessies in schrijven is het conflictpunt dat §4 en §5 al beschrijven. Een bouwsessie werkt bovendien op de tak die het platform haar geeft; of een cloudsessie naar een derde tak mag pushen is hier **niet gemeten** (§12f). `npm run claim` blijft kloppen omdat de afgeleverde tak blijft staan. |
+| Nachtworkflow met drie commit-statussen | Geen nieuwe workflow: de CI van de batch-PR is de toets | `.github/workflows/ci.yml` draait op elke push (`branches: ['**']`) en op elke PR naar `main`. Een nachtrun zou dezelfde set nogmaals draaien. Een wijziging aan `.github/` vraagt Quinten en de volledige reviewset. |
+| Minutenschaarste als aanleiding | **Niet gemeten voor dit project** | Hier is geen meting van verbruikte Actions-minuten. Zijn ze hier ook schaars, dan is de eerste maatregel `push` in `ci.yml` beperken. Dat is een eigen besluit van Quinten. |
+| Quinten merget altijd | Voor werk via de batch: ja. Daarbuiten: §9 | §9 zegt dat een sessie haar PR zelf merget na vier controles. Dat blijft gelden voor werk dat niet via de batch loopt. |
+
+Het besluit staat in `docs/decisions/2026-11-05-orchestrator-en-batchsessie-zonder-gedeelde-tak.md`, met het pad terug.
+
+### 12d. Migraties en productie
+
+Een bouwsessie schrijft migratie en rollbackscript, doet de lokale proeven en schrijft "migratie wacht op de batch" in haar afleverregel. Ze schrijft **niet** naar productie: geen `apply_migration`, geen schrijvende `execute_sql`, geen `deploy_edge_function`.
+
+De batchsessie past een migratie pas toe na Quintens **eigen chatbericht** "backup gedaan <bestand> <tijdstip>" (`npm run db:dump` draait op zijn machine), vóór de merge naar `main`, na controle met `get_project` dat de projectref die uit `CLAUDE.md` is, en met `npm run register:controle` gemeten groen. Een migratie met `drop`, `delete`, `truncate`, `revoke`, `grant`, `policy` of `security definer` legt ze eerst als meerkeuzevraag aan Quinten voor. De volgorde van uitrollen is die van `docs/DEPLOY.md` §2.3a: migratie eerst, deploy daarna.
+
+Edge Functions en de webbundel rolt Quinten uit.
+
+### 12e. Zondag 08-11-2026
+
+| dag | wat |
+| --- | --- |
+| do 05-11 | orchestrator voert §1d uit, beslispakket en klikpad staan in het logboek-issue |
+| vr 06-11 | bouwsessie voor QS8-651 (de enige frontendbaan die nu bouwbaar is) levert af |
+| za 07-11 | batchsessie voegt samen en opent de PR; Quinten merget, deployt |
+| zo 08-11 | review aan de hand van het klikpad |
+
+⚠️ **Is de batch zaterdagavond niet gemerged, dan reviewt Quinten `main` zoals hij staat.** Niets wordt voor zondag haastig gemerged: de acht minuten van §1b en de CI-uitslag op de exacte sha gaan voor.
+
+### 12f. Wat niet gemeten is
+
+* Of een bouwsessie of batchsessie naar een andere tak dan haar sessietak mag pushen. De batchtak heet `batch/<datum>`; wordt de push geweigerd, dan is de PR-kop de sessietak van de batchsessie. De werking verandert daar niet van.
+* Of `npm run claim` de afgeleverde takken in dit model goed leest (de gelande-PR-bron van QS8-611 hangt aan de claim-commit die in de merge meekomt). Nog niet waargenomen.
+* Of Actions-minuten hier schaars zijn (§12c).
+* Of `.claude/commands/orkestrator.md` en `.claude/commands/batch.md` in een echte ronde doen wat ze beloven. Ze zijn op 05-11-2026 voor het eerst gestart; de eerste ronde is de proef.
