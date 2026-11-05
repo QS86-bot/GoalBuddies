@@ -3,14 +3,18 @@
 > Kopieer alles onder de streep in een nieuwe chat. Werk dit bestand bij aan het
 > eind van elke sessie — het is de overdracht, niet een archief.
 >
-> **Laatst bijgewerkt:** 05-11-2026 om 10:25 UTC, **t/m PR #652**. Wat er die dag
-> open bleef staat in STAND VAN ZAKEN onder *05-11-2026*; de bijwerking daarvóór
-> was 17-09-2026 (t/m PR #527), met de lessen van die ronde als punt AL, AM en AN.
+> **Laatst bijgewerkt:** 05-11-2026 om 12:50 UTC, **t/m PR #656** (#655 en #656
+> zijn gemerged; #656 om 13:15 UTC als `769b37d5`). Wat er die dag open bleef staat in STAND VAN ZAKEN onder
+> *05-11-2026*, in twee rondes; de bijwerking daarvóór was 17-09-2026 (t/m PR
+> #527), met de lessen van die ronde als punt AL, AM en AN.
 >
 > ⚠️ **Sinds 05-11-2026 werkt dit project met een orchestrator, bouwsessies en een
 > batchsessie** (`docs/PROMPT-SESSIE.md` §12). Een bouwsessie raakt dit bestand
 > dan niet; de batchsessie vouwt de stand in. Deze bijwerking is op Quintens
 > eigen verzoek door de bouwsessie van baan A gedaan en landt op haar sessietak.
+> De tweede bijwerking van die dag (12:50 UTC) is door dezelfde sessie gedaan, op
+> een eigen documenttak vanaf `main`, zodat de twee afgeleverde issuetakken hun
+> afleversha houden.
 >
 > ⚠️ **Die afkapping is met opzet een nummer en geen "alles".** Terwijl deze
 > bijwerking geschreven werd landden er drie PR's bij — de teller ging van
@@ -2221,6 +2225,98 @@ Vrienden, ontkoppel Vrienden" de hulpvraag stil naar de overgebleven groep, met
 de keuzelijst verborgen. Een bronscan kan toestandsovergangen in een gemount
 component niet toetsen; dat is de klasse waar de reviewagent voor is. De regel is
 omgedraaid; `docs/decisions/2026-11-05-de-eerste-groep-is-geen-keuze.md` §3.
+
+### 05-11-2026, tweede ronde — QS8-672 en QS8-673, en wat er open bleef
+
+De orchestrator plande om 11:45 UTC twee banen in (QS8-667); baan A (deze
+sessie) bouwde ze na elkaar, allebei zonder PR, allebei In Review:
+
+| Issue | Tak | Sha | Wat |
+|---|---|---|---|
+| QS8-672 | `quintenstrijdonk/qs8-672-wachtwoord-bovengrens-telt-codepunten-bcrypt-kapt-op-72` | `5f9ef03a` | De wachtwoord-bovengrens telt **bytes**: `telBytes()` erbij in `src/shared/tekst` als vierde telling, `.max(72)` eruit, melding in nl en en noemt getal én eenheid. GoTrue weigert boven 72 bytes met een 400 en kapt níet af (aan de bron gelezen, `master`; niet tegen het project gemeten). `vertaal()` in `src/modules/auth/api.ts` kreeg een tak voor *longer than*, want de algemene wachtwoordtak gaf het omgekeerde advies |
+| QS8-673 | `quintenstrijdonk/qs8-673-zods-tekstlengte-telling-staat-nergens-onder-test-en-vijf` | `639e925b` | Een belofte-test die Zod's telling vastlegt naast `telTekens()` en de vijf kale `.max(n)`-schema's tegen de CHECK-getallen van productie; tegen zod 4.4.3 in `node_modules` vallen 12 van de 15 om. De sectie *Emoji* in `CLAUDE.md` en dertien commentaren zeggen nu wat onder welke versie gemeten is. Punt 4 alleen-lezen op productie gemeten: geen clientgrens ruimer dan zijn CHECK |
+
+⚠️ **Wat er open bleef, in volgorde van wat het blokkeert:**
+
+1. **PR #655 (QS8-672) is gemerged, en de ER-rij van 06-09-2026 (regel 534,
+   `WACHTWOORD_MAXIMUM`) is daarbij dichtgezet.** De onjuiste zin *"door bcrypt
+   stilzwijgend op 72 bytes afgekapt"* is weg: GoTrue weigert (aan de bron
+   gelezen, niet tegen het gehoste project gemeten, zie punt 5).
+2. **PR #656 (QS8-673) is op Quintens woord gemerged als `769b37d5`**, met een
+   eigen `--no-ff`-merge voor het issue. `CLAUDE.md` (sectie *Emoji*) zegt nu
+   wat onder welke versie gemeten is, en de telling staat onder
+   `tests/beloftes/zod-telt-codepunten.test.ts`. De CI was groen op `7ef454e1`.
+3. **QS8-641 wacht op de batch van QS8-233**, en die wacht op QS8-634 (besluit
+   van Quinten, 05-11 07:55 UTC). Productie draagt 0299–0302 die `main` niet
+   heeft; elke nieuwe migratie vanaf `main` botst daarop.
+4. **Punt 3 en 4 van de eerste ronde staan nog**: de teamgroep-herbevestiging
+   voor QS8-649 (als reactie op dat issue gezet), en de review van zondag 08-11.
+5. **Drie handmetingen die alleen Quinten kan doen**, uit de reviews van deze
+   ronde: één aanmelding met een wachtwoord van 73 bytes tegen een wegwerpadres
+   (of de GoTrue-versie van het project lezen) om *weigert, kapt niet af* ook
+   voor het gehoste project te zien; aanmelden met een emoji-wachtwoord op een
+   echt iOS- of Android-toestel (`TextEncoder` op Hermes is niet gemeten, al
+   gebruikt `src/lib/observability/edge-rapport.ts` hem al op het clientpad);
+   en de tak `quintenstrijdonk/qs8-651-…` @ `3b06ff01` — een tweede, niet
+   gemergede implementatie van QS8-651 uit een dubbele sessie — van de remote
+   halen, want een cloudsessie kan dat niet.
+6. **Twee kleine vervolgen, geen issue waard tot iemand ze wil**: de zeef in
+   `src/modules/ai/uitvoer.ts` telt met `.length` en is daarmee strenger dan
+   het schema (kost hooguit een AI-voorstel met veel emoji); en de nieuwe test
+   leest de zod-versie uit het pakket via de exports-regel voor `package.json`,
+   waar `core.version` uit `zod` robuuster is.
+
+### De valkuilen van die ronde
+
+⚠️⚠️ **Een ijking die uit `HEAD` herstelt, ijkt `HEAD`.** De eerste ijkingsronde
+van QS8-672 zette elke mutatie terug met `git checkout -- <bestand>` — en dat
+zette óók het ongecommitte werk terug. Drie mutaties liepen daardoor tegen de
+óude code en gaven alle drie dezelfde ene rode test. Het viel op doordat `<=`
+naar `<` onmogelijk hetzelfde rood kan geven als *de grens weg*. **Sla je werk
+eerst op als patch (of commit het) en herstel daaruit**; en als twee
+onverenigbare mutaties hetzelfde rood geven, is de ijking kapot, niet de test.
+
+⚠️⚠️ **Een ER-rij droeg een bewering die niemand gemeten had.** De rij van
+06-09 zei dat bcrypt een te lang wachtwoord *stilzwijgend afkapt*; het issue
+zette terecht als eerste criterium *meet dat eerst*, en de meting zei het
+omgekeerde (GoTrue weigert met een 400). De *wordt zwaarder als* van die rij
+was dus al die tijd een aanname die als feit stond. **Lees bij een rij die een
+externe component iets toedicht of er een 📏 bij staat** — en zo niet, meet
+voordat je erop bouwt.
+
+⚠️ **Wat een dependency telt is een eigenschap van de dependency, en dertien
+commentaren stelden het als eigenschap van de code.** Het issue noemde vijf
+plekken; de grep die *Wie bezit welk feit* voorschrijft vond er dertien, en de
+`code-critic` nog een veertiende die ik gemist had. De conclusie in al die
+commentaren (`telTekens()`) was goed; alleen de reden was verlopen. **Schrijf bij
+zo'n feit de versie waaronder het gemeten is**, dan verloopt het zichtbaar in
+plaats van stil.
+
+⚠️ **Een formatter zonder projectconfig herschrijft tienduizend regels.** `npx
+prettier --write` op vier bestanden zette de i18n-catalogi (bijna 5000 regels
+per stuk) om naar dubbele aanhalingstekens, want dit project heeft geen
+Prettier en geen `.prettierrc`. Teruggedraaid en de edits opnieuw gezet. **Kijk
+eerst in `package.json` welke formatter er ís**; hier is dat alleen ESLint.
+
+⚠️ **De reviewer weerlegde mijn eigen ijkingsverhaal.** Het beslisdocument van
+QS8-673 noemde twee gezinsgevallen "bewaken de naad niet"; de `code-critic`
+rekende voor dat ze tegen een sprong naar grafemen juist de énige bewaking zijn,
+en dat die richting beredeneerd was en niet geijkt. **Een ijkingstabel hoort
+per richting te zeggen wat er gemeten is en wat beredeneerd** — en de lichte
+review loont ook bij een issue dat alleen tests en commentaar raakt.
+
+⚠️ **Alleen-lezen op productie is wél een meting.** Punt 4 van QS8-673 (heeft
+elke kale `.max()` dezelfde grens als zijn CHECK) stond in het issue als
+*zonder database ongemeten*. Eén `pg_get_constraintdef`-query via de
+Supabase-MCP, alleen lezen, gaf alle 44 lengte-CHECKs in één keer. **"Geen
+lokale stack" is niet "geen database"**: voor een lezende vraag is productie
+bereikbaar, en dat mag van de bouwprompt — schrijf dan wel op dat de bron
+productie is en dat die 0299–0302 vóórloopt op de map.
+
+⚠️ **Het logboek kreeg een tijdstip dat zestien minuten in de toekomst lag.** De
+afleverregel van QS8-673 in QS8-667 zegt *12:58 UTC* en is om 12:42 geplaatst;
+een typefout, maar in een logboek dat juist bestaat om te zeggen wie wat wanneer
+deed. **Lees de klok, typ hem niet uit het hoofd.**
 
 ## WERKAFSPRAKEN — houd deze aan
 
