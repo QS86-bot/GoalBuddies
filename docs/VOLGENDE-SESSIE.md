@@ -2243,11 +2243,11 @@ sessie) bouwde ze na elkaar, allebei zonder PR, allebei In Review:
    `WACHTWOORD_MAXIMUM` telt UTF-16-eenheden) kan dicht, en de zin *"door bcrypt
    stilzwijgend op 72 bytes afgekapt"* erin is onjuist — GoTrue weigert.
 2. **QS8-673 krijgt een eigen PR** van de batchsessie, omdat de tak `CLAUDE.md`
-   raakt. Bij het landen moet de alinea *Aanvulling — de eerste batch* in
-   `docs/WERKVOORRAAD.md` mee: die zegt nog dat `CLAUDE.md` UTF-16 zegt en dat
-   dat aan Quinten is. (De zin hiér is in deze bijwerking al rechtgezet.) Let
-   bij de merge-tree op `src/modules/auth/schemas.ts` en zijn test: beide
-   takken raken ze, op verschillende regels.
+   raakt. De zinnen in dit bestand en in de alinea *Aanvulling — de eerste
+   batch* van `docs/WERKVOORRAAD.md` die zeiden dat `CLAUDE.md` nog UTF-16 zegt
+   en dat dat aan Quinten is, zijn in deze bijwerking allebei rechtgezet (op
+   Quintens verzoek). Let bij de merge-tree op `src/modules/auth/schemas.ts` en
+   zijn test: beide takken raken ze, op verschillende regels.
 3. **QS8-641 wacht op de batch van QS8-233**, en die wacht op QS8-634 (besluit
    van Quinten, 05-11 07:55 UTC). Productie draagt 0299–0302 die `main` niet
    heeft; elke nieuwe migratie vanaf `main` botst daarop.
