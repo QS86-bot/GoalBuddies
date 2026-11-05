@@ -151,7 +151,8 @@ export const nl = {
   //    dus de aanroep moet lui zijn: `{ error: () => t(...) }` en niet
   //    `{ error: t(...) }`. Zie de kop van `auth/schemas.ts`.
   'validatie.wachtwoord_kort': 'Gebruik minstens 8 tekens. Een korte zin werkt prima.',
-  'validatie.wachtwoord_lang': 'Meer dan 72 tekens kan niet; bcrypt kapt daarna af.',
+  'validatie.wachtwoord_lang':
+    'Dit wachtwoord is te lang. Het mag hoogstens 72 bytes zijn: een gewone letter telt voor 1, een letter met accent voor 2 of 3, een emoji voor 3 of meer. Maak de zin korter.',
   'validatie.email': 'Dit ziet er niet uit als een e-mailadres.',
   'validatie.wachtwoord_leeg': 'Vul je wachtwoord in.',
   'validatie.weekdag': 'Een week begint op een dag tussen zondag en zaterdag.',
