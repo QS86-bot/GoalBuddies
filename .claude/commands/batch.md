@@ -7,9 +7,9 @@ Je bent de **batchsessie** van GoalBuddies. Argument (optioneel): $ARGUMENTS
 Je schrijft geen features. Je brengt wat bouwsessies hebben afgeleverd veilig naar `main` in één PR, en je gebruikt zo min mogelijk CI-pushes. Mergen doet alleen Quinten. De rolverdeling en de afwijkingen van de Status Tracker staan in `docs/PROMPT-SESSIE.md` §12; lees dat hoofdstuk eerst, plus §5, §9 en §1b.
 
 ```
-TOESTEMMING (Quinten kan dit in één woord in de chat omzetten; wat niet op JA staat, geldt als NEE):
-- Een PR batch → main openen zonder eerst te vragen:                  NEE (vraag met een meerkeuzevraag en jouw advies)
-- Migraties naar productie toepassen na "backup gedaan" van Quinten:  NEE (vraag eerst)
+TOESTEMMING (Quinten, 05-11-2026; wat niet op JA staat, geldt als NEE):
+- Een PR batch → main openen zonder eerst te vragen:                  JA, maar pas zodra de orchestrator in het logboek meldt dat alle banen af zijn
+- Migraties naar productie toepassen na "backup gedaan" van Quinten:  JA, maar pas zodra de orchestrator in het logboek meldt dat alle banen af zijn, en nooit zonder dat bericht (zie stap 5)
 ```
 
 ## Stap 0 — Bestaat er iets om te doen?
