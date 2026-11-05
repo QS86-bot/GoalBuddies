@@ -129,7 +129,8 @@ export const profielSchema = z.object({
    *      de spatie. 📏 Gemeten: `E'\n\n'`, `E'\t\t'` en U+00A0 kwamen door de
    *      aanmeldtrigger en werden hier gewéigerd — een profiel dat zijn eigen
    *      schema afwijst. En U+200B kwam door **allebei**.
-   *    - `.max(80)` telt UTF-16-eenheden, `char_length` telt codepunten. 📏 Een
+   *    - `.max(80)` telde onder zod 4.4.3 UTF-16-eenheden (sinds 4.6 codepunten,
+   *      QS8-673), `char_length` telt codepunten. 📏 Een
    *      naam van 80 emoji is 160 eenheden: de trigger maakt hem aan en dit
    *      schema weigerde hem, waarna de gebruiker vastliep op een veld dat hij
    *      niet had aangeraakt.

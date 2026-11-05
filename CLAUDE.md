@@ -634,12 +634,25 @@ helpers uit `src/shared`, nooit de kale string-methodes.
 `telTekens()` uit `src/shared/tekst`, ook in een teller onder een invoerveld — een
 teller in grafemen bij een grens in codepunten is een nieuwe fout en geen
 reparatie. `telGrafemen()` is voor waar je écht zichtbare tekens bedoelt, zoals
-een preview, nooit voor een grens. Zod's `.max()` en `.length` tellen
+een preview, nooit voor een grens. JavaScript's `.length` telt
 UTF-16-eenheden; `char_length` in Postgres telt codepunten.
+
+⚠️ **Wat Zod telt is een eigenschap van een dependency, en die is al eens
+gewisseld — vastgelegd 05-11-2026 (QS8-673).** 📏 Onder zod 4.4.3 telden
+`.max()`, `.min()` en `.length()` UTF-16-eenheden; sinds 4.6 tellen ze
+codepunten, net als `char_length` (gemeten op QS8-670 en QS8-673 met dezelfde
+reeks tegen beide versies). Dat maakt een kale `.max(n)` op gebruikerstekst
+vandaag gelijk aan de CHECK ernaast — en morgen misschien weer niet. Daarom
+blijft `telTekens()` de regel en niet de uitzondering: hij telt wat de database
+telt, onafhankelijk van wat Zod deze versie doet.
+`tests/beloftes/zod-telt-codepunten.test.ts` legt Zod's telling vast en wordt
+rood zodra die verschuift; onder 4.4.3 is dat met de hand gemeten.
 
 ⚠️ Bij een **ondergrens** gaat het verschil de gevaarlijke kant op: `.length` is
 altijd ≥ `char_length`, dus een client die in UTF-16 telt laat door wat Postgres
-weigert. Zie `docs/decisions/2026-08-28-tekst-zonder-grens.md` (QS8-118).
+weigert. Zie `docs/decisions/2026-08-28-tekst-zonder-grens.md` (QS8-118). Dat
+geval is sinds zod 4.6 niet meer aan de orde, maar het is de reden dat een
+`.min()` op gebruikerstekst hier nog steeds `telTekens()` heet.
 
 ## Architectuur
 Modulaire monoliet. Module-communicatie alleen via `modules/<naam>/index.ts`.

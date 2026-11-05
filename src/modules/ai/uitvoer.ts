@@ -117,13 +117,17 @@ const TITEL_MIN = 3;
  *    meest waarschijnlijke faalgeval van het model, dus het staat expliciet in
  *    de prompt én hier in de zeef.
  *
- * ⚠️ **`.length` en niet `telTekens()`, en dat is hier de juiste keuze.**
- *    `weekdoelSchema` gebruikt Zod's `.max(200)` en dat telt UTF-16-eenheden;
- *    `telTekens()` telt codepunten. `.length >= telTekens()` altijd, dus
- *    `.length > 200` is de striktere van de twee en laat niets door dat Zod
- *    daarna alsnog weigert. Dit is de val uit QS8-118, maar dan aan de
- *    bovengrens — waar het verschil de veilige kant op valt in plaats van de
- *    onveilige.
+ * ⚠️ **`.length` en niet `telTekens()` — en dat is sinds QS8-673 een bekende
+ *    strengheid, geen juistheid meer.** Toen dit geschreven werd gebruikte
+ *    `weekdoelSchema` Zod's `.max(200)`, en onder zod 4.4.3 telde dat
+ *    UTF-16-eenheden; `.length > 200` was dan de striktere van de twee en liet
+ *    niets door dat Zod daarna weigerde. Intussen telt `weekdoelSchema` met
+ *    `telTekens()` (codepunten) en telt Zod sinds 4.6 óók codepunten. Deze
+ *    zeef is dus strenger dan het schema: een AI-titel van meer dan 200
+ *    UTF-16-eenheden maar hoogstens 200 codepunten valt hier weg terwijl het
+ *    schema hem zou nemen. Dat kost hooguit een voorstel, nooit een rij die
+ *    Zod daarna weigert — `.length` ≥ codepunten altijd. Gelijktrekken is een
+ *    eigen keuze en geen bijvangst van QS8-673.
  *
  * ⚠️ Accepteert `weekly_goals` én `weekdoelen` én een kale array, en Nederlandse
  *    veldnamen. Dit is de laatste plek vóór het scherm; hetzelfde argument als

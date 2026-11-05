@@ -53,11 +53,13 @@ describe('het argument — lengte', () => {
 /**
  * ⚠️ De regressie uit QS8-118, en de reden dat dit bestand bestaat.
  *
- * Zod's `.min()` telt UTF-16-eenheden; `deadline_requests_reason_len` telt met
- * `char_length` codepunten. Bij een óndergrens gaat dat verschil de gevaarlijke
- * kant op: `.length` is altijd ≥ `char_length`, dus tien emoji haalden de
- * clientcontrole terwijl Postgres het verzoek weigerde. De gebruiker kreeg een
- * storingsmelding nadat het formulier "Lang genoeg" had gezegd.
+ * Zod's `.min()` telde onder 4.4.3 UTF-16-eenheden; `deadline_requests_reason_len`
+ * telt met `char_length` codepunten. Bij een óndergrens gaat dat verschil de
+ * gevaarlijke kant op: `.length` is altijd ≥ `char_length`, dus tien emoji
+ * haalden de clientcontrole terwijl Postgres het verzoek weigerde. De gebruiker
+ * kreeg een storingsmelding nadat het formulier "Lang genoeg" had gezegd. Sinds
+ * zod 4.6 telt `.min()` codepunten (QS8-673); deze test toetst het schema en
+ * blijft daarmee ook groen als Zod ooit terugwisselt — dat is het punt.
  */
 describe('het argument — emoji tellen als één teken, net als in de database', () => {
   it('weigert tien emoji, ook al zijn dat twintig UTF-16-eenheden', () => {

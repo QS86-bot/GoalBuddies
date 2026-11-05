@@ -36,12 +36,14 @@ export const TAAK_MAX = 500;
 export const VOLGORDE_MAX = 1_000_000;
 
 /**
- * ⚠️ **`telTekens()` en niet `.min()`/`.max()` — QS8-118.** Zod telt
- *    UTF-16-eenheden en `char_length` in Postgres telt codepunten. Eén emoji
- *    kost twee UTF-16-eenheden en één codepunt, een samengesteld gezin elf tegen
- *    zeven. Een taak van 300 emoji haalt `char_length` 300 — die hoort erdoor —
- *    maar `.max(500)` ziet er 600 en weigert hem. De gebruiker krijgt dan een
- *    grens te zien die de database niet stelt.
+ * ⚠️ **`telTekens()` en niet `.min()`/`.max()` — QS8-118.** Onder zod 4.4.3
+ *    telde Zod UTF-16-eenheden en `char_length` in Postgres telt codepunten.
+ *    Eén emoji kost twee UTF-16-eenheden en één codepunt, een samengesteld
+ *    gezin elf tegen zeven. Een taak van 300 emoji haalt `char_length` 300 —
+ *    die hoort erdoor — maar `.max(500)` zag er 600 en weigerde hem. De
+ *    gebruiker kreeg dan een grens te zien die de database niet stelt. Sinds
+ *    zod 4.6 telt `.max()` codepunten (QS8-673); `telTekens()` blijft, omdat
+ *    het de database volgt en niet de dependency.
  *
  * ⚠️ **En `.trim()` vóór de telling, want de CHECK doet `btrim(body)`.** Zonder
  *    dat is een taak van vijf spaties hier geldig en in de database niet.

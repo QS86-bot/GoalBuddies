@@ -16,10 +16,12 @@ import { t } from '../../shared/i18n';
  *    onder test hoort te staan en niet alleen de RLS.
  *
  * ⚠️ `telTekens()` en niet `.min()`/`.max()` — dezelfde reden als in
- *    `deadline-schemas.ts` (QS8-118). Zod telt UTF-16-eenheden, `char_length` in
- *    Postgres telt codepunten. Bij de óndergrens gaat dat verschil de gevaarlijke
- *    kant op: twee emoji halen `.length >= 3` maar `char_length` is dan 2, en
- *    dan laat de client door wat de database weigert.
+ *    `deadline-schemas.ts` (QS8-118). Onder zod 4.4.3 telde Zod UTF-16-eenheden,
+ *    `char_length` in Postgres telt codepunten. Bij de óndergrens gaat dat
+ *    verschil de gevaarlijke kant op: twee emoji haalden `.length >= 3` maar
+ *    `char_length` is dan 2, en dan laat de client door wat de database weigert.
+ *    Sinds zod 4.6 telt `.min()` codepunten (QS8-673); `telTekens()` blijft,
+ *    want het volgt de database en niet de dependency.
  *
  *    Tot migratie 0063 kón dat verschil niet opvallen, want `commitments.body`
  *    had helemaal geen lengte-CHECK — deze grenzen bestonden alleen op de client.
