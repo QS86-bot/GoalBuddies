@@ -300,26 +300,17 @@ export const NAGEKEKEN = {
     ernst: 'high',
     advisories: [1243066],
     reparatie: 'gratis',
-    in_bundel: true,
-    marker: 'Cannot mix number and bigint in multiple_of check.',
+    in_bundel: false,
+    marker: 'Synchronous parse encountered promise',
     reden:
-      '⚠️⚠️ **Deze zit er wél in, en het is app-code.** Nieuw op 05-11-2026 (QS8-669): GHSA ' +
-      '(1243066) — geheugenuitputting bij het valideren van te grote, begrensde collecties ' +
-      '(`<4.6.6`). 📏 Het is een directe dependency (`zod ^4.4.3`, geïnstalleerd 4.4.3, ' +
-      'onwrikbare regel 3) en de foutmelding uit `zod/v4/core/checks.js` staat letterlijk in ' +
-      'dist/ (verse `npm run build`, dummy-EXPO_PUBLIC-waarden). De tweede kopie ' +
-      '(`@expo/cli` → `zod@3.25.76`) is CLI-tooling en niet de bundel. 📏 **Bereik:** geen ' +
-      'enkele edge-functie importeert zod (gegrept in `supabase/functions/`), dus de server ' +
-      'valideert niet met dit pakket en de database wordt hier niet door geraakt; het gaat om ' +
-      'validatie in de client, dus een eigen tab die vastloopt. Maar dat ' +
-      'is een beoordeling van het gebruik, niet van het pakket. ⚠️ NIET GEMETEN: of een ' +
-      'validatie in `src/` een collectie begrenst die een ander lid kan vullen (een lijst uit ' +
-      'een groep). `z.array(…).max/min/length` komt in `src/` 1 keer voor; die is niet nagelezen. ' +
-      '⚠️ **`reparatie: gratis` is hier de goedkoopste van allemaal**: ' +
-      '`^4.4.3` dekt 4.6.7, dus alleen `package-lock.json` verandert (`npm update zod`), ' +
-      'zonder `package.json` en zonder `expo`-sprong. Bewust niet gedaan in QS8-669 omdat ' +
-      'dat issue alleen `scripts/` raakt; dit is een **besluit voor Quinten** en de aanbevolen ' +
-      'weg is bijwerken — daarna kan deze rij eruit (de controle meldt het zelf).',
+      'QS8-670 (05-11-2026): de directe dependency is bijgewerkt (`^4.6.6`, lockfile 4.6.7) en ' +
+      'daarmee is de kopie in de bundel niet meer kwetsbaar (`<4.6.6`). 📏 Wat npm nog meldt is ' +
+      'de tweede kopie, `expo > @expo/cli > zod@3.25.76` (`npm ls zod --omit=dev --all`): ' +
+      'CLI-tooling van Expo, niet met `package.json` te sturen — npm telt 3.25.76 binnen ' +
+      '`<4.6.6`. Verse bouw met dummy-EXPO_PUBLIC-waarden: **nul** treffers in `dist/` op de ' +
+      'foutmelding uit `zod/v3/types.js` van die kopie (die staat niet in zod 4), terwijl ' +
+      '`node_modules/zod` (4.6.7) hem wel draagt en de bundel zijn eigen 4.x-melding heeft. ' +
+      'De rij valt weg zodra `@expo/cli` een zod ≥4.6.6 meeneemt; de controle meldt het zelf.',
   },
   deepmerge: {
     ernst: 'low',
