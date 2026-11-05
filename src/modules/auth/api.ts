@@ -49,6 +49,13 @@ function vertaal(melding: string): { melding: string; veld?: 'email' | 'wachtwoo
   if (m.includes('rate limit') || m.includes('too many')) {
     return { melding: t('auth.fout.te_vaak') };
   }
+  if (m.includes('longer than')) {
+    // ⚠️ GoTrue's "Password cannot be longer than 72 characters" — QS8-672. Die
+    //    tak hoort vóór de algemene wachtwoordtak: anders krijgt wie te láng
+    //    zat "gebruik een langere zin", het omgekeerde advies. Het schema vangt
+    //    dit normaal al af; dit is voor als client en server ooit anders tellen.
+    return { melding: t('validatie.wachtwoord_lang'), veld: 'wachtwoord' };
+  }
   if (m.includes('password')) {
     return { melding: t('auth.fout.zwak_wachtwoord'), veld: 'wachtwoord' };
   }

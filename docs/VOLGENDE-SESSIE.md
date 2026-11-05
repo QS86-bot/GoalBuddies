@@ -3,18 +3,19 @@
 > Kopieer alles onder de streep in een nieuwe chat. Werk dit bestand bij aan het
 > eind van elke sessie — het is de overdracht, niet een archief.
 >
-> **Laatst bijgewerkt:** 05-11-2026 om 12:50 UTC, **t/m PR #654** (PR #655 stond
-> toen open als draft). Wat er die dag open bleef staat in STAND VAN ZAKEN onder
-> *05-11-2026*, in twee rondes; de bijwerking daarvóór was 17-09-2026 (t/m PR
-> #527), met de lessen van die ronde als punt AL, AM en AN.
+> **Laatst bijgewerkt:** 05-11-2026 om 13:30 UTC, **t/m PR #656**. Wat er die dag
+> open bleef staat in STAND VAN ZAKEN onder *05-11-2026*, in twee rondes; de
+> bijwerking daarvóór was 17-09-2026 (t/m PR #527), met de lessen van die ronde
+> als punt AL, AM en AN.
 >
 > ⚠️ **Sinds 05-11-2026 werkt dit project met een orchestrator, bouwsessies en een
 > batchsessie** (`docs/PROMPT-SESSIE.md` §12). Een bouwsessie raakt dit bestand
 > dan niet; de batchsessie vouwt de stand in. Deze bijwerking is op Quintens
 > eigen verzoek door de bouwsessie van baan A gedaan en landt op haar sessietak.
-> De tweede bijwerking van die dag (12:50 UTC) is door dezelfde sessie gedaan, op
-> een eigen documenttak vanaf `main`, zodat de twee afgeleverde issuetakken hun
-> afleversha houden.
+> De tweede bijwerking van die dag (12:50 UTC, aangevuld om 13:30 UTC nadat PR
+> #655 en #656 geland waren) is door dezelfde sessie gedaan, op een eigen
+> documenttak vanaf `main`, zodat de twee afgeleverde issuetakken hun afleversha
+> hielden tot ze geland waren.
 >
 > ⚠️ **Die afkapping is met opzet een nummer en geen "alles".** Terwijl deze
 > bijwerking geschreven werd landden er drie PR's bij — de teller ging van
@@ -2152,7 +2153,7 @@ en allebei met `git merge-tree` schoon tegen `main` = `b7586a11`:
 | QS8-651 | `claude/awesome-fermat-pp7z2v` | `31fd0ab4` | `enigeOfGekozen()` in `src/modules/buddies/deling.ts`: bij twee of meer groepen of mensen geen stille eerste meer bij de hulpvraag, de begunstigde van een straf, de vervangende getuige en de deelknop van De Lijst. Rij 41 in beslisdocument 002 |
 | QS8-668 | `quintenstrijdonk/qs8-668-nevenschadetestts-valt-sinds-november-om-op-een-vaste-moment` | `66cdcfee` | `nevenschade.test.ts` rekent haar seizoensmomenten uit de fixture met de helper `seizoensmomenten()` (bestand seizoensmoment.ts in tests/rls, alleen op die tak tot de batch landt); de registerrij in `scripts/jobbereik-controle.mjs` volgt mee |
 
-✅ **Na de merge van PR #651 (batchsessie, 05-11-2026 10:25 UTC, `1d5ae19b`):** punt 1 en 2 hieronder zijn geland. QS8-669 en QS8-668 zitten in de batch, de CI was groen op `80c1c7fd`, en de ER-rijen zijn ingevouwen. Punt 3 en 4 staan nog open. Erbij kwam: `zod` (high) en `shell-quote` (critical) zijn met PR #654 (QS8-670 en QS8-671) bijgewerkt. Zod telt daardoor sinds 4.6 codepunten; dat `CLAUDE.md` (sectie *Emoji*) nog UTF-16 zei is in de tweede ronde hieronder opgepakt (QS8-673, op Quintens woord in het issue gezet), zie `docs/decisions/2026-11-05-zod-telt-sinds-4-6-codepunten.md` en de tak van QS8-673.
+✅ **Na de merge van PR #651 (batchsessie, 05-11-2026 10:25 UTC, `1d5ae19b`):** punt 1 en 2 hieronder zijn geland. QS8-669 en QS8-668 zitten in de batch, de CI was groen op `80c1c7fd`, en de ER-rijen zijn ingevouwen. Punt 3 en 4 staan nog open. Erbij kwam: `zod` (high) en `shell-quote` (critical) zijn met PR #654 (QS8-670 en QS8-671) bijgewerkt. Zod telt daardoor sinds 4.6 codepunten; `CLAUDE.md` (sectie *Emoji*) zegt dat sinds QS8-673 ook, en de telling staat onder `tests/beloftes/zod-telt-codepunten.test.ts`, zie `docs/decisions/2026-11-05-zod-telt-sinds-4-6-codepunten.md`.
 
 ⚠️ **Wat er open bleef, in volgorde van wat het blokkeert:**
 
@@ -2229,31 +2230,37 @@ omgedraaid; `docs/decisions/2026-11-05-de-eerste-groep-is-geen-keuze.md` §3.
 ### 05-11-2026, tweede ronde — QS8-672 en QS8-673, en wat er open bleef
 
 De orchestrator plande om 11:45 UTC twee banen in (QS8-667); baan A (deze
-sessie) bouwde ze na elkaar, allebei zonder PR, allebei In Review:
+sessie) bouwde ze na elkaar, allebei zonder PR, en de batchsessie landde ze
+elk in een eigen PR:
 
 | Issue | Tak | Sha | Wat |
 |---|---|---|---|
 | QS8-672 | `quintenstrijdonk/qs8-672-wachtwoord-bovengrens-telt-codepunten-bcrypt-kapt-op-72` | `5f9ef03a` | De wachtwoord-bovengrens telt **bytes**: `telBytes()` erbij in `src/shared/tekst` als vierde telling, `.max(72)` eruit, melding in nl en en noemt getal én eenheid. GoTrue weigert boven 72 bytes met een 400 en kapt níet af (aan de bron gelezen, `master`; niet tegen het project gemeten). `vertaal()` in `src/modules/auth/api.ts` kreeg een tak voor *longer than*, want de algemene wachtwoordtak gaf het omgekeerde advies |
 | QS8-673 | `quintenstrijdonk/qs8-673-zods-tekstlengte-telling-staat-nergens-onder-test-en-vijf` | `639e925b` | Een belofte-test die Zod's telling vastlegt naast `telTekens()` en de vijf kale `.max(n)`-schema's tegen de CHECK-getallen van productie; tegen zod 4.4.3 in `node_modules` vallen 12 van de 15 om. De sectie *Emoji* in `CLAUDE.md` en dertien commentaren zeggen nu wat onder welke versie gemeten is. Punt 4 alleen-lezen op productie gemeten: geen clientgrens ruimer dan zijn CHECK |
 
+✅ **Allebei geland** (gemeten aan `origin/main` en de PR-lijst, 13:20 UTC):
+PR #655 (`batch/2026-11-05-c`, QS8-672) gemerged 12:44:54 UTC als `7a043ff0`;
+PR #656 (`batch/2026-11-05-d`, QS8-673, raakt `CLAUDE.md`) gemerged 13:15:33 UTC
+als `769b37d5`. De ER-rij van 06-09-2026 over `WACHTWOORD_MAXIMUM` staat op
+*opgelost*; de batch zette er twee nieuwe rijen van 05-11 naast, waarvan één
+uit de `code-critic`-ronde op #655: geen test legt de 72 als letterlijk getal
+vast. De zinnen in dit bestand en in `docs/WERKVOORRAAD.md` die zeiden dat
+`CLAUDE.md` nog UTF-16 zegt, zijn door de batch én door deze bijwerking
+rechtgezet (merge-conflict op precies die twee regels, opgelost naar de versie
+van `main`). In Linear stonden QS8-672 en QS8-673 om 13:20 UTC nog op In Review;
+sluiten is aan Quinten of de orchestrator.
+
 ⚠️ **Wat er open bleef, in volgorde van wat het blokkeert:**
 
-1. **PR #655 (`batch/2026-11-05-c`, draft) draagt QS8-672.** Mergen alleen op
-   Quintens woord. Bij het landen: de ER-rij van 06-09-2026 (regel 534,
-   `WACHTWOORD_MAXIMUM` telt UTF-16-eenheden) kan dicht, en de zin *"door bcrypt
-   stilzwijgend op 72 bytes afgekapt"* erin is onjuist — GoTrue weigert.
-2. **QS8-673 krijgt een eigen PR** van de batchsessie, omdat de tak `CLAUDE.md`
-   raakt. De zinnen in dit bestand en in de alinea *Aanvulling — de eerste
-   batch* van `docs/WERKVOORRAAD.md` die zeiden dat `CLAUDE.md` nog UTF-16 zegt
-   en dat dat aan Quinten is, zijn in deze bijwerking allebei rechtgezet (op
-   Quintens verzoek). Let bij de merge-tree op `src/modules/auth/schemas.ts` en
-   zijn test: beide takken raken ze, op verschillende regels.
-3. **QS8-641 wacht op de batch van QS8-233**, en die wacht op QS8-634 (besluit
+1. **QS8-641 wacht op de batch van QS8-233**, en die wacht op QS8-634 (besluit
    van Quinten, 05-11 07:55 UTC). Productie draagt 0299–0302 die `main` niet
    heeft; elke nieuwe migratie vanaf `main` botst daarop.
-4. **Punt 3 en 4 van de eerste ronde staan nog**: de teamgroep-herbevestiging
+2. **Punt 3 en 4 van de eerste ronde staan nog**: de teamgroep-herbevestiging
    voor QS8-649 (als reactie op dat issue gezet), en de review van zondag 08-11.
-5. **Drie handmetingen die alleen Quinten kan doen**, uit de reviews van deze
+3. **De webbundel op productie is niet bijgewerkt** sinds de vier batches van
+   vandaag; `npm run deploy` is aan Quinten. Wat zondag in de app te zien is,
+   is wat er dán uitgerold is.
+4. **Drie handmetingen die alleen Quinten kan doen**, uit de reviews van deze
    ronde: één aanmelding met een wachtwoord van 73 bytes tegen een wegwerpadres
    (of de GoTrue-versie van het project lezen) om *weigert, kapt niet af* ook
    voor het gehoste project te zien; aanmelden met een emoji-wachtwoord op een
@@ -2262,7 +2269,7 @@ sessie) bouwde ze na elkaar, allebei zonder PR, allebei In Review:
    en de tak `quintenstrijdonk/qs8-651-…` @ `3b06ff01` — een tweede, niet
    gemergede implementatie van QS8-651 uit een dubbele sessie — van de remote
    halen, want een cloudsessie kan dat niet.
-6. **Twee kleine vervolgen, geen issue waard tot iemand ze wil**: de zeef in
+5. **Twee kleine vervolgen, geen issue waard tot iemand ze wil**: de zeef in
    `src/modules/ai/uitvoer.ts` telt met `.length` en is daarmee strenger dan
    het schema (kost hooguit een AI-voorstel met veel emoji); en de nieuwe test
    leest de zod-versie uit het pakket via de exports-regel voor `package.json`,

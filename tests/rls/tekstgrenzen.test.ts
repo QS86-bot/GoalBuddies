@@ -89,9 +89,11 @@ describe.skipIf(!rlsTestsConfigured)('0123 — tekst zonder grens is opslag van 
   /**
    * ⚠️ **De tweede helft van de ijking.** Een grens die precies op de grens
    *    weigert, is een nieuwe fout en geen reparatie: het formulier zegt dan
-   *    "mag" en de database zegt "nee". De schema's tellen in UTF-16-eenheden en
-   *    de CHECK in codepunten, en `.length` is altijd ≥ `char_length` — dus
-   *    alles wat Zod goedkeurt, hoort hier te passen.
+   *    "mag" en de database zegt "nee". De CHECK telt codepunten; Zod telde
+   *    onder 4.4.3 UTF-16-eenheden en sinds 4.6 codepunten (QS8-673). In beide
+   *    gevallen geldt: wat Zod goedkeurt is ≤ `char_length` en hoort hier te
+   *    passen — bij de oude telling omdat `.length` ≥ `char_length`, bij de
+   *    nieuwe omdat het hetzelfde getal is.
    */
   it(
     'laat precies de maximale lengte wél door',
@@ -108,10 +110,12 @@ describe.skipIf(!rlsTestsConfigured)('0123 — tekst zonder grens is opslag van 
 
   /**
    * ⚠️ **En met emoji, want dat is waar de twee eenheden uit elkaar lopen.**
-   *    Duizend keer 😀 is `char_length` 1000 en `.length` 2000: Zod keurt het
-   *    precies goed en de CHECK hoort dat ook te doen. Zou de CHECK in
+   *    Duizend keer 😀 is `char_length` 1000 en `.length` 2000. Zou de CHECK in
    *    UTF-16-eenheden tellen, dan was dit 2000 en werd het geweigerd — een
-   *    storingsmelding nadat het formulier "lang genoeg" zei. Zie QS8-118.
+   *    storingsmelding nadat het formulier "lang genoeg" zei. Zie QS8-118. Dit
+   *    is de databasekant van de naad; de Zod-kant staat in
+   *    `tests/beloftes/zod-telt-codepunten.test.ts` (QS8-673), die zonder
+   *    database draait.
    */
   it(
     'telt codepunten en geen UTF-16-eenheden',

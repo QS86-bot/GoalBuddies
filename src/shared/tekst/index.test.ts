@@ -6,6 +6,7 @@ import {
   initiaalVan,
   isOnzichtbaarMiddenin,
   kapAf,
+  telBytes,
   telGrafemen,
   telTekens,
 } from './index';
@@ -25,13 +26,25 @@ function heeftLosseSurrogate(tekst: string): boolean {
   });
 }
 
-describe('de drie tellingen', () => {
+describe('de vier tellingen', () => {
   it('telt codepunten zoals char_length in Postgres', () => {
     expect(EMOJI.length).toBe(2);
     expect(telTekens(EMOJI)).toBe(1);
 
     expect(GEZIN.length).toBe(11);
     expect(telTekens(GEZIN)).toBe(7);
+  });
+
+  it('telt bytes zoals bcrypt en GoTrue — QS8-672', () => {
+    expect(telBytes('abc')).toBe(3);
+    expect(telBytes('é')).toBe(2);
+    expect(telBytes(EMOJI)).toBe(4);
+    // Vier mensen van vier bytes en drie lijmtekens (U+200D) van drie.
+    expect(telBytes(GEZIN)).toBe(25);
+  });
+
+  it('telt een losse surrogaat als de drie bytes van U+FFFD, net als Go', () => {
+    expect(telBytes('\ud83d')).toBe(3);
   });
 
   it('telt grafemen zoals een mens ze ziet', () => {

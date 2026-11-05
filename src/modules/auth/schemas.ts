@@ -1,7 +1,7 @@
 import { z } from 'zod';
 
 import { t, TALEN } from '../../shared/i18n';
-import { schoneNaam, telTekens } from '../../shared/tekst';
+import { schoneNaam, telBytes, telTekens } from '../../shared/tekst';
 import { isGeldigeTijdzone } from '../../shared/time';
 
 /**
@@ -54,7 +54,16 @@ import { isGeldigeTijdzone } from '../../shared/time';
  */
 export const WACHTWOORD_MINIMUM = 8;
 
-/** De bovengrens. bcrypt kapt boven 72 bytes af, dus daarboven telt niets meer. */
+/**
+ * De bovengrens, in **bytes** — QS8-672.
+ *
+ * bcrypt leest maar 72 bytes van een wachtwoord. GoTrue weigert daarom alles
+ * wat langer is met een 400 (`Password cannot be longer than 72 characters`),
+ * en het getal dat hij daarvoor neemt is `len(password)` — in Go het aantal
+ * bytes, niet het aantal tekens dat de melding noemt. Dit getal staat hier
+ * zodat de gebruiker die grens in zijn eigen taal te horen krijgt, met de
+ * eenheid erbij, in plaats van als kale serverfout.
+ */
 export const WACHTWOORD_MAXIMUM = 72;
 
 /**
@@ -69,15 +78,31 @@ export const WACHTWOORD_MAXIMUM = 72;
  *    `.min(8)` moeiteloos. In codepunten was de verlaging van QS8-216 dus geen
  *    12 → 8 maar 6 → 4. Met `telTekens()` is acht ook echt acht.
  *
- * ⚠️ **De bovengrens is hier bewust níét meeveranderd**, en dat is een bekende
- *    onvolkomenheid en geen omissie: bcrypt kapt op 72 **bytes**, en 36 emoji
- *    zijn 72 UTF-16-eenheden maar 144 bytes. Die staat als rij in
- *    `docs/ENGINEER-REVIEW.md`; hem hier repareren vraagt een bytetelling en
- *    een eigen melding, en dat is een ander issue dan dit.
+ * ⚠️⚠️ **De bovengrens telt een dérde eenheid: bytes — QS8-672.** Hier stond
+ *    `.max(WACHTWOORD_MAXIMUM)`, met de aantekening dat dat een bekende
+ *    onvolkomenheid was. 📏 Zod's `.max()` telde onder 4.4.3 UTF-16-eenheden
+ *    (36 emoji = 144 bytes passeerden) en onder 4.6.7 codepunten (72 emoji =
+ *    288 bytes passeren); bcrypt en GoTrue tellen bytes. Welke van die twee
+ *    Zod telt doet er niet meer toe: `telBytes()` kijkt niet naar Zod.
+ *
+ *    Twee grenzen, twee eenheden, en dat is geen slordigheid: de ondergrens
+ *    hoort bij wat de gebruiker ziet en typt (codepunten), de bovengrens bij
+ *    wat bcrypt leest (bytes). Eén eenheid voor beide zou één van de twee
+ *    verkeerd maken.
+ *
+ * ⚠️ **GoTrue weigert, kapt niet af** — gemeten in QS8-672 aan de bron
+ *    (`internal/api/password.go`), niet aan het eigen project. Zonder deze
+ *    grens zou de gebruiker een serverfout krijgen (vóór dit issue vertaald als
+ *    "gebruik een langere zin", het omgekeerde advies) en geen zwakker wachtwoord;
+ *    de grens hier maakt van die serverfout een melding die zegt wat hij moet
+ *    doen. Hij verandert niets aan de beveiliging, wel aan de uitleg.
+ *    Uitleg in `docs/decisions/2026-11-05-de-bovengrens-telt-bytes.md`.
  */
 export const wachtwoordSchema = z
   .string()
-  .max(WACHTWOORD_MAXIMUM, { error: () => t('validatie.wachtwoord_lang') })
+  .refine((w) => telBytes(w) <= WACHTWOORD_MAXIMUM, {
+    error: () => t('validatie.wachtwoord_lang'),
+  })
   .refine((w) => telTekens(w) >= WACHTWOORD_MINIMUM, {
     error: () => t('validatie.wachtwoord_kort'),
   });
@@ -129,7 +154,8 @@ export const profielSchema = z.object({
    *      de spatie. 📏 Gemeten: `E'\n\n'`, `E'\t\t'` en U+00A0 kwamen door de
    *      aanmeldtrigger en werden hier gewéigerd — een profiel dat zijn eigen
    *      schema afwijst. En U+200B kwam door **allebei**.
-   *    - `.max(80)` telt UTF-16-eenheden, `char_length` telt codepunten. 📏 Een
+   *    - `.max(80)` telde onder zod 4.4.3 UTF-16-eenheden (sinds 4.6 codepunten,
+   *      QS8-673), `char_length` telt codepunten. 📏 Een
    *      naam van 80 emoji is 160 eenheden: de trigger maakt hem aan en dit
    *      schema weigerde hem, waarna de gebruiker vastliep op een veld dat hij
    *      niet had aangeraakt.

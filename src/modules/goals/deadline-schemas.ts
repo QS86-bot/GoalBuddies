@@ -36,12 +36,14 @@ export const deadlineVerzoekSchema = z.object({
   //    daarna over en de gebruiker kreeg een storingsmelding voor een tikfout —
   //    nadat hij zijn argument al had getypt.
   new_date: isoDatum,
-  // ⚠️ `telTekens()` en niet `.min()`/`.max()` — QS8-118. Zod telt
-  //    UTF-16-eenheden, `deadline_requests_reason_len` telt met `char_length`
-  //    codepunten. Bij een ondergrens gaat dat verschil de gevaarlijke kant op:
-  //    tien emoji halen `.length >= 20` maar `char_length` is dan 10, dus Zod
-  //    liet het door en Postgres weigerde het. Precies de storingsmelding die
-  //    dit schema hierboven belooft te voorkomen.
+  // ⚠️ `telTekens()` en niet `.min()`/`.max()` — QS8-118. Onder zod 4.4.3
+  //    telde Zod UTF-16-eenheden, `deadline_requests_reason_len` telt met
+  //    `char_length` codepunten. Bij een ondergrens gaat dat verschil de
+  //    gevaarlijke kant op: tien emoji haalden `.length >= 20` maar `char_length`
+  //    is dan 10, dus Zod liet het door en Postgres weigerde het. Precies de
+  //    storingsmelding die dit schema hierboven belooft te voorkomen. Sinds zod
+  //    4.6 telt `.min()` codepunten (QS8-673); `telTekens()` blijft, want de
+  //    telling van Zod is al eens gewisseld en kan dat weer doen.
   reason: z
     .string()
     // ⚠️ Eerst schoonmaken, dán oordelen — QS8-506. Hier weegt de volgorde het
