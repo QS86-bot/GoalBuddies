@@ -3,8 +3,9 @@
 > Kopieer alles onder de streep in een nieuwe chat. Werk dit bestand bij aan het
 > eind van elke sessie — het is de overdracht, niet een archief.
 >
-> **Laatst bijgewerkt:** 05-11-2026 om 12:50 UTC, **t/m PR #656** (#655 en #656
-> zijn gemerged; #656 om 13:15 UTC als `769b37d5`). Wat er die dag open bleef staat in STAND VAN ZAKEN onder
+> **Laatst bijgewerkt:** 05-11-2026 om 13:34 UTC, **t/m PR #657** (#655, #656
+> en #657 zijn gemerged; #656 om 13:15 UTC als `769b37d5`). Wat er die dag open
+> bleef staat in STAND VAN ZAKEN onder
 > *05-11-2026*, in twee rondes; de bijwerking daarvóór was 17-09-2026 (t/m PR
 > #527), met de lessen van die ronde als punt AL, AM en AN.
 >
