@@ -1,6 +1,19 @@
-import { describe, expect, it } from 'vitest';
+import { execFileSync } from 'node:child_process';
+import { existsSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+
+import { afterEach, describe, expect, it } from 'vitest';
 
 import {
+  basisBestanden,
+  bijgekomen,
+  cli,
+  exemplarenUit,
+  leesBasisEnPr,
+  modusUit,
+  prOordeel,
+  registerSchade,
   slotwoord,
   NAGEKEKEN,
   hoofd,
@@ -403,5 +416,466 @@ describe('slotwoord', () => {
 
   it('zwijgt als er niets veranderde', () => {
     expect(vang({ meetbaar: false, verdwenen: false })).toBe('');
+  });
+});
+
+/**
+ * De PR-modus — QS8-674.
+ *
+ * ⚠️ **De belofte is niet "het verschil klopt" maar "een PR wordt alleen rood om
+ *    wat hij zelf toevoegt, en een meting die mislukt is nooit groen".** Dat zijn
+ *    drie grendels achter elkaar en elke heeft zijn eigen test:
+ *    *PR voegt toe* (`bijgekomen`), *wereld verandert* (zelfde advisory aan beide
+ *    kanten) en *basis niet te lezen* (terugval, hardop). 📏 Elke is apart met de
+ *    hand gebroken; welke test omviel staat in het beslisdocument.
+ *
+ * ⚠️ **De modus komt uit de omgeving en niet uit `hoofd()`'s standaard.** Anders
+ *    draaien deze tests in CI onder `GITHUB_EVENT_NAME=pull_request` in een andere
+ *    modus dan lokaal, en dan toetst dezelfde suite twee dingen.
+ */
+describe('PR-modus', () => {
+  type Rij = {
+    ernst: string;
+    advisories: number[];
+    nodes?: number;
+    reparatie?: string;
+  };
+
+  function rapportUit(rijen: Record<string, Rij>) {
+    const vulnerabilities: Record<string, unknown> = {};
+    for (const [naam, v] of Object.entries(rijen)) {
+      vulnerabilities[naam] = {
+        severity: v.ernst,
+        via: v.advisories.map((source) => ({ source, title: 't' })),
+        nodes: Array.from({ length: v.nodes ?? 1 }, (_, i) => `node_modules/${naam}/${i}`),
+        fixAvailable: v.reparatie === 'brekend' ? { isSemVerMajor: true } : true,
+      };
+    }
+    return { vulnerabilities };
+  }
+
+  /** Het register zoals het nu is, als rapport: wat `main` meldt als er niets te klagen valt. */
+  const alsRapport = (extra: Record<string, Rij> = {}) =>
+    rapportUit({
+      ...Object.fromEntries(
+        Object.entries(NAGEKEKEN).map(([n, v]) => [
+          n,
+          { ernst: v.ernst, advisories: v.advisories, reparatie: v.reparatie },
+        ]),
+      ),
+      ...extra,
+    });
+
+  function draai(modus: 'pr' | 'strikt', paar: unknown, rapport: unknown = alsRapport()) {
+    const fout: string[] = [];
+    const uit: string[] = [];
+    const [echtFout, echtUit] = [console.error, console.log];
+    console.error = (...a: unknown[]) => fout.push(a.map(String).join(' '));
+    console.log = (...a: unknown[]) => uit.push(a.map(String).join(' '));
+    try {
+      const code = hoofd(() => rapport, {
+        modus,
+        leesBasis: () => paar as never,
+      });
+      return { code, fout: fout.join('\n'), uit: uit.join('\n') };
+    } finally {
+      [console.error, console.log] = [echtFout, echtUit];
+    }
+  }
+
+  const paar = (basis: unknown, pr: unknown) => ({
+    ok: true,
+    ref: 'abcdef0123',
+    notitie: null,
+    basis,
+    pr,
+  });
+  // Een advisory die er aan beide kanten staat en niet in NAGEKEKEN: de wereld die verandert.
+  const WERELD = { 'nieuw-pakket': { ernst: 'high', advisories: [9000001] } };
+
+  describe('modusUit', () => {
+    it('geeft pr voor een pull_request en voor een push naar een andere branch', () => {
+      expect(modusUit({ GITHUB_EVENT_NAME: 'pull_request' })).toBe('pr');
+      expect(
+        modusUit({
+          GITHUB_EVENT_NAME: 'push',
+          GITHUB_REF: 'refs/heads/claude/iets',
+        }),
+      ).toBe('pr');
+    });
+
+    it('geeft strikt voor main, het schema, een tag, een lege omgeving en iets onbekends', () => {
+      expect(modusUit({ GITHUB_EVENT_NAME: 'push', GITHUB_REF: 'refs/heads/main' })).toBe('strikt');
+      expect(
+        modusUit({
+          GITHUB_EVENT_NAME: 'schedule',
+          GITHUB_REF: 'refs/heads/main',
+        }),
+      ).toBe('strikt');
+      expect(modusUit({ GITHUB_EVENT_NAME: 'push', GITHUB_REF: 'refs/tags/v1' })).toBe('strikt');
+      expect(modusUit({ GITHUB_EVENT_NAME: 'push' })).toBe('strikt');
+      expect(modusUit({})).toBe('strikt');
+      expect(
+        modusUit({
+          GITHUB_EVENT_NAME: 'workflow_dispatch',
+          GITHUB_REF: 'refs/heads/x',
+        }),
+      ).toBe('strikt');
+    });
+
+    it('laat hoofd() zonder opties strikt, wat de omgeving ook zegt', () => {
+      const oud = process.env.GITHUB_EVENT_NAME;
+      process.env.GITHUB_EVENT_NAME = 'pull_request';
+      try {
+        const [echtFout, echtUit] = [console.error, console.log];
+        console.error = () => undefined;
+        console.log = () => undefined;
+        try {
+          expect(hoofd(() => alsRapport(WERELD))).toBe(1);
+        } finally {
+          [console.error, console.log] = [echtFout, echtUit];
+        }
+      } finally {
+        if (oud === undefined) delete process.env.GITHUB_EVENT_NAME;
+        else process.env.GITHUB_EVENT_NAME = oud;
+      }
+    });
+  });
+
+  describe('grendel 1 — de PR voegt toe', () => {
+    it('is rood om een advisory die de PR zelf toevoegt en het register niet kent', () => {
+      const uit = draai(
+        'pr',
+        paar(alsRapport(), alsRapport({ 'ander-pakket': { ernst: 'high', advisories: [42] } })),
+      );
+
+      expect(uit.code).toBe(1);
+      expect(uit.fout).toContain("'ander-pakket': de PR voegt advisory 42 toe");
+      expect(uit.fout).toContain('npm run build'); // de bouw-meting is de weg verder
+    });
+
+    it('is rood om een nieuwe advisory op een pakket dat de basis al kende', () => {
+      const basis = alsRapport({
+        'ander-pakket': { ernst: 'high', advisories: [42] },
+      });
+      const pr = alsRapport({
+        'ander-pakket': { ernst: 'high', advisories: [42, 43] },
+      });
+
+      const uit = draai('pr', paar(basis, pr));
+
+      expect(uit.code).toBe(1);
+      expect(uit.fout).toContain('advisory 43');
+      expect(uit.fout).not.toContain('advisory 42 ');
+    });
+
+    it('ziet dezelfde advisory onder een andere pakketnaam als nieuw', () => {
+      const basis = alsRapport({
+        'oud-pakket': { ernst: 'high', advisories: [42] },
+      });
+      const pr = alsRapport({
+        'nieuw-pakket': { ernst: 'high', advisories: [42] },
+      });
+
+      expect(bijgekomen(basis, pr)).toEqual([{ naam: 'nieuw-pakket', advisory: 42 }]);
+    });
+
+    it('ziet een extra exemplaar van een bekende, niet-nagekeken advisory', () => {
+      const basis = alsRapport({
+        'ander-pakket': { ernst: 'high', advisories: [42], nodes: 1 },
+      });
+      const pr = alsRapport({
+        'ander-pakket': { ernst: 'high', advisories: [42], nodes: 2 },
+      });
+
+      expect(bijgekomen(basis, pr)).toEqual([{ naam: 'ander-pakket', exemplaren: [1, 2] }]);
+      expect(draai('pr', paar(basis, pr)).fout).toContain(
+        'extra kwetsbaar exemplaar binnen (1 → 2)',
+      );
+    });
+
+    it('laat een PR groen worden die de advisory mét een register-rij toevoegt', () => {
+      // Een PR die een dependency met een advisory toevoegt hoort groen te kunnen
+      // worden zodra de bouw-meting in NAGEKEKEN staat — zoals in strikte modus.
+      const register = { 'ander-pakket': { advisories: [42] } };
+      const pr = alsRapport({
+        'ander-pakket': { ernst: 'high', advisories: [42] },
+      });
+
+      expect(bijgekomen(alsRapport(), pr, register as never)).toEqual([]);
+    });
+  });
+
+  describe('grendel 2 — de wereld verandert', () => {
+    it('is groen als dezelfde advisory aan beide kanten staat, ook zonder register-rij', () => {
+      const uit = draai('pr', paar(alsRapport(WERELD), alsRapport(WERELD)), alsRapport(WERELD));
+
+      expect(uit.code).toBe(0);
+      expect(uit.uit).toContain('de PR voegt geen advisory toe');
+      expect(uit.uit).toContain('1 afwijking(en)'); // wat er speelt wordt wel gezegd
+    });
+
+    it('blijft op main (strikt) rood op precies dezelfde situatie', () => {
+      // De tegenproef: zonder deze toets kan "pr is groen" ook betekenen dat de
+      // modus nooit rood meer wordt.
+      const uit = draai('strikt', paar(alsRapport(WERELD), alsRapport(WERELD)), alsRapport(WERELD));
+
+      expect(uit.code).toBe(1);
+      expect(uit.fout).toContain("'nieuw-pakket'");
+    });
+
+    it('is groen als de PR een advisory juist weghaalt', () => {
+      expect(draai('pr', paar(alsRapport(WERELD), alsRapport())).code).toBe(0);
+    });
+
+    it('blameert een PR niet voor wat de basis ervoor bijgekregen heeft', () => {
+      expect(bijgekomen(alsRapport(WERELD), alsRapport())).toEqual([]);
+    });
+  });
+
+  describe('grendel 3 — de basis is niet te lezen, of een meting mislukt', () => {
+    const onleesbaar = {
+      ok: false,
+      reden: 'origin/main is niet te lezen en niet op te halen (test)',
+    };
+
+    it('valt terug op het strikte oordeel en zegt dat hardop', () => {
+      const uit = draai('pr', onleesbaar);
+
+      expect(uit.code).toBe(0); // het register klopt, dus strikt is hier groen
+      expect(uit.fout).toContain('PR-modus niet mogelijk');
+      expect(uit.fout).toContain('origin/main is niet te lezen');
+    });
+
+    it('is bij die terugval nog steeds rood op een afwijking van het register', () => {
+      const uit = draai('pr', onleesbaar, alsRapport(WERELD));
+
+      expect(uit.code).toBe(1);
+      expect(uit.fout).toContain('PR-modus niet mogelijk');
+      expect(uit.fout).toContain("'nieuw-pakket'");
+    });
+
+    it('is ongemeten en niet groen als de meting van de PR geen rapport geeft', () => {
+      const uit = draai('pr', paar(alsRapport(), { message: 'ECONNREFUSED' }));
+
+      expect(uit.code).toBe(1);
+      expect(uit.fout).toContain('OVERGESLAGEN');
+      expect(uit.fout).toContain('de meting van de PR');
+    });
+
+    it('is ongemeten en niet groen als de meting van de basis geen rapport geeft', () => {
+      const uit = draai('pr', paar({ message: 'ECONNREFUSED' }, alsRapport()));
+
+      expect(uit.code).toBe(1);
+      expect(uit.fout).toContain('OVERGESLAGEN');
+      expect(uit.fout).toContain('de meting van de basis');
+    });
+
+    it('noemt een ondiepe basis hardop maar blijft meten', () => {
+      const [echtFout, echtUit] = [console.error, console.log];
+      const fout: string[] = [];
+      console.error = (...a: unknown[]) => fout.push(a.map(String).join(' '));
+      console.log = () => undefined;
+      try {
+        const code = prOordeel({
+          ...paar(alsRapport(), alsRapport()),
+          notitie: 'ondiepe checkout',
+        } as never);
+        expect(code).toBe(0);
+      } finally {
+        [console.error, console.log] = [echtFout, echtUit];
+      }
+      expect(fout.join('\n')).toContain('ondiepe checkout');
+    });
+  });
+
+  describe('de PR maakt het register onjuist', () => {
+    // ⚠️ Zonder deze grendel is een PR die `npm audit fix` draait groen en wordt `main` er rood van.
+    const zonder = (naam: string) => {
+      const r = alsRapport() as { vulnerabilities: Record<string, unknown> };
+      delete r.vulnerabilities[naam];
+      return r;
+    };
+
+    it('is rood als de PR een kwetsbaar pakket weghaalt terwijl zijn rij blijft staan', () => {
+      const uit = draai('pr', paar(alsRapport(), zonder('brace-expansion')));
+
+      expect(uit.code).toBe(1);
+      expect(uit.fout).toContain('verdwenen brace-expansion');
+      expect(uit.fout).toContain('Er staat een rij in NAGEKEKEN'); // het advies voor een verdwenen rij
+      expect(uit.fout).not.toContain('ga bouwen');
+    });
+
+    it('is rood als de PR de ernst of de reparatie van een bekend pakket laat verschuiven', () => {
+      const r = alsRapport() as {
+        vulnerabilities: Record<string, { severity: string }>;
+      };
+      (r.vulnerabilities.zod as { severity: string }).severity = 'critical';
+
+      expect(registerSchade(alsRapport(), r)).toEqual([
+        expect.stringContaining('veranderd zod: ernst'),
+      ]);
+    });
+
+    it('rekent een afwijking die ook op de basis staat niet de PR aan', () => {
+      expect(registerSchade(alsRapport(WERELD), alsRapport(WERELD))).toEqual([]);
+    });
+
+    it('zegt in de groene melding het aantal van de basis en niet dat van de PR', () => {
+      const uit = draai('pr', paar(alsRapport(), alsRapport()));
+
+      expect(uit.uit).toContain('0 afwijking(en)');
+    });
+  });
+
+  describe('cli — de modus komt uit de omgeving', () => {
+    const basis = () => paar(alsRapport(WERELD), alsRapport(WERELD));
+    const draaiCli = (omgeving: Record<string, string>) => {
+      const [echtFout, echtUit] = [console.error, console.log];
+      console.error = () => undefined;
+      console.log = () => undefined;
+      try {
+        return cli(
+          omgeving,
+          () => alsRapport(WERELD),
+          () => basis() as never,
+        );
+      } finally {
+        [console.error, console.log] = [echtFout, echtUit];
+      }
+    };
+
+    it('blijft op main en in het schema strikt: een wereldverandering is daar rood', () => {
+      expect(draaiCli({ GITHUB_EVENT_NAME: 'push', GITHUB_REF: 'refs/heads/main' })).toBe(1);
+      expect(
+        draaiCli({
+          GITHUB_EVENT_NAME: 'schedule',
+          GITHUB_REF: 'refs/heads/main',
+        }),
+      ).toBe(1);
+      expect(draaiCli({})).toBe(1);
+    });
+
+    it('is op een pull_request groen op dezelfde situatie', () => {
+      expect(draaiCli({ GITHUB_EVENT_NAME: 'pull_request' })).toBe(0);
+    });
+  });
+
+  describe('leesBasisEnPr', () => {
+    const bestanden = {
+      ok: true,
+      ref: 'abc1234',
+      notitie: null,
+      pakket: '{"name":"b"}',
+      lock: '{}',
+    };
+
+    it('meet de PR en de basis elk in een eigen tijdelijke map, PR eerst, en ruimt op', () => {
+      const mappen: string[] = [];
+      const uit = leesBasisEnPr(bestanden as never, (map?: string) => {
+        mappen.push(map as string);
+        return { vulnerabilities: {} };
+      });
+
+      expect(uit.ok).toBe(true);
+      expect(mappen).toHaveLength(2);
+      expect(new Set(mappen).size).toBe(2);
+      for (const m of mappen) expect(m).not.toBe(process.cwd());
+      expect(mappen[0]).toContain('audit-pr-'); // eerst de PR, dan de basis
+      expect(mappen[1]).toContain('audit-basis-');
+      for (const m of mappen) expect(existsSync(m)).toBe(false);
+    });
+
+    it('valt terug op strikt, hardop, als de basis workspaces draagt', () => {
+      const uit = leesBasisEnPr(
+        { ...bestanden, pakket: '{"workspaces":["packages/*"]}' } as never,
+        () => ({}),
+      );
+
+      expect(uit.ok).toBe(false);
+      expect((uit as { reden?: string }).reden).toContain('workspaces');
+    });
+  });
+
+  describe('exemplarenUit', () => {
+    it('telt alleen de wortels, en nul zonder nodes', () => {
+      const rapport = {
+        vulnerabilities: {
+          a: { via: [{ source: 1 }], nodes: ['x', 'y'] },
+          b: { via: ['a'], nodes: ['z'] },
+          c: { via: [{ source: 2 }] },
+        },
+      };
+      expect({ ...exemplarenUit(rapport) }).toEqual({ a: 2, c: 0 });
+    });
+  });
+
+  describe('basisBestanden — met een echte git-repo op schijf', () => {
+    const mappen: string[] = [];
+    afterEach(() => {
+      while (mappen.length) rmSync(mappen.pop() as string, { recursive: true, force: true });
+    });
+
+    function repo(): string {
+      const map = mkdtempSync(join(tmpdir(), 'audit-test-'));
+      mappen.push(map);
+      const g = (...a: string[]) =>
+        execFileSync('git', ['-c', 'user.email=t@t', '-c', 'user.name=t', ...a], {
+          cwd: map,
+          stdio: 'pipe',
+        });
+      g('init', '-q', '-b', 'main');
+      writeFileSync(join(map, 'package.json'), '{"name":"basis"}');
+      writeFileSync(join(map, 'package-lock.json'), '{"lockfileVersion":3}');
+      g('add', '.');
+      g('commit', '-q', '-m', 'basis');
+      return map;
+    }
+
+    const git = (map: string, ...a: string[]) =>
+      execFileSync('git', ['-c', 'user.email=t@t', '-c', 'user.name=t', ...a], {
+        cwd: map,
+        encoding: 'utf8',
+      }).trim();
+
+    it('leest de bestanden op het splitspunt, niet de punt van origin/main', () => {
+      const map = repo();
+      const splits = git(map, 'rev-parse', 'HEAD');
+      git(map, 'checkout', '-q', '-b', 'tak');
+      writeFileSync(join(map, 'package.json'), '{"name":"tak"}');
+      git(map, 'commit', '-q', '-am', 'tak');
+      git(map, 'checkout', '-q', 'main');
+      writeFileSync(join(map, 'package.json'), '{"name":"main-verder"}');
+      git(map, 'commit', '-q', '-am', 'main verder');
+      git(map, 'update-ref', 'refs/remotes/origin/main', 'main');
+      git(map, 'checkout', '-q', 'tak');
+
+      const uit = basisBestanden(map);
+
+      expect(uit).toMatchObject({
+        ok: true,
+        ref: splits,
+        pakket: '{"name":"basis"}',
+      });
+    });
+
+    it('meldt een mislukking als origin/main ontbreekt en er niets op te halen valt', () => {
+      const uit = basisBestanden(repo());
+
+      expect(uit.ok).toBe(false);
+      expect(uit.reden).toContain('origin/main is niet te lezen');
+    });
+
+    it('meldt een mislukking als de basis geen package-lock.json draagt', () => {
+      const map = repo();
+      git(map, 'rm', '-q', 'package-lock.json');
+      git(map, 'commit', '-q', '-m', 'zonder lock');
+      git(map, 'update-ref', 'refs/remotes/origin/main', 'HEAD');
+
+      const uit = basisBestanden(map);
+
+      expect(uit.ok).toBe(false);
+      expect(uit.reden).toContain('ontbreekt');
+    });
   });
 });

@@ -54,6 +54,9 @@
  */
 
 import { execFileSync } from 'node:child_process';
+import { copyFileSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import process from 'node:process';
 
@@ -429,10 +432,10 @@ export function isBruikbaarRapport(rapport) {
   );
 }
 
-function leesAudit() {
+function leesAudit(map = WORTEL) {
   try {
     const uit = execFileSync('npm', ['audit', '--omit=dev', '--json'], {
-      cwd: WORTEL,
+      cwd: map,
       encoding: 'utf8',
       stdio: ['ignore', 'pipe', 'pipe'],
       // ⚠️ **`shell` op Windows, en alleen daar.** `npm` is er een `.cmd`-shim,
@@ -465,19 +468,25 @@ function leesAudit() {
   }
 }
 
-export function hoofd(leesRapport = leesAudit) {
-  const rapport = leesRapport();
+/** Een mislukte meting is ongemeten en nooit groen — voor beide modi dezelfde tekst. */
+function meldOvergeslagen(rapport, wat = '`npm audit`') {
+  console.error(
+    `⚠ audit-controle: OVERGESLAGEN — ${wat} gaf geen rapport met \`vulnerabilities\`.\n` +
+      `  Reden van npm: ${rapport?.message ?? 'onbekend'}\n` +
+      '  Deze controle heeft het register van npm nodig; zonder netwerk kan hij niets\n' +
+      '  meten. Dat is geen groene uitslag maar een ongemeten — en het is nadrukkelijk\n' +
+      '  géén reden om NAGEKEKEN leeg te maken.',
+  );
+  return 1;
+}
 
-  if (!isBruikbaarRapport(rapport)) {
-    console.error(
-      '⚠ audit-controle: OVERGESLAGEN — `npm audit` gaf geen rapport met `vulnerabilities`.\n' +
-        `  Reden van npm: ${rapport?.message ?? 'onbekend'}\n` +
-        '  Deze controle heeft het register van npm nodig; zonder netwerk kan hij niets\n' +
-        '  meten. Dat is geen groene uitslag maar een ongemeten — en het is nadrukkelijk\n' +
-        '  géén reden om NAGEKEKEN leeg te maken.',
-    );
-    return 1;
-  }
+/**
+ * Het volledige register-oordeel: elke afwijking van NAGEKEKEN is rood.
+ * Dit is het oordeel op `main`, het wekelijkse schema en lokaal — ongewijzigd
+ * sinds QS8-191.
+ */
+function strikt(rapport) {
+  if (!isBruikbaarRapport(rapport)) return meldOvergeslagen(rapport);
 
   const gemeten = wortelsUit(rapport);
   const { nieuw, anders, verdwenen } = verschil(gemeten);
@@ -502,6 +511,269 @@ export function hoofd(leesRapport = leesAudit) {
   }
   slotwoord({ meetbaar: nieuw.length > 0 || anders.length > 0, verdwenen: verdwenen.length > 0 });
   return 1;
+}
+
+/**
+ * Welke modus hoort bij deze omgeving — QS8-674.
+ *
+ * ⚠️ **`pr` is de uitzondering en `strikt` de standaard.** Alleen een
+ *    `pull_request`-run en een `push` naar een andere branch dan `main` krijgen
+ *    het lichte oordeel; `main`, het wekelijkse `schedule`, een tag, een lege
+ *    omgeving (lokaal) en elke onbekende waarde krijgen het volledige
+ *    register-oordeel. Een onbekende gebeurtenis valt dus naar de strenge kant.
+ *
+ * ⚠️ **De `push`-tak is een afwijking van de letterlijke tekst van acceptatie 2**
+ *    ("ongelijk aan `pull_request` blijft zoals het was") en volgt de bedoeling
+ *    van het issue ("Op een PR of tak"): `ci.yml` draait op élke push naar élke
+ *    branch, en die run hangt naast de PR-run aan dezelfde commit. Bleef hij
+ *    strikt, dan bleef de PR rood om dezelfde advisory en was er niets
+ *    gewonnen. Zie het beslisdocument.
+ *
+ * @param {Record<string, string | undefined>} omgeving
+ */
+export function modusUit(omgeving = process.env) {
+  const gebeurtenis = omgeving.GITHUB_EVENT_NAME;
+  if (gebeurtenis === 'pull_request') return 'pr';
+  const ref = omgeving.GITHUB_REF ?? '';
+  if (gebeurtenis === 'push' && ref.startsWith('refs/heads/') && ref !== 'refs/heads/main') {
+    return 'pr';
+  }
+  return 'strikt';
+}
+
+/**
+ * Hoeveel kwetsbare exemplaren (`node_modules`-paden) elke wortel heeft.
+ *
+ * ⚠️ **Dit staat los van `wortelsUit()` en niet erin**, omdat dat register-oordeel
+ *    ongewijzigd moet blijven. Aanleiding: een PR die een tweede kopie van een
+ *    pakket met een al bekende advisory binnenhaalt, voegt geen advisory-nummer
+ *    toe — maar wel een exemplaar. Zonder deze teller is dat onzichtbaar.
+ */
+export function exemplarenUit(rapport) {
+  const uit = Object.create(null);
+  for (const [naam, v] of Object.entries(rapport?.vulnerabilities ?? {})) {
+    if ((v.via ?? []).some((x) => typeof x === 'object' && x !== null)) {
+      uit[naam] = Array.isArray(v.nodes) ? v.nodes.length : 0;
+    }
+  }
+  return uit;
+}
+
+/**
+ * Wat de PR erbij zet ten opzichte van de basis, en niet in NAGEKEKEN staat.
+ *
+ * ⚠️ **De eenheid is het paar (pakketnaam, advisory) en niet de naam alleen.**
+ *    Een pakket dat onder een andere naam terugkomt, is een nieuw paar; een
+ *    advisory die erbij komt op een bekend pakket ook. Een advisory die er aan
+ *    beide kanten staat is "de wereld verandert" en telt niet.
+ *
+ * ⚠️ **Een extra exemplaar van een bekende advisory telt wel** (`exemplaren`),
+ *    maar alleen als de wortel niet al volledig in NAGEKEKEN staat: wat het
+ *    register vandaag dekt, dekt het ook in strikte modus.
+ *
+ * ⚠️ **NAGEKEKEN is hier het register van de PR zelf**, zoals het ook in
+ *    strikte modus is. Een PR die een dependency met een advisory toevoegt mét
+ *    een bouw-meting in het register, hoort groen te kunnen worden; de weging
+ *    daarvan is de review, niet deze controle.
+ */
+export function bijgekomen(basis, pr, register = NAGEKEKEN) {
+  const gevonden = [];
+  const basisWortels = wortelsUit(basis);
+  const prWortels = wortelsUit(pr);
+  const basisExemplaren = exemplarenUit(basis);
+  const prExemplaren = exemplarenUit(pr);
+  for (const [naam, meting] of Object.entries(prWortels)) {
+    const bekend = Object.hasOwn(register, naam) ? register[naam].advisories ?? [] : null;
+    const was = Object.hasOwn(basisWortels, naam) ? basisWortels[naam].advisories : [];
+    const erbij = meting.advisories.filter((nr) => !was.includes(nr));
+    for (const advisory of erbij) {
+      if (!bekend?.includes(advisory)) gevonden.push({ naam, advisory });
+    }
+    const gedekt = bekend !== null && meting.advisories.every((nr) => bekend.includes(nr));
+    const meer = (prExemplaren[naam] ?? 0) > (basisExemplaren[naam] ?? 0);
+    if (erbij.length === 0 && was.length > 0 && meer && !gedekt) {
+      gevonden.push({ naam, exemplaren: [basisExemplaren[naam] ?? 0, prExemplaren[naam]] });
+    }
+  }
+  return gevonden;
+}
+
+/**
+ * De afwijkingen van het register die de PR veroorzaakt: wat er op de PR-meting
+ * van `verschil()` staat en op de basis-meting niet.
+ *
+ * ⚠️ **Zonder dit was een PR die het register ongeldig maakte groen en `main`
+ *    rood na de merge** (code-critic, gemeten): een kwetsbaar pakket weghalen
+ *    terwijl zijn rij blijft staan (`verdwenen`), of ernst of reparatie laten
+ *    verschuiven. Een afwijking die er aan beide kanten staat is de wereld en
+ *    blokkeert niet; een die alleen op de PR staat is van de PR.
+ */
+export function registerSchade(basis, pr, register = NAGEKEKEN) {
+  const sleutels = ({ nieuw, anders, verdwenen }) => [
+    ...nieuw.map((x) => `nieuw ${x.naam}`),
+    ...anders.map((x) => `veranderd ${x.naam}: ${x.redenen.join('; ')}`),
+    ...verdwenen.map((x) => `verdwenen ${x}`),
+  ];
+  const opBasis = new Set(sleutels(verschil(wortelsUit(basis), register)));
+  return sleutels(verschil(wortelsUit(pr), register)).filter((k) => !opBasis.has(k));
+}
+
+/** Eén git-aanroep in de repo, met een timeout. Gooit bij een mislukking. */
+function git(args, cwd, timeout = 30_000) {
+  return execFileSync('git', args, {
+    cwd,
+    encoding: 'utf8',
+    stdio: ['ignore', 'pipe', 'pipe'],
+    timeout,
+    maxBuffer: 16 * 1024 * 1024,
+    // ⚠️ Nooit om inloggegevens vragen: buiten Actions hangt een fetch anders tot de timeout.
+    env: { ...process.env, GIT_TERMINAL_PROMPT: '0' },
+  });
+}
+
+/**
+ * De `package.json` en `package-lock.json` van de basis: het punt waar de PR
+ * van `origin/main` afsplitste.
+ *
+ * ⚠️ **Mislukken is hier een uitslag en geen uitzondering**: `{ ok: false,
+ *    reden }` laat `hoofd()` terugvallen op het strikte oordeel, hardop. Er is
+ *    maar één reden om te fetchen: `origin/main` ontbreekt (ondiepe checkout,
+ *    zoals de Windows-job in CI). Is er ook dan niets, dan is de basis niet te
+ *    lezen en blijft het strikt.
+ *
+ * ⚠️ **`merge-base` en niet de punt van `origin/main`**, anders wordt een PR die
+ *    achterloopt op `main` beschuldigd van wat `main` sindsdien repareerde.
+ */
+export function basisBestanden(cwd = WORTEL) {
+  const probeer = () => git(['rev-parse', '--verify', '--quiet', 'origin/main^{commit}'], cwd).trim();
+  let tip;
+  try {
+    tip = probeer();
+  } catch {
+    try {
+      git(['fetch', '--no-tags', '--depth=1', 'origin', '+refs/heads/main:refs/remotes/origin/main'], cwd, 60_000);
+      tip = probeer();
+    } catch (fout) {
+      return { ok: false, reden: `origin/main is niet te lezen en niet op te halen (${korteFout(fout)})` };
+    }
+  }
+  let ref = tip;
+  let notitie = null;
+  try {
+    ref = git(['merge-base', 'HEAD', tip], cwd).trim();
+  } catch {
+    notitie = 'geen gemeenschappelijke voorouder zichtbaar (ondiepe checkout): de basis is de punt van origin/main';
+  }
+  try {
+    const pakket = git(['show', `${ref}:package.json`], cwd);
+    const lock = git(['show', `${ref}:package-lock.json`], cwd);
+    return { ok: true, ref, notitie, pakket, lock };
+  } catch (fout) {
+    return { ok: false, reden: `package.json of package-lock.json ontbreekt op ${ref.slice(0, 7)} (${korteFout(fout)})` };
+  }
+}
+
+function korteFout(fout) {
+  return String(fout?.stderr || fout?.message || 'onbekend').trim().split('\n')[0];
+}
+
+/**
+ * Meet de basis en de PR met dezelfde methode, kort na elkaar.
+ *
+ * ⚠️ **Beide in een tijdelijke map, uit twee bestanden.** Zou de PR in de werkmap
+ *    gemeten worden (met `node_modules`) en de basis zonder, dan zou het verschil
+ *    ook het verschil tussen een echte en een virtuele boom zijn. Zo is het enige
+ *    dat verschilt wat de PR in die twee bestanden veranderde.
+ */
+export function leesBasisEnPr(bestanden = basisBestanden(), meet = leesAudit) {
+  if (!bestanden.ok) return bestanden;
+  const werkruimte = heeftWorkspaces(bestanden.pakket, join(WORTEL, 'package.json'));
+  if (werkruimte) return { ok: false, reden: werkruimte };
+  let map;
+  let mapPr;
+  try {
+    map = mkdtempSync(join(tmpdir(), 'audit-basis-'));
+    mapPr = mkdtempSync(join(tmpdir(), 'audit-pr-'));
+    writeFileSync(join(map, 'package.json'), bestanden.pakket);
+    writeFileSync(join(map, 'package-lock.json'), bestanden.lock);
+    copyFileSync(join(WORTEL, 'package.json'), join(mapPr, 'package.json'));
+    copyFileSync(join(WORTEL, 'package-lock.json'), join(mapPr, 'package-lock.json'));
+    const pr = meet(mapPr);
+    const basis = meet(map);
+    return { ok: true, ref: bestanden.ref, notitie: bestanden.notitie, basis, pr };
+  } finally {
+    for (const m of [map, mapPr]) if (m) rmSync(m, { recursive: true, force: true });
+  }
+}
+
+/**
+ * Draagt de basis of de PR `workspaces`? Dan ontbreken de deelpakketten in een
+ * map met alleen twee bestanden en geeft `npm audit` een geldig, leeg rapport.
+ *
+ * ⚠️ **Gemeten door de security-review**: strikt rood, PR-modus groen. Een leeg
+ *    antwoord dat eruitziet als een uitspraak — daarom terugval op strikt, hardop.
+ */
+function heeftWorkspaces(basisPakket, prPad) {
+  try {
+    const bron = [basisPakket, readFileSync(prPad, 'utf8')];
+    if (bron.some((t) => JSON.parse(t).workspaces !== undefined)) {
+      return 'package.json draagt `workspaces`, en die zijn in een map met alleen de twee bestanden niet te meten';
+    }
+    return null;
+  } catch (fout) {
+    return `package.json is niet te lezen (${korteFout(fout)})`;
+  }
+}
+
+/**
+ * Het oordeel op een PR. `null` betekent: de basis was niet te lezen, val terug
+ * op het strikte oordeel (de aanroeper doet dat, na de melding hier).
+ */
+export function prOordeel(paar) {
+  if (!paar.ok) {
+    console.error(
+      `⚠ audit-controle: PR-modus niet mogelijk — ${paar.reden}.\n` +
+        '  Terugval op het strikte register-oordeel van `main`: dit is een afwijking van de\n' +
+        '  bedoelde modus en dus geen stille groene uitslag.',
+    );
+    return null;
+  }
+  if (!isBruikbaarRapport(paar.pr)) return meldOvergeslagen(paar.pr, 'de meting van de PR');
+  if (!isBruikbaarRapport(paar.basis)) return meldOvergeslagen(paar.basis, 'de meting van de basis');
+  const erbij = bijgekomen(paar.basis, paar.pr);
+  const schade = registerSchade(paar.basis, paar.pr);
+  const kop = `audit-controle (PR-modus, basis ${paar.ref.slice(0, 7)})`;
+  if (paar.notitie) console.error(`⚠ ${kop}: ${paar.notitie}.`);
+  if (erbij.length === 0 && schade.length === 0) {
+    const opBasis = verschil(wortelsUit(paar.basis));
+    const wereld = opBasis.nieuw.length + opBasis.anders.length + opBasis.verdwenen.length;
+    console.log(
+      `${kop}: de PR voegt geen advisory toe en laat het register niet verschuiven. ` +
+        `${wereld} afwijking(en) van NAGEKEKEN staan er ook op de basis en blokkeren hier niet; op \`main\` wel.`,
+    );
+    return 0;
+  }
+  for (const { naam, advisory, exemplaren } of erbij) {
+    console.error(
+      advisory === undefined
+        ? `✗ '${naam}': de PR haalt een extra kwetsbaar exemplaar binnen (${exemplaren[0]} → ${exemplaren[1]}).`
+        : `✗ '${naam}': de PR voegt advisory ${advisory} toe en die staat niet in NAGEKEKEN.`,
+    );
+  }
+  for (const regel of schade) console.error(`✗ de PR maakt NAGEKEKEN onjuist: ${regel}.`);
+  slotwoord({
+    meetbaar: erbij.length > 0 || schade.some((k) => !k.startsWith('verdwenen')),
+    verdwenen: schade.some((k) => k.startsWith('verdwenen')),
+  });
+  return 1;
+}
+
+export function hoofd(leesRapport = leesAudit, { modus = 'strikt', leesBasis = leesBasisEnPr } = {}) {
+  if (modus === 'pr') {
+    const uit = prOordeel(leesBasis());
+    if (uit !== null) return uit;
+  }
+  return strikt(leesRapport());
 }
 
 /**
@@ -543,4 +815,15 @@ export function slotwoord({ meetbaar, verdwenen }) {
   }
 }
 
-if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) process.exit(hoofd());
+/**
+ * De ingang van de CLI: de modus komt uit de omgeving. Geëxporteerd zodat een
+ * test kan toetsen dat `main` en het schema hier strikt blijven — de standaard
+ * van `hoofd()` bewijst dat niet.
+ *
+ * @param {Record<string, string | undefined>} [omgeving]
+ */
+export function cli(omgeving = process.env, leesRapport = leesAudit, leesBasis = leesBasisEnPr) {
+  return hoofd(leesRapport, { modus: modusUit(omgeving), leesBasis });
+}
+
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) process.exit(cli());
