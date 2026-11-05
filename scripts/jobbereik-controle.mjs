@@ -167,11 +167,15 @@ export const ZONDER_GRENS = {
     'vorm die in productie draait.',
   "tests/rls/nevenschade.test.ts: .rpc('keur_vastgelopen_goedkeuringen_goed', { p_termijn_dagen: 7, })":
     'Idem, de NULL-tak van de tweede job.',
-  "tests/rls/nevenschade.test.ts: .rpc('maak_seizoensrecaps', { p_op: '2026-11-15T02:30:00Z', })":
+  "tests/rls/nevenschade.test.ts: .rpc('maak_seizoensrecaps', { p_op: momenten.dicht, })":
     'Idem, de NULL-tak van de derde job. ⚠️ Hier komt er één ding bij: de kop ' +
     'van die toets zegt *niet "hij doet nooit iets" maar "hij doet niets voor ' +
     'een groep waar de aanroeper niet op wees"*. De vreemde groep noemen zou ' +
-    'die bewering omdraaien.',
+    'die bewering omdraaien. ⚠️ De sleutel is de aanroep letterlijk, en die ' +
+    'veranderde bij QS8-668 van een vaste datum naar `momenten.dicht` (berekend ' +
+    'uit de fixture); 📏 CI maakte deze rij daardoor als wees en de aanroep als ' +
+    'ongescopeerd rood, op een stap die tot die dag door de rode RLS-stap ' +
+    'verborgen was.',
   "tests/rls/seizoensrecap.test.ts: .rpc('maak_seizoensrecaps', { p_op: EERSTE_DAG_Q4 })":
     'Deze aanroep draait niet: hij komt van `alice.db` — een gewone ingelogde ' +
     'gebruiker — en de toets eist juist dat hij een fout terugkrijgt. Een grens ' +

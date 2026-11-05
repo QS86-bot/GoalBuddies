@@ -15,7 +15,8 @@ De rollen uit de Status Tracker (orchestrator, bouwsessies die zonder PR aflever
 
 ## Wat dit niet doet
 
-* Het raakt `CLAUDE.md` niet. Een regel die bepaalt wat er mag landen verandert hier niet: werk landt via een PR met een merge-commit.
+* Het raakt `CLAUDE.md` in één punt, en dat is benoemd: de batch-PR bundelt meerdere issues in één PR, terwijl *Versiebeheer* zegt dat meerdere issues meerdere PR's zijn. Quinten koos op 05-11-2026 voor een benoemde uitzondering in `CLAUDE.md` (elk issue houdt zijn eigen tak en `--no-ff`-merge met issuenummer) in plaats van een verzwegen afwijking. Voor de rest verandert er niets: werk landt via een PR met een merge-commit.
+* **Wat de uitzondering kost:** de batch heeft één CI-uitslag en één merge-moment. Een issue dat afvalt, houdt de rest op tot de batch zonder dat issue opnieuw is gebouwd. Omdat elk issue een eigen merge-commit heeft, is één issue uit een gemergede batch terug te draaien met `git revert -m 1 <merge-commit>`; dat is niet in een echte ronde gemeten.
 * Het raakt `.github/` niet.
 * Het versoepelt onwrikbare regel 19 niet. De batchsessie draait één ronde `code-critic` op de PR als geheel; `security-reviewer` draait per bouwsessie direct bij auth, RLS, punten, goedkeuring, commitments en groepszichtbare oppervlakken, en opnieuw op de batch als die ze combineert.
 

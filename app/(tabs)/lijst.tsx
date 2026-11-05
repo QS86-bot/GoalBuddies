@@ -2,7 +2,7 @@ import { useCallback, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 
 import { useProfiel, useSession } from '@/modules/auth';
-import { fetchMijnGroepen, type Lijstgroep } from '@/modules/buddies';
+import { enigeOfGekozen, fetchMijnGroepen, type Lijstgroep } from '@/modules/buddies';
 import {
   TAAK_MAX,
   deelTaak,
@@ -495,7 +495,9 @@ function Afgerond({ doneAt, tz }: { readonly doneAt: string | null; readonly tz:
  * ⚠️ **Bij één groep vraagt de app niets**, en dat is dezelfde afweging die
  *    `beslissendeGroep()` in `modules/buddies/deling.ts` maakte: een keuze
  *    stellen die er niet is, is een stille keuze onder een andere naam. Pas bij
- *    twee of meer verschijnt de lijst.
+ *    twee of meer verschijnt de lijst — en sinds QS8-651 zónder voorgeselecteerde
+ *    groep, via `enigeOfGekozen()`: een voorselectie is een keuze die de
+ *    gebruiker niet maakte, met een deelknop die aan stond.
  *
  * ⚠️ **De knop schrijft geen kolom maar roept een RPC aan.** `visibility` en
  *    `shared_group_id` staan in geen enkele kolomgrant; de grendel is de
@@ -545,14 +547,19 @@ function Deelblok({
 
   if (groepen.length === 0) return <Caption>{t('lijst.deel_geen_groep')}</Caption>;
 
-  if (groepen.length === 1 || !kiest) {
+  // ⚠️ "De enige groep, als die er is" via dezelfde regel als elke andere
+  //    groepskeuze, en niet via `groepen.length === 1` met een eigen greep: zo
+  //    staat de één-groep-regel op één plek en telt de naadtest deze binding mee.
+  const enige = enigeOfGekozen(groepen, '', (g) => g.id);
+
+  if (enige !== undefined || !kiest) {
     return (
       <View style={styles.knoppen}>
         <Caption>{t('lijst.deel_uit')}</Caption>
         <Button
           variant="stil"
           disabled={bezig}
-          onPress={() => (groepen.length === 1 ? onDeel(groepen[0]?.id ?? null) : setKiest(true))}
+          onPress={() => (enige !== undefined ? onDeel(enige.id) : setKiest(true))}
         >
           {t('lijst.deel_knop')}
         </Button>
@@ -573,7 +580,10 @@ function Groepskeuze({
   readonly bezig: boolean;
   readonly onKies: (groupId: string) => void;
 }) {
-  const [keuze, setKeuze] = useState(groepen[0]?.id ?? '');
+  // ⚠️ QS8-651: leeg, en niet de eerste. Deze lijst staat er alleen bij twee of
+  //    meer groepen, en dan is "de eerste" een groep die niemand aanwees.
+  const [keuze, setKeuze] = useState('');
+  const gekozen = enigeOfGekozen(groepen, keuze, (g) => g.id);
 
   return (
     <Card nested>
@@ -581,11 +591,19 @@ function Groepskeuze({
       <Choice
         label={t('lijst.deel_kies')}
         opties={groepen.map((g) => ({ waarde: g.id, label: g.name }))}
-        waarde={keuze}
+        waarde={gekozen?.id ?? ''}
         onKies={setKeuze}
         disabled={bezig}
+        hint={gekozen === undefined ? t('lijst.deel_kies_eerst') : undefined}
       />
-      <Button variant="secundair" busy={bezig} disabled={keuze === ''} onPress={() => onKies(keuze)}>
+      <Button
+        variant="secundair"
+        busy={bezig}
+        disabled={gekozen === undefined}
+        onPress={() => {
+          if (gekozen !== undefined) onKies(gekozen.id);
+        }}
+      >
         {t('lijst.deel_knop')}
       </Button>
     </Card>

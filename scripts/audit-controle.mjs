@@ -114,12 +114,15 @@ export const NAGEKEKEN = {
   uuid: {
     ernst: 'moderate',
     advisories: [1119441],
-    reparatie: 'brekend',
+    reparatie: 'gratis',
     in_bundel: false,
     marker: 'stringify.unsafe',
     reden:
       'Zit onder `xcode` via `@expo/config-plugins` — prebuild-tooling. De uuid-code die wél ' +
-      'in de bundel staat is Expo\'s eigen implementatie (`expo-modules-core/src/uuid/`).',
+      'in de bundel staat is Expo\'s eigen implementatie (`expo-modules-core/src/uuid/`). ' +
+      '📏 Op 05-11-2026 (QS8-669) zegt npm dat de reparatie niet meer brekend is (`fixAvailable: true`); ' +
+      'ernst en nummer zijn gelijk gebleven. Bundelmeting opnieuw gedaan: **nul** treffers op ' +
+      '`stringify.unsafe`. Niet gerepareerd: dezelfde `npm audit fix` als bij `node-forge` hieronder.',
   },
   '@xmldom/xmldom': {
     ernst: 'high',
@@ -159,8 +162,8 @@ export const NAGEKEKEN = {
       'nul treffers in dist/. Zelfde klasse als `uuid`: bouw-tooling, geen app-code.',
   },
   'decode-uri-component': {
-    ernst: 'moderate',
-    advisories: [1147955],
+    ernst: 'high',
+    advisories: [1147955, 1243857],
     reparatie: 'brekend',
     in_bundel: true,
     marker: '(%[a-f0-9]{2})|([^%]+?)',
@@ -173,7 +176,15 @@ export const NAGEKEKEN = {
       '`"type": "module"` zónder `main`, dus dat breekt het CJS-`require` in ' +
       '`query-string@7.1.3`. Een override op `query-string` kan ook niet: gefixt vanaf 9.5, ' +
       'en 8.x is ESM-only, wat onder Metro een ander en groter risico is dan deze DoS. ' +
-      '📏 Beide takken nagemeten op 07-09-2026 met `npm view`.',
+      '📏 Beide takken nagemeten op 07-09-2026 met `npm view`. ' +
+      '📏 **Opnieuw nagekeken op 05-11-2026 (QS8-669):** er is een tweede advisory bij, 1243857 ' +
+      '(GHSA: kwadratisch vervangen van percent-encoded reeksen, `<=0.5.0`), en de ernst is van ' +
+      '`moderate` naar `high` gegaan. Zelfde pakket, zelfde route, zelfde bereik (een eigen tab ' +
+      'die hangt) — de weging verandert niet, wel de ernst. Marker nogmaals in `dist/` gevonden ' +
+      '(verse `npm run build`, dummy-EXPO_PUBLIC-waarden): `in_bundel: true` is gemeten. ' +
+      '`fixAvailable` is nog steeds `expo-router@58.0.30`, een major, dus `brekend`. ' +
+      '⚠️ Het pakket zit er **wél** in en is **niet** gerepareerd; dit is een afweging en geen ' +
+      'oplossing.',
   },
   'brace-expansion': {
     ernst: 'high',
@@ -196,23 +207,13 @@ export const NAGEKEKEN = {
       'dat bereik van 5.0.9 naar 5.0.12. Bewust niet in QS8-625 gedaan — dat issue raakt de ' +
       'lockfile niet — en de controle meldt het zodra de reparatie verandert of de rij wegvalt.',
   },
-  braces: {
-    ernst: 'high',
-    advisories: [1240992],
-    reparatie: 'brekend',
-    in_bundel: false,
-    marker: 'expanded array length exceeds range limit',
-    reden:
-      'Nieuw op 05-10-2026 (QS8-625): stack-uitputting op diep geneste patronen. 📏 `npm ls` zet ' +
-      'hem onder `expo > @expo/cli > @expo/metro-file-map > micromatch@4.0.8` — het ' +
-      'bestandsoverzicht van de bundler. Zelfde verse bouw als `brace-expansion`: **nul** ' +
-      'treffers op de foutmelding uit `braces/lib/expand.js`. npm biedt alleen `expo@44.0.6` als ' +
-      'reparatie, een downgrade van dertien majors, en dat is geen reparatie.',
-  },
   'node-forge': {
     ernst: 'high',
-    advisories: [1240912],
-    reparatie: 'brekend',
+    advisories: [
+      1240912, 1244014, 1244015, 1244016, 1244017, 1244018, 1244019, 1244020, 1244021, 1244022,
+      1244023, 1244024,
+    ],
+    reparatie: 'gratis',
     in_bundel: false,
     marker: 'Too few bytes to read ASN.1',
     reden:
@@ -222,7 +223,17 @@ export const NAGEKEKEN = {
       'bouw: **nul** treffers op de foutmelding uit `node-forge/lib/asn1.js`. ⚠️ Dit is de enige ' +
       'van de drie die over vertrouwen gaat en niet over beschikbaarheid: hij telt zodra de app of ' +
       'een edge-functie een handtekening verifieert met deze bibliotheek. 📏 Vandaag doet niets ' +
-      'in `src/`, `app/` of `supabase/functions/` dat — geen import van `node-forge`.',
+      'in `src/`, `app/` of `supabase/functions/` dat — geen import van `node-forge`. ' +
+      '📏 **Opnieuw nagekeken op 05-11-2026 (QS8-669):** elf advisories erbij (1244014–1244024: ' +
+      'ASN.1, PEM, TLS-record, AES-GCM-tag, PKCS#12, `verifyCertificateChain`, `forge.http`), ' +
+      'allemaal `<=1.4.0`. Zelfde pakket en zelfde route (`@expo/cli` en ' +
+      '`@expo/code-signing-certificates`); verse `npm run build` met dummy-EXPO_PUBLIC-waarden: ' +
+      '**nul** treffers op de marker, met `supabase` als controlegrep (positief). ' +
+      '⚠️ **`reparatie: gratis` is binnen het bereik waar, maar niet klein**: 📏 ' +
+      '`npm audit fix --omit=dev --dry-run` doet 127 toevoegingen, 37 verwijderingen en 64 ' +
+      'wijzigingen. Bewust niet in QS8-669 gedaan — dat issue raakt de lockfile niet. De 4 ' +
+      'nieuwe `verifyCertificateChain`- en `forge.http`-advisories tellen alleen als de app of ' +
+      'een edge-functie `node-forge` aanroept; geen enkele doet dat.',
   },
   compression: {
     ernst: 'high',
@@ -257,6 +268,100 @@ export const NAGEKEKEN = {
       'waar `source-map-js` een fork van is; bij nul treffers maakt dat niet uit, bij een treffer ' +
       'wel — dan is de marker niet genoeg om te zeggen wélk pakket in de bundel zit. 📏 `postcss` ' +
       'vraagt `^1.2.1` en 1.2.2 bestaat; dezelfde dry-run als bij `compression` neemt hem mee.',
+  },
+
+  'shell-quote': {
+    ernst: 'critical',
+    advisories: [1241332],
+    reparatie: 'gratis',
+    in_bundel: false,
+    marker: '`comment` must not contain line terminators',
+    reden:
+      'Nieuw op 05-11-2026 (QS8-669): **critical** — `quote()` laat command injection toe via ' +
+      'een regeleinde in een token na een `{ comment }`-token (`>=1.8.4 <1.11.0`). ' +
+      '📏 GEMETEN: `npm ls` zet hem onder `react-native > react-devtools-core > shell-quote@1.10.0` ' +
+      '— de devtools-bridge van React Native, dev-tooling. Verse `npx expo export --platform web` ' +
+      'met dummy-EXPO_PUBLIC-waarden, dist/ van 5,3 MB: **nul** treffers op deze letterlijke ' +
+      'foutmelding uit `shell-quote/quote.js` én **nul** op twee andere foutteksten uit hetzelfde ' +
+      'pakket (`glob token requires a string \`pattern\``, `Bad substitution: `), met ' +
+      '`supabase` als positieve controlegrep. Niets in `src/`, `app/` of ' +
+      '`supabase/functions/` importeert hem, en geen enkele edge-functie bouwt een shell-opdracht. ' +
+      '⚠️ NIET GEMETEN: of een dev-server of CLI-stap op de machine van de ontwikkelaar of in CI ' +
+      '`quote()` ooit met onvertrouwde invoer aanroept. Dat is de enige route naar de ' +
+      'kwetsbaarheid en ze valt buiten wat `dist/` kan tonen. De aanname is dat de aanroepers ' +
+      '(Metro-devtools) alleen eigen, vaste argumenten doorgeven; die is hier niet nagelezen. ' +
+      '⚠️ **`reparatie: gratis` is binnen het bereik waar**: `react-devtools-core` vraagt ' +
+      '`^1.6.1` en 1.12.0 bestaat. Dezelfde `npm audit fix --omit=dev` als bij ' +
+      '`node-forge` (127 toevoegingen, 37 verwijderingen, 64 wijzigingen) neemt hem mee. ' +
+      'Niet gedaan: dit issue raakt de lockfile niet — een besluit voor Quinten, en bij een ' +
+      '**critical** raadt dit register aan het snel te nemen.',
+  },
+  zod: {
+    ernst: 'high',
+    advisories: [1243066],
+    reparatie: 'gratis',
+    in_bundel: true,
+    marker: 'Cannot mix number and bigint in multiple_of check.',
+    reden:
+      '⚠️⚠️ **Deze zit er wél in, en het is app-code.** Nieuw op 05-11-2026 (QS8-669): GHSA ' +
+      '(1243066) — geheugenuitputting bij het valideren van te grote, begrensde collecties ' +
+      '(`<4.6.6`). 📏 Het is een directe dependency (`zod ^4.4.3`, geïnstalleerd 4.4.3, ' +
+      'onwrikbare regel 3) en de foutmelding uit `zod/v4/core/checks.js` staat letterlijk in ' +
+      'dist/ (verse `npm run build`, dummy-EXPO_PUBLIC-waarden). De tweede kopie ' +
+      '(`@expo/cli` → `zod@3.25.76`) is CLI-tooling en niet de bundel. 📏 **Bereik:** geen ' +
+      'enkele edge-functie importeert zod (gegrept in `supabase/functions/`), dus de server ' +
+      'valideert niet met dit pakket en de database wordt hier niet door geraakt; het gaat om ' +
+      'validatie in de client, dus een eigen tab die vastloopt. Maar dat ' +
+      'is een beoordeling van het gebruik, niet van het pakket. ⚠️ NIET GEMETEN: of een ' +
+      'validatie in `src/` een collectie begrenst die een ander lid kan vullen (een lijst uit ' +
+      'een groep). `z.array(…).max/min/length` komt in `src/` 1 keer voor; die is niet nagelezen. ' +
+      '⚠️ **`reparatie: gratis` is hier de goedkoopste van allemaal**: ' +
+      '`^4.4.3` dekt 4.6.7, dus alleen `package-lock.json` verandert (`npm update zod`), ' +
+      'zonder `package.json` en zonder `expo`-sprong. Bewust niet gedaan in QS8-669 omdat ' +
+      'dat issue alleen `scripts/` raakt; dit is een **besluit voor Quinten** en de aanbevolen ' +
+      'weg is bijwerken — daarna kan deze rij eruit (de controle meldt het zelf).',
+  },
+  deepmerge: {
+    ernst: 'low',
+    advisories: [1243505],
+    reparatie: 'gratis',
+    in_bundel: false,
+    marker: 'first argument should be an array',
+    reden:
+      'Nieuw op 05-11-2026 (QS8-669): prototype poisoning via `mergeObject()` (`>=4.2.0 <=4.3.1`). ' +
+      '📏 `npm ls` zet hem onder `expo > @expo/config > deepmerge@4.3.1` — het inlezen van ' +
+      'app-config, bouw-tooling. Verse bouw: **nul** treffers op de foutmelding uit ' +
+      '`deepmerge/dist/cjs.js`, met `supabase` als positieve controlegrep. Niets in ' +
+      '`src/`, `app/` of `supabase/functions/` importeert hem.',
+  },
+  glob: {
+    ernst: 'moderate',
+    advisories: [1244013],
+    reparatie: 'brekend',
+    in_bundel: false,
+    marker: 'nocase option contradicts provided scurry option',
+    reden:
+      'Nieuw op 05-11-2026 (QS8-669): een `AbortSignal`-annulering stopt het doorlopen van het ' +
+      'bestandssysteem niet meteen (`>=9.0.0 <=14.0.1`). 📏 `npm ls` zet hem onder ' +
+      '`expo > @expo/cli`, `@expo/config`, `@expo/config-plugins`, `@expo/fingerprint` en ' +
+      '`@expo/metro-config` (`glob@13.0.6`) — bestandsdetectie in de bouw. Verse bouw: ' +
+      '**nul** treffers op de foutmelding uit `glob/dist/esm/glob.js`, met `supabase` als ' +
+      'positieve controlegrep. `reparatie: brekend` is wat npm zegt (`expo@52.0.49`, een ' +
+      'downgrade van vijf majors) en is dus geen reparatie.',
+  },
+  minimatch: {
+    ernst: 'moderate',
+    advisories: [1244623],
+    reparatie: 'brekend',
+    in_bundel: false,
+    marker: 'string part in extglob AST??',
+    reden:
+      'Nieuw op 05-11-2026 (QS8-669): DoS door globparts-amplificatie (`>=7.0.0 <11.0.1`). ' +
+      '📏 `minimatch@10.2.6` zit onder `expo > @expo/fingerprint` en `glob@13.0.6`; ' +
+      '`minimatch@3.1.5` onder ESLint is buiten het bereik. Verse bouw: **nul** treffers op ' +
+      'de foutmelding uit `minimatch/dist/esm/ast.js` en **nul** op `pattern is too long`, ' +
+      'met `supabase` als positieve controlegrep. `reparatie: brekend` is wat npm zegt ' +
+      '(`expo@52.0.49`, een downgrade) en is geen reparatie.',
   },
 };
 

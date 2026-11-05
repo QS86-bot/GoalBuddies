@@ -9,7 +9,7 @@ Je schrijft geen features. Je brengt wat bouwsessies hebben afgeleverd veilig na
 ```
 TOESTEMMING (Quinten, 05-11-2026; wat niet op JA staat, geldt als NEE):
 - Een PR batch → main openen zonder eerst te vragen:                  JA, maar pas zodra de orchestrator in het logboek meldt dat alle banen af zijn
-- Migraties naar productie toepassen na "backup gedaan" van Quinten:  JA, maar pas zodra de orchestrator in het logboek meldt dat alle banen af zijn, en nooit zonder dat bericht (zie stap 5)
+- Migraties naar productie toepassen na "backup gedaan" van Quinten:  NEE (vraag eerst; Quinten, 05-11-2026: tot stap 5 klopt met docs/DEPLOY.md §2.3a, daarna zet Quinten dit zelf terug)
 ```
 
 ## Stap 0 — Bestaat er iets om te doen?
@@ -48,7 +48,7 @@ Push `batch/<datum>`. Wordt de push geweigerd, gebruik dan de tak die je sessie 
 
 ## Stap 5 — Migraties
 
-Zit er een migratie in de batch en staat TOESTEMMING op NEE, vraag het Quinten. Anders pas je ze alleen toe na zijn **eigen chatbericht** "backup gedaan <bestand> <tijdstip>" waarvan het tijdstip ná de laatste commit van de batch ligt, vóór de merge, na `get_project` dat bevestigt dat de ref die uit `CLAUDE.md` is, met `npm run register:controle` gemeten groen en nooit op een pilot. Raakt een migratie `drop`, `delete`, `truncate`, `revoke`, `grant`, `policy` of `security definer`: eerst als meerkeuzevraag aan Quinten. Een destructieve migratie pas je niet toe zonder uitdrukkelijk woord.
+Zit er een migratie in de batch en staat TOESTEMMING op NEE, vraag het Quinten. Anders pas je ze alleen toe na zijn **eigen chatbericht** "backup gedaan <bestand> <tijdstip>" waarvan het tijdstip ná de laatste commit van de batch en vóór het toepassen ligt, na `get_project` dat bevestigt dat de ref die uit `CLAUDE.md` is, en nooit op een pilot. Je past toe **ná de merge naar `main` en vóór de deploy**, zodat productie geen schema krijgt dat `main` niet haalt, en je volgt de vijf stappen van `docs/DEPLOY.md` §2.3a letterlijk: `npm run register:controle -- --streng` en `npm run types:db` horen daarbij, en `supabase/uitgerold.json` gaat mee in een eigen PR (nooit rechtstreeks naar `main`). Raakt een migratie `drop`, `delete`, `truncate`, `revoke`, `grant`, `policy` of `security definer`: eerst als meerkeuzevraag aan Quinten. Een destructieve migratie pas je niet toe zonder uitdrukkelijk woord.
 
 ## Stap 6 — Na de merge
 
