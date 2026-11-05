@@ -3,8 +3,14 @@
 > Kopieer alles onder de streep in een nieuwe chat. Werk dit bestand bij aan het
 > eind van elke sessie — het is de overdracht, niet een archief.
 >
-> **Laatst bijgewerkt:** 17-09-2026 om 17:35 UTC, **t/m PR #527**. De lessen van
-> deze ronde staan als punt AL, AM en AN hieronder.
+> **Laatst bijgewerkt:** 05-11-2026 om 10:25 UTC, **t/m PR #652**. Wat er die dag
+> open bleef staat in STAND VAN ZAKEN onder *05-11-2026*; de bijwerking daarvóór
+> was 17-09-2026 (t/m PR #527), met de lessen van die ronde als punt AL, AM en AN.
+>
+> ⚠️ **Sinds 05-11-2026 werkt dit project met een orchestrator, bouwsessies en een
+> batchsessie** (`docs/PROMPT-SESSIE.md` §12). Een bouwsessie raakt dit bestand
+> dan niet; de batchsessie vouwt de stand in. Deze bijwerking is op Quintens
+> eigen verzoek door de bouwsessie van baan A gedaan en landt op haar sessietak.
 >
 > ⚠️ **Die afkapping is met opzet een nummer en geen "alles".** Terwijl deze
 > bijwerking geschreven werd landden er drie PR's bij — de teller ging van
@@ -2129,6 +2135,90 @@ plaats van een functie.** 📏 Bij QS8-608 kostte de `hoofd()`-vorm acht functie
 boven de vijftig regels en liep de ratel van 15 naar 21; een blok achter de
 main-guard voegt geen functie toe. Top-level `await` mag daarin — nagemeten, niet
 aangenomen. De prijs is één nestingniveau, dus `max-depth` kan erop omvallen.
+
+### 05-11-2026 — de eerste orchestratorronde, en wat er open bleef
+
+**De rolverdeling staat op `main`** (PR #652): orchestrator, bouwsessies zonder PR,
+batchsessie — `docs/PROMPT-SESSIE.md` §12, met het logboek in Linear QS8-667.
+Baan A (deze sessie) leverde twee takken af, allebei zonder PR, allebei In Review,
+en allebei met `git merge-tree` schoon tegen `main` = `b7586a11`:
+
+| Issue | Tak | Sha | Wat |
+|---|---|---|---|
+| QS8-651 | `claude/awesome-fermat-pp7z2v` | `31fd0ab4` | `enigeOfGekozen()` in `src/modules/buddies/deling.ts`: bij twee of meer groepen of mensen geen stille eerste meer bij de hulpvraag, de begunstigde van een straf, de vervangende getuige en de deelknop van De Lijst. Rij 41 in beslisdocument 002 |
+| QS8-668 | `quintenstrijdonk/qs8-668-nevenschadetestts-valt-sinds-november-om-op-een-vaste-moment` | `66cdcfee` | `nevenschade.test.ts` rekent haar seizoensmomenten uit de fixture met de helper `seizoensmomenten()` (bestand seizoensmoment.ts in tests/rls, alleen op die tak tot de batch landt); de registerrij in `scripts/jobbereik-controle.mjs` volgt mee |
+
+⚠️ **Wat er open bleef, in volgorde van wat het blokkeert:**
+
+1. **QS8-669 — `audit:controle` rood op `main` en op elke tak** (`shell-quote`
+   critical, `zod` high, `glob`, `minimatch`, `deepmerge` nieuw; `uuid`,
+   `decode-uri-component` en `node-forge` veranderd; `braces` verdwenen). Een
+   baan-B-sessie heeft de tak sinds 09:53 UTC; mijn claim weigerde terecht.
+   **Tot dit landt is élke PR naar `main` rood op twee jobs**, ook de batch-PR
+   #651, die daarom op draft staat (besluit van Quinten, 10:00 UTC).
+2. **De batch** neemt daarna de twee takken hierboven mee; de vijf ER-rijen uit
+   de afleverregel van QS8-651 moeten door de batchsessie in
+   `docs/ENGINEER-REVIEW.md` gevouwen worden — een bouwsessie raakt dat bestand
+   niet. Twee ervan zijn bevindingen buiten de diff: het doelscherm toont met
+   `commitments.find((c) => c.type === 'penalty')` de óudste straf, ook een
+   ingetrokken (Middel), en wie alleen in een gearchiveerde groep zit ziet een
+   strafformulier zonder uitweg (Laag).
+3. **Teamgroepen (QS8-649): herbevestigen vóór de eerste migratie** dat een
+   gebruiker met *alleen* een teamgroep die groep als "de enige" krijgt bij een
+   hulpvraag of straf. `enigeOfGekozen()` kent geen teamgroepen; de aanroeper
+   moet filteren. Staat in `docs/decisions/2026-11-05-de-eerste-groep-is-geen-keuze.md`
+   §3 en hoort als reactie op QS8-649 (orchestrator).
+4. **Zondag 08-11 reviewt Quinten**; het klikpad staat in QS8-667. Ronde 2 daarvan
+   is QS8-651 en kan alleen als de batch zaterdag gemerged en gedeployd is.
+
+### De valkuilen van die dag
+
+⚠️⚠️ **`main` stond sinds 12-10 rood op zijn geplande runs, zonder dat er een
+commit bij kwam, en niemand zag het.** 📏 De push-run van 06-10 was groen; de
+schedule-runs van 12-10, 19-10, 26-10 en 02-11 op dezelfde sha waren rood. Twee
+oorzaken die allebei van de klok of van het npm-register komen en niet van de
+code: een vaste `MOMENT` tegen een `now()`-relatieve fixture (QS8-668) en nieuwe
+advisories (QS8-669). `hoofdrun:stand` kijkt ná een merge; een schedule-run
+kijkt niemand na. **Lees bij het begin van een ronde de laatste schedule-run op
+`main`**, niet alleen de laatste push-run — en zeg erbij welke het was.
+
+⚠️⚠️ **Een rode RLS-stap verbergt de stap erna.** De stap *Elke controle die de
+database nodig heeft* was sinds 06-10 op geen enkele run gedraaid, want hij
+staat achter de RLS-stap. Toen QS8-668 die groen maakte, viel hij voor het eerst
+om — op `jobbereik:controle`, waarvan het register `ZONDER_GRENS` op de
+aanroeptekst letterlijk sleutelt en mijn wijziging die tekst veranderde. Lokaal
+is die stap zonder database niet te meten; de poort zegt dan "ongemeten" en dat
+is correct maar leeg. **Verander je de tekst van een `.rpc('…')`-aanroep in
+`tests/`, kijk dan in `ZONDER_GRENS` of hij daar staat** — en lees na een groene
+RLS-stap altijd ook de stap erna.
+
+⚠️ **De derde vaste datum in dezelfde testfamilie verliep.** `2026-05-13` →
+`2026-11-15` → `2026-10-01`, elke keer met de uitleg erbij waarom díe datum
+klopte. Een datum die een `now()`-relatieve fixture moet raken is een tijdbom
+met een opschrift; **bereken het moment uit de fixture** — de vorm staat in
+`seizoensmomenten()` op de tak van QS8-668 (bestand seizoensmoment.ts in
+tests/rls; op deze tak bestaat het nog niet, daarom hier zonder pad). Grep op
+`p_op: '20` en `MOMENT = '` vond verder niets.
+
+⚠️ **De claim-commit zegt niet wíe er zit.** De orchestrator las de claim op
+QS8-668 als werk van de batchsessie en liet Quinten besluiten dat zij het mocht
+bouwen — terwijl de claim de mijne was en het werk al af. `npm run claim`
+voorkwam het dubbele werk op QS8-669 wél (de andere sessie was vijf minuten
+eerder), maar een claim draagt alleen een tijdstip. **Zet je sessie-id in de
+AFGELEVERD-regel en meld een claim meteen in het logboek-issue**, anders raadt
+de volgende lezer wie er zit.
+
+⚠️ **Een cloudsessie krijgt de RLS-suite niet lokaal.** De Postgres-binaries
+staan er, de PostgREST-download werd door de omgeving geweigerd. De meting is dan
+de CI-run op de afleversha — zeg dat in de afleverregel en lees die run ook
+echt, want de eerste bleek rood op iets anders dan verwacht.
+
+⚠️ **De security-reviewer vond wat de tests niet konden zien.** De regel van
+QS8-56 (*bij één groep wordt een oude keuze genegeerd*) stuurde na "kies
+Vrienden, ontkoppel Vrienden" de hulpvraag stil naar de overgebleven groep, met
+de keuzelijst verborgen. Een bronscan kan toestandsovergangen in een gemount
+component niet toetsen; dat is de klasse waar de reviewagent voor is. De regel is
+omgedraaid; `docs/decisions/2026-11-05-de-eerste-groep-is-geen-keuze.md` §3.
 
 ## WERKAFSPRAKEN — houd deze aan
 
