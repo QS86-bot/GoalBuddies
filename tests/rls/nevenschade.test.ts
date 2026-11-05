@@ -1,6 +1,8 @@
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 
 import { addDays, now, userCycle } from '../../src/shared/time';
+
+import { seizoensmomenten } from './seizoensmoment';
 import { adminDb, createTestUser, removeTestUsers, rlsTestsConfigured } from './harness';
 
 /**
@@ -111,9 +113,21 @@ describe.skipIf(!rlsTestsConfigured)('een globale schrijver raakt geen vreemde f
   let vreemd: Vreemd;
   let eigen: Eigen;
 
+  const cyclus = userCycle({ weekStartDay: 1, tz: 'Europe/Amsterdam' }, now());
+
+  /**
+   * ⚠️⚠️ **De momenten voor `maak_seizoensrecaps()` komen uit de fixture en niet
+   *    uit de kalender — QS8-668.** De weken hieronder staan `now()`-relatief; een
+   *    vaste `p_op` wees daardoor elke week een ander venster aan, en begin
+   *    november 2026 lag de fixture erbuiten: de groep telde als stil, de
+   *    voorwaardetoets gaf nul en de RLS-job op `main` stond rood zonder dat er
+   *    iets veranderd was. De peildatum is week `-2`, de middelste goedgekeurde
+   *    week, zodat er in het aangewezen seizoen altijd minstens één telt.
+   */
+  const momenten = seizoensmomenten(addDays(cyclus.startDate, -14), 'Europe/Amsterdam');
+
   beforeAll(async () => {
     const admin = adminDb();
-    const cyclus = userCycle({ weekStartDay: 1, tz: 'Europe/Amsterdam' }, now());
 
     // ------------------------------------------------------------------
     // De vreemde fixture — een nagebouwde `reeks.test.ts`
@@ -523,16 +537,19 @@ describe.skipIf(!rlsTestsConfigured)('een globale schrijver raakt geen vreemde f
     async () => {
       const { error } = await adminDb().rpc('maak_seizoensrecaps', {
         // ⚠️ **Het moment is zorgvuldig gekozen en dat is de helft van de test.**
-        //    `seizoensgrens()` geeft het vórige afgesloten seizoen, dus een
-        //    `p_op` in Q4 levert het venster juli–september: precies waar de
-        //    weken van de vreemde fixture in liggen. Half drie 's nachts is
-        //    nooit "acht uur", dus de grens houdt hem tegen — en niets anders.
+        //    `seizoensgrens()` geeft het vórige afgesloten seizoen, dus `p_op`
+        //    moet in het kwartaal ná de fixture-weken liggen: dan is het venster
+        //    precies waar die weken in liggen. Halverwege de maand om half drie
+        //    's nachts is nooit "de eerste dag om acht uur", dus de grens houdt
+        //    hem tegen — en niets anders.
         //
         //    Hier stond eerst 2026-05-13. Dat leverde het venster januari–maart
         //    op, en dan telt de groep als stil: de test bleef gróén toen de
         //    grens er met de hand uit gehaald werd, en bewaakte dus niet wat
-        //    zijn naam belooft. Met de hand gemeten op 31-08.
-        p_op: '2026-11-15T02:30:00Z',
+        //    zijn naam belooft. Met de hand gemeten op 31-08. Daarna stond er
+        //    2026-11-15, en dat verliep op dezelfde manier zodra de fixture uit
+        //    het derde kwartaal wegschoof (QS8-668) — daarom nu berekend.
+        p_op: momenten.dicht,
       });
       expect(error).toBeNull();
 
@@ -570,22 +587,25 @@ describe.skipIf(!rlsTestsConfigured)('een globale schrijver raakt geen vreemde f
     it(
       'maak_seizoensrecaps slaat een vreemde groep over als hij er niet bij staat',
       async () => {
-        // ⚠️⚠️ **De test bewijst eerst zijn eigen voorwaarde, en dat is met
-        //    opzet geen vaste datum.** Om iets te betekenen moet de seizoensgrens
-        //    op dit moment openstaan; staat hij dicht, dan schrijft de functie
-        //    sowieso niets en is de test groen zonder dat het bereik iets deed.
+        // ⚠️⚠️ **De test bewijst eerst zijn eigen voorwaarde.** Om iets te
+        //    betekenen moet de seizoensgrens op dit moment openstaan; staat hij
+        //    dicht, dan schrijft de functie sowieso niets en is de test groen
+        //    zonder dat het bereik iets deed.
         //
-        //    Een vaste `p_op` kán dat niet garanderen: de fixture is
-        //    `now()`-relatief (`addDays(cyclus.startDate, -7 * i)`), dus hij
-        //    schuift elke week op en valt vanaf begin november 2026 buiten het
-        //    seizoen dat een vaste datum in Q4 aanwijst. Dan is deze test stil
-        //    nutteloos — precies wat de buurtest hierboven al een keer
-        //    overkwam ("Hier stond eerst 2026-05-13").
+        //    Tot QS8-668 stond hier een vaste `'2026-10-01T06:30:00Z'`, met de
+        //    voorspelling erbij dat de `now()`-relatieve fixture "vanaf begin
+        //    november 2026" buiten dat seizoen zou vallen. 📏 Dat gebeurde: op
+        //    02-11 en 05-11 gaf de voorwaardetoets 0 en stond de RLS-job op
+        //    `main` rood. De voorwaardetoets deed zijn werk — luid omvallen in
+        //    plaats van stil slagen — maar hij kon alleen maar omvallen, want
+        //    het moment was een kalenderdag en de fixture een klok. Nu komen ze
+        //    uit dezelfde bron: `momenten.open` is de eerste dag om 08:30 van
+        //    het kwartaal ná de fixture-week.
         //
         //    Dus: eerst mét de vreemde groep in het bereik, en dán pas de echte
         //    toets. Slaat de eerste helft niet aan, dan valt de test luid om in
         //    plaats van stilzwijgend te slagen.
-        const MOMENT = '2026-10-01T06:30:00Z';
+        const MOMENT = momenten.open;
 
         const open = await adminDb().rpc('maak_seizoensrecaps', {
           p_op: MOMENT,
