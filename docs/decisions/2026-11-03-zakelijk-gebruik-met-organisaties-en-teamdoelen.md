@@ -197,22 +197,37 @@ Besluit 34 volgt het advies. Besluit 36 koos hoe: beheerrechten zonder lid te wo
 zodat hij de chat en het overzicht van teams waar hij geen lid van is niet leest. Dat
 houdt besluit 6 intact; als lid van elk team had hij meer gelezen dan een gewoon lid.
 **Wat het kost:** de helper `is_group_admin()` moet ook gelden voor een niet-lid met een
-organisatierol, en 📏 die helper staat gemeten (laatste definities per migratie, 04-11-2026)
-in **twaalf functies en drie policies**: `archiveer_groep`,
-`beslis_lidmaatschapsverzoek`, `guard_group_member_update`, `heropen_groep`,
-`rotate_invite_code`, `set_invite_revoked`, `verlaat_groep`, `verwijder_lid`,
-`verzoekers_eerder_lid`, `zet_groepsontdekbaarheid`, `zet_groepszichtbaarheid` en
-`zet_huddledag`, plus de policies `groups_update`, `group_members_update` en
-`group_join_requests_select`. Een fout in die ene helper geeft beheerrechten waar ze niet
-horen, en kan dat ook doen voor groepen buiten elke organisatie. **Dat vraagt
-`security-reviewer` direct en een test die een groep zonder organisatie expliciet
-toetst.** Wat elke functie precies doet heb ik niet nagelezen. De meting is bij
-benadering: een script las de functiebodies per migratie, niet de database, en een
-aanroep via een andere helper telt het niet. ⚠️ **Een eerdere versie van deze alinea
-noemde ook meldingsfuncties en deed dat ten onrechte**: mijn eerste teller wees een
-treffer toe aan de laatste functiedefinitie erboven, en daardoor kwamen er namen in die
-`is_group_admin()` niet aanroepen. 📏 De laatste definities van de meldingsfuncties
-roepen hem niet aan.
+organisatierol. 📏 Gemeten (laatste definitie per functie of policy, SQL-commentaar
+uitgesloten, 05-11-2026) wordt hij aangeroepen in **negen functies en drie policies**:
+`archiveer_groep`, `beslis_lidmaatschapsverzoek`, `rotate_invite_code`,
+`set_invite_revoked`, `verwijder_lid`, `verzoekers_eerder_lid`,
+`zet_groepsontdekbaarheid`, `zet_groepszichtbaarheid` en `zet_huddledag`, plus de
+policies `groups_update`, `group_members_update` en `group_join_requests_select`. Een
+fout in die ene helper geeft beheerrechten waar ze niet horen, en kan dat ook doen voor
+groepen buiten elke organisatie. **Dat vraagt `security-reviewer` direct en een test die
+een groep zonder organisatie expliciet toetst.** Wat elke functie precies doet heb ik
+niet nagelezen.
+
+⚠️ **Deze meting is twee keer gecorrigeerd.** De eerste versie noemde ook
+meldingsfuncties, omdat mijn teller een treffer toewees aan de laatste functiedefinitie
+erboven. De tweede telde `heropen_groep`, `verlaat_groep` en `guard_group_member_update`
+mee en kwam op twaalf functies, terwijl die drie `is_group_admin()` alleen in
+**commentaar** noemen. De huidige meting is bij benadering: een script las de
+migratiebestanden zonder commentaar, niet de database, en een aanroep via een andere
+helper telt het niet.
+
+**Ontwerpkeuze (Claude, onder de Beslisbevoegdheid; Quinten kan haar omgooien): de
+uitbreiding komt in de bestaande helper en er komt geen tweede.** De commentaren in die
+drie functies leggen uit waarom ze rechtstreeks op de tabel werken: `is_group_admin()`
+geeft sinds migratie 0092 onwaar voor een gearchiveerde groep, en zij moeten juist dán
+werken. De uitbreiding moet dat gedrag behouden. Voor de negen functies en drie policies
+is één wijziging precies wat besluit 34 vraagt: het zijn allemaal beheerdersbevoegdheden.
+De drie rechtstreekse paden blijven buiten de helper en worden apart beoordeeld;
+`heropen_groep` is de enige waarbij een organisatiebeheerder erbij zou willen kunnen. Een
+gemist pad faalt dicht (de organisatiebeheerder kan iets niet) en niet open. Het
+alternatief, een tweede helper naast de bestaande, vraagt dat elk van de twaalf plekken
+bewust wordt omgezet en maakt een vergeten plek tot een stille afwijking tussen twee
+soorten beheerders.
 
 ⚠️ **Besluit 35 (één teambonus per seizoen).** Het volgt het advies. De limiet stopt
 samenspannen niet, maar maakt het een kwartaal waard: hoogstens +2 per persoon per
@@ -303,10 +318,10 @@ standaard:
 - **De meting achter het voorlopige plafond van 25** (besluit 27): chat,
   groepsoverzicht en realtime bij grotere groepen. Tot er gemeten is, is 25 een keuze
   en geen uitkomst.
-- **Hoe de uitgebreide `is_group_admin()` eruitziet** (besluit 36): één wijziging aan de
-  bestaande helper, of een tweede helper naast haar. Het eerste raakt twaalf functies
-  en drie policies tegelijk; het tweede vraagt dat elk van die vijftien plekken bewust
-  wordt omgezet.
+- **De drie rechtstreekse paden** (`heropen_groep`, `verlaat_groep`,
+  `guard_group_member_update`) en of een organisatiebeheerder een gearchiveerd team mag
+  heropenen. De ontwerpkeuze zelf, de uitbreiding in de bestaande helper, staat bij
+  besluit 36.
 - **Of `seizoensgrens()` geschikt is voor de limiet van besluit 35**, en wie als 'had een
   aandeel' telt als iemand de organisatie verlaat vóór de afronding.
 - **Het label `phase:zakelijk`** (besluit 37) bestaat nog niet in Linear en wordt
