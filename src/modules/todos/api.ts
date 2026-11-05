@@ -217,8 +217,9 @@ export async function zetAfgevinkt(id: string, af: boolean): Promise<Resultaat<T
  *
  * ⚠️ **De grens komt uit `taakPatchSchema` en telt in codepunten** (`telTekens`),
  *    want dat is wat `char_length(btrim(body))` in `0246` telt. Zod's `.max()`
- *    telt UTF-16-eenheden en zou een taak van 300 emoji weigeren die de database
- *    doorlaat. QS8-118.
+ *    telde onder 4.4.3 UTF-16-eenheden en zou een taak van 300 emoji weigeren
+ *    die de database doorlaat; sinds 4.6 telt hij codepunten (QS8-673), maar
+ *    `telTekens()` volgt de database en niet de dependency. QS8-118.
  */
 export async function zetTekst(id: string, tekst: string): Promise<Resultaat<Taak>> {
   const gevalideerd = taakPatchSchema.safeParse({ body: tekst });
