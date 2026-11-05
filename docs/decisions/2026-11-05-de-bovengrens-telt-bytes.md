@@ -44,8 +44,8 @@ lang emoji-wachtwoord stilzwijgend een korter wachtwoord.
   `ErrPasswordTooLong` boven 72 bytes en kapt niet af. Maar die laag wordt
   niet bereikt: de 400 komt eerder.
 
-**Uitkomst: GoTrue weigert, kapt niet af.** Het risico blijft Middel; de
-*wordt zwaarder als* van de ER-rij is niet ingetreden.
+**Uitkomst: GoTrue weigert, kapt niet af.** De ER-rij van 06-09-2026 stond op Laag en is gesloten; de
+*wordt zwaarder als* ervan is niet ingetreden.
 
 ⚠️ **Drie grenzen aan die meting, en ze staan hier als aanname en niet als
 voetnoot:**
@@ -109,7 +109,7 @@ opgevallen.
 
 ## De ijking — vraag 3 van regel 18, met de hand
 
-Zes mutaties, elk apart aangebracht en teruggedraaid, met welke tests omvielen:
+Zeven mutaties, elk apart aangebracht en teruggedraaid, met welke tests omvielen:
 
 | mutatie | rood |
 |---|---|

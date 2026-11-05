@@ -71,7 +71,7 @@ export const en: Record<Sleutel, string> = {
 
   'validatie.wachtwoord_kort': 'Use at least 8 characters. A short phrase works fine.',
   'validatie.wachtwoord_lang':
-    'This password is too long. It can be at most 72 bytes: a letter counts as 1, an emoji or accented letter as 2 to 4. Shorten the phrase.',
+    'This password is too long. It can be at most 72 bytes: a plain letter counts as 1, an accented letter as 2 or 3, an emoji as 3 or more. Shorten the phrase.',
   'validatie.email': 'This does not look like an email address.',
   'validatie.wachtwoord_leeg': 'Enter your password.',
   'validatie.weekdag': 'A week starts on a day between Sunday and Saturday.',

@@ -92,7 +92,8 @@ export const WACHTWOORD_MAXIMUM = 72;
  *
  * ⚠️ **GoTrue weigert, kapt niet af** — gemeten in QS8-672 aan de bron
  *    (`internal/api/password.go`), niet aan het eigen project. Zonder deze
- *    grens krijgt de gebruiker dus een kale 400 en geen zwakker wachtwoord;
+ *    grens zou de gebruiker een serverfout krijgen (vóór dit issue vertaald als
+ *    "gebruik een langere zin", het omgekeerde advies) en geen zwakker wachtwoord;
  *    de grens hier maakt van die serverfout een melding die zegt wat hij moet
  *    doen. Hij verandert niets aan de beveiliging, wel aan de uitleg.
  *    Uitleg in `docs/decisions/2026-11-05-de-bovengrens-telt-bytes.md`.

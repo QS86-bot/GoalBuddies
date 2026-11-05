@@ -84,7 +84,7 @@ export function telGrafemen(tekst: string): number {
 /**
  * Het aantal UTF-8-bytes, zoals **bcrypt en GoTrue** tellen — QS8-672.
  *
- * ⚠️ Dit is de enige van de vier tellingen die níét naar de database kijkt.
+ * ⚠️ Deze telling volgt `char_length` niet.
  *    `char_length` telt codepunten; een CHECK toets je met `telTekens()`. Deze
  *    is er voor de ene grens die in bytes staat: de 72 van bcrypt, die GoTrue
  *    met `len(password)` (Go: bytes) afdwingt en met een 400 weigert.
