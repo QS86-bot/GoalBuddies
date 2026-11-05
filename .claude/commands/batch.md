@@ -52,7 +52,7 @@ Zit er een migratie in de batch en staat TOESTEMMING op NEE, vraag het Quinten. 
 
 ## Stap 6 — Na de merge
 
-`npm run hoofdrun:stand` (draait de run nog, dan ben je niet klaar). Werk één keer `docs/WERKVOORRAAD.md` en `docs/VOLGENDE-SESSIE.md` bij, in één commit, volgens `CLAUDE.md` (één feit, één eigenaar). De issues blijven op In Review; Done is aan Quinten (§11).
+`npm run hoofdrun:stand` (draait de run nog, dan ben je niet klaar). Werk één keer `docs/WERKVOORRAAD.md` en `docs/VOLGENDE-SESSIE.md` bij, in één commit, volgens `CLAUDE.md` (één feit, één eigenaar). Zet daarna de issues van de batch op **Done**, maar alleen als de PR gemerged is, `hoofdrun:stand` groen zegt op een commit die de batch bevat, en Quinten de merge zelf heeft gevraagd of bevestigd. Is `main` rood of nog ongemeten, dan blijven ze op In Review en zeg je dat in je rapport. Een issue dat niet in de batch zat zet je nooit op Done (besluit Quinten, 05-11-2026; §11, §12b).
 
 ## Niet doen
 

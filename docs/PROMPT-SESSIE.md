@@ -501,8 +501,9 @@ in deze volgorde en niet in een andere:
 getest is, laat de lezer raden welk deel gemeten is en welk deel aangenomen — en
 dat is de klasse fout waar de hele grondwet over gaat.
 
-Status naar **In Review** — Done is aan Quinten. Dan door naar het volgende zonder
-te vragen welke.
+Status naar **In Review**. Done zet de sessie die het werk mergt en afrondt (bij werk
+via de batch: de batchsessie, §12b); een bouwsessie zonder PR zet nooit Done. Dan door
+naar het volgende zonder te vragen welke.
 
 Aan het eind van je sessie: werk `docs/VOLGENDE-SESSIE.md` bij, en noem wat er
 open bleef staan en waarom.
@@ -536,7 +537,7 @@ Orchestrator en batchsessie tellen niet als baan in §1: ze hebben geen eigen bo
 3. **Batchsessie.** Leest de afleverregels, controleert per tak dat de sha klopt, en bouwt de batchtak vanaf `origin/main` met één `git merge --no-ff` per tak (onderwerp: `Merge QS8-nnn: titel`, zodat `npm run claim` de gelande PR herkent, §2). Voor elke tak eerst `git merge-tree --write-tree`; een conflict wordt gemeld en niet opgelost buiten de conflictzone. Push, PR, CI-groen op de exacte head-sha (§9, punt 1), één ronde `code-critic` op de PR als geheel — plus `security-reviewer` als de batch auth, RLS, punten, goedkeuring, commitments of een groepszichtbaar oppervlak raakt. Daarna is het aan Quinten.
 4. **Quinten.** Merget de batch-PR met een merge-commit, laat acht minuten tussen twee merges (§1b), draait `npm run deploy` (zijn machine; het token staat niet in een cloudsessie) en reviewt. De batchsessie draait na de merge `npm run hoofdrun:stand` en vouwt de stand één keer in `docs/WERKVOORRAAD.md` en `docs/VOLGENDE-SESSIE.md`.
 
-⚠️ **Done is aan Quinten** (§11). Ook de batchsessie zet een issue niet op Done.
+⚠️ **Done zet de sessie die de merge afrondt** (§11, besluit Quinten 05-11-2026). Voor de batch is dat de batchsessie, en pas als de PR gemerged is én `npm run hoofdrun:stand` groen zegt op een commit die de batch bevat. Alleen de issues die in de batch zaten; een bouwsessie of de orchestrator zet nooit Done. Is `main` rood, dan blijven de issues op In Review.
 
 ⚠️ **De bouwsessie raakt de drie gedeelde documenten niet** (§4 blijft de regel voor wie buiten dit model werkt). Wat een bouwsessie anders in `docs/ENGINEER-REVIEW.md` zou zetten, gaat als regel "ER-rij:" in haar afleverregel; de batchsessie vouwt ze in één commit in. Dat is de uitwerking van §1c voor een extra baan.
 
