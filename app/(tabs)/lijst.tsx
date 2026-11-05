@@ -2,7 +2,7 @@ import { useCallback, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 
 import { useProfiel, useSession } from '@/modules/auth';
-import { fetchMijnGroepen, type Lijstgroep } from '@/modules/buddies';
+import { fetchMijnGroepen, geldigeKeuze, type Lijstgroep } from '@/modules/buddies';
 import {
   TAAK_MAX,
   deelTaak,
@@ -573,7 +573,9 @@ function Groepskeuze({
   readonly bezig: boolean;
   readonly onKies: (groupId: string) => void;
 }) {
-  const [keuze, setKeuze] = useState(groepen[0]?.id ?? '');
+  const [gekozen, setKeuze] = useState('');
+  // QS8-651: geen voorgeselecteerde eerste groep; delen vraagt een bewuste keuze.
+  const keuze = geldigeKeuze(groepen, gekozen);
 
   return (
     <Card nested>

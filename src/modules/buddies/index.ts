@@ -35,6 +35,8 @@ export {
 
 export { beslissendeGroep, koppelbareGroepen, type DoelGroep } from './deling';
 
+export { geldigeKeuze, moetKiezen, type Kandidaat } from './groepskeuze';
+
 export { beginfase, deelbareUitnodiging, type Beginfase } from './samen';
 
 export {

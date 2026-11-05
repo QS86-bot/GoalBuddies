@@ -5,6 +5,7 @@ import { StyleSheet, View } from 'react-native';
 import { useProfiel, useSession, userClock } from '@/modules/auth';
 import {
   beslissendeGroep,
+  geldigeKeuze,
   fetchGroepenVanDoel,
   fetchMijnGroepen,
   koppelbareGroepen,
@@ -974,7 +975,7 @@ function StuurlozeStrafKeuze({
             waarde={gekozen}
             onKies={onKies}
           />
-          <Button variant="primair" busy={bezig} onPress={onAanwijzen}>
+          <Button variant="primair" busy={bezig} disabled={gekozen === ''} onPress={onAanwijzen}>
             {t('stuurloos.aanwijzen')}
           </Button>
         </>
@@ -1002,7 +1003,8 @@ function StuurlozeStraf({
   const [gekozen, setGekozen] = useState('');
 
   const mensen = useAsyncMetTerugval(fetchMogelijkeBegunstigden, GEEN_BEGUNSTIGDEN, []);
-  const nieuweGetuige = gekozen !== '' ? gekozen : (mensen[0]?.id ?? '');
+  // QS8-651: bij twee of meer kandidaten kiest de gebruiker; geen `mensen[0]`.
+  const nieuweGetuige = geldigeKeuze(mensen, gekozen);
 
   async function voer(actie: 'nieuwe_getuige' | 'afwikkelen') {
     setBezig(true);
@@ -1058,7 +1060,7 @@ function Straf({
   const router = useRouter();
   const [tekst, setTekst] = useState('');
   const [soort, setSoort] = useState<'groep' | 'persoon'>('groep');
-  const [groepId, setGroepId] = useState(groepen[0]?.id ?? '');
+  const [gekozenGroepId, setGroepId] = useState('');
   const [gekozenPersoon, setGekozenPersoon] = useState('');
   const [bevestigen, setBevestigen] = useState(false);
   const [bezig, setBezig] = useState(false);
@@ -1069,7 +1071,10 @@ function Straf({
   // ⚠️ De keuze is afgeleid en niet in state gezet vanuit de lading. Twee
   //    plekken die hetzelfde weten gaan uit de pas lopen, en dan verstuurt het
   //    scherm een andere persoon dan het toont.
-  const persoonId = gekozenPersoon !== '' ? gekozenPersoon : (mensen[0]?.id ?? '');
+  const persoonId = geldigeKeuze(mensen, gekozenPersoon);
+  // QS8-651: idem voor de groep. Bij twee of meer is er geen stille standaard
+  //    meer: een straf naar de verkeerde groep is geen vergissing die je terugdraait.
+  const groepId = geldigeKeuze(groepen, gekozenGroepId);
 
   if (bestaand) {
     const stand = tekstVoor(bestaand);
@@ -1551,11 +1556,14 @@ function HulpVragen({
   const [verstuurd, setVerstuurd] = useState(false);
   const { weg, verberg, geladen } = useHulpvraagVerborgen(doel.id);
 
-  // ⚠️ Afgeleid en niet in een effect gezet. De eerste groep is de standaard
-  //    zolang de gebruiker niets gekozen heeft; dat in een effect naar state
+  // ⚠️ Afgeleid en niet in een effect gezet. Bij twee of meer groepen is er
+  //    geen standaard (QS8-651); dat in een effect naar state
   //    schrijven levert een extra render op zonder dat er iets verandert, en de
   //    lint-regel vangt het af.
-  const gekozenGroep = groepId === '' ? (groepen[0]?.group_id ?? '') : groepId;
+  const gekozenGroep = geldigeKeuze(
+    groepen.map((g) => ({ id: g.group_id })),
+    groepId,
+  );
 
   // Alleen bij achterstand, alleen met een groep om het aan te vragen, en
   // alleen als hij niet weggeklikt is.
@@ -1647,7 +1655,7 @@ function HulpVragen({
         <Button
           variant="primair"
           busy={bezig}
-          disabled={tekst.trim().length < 3}
+          disabled={tekst.trim().length < 3 || gekozenGroep === ''}
           onPress={() => void verstuur()}
         >
           {t('hulpvraag.versturen')}
