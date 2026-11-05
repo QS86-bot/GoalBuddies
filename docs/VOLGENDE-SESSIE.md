@@ -1665,8 +1665,10 @@ zijn subsectie, of bij de eerste alinea's hieronder op 21 t/m 28-08. Waar dat aa
 meer klopt, staat een **"Achterhaald sinds"** erbij, met de meting. **Dat is niet uitputtend.**
 Nagelopen zijn de uitspraken over issues (tegen Linear), over commando's (tegen
 `package.json`) en over de branches (tegen `git ls-remote`). De subsecties van 22-09 t/m
-24-09 zijn niet regel voor regel gelezen. De stand zelf staat in `docs/WERKVOORRAAD.md` §0, en
-bewust alleen daar.
+24-09 zijn daarna ook gelezen: ze bestaan vrijwel geheel uit lessen en niet uit stand, de
+ene stand-uitspraak daarin is gemarkeerd bij 24-09 (de lokale stack), en de ene omgevingsuitspraak
+die toetsbaar was (het npm-register is bereikbaar) klopte op 05-11-2026 nog. De stand zelf staat
+in `docs/WERKVOORRAAD.md` §0, en bewust alleen daar.
 
 Fase 1 is inhoudelijk af: elke epic staat, 0 t/m 12. EPIC 9 (het commitment
 device) is sinds 21-08 af, en EPIC 11 op de aflevering na — zie hieronder.
