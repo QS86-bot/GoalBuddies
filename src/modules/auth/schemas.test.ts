@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import { en } from '../../shared/i18n/en';
-import { telTekens } from '../../shared/tekst';
+import { telBytes, telTekens } from '../../shared/tekst';
 import { nl } from '../../shared/i18n/nl';
 
 import {
@@ -9,6 +9,7 @@ import {
   emailSchema,
   profielPatchSchema,
   tijdzoneSchema,
+  WACHTWOORD_MAXIMUM,
   WACHTWOORD_MINIMUM,
   wachtwoordSchema,
   weekdagSchema,
@@ -53,18 +54,81 @@ describe('wachtwoord', () => {
     expect(wachtwoordSchema.safeParse('👨‍👩‍👧‍👦').success).toBe(false);
   });
 
-  it('kapt niet stilzwijgend af boven de bcrypt-grens', () => {
-    // bcrypt negeert alles na 72 bytes. Zonder deze grens denkt iemand met een
-    // wachtwoord van 100 tekens dat die laatste 28 meetellen.
-    expect(wachtwoordSchema.safeParse('a'.repeat(73)).success).toBe(false);
-  });
-
   it('vertelt bij een te kort wachtwoord wat er moet gebeuren', () => {
     const uitkomst = wachtwoordSchema.safeParse('kort');
     expect(uitkomst.success).toBe(false);
     if (!uitkomst.success) {
       expect(uitkomst.error.issues[0]?.message).toContain(`${WACHTWOORD_MINIMUM} tekens`);
     }
+  });
+});
+
+/**
+ * ⚠️⚠️ **De bovengrens telt bytes, en dat is de belofte — QS8-672.** bcrypt
+ *    leest 72 bytes en GoTrue weigert daarboven met een 400. Tot dit issue
+ *    stond hier één test, `'a'.repeat(73)`, en die bewees alleen het
+ *    ASCII-geval: in ASCII zijn bytes, codepunten en UTF-16-eenheden hetzelfde
+ *    getal, dus hij bleef groen bij élke telling. 📏 Onder zod 4.4.3 passeerden
+ *    36 emoji (144 bytes), onder 4.6.7 72 emoji (288 bytes) — en deze test zag
+ *    geen van beide.
+ *
+ *    De gevallen hieronder liggen daarom op de naad tussen de eenheden: een
+ *    emoji is één codepunt, twee UTF-16-eenheden en vier bytes, dus 18 emoji
+ *    zijn precies 72 bytes en 19 zijn er 76. Een grens die iets anders telt dan
+ *    bytes geeft op minstens één van die vier een ander antwoord.
+ *
+ * ⚠️ Vraag 3 met de hand beantwoord — de ijking staat in het beslisdocument:
+ *    `telBytes` → `telTekens` laat 72 emoji en 19 emoji door (drie tests rood, de melding meegeteld);
+ *    `<=` → `<` weigert 72 ASCII en 18 emoji (twee tests rood).
+ */
+describe('de bovengrens van het wachtwoord telt bytes', () => {
+  const EMOJI = '😀';
+
+  it('is met vier bytes per emoji gemeten en niet aangenomen', () => {
+    expect(telBytes(EMOJI)).toBe(4);
+    expect(telTekens(EMOJI)).toBe(1);
+    expect(EMOJI.length).toBe(2);
+  });
+
+  it('weigert 72 emoji — 72 codepunten, maar 288 bytes', () => {
+    expect(wachtwoordSchema.safeParse(EMOJI.repeat(WACHTWOORD_MAXIMUM)).success).toBe(false);
+  });
+
+  it('laat 72 ASCII-tekens door — precies de grens', () => {
+    expect(wachtwoordSchema.safeParse('a'.repeat(WACHTWOORD_MAXIMUM)).success).toBe(true);
+  });
+
+  it('en weigert 73', () => {
+    expect(wachtwoordSchema.safeParse('a'.repeat(WACHTWOORD_MAXIMUM + 1)).success).toBe(false);
+  });
+
+  it('laat 18 emoji door — precies 72 bytes', () => {
+    const wachtwoord = EMOJI.repeat(WACHTWOORD_MAXIMUM / 4);
+    expect(telBytes(wachtwoord)).toBe(WACHTWOORD_MAXIMUM);
+    expect(wachtwoordSchema.safeParse(wachtwoord).success).toBe(true);
+  });
+
+  it('en weigert 19 emoji — 76 bytes, al zijn het maar 19 tekens', () => {
+    const wachtwoord = EMOJI.repeat(WACHTWOORD_MAXIMUM / 4 + 1);
+    expect(telTekens(wachtwoord)).toBeLessThan(WACHTWOORD_MAXIMUM);
+    expect(wachtwoordSchema.safeParse(wachtwoord).success).toBe(false);
+  });
+
+  it('zegt bij een te lang wachtwoord dat het om bytes gaat', () => {
+    const uitkomst = wachtwoordSchema.safeParse(EMOJI.repeat(WACHTWOORD_MAXIMUM));
+    expect(uitkomst.success).toBe(false);
+    if (!uitkomst.success) {
+      expect(uitkomst.error.issues).toHaveLength(1);
+      expect(uitkomst.error.issues[0]?.message).toContain(`${WACHTWOORD_MAXIMUM} bytes`);
+    }
+  });
+});
+
+describe('de ondergrens blijft codepunten tellen, ook nu de bovengrens bytes telt', () => {
+  it('zeven emoji zijn 28 bytes en tóch te kort — de grenzen kijken elk naar hun eigen eenheid', () => {
+    const wachtwoord = '😀'.repeat(WACHTWOORD_MINIMUM - 1);
+    expect(telBytes(wachtwoord)).toBeGreaterThan(WACHTWOORD_MINIMUM);
+    expect(wachtwoordSchema.safeParse(wachtwoord).success).toBe(false);
   });
 });
 
@@ -128,6 +192,45 @@ describe('het getal in de tekst volgt de constante', () => {
         .sort();
 
       expect(gevonden).toEqual([...sleutels].sort());
+    });
+  }
+});
+
+/**
+ * Dezelfde naad voor de bovengrens — QS8-672. De melding noemt het getal én de
+ * eenheid, en allebei moeten ze de constante volgen: *"72 tekens"* zou de oude
+ * fout in woorden zijn, en *"80 bytes"* een getal dat de server niet kent.
+ */
+describe('het getal en de eenheid van de bovengrens volgen de constante', () => {
+  const BOVENGRENS = /hoogstens (\d+) bytes|at most (\d+) bytes/i;
+
+  function genoemdeBovengrens(tekst: string): number | null {
+    const treffer = BOVENGRENS.exec(tekst);
+    if (treffer === null) return null;
+    return Number(treffer[1] ?? treffer[2]);
+  }
+
+  const catalogi = [
+    ['nl', nl],
+    ['en', en],
+  ] as const;
+
+  for (const [taalcode, catalogus] of catalogi) {
+    it(`${taalcode}: validatie.wachtwoord_lang noemt ${WACHTWOORD_MAXIMUM} bytes`, () => {
+      expect(genoemdeBovengrens(catalogus['validatie.wachtwoord_lang'])).toBe(WACHTWOORD_MAXIMUM);
+    });
+
+    it(`${taalcode}: en noemt de grens niet in tekens`, () => {
+      // De oude melding zei "72 tekens". Dat was precies de eenheid die niet klopt.
+      expect(catalogus['validatie.wachtwoord_lang']).not.toMatch(/\d+ (tekens|characters)/);
+    });
+
+    it(`${taalcode}: geen andere sleutel noemt een bovengrens in bytes`, () => {
+      const gevonden = Object.entries(catalogus)
+        .filter(([, tekst]) => genoemdeBovengrens(tekst) !== null)
+        .map(([sleutel]) => sleutel);
+
+      expect(gevonden).toEqual(['validatie.wachtwoord_lang']);
     });
   }
 });
