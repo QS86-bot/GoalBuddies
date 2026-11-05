@@ -124,6 +124,7 @@ export const en: Record<Sleutel, string> = {
     'The person you named as your witness has closed their account. Your stake is still open. Name someone else, or settle it if you have kept to it.',
   'stuurloos.wie': 'Who watches from now on?',
   'stuurloos.aanwijzen': 'Name this person',
+  'stuurloos.kies_eerst': 'First pick who watches from now on.',
   'stuurloos.niemand':
     'There is nobody in your groups to name right now. Once someone joins, you can do it here.',
   'stuurloos.afwikkelen': 'I have kept to it',
@@ -1176,6 +1177,7 @@ export const en: Record<Sleutel, string> = {
   'lijst.deel_knop': 'Share',
   'lijst.deel_terug': 'Stop sharing',
   'lijst.deel_kies': 'With which group?',
+  'lijst.deel_kies_eerst': 'First pick which group you share with.',
   'lijst.deel_geen_groep':
     'You are not in any group yet, so there is nobody to share anything with.',
   'lijst.deel_uitleg':
@@ -1432,6 +1434,8 @@ export const en: Record<Sleutel, string> = {
   'straf.een_groep': 'A whole group',
   'straf.een_persoon': 'One person',
   'straf.welke_persoon': 'Who benefits?',
+  'straf.kies_groep_eerst': 'First pick which group benefits.',
+  'straf.kies_persoon_eerst': 'First pick who benefits.',
   'straf.persoon_uitleg':
     'Until your target date passes, this person sees nothing. After that they may read your ' +
     'penalty and get a notification about it, unless they have turned that kind off.',
@@ -1507,6 +1511,8 @@ export const en: Record<Sleutel, string> = {
   'hulpvraag.bericht': 'Your message',
   'hulpvraag.bericht_hint': 'Feel free to adjust it. This goes to the group chat as your message.',
   'hulpvraag.welke_groep': 'To which group?',
+  'hulpvraag.kies_eerst': 'First pick which group your question goes to.',
+  'hulpvraag.gaat_naar': 'Goes to {groep}.',
   'hulpvraag.versturen': 'Send',
   'hulpvraag.annuleren': 'Cancel',
 

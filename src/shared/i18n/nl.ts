@@ -214,6 +214,9 @@ export const nl = {
     'De persoon die je als getuige had aangewezen, heeft zijn account opgezegd. Je inzet staat nog open. Wijs iemand anders aan, of wikkel hem af als je hem bent nagekomen.',
   'stuurloos.wie': 'Wie let er vanaf nu op?',
   'stuurloos.aanwijzen': 'Deze persoon aanwijzen',
+  // ⚠️ QS8-651: bij twee of meer kandidaten is er geen voorgeselecteerde, en de
+  //    knop staat uit tot er gekozen is. Deze zin zegt waarom hij uit staat.
+  'stuurloos.kies_eerst': 'Kies eerst wie er vanaf nu op let.',
   'stuurloos.niemand':
     'Er is nu niemand in je groepen om aan te wijzen. Zodra er iemand bijkomt, kan het hier.',
   'stuurloos.afwikkelen': 'Ik heb hem nagekomen',
@@ -1607,6 +1610,9 @@ export const nl = {
   'lijst.deel_knop': 'Delen',
   'lijst.deel_terug': 'Niet meer delen',
   'lijst.deel_kies': 'Met welke groep?',
+  // ⚠️ QS8-651: geen voorgeselecteerde groep; de deelknop staat uit tot er
+  //    gekozen is.
+  'lijst.deel_kies_eerst': 'Kies eerst met welke groep je deelt.',
   'lijst.deel_geen_groep':
     'Je zit nog in geen enkele groep, dus er is niemand om iets mee te delen.',
   'lijst.deel_uitleg':
@@ -1905,6 +1911,11 @@ export const nl = {
   'straf.een_groep': 'Een hele groep',
   'straf.een_persoon': 'Eén persoon',
   'straf.welke_persoon': 'Wie profiteert?',
+  // ⚠️ QS8-651: zit je in twee groepen, dan kiest de app er geen voor je — ook
+  //    niet als voorselectie. Een straf naar de verkeerde groep is erger dan een
+  //    straf die nog niet vastligt.
+  'straf.kies_groep_eerst': 'Kies eerst welke groep profiteert.',
+  'straf.kies_persoon_eerst': 'Kies eerst wie profiteert.',
   // ⚠️ De keerzijde van "één persoon": het is een kleinere kring, niet géén
   //    kring. Wie dat niet weet, kiest een persoon in de veronderstelling dat
   //    het onzichtbaar blijft.
@@ -2003,6 +2014,11 @@ export const nl = {
   'hulpvraag.bericht': 'Je bericht',
   'hulpvraag.bericht_hint': 'Pas het gerust aan. Dit gaat als jouw bericht naar de groepschat.',
   'hulpvraag.welke_groep': 'Naar welke groep?',
+  // ⚠️ QS8-651: dit is een van de drie routes waarlangs tegenslag de groep
+  //    bereikt (domeinregel 7). Bij twee of meer groepen is er geen standaard;
+  //    de verstuurknop staat uit tot de gebruiker er een aanwijst.
+  'hulpvraag.kies_eerst': 'Kies eerst naar welke groep je vraag gaat.',
+  'hulpvraag.gaat_naar': 'Gaat naar {groep}.',
   'hulpvraag.versturen': 'Versturen',
   'hulpvraag.annuleren': 'Annuleren',
 

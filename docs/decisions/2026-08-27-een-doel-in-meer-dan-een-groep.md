@@ -197,9 +197,23 @@ bewust blijven staan:
   de voorselectie was `groepen[0]` uit een lijst zonder `order by`, dus welke
   groep er voorgeselecteerd stond, was niet voorspelbaar. Sinds §3 is dat de
   eerst gekoppelde groep.
+
+  ⚠️ **Herzien op 05-11-2026 (QS8-651): dit antwoord is omgegaan.** Een
+  zichtbare voorselectie is een keuze die de gebruiker niet maakte, met een
+  verstuurknop die aan staat, en met teamgroepen in zicht (QS8-649) is de
+  bovenste groep met enige regelmaat de verkeerde. De hulpvraag volgt nu
+  dezelfde regel als het uitstelverzoek, via `enigeOfGekozen()`. En één regel
+  van `beslissendeGroep()` zelf is daarbij omgegaan: een oude keuze wordt bij
+  één overgebleven groep niet meer genegeerd maar geeft "geen beslisser", omdat
+  de genegeerde keuze anders stil naar de overgebleven groep verhuisde. Uitleg in
+  `docs/decisions/2026-11-05-de-eerste-groep-is-geen-keuze.md` §3.
 - **`Straf`** kiest een begunstigde groep uit `fetchMijnGroepen()` — niet uit de
   groepen van het doel — met een keuzelijst én een aparte bevestigingsstap waarin
   de consequentie uitgeschreven staat (domeinregel 5). Daar is niets stils aan.
+
+  ⚠️ **Ook herzien op 05-11-2026 (QS8-651).** De bevestigingsstap noemde de naam,
+  maar de keuzelijst stond op `groepen[0]` en `mensen[0]` voorgeselecteerd met de
+  knop "Verder" aan. Zelfde regel, zelfde beslisdocument als hierboven.
 
 - **`bewijseisVoorDoel()`** in `modules/completions` was al meervoudig gebouwd:
   hij haalt álle gekoppelde groepen op en neemt de strengste bewijseis. Dat is
