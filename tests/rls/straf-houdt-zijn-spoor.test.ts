@@ -37,6 +37,7 @@ import {
   rlsTestsConfigured,
   type TestUser,
 } from './harness';
+import { datumOver } from './datums';
 
 const SETUP_TIMEOUT = 180_000;
 const TEST_TIMEOUT = 30_000;
@@ -69,7 +70,7 @@ describe.skipIf(!rlsTestsConfigured)('een bevestigde straf en het spoor dat blij
   async function versDoel(titel: string): Promise<string> {
     const doel = await adminDb()
       .from('goals')
-      .insert({ owner_id: w.alice.id, title: titel, target_date: '2027-01-01' })
+      .insert({ owner_id: w.alice.id, title: titel, target_date: datumOver(60) })
       .select('id')
       .single();
     if (doel.error) throw new Error(`doel ${titel}: ${doel.error.message}`);

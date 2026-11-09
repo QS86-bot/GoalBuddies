@@ -2,6 +2,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import { addDays, now, userCycle } from '../../src/shared/time';
 import { adminDb, createTestUser, removeTestUsers, rlsTestsConfigured, type TestUser } from './harness';
+import { datumOver } from './datums';
 
 /**
  * QS8-127 (Q-TODO A37) — één gehaald weekdoel redt de week.
@@ -42,7 +43,7 @@ describe.skipIf(!rlsTestsConfigured)('QS8-127 — één gehaald weekdoel redt de
         owner_id: alice.id,
         title: 'Reeksdoel',
         category: 'other',
-        target_date: '2026-12-31',
+        target_date: datumOver(60),
       })
       .select('id')
       .single();

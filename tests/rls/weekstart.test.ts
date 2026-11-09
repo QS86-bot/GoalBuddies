@@ -17,6 +17,7 @@ import {
   rlsTestsConfigured,
   type TestUser,
 } from './harness';
+import { datumOver } from './datums';
 
 /**
  * **Je week-startdag verzetten kost je geen weekdoel** — QS8-138, migratie 0139.
@@ -129,7 +130,7 @@ describe.skipIf(!rlsTestsConfigured)('de week-startdag verzetten', () => {
         owner_id: alice.id,
         title: 'WEEKSTART doel',
         category: 'other',
-        target_date: '2026-12-31',
+        target_date: datumOver(60),
       })
       .select('id')
       .single();
@@ -186,7 +187,7 @@ describe.skipIf(!rlsTestsConfigured)('de week-startdag verzetten', () => {
         owner_id: bram.id,
         title: 'WEEKSTART doel van Bram',
         category: 'other',
-        target_date: '2026-12-31',
+        target_date: datumOver(60),
       })
       .select('id')
       .single();
@@ -232,7 +233,7 @@ describe.skipIf(!rlsTestsConfigured)('de week-startdag verzetten', () => {
         owner_id: carla.id,
         title: 'WEEKSTART doel van Carla',
         category: 'other',
-        target_date: '2026-12-31',
+        target_date: datumOver(60),
       })
       .select('id')
       .single();
