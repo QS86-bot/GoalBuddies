@@ -32,6 +32,7 @@ import {
   type TestUser,
 } from './harness';
 import { psql, stackBeschikbaarOfFaal } from './psql-stack';
+import { datumOver } from './datums';
 
 const TEST_TIMEOUT = 60_000;
 const SETUP_TIMEOUT = 180_000;
@@ -147,7 +148,7 @@ describe.skipIf(!rlsTestsConfigured || !beschikbaar)('de Dagzet telt niet mee', 
 
         const doel = await ik.db
           .from('goals')
-          .insert({ owner_id: ik.id, title: 'Doel met Dagzet', target_date: '2027-01-01' })
+          .insert({ owner_id: ik.id, title: 'Doel met Dagzet', target_date: datumOver(60) })
           .select('id')
           .single();
         if (doel.error || doel.data === null) throw new Error(`doel: ${doel.error?.message}`);

@@ -10,6 +10,7 @@ import {
   type TestUser,
 } from './harness';
 import { psql } from './psql-stack';
+import { datumOver } from './datums';
 
 /**
  * De uitnodigingskaart na een vertrek — QS8-502, migratie 0277.
@@ -108,7 +109,7 @@ describe.skipIf(!rlsTestsConfigured)('de uitnodigingskaart na een vertrek', () =
         owner_id: eigenaar.id,
         title: 'Stoppen met drinken',
         status: 'active',
-        target_date: '2026-12-31',
+        target_date: datumOver(60),
       })
       .select('id')
       .single();

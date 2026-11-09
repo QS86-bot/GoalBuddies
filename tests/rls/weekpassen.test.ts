@@ -31,6 +31,7 @@ import {
   rlsTestsConfigured,
   type TestUser,
 } from './harness';
+import { datumOver } from './datums';
 
 const SETUP_TIMEOUT = 180_000;
 const TEST_TIMEOUT = 30_000;
@@ -111,7 +112,7 @@ describe.skipIf(!rlsTestsConfigured)('QS8-81 — Weekpassen', () => {
           owner_id: userId,
           title: titel,
           category: 'other',
-          target_date: '2026-12-31',
+          target_date: datumOver(60),
         })
         .select('id')
         .single();
@@ -981,7 +982,7 @@ describe.skipIf(!rlsTestsConfigured)('QS8-81 — Weekpassen', () => {
           owner_id: f.bob.id,
           title: 'per ongeluk aangemaakt doel',
           category: 'other',
-          target_date: '2027-01-01',
+          target_date: datumOver(60),
         })
         .select('id')
         .single();
@@ -998,7 +999,7 @@ describe.skipIf(!rlsTestsConfigured)('QS8-81 — Weekpassen', () => {
           owner_id: f.bob.id,
           title: 'doel met een week erin',
           category: 'other',
-          target_date: '2027-01-01',
+          target_date: datumOver(60),
         })
         .select('id')
         .single();
@@ -1065,7 +1066,7 @@ describe.skipIf(!rlsTestsConfigured)('QS8-81 — Weekpassen', () => {
         owner_id: f.bob.id,
         title: 'meteen af',
         category: 'other',
-        target_date: '2027-01-01',
+        target_date: datumOver(60),
         status: 'completed',
       });
 
@@ -1087,7 +1088,7 @@ describe.skipIf(!rlsTestsConfigured)('QS8-81 — Weekpassen', () => {
           description: null,
           category: 'other',
           identity_statement: null,
-          target_date: '2027-01-01',
+          target_date: datumOver(60),
           available_hours_per_week: 4,
         })
         .select('id, status')
