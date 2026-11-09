@@ -3,6 +3,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { brokken, IDS_PER_VERZOEK } from '../../src/shared/idlijst';
 
 import { adminDb, createTestUser, removeTestUsers, rlsTestsConfigured, type TestUser } from './harness';
+import { datumOver } from './datums';
 
 /**
  * De 16 KB-klif in de responseheader van PostgREST — QS8-368.
@@ -165,7 +166,7 @@ describe.skipIf(!rlsTestsConfigured)('een id-lijst boven de 16 KB-klif', () => {
       const admin = adminDb();
       const doel = await admin
         .from('goals')
-        .insert({ owner_id: alice.id, title: 'idlijst-klif', target_date: '2027-01-01' })
+        .insert({ owner_id: alice.id, title: 'idlijst-klif', target_date: datumOver(60) })
         .select('id')
         .single();
       if (doel.error) throw new Error(`doel: ${doel.error.message}`);

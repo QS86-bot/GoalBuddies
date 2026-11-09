@@ -4,6 +4,7 @@ import { addDays, now, userCycle } from '../../src/shared/time';
 
 import { seizoensmomenten } from './seizoensmoment';
 import { adminDb, createTestUser, removeTestUsers, rlsTestsConfigured } from './harness';
+import { datumOver } from './datums';
 
 /**
  * **Een testbestand schrijft nooit buiten zijn eigen fixture** — QS8-145.
@@ -144,7 +145,7 @@ describe.skipIf(!rlsTestsConfigured)('een globale schrijver raakt geen vreemde f
         owner_id: buur.id,
         title: 'NEVENSCHADE vreemd doel',
         category: 'other',
-        target_date: '2026-12-31',
+        target_date: datumOver(60),
       })
       .select('id')
       .single();
@@ -257,7 +258,7 @@ describe.skipIf(!rlsTestsConfigured)('een globale schrijver raakt geen vreemde f
         owner_id: ik.id,
         title: 'NEVENSCHADE eigen doel',
         category: 'other',
-        target_date: '2026-12-31',
+        target_date: datumOver(60),
       })
       .select('id')
       .single();

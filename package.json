@@ -71,6 +71,7 @@
     "aansluiting:controle": "node scripts/aansluiting-controle.mjs",
     "afstemgetal:controle": "node scripts/afstemgetal-controle.mjs",
     "verbindingen:controle": "node scripts/verbindingen-controle.mjs",
+    "datums:controle": "node scripts/vaste-datum-controle.mjs",
     "rem:controle": "node scripts/rem-controle.mjs",
     "registerdrift:controle": "node scripts/registerdrift-controle.mjs",
     "register:controle": "node scripts/migratieregister-controle.mjs",
