@@ -3,7 +3,7 @@ import { join } from 'node:path';
 
 import { describe, expect, it } from 'vitest';
 
-import { actiefTabblad, TABBLADEN, toontTaakbalk, ZONDER_TAAKBALK } from '../../src/shared/ui/taakbalk';
+import { actiefTabblad, TABBLADEN, toontTaakbalk, ZONDER_TAAKBALK } from '../../src/shared/ui/tabbladen';
 import { ZONDER_PUSH } from '../../scripts/schermingang-controle.mjs';
 
 /**

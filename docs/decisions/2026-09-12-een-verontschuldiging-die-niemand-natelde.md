@@ -16,7 +16,7 @@ geen balk meer.** De `<Tabs.Screen>`-regels staan er nog als *routedefinitie*,
 dus de controle bleef groen terwijl zijn onderbouwing onwaar was geworden.
 
 De echte ingang is de `<Link>` in `src/shared/ui/Taakbalk.tsx`, gevoed door
-`TABBLADEN` in `src/shared/ui/taakbalk.ts`.
+`TABBLADEN` in `src/shared/ui/tabbladen.ts`.
 
 ## Wat dat kostte
 

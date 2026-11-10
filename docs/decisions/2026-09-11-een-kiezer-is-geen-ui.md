@@ -101,7 +101,7 @@ bestand en niet de map: `lib/observability` en `lib/env` zijn dwarsdoorsnijdend.
 ⚠️ **Vier vormen is niet alle vormen.** Beide regels lezen de bronstring, dus
 `const p = '…/modules/…'; await import(p)` ontsnapt — 📏 gemeten, groen bij allebei. En
 testbestanden staan in `ignores`, wat vandaag niet leeg is: `src/shared/ui/tips.test.ts` en
-`src/shared/ui/categoriemerk.test.ts` lenen allebei `CATEGORIEEN` uit `modules/goals`. De
+`src/shared/ui/merken.test.ts` lenen allebei `CATEGORIEEN` uit `modules/goals`. De
 grens is dus *"shared kent de datalaag niet búíten tests"*, en dat is een keuze — een test
 die een moduleconstante leent om shared-gedrag te toetsen, dupliceren is erger. Allebei de
 grenzen staan als eigen geval in de test hieronder, zodat ze opvallen als ze verschuiven.
