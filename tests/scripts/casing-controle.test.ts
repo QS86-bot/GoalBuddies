@@ -1,10 +1,7 @@
-import { execFileSync } from 'node:child_process';
-import { join } from 'node:path';
-
 import { describe, expect, it } from 'vitest';
 
 // ⚠️ Een `.mjs` zonder eigen typings: zelfde patroon als `tekst-controle.test.ts`.
-import { casingBotsingen } from '../../scripts/casing-controle.mjs';
+import { casingBotsingen, trackedPaden } from '../../scripts/casing-controle.mjs';
 
 /**
  * QS8-678 — de grendel op bestanden die alleen in hoofdletters verschillen.
@@ -19,12 +16,7 @@ const botsingen = (...paden: string[]): string[][] => casingBotsingen(paden) as 
 
 describe('de belofte op de echte repo', () => {
   it('geen twee tracked bestanden verschillen alleen in hoofdletters', () => {
-    const uit = execFileSync('git', ['ls-files', '-z'], {
-      cwd: join(__dirname, '..', '..'),
-      encoding: 'utf8',
-      maxBuffer: 64 * 1024 * 1024,
-    });
-    expect(botsingen(...uit.split('\0').filter(Boolean))).toEqual([]);
+    expect(botsingen(...(trackedPaden() as string[]))).toEqual([]);
   });
 });
 
@@ -40,7 +32,19 @@ describe('wat de controle moet vinden', () => {
   });
 
   it('een map die alleen in hoofdletters verschilt', () => {
-    expect(botsingen('src/Ui/a.ts', 'src/ui/a.ts')).toHaveLength(1);
+    expect(botsingen('src/Ui/a.ts', 'src/ui/a.ts')).toContainEqual(['src/Ui', 'src/ui']);
+  });
+
+  it('een map met verschillende bestanden erin', () => {
+    expect(botsingen('src/Ui/a.ts', 'src/ui/b.ts')).toEqual([['src/Ui', 'src/ui']]);
+  });
+
+  it('een platformsuffix naast een component', () => {
+    expect(botsingen('src/Foo.tsx', 'src/foo.web.ts')).toHaveLength(1);
+  });
+
+  it('Unicode in andere normalisatie', () => {
+    expect(botsingen('a/caf\u00e9.ts', 'a/cafe\u0301.ts')).toHaveLength(1);
   });
 
   it('meldt elke groep apart', () => {

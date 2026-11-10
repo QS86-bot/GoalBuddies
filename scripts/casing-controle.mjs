@@ -24,6 +24,9 @@
  * Beide vallen onder één sleutel: het pad, kleingeschreven, zonder laatste
  * extensie. `Foo.tsx` en `foo.test.ts` botsen niet (stam `foo` tegen `foo.test`).
  *
+ * Ook gemeld: een platformsuffix (`Foo.tsx` naast `foo.web.ts`), mappen die alleen in
+ * hoofdletters verschillen, en Unicode-normalisatie (NFC). Zie de tests.
+ *
  * Draaien: `npm run casing:controle`. Hoort mee in de poort en in CI.
  */
 
@@ -42,21 +45,32 @@ const WORTEL = fileURLToPath(new URL('..', import.meta.url));
  * @returns {string[][]} per botsing de paden die samenvallen, gesorteerd
  */
 export function casingBotsingen(paden) {
-  const groepen = new Map();
-  for (const pad of new Set(paden)) {
+  const bestandsgroepen = new Map();
+  const mapgroepen = new Map();
+  for (const ruw of new Set(paden)) {
+    const pad = ruw.normalize('NFC');
     const laatste = pad.lastIndexOf('.');
     const streek = pad.lastIndexOf('/');
-    const stam = laatste > streek + 1 ? pad.slice(0, laatste) : pad;
+    let stam = laatste > streek + 1 ? pad.slice(0, laatste) : pad;
+    // Metro zoekt `./Foo` eerst als `Foo.web.*`; die suffix hoort bij de stam.
+    stam = stam.replace(/\.(web|native|ios|android|d)$/i, '');
     const sleutel = stam.toLowerCase();
-    groepen.set(sleutel, [...(groepen.get(sleutel) ?? []), pad]);
+    bestandsgroepen.set(sleutel, [...(bestandsgroepen.get(sleutel) ?? []), ruw]);
+    const delen = pad.split('/').slice(0, -1);
+    for (let i = 1; i <= delen.length; i++) {
+      const map = delen.slice(0, i).join('/');
+      const set = mapgroepen.get(map.toLowerCase()) ?? new Set();
+      set.add(map);
+      mapgroepen.set(map.toLowerCase(), set);
+    }
   }
-  return [...groepen.values()]
-    .filter((groep) => groep.length > 1)
-    .map((groep) => groep.sort())
-    .sort((a, b) => a[0].localeCompare(b[0]));
+  const bestanden = [...bestandsgroepen.values()].filter((g) => g.length > 1).map((g) => g.sort());
+  // Mappen die alleen in hoofdletters verschillen, ook met verschillende bestanden erin.
+  const mappen = [...mapgroepen.values()].filter((g) => g.size > 1).map((g) => [...g].sort());
+  return [...bestanden, ...mappen].sort((a, b) => a[0].localeCompare(b[0]));
 }
 
-function trackedPaden() {
+export function trackedPaden() {
   const uit = execFileSync('git', ['ls-files', '-z'], {
     cwd: WORTEL,
     encoding: 'utf8',
