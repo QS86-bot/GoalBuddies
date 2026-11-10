@@ -3653,6 +3653,15 @@ bouwen.
    van Quinten en nooit uit een sessie die inlogt. De sessie draait op de omgeving
    `goalbuddies-habithuddle`, waar alleen `habithuddle.com` bij openstaat.
 
+   ⚠️ **De voorwaarden van Habit Huddle verbieden dit** (habithuddle.com/tos, in de bron
+   gecontroleerd op 10-11-2026): §7 geen reverse engineering van hun software, §10 geen
+   geautomatiseerde toegang zonder toestemming en geen commercieel gebruik zonder schriftelijke
+   toestemming. De eerste sessie stopte daar terecht, zoals haar opdracht zei. Quinten koos daarna
+   op 10-11-2026 bewust voor geautomatiseerd "op eigen risico", tegen mijn advies in, met deze
+   grenzen: alleen publieke pagina's, nooit ingelogd, hooguit 40 verzoeken, `robots.txt` volgen,
+   stoppen bij een blokkade, geen code, teksten, beeldmerk of assets overnemen. **Breid dat niet
+   uit zonder een nieuw besluit van hem.** Dit is geen juridisch advies.
+
 ### 0. Begin bij de doorloop van 30-08 — niet in het reviewdossier
 
 ⚠️ **Dit punt zei tot 31-08 het tegenovergestelde**, en het is leerzaam waarom.
