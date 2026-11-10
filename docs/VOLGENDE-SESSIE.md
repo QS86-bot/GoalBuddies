@@ -2353,6 +2353,14 @@ kant op te bouwen.
   een nieuwe sessie geldt, is niet vastgesteld. **Meet de bereikbaarheid met één statuscode,
   probeer niet te omzeilen, en schrijf op dat het ongemeten is.** Dit is wat punt 1 van de
   poort QS8-649 openhoudt.
+
+  ✅ **Deels beantwoord op 10-11-2026, gemeten.** Via `create_environment` met
+  `switch_session: network_only` ging `habithuddle.com` in een lopende sessie binnen seconden
+  van `403` op de CONNECT naar `200`. Dat is de route met de omgevingstools. Of dezelfde
+  wijziging, door de gebruiker in het menu gedaan, ook een lopende sessie bereikt, blijft
+  ongemeten; de tool waarschuwt zelf dat de proxy een gecachte weergave tot ongeveer een uur kan
+  houden. Vraag dus een omgeving aan met een concrete behoefte in plaats van te wachten op een
+  menuwijziging, en meet daarna met één statuscode.
 - **⚠️ Tel rijen en geen nummers (04-11).** De issueknip uit het spec-voorstel noemde "elf"
   issues, maar nummer 7 is gesplitst in 7a en 7b: het zijn er **twaalf**. Neem aantallen uit
   de tabel zelf.
@@ -3637,6 +3645,13 @@ bouwen.
 4. **Meet je iets anders dan het beslisdocument zegt**, corrigeer het dan zichtbaar, met de
    meting erbij en met wat er eerst stond. Zo is het getal over `is_group_admin()` op
    04/05-11 twee keer gecorrigeerd; zie "De valkuilen van 03-11 t/m 05-11-2026".
+5. **Er loopt sinds 10-11-2026 een ontleding van Habit Huddle (REA) in een aparte sessie**, op
+   branch `claude/habithuddle-app-ontleding`, met als uitkomst een nog niet bestaand bestand
+   habit-huddle-app-ontleding.md in docs/research. Begin daar niet nog een keer aan: kijk eerst
+   met `git branch -r` of de branch er is. Habit Huddle laat alleen inloggen met Google, Apple
+   of Discord (gemeten op `/app/start`), dus de ingelogde schermen komen uit schermafbeeldingen
+   van Quinten en nooit uit een sessie die inlogt. De sessie draait op de omgeving
+   `goalbuddies-habithuddle`, waar alleen `habithuddle.com` bij openstaat.
 
 ### 0. Begin bij de doorloop van 30-08 — niet in het reviewdossier
 
