@@ -8,7 +8,7 @@
  *
  * ⚠️ **Een kopie van `CATEGORIEEN` uit `modules/goals`, en met opzet geen
  *    import.** `shared` mag niet van een module afhangen. De prijs is een naad,
- *    en die staat onder test: `categoriemerk.test.ts` legt de sleutels hier
+ *    en die staat onder test: `merken.test.ts` legt de sleutels hier
  *    naast `CATEGORIEEN` en wordt rood zodra er een gebied bijkomt dat geen
  *    pictogram heeft. Zelfde vorm en zelfde reden als `TIPSET_PER_CATEGORIE`.
  *

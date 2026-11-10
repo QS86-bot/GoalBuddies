@@ -64,7 +64,7 @@ besluit doet er nul.
 ## Wie hem met reden niet krijgt — acceptatiecriterium 3
 
 Vier rijen, en ze staan met hun reden in `ZONDER_TAAKBALK` in
-`src/shared/ui/taakbalk.ts`, niet alleen hier.
+`src/shared/ui/tabbladen.ts`, niet alleen hier.
 
 | Scherm | Waarom niet |
 |---|---|

@@ -12,7 +12,7 @@ const DOELCOACH = join(WORTEL, 'supabase', 'functions', 'doelcoach', 'index.ts')
  * De Doelcoach kent dezelfde gebieden als de database — QS8-288.
  *
  * ⚠️ **De lijst met doelgebieden staat op zeven plekken, met opzet.** `shared`,
- *    `modules/goals`, `shared/ui/categoriemerk`, `shared/ui/tips`,
+ *    `modules/goals`, `shared/ui/merken`, `shared/ui/tips`,
  *    `modules/ai/uitvoer`, deze Edge Function (twee keer) en de drie
  *    CHECK-constraints. Ze mogen elkaar niet importeren — een Edge Function
  *    draait op Deno en kan niets uit `src/` halen — dus de afspraak is dat elke

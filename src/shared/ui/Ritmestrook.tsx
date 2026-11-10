@@ -4,7 +4,7 @@ import { t } from '../i18n';
 import { radius, useTheme } from '../theme';
 import type { IsoDate } from '../time';
 
-import { ritmestrook } from './ritmestrook';
+import { ritmestrook } from './strookdagen';
 
 /**
  * De week van één ritme-weekdoel, als zeven vakjes — QS8-301.

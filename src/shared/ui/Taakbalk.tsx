@@ -6,7 +6,7 @@ import { t, type Sleutel } from '../i18n';
 import { space, useTheme } from '../theme';
 
 import { focusRing } from './a11y';
-import { actiefTabblad, TABBLADEN, toontTaakbalk } from './taakbalk';
+import { actiefTabblad, TABBLADEN, toontTaakbalk } from './tabbladen';
 
 /**
  * De taakbalk, op élk scherm dat er een hoort te hebben — QS8-437.
