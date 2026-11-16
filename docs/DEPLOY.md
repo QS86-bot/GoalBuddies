@@ -123,8 +123,9 @@ Een migratie toepassen gaat zo:
    scripts/schema-opbouwen.sh
    ```
 
-3. **Pas hem toe** (MCP `apply_migration`, of `npm run db:push`) en **trek het
-   register meteen daarna gelijk**:
+3. **Pas hem toe** (MCP `apply_migration`, of met `psql` zoals §2.2b beschrijft;
+   `npm run db:push` bestaat sinds 01-09-2026 niet meer) en **trek het register
+   meteen daarna gelijk**:
 
    ```bash
    npm run register:uitlijnen
@@ -147,7 +148,7 @@ Een migratie toepassen gaat zo:
    tussen de geslaagde controles en las hij als "gelukt". Wil je dat een
    ontbrekende sleutel een fout is — en dat wil je overal waar hij er wél hoort
    te zijn — draai hem dan met `--streng` of met `REGISTER_CONTROLE_STRENG=1`.
-   `npm run db:push` doet dat zelf.
+   (`npm run db:push` deed dat vroeger zelf; zie §2.2b voor waarom hij weg is.)
 
 ⚠️⚠️ **Op `storage.objects` kun je alles behalve een index — 📏 gemeten
 12-09-2026 (QS8-439).** Die tabel is eigendom van `supabase_storage_admin`, en
