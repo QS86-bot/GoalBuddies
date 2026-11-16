@@ -75,13 +75,21 @@ import { beforeAll, describe, expect, it } from 'vitest';
  *       schrijfactie. Twee kanten, want een absoluut pad landt in de repo en
  *       een relatief pad in de `cwd` van het kind.
  *
- * ⚠️ **Wat grendel 3 níet dekt, en dat is gemeten en niet weggeredeneerd:**
- *    `git status --porcelain` ziet geen pad dat `.gitignore` uitsluit, dus een
- *    script dat bij import in `dist/` of `node_modules/` schrijft komt er niet
- *    uit. De historische gevallen (`sync-edge-shared.mjs`, `maak-iconen.mjs`)
- *    schreven allebei in de bewaakte boom. Hij leunt bovendien op de regel van
- *    QS8-442 dat een testbestand nooit buiten zijn eigen fixture schrijft —
- *    zonder die regel zou een gelijktijdige suite deze toets rood kunnen maken.
+ * ⚠️⚠️ **De schrijfgrens is sinds QS8-646 gesloten met Node's permissiemodel.**
+ *    📏 Tot dan zag grendel 3 alleen de repo (`git status --porcelain`, en dus
+ *    geen `.gitignore`-pad) en de `cwd` van het kind: een `writeFileSync` naar
+ *    `/tmp` of `dist/` liet 5/5 groen en het bestand stond er. Het kind draait
+ *    nu met `--permission --allow-fs-read=* --allow-fs-write=<wegwerpmap>`, dus
+ *    elke andere schrijfactie is `ERR_ACCESS_DENIED` en komt als worp in grendel 1.
+ *    De sonde meldt `PERMISSIEMODEL UIT` als het model niet werkt (te oude Node,
+ *    vlag weg), want anders is de grens een aanname. Alleen `--permission`
+ *    weghalen ijkt de sonde niet — haal alle drie de vlaggen weg.
+ *    De boomkant en de lege-mapcontrole blijven: de wegwerpmap is toegestaan.
+ *    Mutaties en uitslagen: `docs/decisions/2026-10-05-de-grendel-zag-alleen-de-luide-helft.md` §8.
+ *    Leesrecht is `*`; een script dat bij import legitiem buiten de wegwerpmap
+ *    moet schrijven vraagt een eigen pad in `--allow-fs-write`, mét reden.
+ *    Hij leunt bovendien op de regel van QS8-442 dat een testbestand nooit buiten
+ *    zijn eigen fixture schrijft.
  */
 const WORTEL = process.cwd();
 const MAP = join(WORTEL, 'scripts');
@@ -114,8 +122,14 @@ function boomstand(): string {
 }
 
 /** De code die het kindproces draait: importeer alles, noteer wat je bereikt. */
-function kindcode(namen: string[], bereiktPad: string): string {
+function kindcode(namen: string[], bereiktPad: string, sondePad: string): string {
   return [
+    // ⚠️ De sonde: schrijf buiten de toegestane map. Lukt dat, dan staat het
+    //    permissiemodel niet aan en is de hele schrijfgrendel een aanname — dat
+    //    meldt de toets dan als eigen fout in plaats van stil groen te blijven.
+    'const { writeFileSync: sondeSchrijf, rmSync: sondeWis } = await import("node:fs");',
+    `try { sondeSchrijf(${JSON.stringify(sondePad)}, "x"); sondeWis(${JSON.stringify(sondePad)}); console.log("PERMISSIEMODEL UIT"); }`,
+    'catch (f) { if (f.code !== "ERR_ACCESS_DENIED") { console.log("SONDE: " + f.code); } }',
     // ⚠️ Dit is de oorspronkelijke belofte van QS8-599 en geen opsmuk: zonder
     //    argv wierp `poort.mjs` destijds uit `pathToFileURL(undefined)`.
     'process.argv.length = 1;',
@@ -155,11 +169,23 @@ function meet(): Run {
   mkdirSync(werkmap);
 
   const voor = boomstand();
-  const r = spawnSync(process.execPath, ['--input-type=module', '-e', kindcode(namen, bereiktPad)], {
-    cwd: werkmap,
-    encoding: 'utf8',
-    stdio: ['ignore', 'pipe', 'pipe'],
-  });
+  const sondePad = join(tmpdir(), `hoofdwacht-sonde-${process.pid}`);
+  const r = spawnSync(
+    process.execPath,
+    [
+      '--permission',
+      '--allow-fs-read=*',
+      `--allow-fs-write=${tuin}`,
+      '--input-type=module',
+      '-e',
+      kindcode(namen, bereiktPad, sondePad),
+    ],
+    {
+      cwd: werkmap,
+      encoding: 'utf8',
+      stdio: ['ignore', 'pipe', 'pipe'],
+    },
+  );
   const na = boomstand();
 
   return {
