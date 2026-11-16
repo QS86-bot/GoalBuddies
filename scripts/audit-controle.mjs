@@ -214,7 +214,8 @@ export const NAGEKEKEN = {
     ernst: 'high',
     advisories: [
       1240912, 1244014, 1244015, 1244016, 1244017, 1244018, 1244019, 1244020, 1244021, 1244022,
-      1244023, 1244024,
+      1244023, 1244024, 1245925, 1245926, 1245927, 1245928, 1245929, 1246031, 1246032, 1246033,
+      1246034,
     ],
     reparatie: 'gratis',
     in_bundel: false,
@@ -236,7 +237,24 @@ export const NAGEKEKEN = {
       '`npm audit fix --omit=dev --dry-run` doet 127 toevoegingen, 37 verwijderingen en 64 ' +
       'wijzigingen. Bewust niet in QS8-669 gedaan — dat issue raakt de lockfile niet. De 4 ' +
       'nieuwe `verifyCertificateChain`- en `forge.http`-advisories tellen alleen als de app of ' +
-      'een edge-functie `node-forge` aanroept; geen enkele doet dat.',
+      'een edge-functie `node-forge` aanroept; geen enkele doet dat. ' +
+      '📏 **Opnieuw nagekeken op 16-11-2026 (QS8-680):** negen advisories erbij, 1245925 t/m ' +
+      '1245929 (`<=1.4.0`) en 1246031 t/m 1246034 (`<=1.4.2`). Twee zijn high: ASN.1-uitputting ' +
+      'via BIT STRING-decodering (`asn1.fromDer`) en het vervalsen van een RSA ' +
+      'PKCS#1 v1.5-handtekening met een niet-canonieke `DigestInfo`. Dat tweede gaat net als ' +
+      '1240912 over vertrouwen en telt alleen als iets met deze bibliotheek een handtekening ' +
+      'verifieert. De overige zeven zijn low of moderate (onder meer een `pathLenConstraint` ' +
+      'dat `verifyCertificateChain()` niet afdwingt, Ed25519-sleutels van kleine orde, ' +
+      '`forge.http` en twee TLS-clientcrashes). Zelfde pakket, versie 1.4.0, zelfde route: ' +
+      '`npm ls` zet hem alleen onder `expo > @expo/cli` en `@expo/code-signing-certificates`. ' +
+      'Verse `npm run build` met dummy-EXPO_PUBLIC-waarden: **nul** treffers op ' +
+      '`Too few bytes to read ASN.1`, `Invalid PEM formatted message`, `Cannot read PKCS#12` ' +
+      'en `verifyCertificateChain`, die alle vier wél in `node-forge/lib` staan, met `supabase` ' +
+      'en `react-native-web` als positieve controle. Nul imports in `src/`, `app/` en ' +
+      '`supabase/functions/`. `Unsupported hash algorithm` is ook geprobeerd en staat niet in ' +
+      'het pakket, dus die telt niet mee. Aan de weging verandert niets, alleen aan wat hier ' +
+      'geregistreerd staat. `npm audit` noemt `fixAvailable: true`; niet gedaan, want dat ' +
+      'raakt de lockfile.',
   },
   compression: {
     ernst: 'high',
