@@ -1,8 +1,8 @@
 # Habit Huddle — ontleding van de app (onder /app)
 
-> Status 10-11-2026: het **publieke deel** is ontleed (de aanmeldflow op `/app/start`),
-> na een bewuste keuze van Quinten tegen de voorwaarden in (§2). Het **ingelogde deel**
-> is niet gedaan en wacht op schermafbeeldingen van Quinten (§6).
+> Status 16-11-2026: het **publieke deel** (aanmeldflow, §7) is ontleed na een bewuste keuze
+> van Quinten tegen de voorwaarden in (§6). Het **ingelogde deel** is ontleed op basis van 19
+> schermafbeeldingen van Quinten (§12 t/m §16). Wat daarop niet te zien is, staat in §17.
 > Aanvulling op `docs/research/habit-huddle-teardown.md` (publieke pagina's, 15-08-2026).
 > Alle beschrijvingen zijn in eigen woorden; niets van hun tekst, code of beeld staat in de repo.
 
@@ -199,3 +199,123 @@ afbeeldingen komen niet in dit bestand.
 
 Quinten levert de schermen uit §10. Daarna schrijf ik ze uit en trek ik de conclusies voor één
 afgebakend issue (bijvoorbeeld de vraagvolgorde van onze doelopsplitsing), niet voor alles tegelijk.
+
+## 12. Het ingelogde deel — bron en werkwijze
+
+Bron: 19 schermafbeeldingen uit Quintens eigen browser op 16-11-2026, zonder zijn account of
+sessie aan mij af te staan. Elke bewering hieronder is **GEMETEN: schermafbeelding + het
+schermnummer van Quinten** (genoemd als *s1* t/m *s19*, in uploadvolgorde), tenzij er
+AFGELEID bij staat. Namen, e-mailadressen en profielgegevens op de afbeeldingen (van
+Quinten en van anderen) zijn niet overgenomen. Quinten gaf geen regel per scherm; wat een
+scherm doet, lees ik alleen af van wat erop staat.
+
+Navigatie (s1): Today, Checkins, Discover, Profile, Stats, Achievements, Subscribe,
+Style Studio, Settings. Bovenin altijd een streakteller, een abonnementsster, zoeken en
+meldingen. Links bovenaan een niveau met XP-balk.
+
+## 13. Dagritme en vergevingsmechanismen — GEMETEN
+
+- **Vandaag (s1):** een weekstrook van zeven dagen die **eindigt op vandaag** (dinsdag t/m
+  maandag), dus een rollende week en niet een week met een vaste startdag. Daaronder drie
+  tellers: streak freezes, "wave streaks" en XP vandaag (0 van 30). Dan de gewoonte met eigen
+  streak en een afvinkcirkel, en de groep met kettinglengte en ledenaantal.
+- **Stats (s5):** over 30 dagen, 90 dagen, jaar of altijd. Een kalender "dagen dat je kwam
+  opdagen" waarvan de kolommen op **zondag** beginnen, een verdeling over ochtend, middag,
+  avond en nacht, en een teller "ceiling days". Een dag zonder check-in is een **lege, neutrale
+  tegel**, niet rood of doorgestreept. Een legenda onderscheidt "Floor" van het plafond.
+- **Weekstart (s13):** in de profielinstellingen een veld "Week Starts On", hier op zondag,
+  naast een tijdzoneveld. De kalender op s5 begint op die dag. De rollende strook op s1 doet
+  dat niet. **AFGELEID:** de weekstart stuurt hier de weergave (de kalender), en ik zie niet
+  dat hij streaks of tellingen bepaalt. Dat is niet vast te stellen op deze afbeeldingen.
+- **Streak freezes (s16, s17):** een eigen instellingenpagina. Ze werken zo, in eigen woorden:
+  vanaf een reeks van zeven wordt na een gemiste dag 's nachts automatisch een freeze verbruikt,
+  en één freeze dekt die dag in álle groepen. Heb je een kortere reeks, of kwam de freeze na de
+  gemiste dag, dan toont de check-inpagina vanaf 08:00 de volgende dag een knop om gisteren
+  alsnog te dekken. Je krijgt er één na je tweede check-indag, daarna verdien je er per 30
+  check-indagen één bij; een betaald abonnement start met 3 (jaar) of 1 (maand). Maximaal 5.
+- **Vakantiemodus (s16, s17):** tot 14 dagen pauze voor alle groepen tegelijk, met behoud van je
+  streaks. Gemarkeerd met een ster (betaald, **AFGELEID** uit het symbool).
+- **Pauze per groep (s14):** knoppen "Take a break" en "Leave huddle" naast elkaar, plus een
+  dempknop die joins, gewoontewijzigingen, mijlpalen en samenvattingen stopt maar reacties en
+  applaus op je eigen check-ins laat doorkomen.
+
+## 14. De gewoonte en de groep — GEMETEN
+
+- **Gewoonte met twee niveaus (s14):** een regel voor de vloer en een voor het plafond, met
+  knoppen om te bewerken of te vervangen. Een oog-pictogram achter "Current Habit" wijst op een
+  zichtbaarheidskeuze (**AFGELEID**, de werking niet gezien).
+- **Groep (s1):** één gewoonte per groep, ledenaantal, een kettingteller en een uitnodigknop.
+  De groep in de afbeeldingen heeft één lid; een groep met meerdere leden is **niet** gezien.
+- **Feed (s2):** een globale lijst van check-ins van anderen. Per item: wie, bij welke groep (of
+  "Solo"), een Join-link, applaus, reactie, delen, en per persoon een streak- en kettingcijfer.
+  Een deel van de teksten is automatisch ("joined today").
+- **Discover (s3):** mensen zoeken, uitnodigcode, leaderboards, Hall of Fame, bibliotheek,
+  topgroepen (deels als "Sponsored" gemarkeerd, met ledenaantal, gewoonte en een zin over
+  identiteit en doel), en een lijst van 184 open groepen.
+- **Profiel (s4):** publiek profiel met dagstreak, beste streak, aantal ingecheckte dagen, aantal
+  groepen, freeze-tegoed, en tabs voor check-ins, groepen, stats en trofeeën. De trofeeëntab is
+  niet gezien.
+
+## 15. Beloningslaag en commercie — GEMETEN
+
+- **Achievements (s6, s7, s9, s10):** groepen per soort: streak-mijlpalen (eerste check-in tot
+  een jaar), totaal aantal check-ins (5 tot 750), sociaal (applaus geven, reageren),
+  groepen (meedoen, aanmaken, ledenaantal van je eigen groep: 5, 10, 25), tijdstip (vóór 07:00,
+  na 23:00), een geheime groep (een freeze gebruiken) en "Bonus" zonder XP. Elk heeft een
+  zeldzaamheidsniveau en XP; een behaalde toont de datum en een deelknop.
+  Een deel hangt aan abonnees: een Pro-lid laten joinen, drie Pro-leden in je groep.
+- **Style Studio (s8, s11, s12, s15):** cosmetica per onderdeel (profielflair dat elke bezoeker
+  ziet, check-inconfetti, avatarkader dat iedereen in feed en leaderboards ziet, achtergrond
+  achter de check-inkaart, groepsbanners). Bijna alles is vergrendeld op een abonnementsniveau.
+- **Abonnement (s18):** drie niveaus: een middenniveau voor jezelf; een aanbevolen niveau
+  waarin elke groep die je start betaald wordt plus drie waar je lid van bent; en een
+  hoogste niveau voor jezelf en tien anderen met "claim links". Het aanbod toont een
+  proefperiode voor nul euro; prijzen zijn op de afbeelding niet te zien.
+- **Meldingen (s19):** push (op dit apparaat uit, met een knop om aan te zetten) en e-mail.
+  Persoonlijke interacties (reacties, applaus, vermeldingen, directe berichten, "nudges en
+  waves", uitnodigingen) en groepsactiviteit (gewoontewijzigingen, check-ins in je groepen
+  alleen als push met maximaal één per groep per dag plus een melding bij een "full house",
+  mijlpalen, een wekelijks overzicht). Het onderste deel van de pagina is niet gezien.
+
+## 16. Overdraagbaarheid van het ingelogde deel
+
+| Mechanisme | Overdraagbaar | Toets aan de domeinregels |
+|---|---|---|
+| Lege neutrale tegel voor een dag zonder check-in | **Ja, bevestigt** | Regel 7 voor je eigen overzicht: geen rood, geen "gemist". Wij tonen de week; dezelfde neutraliteit voor een gemiste week. |
+| Dempen van groepsgeluid met behoud van directe steun | **Ja** | Past bij regel 7; verandert niets aan wat de groep over jou ziet. |
+| Pauze los van weggaan | **Ja** | Raakt `shared/time` (regel 1) als het over perioden gaat. De pauze moet de wekelijkse klok respecteren. Wat het voor de groep betekent is een eigen besluit (regel 7). |
+| Automatische bescherming bij een gemiste dag, met een achteraf-venster | **Voorwaardelijk** | Onze weekpas bestaat al (regel 10: beschermt de reeks, niet het punt). Het achteraf-venster tot de volgende ochtend is een idee om te overwegen; de automatiek vraagt een besluit, omdat een straf of gevolg nooit stilzwijgend gaat (regel 5). |
+| Weekstart als instelling | **Bestaat al, sterker bij ons** | Regel 1: bij ons stuurt hij tellingen en weekafsluiting, bij hen (aantoonbaar) de kalender. |
+| Vloer en plafond als twee zichtbare regels per gewoonte | **Ja, bestaat al** | Regel 8. |
+| Prestaties op totaal aantal voltooiingen | **Voorwaardelijk** | Alleen op de week als eenheid en alleen positief; geen prestaties op een verbruikte freeze of weekpas, want dat maakt een gemiste week afleidbaar (regel 7). |
+| Prestaties of kaders die aan betaalde leden of groepsgrootte hangen | **Nee** | Commerciële prikkel op een groepsoppervlak; grens 1 en geen geld (regel 5). |
+| Flair, kaders en banners die iedereen ziet | **Nee** | Commercieel oppervlak zonder doel; nieuw groepsoppervlak, dus beschermd (regel 7). |
+| Globale feed, Discover, leaderboards, Hall of Fame, sponsored groepen | **Nee** | PRD sluit publieke groepen uit; regel 7 en QS8-230. |
+| Meldingen met een melding bij een "full house" | **Ja** | Alleen positief; één per groep per dag is een nette rem. |
+| Meldingen "nudges en waves" | **Niet te toetsen** | Zie §17: wat dit doet en voor wie het zichtbaar is, is niet gezien. Tot dan geen overname. |
+| Betaaltiers met proefperiode | **Nee** | Grens 1. |
+
+## 17. Wat ik niet kon meten
+
+- **De check-in zelf**, ook de flexibele (vloer of plafond kiezen), en wat erna op het scherm
+  gebeurt. Dit is het kernmoment en het ontbreekt.
+- **Een gewoonte aanmaken**, **het opgeslagen plan** met de bewaarlijst, en **de Checkin Chain**
+  als scherm.
+- **Een groep met meerdere leden**, de ledenlijst, uitnodigen en toetreden (alleen een groep
+  van één lid en de knop "Invite").
+- **Nudges en waves**: wat de handeling is, wie het ziet, en of het iets zegt over wie niet
+  heeft ingecheckt. Dat is precies wat domeinregel 7 raakt.
+- De **trofeeëntab**, **Plan & Billing** (prijzen), de **leaderboards**, de **Hall of Fame**, de
+  **bibliotheek**, de rest van de meldingenpagina en **Connected Accounts**.
+- **Seizoenen** (hun maandelijkse standen): alleen genoemd in de meldingstekst ("season results").
+- Of de **weekstart** iets anders stuurt dan de kalender.
+- Of een groepsgenoot kan zien dat **een freeze is ingezet**, wat op de achievements-pagina als
+  prestatie bestaat.
+
+## 18. Volgende afgebakende stap
+
+Niet de hele lijst. Eén afgebakend issue ligt voor de hand: **bescherming bij een gemiste week**
+(het gedrag van onze weekpas naast de freeze-regels van Habit Huddle, §13), omdat het scherm
+daarvoor het volledigst is. De open vraag voor Quinten: levert hij nog schermafbeeldingen van
+de check-in (flexibel), de gewoonte aanmaken, nudges en een groep met meerdere leden? Zonder
+nudges geen oordeel erover.
