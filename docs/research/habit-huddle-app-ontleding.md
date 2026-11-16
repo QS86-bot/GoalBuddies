@@ -27,6 +27,12 @@ dragen in de tekst geen versiedatum. Letterlijke citaten:
 
 ## 2. Eerste besluit (gestopt) — AFGELEID
 
+> **Stand vóór het besluit van §6 (10-11-2026), met opzet niet herschreven.** §2, §4 en §5
+> beschrijven wat er gold op het moment van stoppen. §6 en §7 zijn de stand erna: `/app/start`
+> en `onboarding-funnel.js` zijn daarna wél opgehaald en lokaal geanalyseerd (REA bleef
+> ongedraaid). Waar §4 "niet gemeten" zegt over `/app/start`, is dat door §7 achterhaald;
+> voor alles ingelogd blijft het onverkort waar (zie §10).
+
 De opdracht zei: staat geautomatiseerde toegang erin als verboden, stop dan met dat onderdeel
 en meld het. Het staat erin, onder voorbehoud van toestemming. Daarom:
 
@@ -64,8 +70,12 @@ waar domeinregel 7 voor waarschuwt.
 
 ## 4. Wat blijft liggen en wat Quinten kan aanleveren — AANNAME vs. NIET GEMETEN
 
+*Stand vóór 10-11-2026 (zie de kop bij §2); `/app/start` is sindsdien gemeten in §7. Quinten
+koos daarna schermafbeeldingen en geen HAR.*
+
 Niet gemeten (dus niets hierover is in dit document geschreven): de stappen, vragen en volgorde
-van `/app/start`; alles onder `/app`; de netwerkaanroepen; huddles, check-ins, de chain,
+van `/app/start` *(achterhaald, zie §7)*; alles onder `/app` behalve die flow; de netwerkaanroepen
+*(de API-paden zijn alleen uit de code genoemd, nooit aangeroepen)*; huddles, check-ins, de chain,
 instellingen. Ik verzin ze niet.
 
 Quinten kan zelf, in zijn eigen browser en met zijn eigen account, aanleveren:
@@ -83,9 +93,11 @@ Rekent het zelf met een week of dag buiten `shared/time` (regel 1)?
 
 ## 5. Volgende afgebakende stap
 
-Quinten besluit (a) of hij het materiaal uit §4 aanlevert, en (b) of hij Habit Huddle om
-schriftelijke toestemming voor onderzoek wil vragen. Zonder (a) is er geen ingelogd werk te doen;
-zonder (b) blijft elke geautomatiseerde stap uitgesloten.
+*Stand vóór 10-11-2026.* Quinten besluit (a) of hij het materiaal uit §4 aanlevert, en (b) of hij
+Habit Huddle om schriftelijke toestemming voor onderzoek wil vragen. Zonder (a) is er geen
+ingelogd werk te doen; zonder (b) blijft elke geautomatiseerde stap uitgesloten.
+*Bijgewerkt: Quinten koos (b) niet maar ging bewust door (§6); (a) loopt via schermafbeeldingen,
+zie §11.*
 
 ## 6. Besluit van Quinten, 10-11-2026 — de keuze tegen de voorwaarden in
 
