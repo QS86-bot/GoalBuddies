@@ -24,6 +24,9 @@
 > klopten staat een **"Achterhaald"** (`grep -n Achterhaald docs/VOLGENDE-SESSIE.md`). Het
 > meeste onder "Waar te beginnen" is van september.
 >
+> ⚠️ **Aanvulling van 16-11-2026 (batchsessie):** PR #668 (QS8-646) is gemerged als
+> `a326c93a`; de stand staat in `docs/WERKVOORRAAD.md`. Het vervolg is QS8-681.
+>
 > ⚠️ **Die afkapping is met opzet een nummer en geen "alles".** Terwijl deze
 > bijwerking geschreven werd landden er drie PR's bij — de teller ging van
 > achttien naar negentien naar tweeëntwintig. Een tabel die zegt *alles van
