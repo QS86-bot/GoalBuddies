@@ -108,3 +108,51 @@ stond er in `git status` niets anders dan de bedoelde wijziging.
 Geen wijziging aan een script in `scripts/`. De tien van QS8-608 zijn gemeten
 inert en blijven dat; wat hier veranderde is de wacht die dat moet blijven
 vaststellen.
+
+## 8. Achteraf: de grens was er, en hij is gesloten (QS8-646)
+
+⚠️ **§5 beschreef maar één van twee grenzen.** De boomkant ziet geen pad dat
+`.gitignore` uitsluit, en dat stond hier. Dat de wegwerpmapkant alleen de `cwd`
+van het kind ziet stond nergens. 📏 Gemeten op 16-11-2026, stand ervóór 5/5
+groen, één mutatie per keer bovenaan `scripts/psql.mjs`, steeds teruggezet:
+
+| mutatie | uitslag vóór QS8-646 |
+| -- | -- |
+| `writeFileSync` met absoluut pad in de repo | rood (de boomkant) |
+| `writeFileSync` naar de `cwd` van het kind | rood (de wegwerpmapkant) |
+| `writeFileSync('/tmp/schrijf-bewijs.txt', …)` | **5/5 groen**, bestand op schijf |
+| `writeFileSync` naar een pad dat `.gitignore` uitsluit | **5/5 groen** |
+
+Er stond dus een bewering ("geen enkel script schrijft bij import") die breder
+las dan wat gemeten was, voor elk pad buiten repo en wegwerpmap.
+
+**Gesloten, niet opgeschreven.** 📏 Node's permissiemodel bestaat in de Node van
+CI (`'22'`, lokaal 22.23.4) onder de vlag `--permission` en werkt: een schrijfactie
+buiten `--allow-fs-write` is `ERR_ACCESS_DENIED`, ook voor `/tmp` en voor
+`.gitignore`-paden, en alle scripts laten zich er gewoon onder importeren. Het
+kind draait nu met `--permission --allow-fs-read=* --allow-fs-write=<wegwerpmap>`.
+De worp komt in `stuk` en dus in de uitvoer: de bestaande grendel 1 ziet hem, er
+is geen vierde toets bijgekomen.
+
+📏 **IJking, na de wijziging**, één per keer, steeds teruggezet en met `diff -q`
+bevestigd:
+
+| mutatie | welke toets valt om |
+| -- | -- |
+| `/tmp/schrijf-bewijs.txt` schrijven (bestand ontstaat niet meer) | *geen enkel script werpt of print bij import* |
+| schrijven naar `dist/` (`.gitignore`) | idem |
+| schrijven naar een nieuw bestand in de repo | idem (de boomkant is nu het tweede net) |
+| `console.log('hallo')` | idem |
+| `writeFileSync('rommel.txt')` in de `cwd` | *geen enkel script schrijft bij import* — de wegwerpmap is toegestaan, dus de lege-mapcontrole blijft nodig |
+| alle drie de permissievlaggen weg | idem, melding `PERMISSIEMODEL UIT` (de sonde) |
+
+⚠️ Alleen `--permission` weghalen is **geen** ijking van de sonde: Node weigert
+dan zelf te starten met `--allow-fs-*` en de toets wordt rood op een andere
+grond. De must-allow-helft is de stand ervóór: 5/5 groen met alle 112 scripts.
+
+⚠️ **Wat dit nog steeds niet dekt:** leesrecht is `*` (de scripts lezen
+`node_modules` en de repo), een kindproces starten is ook onder het model
+geweigerd maar wordt als worp gemeld, en een script dat zijn eigen worp
+**opvangt** en doorgaat schreef ook niets. **Voorwaarde waaronder dit terugkomt:**
+een script dat bij import legitiem buiten de wegwerpmap moet schrijven; dan hoort
+dat pad in `--allow-fs-write` mét reden, en niet het model uit.
