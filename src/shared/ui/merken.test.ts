@@ -7,7 +7,7 @@ import { CATEGORIE_GROEPEN, CATEGORIEEN } from '@/modules/goals/schemas';
 //    niet leest. Dezelfde reden als bij `doorloop.test.ts`.
 import { categoriekleurenNavy } from '../theme/tokens';
 
-import { CATEGORIEMERKEN, categoriemerk } from './categoriemerk';
+import { CATEGORIEMERKEN, categoriemerk } from './merken';
 
 /**
  * De naad tussen drie lijsten die hetzelfde beweren — onwrikbare regel 18.

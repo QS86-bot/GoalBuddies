@@ -47,21 +47,21 @@ export const ZONDER_PUSH = {
   //    dus deze controle bleef groen terwijl zijn onderbouwing onwaar was.
   //
   //    De echte ingang is de `<Link>` in `src/shared/ui/Taakbalk.tsx`, gevoed
-  //    door `TABBLADEN` in `src/shared/ui/taakbalk.ts`. Dat register is dus de
+  //    door `TABBLADEN` in `src/shared/ui/tabbladen.ts`. Dat register is dus de
   //    grendel geworden, en `tests/beloftes/taakbalk-overal.test.ts` legt deze
   //    vijf rijen daar één op één naast — beide richtingen.
   '/(tabs)':
-    '📏 Staat als `/` in `TABBLADEN` (`src/shared/ui/taakbalk.ts`): de taakbalk is de ingang.',
+    '📏 Staat als `/` in `TABBLADEN` (`src/shared/ui/tabbladen.ts`): de taakbalk is de ingang.',
   '/(tabs)/doelen':
-    '📏 Staat als `/doelen` in `TABBLADEN` (`src/shared/ui/taakbalk.ts`): de taakbalk is de ingang.',
+    '📏 Staat als `/doelen` in `TABBLADEN` (`src/shared/ui/tabbladen.ts`): de taakbalk is de ingang.',
   '/(tabs)/groep':
-    '📏 Staat als `/groep` in `TABBLADEN` (`src/shared/ui/taakbalk.ts`): de taakbalk is de ingang.',
+    '📏 Staat als `/groep` in `TABBLADEN` (`src/shared/ui/tabbladen.ts`): de taakbalk is de ingang.',
   '/(tabs)/profiel':
-    '📏 Staat als `/profiel` in `TABBLADEN` (`src/shared/ui/taakbalk.ts`): de taakbalk is de ingang.',
+    '📏 Staat als `/profiel` in `TABBLADEN` (`src/shared/ui/tabbladen.ts`): de taakbalk is de ingang.',
   // ⚠️ Het vijfde tabblad, sinds QS8-380. Beslispunt 1 van QS8-378 draaide de
   //    regel "vier en niet vijf" om; de kop van `_layout.tsx` legt uit waarom.
   '/(tabs)/lijst':
-    '📏 Staat als `/lijst` in `TABBLADEN` (`src/shared/ui/taakbalk.ts`): de taakbalk is de ingang.',
+    '📏 Staat als `/lijst` in `TABBLADEN` (`src/shared/ui/tabbladen.ts`): de taakbalk is de ingang.',
 };
 
 /** Alle `.tsx`-bestanden onder een map, recursief. */

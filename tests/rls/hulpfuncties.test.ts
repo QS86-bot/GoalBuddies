@@ -56,6 +56,7 @@ import {
   rlsTestsConfigured,
   type TestUser,
 } from './harness';
+import { datumOver } from './datums';
 
 const SETUP_TIMEOUT = 180_000;
 const TEST_TIMEOUT = 60_000;
@@ -115,7 +116,7 @@ describe.skipIf(!rlsTestsConfigured)('de vier RLS-hulpfuncties lopen gelijk', ()
       .insert({
         owner_id: ander.id,
         title: `Doel in ${naam}`,
-        target_date: '2027-01-01',
+        target_date: datumOver(60),
         status: 'active',
       })
       .select('id')

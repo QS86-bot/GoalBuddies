@@ -3,16 +3,26 @@
 > Kopieer alles onder de streep in een nieuwe chat. Werk dit bestand bij aan het
 > eind van elke sessie — het is de overdracht, niet een archief.
 >
-> **Laatst bijgewerkt:** 05-11-2026, **t/m PR #650**, geteld om 07:59 UTC (laatste
-> merge op `main`: 06-10-2026). Er is **aangevuld en niet herschreven**: de index van PR #531 t/m
-> #650 en het zakelijke spoor staan aan het eind van "STAND VAN ZAKEN", en "Waar te
-> beginnen" heeft een nieuw punt 00. Alles wat over eerdere dagen staat is ongewijzigd en
-> loopt dus niet mee, op de **"Achterhaald"-markeringen** na die later op 05-11-2026 zijn
-> toegevoegd (`grep -n Achterhaald docs/VOLGENDE-SESSIE.md`): **het meeste onder "Waar te
-> beginnen" is van september.**
+> **Laatst bijgewerkt:** 05-11-2026 om 13:34 UTC, **t/m PR #657** (#655, #656
+> en #657 zijn gemerged; #656 om 13:15 UTC als `769b37d5`). Wat er die dag open
+> bleef staat in STAND VAN ZAKEN onder
+> *05-11-2026*, in twee rondes; de bijwerking daarvóór was 17-09-2026 (t/m PR
+> #527), met de lessen van die ronde als punt AL, AM en AN.
 >
-> Daarvoor: 17-09-2026 om 17:35 UTC, **t/m PR #527**. De lessen van die ronde staan als
-> punt AL, AM en AN hieronder.
+> ⚠️ **Sinds 05-11-2026 werkt dit project met een orchestrator, bouwsessies en een
+> batchsessie** (`docs/PROMPT-SESSIE.md` §12). Een bouwsessie raakt dit bestand
+> dan niet; de batchsessie vouwt de stand in. Deze bijwerking is op Quintens
+> eigen verzoek door de bouwsessie van baan A gedaan en landt op haar sessietak.
+> De tweede bijwerking van die dag (12:50 UTC) is door dezelfde sessie gedaan, op
+> een eigen documenttak vanaf `main`, zodat de twee afgeleverde issuetakken hun
+> afleversha houden.
+>
+> ⚠️ **Aanvulling van dezelfde dag door de sessie van het zakelijke spoor** (op de
+> sessietak `claude/keen-mendel-ejxo4e`, 05-11-2026 om 07:59 UTC, geteld t/m PR #650): de index
+> van PR #531 t/m #650 en het zakelijke spoor staan aan het eind van "STAND VAN ZAKEN",
+> "Waar te beginnen" heeft een nieuw punt 00, en bij uitspraken die aantoonbaar niet meer
+> klopten staat een **"Achterhaald"** (`grep -n Achterhaald docs/VOLGENDE-SESSIE.md`). Het
+> meeste onder "Waar te beginnen" is van september.
 >
 > ⚠️ **Die afkapping is met opzet een nummer en geen "alles".** Terwijl deze
 > bijwerking geschreven werd landden er drie PR's bij — de teller ging van
@@ -2308,6 +2318,184 @@ de volgende bijwerking bij #650.**
 | #648 | 06-10 | QS8-647 | dossierrij 891 zegt wat er gemeten is |
 | #649 | 06-10 | QS8-648 | NAGEKEKEN: compression en source-map-js nagemeten met een bouw |
 | #650 | 06-10 | QS8-645 | rij 169: 11 van de 21 regels gaan over een grant |
+
+### 05-11-2026 — de eerste orchestratorronde, en wat er open bleef
+
+**De rolverdeling staat op `main`** (PR #652): orchestrator, bouwsessies zonder PR,
+batchsessie — `docs/PROMPT-SESSIE.md` §12, met het logboek in Linear QS8-667.
+Baan A (deze sessie) leverde twee takken af, allebei zonder PR, allebei In Review,
+en allebei met `git merge-tree` schoon tegen `main` = `b7586a11`:
+
+| Issue | Tak | Sha | Wat |
+|---|---|---|---|
+| QS8-651 | `claude/awesome-fermat-pp7z2v` | `31fd0ab4` | `enigeOfGekozen()` in `src/modules/buddies/deling.ts`: bij twee of meer groepen of mensen geen stille eerste meer bij de hulpvraag, de begunstigde van een straf, de vervangende getuige en de deelknop van De Lijst. Rij 41 in beslisdocument 002 |
+| QS8-668 | `quintenstrijdonk/qs8-668-nevenschadetestts-valt-sinds-november-om-op-een-vaste-moment` | `66cdcfee` | `nevenschade.test.ts` rekent haar seizoensmomenten uit de fixture met de helper `seizoensmomenten()` (bestand seizoensmoment.ts in tests/rls, alleen op die tak tot de batch landt); de registerrij in `scripts/jobbereik-controle.mjs` volgt mee |
+
+✅ **Na de merge van PR #651 (batchsessie, 05-11-2026 10:25 UTC, `1d5ae19b`):** punt 1 en 2 hieronder zijn geland. QS8-669 en QS8-668 zitten in de batch, de CI was groen op `80c1c7fd`, en de ER-rijen zijn ingevouwen. Punt 3 en 4 staan nog open. Erbij kwam: `zod` (high) en `shell-quote` (critical) zijn met PR #654 (QS8-670 en QS8-671) bijgewerkt. Zod telt daardoor sinds 4.6 codepunten; `CLAUDE.md` (sectie *Emoji*) zegt dat sinds QS8-673 ook, en de telling staat onder `tests/beloftes/zod-telt-codepunten.test.ts`, zie `docs/decisions/2026-11-05-zod-telt-sinds-4-6-codepunten.md`.
+
+⚠️ **Wat er open bleef, in volgorde van wat het blokkeert:**
+
+1. **QS8-669 — `audit:controle` rood op `main` en op elke tak** (`shell-quote`
+   critical, `zod` high, `glob`, `minimatch`, `deepmerge` nieuw; `uuid`,
+   `decode-uri-component` en `node-forge` veranderd; `braces` verdwenen). Een
+   baan-B-sessie heeft de tak sinds 09:53 UTC; mijn claim weigerde terecht.
+   **Tot dit landt is élke PR naar `main` rood op twee jobs**, ook de batch-PR
+   #651, die daarom op draft staat (besluit van Quinten, 10:00 UTC).
+2. **De batch** neemt daarna de twee takken hierboven mee; de vijf ER-rijen uit
+   de afleverregel van QS8-651 moeten door de batchsessie in
+   `docs/ENGINEER-REVIEW.md` gevouwen worden — een bouwsessie raakt dat bestand
+   niet. Twee ervan zijn bevindingen buiten de diff: het doelscherm toont met
+   `commitments.find((c) => c.type === 'penalty')` de óudste straf, ook een
+   ingetrokken (Middel), en wie alleen in een gearchiveerde groep zit ziet een
+   strafformulier zonder uitweg (Laag).
+3. **Teamgroepen (QS8-649): herbevestigen vóór de eerste migratie** dat een
+   gebruiker met *alleen* een teamgroep die groep als "de enige" krijgt bij een
+   hulpvraag of straf. `enigeOfGekozen()` kent geen teamgroepen; de aanroeper
+   moet filteren. Staat in `docs/decisions/2026-11-05-de-eerste-groep-is-geen-keuze.md`
+   §3 en hoort als reactie op QS8-649 (orchestrator).
+4. **Zondag 08-11 reviewt Quinten**; het klikpad staat in QS8-667. Ronde 2 daarvan
+   is QS8-651 en kan alleen als de batch zaterdag gemerged en gedeployd is.
+
+### De valkuilen van die dag
+
+⚠️⚠️ **`main` stond sinds 12-10 rood op zijn geplande runs, zonder dat er een
+commit bij kwam, en niemand zag het.** 📏 De push-run van 06-10 was groen; de
+schedule-runs van 12-10, 19-10, 26-10 en 02-11 op dezelfde sha waren rood. Twee
+oorzaken die allebei van de klok of van het npm-register komen en niet van de
+code: een vaste `MOMENT` tegen een `now()`-relatieve fixture (QS8-668) en nieuwe
+advisories (QS8-669). `hoofdrun:stand` kijkt ná een merge; een schedule-run
+kijkt niemand na. **Lees bij het begin van een ronde de laatste schedule-run op
+`main`**, niet alleen de laatste push-run — en zeg erbij welke het was.
+
+⚠️⚠️ **Een rode RLS-stap verbergt de stap erna.** De stap *Elke controle die de
+database nodig heeft* was sinds 06-10 op geen enkele run gedraaid, want hij
+staat achter de RLS-stap. Toen QS8-668 die groen maakte, viel hij voor het eerst
+om — op `jobbereik:controle`, waarvan het register `ZONDER_GRENS` op de
+aanroeptekst letterlijk sleutelt en mijn wijziging die tekst veranderde. Lokaal
+is die stap zonder database niet te meten; de poort zegt dan "ongemeten" en dat
+is correct maar leeg. **Verander je de tekst van een `.rpc('…')`-aanroep in
+`tests/`, kijk dan in `ZONDER_GRENS` of hij daar staat** — en lees na een groene
+RLS-stap altijd ook de stap erna.
+
+⚠️ **De derde vaste datum in dezelfde testfamilie verliep.** `2026-05-13` →
+`2026-11-15` → `2026-10-01`, elke keer met de uitleg erbij waarom díe datum
+klopte. Een datum die een `now()`-relatieve fixture moet raken is een tijdbom
+met een opschrift; **bereken het moment uit de fixture** — de vorm staat in
+`seizoensmomenten()` op de tak van QS8-668 (bestand seizoensmoment.ts in
+tests/rls; op deze tak bestaat het nog niet, daarom hier zonder pad). Grep op
+`p_op: '20` en `MOMENT = '` vond verder niets.
+
+⚠️ **De claim-commit zegt niet wíe er zit.** De orchestrator las de claim op
+QS8-668 als werk van de batchsessie en liet Quinten besluiten dat zij het mocht
+bouwen — terwijl de claim de mijne was en het werk al af. `npm run claim`
+voorkwam het dubbele werk op QS8-669 wél (de andere sessie was vijf minuten
+eerder), maar een claim draagt alleen een tijdstip. **Zet je sessie-id in de
+AFGELEVERD-regel en meld een claim meteen in het logboek-issue**, anders raadt
+de volgende lezer wie er zit.
+
+⚠️ **Een cloudsessie krijgt de RLS-suite niet lokaal.** De Postgres-binaries
+staan er, de PostgREST-download werd door de omgeving geweigerd. De meting is dan
+de CI-run op de afleversha — zeg dat in de afleverregel en lees die run ook
+echt, want de eerste bleek rood op iets anders dan verwacht.
+
+⚠️ **De security-reviewer vond wat de tests niet konden zien.** De regel van
+QS8-56 (*bij één groep wordt een oude keuze genegeerd*) stuurde na "kies
+Vrienden, ontkoppel Vrienden" de hulpvraag stil naar de overgebleven groep, met
+de keuzelijst verborgen. Een bronscan kan toestandsovergangen in een gemount
+component niet toetsen; dat is de klasse waar de reviewagent voor is. De regel is
+omgedraaid; `docs/decisions/2026-11-05-de-eerste-groep-is-geen-keuze.md` §3.
+
+### 05-11-2026, tweede ronde — QS8-672 en QS8-673, en wat er open bleef
+
+De orchestrator plande om 11:45 UTC twee banen in (QS8-667); baan A (deze
+sessie) bouwde ze na elkaar, allebei zonder PR, allebei In Review:
+
+| Issue | Tak | Sha | Wat |
+|---|---|---|---|
+| QS8-672 | `quintenstrijdonk/qs8-672-wachtwoord-bovengrens-telt-codepunten-bcrypt-kapt-op-72` | `5f9ef03a` | De wachtwoord-bovengrens telt **bytes**: `telBytes()` erbij in `src/shared/tekst` als vierde telling, `.max(72)` eruit, melding in nl en en noemt getal én eenheid. GoTrue weigert boven 72 bytes met een 400 en kapt níet af (aan de bron gelezen, `master`; niet tegen het project gemeten). `vertaal()` in `src/modules/auth/api.ts` kreeg een tak voor *longer than*, want de algemene wachtwoordtak gaf het omgekeerde advies |
+| QS8-673 | `quintenstrijdonk/qs8-673-zods-tekstlengte-telling-staat-nergens-onder-test-en-vijf` | `639e925b` | Een belofte-test die Zod's telling vastlegt naast `telTekens()` en de vijf kale `.max(n)`-schema's tegen de CHECK-getallen van productie; tegen zod 4.4.3 in `node_modules` vallen 12 van de 15 om. De sectie *Emoji* in `CLAUDE.md` en dertien commentaren zeggen nu wat onder welke versie gemeten is. Punt 4 alleen-lezen op productie gemeten: geen clientgrens ruimer dan zijn CHECK |
+
+⚠️ **Wat er open bleef, in volgorde van wat het blokkeert:**
+
+1. **PR #655 (QS8-672) is gemerged, en de ER-rij van 06-09-2026 (regel 534,
+   `WACHTWOORD_MAXIMUM`) is daarbij dichtgezet.** De onjuiste zin *"door bcrypt
+   stilzwijgend op 72 bytes afgekapt"* is weg: GoTrue weigert (aan de bron
+   gelezen, niet tegen het gehoste project gemeten, zie punt 5).
+2. **PR #656 (QS8-673) is op Quintens woord gemerged als `769b37d5`**, met een
+   eigen `--no-ff`-merge voor het issue. `CLAUDE.md` (sectie *Emoji*) zegt nu
+   wat onder welke versie gemeten is, en de telling staat onder
+   `tests/beloftes/zod-telt-codepunten.test.ts`. De CI was groen op `7ef454e1`.
+3. **QS8-641 wacht op de batch van QS8-233**, en die wacht op QS8-634 (besluit
+   van Quinten, 05-11 07:55 UTC). Productie draagt 0299–0302 die `main` niet
+   heeft; elke nieuwe migratie vanaf `main` botst daarop.
+4. **Punt 3 en 4 van de eerste ronde staan nog**: de teamgroep-herbevestiging
+   voor QS8-649 (als reactie op dat issue gezet), en de review van zondag 08-11.
+5. **Drie handmetingen die alleen Quinten kan doen**, uit de reviews van deze
+   ronde: één aanmelding met een wachtwoord van 73 bytes tegen een wegwerpadres
+   (of de GoTrue-versie van het project lezen) om *weigert, kapt niet af* ook
+   voor het gehoste project te zien; aanmelden met een emoji-wachtwoord op een
+   echt iOS- of Android-toestel (`TextEncoder` op Hermes is niet gemeten, al
+   gebruikt `src/lib/observability/edge-rapport.ts` hem al op het clientpad);
+   en de tak `quintenstrijdonk/qs8-651-…` @ `3b06ff01` — een tweede, niet
+   gemergede implementatie van QS8-651 uit een dubbele sessie — van de remote
+   halen, want een cloudsessie kan dat niet.
+6. **Twee kleine vervolgen, geen issue waard tot iemand ze wil**: de zeef in
+   `src/modules/ai/uitvoer.ts` telt met `.length` en is daarmee strenger dan
+   het schema (kost hooguit een AI-voorstel met veel emoji); en de nieuwe test
+   leest de zod-versie uit het pakket via de exports-regel voor `package.json`,
+   waar `core.version` uit `zod` robuuster is.
+
+### De valkuilen van die ronde
+
+⚠️⚠️ **Een ijking die uit `HEAD` herstelt, ijkt `HEAD`.** De eerste ijkingsronde
+van QS8-672 zette elke mutatie terug met `git checkout -- <bestand>` — en dat
+zette óók het ongecommitte werk terug. Drie mutaties liepen daardoor tegen de
+óude code en gaven alle drie dezelfde ene rode test. Het viel op doordat `<=`
+naar `<` onmogelijk hetzelfde rood kan geven als *de grens weg*. **Sla je werk
+eerst op als patch (of commit het) en herstel daaruit**; en als twee
+onverenigbare mutaties hetzelfde rood geven, is de ijking kapot, niet de test.
+
+⚠️⚠️ **Een ER-rij droeg een bewering die niemand gemeten had.** De rij van
+06-09 zei dat bcrypt een te lang wachtwoord *stilzwijgend afkapt*; het issue
+zette terecht als eerste criterium *meet dat eerst*, en de meting zei het
+omgekeerde (GoTrue weigert met een 400). De *wordt zwaarder als* van die rij
+was dus al die tijd een aanname die als feit stond. **Lees bij een rij die een
+externe component iets toedicht of er een 📏 bij staat** — en zo niet, meet
+voordat je erop bouwt.
+
+⚠️ **Wat een dependency telt is een eigenschap van de dependency, en dertien
+commentaren stelden het als eigenschap van de code.** Het issue noemde vijf
+plekken; de grep die *Wie bezit welk feit* voorschrijft vond er dertien, en de
+`code-critic` nog een veertiende die ik gemist had. De conclusie in al die
+commentaren (`telTekens()`) was goed; alleen de reden was verlopen. **Schrijf bij
+zo'n feit de versie waaronder het gemeten is**, dan verloopt het zichtbaar in
+plaats van stil.
+
+⚠️ **Een formatter zonder projectconfig herschrijft tienduizend regels.** `npx
+prettier --write` op vier bestanden zette de i18n-catalogi (bijna 5000 regels
+per stuk) om naar dubbele aanhalingstekens, want dit project heeft geen
+Prettier en geen `.prettierrc`. Teruggedraaid en de edits opnieuw gezet. **Kijk
+eerst in `package.json` welke formatter er ís**; hier is dat alleen ESLint.
+
+⚠️ **De reviewer weerlegde mijn eigen ijkingsverhaal.** Het beslisdocument van
+QS8-673 noemde twee gezinsgevallen "bewaken de naad niet"; de `code-critic`
+rekende voor dat ze tegen een sprong naar grafemen juist de énige bewaking zijn,
+en dat die richting beredeneerd was en niet geijkt. **Een ijkingstabel hoort
+per richting te zeggen wat er gemeten is en wat beredeneerd** — en de lichte
+review loont ook bij een issue dat alleen tests en commentaar raakt.
+
+⚠️ **Alleen-lezen op productie is wél een meting.** Punt 4 van QS8-673 (heeft
+elke kale `.max()` dezelfde grens als zijn CHECK) stond in het issue als
+*zonder database ongemeten*. Eén `pg_get_constraintdef`-query via de
+Supabase-MCP, alleen lezen, gaf alle 44 lengte-CHECKs in één keer. **"Geen
+lokale stack" is niet "geen database"**: voor een lezende vraag is productie
+bereikbaar, en dat mag van de bouwprompt — schrijf dan wel op dat de bron
+productie is en dat die 0299–0302 vóórloopt op de map.
+
+⚠️ **Het logboek kreeg een tijdstip dat zestien minuten in de toekomst lag.** De
+afleverregel van QS8-673 in QS8-667 zegt *12:58 UTC* en is om 12:42 geplaatst;
+een typefout, maar in een logboek dat juist bestaat om te zeggen wie wat wanneer
+deed. **Lees de klok, typ hem niet uit het hoofd.**
 
 ### 03-11-2026 t/m 05-11-2026 — zakelijk gebruik is besloten en niet gebouwd
 

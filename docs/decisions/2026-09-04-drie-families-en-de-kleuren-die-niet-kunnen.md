@@ -210,16 +210,16 @@ liggen.
 | migratie | `goals_category_valid`, `profiles_focus_areas_geldig`, `groups_categorie_geldig`: vier waarden eruit, `building` erbij |
 | `src/shared/categorieen/index.ts` | dezelfde lijst, in de volgorde van de nieuwe families |
 | `src/modules/goals/schemas.ts` | `CATEGORIE_GROEPEN` van vier groepen naar drie |
-| `src/shared/ui/categoriemerk.ts` | familie per gebied; `building` krijgt een pictogram; de drie zonder familie bestaan niet meer |
+| `src/shared/ui/merken.ts` | familie per gebied; `building` krijgt een pictogram; de drie zonder familie bestaan niet meer |
 | `src/shared/theme/tokens.ts` | de namen `lichaam`/`mensen`/`werk` worden `gezondheid`/`softskills`/`ambitie` |
 | `src/shared/i18n/nl.ts` + `en.ts` | labels voor `building`, hernoemingen van `mindfulness` en `connection`, groepsnamen |
 | `src/shared/ui/tips.ts` | `TIPSET_PER_CATEGORIE` volgt de lijst — staat onder test |
 | `supabase/functions/doelcoach/index.ts` | de Doelcoach noemt de categorieën in zijn prompt |
 | `docs/decisions/2026-08-31-...` §3 | A55's indeling verwijst naar dit document |
 
-⚠️ **De naad die hier het gevaarlijkst is:** `categoriemerk.ts` in `shared/ui` is
+⚠️ **De naad die hier het gevaarlijkst is:** `merken.ts` in `shared/ui` is
 een **kopie** van `CATEGORIEEN`, met opzet en zonder import, en
-`categoriemerk.test.ts` legt de twee naast elkaar. Datzelfde geldt voor de drie
+`merken.test.ts` legt de twee naast elkaar. Datzelfde geldt voor de drie
 CHECK-constraints en `tests/rls/policies.test.ts`, `vragenlijst.test.ts` en
 `ontdekken.test.ts` — die vergelijken in **beide** richtingen. Een gebied
 verwijderen is dus vier plekken, en de tests vinden de vijfde.

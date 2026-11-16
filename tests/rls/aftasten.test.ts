@@ -1,6 +1,7 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import { adminDb, createTestUser, removeTestUsers, rlsTestsConfigured, type TestUser } from './harness';
+import { datumOver } from './datums';
 
 const SETUP_TIMEOUT = 180_000;
 const TEST_TIMEOUT = 30_000;
@@ -64,7 +65,7 @@ describe.skipIf(!rlsTestsConfigured)('De hulpfuncties zijn geen orakel', () => {
         owner_id: alice.id,
         title: 'Aftastdoel',
         status: 'active',
-        target_date: '2026-12-31',
+        target_date: datumOver(60),
       })
       .select('id')
       .single();

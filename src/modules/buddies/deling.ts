@@ -79,6 +79,40 @@ export function koppelbareGroepen(
 }
 
 /**
+ * De ene regel voor "welke van mijn groepen (of mensen) bedoel je" — QS8-651.
+ *
+ * Nul kandidaten geeft niets. Eén kandidaat zonder keuze geeft die ene. In élk
+ * ander geval geldt alleen wat de gebruiker aanwees, en bestaat dat niet meer in
+ * de lijst, dan is het antwoord `undefined` en niet de volgende in de rij.
+ *
+ * ⚠️ **"Zonder keuze" staat er met reden.** De eerste versie negeerde `keuze`
+ *    bij één kandidaat (de regel van QS8-56). De security-ronde van 05-11-2026
+ *    vond het gat: kies "Vrienden", ontkoppel "Vrienden" op hetzelfde scherm, en
+ *    de lijst krimpt tot "Werk" — die dan stilzwijgend de ontvanger werd, met de
+ *    keuzelijst verborgen en de verstuurknop aan. Iets dat naar een andere groep
+ *    gaat dan je aanwees, is erger dan iets dat niet weggaat; het scherm toont
+ *    dan de lijst opnieuw zodat de gebruiker de overgebleven groep kan aanwijzen.
+ *
+ * ⚠️ **Deze functie kent geen teamgroepen (QS8-649): bij één kandidaat kiest hij
+ *    die, teamgroep of niet.** Een teamgroep als enige kandidaat uitsluiten is
+ *    aan de aanroeper, die de rij kent — open tot QS8-649, zie
+ *    `docs/decisions/2026-11-05-de-eerste-groep-is-geen-keuze.md` §3.
+ *
+ * @param items   de kandidaten, in de volgorde van het scherm
+ * @param keuze   wat de gebruiker aanwees; `''` is "nog niets"
+ * @param idVan   de sleutel waarop `keuze` vergeleken wordt
+ */
+export function enigeOfGekozen<T>(
+  items: readonly T[],
+  keuze: string,
+  idVan: (item: T) => string,
+): T | undefined {
+  if (items.length === 1 && keuze === '') return items[0];
+
+  return items.find((item) => idVan(item) === keuze);
+}
+
+/**
  * Welke groep beslist over een verzoek om de streefdatum te verschuiven — A7.
  *
  * ⚠️ **Tot QS8-56 stond hier `groepen[0]` in het scherm, en dat was een keuze die
@@ -88,23 +122,15 @@ export function koppelbareGroepen(
  *    kwam dat nooit boven. PRD 5.5 is precies dat scherm, dus dit is het moment
  *    waarop de aanname een vraag wordt.
  *
- * ⚠️ **Bij precies één groep is er niets te kiezen en wordt `keuze` genegeerd.**
- *    Dat is bewust: anders zou het scherm een keuze moeten onthouden die het
- *    nooit aan de gebruiker gesteld heeft, en dan is de stille keuze terug onder
- *    een andere naam.
- *
- * ⚠️ **Bij twee of meer telt alleen een keuze die nog bestáát.** Ontkoppel je de
- *    gekozen groep terwijl het formulier openstaat, dan is het antwoord
- *    `undefined` — geen beslisser — en niet de volgende groep in de rij. Een
- *    verzoek dat naar een andere groep verhuist dan je aanwees, is erger dan een
- *    verzoek dat niet weggaat.
+ * ⚠️ **Sinds QS8-651 is dit de regel van `enigeOfGekozen()` met een naam.** De
+ *    naam blijft, want `tests/beloftes/doel-in-meerdere-groepen.test.ts` bindt het
+ *    uitstelverzoek eraan en het beslisdocument van 27-08 noemt hem; de regel
+ *    zelf staat één keer, hierboven — inclusief de aanscherping dat een oude
+ *    keuze bij één overgebleven groep niet meer genegeerd wordt.
  */
 export function beslissendeGroep(
   groepen: readonly DoelGroep[],
   keuze: string,
 ): DoelGroep | undefined {
-  if (groepen.length === 0) return undefined;
-  if (groepen.length === 1) return groepen[0];
-
-  return groepen.find((groep) => groep.group_id === keuze);
+  return enigeOfGekozen(groepen, keuze, (groep) => groep.group_id);
 }

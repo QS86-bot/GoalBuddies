@@ -371,6 +371,13 @@ export const ZONDER_KNIP = {
     'in `tests/scripts/hoofdrun-controle.test.ts` — met de meting die hem opleverde: de kop van ' +
     '`ci.yml` legt `cancel-in-progress` uit en maakte de controle rood op zijn eigen uitleg ' +
     '(QS8-582, klasse QS8-412)',
+  'scripts/vaste-datum-controle.mjs':
+    'houdt zijn eigen commentaarzeef op regelindex (`vindVerlopende()`), want hij meldt ' +
+    'regelnummers en de gedeelde knip vervangt een blok door één spatie, zodat die nummers ' +
+    'verschuiven. 📏 Gemeten in `tests/scripts/vaste-datum-controle.test.ts`: een `target_date` ' +
+    'op een `//`- of ` * `-regel geeft nul treffers. ⚠️ Een blokcommentaar waarvan de regels ' +
+    'niet met een `*` beginnen, ziet de zeef niet; dat faalt **dicht** (een melding op uitleg) ' +
+    'en is dus ruis en geen gat',
   'scripts/padverwijzing-controle.mjs':
     'een pad ín een comment is daar juist het onderwerp en niet de ruis — QS8-412 ontstond bij ' +
     '`src/shared/ui/Foto.tsx`, dat in zijn eigen kop naar een toets wees die nooit geschreven is. ' +

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { beslissendeGroep, koppelbareGroepen, type DoelGroep } from './deling';
+import { beslissendeGroep, enigeOfGekozen, koppelbareGroepen, type DoelGroep } from './deling';
 
 import type { Tables } from '../../lib/database.types';
 
@@ -144,11 +144,90 @@ describe('beslissendeGroep', () => {
   });
 
   /**
-   * ⚠️ Bij precies één groep wordt een oude keuze genegeerd. Anders zou een keuze
-   *    die op twee groepen sloeg, blijven hangen nadat er nog één over is — en dan
-   *    staat er "geen beslisser" terwijl er maar één mogelijkheid is.
+   * ⚠️⚠️ **Omgekeerd op 05-11-2026 (QS8-651).** Hier stond: *bij precies één groep
+   *    wordt een oude keuze genegeerd*, met als reden dat er anders "geen
+   *    beslisser" staat terwijl er maar één mogelijkheid is. De security-ronde
+   *    vond wat die regel kost: kies "Vrienden", ontkoppel "Vrienden" op hetzelfde
+   *    scherm, en het verzoek ging naar "Werk" — de enige die overbleef, met de
+   *    keuzelijst verborgen. Het scherm toont de lijst nu opnieuw zolang er geen
+   *    beslisser is; de regel kiest niet voor de gebruiker.
    */
-  it('negeert een oude keuze zodra er nog één groep over is', () => {
-    expect(beslissendeGroep([koppeling('a')], 'b')?.group_id).toBe('a');
+  it('kiest bij één overgebleven groep niet stilzwijgend voor een oude keuze', () => {
+    expect(beslissendeGroep([koppeling('a')], 'b')).toBeUndefined();
+  });
+});
+
+/**
+ * De ene regel achter élke keuze uit je groepen of je groepsgenoten — QS8-651.
+ *
+ * ⚠️ **Dit is de regel van `beslissendeGroep()` zonder de naam van het
+ *    uitstelverzoek erop**, want hij geldt sinds QS8-651 ook voor de hulpvraag,
+ *    de begunstigde van een straf, de vervangende getuige en de deelknop van De
+ *    Lijst. Vijf plekken hadden tot dan een stille eerste — vier op het doelscherm,
+ *    één in De Lijst; die stond zichtbaar voorgeselecteerd, maar een voorselectie
+ *    is een keuze die de gebruiker niet maakte, en de verstuurknop stond aan.
+ *
+ *    Handmatig gebroken op 05-11-2026, mutatie per grendel:
+ *    - `return items[0]` als laatste regel → de tests bij twee kandidaten rood,
+ *      in dit blok en bij `beslissendeGroep`; de rest groen.
+ *    - `if (items.length === 1) return items[0];` (de oude QS8-56-regel, keuze
+ *      genegeerd) → alleen de twee 'overgebleven'-tests rood.
+ */
+describe('enigeOfGekozen', () => {
+  const id = (x: { readonly id: string }) => x.id;
+  const a = { id: 'a' };
+  const b = { id: 'b' };
+
+  it('geeft niets terug zonder kandidaten', () => {
+    expect(enigeOfGekozen([], '', id)).toBeUndefined();
+    expect(enigeOfGekozen([], 'a', id)).toBeUndefined();
+  });
+
+  it('kiest de enige kandidaat zonder dat er iets gekozen hoeft te worden', () => {
+    expect(enigeOfGekozen([a], '', id)).toBe(a);
+  });
+
+  it('kiest de enige kandidaat ook als de gebruiker precies die aanwees', () => {
+    expect(enigeOfGekozen([a], 'a', id)).toBe(a);
+  });
+
+  /**
+   * ⚠️ De naad van de security-ronde: twee kandidaten, keuze gemaakt, lijst
+   *    krimpt tot één ándere. Dan geen ontvanger — niet de overgeblevene.
+   */
+  it('kiest bij één overgebleven kandidaat niet stilzwijgend voor een oude keuze', () => {
+    expect(enigeOfGekozen([a], 'b', id)).toBeUndefined();
+  });
+
+  it('kiest bij twee niets tot de gebruiker kiest', () => {
+    expect(enigeOfGekozen([a, b], '', id)).toBeUndefined();
+  });
+
+  it('kiest bij twee wat de gebruiker aanwees', () => {
+    expect(enigeOfGekozen([a, b], 'b', id)).toBe(b);
+  });
+
+  it('valt niet terug op een ander als de gekozene verdwijnt', () => {
+    expect(enigeOfGekozen([a, b], 'weg', id)).toBeUndefined();
+  });
+
+  /**
+   * ⚠️ De sleutel is een parameter en geen vaste kolomnaam, want de vijf plekken
+   *    lezen drie vormen: `group_id` op een gekoppelde groep, `id` op een
+   *    `Lijstgroep` en `id` op een groepsgenoot. Eén regel die alleen `id` kent,
+   *    had op het doelscherm een tweede kopie nodig gehad — en dat is precies hoe
+   *    de stille eerste er de vorige keer naast kwam te staan.
+   */
+  it('vergelijkt op de sleutel die de aanroeper aanwijst', () => {
+    const groepen = [koppeling('x'), koppeling('y')];
+    expect(enigeOfGekozen(groepen, 'y', (g) => g.group_id)?.group_id).toBe('y');
+    expect(enigeOfGekozen(groepen, 'y', (g) => g.name)).toBeUndefined();
+  });
+
+  it('is de regel waar `beslissendeGroep()` op staat', () => {
+    const groepen = [koppeling('a'), koppeling('b')];
+    for (const keuze of ['', 'a', 'b', 'weg']) {
+      expect(beslissendeGroep(groepen, keuze)).toBe(enigeOfGekozen(groepen, keuze, (g) => g.group_id));
+    }
   });
 });

@@ -166,13 +166,15 @@ export function leesVoertaal(waarde: unknown): Voertaal | null {
 /**
  * Dezelfde grens als `groups_omschrijving_len` (0144).
  *
- * ⚠️ **Geteld in codepunten en niet met `.max()`.** Zod telt UTF-16-eenheden en
- *    `char_length` in Postgres telt codepunten; bij een bóvengrens is `.max()`
- *    de strengere van de twee, dus hij weigert niets wat de database zou
- *    accepteren — maar hij weigert wél op een ander getal dan de teller onder
- *    het veld laat zien. Elf emoji zijn dan "22 van de 280" voor de gebruiker en
- *    22 voor het schema, terwijl de database er 11 telt. Eén eenheid overal
- *    (CLAUDE.md), dus `telTekens()` aan beide kanten.
+ * ⚠️ **Geteld in codepunten en niet met `.max()`.** Toen dit geschreven werd
+ *    telde Zod (4.4.3) UTF-16-eenheden en `char_length` in Postgres codepunten;
+ *    bij een bóvengrens was `.max()` de strengere van de twee, dus hij weigerde
+ *    niets wat de database zou accepteren — maar wél op een ander getal dan de
+ *    teller onder het veld liet zien. Elf emoji waren dan "22 van de 280" voor
+ *    de gebruiker en 22 voor het schema, terwijl de database er 11 telt. Sinds
+ *    zod 4.6 telt `.max()` ook codepunten (QS8-673), maar dat is een eigenschap
+ *    van de dependency en geen belofte: `telTekens()` telt wat de database telt,
+ *    welke zod er ook staat. Eén eenheid overal (CLAUDE.md).
  */
 export const OMSCHRIJVING_MAX = 280;
 

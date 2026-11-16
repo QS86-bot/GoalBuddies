@@ -5,6 +5,7 @@ import { StyleSheet, View } from 'react-native';
 import { useProfiel, useSession, userClock } from '@/modules/auth';
 import {
   beslissendeGroep,
+  enigeOfGekozen,
   fetchGroepenVanDoel,
   fetchMijnGroepen,
   koppelbareGroepen,
@@ -30,6 +31,7 @@ import {
   zetBeloning,
   zetStraf,
   type Commitment,
+  type Begunstigde,
   type MogelijkeBegunstigde,
 } from '@/modules/commitments';
 import {
@@ -130,6 +132,13 @@ const LEGE_MIJLPALEN: readonly Mijlpaal[] = [];
 
 /** Zelfde reden als hierboven: `useAsyncMetTerugval` houdt de terugval buiten `deps`. */
 const GEEN_BEGUNSTIGDEN: readonly MogelijkeBegunstigde[] = [];
+
+/**
+ * Wat een stuurloze straf kan doen — QS8-651. Een gediscrimineerde vorm, zodat
+ * "aanwijzen" alleen mét een getuige bestaat en dat aan het type hangt en niet
+ * aan de knop die toevallig uit staat.
+ */
+type HerstelStap = { readonly actie: 'nieuwe_getuige'; readonly getuige: string } | { readonly actie: 'afwikkelen' };
 
 /**
  * ⚠️ De waarde die "geen mijlpaal" betekent in de keuzelijst. Een lege string
@@ -440,7 +449,9 @@ function DeadlineVerzetten({
    */
   const [groepId, setGroepId] = useState('');
   const groep = beslissendeGroep(groepen, groepId);
-  const kiesbaar = groepen.length > 1;
+  // ⚠️ Ook bij één groep zodra de keuze wegviel (QS8-651): anders staat de knop
+  //    uit zonder dat er iets te kiezen valt.
+  const kiesbaar = groepen.length > 1 || (gedeeld && groep === undefined);
   const magVersturen = !gedeeld || groep !== undefined;
 
   // ⚠️ **`trekVerzoekIn` en niet `trekIn`, en dat is geen smaak** (QS8-340). Dit
@@ -955,7 +966,7 @@ function StuurlozeStrafKeuze({
   onAfwikkelen,
 }: {
   readonly mensen: readonly MogelijkeBegunstigde[];
-  readonly gekozen: string;
+  readonly gekozen: MogelijkeBegunstigde | undefined;
   readonly bezig: boolean;
   readonly fout: string | null;
   readonly onKies: (id: string) => void;
@@ -971,10 +982,11 @@ function StuurlozeStrafKeuze({
           <Choice
             label={t('stuurloos.wie')}
             opties={mensen.map((m) => ({ waarde: m.id, label: m.naam }))}
-            waarde={gekozen}
+            waarde={gekozen?.id ?? ''}
             onKies={onKies}
+            hint={gekozen === undefined ? t('stuurloos.kies_eerst') : undefined}
           />
-          <Button variant="primair" busy={bezig} onPress={onAanwijzen}>
+          <Button variant="primair" busy={bezig} disabled={gekozen === undefined} onPress={onAanwijzen}>
             {t('stuurloos.aanwijzen')}
           </Button>
         </>
@@ -1002,13 +1014,16 @@ function StuurlozeStraf({
   const [gekozen, setGekozen] = useState('');
 
   const mensen = useAsyncMetTerugval(fetchMogelijkeBegunstigden, GEEN_BEGUNSTIGDEN, []);
-  const nieuweGetuige = gekozen !== '' ? gekozen : (mensen[0]?.id ?? '');
+  // ⚠️ QS8-651: bij één kandidaat is dat de getuige, bij twee of meer alleen wie
+  //    de gebruiker aanwees — en tot dan niemand. Een getuige leest je straf
+  //    zodra hij verschuldigd is (domeinregel 11); die kiest de app niet voor je.
+  const nieuweGetuige = enigeOfGekozen(mensen, gekozen, (m) => m.id);
 
-  async function voer(actie: 'nieuwe_getuige' | 'afwikkelen') {
+  async function voer(stap: HerstelStap) {
     setBezig(true);
     setFout(null);
-    const opties = actie === 'afwikkelen' ? { bevestigd: true } : { getuige: nieuweGetuige };
-    const uitkomst = await herstelStuurlozeStraf(straf.id, actie, opties);
+    const opties = stap.actie === 'afwikkelen' ? { bevestigd: true } : { getuige: stap.getuige };
+    const uitkomst = await herstelStuurlozeStraf(straf.id, stap.actie, opties);
     setBezig(false);
     if (!uitkomst.ok) {
       setFout(uitkomst.melding);
@@ -1023,7 +1038,7 @@ function StuurlozeStraf({
       <StuurlozeStrafBevestiging
         bezig={bezig}
         fout={fout}
-        onBevestig={() => void voer('afwikkelen')}
+        onBevestig={() => void voer({ actie: 'afwikkelen' })}
         onTerug={() => setBevestigen(false)}
       />
     );
@@ -1036,10 +1051,29 @@ function StuurlozeStraf({
       bezig={bezig}
       fout={fout}
       onKies={setGekozen}
-      onAanwijzen={() => void voer('nieuwe_getuige')}
+      onAanwijzen={() => {
+        if (nieuweGetuige !== undefined) void voer({ actie: 'nieuwe_getuige', getuige: nieuweGetuige.id });
+      }}
       onAfwikkelen={() => setBevestigen(true)}
     />
   );
+}
+
+/**
+ * Wie de straf te lezen krijgt, of `null` zolang dat niet gekozen is — QS8-651.
+ *
+ * ⚠️ Eén plek die van `soort` plus de twee afgeleide keuzes een `Begunstigde`
+ *    maakt. `kanVerder`, de bevestigknop en `bewaar()` lezen alle drie dezelfde
+ *    `const begunstigde`; dat zij nooit uiteenlopen komt door die ene binding,
+ *    deze functie houdt `Straf` alleen korter.
+ */
+function gekozenBegunstigde(
+  soort: 'groep' | 'persoon',
+  groep: Lijstgroep | undefined,
+  persoon: MogelijkeBegunstigde | undefined,
+): Begunstigde | null {
+  if (soort === 'groep') return groep === undefined ? null : { soort, id: groep.id };
+  return persoon === undefined ? null : { soort, id: persoon.id };
 }
 
 function Straf({
@@ -1058,7 +1092,7 @@ function Straf({
   const router = useRouter();
   const [tekst, setTekst] = useState('');
   const [soort, setSoort] = useState<'groep' | 'persoon'>('groep');
-  const [groepId, setGroepId] = useState(groepen[0]?.id ?? '');
+  const [groepId, setGroepId] = useState('');
   const [gekozenPersoon, setGekozenPersoon] = useState('');
   const [bevestigen, setBevestigen] = useState(false);
   const [bezig, setBezig] = useState(false);
@@ -1066,10 +1100,14 @@ function Straf({
 
   const mensen = useAsyncMetTerugval(fetchMogelijkeBegunstigden, GEEN_BEGUNSTIGDEN, []);
 
-  // ⚠️ De keuze is afgeleid en niet in state gezet vanuit de lading. Twee
-  //    plekken die hetzelfde weten gaan uit de pas lopen, en dan verstuurt het
-  //    scherm een andere persoon dan het toont.
-  const persoonId = gekozenPersoon !== '' ? gekozenPersoon : (mensen[0]?.id ?? '');
+  // ⚠️ Afgeleid en niet in state gezet vanuit de lading: twee plekken die
+  //    hetzelfde weten gaan uit de pas lopen, en dan verstuurt het scherm een
+  //    andere persoon dan het toont. En sinds QS8-651 zonder stille eerste: bij
+  //    één kandidaat is het die ene, bij twee of meer alleen wie de gebruiker
+  //    aanwees. De begunstigde is wie je straf te lezen krijgt zodra hij
+  //    verschuldigd is (domeinregel 11), en dat kiest de app niet voor je.
+  const gekozenGroep = enigeOfGekozen(groepen, groepId, (g) => g.id);
+  const persoon = enigeOfGekozen(mensen, gekozenPersoon, (m) => m.id);
 
   if (bestaand) {
     const stand = tekstVoor(bestaand);
@@ -1160,20 +1198,15 @@ function Straf({
     );
   }
 
-  const gekozenGroep = groepen.find((g) => g.id === groepId);
-  const persoon = mensen.find((m) => m.id === persoonId);
   const getuige = soort === 'groep' ? gekozenGroep?.name : persoon?.naam;
-  const kanVerder =
-    tekst.trim().length >= 3 && (soort === 'groep' ? groepId !== '' : persoonId !== '');
+  const begunstigde = gekozenBegunstigde(soort, gekozenGroep, persoon);
+  const kanVerder = tekst.trim().length >= 3 && begunstigde !== null;
 
   async function bewaar() {
+    if (begunstigde === null) return;
     setBezig(true);
     setFout(null);
-    const uitkomst = await zetStraf(
-      goalId,
-      { body: tekst, image_url: null },
-      soort === 'groep' ? { soort: 'groep', id: groepId } : { soort: 'persoon', id: persoonId },
-    );
+    const uitkomst = await zetStraf(goalId, { body: tekst, image_url: null }, begunstigde);
     if (!uitkomst.ok) setFout(uitkomst.melding);
     else {
       setBevestigen(false);
@@ -1200,9 +1233,15 @@ function Straf({
             wat hier stond. */}
         <Body muted>{t('straf.dan_geldt', { tekst: schoneEneRegel(tekst) })}</Body>
         <Caption>{t('straf.tot_dan')}</Caption>
+        {/* ⚠️ Valt de begunstigde weg terwijl dit scherm openstaat (de lijst
+            ververst na een andere kaart), dan staat de knop uit en zegt de zin
+            waarom — geen knop die stil niets doet (regel 14). */}
+        {begunstigde === null ? (
+          <Caption>{t(soort === 'groep' ? 'straf.kies_groep_eerst' : 'straf.kies_persoon_eerst')}</Caption>
+        ) : null}
         {fout === null ? null : <Caption danger>{fout}</Caption>}
         <View style={styles.knoppen}>
-          <Button variant="primair" busy={bezig} onPress={() => void bewaar()}>
+          <Button variant="primair" busy={bezig} disabled={begunstigde === null} onPress={() => void bewaar()}>
             {t('straf.ja_vastleggen')}
           </Button>
           <Button variant="stil" onPress={() => setBevestigen(false)}>
@@ -1247,8 +1286,9 @@ function Straf({
         <Choice
           label={t('straf.welke_groep')}
           opties={groepen.map((g) => ({ waarde: g.id, label: g.name }))}
-          waarde={groepId}
+          waarde={gekozenGroep?.id ?? ''}
           onKies={setGroepId}
+          hint={gekozenGroep === undefined ? t('straf.kies_groep_eerst') : undefined}
         />
       ) : null}
 
@@ -1257,8 +1297,9 @@ function Straf({
           <Choice
             label={t('straf.welke_persoon')}
             opties={mensen.map((m) => ({ waarde: m.id, label: m.naam }))}
-            waarde={persoonId}
+            waarde={persoon?.id ?? ''}
             onKies={setGekozenPersoon}
+            hint={persoon === undefined ? t('straf.kies_persoon_eerst') : undefined}
           />
           <Caption>{t('straf.persoon_uitleg')}</Caption>
         </>
@@ -1551,11 +1592,12 @@ function HulpVragen({
   const [verstuurd, setVerstuurd] = useState(false);
   const { weg, verberg, geladen } = useHulpvraagVerborgen(doel.id);
 
-  // ⚠️ Afgeleid en niet in een effect gezet. De eerste groep is de standaard
-  //    zolang de gebruiker niets gekozen heeft; dat in een effect naar state
-  //    schrijven levert een extra render op zonder dat er iets verandert, en de
-  //    lint-regel vangt het af.
-  const gekozenGroep = groepId === '' ? (groepen[0]?.group_id ?? '') : groepId;
+  // ⚠️ Afgeleid en niet in een effect gezet, en sinds QS8-651 zonder stille
+  //    standaard: bij één groep is dat die groep, bij twee of meer alleen de
+  //    groep die de gebruiker aanwees — tot dan is er geen ontvanger en staat de
+  //    verstuurknop uit. Dit is route 2 van domeinregel 7: de gebruiker kiest
+  //    zelf wie zijn achterstand te zien krijgt, en "de eerste" is geen keuze.
+  const gekozenGroep = enigeOfGekozen(groepen, groepId, (g) => g.group_id);
 
   // Alleen bij achterstand, alleen met een groep om het aan te vragen, en
   // alleen als hij niet weggeklikt is.
@@ -1573,11 +1615,11 @@ function HulpVragen({
   }
 
   async function verstuur() {
-    if (userId === null) return;
+    if (userId === null || gekozenGroep === undefined) return;
     setBezig(true);
     setFout(null);
 
-    const uitkomst = await stuurBericht(gekozenGroep, userId, tekst);
+    const uitkomst = await stuurBericht(gekozenGroep.group_id, userId, tekst);
 
     if (!uitkomst.ok) {
       setFout(uitkomst.melding);
@@ -1632,12 +1674,20 @@ function HulpVragen({
         maxLength={HULPVRAAG_MAX}
       />
 
-      {groepen.length === 1 ? null : (
+      {/* ⚠️ Bij één groep géén lijst maar de naam, zodat de gebruiker leest wie
+          zijn achterstand te zien krijgt. De lijst komt terug zodra er niets
+          gekozen is — ook bij één groep, want dat is de stand na "kies Vrienden,
+          ontkoppel Vrienden": de keuze is dan weg en de knop staat uit tot hij
+          de overgebleven groep zelf aanwijst (security-ronde QS8-651). */}
+      {groepen.length === 1 && gekozenGroep !== undefined ? (
+        <Caption>{t('hulpvraag.gaat_naar', { groep: gekozenGroep.name })}</Caption>
+      ) : (
         <Choice
           label={t('hulpvraag.welke_groep')}
           opties={groepen.map((g) => ({ waarde: g.group_id, label: g.name }))}
-          waarde={gekozenGroep}
+          waarde={gekozenGroep?.group_id ?? ''}
           onKies={setGroepId}
+          hint={gekozenGroep === undefined ? t('hulpvraag.kies_eerst') : undefined}
         />
       )}
 
@@ -1647,7 +1697,7 @@ function HulpVragen({
         <Button
           variant="primair"
           busy={bezig}
-          disabled={tekst.trim().length < 3}
+          disabled={tekst.trim().length < 3 || gekozenGroep === undefined}
           onPress={() => void verstuur()}
         >
           {t('hulpvraag.versturen')}

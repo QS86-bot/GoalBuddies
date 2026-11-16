@@ -10,12 +10,12 @@
  *    overal emoji mág typen. Gebruik deze helpers, nooit de kale
  *    string-methodes.
  *
- * ⚠️ **Er zijn drie tellingen en ze zijn niet uitwisselbaar:**
+ * ⚠️ **Er zijn vier tellingen en ze zijn niet uitwisselbaar:**
  *
- *    | teken          | `.length` | codepunten | grafemen |
- *    |----------------|-----------|------------|----------|
- *    | `😀`           | 2         | 1          | 1        |
- *    | `👨‍👩‍👧‍👦` | 11        | 7          | 1        |
+ *    | teken          | `.length` | codepunten | grafemen | UTF-8-bytes |
+ *    |----------------|-----------|------------|----------|-------------|
+ *    | `😀`           | 2         | 1          | 1        | 4           |
+ *    | `👨‍👩‍👧‍👦` | 11        | 7          | 1        | 25          |
  *
  *    **De database telt codepunten** — elke lengte-CHECK gebruikt `char_length`.
  *    Daarom telt `telTekens()` codepunten en niet grafemen: een teller die iets
@@ -26,6 +26,12 @@
  *
  *    `telGrafemen()` bestaat voor het geval waarin je echt zichtbare tekens
  *    bedoelt, zoals een cursor of een tekstpreview.
+ *
+ *    **bcrypt en GoTrue tellen bytes** — QS8-672. De wachtwoord-bovengrens van
+ *    72 staat in die eenheid, en bytes zijn altijd ≥ codepunten ≥ grafemen.
+ *    Daarom telt `telBytes()` UTF-8-bytes: bij een bóvengrens laat elke andere
+ *    telling door wat de server weigert. Gebruik hem alleen waar de grens zelf
+ *    in bytes staat; voor een CHECK blijft `telTekens()` de maat.
  */
 
 /**
@@ -73,6 +79,22 @@ export function telTekens(tekst: string): number {
 /** Het aantal zichtbare tekens. Voor weergave, niet voor een grens. */
 export function telGrafemen(tekst: string): number {
   return grafemen(tekst).length;
+}
+
+/**
+ * Het aantal UTF-8-bytes, zoals **bcrypt en GoTrue** tellen — QS8-672.
+ *
+ * ⚠️ Deze telling volgt `char_length` niet.
+ *    `char_length` telt codepunten; een CHECK toets je met `telTekens()`. Deze
+ *    is er voor de ene grens die in bytes staat: de 72 van bcrypt, die GoTrue
+ *    met `len(password)` (Go: bytes) afdwingt en met een 400 weigert.
+ *
+ * ⚠️ Een losse surrogaat telt voor drie: `TextEncoder` schrijft hem als U+FFFD,
+ *    en Go's JSON-decoder doet hetzelfde. De twee kanten tellen dus ook dáár
+ *    gelijk.
+ */
+export function telBytes(tekst: string): number {
+  return new TextEncoder().encode(tekst).length;
 }
 
 /**
