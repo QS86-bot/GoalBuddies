@@ -2,6 +2,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import { userCycle } from '../../src/shared/time';
 import { adminDb, createTestUser, registreerGroep, removeTestUsers, rlsTestsConfigured, type TestUser } from './harness';
+import { psqlMetInvoer, stackBeschikbaarOfFaal } from './psql-stack';
 
 /**
  * De teambalk telt alleen op — QS8-655, criterium 6(b) en 6(c).
@@ -26,6 +27,10 @@ import { adminDb, createTestUser, registreerGroep, removeTestUsers, rlsTestsConf
  *       na vertrek niets meer bij" rood.
  *    5. `mag_groep_lezen()` uit `teambalk()` → alleen "geeft wie het teamdoel
  *       niet mag lezen null" rood.
+ *    6. Trigger `milestones_geteld_blijft` weg → alleen "laat een getelde
+ *       mijlpaal niet rechtstreeks verwijderen" rood.
+ *    7. Trigger `team_progress_events_niet_leeg` weg én de TRUNCATE terug aan
+ *       `service_role` → alleen "laat service_role de teller niet leegmaken" rood.
  */
 
 const SETUP_TIMEOUT = 240_000;
@@ -51,6 +56,11 @@ function uitkomst(a: Antwoord): string {
 function streefdatum(dagen: number): string {
   return new Date(Date.now() + dagen * 86_400_000).toISOString().slice(0, 10);
 }
+
+const beschikbaar = stackBeschikbaarOfFaal(
+  "select count(*) from pg_class where relname = 'team_progress_events'",
+  import.meta.url,
+);
 
 const organisaties: string[] = [];
 const groepen: string[] = [];
@@ -120,10 +130,14 @@ describe.runIf(rlsTestsConfigured)('de teambalk telt alleen op (QS8-655)', () =>
     return data;
   }
 
+  // ⚠️ Een eigen volgnummer per mijlpaal: `order_index` is uniek per doel, en
+  //    sinds de grendel van review H1 blijft een getelde mijlpaal staan.
+  let volgnummer = 10;
   async function mijlpaal(wie: TestUser, titel: string): Promise<string> {
+    volgnummer += 1;
     const { data, error } = await wie.db
       .from('milestones')
-      .insert({ goal_id: aandeel[wie.id], title: titel, order_index: 0 } as never)
+      .insert({ goal_id: aandeel[wie.id], title: titel, order_index: volgnummer } as never)
       .select('id')
       .single();
     expect(error).toBeNull();
@@ -191,10 +205,37 @@ describe.runIf(rlsTestsConfigured)('de teambalk telt alleen op (QS8-655)', () =>
     expect(await balk(bert)).toBe(2);
   }, TEST_TIMEOUT);
 
-  it('daalt niet als een mijlpaal verdwijnt', async () => {
-    const { error } = await bert.db.from('milestones').delete().eq('id', bertsEerste);
+  it('laat een getelde mijlpaal niet rechtstreeks verwijderen, ook niet na dropped (review H1)', async () => {
+    // De lus van de review: aanmaken, gedaan, weggooien, opnieuw. Zonder deze
+    // grendel liet elke ronde een rij achter en steeg de balk zonder grens.
+    const id = await mijlpaal(bert, 'Lus');
+    await zet(bert, id, 'done');
+    expect(await balk(cleo)).toBe(3);
+    const weg = await bert.db.from('milestones').delete().eq('id', id);
+    expect(weg.error?.code).toBe('23514');
+    const { error } = await bert.db.from('milestones').update({ status: 'dropped' } as never).eq('id', id);
     expect(error).toBeNull();
-    expect(await balk(cleo)).toBe(2);
+    const nogEens = await bert.db.from('milestones').delete().eq('id', id);
+    expect(nogEens.error?.code).toBe('23514');
+    // Een mijlpaal die nooit geteld is, gaat gewoon weg.
+    const los = await mijlpaal(bert, 'Nooit gedaan');
+    expect((await bert.db.from('milestones').delete().eq('id', los)).error).toBeNull();
+    expect(await balk(cleo)).toBe(3);
+  }, TEST_TIMEOUT);
+
+  it.runIf(beschikbaar)('laat service_role de teller niet leegmaken met TRUNCATE (review L1)', () => {
+    const uit = psqlMetInvoer(`
+      begin;
+      set local role service_role;
+      do $$ begin
+        truncate public.team_progress_events;
+        perform set_config('ijk.uitkomst', 'geleegd', true);
+      exception when others then
+        perform set_config('ijk.uitkomst', sqlstate, true);
+      end $$;
+      select 'UITKOMST|' || current_setting('ijk.uitkomst');
+      rollback;`);
+    expect(uit.split('\n').find((r) => r.startsWith('UITKOMST|'))).toMatch(/^UITKOMST\|(42501|23514)$/);
   }, TEST_TIMEOUT);
 
   it('telt na vertrek niets meer bij, en houdt wat er was', async () => {
@@ -206,7 +247,7 @@ describe.runIf(rlsTestsConfigured)('de teambalk telt alleen op (QS8-655)', () =>
       .insert({ goal_id: aandeel[cleo.id]!, title: 'Na vertrek', order_index: 1, status: 'done' })
       .select('id');
     expect((data as unknown[]).length).toBe(1);
-    expect(await balk(bert)).toBe(2);
+    expect(await balk(bert)).toBe(3);
   }, TEST_TIMEOUT);
 
   it('staat niet in de realtime-publicatie en heeft geen REPLICA IDENTITY FULL (6b)', async () => {
@@ -230,6 +271,10 @@ describe.runIf(rlsTestsConfigured)('de teambalk telt alleen op (QS8-655)', () =>
     await adminDb().from('team_goal_shares' as never).insert({ goal_id: doel, team_goal_id: id } as never);
     await adminDb().from('goal_group_links').insert({ goal_id: doel, group_id: team });
     await adminDb().from('milestones').insert({ goal_id: doel, title: 'Klaar', order_index: 0, status: 'done' });
+    expect(await balk(bert, id)).toBe(1);
+    // Het doel verdwijnt (zoals bij een accountverwijdering): de mijlpaal gaat
+    // via de cascade mee, de rij blijft met een lege mijlpaal, de balk daalt niet.
+    expect((await adminDb().from('goals').delete().eq('id', doel)).error).toBeNull();
     expect(await balk(bert, id)).toBe(1);
     const weg = await adminDb().from('team_goals' as never).delete().eq('id' as never, id as never);
     expect(weg.error).toBeNull();

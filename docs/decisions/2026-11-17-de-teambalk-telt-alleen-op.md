@@ -11,7 +11,8 @@
 | --- | --- |
 | `team_progress_events` | één rij per mijlpaal van een aandeel die voor het eerst gedaan is; geen persoon; geen directe SELECT |
 | de vuller | trigger `milestones_teamteller` (na insert of statuswijziging van een mijlpaal) |
-| alleen erbij | trigger `team_progress_events_alleen_erbij`: UPDATE en DELETE weigeren, ook voor `service_role` |
+| alleen erbij | trigger `team_progress_events_alleen_erbij`: UPDATE en DELETE weigeren, ook voor `service_role`; `team_progress_events_niet_leeg` en een `revoke` tegen TRUNCATE |
+| een getelde mijlpaal blijft | trigger `milestones_geteld_blijft`: een mijlpaal die in de teller staat, is niet rechtstreeks te verwijderen |
 | de teambalk | `teambalk()`: één getal, of `null` voor wie het teamdoel niet mag lezen |
 
 ## Keuzes die hier gemaakt zijn
@@ -35,7 +36,17 @@ eigenaar daarna aan zijn eigen doel doet, is niet meer van het team.
 één rij op (UNIQUE op teamdoel en mijlpaal, `on conflict do nothing`). Een mijlpaal
 die op `dropped` gaat, telt niet.
 
-**4. Geen cachekolom.** De telling is een `count(*)` over een index op
+**4. Een getelde mijlpaal blijft staan** (securityreview H1). Zonder die regel kon
+één lid de balk onbeperkt opblazen: duizend mijlpalen aanmaken, op gedaan zetten,
+weggooien, en dat herhalen. 📏 De review mat 3000 na drie rondes. Het dagplafond op
+mijlpalen telt alleen mijlpalen die nog bestaan, en elke verwijdering liet een rij
+achter. Nu weigert een rechtstreekse verwijdering van een mijlpaal die geteld is,
+ook nadat hij op `dropped` is gezet. Een cascade van het doel of het account mag
+wel. Dit volgt domeinregel 6: wat geteld is, is geschiedenis. ⚠️ Voor de gebruiker
+betekent het dat hij een gedane stap van een aandeel niet meer kan weggooien; hij kan
+hem op `dropped` zetten. Een scherm dat "verwijderen" aanbiedt, hoort dat te weten.
+
+**5. Geen cachekolom.** De telling is een `count(*)` over een index op
 `team_goal_id`. Het issue noemt een cachekolom boven ongeveer 10.000 events per
 teamdoel. Dat is hier niet gemeten.
 
@@ -54,18 +65,37 @@ teamgrootte waaronder de balk niet getoond wordt, zou het dichten.
 
 ## Wat getest is
 
-`tests/rls/teambalk.test.ts`: 10 tests via PostgREST, met het JWT van elke gebruiker,
+`tests/rls/teambalk.test.ts`: 11 tests via PostgREST, met het JWT van elke gebruiker,
 over het echte teampad.
 - Criterium 6(b): geen van de drie teamtabellen staat in de realtime-publicatie, en
   geen heeft `REPLICA IDENTITY FULL`.
 - Criterium 6(c): de balk blijft gelijk na een gemiste week en bij een mijlpaal die
   heen en weer gaat.
-- Verder: de balk daalt niet als een mijlpaal verdwijnt; na vertrek telt er niets
+- Verder: de lus van de review (aanmaken, gedaan, weggooien) breekt; de balk daalt
+  niet als het doel verdwijnt; geen TRUNCATE; na vertrek telt er niets
   meer bij; er zijn geen rechtstreekse wijzigingen; er is geen rechtstreeks lezen;
   een niet-lezer krijgt `null`, net als een verzonnen id.
-- Vijf mutaties per grendel met de hand. De uitslag staat in de kop van de test.
+- Zeven mutaties per grendel met de hand. De uitslag staat in de kop van de test.
+
+## Wat de securityreview vond
+
+- **H1, hersteld:** de balk was onbeperkt op te blazen. Zie keuze 4.
+- **L1, hersteld:** `service_role` kon de teller leegmaken met TRUNCATE. Nu weigert
+  een statement-trigger dat, en het recht is ingetrokken.
+- **L2, open:** de uitzondering voor een DELETE kijkt naar de triggerdiepte, niet
+  naar wélke foreign key. Vandaag schrijft geen andere functie in deze tabel.
+  Wordt zwaarder als: een functie of trigger `team_progress_events` gaat wijzigen of
+  verwijderen.
+- **L3, open:** de afleiding per persoon in een klein team (rij 45). Wordt zwaarder
+  als: QS8-661 de mijlpalen van aandelen afschermt, want dan is de teller de enige
+  bron.
 
 ## Aannames, niet gemeten
+
+- **Opblazen binnen het dagplafond.** Zonder verwijderen kan één lid nog steeds
+  tot het dagplafond op mijlpalen per etmaal stappen aanmaken en afvinken. Die
+  stappen bestaan dan wel en zijn voor hem zelf zichtbaar. Een teller zonder noemer
+  (besluit 16) kan dat niet onderscheiden van echt werk.
 
 - **Schaal.** De `count(*)` is niet gemeten boven een handvol events.
 - **`src/lib/database.types.ts`** kent de nieuwe tabel en RPC nog niet. Hergenereren

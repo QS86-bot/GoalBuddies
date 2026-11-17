@@ -8,10 +8,13 @@
 -- ROLLBACK-PAD (de teller is bij het landen leeg; met tellingen erin is dit
 -- grens 2, want ze zijn niet terug te rekenen, en vraagt het eerst een `pg_dump`):
 --   drop function if exists public.teambalk(uuid);
+--   drop trigger if exists milestones_geteld_blijft on public.milestones;
+--   drop function if exists public.getelde_mijlpaal_blijft();
 --   drop trigger if exists milestones_teamteller on public.milestones;
 --   drop function if exists public.tel_teammijlpaal();
 --   drop table if exists public.team_progress_events;   -- met zijn trigger
 --   drop function if exists public.teamteller_alleen_erbij();
+--   drop function if exists public.teamteller_niet_leeg();
 --
 -- ---------------------------------------------------------------------------
 -- Wat dit doet
@@ -90,6 +93,57 @@ drop trigger if exists team_progress_events_alleen_erbij on public.team_progress
 create trigger team_progress_events_alleen_erbij
   before update or delete on public.team_progress_events
   for each row execute function public.teamteller_alleen_erbij();
+
+-- ⚠️ **En geen TRUNCATE** (securityreview QS8-655, L1). Rij-triggers grijpen bij
+--    een TRUNCATE niet in, en `service_role` heeft dat recht standaard.
+create or replace function public.teamteller_niet_leeg()
+returns trigger
+language plpgsql
+set search_path = public, pg_temp
+as $$
+begin
+  raise exception 'De teamteller telt alleen op' using errcode = 'check_violation';
+end;
+$$;
+revoke all on function public.teamteller_niet_leeg() from public, anon, authenticated;
+
+drop trigger if exists team_progress_events_niet_leeg on public.team_progress_events;
+create trigger team_progress_events_niet_leeg
+  before truncate on public.team_progress_events
+  for each statement execute function public.teamteller_niet_leeg();
+revoke truncate on public.team_progress_events from service_role;
+
+-- ⚠️⚠️ **Een getelde mijlpaal is niet meer rechtstreeks te verwijderen**
+--    (securityreview QS8-655, H1, gemeten: 3000 in drie rondes). Zonder dit
+--    blies één lid de balk onbeperkt op: duizend mijlpalen, op gedaan, weg, en
+--    opnieuw. Het dagplafond telt alleen mijlpalen die nog bestaan, en elke
+--    verwijdering liet een rij met een lege `milestone_id` achter die niet met
+--    de UNIQUE botst. De vorm volgt domeinregel 6: wat geteld is, is
+--    geschiedenis. Een cascade van het doel of het account (diepte > 1) mag wel;
+--    dan blijft de rij staan en daalt de balk niet. Het geldt ook na `dropped`,
+--    want de toets is "is hij geteld" en niet "is hij nu gedaan".
+create or replace function public.getelde_mijlpaal_blijft()
+returns trigger
+language plpgsql
+security definer
+set search_path = public, pg_temp
+as $$
+begin
+  if pg_trigger_depth() = 1
+     and exists (select 1 from team_progress_events e where e.milestone_id = old.id) then
+    raise exception 'Een mijlpaal die in de teambalk telt, blijft staan'
+      using errcode = 'check_violation',
+            hint = 'Zet hem op dropped als hij niet meer van toepassing is.';
+  end if;
+  return old;
+end;
+$$;
+revoke all on function public.getelde_mijlpaal_blijft() from public, anon, authenticated;
+
+drop trigger if exists milestones_geteld_blijft on public.milestones;
+create trigger milestones_geteld_blijft
+  before delete on public.milestones
+  for each row execute function public.getelde_mijlpaal_blijft();
 
 -- ---------------------------------------------------------------------------
 -- 3. De vuller: de eerste keer dat een mijlpaal van een aandeel gedaan is
