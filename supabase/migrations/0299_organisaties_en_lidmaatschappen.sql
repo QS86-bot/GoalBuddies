@@ -54,9 +54,11 @@
 --    te verruimen. De catalogustest in `tests/rls/organisatierol-catalogus.test.ts`
 --    bewaakt de rest.
 --
--- 3. **Inactief is onleesbaar** (002 rij 42). Vertrokken en uitgezet zijn
---    allebei `inactive` en laten geen leesbaar onderscheid achter: wie niet
---    meer actief lid is, staat in geen enkel antwoord, ook niet in zijn eigen.
+-- 3. **Inactief is voor anderen onleesbaar** (002 rij 42). Vertrokken en
+--    uitgezet zijn allebei `inactive` en laten geen leesbaar onderscheid
+--    achter: wie niet meer actief lid is, staat in geen enkel antwoord. De
+--    persoon zelf leert alleen dát hij niet terug kan — `word_organisatielid()`
+--    geeft hem `removed`, zoals bij groepen — en niet waarom.
 --
 -- ⚠️ **De uitnodigcode is een kolomgrant en geen policy** (criterium 10).
 --    RLS kan geen kolommen beperken. `invite_code` en `invite_revoked` staan
@@ -207,16 +209,28 @@ revoke all on function public.is_organisatiebeheerder(uuid) from public, anon, a
 revoke all on table public.organizations from public, anon, authenticated;
 revoke all on table public.organization_members from public, anon, authenticated;
 -- ⚠️ `invite_code` en `invite_revoked` staan hier met opzet niet tussen.
-grant select (id, name, created_by, status, created_at) on public.organizations to authenticated;
+-- ⚠️ `created_by` staat er sinds de security-ronde ook niet in (L3): rij 42
+--    belooft naam en rol, en de aanmaker bleef anders leesbaar nadat hij uit de
+--    ledenlijst verdwenen is.
+grant select (id, name, status, created_at) on public.organizations to authenticated;
 grant select (organization_id, user_id, role, status, joined_at) on public.organization_members to authenticated;
 
 alter table public.organizations enable row level security;
 alter table public.organization_members enable row level security;
 
 drop policy if exists organizations_select on public.organizations;
+-- ⚠️ **Via de lidmaatschapsindex en niet met de helper per rij** (security-ronde,
+--    M1). 📏 Met `using (is_organisatielid(id))` kostte een ongefilterde
+--    `select id from organizations` met 20.000 organisaties **174 ms**: elke rij
+--    een definer-aanroep. Zo is het **2 ms**, en de uitkomst is dezelfde — de
+--    subquery ziet onder RLS alleen je eigen actieve lidmaatschap.
 create policy organizations_select on public.organizations
   for select to authenticated
-  using (public.is_organisatielid(id));
+  using (status = 'active'
+         and id in (select m.organization_id
+                      from public.organization_members m
+                     where m.user_id = (select auth.uid())
+                       and m.status = 'active'));
 
 drop policy if exists organizations_insert on public.organizations;
 create policy organizations_insert on public.organizations
@@ -278,6 +292,10 @@ begin
   if v_uid is null then
     raise exception 'Niet ingelogd' using errcode = '42501';
   end if;
+
+  -- ⚠️ Eén aanroep per gebruiker tegelijk (security-ronde, L1): anders tellen
+  --    N gelijktijdige aanroepen allemaal dezelfde stand onder het plafond.
+  perform pg_advisory_xact_lock(hashtext('organisatielidmaatschap:' || v_uid::text));
 
   -- Grove bovengrens vóór de dure normalisatie (zelfde reden als 0287).
   if char_length(coalesce(p_naam, '')) > 1000 then
@@ -361,6 +379,10 @@ begin
     raise exception 'Niet ingelogd' using errcode = '42501';
   end if;
 
+  -- ⚠️ Eén aanroep per gebruiker tegelijk (security-ronde, L1): anders tellen
+  --    N gelijktijdige aanroepen allemaal dezelfde stand onder het plafond.
+  perform pg_advisory_xact_lock(hashtext('organisatielidmaatschap:' || v_uid::text));
+
   if public.dagteller_stand('organisatiepogingen', 'gebruiker', v_uid::text, interval '1 day') >= 20 then
     return jsonb_build_object('ok', false, 'reason', 'rate_limited');
   end if;
@@ -426,6 +448,14 @@ begin
     raise exception 'Niet ingelogd' using errcode = '42501';
   end if;
 
+  -- ⚠️ Eerst de toets en dan pas de lock (security-ronde, L2): anders kan een
+  --    buitenstaander met een id de rij van elke organisatie vergrendelen.
+  if not exists (select 1 from organization_members
+                  where organization_id = p_organization_id and user_id = v_uid
+                    and status = 'active') then
+    return jsonb_build_object('ok', false, 'reason', 'geen_lid');
+  end if;
+
   perform 1 from organizations where id = p_organization_id for update;
 
   select role into v_rol
@@ -469,14 +499,15 @@ begin
     raise exception 'Niet ingelogd' using errcode = '42501';
   end if;
 
-  perform 1 from organizations where id = p_organization_id for update;
-
   -- ⚠️ Eén reden voor elke weigering: geen beheerder, onbekende organisatie,
   --    onbekende gebruiker, jezelf, een andere beheerder of een al inactief lid.
+  --    En de toets vóór de lock (security-ronde, L2).
   if p_user_id is null or p_user_id = v_uid
      or not public.is_organisatiebeheerder(p_organization_id) then
     return jsonb_build_object('ok', false, 'reason', 'niet_toegestaan');
   end if;
+
+  perform 1 from organizations where id = p_organization_id for update;
 
   update organization_members
      set status = 'inactive'
@@ -486,12 +517,27 @@ begin
     return jsonb_build_object('ok', false, 'reason', 'niet_toegestaan');
   end if;
 
+  -- ⚠️⚠️ **Uitzetten roteert de code** (security-ronde, M2). Anders komt wie
+  --    uitgezet is met een tweede account en de oude code gewoon terug, en ziet
+  --    hij de ledenlijst weer. Een ingetrokken code blijft ingetrokken. Dit telt
+  --    niet in de codeteller: het is geen uitnodiging, en een beheerder mag
+  --    nooit een uitzetting overhouden die de deur niet sluit.
+  for poging in 1..5 loop
+    begin
+      update organizations set invite_code = public.generate_invite_code()
+       where id = p_organization_id;
+      exit;
+    exception when unique_violation then null;
+    end;
+  end loop;
+
   return jsonb_build_object('ok', true);
 end;
 $$;
 comment on function public.zet_organisatielid_uit(uuid, uuid) is
-  'Een beheerder zet een actief lid (rol member) op inactive. Elke weigering '
-  'geeft niet_toegestaan, zodat de RPC geen orakel is — QS8-652.';
+  'Een beheerder zet een actief lid (rol member) op inactive en roteert de '
+  'uitnodigcode. Elke weigering geeft niet_toegestaan, zodat de RPC geen '
+  'orakel is — QS8-652.';
 revoke all on function public.zet_organisatielid_uit(uuid, uuid) from public, anon, authenticated;
 grant execute on function public.zet_organisatielid_uit(uuid, uuid) to authenticated;
 

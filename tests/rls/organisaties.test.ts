@@ -171,7 +171,8 @@ describe.runIf(rlsTestsConfigured)('organisaties en lidmaatschappen (QS8-652)', 
     'een uitgezet lid is niet te onderscheiden van een vertrokken lid',
     async () => {
       const dani = await createTestUser('org-dani');
-      expect(uitkomst(await rpc(dani, 'word_organisatielid', { p_code: await codeVan(anna, org) }))).toBe('ok');
+      const codeVoor = await codeVan(anna, org);
+      expect(uitkomst(await rpc(dani, 'word_organisatielid', { p_code: codeVoor }))).toBe('ok');
       expect(uitkomst(await rpc(bert, 'zet_organisatielid_uit', { p_organization_id: org, p_user_id: dani.id }))).toBe(
         'niet_toegestaan',
       );
@@ -179,6 +180,10 @@ describe.runIf(rlsTestsConfigured)('organisaties en lidmaatschappen (QS8-652)', 
         'ok',
       );
       expect(uitkomst(await rpc(dani, 'word_organisatielid', { p_code: await codeVan(anna, org) }))).toBe('removed');
+      // Uitzetten sluit de deur ook voor een tweede account met de oude code
+      // (security-ronde, M2): de code is geroteerd.
+      const tweede = await createTestUser('org-dani-twee');
+      expect(uitkomst(await rpc(tweede, 'word_organisatielid', { p_code: codeVoor }))).toBe('invalid');
       expect((await tabel(dani, 'organization_members', 'user_id', 'organization_id', org)).data).toEqual([]);
       // Een beheerder zet zichzelf niet uit, en ook niet een andere beheerder.
       expect(uitkomst(await rpc(anna, 'zet_organisatielid_uit', { p_organization_id: org, p_user_id: anna.id }))).toBe(
@@ -205,7 +210,7 @@ describe.runIf(rlsTestsConfigured)('organisaties en lidmaatschappen (QS8-652)', 
     'een beheerder krijgt van de organisatie en de ledenlijst precies wat een lid krijgt',
     async () => {
       for (const [naam, kolommen, kolom] of [
-        ['organizations', 'id, name, created_by, status, created_at', 'id'],
+        ['organizations', 'id, name, status, created_at', 'id'],
       ] as const) {
         const beheerder = await tabel(anna, naam, kolommen, kolom, org);
         const lid = await tabel(bert, naam, kolommen, kolom, org);
@@ -252,7 +257,7 @@ describe.runIf(rlsTestsConfigured)('organisaties en lidmaatschappen (QS8-652)', 
     'de uitnodigcode is niet leesbaar via de tabel, ook niet voor een beheerder',
     async () => {
       for (const wie of [anna, bert]) {
-        for (const kolommen of ['invite_code', '*', 'id, invite_revoked']) {
+        for (const kolommen of ['invite_code', '*', 'id, invite_revoked', 'created_by']) {
           const a = await tabel(wie, 'organizations', kolommen, 'id', org);
           expect(a.error?.code, `${kolommen} als ${wie.email}`).toBe('42501');
           expect(a.data).toBeNull();

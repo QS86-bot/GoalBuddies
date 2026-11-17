@@ -34,7 +34,7 @@ Geen van de keuzes hieronder valt onder grens 1 of 2.
 | 3 | `organization_members` laat via de tabel **alleen je eigen actieve rij** zien | Een tabelbrede leesregel is een ongepagineerde ledenlijst via PostgREST (regel 10), en geeft meer dan rij 42 belooft | QS8-657 (schermen) |
 | 4 | De ledenlijst geeft **naam en rol**, geen avatar en geen toetredingsdatum, en bladert op `user_id` | Rij 42 belooft "naam en rol"; wat erbij komt is een verruiming. Een cursor op `user_id` verschuift niet als iemand vertrekt (de les van 0152) | QS8-657 |
 | 5 | Vertrokken en uitgezet zijn allebei `inactive`; terugkomen met de code geeft `removed` | Zelfde vorm als groepen (rij 39). Wie terug wil, heeft een vervolgissue nodig — net als bij groepen | Het eerste verzoek om terug te keren |
-| 6 | Een inactief lidmaatschap is voor **niemand** leesbaar, ook niet voor de persoon zelf | Rij 42: "vertrek en uitzetting laten geen leesbaar onderscheid achter" | — |
+| 6 | Een inactief lidmaatschap is voor anderen nergens leesbaar; de persoon zelf leert alleen via `removed` dát hij niet terug kan, niet of hij vertrok of uitgezet werd | Rij 42: "vertrek en uitzetting laten geen leesbaar onderscheid achter". `removed` houdt de vorm van groepen; `invalid` zou de persoon niet beter beschermen, want een tweede account mag het ook proberen | — |
 | 7 | Een gearchiveerde organisatie is via de tabel onleesbaar en de code geeft `invalid` | Beschermd is het antwoord voor elk nieuw oppervlak. Er is nog geen archiveer-RPC | Het issue dat archiveren bouwt |
 | 8 | Beheerder word je alleen als aanmaker; er is geen RPC om iemand beheerder te maken | Besluit 13 noemt het niet; een tweede beheerder is een eigen ontwerp | Vervolgissue |
 | 9 | Een beheerder zet geen andere beheerder uit en ook niet zichzelf | Zonder deze grens kan één beheerder de ander buitensluiten | Samen met 8 |
@@ -44,6 +44,8 @@ Geen van de keuzes hieronder valt onder grens 1 of 2.
 | 13 | "Uitnodigen" uit criterium 12 is `vernieuw_organisatiecode()` | Zonder die functie had `invite_revoked` geen schrijver, en een uitgelekte code geen uitweg. Er wordt geen uitnodiging verstuurd (geen e-mail, geen push) | — |
 | 14 | `dagtellers_soort_check` krijgt `organisatie` erbij | De codeteller telt per organisatie; boeken als `groep` geeft een sleutel een naam die hij niet is. Verruimt een allowlist met één waarde en raakt geen bestaande rij | — |
 | 15 | `created_by` is `on delete set null`; een lid gaat met `on delete cascade` mee | Een `restrict` blokkeert het wisrecht. Wat er met een organisatie zónder beheerder gebeurt, is QS8-659 | QS8-659 |
+| 16 | **Uitzetten roteert de uitnodigcode** (security-ronde, M2) | Zonder rotatie komt wie uitgezet is met een tweede account en de oude code gewoon terug, en ziet hij de ledenlijst weer. In een zakelijke context zet je iemand juist uit omdat hij er niet meer bij mag. Een ingetrokken code blijft ingetrokken; de rotatie telt niet in de codeteller. Wie nog op de oude code wachtte, krijgt `invalid` en heeft een nieuwe code nodig — dat is de prijs | Quinten: als hij liever een vraag na het uitzetten wil dan een automatische rotatie |
+| 17 | `created_by` staat niet in de kolomgrant (security-ronde, L3) | Rij 42 belooft naam en rol. Zodra er een tweede beheerder kan zijn, zou de aanmaker na zijn vertrek leesbaar blijven terwijl hij uit de ledenlijst verdwijnt | — |
 
 ### Waarom elke poging telt, en niet elke rij
 
@@ -65,19 +67,47 @@ ongeregistreerde functie die naar de rol of de helper verwijst) en het
 gedragsdeel in `tests/rls/organisaties.test.ts` (beheerder en lid krijgen
 dezelfde rijen).
 
+## De security-ronde
+
+`security-reviewer` direct na de migratie (regel 19): niets kritieks, en
+criterium 4, 5, 10 en 12 zelf nagemeten. Verwerkt, elk eerst zelf nagelopen:
+
+- **M1:** `organizations_select` riep de helper per rij aan. 📏 Met 20.000
+  organisaties en een ongefilterde `select id` kostte dat 174 ms; met de
+  subquery op het eigen lidmaatschap 2 ms, met dezelfde uitkomst.
+- **M2:** uitzetten roteert de code (keuze 16), met een toets die geijkt is
+  door de rotatie weg te halen.
+- **L1:** `pg_advisory_xact_lock` per gebruiker in `maak_organisatie()` en
+  `word_organisatielid()`, tegen gelijktijdige aanroepen onder het plafond. Niet
+  met twee sessies gemeten.
+- **L2:** de autorisatie vóór de `for update`, zodat een buitenstaander geen
+  rijen kan vergrendelen.
+- **L3:** `created_by` uit de kolomgrant (keuze 17).
+- **L4:** de kop van de migratie en rij 42 zeiden "ook niet voor de persoon
+  zelf", terwijl `removed` dat wél vertelt. De tekst is rechtgezet (keuze 6).
+- **L5:** de catalogustest eist nu dat élke functie die `organization_members`
+  of de helper raakt geregistreerd is, scant views en `BEGIN ATOMIC`-functies,
+  en heeft voor elk een ijking.
+
+Weggezet in `docs/ENGINEER-REVIEW.md`, elk met de voorwaarde waaronder het
+zwaarder wordt: L6 (geen plafond per organisatie), L7 (de laatste beheerder
+via accountverwijdering, QS8-659), en de tellers per account in plaats van per
+mens, samen met de vraag of `db-tx-end` op Supabase op `commit` staat.
+
 ## Gemeten (lokale stack, Postgres 16 + PostgREST 12.2.12, 17-11-2026)
 
 - 302 migraties afgespeeld op een lege database; 0299 twee keer achter elkaar
   afgespeeld zonder fout.
-- `tests/rls/organisaties.test.ts`: 11 tests groen. Zeven mutaties, elk apart
+- `tests/rls/organisaties.test.ts`: 11 tests groen. Acht mutaties, elk apart
   teruggezet, en elke keer viel de bedoelde toets om:
   - `organizations_select` op `using (true)` → beide criterium-4-toetsen;
   - `grant select (invite_code, invite_revoked)` → de codetoets;
   - de statustoets uit `is_organisatielid()` → de vertrektoets;
   - het lidplafond van 20 naar 21, en de telling ná de codetoets in plaats van
     ervoor → in beide gevallen de toets "elke poging telt";
-  - het aanmaakplafond en het codeplafond weg → elk hun eigen toets.
-- `tests/rls/organisatierol-catalogus.test.ts`: 7 tests groen, waarvan vijf
+  - het aanmaakplafond en het codeplafond weg → elk hun eigen toets;
+  - de rotatie bij uitzetten weg → de uitzettoets.
+- `tests/rls/organisatierol-catalogus.test.ts`: 9 tests groen, waarvan zeven
   ijkingen die in een teruggedraaide transactie elk één grendel breken.
 
 ## Niet gemeten

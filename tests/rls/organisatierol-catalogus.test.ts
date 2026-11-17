@@ -13,9 +13,13 @@ import { psqlMetInvoer, stackBeschikbaarOfFaal } from './psql-stack';
  *
  * 1. **Geen SELECT- of ALL-policy** verwijst naar `is_organisatiebeheerder()` of
  *    naar de rol in `organization_members`.
- * 2. **Geen functie** verwijst ernaar, behalve de rijen in `REGISTER`, elk met
- *    een reden. Een nieuwe leesfunctie die de rol gebruikt, is rood tot iemand
- *    hem met een reden registreert — en dat is dan een besluit, geen bijvangst.
+ * 2. **Geen functie en geen view** raakt `organization_members` of de helper,
+ *    behalve de rijen in `REGISTER`, elk met een reden. Dat is breder dan "noemt
+ *    de rol": een `select *` of een `returns setof organization_members` geeft
+ *    de rol ook mee zonder het woord te noemen (security-ronde, L5). Een nieuwe
+ *    functie is rood tot iemand hem met een reden registreert — en dat is dan
+ *    een besluit, geen bijvangst. Een view kan niet geregistreerd worden: die
+ *    is standaard eigendom van `postgres` en omzeilt RLS.
  * 3. **`is_organisatiebeheerder()` heeft geen execute voor `authenticated`.**
  *    Een policy draait als de aanroeper, dus een policy die hem ooit aanroept
  *    valt om met 42501 in plaats van stil te verruimen.
@@ -33,6 +37,7 @@ const beschikbaar = stackBeschikbaarOfFaal(
 /** Functies die de rol mogen raken, met de reden. Leesfuncties alleen als label. */
 const REGISTER: Readonly<Record<string, string>> = {
   is_organisatiebeheerder: 'de helper zelf',
+  is_organisatielid: 'leest alleen het eigen lidmaatschap; geeft een boolean en geen rol',
   maak_organisatie: 'schrijft de rol admin voor de aanmaker',
   word_organisatielid: 'schrijft de rol member voor wie met de code binnenkomt',
   verlaat_organisatie: 'de laatste beheerder kan niet vertrekken',
@@ -56,16 +61,26 @@ union all
 select 'functie|' || k.proname
   from (
     -- ⚠️ Eerst grof op de ruwe tekst, dan pas strippen: \`code_zonder_commentaar()\`
-    --    over élke functie kost 📏 ruim tien seconden per meting.
-    select p.proname, public.code_zonder_commentaar(p.prosrc) as code
+    --    over élke functie kost 📏 ruim tien seconden per meting. Een
+    --    \`BEGIN ATOMIC\`-functie heeft een lege \`prosrc\`; die leest hij uit
+    --    \`pg_get_functiondef()\` (security-ronde, L5).
+    select p.proname,
+           public.code_zonder_commentaar(
+             case when p.prosqlbody is null then p.prosrc else pg_get_functiondef(p.oid) end) as code
       from pg_proc p
      where p.pronamespace = 'public'::regnamespace
        and p.prokind = 'f'
-       and p.prosrc ~ '(is_organisatiebeheerder|organization_members)'
+       and (p.prosrc ~ '(is_organisatiebeheerder|organization_members)'
+            or (p.prosqlbody is not null
+                and pg_get_functiondef(p.oid) ~ '(is_organisatiebeheerder|organization_members)'))
      offset 0
   ) k
- where k.code ~ 'is_organisatiebeheerder'
-    or (k.code ~ 'organization_members' and k.code ~ '\\mrole\\M')
+ where k.code ~ '(is_organisatiebeheerder|organization_members)'
+union all
+select 'view|' || schemaname || '.' || viewname
+  from pg_views
+ where schemaname = 'public'
+   and definition ~ '(is_organisatiebeheerder|organization_members)'
 union all
 select 'grant|is_organisatiebeheerder'
  where has_function_privilege('authenticated', 'public.is_organisatiebeheerder(uuid)', 'execute')
@@ -137,6 +152,19 @@ describe.runIf(beschikbaar)('de rol van een organisatie komt in geen leespad (QS
         as $$ -- is_organisatiebeheerder() hoort hier niet
               select 1 $$;`);
     expect(lekken).toEqual([]);
+  });
+
+  it('ijking grendel 2c: een functie die de lidtabel teruggeeft zonder "role" te noemen wordt gemeld', () => {
+    const { lekken } = meet(`
+      create function public.ijk_alle_lidmaatschappen() returns setof public.organization_members
+        language sql stable security definer set search_path = public, pg_temp
+        as $$ select * from organization_members $$;`);
+    expect(lekken).toEqual(['functie|ijk_alle_lidmaatschappen']);
+  });
+
+  it('ijking grendel 2d: een view over de lidtabel wordt gemeld', () => {
+    const { lekken } = meet('create view public.ijk_ledenview as select * from public.organization_members;');
+    expect(lekken).toEqual(['view|public.ijk_ledenview']);
   });
 
   it('ijking grendel 3: een grant op de helper wordt gemeld', () => {
