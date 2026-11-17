@@ -1,0 +1,77 @@
+# De teambalk telt alleen op
+
+**Datum:** 17-11-2026 · **Issue:** QS8-655 (epic QS8-650) · **Migratie:** `0302` (voorlopig nummer, botst met productie) ·
+**Bouwt voort op:** QS8-654 (`0301`, teamdoelen en aandelen) ·
+**Besluiten:** 7, 11, 14 en 16 in
+`docs/decisions/2026-11-03-zakelijk-gebruik-met-organisaties-en-teamdoelen.md`
+
+## Wat er gebouwd is
+
+| onderdeel | vorm |
+| --- | --- |
+| `team_progress_events` | één rij per mijlpaal van een aandeel die voor het eerst gedaan is; geen persoon; geen directe SELECT |
+| de vuller | trigger `milestones_teamteller` (na insert of statuswijziging van een mijlpaal) |
+| alleen erbij | trigger `team_progress_events_alleen_erbij`: UPDATE en DELETE weigeren, ook voor `service_role` |
+| de teambalk | `teambalk()`: één getal, of `null` voor wie het teamdoel niet mag lezen |
+
+## Keuzes die hier gemaakt zijn
+
+**1. De twee uitzonderingen op "alleen erbij" herkent de trigger aan de diepte, niet
+aan de rol.** Een foreign-keyactie draait zelf als trigger, dus de bewaker zit dan een
+niveau dieper (`pg_trigger_depth() > 1`). Wat erdoor mag:
+- de mijlpaal verdwijnt: `milestone_id` wordt leeg en verder verandert er niets;
+- het teamdoel verdwijnt: de teller gaat mee.
+
+Een rechtstreekse UPDATE of DELETE heeft diepte 1 en weigert, ook van
+`service_role`. Het alternatief, geen foreign key op `milestone_id`, laat een id
+staan dat nergens meer naar wijst. Dat zegt niets meer, maar is ook niet nodig.
+
+**2. Na vertrek telt een mijlpaal van de vertrokken eigenaar niet meer bij.** De
+vuller vraagt dat het aandeel nog aan zijn teamgroep hangt. De vertrek-cascade van
+0300 haalt die koppeling weg. Wat er al geteld was blijft staan (besluit 14); wat de
+eigenaar daarna aan zijn eigen doel doet, is niet meer van het team.
+
+**3. Elke mijlpaal telt één keer.** Gedaan, terug naar te doen en weer gedaan levert
+één rij op (UNIQUE op teamdoel en mijlpaal, `on conflict do nothing`). Een mijlpaal
+die op `dropped` gaat, telt niet.
+
+**4. Geen cachekolom.** De telling is een `count(*)` over een index op
+`team_goal_id`. Het issue noemt een cachekolom boven ongeveer 10.000 events per
+teamdoel. Dat is hier niet gemeten.
+
+## Domeinregel 7
+
+De twee vragen per oppervlak staan in rij 45 van
+`docs/decisions/002-domeinregel7-oppervlakken.md`.
+
+⚠️ **Wat er in een klein team toch uit volgt.** Wie zijn eigen mijlpalen kent, kan de
+balk daarvan aftrekken; in een team van twee is de rest die van de ander. Wie de RPC
+herhaaldelijk aanroept, ziet wanneer de balk stijgt. Dat zijn positieve signalen en
+geen tegenslag. Maar besluit 11 zegt dat collega's niet zien hoe ver een ander is, en
+dit is daar een smalle afleiding van. Het is inherent aan een teller zonder noemer in
+een klein team. Of dat bezwaarlijk is, is niet besloten. Een ondergrens op de
+teamgrootte waaronder de balk niet getoond wordt, zou het dichten.
+
+## Wat getest is
+
+`tests/rls/teambalk.test.ts`: 10 tests via PostgREST, met het JWT van elke gebruiker,
+over het echte teampad.
+- Criterium 6(b): geen van de drie teamtabellen staat in de realtime-publicatie, en
+  geen heeft `REPLICA IDENTITY FULL`.
+- Criterium 6(c): de balk blijft gelijk na een gemiste week en bij een mijlpaal die
+  heen en weer gaat.
+- Verder: de balk daalt niet als een mijlpaal verdwijnt; na vertrek telt er niets
+  meer bij; er zijn geen rechtstreekse wijzigingen; er is geen rechtstreeks lezen;
+  een niet-lezer krijgt `null`, net als een verzonnen id.
+- Vijf mutaties per grendel met de hand. De uitslag staat in de kop van de test.
+
+## Aannames, niet gemeten
+
+- **Schaal.** De `count(*)` is niet gemeten boven een handvol events.
+- **`src/lib/database.types.ts`** kent de nieuwe tabel en RPC nog niet. Hergenereren
+  gebeurt bij de uitrol.
+
+## Het pad terug
+
+Zie de kop van de migratie. Zolang er geen tellingen zijn, is alles terug te draaien
+zonder gegevensverlies. Met tellingen erin zijn ze niet terug te rekenen.
