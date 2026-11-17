@@ -27,6 +27,9 @@
 > ⚠️ **Aanvulling van 16-11-2026 (batchsessie):** PR #668 (QS8-646) is gemerged als
 > `a326c93a`; de stand staat in `docs/WERKVOORRAAD.md`. Het vervolg is QS8-681.
 >
+> ⚠️ **Aanvulling van 17-11-2026 (batchsessie):** PR #670 (QS8-683 en QS8-681) is gemerged als
+> `8d61a8e6`; de stand staat in `docs/WERKVOORRAAD.md`. Het vervolg is `5c75ed8d` (QS8-681) en QS8-684.
+>
 > ⚠️ **Die afkapping is met opzet een nummer en geen "alles".** Terwijl deze
 > bijwerking geschreven werd landden er drie PR's bij — de teller ging van
 > achttien naar negentien naar tweeëntwintig. Een tabel die zegt *alles van
