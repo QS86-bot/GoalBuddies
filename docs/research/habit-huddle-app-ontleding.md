@@ -6,6 +6,35 @@
 > Aanvulling op `docs/research/habit-huddle-teardown.md` (publieke pagina's, 15-08-2026).
 > Alle beschrijvingen zijn in eigen woorden; niets van hun tekst, code of beeld staat in de repo.
 
+## 0. Ontbrekende schermen — lijst om na te lopen (17-11-2026)
+
+Dit is de lijst van wat in dit bestand **niet gemeten** is. Quinten kan nalopen of het de juiste
+lijst is. Geen van deze schermen is zonder account te zien; er is geen nieuw verkeer naar
+habithuddle.com gemaakt voor deze lijst, en er is niets omzeild. Status van elke regel:
+**niet zichtbaar zonder account**, tenzij anders vermeld.
+
+| # | Scherm | Wat er wél van gemeten is (bron) | Waarom het ertoe doet |
+|---|---|---|---|
+| 1 | **Nudges en waves** (versturen, ontvangen) | Alleen dat ze bestaan: een meldingsoptie "nudges en waves" (s19), tellers "nudges 0 gegeven / 0 ontvangen" (s5) en "wave streaks" (s1). Niet: wie ze kan sturen, aan wie, wat de ontvanger leest. | Domeinregel 7: een nudge richting iemand die nog niet heeft ingecheckt zegt iets over een gemiste dag. Tot dit gezien is: **niet overnemen**. |
+| 2 | **De check-in zelf**, ook de flexibele | Alleen de uitkomst: een kalenderlegenda "Floor" en een teller "ceiling days" (s5), en vloer/plafond als twee regels (s14). Niet: het scherm waar je kiest, en wat er daarna gebeurt. | Het kernmoment van hun retentie; regel 8 en regel 9. |
+| 3 | **Een groep met meerdere leden**, ledenlijst, wat een ander lid van jou ziet | Alleen een groep met één lid (s1, s14). | Regel 4 en 7: welke velden een lid van een ander ziet. |
+| 4 | **Uitnodigen en toetreden** | Alleen de knoppen "Invite" en "Join" (s1, s3). Een deel van de aanmeldflow staat publiek in §7. | Uitnodigingen zijn een spamvector (regel 5 van de beveiliging). |
+| 5 | **Gewoonte aanmaken** en het opgeslagen plan met "Saved" nadat je ingelogd bent | De bewaarlijst als begrip staat publiek in §7; het scherm erna niet. | Vergelijking met onze doelopsplitsing. |
+| 6 | **De Checkin Chain** als scherm | Alleen een teller in de groep (s1) en per persoon in de feed (s2). | Onze Ketting telt alleen op (regel 7). |
+| 7 | **Trofeeëntab** op het profiel | Alleen dat de tab bestaat (s4). | Mogelijk een publiek oppervlak van prestaties. |
+| 8 | **Plan & Billing** (prijzen) | Alleen de niveaus, zonder prijzen (s18). Hun publieke prijzen staan in `habit-huddle-teardown.md` §1. | Geen overname (regel 5: nooit geld); alleen voor het volledige beeld. |
+| 9 | **Leaderboards, Hall of Fame, bibliotheek** | Alleen de ingangen (s3). | Publieke rangorde botst met regel 7. |
+| 10 | **Seizoenen** (maandelijkse standen) | Alleen de term "season results" in de meldingstekst (s19) en de publieke tekst in `habit-huddle-teardown.md` §2.5. | Seizoensrecap bestaat bij ons al. |
+| 11 | **Rest van de meldingenpagina** | Het onderste deel van s19 is afgesneden. | Welke meldingen over anderen gaan. |
+| 12 | **Connected Accounts** | Alleen de titel (s13). | Geen relevantie gevonden. |
+
+Een toets aan de domeinregels voor deze schermen staat **niet** in dit bestand, omdat ik ze niet
+gezien heb. §16 bevat alleen een oordeel over wat wél gezien is.
+
+**Gevolg voor het voorstel:** `docs/research/voorstel-bescherming-bij-een-gemiste-week.md` leunt
+op de freeze-pagina (s16, s17), die wél gezien is. Het hangt niet af van de schermen in deze lijst,
+behalve dat een groepsgenoot misschien kan zien dat een freeze is ingezet (rij 1 en 3).
+
 ## 1. Voorwaarden en privacyverklaring — GEMETEN
 
 Bronnen: `https://habithuddle.com/tos` en `https://habithuddle.com/privacy`, op 10-11-2026
