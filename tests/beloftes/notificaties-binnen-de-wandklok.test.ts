@@ -403,7 +403,11 @@ describe('de notificatiejob op de naad tussen de profielenlus en de wandklok', (
     zetKlaar(450, 1, 3);
     await draai();
 
-    expect(wereld.hoogste).toBe(8);
+    // ⚠️ Een grens en geen vaste waarde: hoe vaak de piek 8 haalt hangt af van hoe snel de
+    //    runner de nagemaakte verzoeken afwerkt. Op CI gaf een run 4 (17-11-2026, main
+    //    `158c9915`, daarna groen). Wat de belofte eist: nooit meer dan acht, én echt parallel.
+    expect(wereld.hoogste).toBeLessThanOrEqual(8);
+    expect(wereld.hoogste).toBeGreaterThanOrEqual(2);
   });
 });
 

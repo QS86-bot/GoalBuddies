@@ -28,7 +28,7 @@
 > `a326c93a`; de stand staat in `docs/WERKVOORRAAD.md`. Het vervolg is QS8-681.
 >
 > ⚠️ **Aanvulling van 17-11-2026 (batchsessie):** PR #670 (QS8-683 en QS8-681) is gemerged als
-> `8d61a8e6`; de stand staat in `docs/WERKVOORRAAD.md`. Daarna landden #672 tot en met #674 (zelfde bestand). Het vervolg is QS8-685 en daarna QS8-688.
+> `8d61a8e6`; de stand staat in `docs/WERKVOORRAAD.md`. Daarna landden #672 tot en met #680 (zelfde bestand). Het vervolg is de deploy en eerste run van `rollover` en `notificaties` door Quinten, en QS8-690 (teruggestuurd naar de bouwsessie).
 >
 > ⚠️ **Die afkapping is met opzet een nummer en geen "alles".** Terwijl deze
 > bijwerking geschreven werd landden er drie PR's bij — de teller ging van

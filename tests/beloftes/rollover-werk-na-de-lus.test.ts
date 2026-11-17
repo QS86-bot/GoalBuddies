@@ -221,6 +221,9 @@ describe('de rollover op de naad tussen de profielenlus en het werk erna', () =>
   it('houdt de gelijktijdigheid begrensd', async () => {
     await draai(450);
 
-    expect(db.hoogste).toBe(8);
+    // ⚠️ Een grens en geen vaste waarde, zoals bij de notificatiejob: de piek hangt af van de
+    //    snelheid van de runner (daar gaf een CI-run 4 in plaats van 8, 17-11-2026).
+    expect(db.hoogste).toBeLessThanOrEqual(8);
+    expect(db.hoogste).toBeGreaterThanOrEqual(2);
   });
 });
