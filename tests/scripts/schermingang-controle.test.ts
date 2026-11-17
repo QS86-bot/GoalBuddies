@@ -8,6 +8,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 //    `migratieregister.test.ts`. TypeScript leest de JSDoc ernaast.
 import {
   routesIn,
+  routeVan,
   schermenZonderIngang,
   verouderdInRegister,
   verwijstNaar,
@@ -295,5 +296,29 @@ describe('de echte boom', () => {
 
   it('heeft geen verouderde registerregels', () => {
     expect(verouderdInRegister()).toEqual([]);
+  });
+});
+
+/**
+ * QS8-682 — de route-afleiding is platformvast.
+ *
+ * ⚠️ Op Windows geeft `relative()` een pad met backslashes. Een test die `app/` op
+ *    schijf opbouwt ziet dat op Linux nooit, dus voeden we `routeVan()` de vorm
+ *    rechtstreeks. Zonder omzetting wordt `doel\\[id].tsx` de route `/doel\\[id]`
+ *    en vindt geen enkele ingang-match iets.
+ */
+describe('routeVan — relatief pad met backslashes (Windows-vorm)', () => {
+  it.each([
+    ['doel\\[id].tsx', '/doel/[id]'],
+    ['(tabs)\\index.tsx', '/(tabs)'],
+    ['doel/[id].tsx', '/doel/[id]'],
+    ['(tabs)/index.tsx', '/(tabs)'],
+    ['groep\\[id]\\instellingen.tsx', '/groep/[id]/instellingen'],
+  ])('%s wordt %s', (relatief, route) => {
+    expect(routeVan(relatief)).toBe(route);
+  });
+
+  it('laat een naam die op "index" eindigt met rust', () => {
+    expect(routeVan('doel\\herindex.tsx')).toBe('/doel/herindex');
   });
 });
