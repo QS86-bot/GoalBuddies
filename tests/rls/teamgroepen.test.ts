@@ -250,9 +250,15 @@ describe.runIf(rlsTestsConfigured)('een teamgroep hoort bij een organisatie (QS8
         uitkomst(await rpc(anna, 'beslis_lidmaatschapsverzoek', { p_request_id: (data as { id: string }).id, p_naar: 'declined' })),
       ).toBe('ok');
 
+      // ⚠️ Sinds 0301 (QS8-654, securityreview H1) mag een teamgroep niet open tot
+      //    QS8-661 landt. `unchanged` komt ná de beheerderspoort, dus bewijst dat
+      //    anna erdoor mag; `open` stuit daarna op de CHECK, ook voor haar.
+      expect(
+        uitkomst(await rpc(anna, 'zet_groepszichtbaarheid', { p_group_id: team, p_naar: 'beschermd', p_bevestigd: true })),
+      ).toBe('unchanged');
       expect(
         uitkomst(await rpc(anna, 'zet_groepszichtbaarheid', { p_group_id: team, p_naar: 'open', p_bevestigd: true })),
-      ).toBe('ok');
+      ).toBe('fout 23514');
     }, TEST_TIMEOUT);
 
     it('(a) zet een teamlid uit met verwijder_lid(), zonder zelf lid te zijn', async () => {

@@ -38,16 +38,29 @@ het tegendeel besluit.
 teambericht zonder persoon. Een leesbare `created_by` zou datzelfde via een omweg
 geven. Hetzelfde patroon als `organizations.created_by` in 0299 (security-ronde L3).
 
-**4. De koppelgrendel zwijgt tegenover een niet-eigenaar.** Een `before`-trigger
-antwoordt vóór de policy. Met een eigen melding leert een vreemde dat een doel een
-aandeel is. Dit volgt `weekdoel_cyclus_klopt()` (0198). De policy weigert de rij daarna
-toch.
+**4. De koppelgrendel weigert een niet-eigenaar met de stem van de policy.** Een
+`before`-trigger antwoordt vóór de policy. Met een eigen melding leert een vreemde dat
+een doel een aandeel is. `weekdoel_cyclus_klopt()` (0198) zwijgt daarom en laat de
+policy weigeren. Hier kan dat niet: zwijgen opent de grendel voor elke context zonder
+policy erachter, zoals een definer-functie die namens een ander koppelt (review M1,
+gemeten). Dus weigert de grendel zelf, met precies de code en de tekst van
+`goal_group_links_insert`. Een test vergelijkt beide antwoorden.
 
 **5. De streefdatum van een teamdoel leest de groepsklok** (`groepsdatum()`), en die
 van een aandeel de klok van de eigenaar (`mijn_datum()`). Er komt geen derde klok
 (besluit 17).
 
-**6. Een daglimiet van tien teamdoelen per aanmaker.** Er is geen limiet besloten
+**6. Tot QS8-661 kan een teamgroep niet open staan.** Een CHECK op `groups`
+(`groups_team_beschermd_tot_qs8_661`) dekt `maak_teamgroep()` en
+`zet_groepszichtbaarheid()`, ook voor `service_role`. ⚠️ **Dit wijkt tijdelijk af van
+besluit 18** (een teamgroep mag open zijn). De reden is de volgorde-eis hieronder:
+zonder de uitzondering van QS8-661 leest een teamgenoot in een open teamgroep het
+gemiste weekdoel van ieders aandeel. Een zin in een document houdt dat niet tegen; de
+database wel. QS8-661 haalt de CHECK weg in dezelfde migratie die de uitzondering
+bouwt. De test van QS8-653 die een team open zette, toetst nu `unchanged` (de
+beheerderspoort) en de weigering.
+
+**7. Een daglimiet van tien teamdoelen per aanmaker.** Er is geen limiet besloten
 (besluit 30 noemt hem als open). Dit is een rem tegen een lus en geen beleid, in
 dezelfde orde van grootte als `maak_teamgroep()`.
 
@@ -62,11 +75,19 @@ het doel, het plan en wat gelukt is, zoals bij elk gekoppeld doel (rij 1, 3 en 3
 een **open** teamgroep leest hij ook een gemist weekdoel. Besluit 11 en 21 vragen
 daar een uitzondering op, en die is QS8-661. **Er mag geen open teamgroep in productie
 bestaan voordat QS8-661 geland is.** In een beschermde teamgroep is een gemist
-weekdoel van een aandeel al dicht. Criterium 6(a) toetst dat.
+weekdoel van een aandeel al dicht. Criterium 6(a) toetst dat. Tot QS8-661 landt, kan
+een teamgroep niet open staan (keuze 6).
+
+⚠️ **Dát iemand een aandeel heeft, is vandaag af te leiden** (review M2, gemeten). De
+aandeelrij is eigenaar-only, maar het aandeeldoel hangt aan de teamgroep. Een
+teamgenoot leest via `goal_group_links` en `goals` een doel met de titel en streefdatum
+van het teamdoel. Daarmee ziet hij ook wie géén aandeel nam. Keuze 2 maakt de rij dicht;
+het bestaan is het niet. De uitzondering die QS8-661 bouwt (aandeeldoelen niet via
+`shares_group_with_goal()`), dicht dit ook.
 
 ## Wat getest is
 
-- **`tests/rls/teamdoelen.test.ts`:** 21 tests via PostgREST, met het JWT van elke
+- **`tests/rls/teamdoelen.test.ts`:** 23 tests via PostgREST, met het JWT van elke
   gebruiker, over het echte teampad: organisatie, `maak_teamgroep()`, de
   uitnodigingscode, `maak_teamdoel()` en `neem_aandeel()`.
   - Criterium 1, 2 en 3, plus een controlemeting dat een teamgenoot wél goedkeurt.
@@ -74,10 +95,30 @@ weekdoel van een aandeel al dicht. Criterium 6(a) toetst dat.
   - Criterium 7: drie leden met verschillende week-starts, onder wie één in
     `America/New_York`, en een teamgroep met huddledag woensdag. De database weigert
     een weekdoel op een aandeel dat op de huddledag begint.
-  - Zes mutaties per grendel met de hand. Elke keer werd precies de bedoelde test
+  - Acht mutaties per grendel met de hand. Elke keer werd precies de bedoelde test
     rood. De uitslag staat in de kop van de test.
 - **`src/shared/time/teamklok.test.ts`:** dezelfde drie klokken en de teamperiode in
   `shared/time`, op de rand waar New York nog een dag achterloopt.
+
+## Wat de securityreview vond
+
+- **H1, hersteld:** een open teamgroep kon gewoon aangemaakt worden. Zie keuze 6.
+- **M1, hersteld:** de zwijgtak van de koppelgrendel. Zie keuze 4.
+- **M2, open, naar QS8-661:** het bestaan van een aandeel is af te leiden. Zie
+  hierboven.
+- **L1, hersteld:** `neem_aandeel()` zet het eigen groepslidmaatschap vast met
+  `for share`, tegen een gelijktijdig vertrek. Beredeneerd, niet gemeten.
+- **L4, hersteld:** het dagplafond op `goals` kwam terug als `ongeldige_tekst`. De
+  titel wordt nu vooraf getoetst, en het plafond gaat met zijn eigen melding naar de
+  client.
+- **L2, open:** een gelijktijdige `service_role`-insert van een aandeelrij en een
+  vriendenkoppeling kan allebei slagen. Er is geen clientpad.
+- **L3, open, voor QS8-659:** zonder aandeelrij geen grendel. Wis de rij nooit
+  zolang het doel bestaat.
+- **L5, open:** de daglimiet van `maak_teamdoel()` is te omzeilen met gelijktijdige
+  aanroepen. Het is een rem en geen beleid.
+- **L6, open:** `koppelbare_doelen()` sluit aandeeldoelen vermoedelijk niet uit, dus
+  de UI kan een koppeling aanbieden die de grendel weigert. Alleen UX, niet gemeten.
 
 ## Aannames, niet gemeten
 

@@ -21,7 +21,10 @@ import { psqlMetInvoer, stackBeschikbaarOfFaal } from './psql-stack';
  *    1. Trigger `goal_group_links_aandeel_in_teamgroep` weg → alleen de twee
  *       toetsen van criterium 3 rood, plus "een vriend kan het werkaandeel dan
  *       niet goedkeuren", omdat de koppeling er dan ligt.
- *    2. De zwijgtak voor een niet-eigenaar uit `aandeel_blijft_in_teamgroep()`
+ *    2. De weigering voor een niet-eigenaar in `aandeel_blijft_in_teamgroep()`
+ *       vervangen door zwijgen (`return new`, de vorm vóór de securityreview)
+ *       → alleen "weigert ook een context zonder policy erachter" rood.
+ *    2b. Dezelfde weigering met een eigen tekst in plaats van die van de policy
  *       → alleen "verraadt een vreemde niet dat het doel een aandeel is" rood.
  *    3. `new.user_id := v_eigenaar` uit `vul_aandeel()` → alleen "user_id volgt
  *       de eigenaar" rood.
@@ -30,6 +33,13 @@ import { psqlMetInvoer, stackBeschikbaarOfFaal } from './psql-stack';
  *    5. De lidmaatschapstoets uit `maak_teamdoel()` → alleen "laat alleen een
  *       teamlid een teamdoel maken" rood.
  *    6. `created_by` in de kolomgrant → alleen "geeft de aanmaker niet prijs" rood.
+ *    7. De CHECK `groups_team_beschermd_tot_qs8_661` weg → rood op "kan tot
+ *       QS8-661 niet in een open teamgroep staan" hier, en op "(a) beheert het
+ *       team" in `tests/rls/teamgroepen.test.ts`; verder niets.
+ *
+ *    De lock in `neem_aandeel()` (review L1) is niet met een mutatie getoetst:
+ *    een race tussen twee sessies is met deze opstelling niet betrouwbaar na te
+ *    spelen. Hij is beredeneerd uit de lockvolgorde.
  */
 
 const SETUP_TIMEOUT = 240_000;
@@ -56,6 +66,11 @@ function streefdatum(dagen: number): string {
   const d = new Date(Date.now() + dagen * 86_400_000);
   return d.toISOString().slice(0, 10);
 }
+
+const beschikbaar = stackBeschikbaarOfFaal(
+  "select count(*) from pg_class where relname = 'team_goal_shares'",
+  import.meta.url,
+);
 
 const organisaties: string[] = [];
 const groepen: string[] = [];
@@ -185,6 +200,16 @@ describe.runIf(rlsTestsConfigured)('teamdoelen en aandelen (QS8-654)', () => {
   }
 
   describe('een teamdoel', () => {
+    it('kan tot QS8-661 niet in een open teamgroep staan (securityreview H1)', async () => {
+      const { data } = await adminDb().from('team_goals' as never).select('organization_id').eq('id' as never, teamdoel as never).single();
+      const org = (data as unknown as { organization_id: string }).organization_id;
+      expect(
+        uitkomst(
+          await rpc(anna, 'maak_teamgroep', { p_organization_id: org, p_naam: 'Open team', p_zichtbaarheid: 'open' }),
+        ),
+      ).toBe('fout 23514');
+    }, TEST_TIMEOUT);
+
     it('laat alleen een teamlid een teamdoel maken', async () => {
       const args = { p_titel: 'Nog een', p_streefdatum: streefdatum(30) };
       expect(uitkomst(await rpc(cleo, 'maak_teamdoel', { ...args, p_group_id: team }))).toBe('ok');
@@ -216,7 +241,7 @@ describe.runIf(rlsTestsConfigured)('teamdoelen en aandelen (QS8-654)', () => {
 
     it('hoort bij een teamgroep van dezelfde organisatie, ook voor service_role', async () => {
       const { data } = await adminDb().from('team_goals' as never).select('organization_id').eq('id' as never, teamdoel as never).single();
-      const org = (data as { organization_id: string }).organization_id;
+      const org = (data as unknown as { organization_id: string }).organization_id;
       const r = await adminDb()
         .from('team_goals' as never)
         .insert({ organization_id: org, group_id: vrienden, title: 'Fout', target_date: streefdatum(30) } as never);
@@ -234,7 +259,7 @@ describe.runIf(rlsTestsConfigured)('teamdoelen en aandelen (QS8-654)', () => {
       const { data: doel } = await adminDb().from('goals').select('owner_id, target_date').eq('id', aandeel[cleo.id]!).single();
       const { data: td } = await adminDb().from('team_goals' as never).select('target_date').eq('id' as never, teamdoel as never).single();
       expect((doel as { owner_id: string }).owner_id).toBe(cleo.id);
-      expect((doel as { target_date: string }).target_date).toBe((td as { target_date: string }).target_date);
+      expect((doel as { target_date: string }).target_date).toBe((td as unknown as { target_date: string }).target_date);
       const { data: links } = await adminDb().from('goal_group_links').select('group_id').eq('goal_id', aandeel[cleo.id]!);
       expect((links as { group_id: string }[]).map((l) => l.group_id)).toEqual([team]);
     }, TEST_TIMEOUT);
@@ -265,7 +290,7 @@ describe.runIf(rlsTestsConfigured)('teamdoelen en aandelen (QS8-654)', () => {
         .select('user_id')
         .single();
       expect(r.error).toBeNull();
-      expect((r.data as { user_id: string }).user_id).toBe(bert.id);
+      expect((r.data as unknown as { user_id: string }).user_id).toBe(bert.id);
     }, TEST_TIMEOUT);
   });
 
@@ -281,10 +306,38 @@ describe.runIf(rlsTestsConfigured)('teamdoelen en aandelen (QS8-654)', () => {
     }, TEST_TIMEOUT);
 
     it('verraadt een vreemde niet dat het doel een aandeel is', async () => {
-      // Nina is geen eigenaar; de policy weigert, en het antwoord is dat van de
-      // policy en niet dat van de grendel.
-      const r = await nina.db.from('goal_group_links').insert({ goal_id: aandeel[bert.id], group_id: vrienden } as never);
-      expect(r.error?.code).toBe('42501');
+      // Nina is geen eigenaar. Voor een aandeel en voor een gewoon doel van Bert
+      // krijgt ze hetzelfde antwoord, woord voor woord: de grendel spreekt met
+      // de stem van de policy.
+      const { data: los } = await bert.db
+        .from('goals')
+        .insert({ owner_id: bert.id, title: 'Gewoon doel', target_date: streefdatum(60) } as never)
+        .select('id')
+        .single();
+      const opAandeel = await nina.db.from('goal_group_links').insert({ goal_id: aandeel[bert.id], group_id: vrienden } as never);
+      const opGewoon = await nina.db
+        .from('goal_group_links')
+        .insert({ goal_id: (los as { id: string }).id, group_id: vrienden } as never);
+      expect(opAandeel.error?.code).toBe('42501');
+      expect(opAandeel.error).toEqual(opGewoon.error);
+    }, TEST_TIMEOUT);
+
+    it.runIf(beschikbaar)('weigert ook een context zonder policy erachter die namens een ander koppelt', () => {
+      // Securityreview M1: als `postgres` met de `sub` van Nina, zoals een
+      // definer-functie die namens een ander zou koppelen. Zwijgen zou hier de
+      // tweede koppeling doorlaten.
+      const uit = psqlMetInvoer(`
+        begin;
+        select set_config('request.jwt.claims', '{"sub":"${nina.id}"}', true);
+        do $$ begin
+          insert into public.goal_group_links (goal_id, group_id) values ('${aandeel[bert.id]}', '${vrienden}');
+          perform set_config('ijk.uitkomst', 'doorgelaten', true);
+        exception when others then
+          perform set_config('ijk.uitkomst', sqlstate, true);
+        end $$;
+        select 'UITKOMST|' || current_setting('ijk.uitkomst');
+        rollback;`);
+      expect(uit.split('\n').find((r) => r.startsWith('UITKOMST|'))).toBe('UITKOMST|42501');
     }, TEST_TIMEOUT);
 
     it('een vriend kan het werkaandeel dan niet goedkeuren', async () => {
@@ -376,10 +429,6 @@ describe.runIf(rlsTestsConfigured)('teamdoelen en aandelen (QS8-654)', () => {
   });
 });
 
-const beschikbaar = stackBeschikbaarOfFaal(
-  "select count(*) from pg_class where relname = 'team_goal_shares'",
-  import.meta.url,
-);
 
 const VIEWS = `
 select 'view|' || schemaname || '.' || viewname

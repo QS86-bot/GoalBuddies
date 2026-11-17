@@ -10,6 +10,7 @@
 -- dit grens 2 en vraagt het eerst een `pg_dump`):
 --   drop trigger if exists goal_group_links_aandeel_in_teamgroep on public.goal_group_links;
 --   drop function if exists public.aandeel_blijft_in_teamgroep();
+--   alter table public.groups drop constraint if exists groups_team_beschermd_tot_qs8_661;
 --   drop function if exists public.neem_aandeel(uuid, text);
 --   drop function if exists public.maak_teamdoel(uuid, text, text, date);
 --   drop table if exists public.team_goal_shares;   -- met zijn trigger en functie
@@ -211,13 +212,19 @@ begin
     return new;
   end if;
 
-  -- ⚠️ **Zwijgen voor wie niet de eigenaar is**, om dezelfde reden als
-  --    `weekdoel_cyclus_klopt()` (0198): een `before`-trigger antwoordt vóór de
-  --    policy, en een eigen melding zou een vreemde laten zien dat dit doel een
-  --    aandeel is. `goal_group_links_insert` weigert de rij daarna toch.
+  -- ⚠️ **Een niet-eigenaar krijgt de melding van de policy, woordelijk, en
+  --    geen doorgang.** Een `before`-trigger antwoordt vóór de policy, en een
+  --    eigen melding zou een vreemde laten zien dat dit doel een aandeel is.
+  --    `weekdoel_cyclus_klopt()` (0198) zwijgt daarom en laat de policy weigeren.
+  --    Hier kan dat niet: de securityreview van QS8-654 (M1) liet zien dat zwijgen
+  --    de grendel opent voor elke context zónder policy erachter, zoals een
+  --    definer-functie die namens een ander koppelt. Dus weigeren, met precies
+  --    de code en de tekst die `goal_group_links_insert` geeft. Een test
+  --    vergelijkt beide antwoorden.
   if v_uid is not null
      and not exists (select 1 from goals g where g.id = new.goal_id and g.owner_id = v_uid) then
-    return new;
+    raise exception 'new row violates row-level security policy for table "goal_group_links"'
+      using errcode = '42501';
   end if;
 
   raise exception 'Een aandeel hangt alleen aan zijn teamgroep'
@@ -231,6 +238,23 @@ drop trigger if exists goal_group_links_aandeel_in_teamgroep on public.goal_grou
 create trigger goal_group_links_aandeel_in_teamgroep
   before insert or update on public.goal_group_links
   for each row execute function public.aandeel_blijft_in_teamgroep();
+
+-- ---------------------------------------------------------------------------
+-- 3b. Geen open teamgroep zolang aandeeldoelen niet dicht zijn
+-- ---------------------------------------------------------------------------
+--
+-- ⚠️⚠️ **Een tijdelijke grendel, en hij wijkt af van besluit 18** (een teamgroep
+--    mag open zijn). Securityreview H1: met deze migratie bestaan aandelen, en in
+--    een open groep leest een teamgenoot via de open-groepstakken van rij 1, 3 en
+--    34 het gemiste weekdoel van ieders aandeel. Besluit 11 en 21 verbieden dat;
+--    de uitzondering is QS8-661. Tot die landt was "geen open teamgroep" alleen
+--    een zin in het beslisdocument, en de regel is pas afgedwongen als de
+--    database hem afdwingt. Eén CHECK dekt `maak_teamgroep()` en
+--    `zet_groepszichtbaarheid()` allebei, ook voor `service_role`.
+--    **QS8-661 haalt hem weg**, in dezelfde migratie die de uitzondering bouwt.
+alter table public.groups drop constraint if exists groups_team_beschermd_tot_qs8_661;
+alter table public.groups add constraint groups_team_beschermd_tot_qs8_661
+  check (organization_id is null or zichtbaarheid = 'beschermd');
 
 -- ---------------------------------------------------------------------------
 -- 4. Grants en policies
@@ -367,6 +391,16 @@ begin
   if not found or not public.is_group_member(v_team.group_id) then
     return jsonb_build_object('ok', false, 'reason', 'niet_toegestaan');
   end if;
+  -- ⚠️ **Het eigen lidmaatschap vastzetten** (securityreview, L1). Zonder lock kan
+  --    een gelijktijdig vertrek de koppelingen opruimen vóór deze functie de
+  --    hare legt, en dan hangt het aandeel aan een groep waar de eigenaar geen
+  --    lid meer van is. Dezelfde vorm als `bewaak_teamlidmaatschap()` (0300).
+  perform 1 from group_members m
+   where m.group_id = v_team.group_id and m.user_id = v_uid and m.status <> 'inactive'
+     for share;
+  if not found then
+    return jsonb_build_object('ok', false, 'reason', 'niet_toegestaan');
+  end if;
   if v_team.status <> 'active' then
     return jsonb_build_object('ok', false, 'reason', 'niet_actief');
   end if;
@@ -387,14 +421,21 @@ begin
   if char_length(v_titel) > 200 then
     return jsonb_build_object('ok', false, 'reason', 'ongeldige_titel');
   end if;
-
-  begin
-    insert into goals (owner_id, title, target_date, category)
-    values (v_uid, v_titel, v_team.target_date, 'business')
-    returning id into v_doel;
-  exception when check_violation then
+  -- ⚠️ **Vooraf toetsen en geen `exception when check_violation` om de insert**
+  --    (securityreview, L4). Het dagplafond op `goals` is een statement-trigger
+  --    die ook `check_violation` gooit; gevangen werd dat `ongeldige_tekst`, en
+  --    dat stuurt de gebruiker naar de verkeerde oorzaak. Dit zijn de drie
+  --    CHECK's op `goals.title`; het plafond gaat nu ongevangen naar de client,
+  --    met zijn eigen melding.
+  if v_titel <> public.zonder_regelovergang(v_titel)
+     or v_titel <> public.zonder_bidi(v_titel)
+     or v_titel <> public.zonder_onzichtbaar_middenin(v_titel) then
     return jsonb_build_object('ok', false, 'reason', 'ongeldige_tekst');
-  end;
+  end if;
+
+  insert into goals (owner_id, title, target_date, category)
+  values (v_uid, v_titel, v_team.target_date, 'business')
+  returning id into v_doel;
 
   -- ⚠️ Eerst het aandeel en dan de koppeling: zo staat de grendel al op het doel
   --    vóór het aan een groep hangt. Twee gelijktijdige aanroepen botsen op
