@@ -101,12 +101,12 @@ const UITLEG = {
     '    en lekt alles op de dag dat iemand hem publiceert. Zet hem nu terug.',
 };
 
-async function uitProductie() {
+async function uitProductie({ url, sleutel }) {
   const antwoord = await fetch(`${url}/rest/v1/rpc/realtime_bewaking`, {
     method: 'POST',
     headers: {
-      apikey: serviceRoleKey,
-      Authorization: `Bearer ${serviceRoleKey}`,
+      apikey: sleutel,
+      Authorization: `Bearer ${sleutel}`,
       'Content-Type': 'application/json',
     },
     body: '{}',
@@ -123,37 +123,7 @@ async function uitProductie() {
   return antwoord.json();
 }
 
-async function main() {
-  const oordeel = beoordeelOmgeving({ url, sleutel: serviceRoleKey, streng });
-
-  if (oordeel === 'ontbreekt') {
-    console.error(`✗ realtime-identiteit-controle kon niet draaien — ${ONTBREEKT}`);
-    process.exit(1);
-  }
-  if (oordeel === 'overslaan') {
-    console.error(`⚠ realtime-identiteit-controle: OVERGESLAGEN — ${ONTBREEKT}`);
-    process.exit(0);
-  }
-
-  let rijen;
-  try {
-    rijen = await uitProductie();
-  } catch (fout) {
-    console.error(`✗ ${fout instanceof Error ? fout.message : String(fout)}`);
-    process.exit(1);
-  }
-
-  const gevonden = bevindingen(rijen);
-  const gepubliceerd = rijen.filter((r) => r.in_publicatie === true).length;
-
-  if (gevonden.length === 0) {
-    console.log(
-      `realtime-identiteit-controle: geen enkele tabel draagt REPLICA IDENTITY FULL ` +
-        `(${rijen.length} tabellen in public, ${gepubliceerd} in de publicatie).`,
-    );
-    process.exit(0);
-  }
-
+function meldBevindingen(gevonden) {
   const schrijf = isFout(gevonden) ? console.error : console.warn;
   schrijf('realtime-identiteit-controle: REPLICA IDENTITY FULL gevonden op productie.\n');
   for (const { tabel, soort } of gevonden) {
@@ -164,10 +134,59 @@ async function main() {
       'voor DELETE, en `publish` is niet per tabel in te stellen — er is geen\n' +
       'technische rem, alleen deze meter.',
   );
+}
 
-  process.exit(isFout(gevonden) ? 1 : 0);
+/**
+ * Draait de controle en geeft de **exitcode terug** — hij sluit het proces niet af.
+ *
+ * ⚠️ **Geen `process.exit()` na een `await fetch()`** (QS8-684). Op Windows
+ *    sluit libuv dan af terwijl de HTTP-verbinding nog dichtgaat en stort hij in
+ *    met een assertion in `src\win\async.c`: de uitslag was al geprint en klopte,
+ *    en de poort telde de controle toch rood. De aanroeper zet `process.exitCode`
+ *    en laat de event loop leeglopen.
+ *
+ * ⚠️ De exitcode is zo een return-waarde en dus zonder netwerk te toetsen: `haalOp`
+ *    is injecteerbaar, en de uitslag komt uit dezelfde functie op Linux en Windows.
+ *
+ * @param {{ url?: string | undefined, sleutel?: string | undefined, streng?: boolean }} invoer
+ * @param {(invoer: { url?: string | undefined, sleutel?: string | undefined }) => Promise<unknown[]>} [haalOp]
+ * @returns {Promise<number>}
+ */
+export async function draai({ url, sleutel, streng }, haalOp = uitProductie) {
+  const oordeel = beoordeelOmgeving({ url, sleutel, streng });
+
+  if (oordeel === 'ontbreekt') {
+    console.error(`✗ realtime-identiteit-controle kon niet draaien — ${ONTBREEKT}`);
+    return 1;
+  }
+  if (oordeel === 'overslaan') {
+    console.error(`⚠ realtime-identiteit-controle: OVERGESLAGEN — ${ONTBREEKT}`);
+    return 0;
+  }
+
+  let rijen;
+  try {
+    rijen = await haalOp({ url, sleutel });
+  } catch (fout) {
+    console.error(`✗ ${fout instanceof Error ? fout.message : String(fout)}`);
+    return 1;
+  }
+
+  const gevonden = bevindingen(rijen);
+  const gepubliceerd = rijen.filter((r) => r.in_publicatie === true).length;
+
+  if (gevonden.length === 0) {
+    console.log(
+      `realtime-identiteit-controle: geen enkele tabel draagt REPLICA IDENTITY FULL ` +
+        `(${rijen.length} tabellen in public, ${gepubliceerd} in de publicatie).`,
+    );
+    return 0;
+  }
+
+  meldBevindingen(gevonden);
+  return isFout(gevonden) ? 1 : 0;
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
-  await main();
+  process.exitCode = await draai({ url, sleutel: serviceRoleKey, streng });
 }
