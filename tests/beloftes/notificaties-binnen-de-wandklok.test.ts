@@ -1,5 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { genereerVapidSleutelpaar } from '../../src/modules/notifications/webpush-crypto';
+
 /**
  * Twee beloftes van de notificatiejob, allebei op de naad — QS8-688:
  *
@@ -50,11 +52,43 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
  *       (nagemeten bij de review van de batch, 17-11-2026).
  *    8. (QS8-691) In `bladerOpSleutel()` weer op offset gebladerd → alleen
  *       "slaat niemand over als tokens tíjdens de run verdwijnen" rood.
+ *    9.–20. (QS8-690, na de batch-review en de twee reviews op het herstel,
+ *       📏 17-11-2026, telkens één mutatie in de bron en `edge:sync`; de rode
+ *       toetsen hieronder zijn die in dit bestand én `webpush-verzenden.test.ts`)
+ *       - `abonnementFout()` noemt elke worp `ongeldig` → de drie
+ *         "maakt … een mislukking"-toetsen en hier "wist niets als WebCrypto
+ *         stuk is voor één abonnement…".
+ *       - geen onderbreker → zes rood, waaronder hier "wist niets als elk
+ *         abonnement van de run ongeldig is" en "…voor elk abonnement stuk is".
+ *       - delete alleen op `token` → de drie "wist precies / hoogstens"-toetsen.
+ *       - elke uitkomst behalve `bezorgd` wist → de vijf "wist niets…"-toetsen
+ *         en "wist precies het ongeldige abonnement…".
+ *       - `ongeldig` meteen wissen → de onderbreker-toets, "…voor elk
+ *         abonnement stuk is" en "wist precies het ongeldige…".
+ *       - de payloadgrens vóór de abonnementstoets → alleen "toetst het
+ *         abonnement vóór de grens op de payload".
+ *       - `ligtOpP256()` uitgezet → alleen "ziet een punt dat niet op de curve
+ *         ligt als ongeldig zonder importKey…". ⚠️ Zonder die toets bleef alles
+ *         groen, want Node's `importKey()` vangt het punt wél; in Deno niet.
+ *       - plafond op 1000 → "laat per run hoogstens…", "wist hoogstens drie
+ *         rijen…" en "deelt het plafond…".
+ *       - een `ongetoetst` mislukt telt toch mee → "telt een mislukking …
+ *         niet als bewijs" en "…voor elk abonnement stuk is".
+ *       - de logregel van de onderbreker weg → alleen de onderbreker-toets.
+ *       - de URL in de foutreden → alleen "zet geen endpoint in de reden…".
+ *       - uitkomsten tellen in plaats van rijen → alleen "weegt rijen…".
  */
 
 type Afhandelaar = (verzoek: Request) => Response | Promise<Response>;
 
 const VERZOEK_MS = 50;
+
+interface WebRij {
+  token: string;
+  platform: 'web';
+  p256dh: string;
+  auth: string;
+}
 
 interface Verzonden {
   user_id: string;
@@ -85,6 +119,14 @@ const wereld = {
   verzonden: [] as Verzonden[],
   /** Elke push die bij Expo aankwam: het token. */
   pushes: [] as string[],
+  /** Web-abonnementen per profiel; wie hier staat, heeft géén iOS-toestel. */
+  web: new Map<string, WebRij[]>(),
+  /** Wat de pushdienst per endpoint antwoordt; zonder rij 201. */
+  webAntwoord: new Map<string, number>(),
+  /** Elke `delete` op `push_tokens`, met zijn filters. */
+  gewist: [] as Record<string, unknown>[],
+  /** De omgeving van de functie (`Deno.env`). */
+  omgeving: {} as Record<string, string>,
   gezien: [] as string[],
   tegelijk: 0,
   hoogste: 0,
@@ -154,19 +196,25 @@ function profielenQuery() {
 /** `push_tokens`: één iOS-toestel voor wie werk heeft; de teller voor gelijktijdigheid. */
 function tokensQuery() {
   let wie = '';
+  let wissen = false;
+  const filters: Record<string, unknown> = {};
   const q = {
     select: () => q,
-    delete: () => q,
-    eq: (_k: string, w: string) => { wie = w; return q; },
+    delete: () => { wissen = true; return q; },
+    eq: (k: string, w: string) => { filters[k] = w; if (k === 'user_id') wie = w; return q; },
     then: async (klaar: (r: unknown) => void) => {
+      if (wissen) {
+        await werkt(VERZOEK_MS);
+        wereld.gewist.push({ ...filters });
+        return klaar({ data: null, error: null });
+      }
       wereld.gezien.push(wie);
       wereld.tegelijk += 1;
       wereld.hoogste = Math.max(wereld.hoogste, wereld.tegelijk);
       await werkt(VERZOEK_MS);
       wereld.tegelijk -= 1;
-      const data = wereld.metToken.has(wie) && !wereld.verhuisd.has(wie)
-        ? [{ token: `ExponentPushToken[${wie}]`, platform: 'ios', p256dh: null, auth: null }]
-        : [];
+      const ios = [{ token: `ExponentPushToken[${wie}]`, platform: 'ios', p256dh: null, auth: null }];
+      const data = wereld.metToken.has(wie) && !wereld.verhuisd.has(wie) ? (wereld.web.get(wie) ?? ios) : [];
       if (wereld.wisNaLezen) wereld.metToken.delete(wie);
       return klaar({ data, error: null });
     },
@@ -237,8 +285,9 @@ vi.mock('jsr:@supabase/supabase-js@2', () => ({
   }),
 }));
 
-async function expo(_url: string, init: { body: string }): Promise<Response> {
+async function expo(url: string, init: { body: string }): Promise<Response> {
   await werkt(VERZOEK_MS);
+  if (!url.startsWith('https://exp.host/')) return new Response(null, { status: wereld.webAntwoord.get(url) ?? 201 });
   for (const b of JSON.parse(init.body) as { to: string }[]) wereld.pushes.push(b.to);
   return new Response('{"data":[]}', { status: 200 });
 }
@@ -255,7 +304,7 @@ async function handler(): Promise<Afhandelaar> {
   if (dezeTest !== undefined) return dezeTest;
   let gevangen: Afhandelaar | undefined;
   (globalThis as unknown as { Deno: unknown }).Deno = {
-    env: { get: (k: string) => (k === 'SUPABASE_URL' ? 'https://proef.supabase.co' : undefined) },
+    env: { get: (k: string) => (k === 'SUPABASE_URL' ? 'https://proef.supabase.co' : wereld.omgeving[k]) },
     serve: (a: Afhandelaar) => {
       gevangen = a;
       return { finished: Promise.resolve(), shutdown: () => Promise.resolve() };
@@ -310,6 +359,7 @@ beforeEach(() => {
   vi.stubGlobal('fetch', expo);
   Object.assign(wereld, {
     profielen: [], metToken: new Set(), metWerk: new Set(), verhuisd: new Set(), wisNaLezen: false, verzonden: [], pushes: [], gezien: [], tegelijk: 0, hoogste: 0,
+    web: new Map(), webAntwoord: new Map(), gewist: [], omgeving: {},
   });
 });
 
@@ -438,3 +488,133 @@ describe('alleen profielen met een token komen langs — QS8-691', () => {
     expect([...wereld.gezien].sort()).toEqual(alleMetToken);
   });
 });
+
+/**
+ * QS8-690, batch-review 17-11-2026 — welke uitkomst van een web push een rij in
+ * `push_tokens` kost, op de naad in `stuurWeb()`.
+ *
+ * ⚠️ **De belofte: `mislukt` wist niets, `weg` en `ongeldig` elk precies één
+ *    rij, en een run waarin álles `ongeldig` is wist niets.** De beslissing per
+ *    uitkomst staat onder test in `webpush-verzenden.test.ts`; wat ermee
+ *    gebeurt, staat in de Edge Function, en daar draaide tot nu geen enkele test.
+ *    📏 `if (uitkomst.status !== 'bezorgd')` vóór de delete bleef groen in de
+ *    hele suite.
+ */
+describe('web push: wat een rij in push_tokens kost — QS8-690', () => {
+  // Een geldig P-256-punt en een geheim van 16 octetten (zie webpush-verzenden.test.ts).
+  const P256DH = 'BCVxsr7N_eNgVRqvHtD0zTZsEc6-VV-JvLexhqUzORcxaOzi6-AYWXvTBHm4bjyPjs7Vd8pZGH6SRpkNtoIAiw4';
+  const AUTH = 'BTBZMqHH6r4Tts7J_aSIgg';
+  const NIET_OP_DE_CURVE = 'B' + 'A'.repeat(86);
+
+  /** Drie profielen, elk met één melding tegoed en één web-abonnement. */
+  async function zetWebKlaar(p256dhs: readonly string[]): Promise<WebRij[]> {
+    zetKlaar(p256dhs.length, 1, 1);
+    const paar = await genereerVapidSleutelpaar();
+    wereld.omgeving = {
+      EXPO_PUBLIC_VAPID_PUBLIC_KEY: paar.publiek,
+      VAPID_PRIVATE_KEY: paar.prive,
+      VAPID_SUBJECT: 'mailto:test@example.com',
+    };
+    return wereld.profielen.map((id, i) => {
+      const rij: WebRij = {
+        token: `https://fcm.googleapis.com/fcm/send/${id}`, platform: 'web', p256dh: p256dhs[i] ?? P256DH, auth: AUTH,
+      };
+      wereld.web.set(id, [rij]);
+      return rij;
+    });
+  }
+
+  const filtersVan = (rij: WebRij) => ({ token: rij.token, p256dh: rij.p256dh, auth: rij.auth });
+
+  it('wist niets bij een storing van de pushdienst', async () => {
+    const rijen = await zetWebKlaar([P256DH, P256DH, P256DH]);
+    for (const rij of rijen) wereld.webAntwoord.set(rij.token, 500);
+    await draai();
+
+    expect(wereld.gewist).toEqual([]);
+  });
+
+  it('wist niets bij een kapotte VAPID-sleutel', async () => {
+    await zetWebKlaar([P256DH, P256DH, P256DH]);
+    wereld.omgeving.VAPID_PRIVATE_KEY = 'onzin';
+    await draai();
+
+    expect(wereld.gewist).toEqual([]);
+  });
+
+  it('wist precies het verdwenen abonnement, op endpoint én sleutels', async () => {
+    const rijen = await zetWebKlaar([P256DH, P256DH, P256DH]);
+    wereld.webAntwoord.set(rijen[1]!.token, 410);
+    await draai();
+
+    expect(wereld.gewist).toEqual([filtersVan(rijen[1]!)]);
+  });
+
+  it('wist precies het ongeldige abonnement als de run ook bruikbare zag', async () => {
+    const rijen = await zetWebKlaar([P256DH, NIET_OP_DE_CURVE, P256DH]);
+    await draai();
+
+    expect(wereld.gewist).toEqual([filtersVan(rijen[1]!)]);
+  });
+
+  it('wist niets als elk abonnement van de run ongeldig is — de stroomonderbreker', async () => {
+    await zetWebKlaar([NIET_OP_DE_CURVE, NIET_OP_DE_CURVE, NIET_OP_DE_CURVE]);
+    const log = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+    await draai();
+
+    expect(wereld.gewist).toEqual([]);
+    expect(log.mock.calls.map((c) => String(c[0]))).toContainEqual(expect.stringContaining('niets opgeruimd'));
+  });
+
+  it('wist niets als WebCrypto stuk is voor één abonnement terwijl de rest bezorgd wordt', async () => {
+    // ⚠️ **Dit is de toets op `abonnementFout()` en niet op de onderbreker.**
+    //    Is WebCrypto voor álle rijen stuk, dan springt de onderbreker en blijft
+    //    de toets hieronder groen, ook als `abonnementFout()` elke worp weer
+    //    `ongeldig` noemt (📏 gemeten bij de ijking, 17-11-2026). Hier wordt de
+    //    andere rij bezorgd, dus alleen de toets zelf houdt de delete tegen.
+    const ander = await crypto.subtle.generateKey({ name: 'ECDH', namedCurve: 'P-256' }, true, ['deriveBits']);
+    const rauw = new Uint8Array(await crypto.subtle.exportKey('raw', ander.publicKey));
+    const kapot = Buffer.from(rauw).toString('base64url');
+    await zetWebKlaar([P256DH, kapot, P256DH]);
+    const echt = crypto.subtle.importKey.bind(crypto.subtle);
+    vi.spyOn(crypto.subtle, 'importKey').mockImplementation(((...args: Parameters<typeof echt>) => {
+      const [formaat, data] = args;
+      if (formaat === 'raw' && Buffer.from(data as Uint8Array).equals(Buffer.from(rauw))) {
+        return Promise.reject(new TypeError('runtime kapot'));
+      }
+      return echt(...args);
+    }) as typeof crypto.subtle.importKey);
+    await draai();
+
+    expect(wereld.gewist).toEqual([]);
+  });
+
+  it('wist niets als WebCrypto voor elk abonnement stuk is', async () => {
+    await zetWebKlaar([P256DH, NIET_OP_DE_CURVE, P256DH]);
+    vi.spyOn(crypto.subtle, 'importKey').mockRejectedValue(new TypeError('runtime kapot'));
+    await draai();
+
+    expect(wereld.gewist).toEqual([]);
+  });
+
+  it('wist hoogstens drie rijen per run, ook als een fout bijna elk abonnement ongeldig maakt', async () => {
+    // ⚠️ **De les van de security-review op het herstel.** 📏 Een
+    //    `vanBase64url()` zonder `-`/`_`-vertaling maakt ≈ 96% van de abonnementen
+    //    ongeldig en laat de rest heel: de onderbreker springt dan niet, dit
+    //    plafond houdt het klein.
+    const rijen = await zetWebKlaar([P256DH, ...Array.from({ length: 6 }, () => NIET_OP_DE_CURVE)]);
+    await draai();
+
+    expect(wereld.gewist).toHaveLength(3);
+    for (const filter of wereld.gewist) expect(rijen.slice(1).map(filtersVan)).toContainEqual(filter);
+  });
+
+  it('deelt het plafond met verdwenen abonnementen', async () => {
+    const rijen = await zetWebKlaar([P256DH, P256DH, P256DH, P256DH, P256DH]);
+    for (const rij of rijen) wereld.webAntwoord.set(rij.token, 410);
+    await draai();
+
+    expect(wereld.gewist).toHaveLength(3);
+  });
+});
+
