@@ -29,8 +29,8 @@ import { psqlMetInvoer, stackBeschikbaarOfFaal } from './psql-stack';
  *       niet mag lezen null" rood.
  *    6. Trigger `milestones_geteld_blijft` weg → alleen "laat een getelde
  *       mijlpaal niet rechtstreeks verwijderen" rood.
- *    7. Trigger `team_progress_events_niet_leeg` weg én de TRUNCATE terug aan
- *       `service_role` → alleen "laat service_role de teller niet leegmaken" rood.
+ *    7. Trigger `team_progress_events_niet_leeg` weg → alleen "laat service_role
+ *       de teller niet leegmaken" rood.
  */
 
 const SETUP_TIMEOUT = 240_000;
@@ -235,7 +235,7 @@ describe.runIf(rlsTestsConfigured)('de teambalk telt alleen op (QS8-655)', () =>
       end $$;
       select 'UITKOMST|' || current_setting('ijk.uitkomst');
       rollback;`);
-    expect(uit.split('\n').find((r) => r.startsWith('UITKOMST|'))).toMatch(/^UITKOMST\|(42501|23514)$/);
+    expect(uit.split('\n').find((r) => r.startsWith('UITKOMST|'))).toBe('UITKOMST|23514');
   }, TEST_TIMEOUT);
 
   it('telt na vertrek niets meer bij, en houdt wat er was', async () => {

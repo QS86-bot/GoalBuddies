@@ -76,7 +76,9 @@ begin
       return old;
     end if;
     -- De mijlpaal is weg: alleen `milestone_id` mag leeg worden, verder niets.
-    if old.milestone_id is not null and new.milestone_id is null
+    -- De gedaante `new.x is null and old.x is not null` is wat
+    -- `onveranderlijkheid_bewaking()` als grendel herkent (de vorm van 0262).
+    if new.milestone_id is null and old.milestone_id is not null
        and new.id = old.id and new.team_goal_id = old.team_goal_id
        and new.created_at = old.created_at then
       return new;
@@ -95,7 +97,9 @@ create trigger team_progress_events_alleen_erbij
   for each row execute function public.teamteller_alleen_erbij();
 
 -- ⚠️ **En geen TRUNCATE** (securityreview QS8-655, L1). Rij-triggers grijpen bij
---    een TRUNCATE niet in, en `service_role` heeft dat recht standaard.
+--    een TRUNCATE niet in, en `service_role` heeft dat recht standaard. Een
+--    statement-trigger en geen `revoke`: `tests/rls/policies.test.ts` eist dat
+--    `service_role` zijn tabelrechten houdt, en de trigger geldt voor iedereen.
 create or replace function public.teamteller_niet_leeg()
 returns trigger
 language plpgsql
@@ -111,7 +115,6 @@ drop trigger if exists team_progress_events_niet_leeg on public.team_progress_ev
 create trigger team_progress_events_niet_leeg
   before truncate on public.team_progress_events
   for each statement execute function public.teamteller_niet_leeg();
-revoke truncate on public.team_progress_events from service_role;
 
 -- ⚠️⚠️ **Een getelde mijlpaal is niet meer rechtstreeks te verwijderen**
 --    (securityreview QS8-655, H1, gemeten: 3000 in drie rondes). Zonder dit

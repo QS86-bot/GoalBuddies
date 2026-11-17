@@ -11,7 +11,7 @@
 | --- | --- |
 | `team_progress_events` | één rij per mijlpaal van een aandeel die voor het eerst gedaan is; geen persoon; geen directe SELECT |
 | de vuller | trigger `milestones_teamteller` (na insert of statuswijziging van een mijlpaal) |
-| alleen erbij | trigger `team_progress_events_alleen_erbij`: UPDATE en DELETE weigeren, ook voor `service_role`; `team_progress_events_niet_leeg` en een `revoke` tegen TRUNCATE |
+| alleen erbij | trigger `team_progress_events_alleen_erbij`: UPDATE en DELETE weigeren, ook voor `service_role`; en `team_progress_events_niet_leeg` tegen TRUNCATE |
 | een getelde mijlpaal blijft | trigger `milestones_geteld_blijft`: een mijlpaal die in de teller staat, is niet rechtstreeks te verwijderen |
 | de teambalk | `teambalk()`: één getal, of `null` voor wie het teamdoel niet mag lezen |
 
@@ -81,7 +81,8 @@ over het echte teampad.
 
 - **H1, hersteld:** de balk was onbeperkt op te blazen. Zie keuze 4.
 - **L1, hersteld:** `service_role` kon de teller leegmaken met TRUNCATE. Nu weigert
-  een statement-trigger dat, en het recht is ingetrokken.
+  een statement-trigger dat. Het recht zelf blijft, omdat een bestaande test eist dat
+  `service_role` zijn tabelrechten houdt.
 - **L2, open:** de uitzondering voor een DELETE kijkt naar de triggerdiepte, niet
   naar wélke foreign key. Vandaag schrijft geen andere functie in deze tabel.
   Wordt zwaarder als: een functie of trigger `team_progress_events` gaat wijzigen of
