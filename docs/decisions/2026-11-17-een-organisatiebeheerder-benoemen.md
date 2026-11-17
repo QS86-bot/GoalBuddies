@@ -43,9 +43,19 @@ organisatierij en telt daarna.** Vandaag zijn dat `verlaat_organisatie()` en
 READ COMMITTED krijgt dan elk statement na de lock een verse snapshot, zodat
 de telling ziet wat de vorige houder commitde.
 
+⚠️⚠️ **Er is vandaag al een derde schrijver die zich er niet aan houdt:
+accountverwijdering.** `verwijder_mijn_account()` cascadeert naar
+`organization_members` zonder lock en zonder `laatste_beheerder`. 📏 Gemeten in
+de security-ronde en door mij nagemeten: A treedt terug, B verwijdert zijn
+account, eindstand **0** beheerders. Dat gat bestond al vóór deze migratie (de
+enige beheerder die zijn account verwijdert) en hoort bij QS8-659. Ik dicht het
+hier niet met een trigger: die zou accountverwijdering blokkeren, en het
+wisrecht tegenhouden is een besluit en geen bijvangst. **Advies van de
+security-ronde, dat ik overneem: zet organisaties niet op productie voordat
+QS8-659 geland is.**
+
 ⚠️ Een nieuwe schrijver die deze regel vergeet, laat de bestaande racetoetsen
-groen: die toetsen alleen de paren die er vandaag zijn. QS8-659
-(accountverwijdering) is de volgende kandidaat.
+groen: die toetsen alleen de paren die er vandaag zijn.
 
 ## Gevolg voor QS8-653 (gemeten tegen die tak, niet op deze)
 
@@ -74,15 +84,19 @@ benoemde beheerder beheert een team, en een teruggetreden beheerder niet meer.
     de ander vertrekt";
   - het spoor weg → de spoortoets.
 
+- **De hercontrole ná de lock in `benoem_…`** is door de security-ronde wél
+  gemeten met twee sessies: A treedt terug en houdt de lock, en A's eigen
+  benoeming in de andere sessie krijgt daarna `niet_toegestaan`. Er staat geen
+  toets in de suite voor, want die zou een sleep in de functie vragen.
+- **Het spoor overleeft accountverwijdering** sinds de security-ronde (L1):
+  `subject_id` is `on delete set null`, net als `actor_id`.
+
 ## Niet gemeten
 
 - **`stable` in plaats van `volatile` is niet als ijking te gebruiken**: een
   `stable` plpgsql-functie mag geen `update` doen en valt dan om met een fout,
   in plaats van stil de race door te laten. De keuze voor `volatile` staat in de
   kop van de migratie, maar heeft geen eigen toets.
-- **De hercontrole ná de lock in `benoem_…`** (een beheerder die net terugtrad
-  benoemt niemand meer) is niet deterministisch te toetsen zonder een sleep in
-  de functie. Geredeneerd uit de lockvolgorde, niet gemeten.
 - **Een inactief lid benoemen** heeft geen eigen toets; de `status = 'active'`
   in de update draagt het.
 - De plafonds (20 per etmaal) en productie: niets op productie gedraaid.

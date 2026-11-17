@@ -35,10 +35,22 @@
 -- verlagen, lockt eerst de organisatierij en telt daarna
 -- ---------------------------------------------------------------------------
 --
--- Vandaag zijn dat `verlaat_organisatie()` (0299) en
--- `treed_terug_als_organisatiebeheerder()` (hier). Twee beheerders die tegelijk
--- terugtreden of vertrekken, worden zo achter elkaar gezet: de tweede telt ná
--- de commit van de eerste en krijgt `laatste_beheerder`.
+-- `verlaat_organisatie()` (0299) en `treed_terug_als_organisatiebeheerder()`
+-- (hier) houden zich daaraan. Twee beheerders die tegelijk terugtreden of
+-- vertrekken, worden zo achter elkaar gezet: de tweede telt ná de commit van de
+-- eerste en krijgt `laatste_beheerder`.
+--
+-- ⚠️⚠️ **Er is een derde schrijver, en die houdt zich er niet aan:
+--    accountverwijdering.** `verwijder_mijn_account()` cascadeert via `profiles`
+--    naar `organization_members`, zonder lock en zonder `laatste_beheerder`.
+--    📏 Gemeten in de security-ronde op QS8-695: A treedt terug (mag, B is nog
+--    beheerder), B verwijdert zijn account → **0** beheerders; en hetzelfde in
+--    een race, waarbij de verwijdering niet op de lock van `treed_terug` wacht.
+--    Dat gat bestond al vóór deze migratie (de enige beheerder die zijn account
+--    verwijdert) en hoort bij QS8-659. Het wordt hier bewust níet gedicht met
+--    een trigger: die zou accountverwijdering blokkeren, en het wisrecht
+--    tegenhouden is een besluit en geen bijvangst. **Tot QS8-659 landt, belooft
+--    deze migratie "nooit nul beheerders" alleen voor deze twee routes.**
 --
 -- ⚠️ **VOLATILE en niet STABLE.** In READ COMMITTED krijgt elk statement in een
 --    volatile functie een verse snapshot, dus de telling ná de `for update`
@@ -76,7 +88,11 @@ create table if not exists public.organization_role_events (
   id              uuid primary key default gen_random_uuid(),
   organization_id uuid not null references public.organizations(id) on delete restrict,
   actor_id        uuid references public.profiles(id) on delete set null,
-  subject_id      uuid not null references public.profiles(id) on delete cascade,
+  -- ⚠️ `set null` en niet `cascade` (security-ronde, L1): anders verdwijnt de
+  --    rij "A benoemde H" zodra H zijn account verwijdert, en daarmee precies
+  --    het spoor waar deze tabel voor bestaat. De persoon zelf is weg; dát er
+  --    iemand benoemd werd, en door wie, blijft staan.
+  subject_id      uuid references public.profiles(id) on delete set null,
   event_type      text not null,
   created_at      timestamptz not null default now()
 );

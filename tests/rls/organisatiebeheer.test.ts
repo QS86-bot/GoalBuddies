@@ -22,6 +22,12 @@ import { psql, psqlParallel, stackBeschikbaarOfFaal } from './psql-stack';
  *   los, en het geheel lekt zodra één van beide niet eerst de organisatierij
  *   lockt. Die toets draait met twee echte psql-sessies, onderaan.
  *
+ * ⚠️⚠️ **Wat deze suite níet belooft: accountverwijdering.**
+ *    `verwijder_mijn_account()` is een derde schrijver die het aantal
+ *    beheerders verlaagt, zonder lock en zonder `laatste_beheerder` — 📏 gemeten
+ *    in de security-ronde, eindstand 0 beheerders. Dat is QS8-659; zie de kop van
+ *    migratie 0300.
+ *
  * ⚠️ De tabellen en RPC's staan nog niet in `src/lib/database.types.ts` (een
  *    afschrift van productie), vandaar `as never` op de namen.
  */
@@ -94,6 +100,12 @@ describe.runIf(rlsTestsConfigured)('een organisatiebeheerder benoemen en terugtr
     const admin = adminDb();
     if (aangemaakt.length > 0) {
       await admin.from('organization_role_events' as never).delete().in('organization_id' as never, aangemaakt as never);
+      // De dagtellers van deze organisaties, en alleen die (tellerbereik).
+      await admin
+        .from('dagtellers' as never)
+        .delete()
+        .in('domein' as never, ['organisatierollen', 'organisatiecodes'] as never)
+        .in('sleutel' as never, aangemaakt as never);
       await admin.from('organization_members' as never).delete().in('organization_id' as never, aangemaakt as never);
       await admin.from('organizations' as never).delete().in('id' as never, aangemaakt as never);
     }
