@@ -1,6 +1,6 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
-import { userCycle } from '../../src/shared/time';
+import { groupPeriod, userCycle } from '../../src/shared/time';
 import type { UserClock } from '../../src/shared/time';
 import { adminDb, createTestUser, registreerGroep, removeTestUsers, rlsTestsConfigured, type TestUser } from './harness';
 
@@ -32,6 +32,16 @@ import { adminDb, createTestUser, registreerGroep, removeTestUsers, rlsTestsConf
  *       rij), daarna de twee toetsen die op die goedkeuring verder bouwen.
  *    4. De voorwaarde op `organization_id` uit `groep_klassement()` → alleen
  *       "geeft nooit een klassement in een teamgroep" rood.
+ *    5. `straffen_bij_uitstelverzoek()` terug naar `shares_group_with_goal()` →
+ *       alleen "laat wie over uitstel beslist de straf … zien" rood (review H1).
+ *    6. De aandeeltoets uit `plaats_systeembericht_in_doelgroepen()` → alleen
+ *       "zet niets over het aandeel in de teamchat" rood (review H2).
+ *    7. De aandeeltoets uit `meld_goedkeuring()` → idem (de bevestigde week).
+ *    8. De voorwaarde op `organization_id` uit `groep_helden()` → alleen "geeft
+ *       geen helden in een teamgroep" rood (review H3).
+ *    9. `is_aandeel_van_een_ander()` uit `group_overview()` → eerst "ziet een
+ *       wachtende voltooiing…" rood (review M2), daarna de twee die op die
+ *       goedkeuring verder bouwen.
  */
 
 const SETUP_TIMEOUT = 240_000;
@@ -215,6 +225,16 @@ describe.runIf(rlsTestsConfigured)('een aandeel blijft van zijn eigenaar (QS8-66
     expect(await tel(cleo, 'goals', 'id', aandeel)).toBe(1);
     expect(await tel(cleo, 'weekly_goals', 'id', gemistAandeel)).toBe(0);
 
+    // Review M2: ook in het venster staat het aandeel niet in het groepsoverzicht.
+    const periode = groupPeriod({ huddleDay: 0, tz: 'Europe/Amsterdam' }, new Date());
+    const { data: overzicht, error: ofout } = await cleo.db.rpc('group_overview', {
+      p_group_id: team,
+      p_period_start: periode.startDate,
+    });
+    expect(ofout).toBeNull();
+    const bertsRij = (overzicht as { user_id: string; goal_id: string | null }[]).find((r) => r.user_id === bert.id);
+    expect(bertsRij?.goal_id).not.toBe(aandeel);
+
     const { data: rij } = await cleo.db.rpc('openstaande_beoordelingen', { p_limit: 20 });
     expect((rij as { completion_id: string }[]).map((r) => r.completion_id)).toContain(completion);
 
@@ -233,6 +253,61 @@ describe.runIf(rlsTestsConfigured)('een aandeel blijft van zijn eigenaar (QS8-66
     expect((data as { status: string }).status).toBe('approved');
     expect(await tel(cleo, 'weekly_goals', 'id', wachtend)).toBe(0);
     expect(await tel(cleo, 'goals', 'id', aandeel)).toBe(0);
+  }, TEST_TIMEOUT);
+
+  it('zet niets over het aandeel in de teamchat, wel over een gewoon doel (review H2)', async () => {
+    const zet = async (doel: string): Promise<void> => {
+      const { error } = await bert.db.from('milestones').update({ status: 'done' } as never).eq('goal_id', doel);
+      expect(error).toBeNull();
+    };
+    await zet(aandeel);
+    await zet(gewoon);
+    const { data, error } = await cleo.db
+      .from('chat_messages')
+      .select('system_event, payload')
+      .eq('group_id', team)
+      .eq('subject_id', bert.id)
+      .in('system_event', ['milestone_done', 'goal_completed', 'completion_pending', 'completion_approved', 'commitment_unlocked']);
+    expect(error).toBeNull();
+    const gebeurtenissen = (data as { system_event: string | null }[]).map((r) => r.system_event).sort();
+    // Precies één mijlpaalbericht, en dat is dat van het gewone doel. Geen
+    // ingediende of bevestigde week van het aandeel.
+    expect(gebeurtenissen).toEqual(['milestone_done']);
+  }, TEST_TIMEOUT);
+
+  it('geeft geen helden in een teamgroep, ook niet in een open (review H3)', async () => {
+    const h = await adminDb()
+      .from('hero_appearances' as never)
+      .insert({ user_id: bert.id, hero_key: 'lucerna', trigger: 'stilte' } as never);
+    expect(h.error).toBeNull();
+    const { data, error } = await cleo.db.rpc('groep_helden' as never, { p_group_id: team } as never);
+    expect(error).toBeNull();
+    expect(data).toEqual([]);
+  }, TEST_TIMEOUT);
+
+  it('laat wie over uitstel beslist de straf op het aandeel zien (review H1, domeinregel 11)', async () => {
+    const straf = await adminDb()
+      .from('commitments')
+      .insert({
+        goal_id: aandeel,
+        type: 'penalty',
+        body: 'Trakteren',
+        beneficiary_user_id: cleo.id,
+        confirmed_at: new Date().toISOString(),
+      })
+      .select('id')
+      .single();
+    expect(straf.error).toBeNull();
+    const v = await bert.db.rpc('vraag_deadline_verschuiving', {
+      p_goal_id: aandeel,
+      p_group_id: team,
+      p_new_date: streefdatum(150),
+      p_reason: 'Het project schuift een maand op.',
+    });
+    expect((v.data as { ok?: boolean }).ok, JSON.stringify(v.data)).toBe(true);
+    const { data, error } = await cleo.db.rpc('straffen_bij_uitstelverzoek', { p_goal_ids: [aandeel] });
+    expect(error).toBeNull();
+    expect((data as { goal_id: string }[]).map((r) => r.goal_id)).toEqual([aandeel]);
   }, TEST_TIMEOUT);
 
   it('geeft nooit een klassement in een teamgroep, ook niet in een open (6d)', async () => {

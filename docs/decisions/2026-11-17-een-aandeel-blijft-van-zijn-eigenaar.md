@@ -70,17 +70,59 @@ De twee vragen per oppervlak staan in rij 44 en 49 van
 
 ## Wat getest is
 
-`tests/rls/aandeel-dicht.test.ts`: 7 tests via PostgREST in een **open** teamgroep.
+`tests/rls/aandeel-dicht.test.ts`: 10 tests via PostgREST in een **open** teamgroep.
 - Controle: een gewoon doel dat aan hetzelfde team hangt, is open, ook de gemiste week.
 - Een teamgenoot ziet van het aandeel geen rij, geen mijlpalen, geen
   doelgebeurtenissen, geen gemiste en geen lopende week.
 - Hij ziet wél een wachtende voltooiing en keurt hem goed via
   `openstaande_beoordelingen()` en een insert; daarna is het weer dicht.
 - `groep_klassement()` geeft nul rijen, terwijl er punten op de groep staan.
-- Vier mutaties met de hand. De uitslag staat in de kop van de test.
+- De teamchat (geen bericht over het aandeel, wel over een gewoon doel), de helden,
+  de straf bij een uitstelverzoek en het groepsoverzicht.
+- Negen mutaties met de hand. De uitslag staat in de kop van de test.
 
 De tests van QS8-653, 654 en 655 draaien groen op de nieuwe regels, waaronder de
 goedkeuring door een teamgenoot in een beschermde teamgroep.
+
+## Wat de securityreview vond (blokkerend), en wat ermee gebeurde
+
+- **H1, hersteld:** wie over een uitstelverzoek op een aandeel beslist, zag de straf
+  niet meer, omdat `straffen_bij_uitstelverzoek()` `shares_group_with_goal()`
+  gebruikte. Een teamgenoot kon zo een straf losser maken zonder te weten dat hij
+  bestond (domeinregel 11, QS8-370). De functie toetst nu het lidmaatschap van kijker
+  en eigenaar zelf. Getoetst.
+- **H2, hersteld:** systeemberichten verrieden per persoon de mijlpalen, de
+  ingediende weken en de bevestigde weken van een aandeel. Voor een aandeel komt er
+  geen systeembericht meer: `plaats_systeembericht_in_doelgroepen()` slaat het over,
+  en `meld_goedkeuring()` ook. Goedkeuren loopt via de wachtrij en niet via de chat.
+  Dat sluit ook M1 (het ontbreken van een weekbericht verraadt een gemiste week).
+  ⚠️ Voor de gebruiker: een teamgenoot hoort het in de chat niet meer als er een
+  aandeel wacht. De wachtrij en de meldingen zijn de weg.
+- **H3, hersteld, en een besluit voor Quinten:** `groep_helden()` gaf in een open
+  teamgroep per collega `stilte` (drie dagen niets, over álle doelen, ook privédoelen)
+  en `mijlpaal`. Een teamgroep krijgt nu geen helden, met dezelfde eigen voorwaarde
+  als het klassement. Dat is dicht tot Quinten anders besluit; voor élk nieuw
+  oppervlak is beschermd het antwoord.
+- **M2, hersteld:** `group_overview()` toonde het aandeel in het goedkeurvenster als
+  een doel met 0 van 0 mijlpalen. Het aandeel staat er niet meer in.
+- **M3, open:** `ketting_stand()` telt een lid met een adempauze op een aandeel niet
+  mee voor De Ketting. Daarmee is de adempauze af te leiden, in een team van twee ook
+  van wie. Niet aangepast, omdat het de regels van De Ketting verandert. Wordt zwaarder
+  als: teams van twee of drie de gewone vorm worden.
+- **M4, open:** de seizoensrecap telt dezelfde groepscijfers als `groep_teller()`,
+  aandelen inbegrepen. Zie hieronder.
+- **M5, besluit 18:** in een open teamgroep ziet een lid wie de weekafsluiting deed
+  (`chain_links`, `group_overview.closed_this_period`). Dat is A41-gedrag, en besluit
+  18 noemt die prijs met zoveel woorden. Niet aangepast. Wie het in een teamgroep dicht
+  wil, besluit dat.
+- **L1, open:** `is_aandeel_van_een_ander()` is uitvoerbaar voor `authenticated`,
+  omdat `group_overview()` met de rechten van de aanroeper draait. Met de `goal_id`'s
+  uit `goal_group_links` ziet een teamgenoot welke gekoppelde doelen aandelen zijn,
+  zonder eigenaar. Wordt zwaarder als: een leesbare rij `goal_id` aan een persoon
+  koppelt.
+- **L2, open:** `weekly_goals_select` roept per rij twee helpers aan die elk
+  `team_goal_shares` raadplegen (primaire sleutel). Wordt zwaarder als: lijstqueries
+  op `weekly_goals` zonder filter op `goal_id` gaan draaien.
 
 ## Aannames, niet gemeten
 
