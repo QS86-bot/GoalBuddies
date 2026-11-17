@@ -2058,6 +2058,71 @@ Laat zo'n lus altijd óók melden dát hij niets vond.
 op — de QS8-415-klasse, gevangen door de grendel die daarvoor bestaat. Die
 grendel werkt; de gewoonte moet nog groeien.
 
+### 05-10-2026 — QS8-233 af en uitgerold, en drie valkuilen die geld kostten
+
+De buddywachtrij is af: `0299` (de rij), `0300` (de matcher), `0301` (de peildag
+van de server) en `0302` (de security-ronde), alle vier op productie. Wat er per
+bevinding gemeten is staat in Linear en in de migratiekoppen. Hieronder alleen
+wat een volgende ronde anders zou doen.
+
+⚠️⚠️ **1. Een burst die niet gelijktijdig is, meet geen race — en hij liegt in de
+veilige richting.** De reparatie van B2 is een advisory lock vóór drie
+lees-dan-schrijf-tellingen. Mijn eerste meting erna gaf 3 rijen, precies het
+plafond, en dat zag eruit als bewijs. 📏 Dezelfde burst **zonder** de lock gaf
+ook 3. Twaalf `psql`-processen uit een shell-lus moeten elk nog verbinden en
+authenticeren, dus ze liepen achter elkaar en de race trad nooit op.
+
+Met een echt gedeeld startsignaal — elke sessie `pg_sleep` tot een vaste
+`timestamptz`, werkelijke spreiding 9 ms — werd het 10 zonder de lock en 3 ermee.
+
+**De les is niet "meet concurrency beter" maar de les van `rls:dekking`:** een
+instrument dat een grendel ijkt door hem weg te halen, beantwoordt in
+werkelijkheid *"is de toestand anders dan ervoor"*, en dat is niet te beantwoorden
+zonder "ervoor" te meten. **Meet altijd de mutant én het origineel op dezelfde
+opzet.** Bij een gelijke uitslag is je instrument stuk, niet je code goed.
+
+⚠️⚠️ **2. Een `drop function` is op deze deployroute niet uitrolbaar.** `0301`
+kortte de handtekening van `buddyzoek_stand` in, en dat kan alleen met een drop.
+Twee `apply_migration`-aanroepen liepen stil op een timeout van zestig seconden
+— geen foutmelding, geen lock, geen zichtbare query in `pg_stat_activity`, en
+niets half toegepast. De drop alleen gaf daarna `status: cancelled`: een
+destructief statement vraagt bevestiging, en die kwam niet.
+
+**Wat je in zo'n geval niet doet is hem dynamisch verpakken in een `do $$`-blok
+om de classificatie te omzeilen.** Wat je wél doet staat al twee keer in dit
+project: `0294` en `0186` laten de oude handtekening staan als **wrapper** die
+zijn argument weggooit. Dat is hier zelfs beter dan de drop, en niet alleen
+goedkoper: de reparatie landt óók op de gedeployde client, en er is geen venster
+waarin de migratie erop staat en het scherm stuk is.
+
+⚠️ **En de inertheid is dan iets om te meten.** Een weggegooid argument is
+onzichtbaar in de signatuur, dus de belofte hangt aan het lichaam. De test geeft
+dezelfde vraag vijf peildagen mee en eist één uitkomst. 📏 Met twee wachtenden
+op +85 en +95 dagen — aan weerszijden van de 90-dagengrens van `doelperiode()` —
+geeft de lekke variant 2, 2, 1, 1, 2 en de wrapper vijf keer 2. **Die opzet is
+het halve werk:** met twee wíllekeurige streefdatums beweegt ook de lekke
+variant niet, en dan toetst de test niets.
+
+⚠️⚠️ **3. `psql` commit een open transactie bij afsluiten.** Een probescript dat
+met `begin;` opent en zónder `rollback;` eindigt, laat zijn fixture **staan**.
+📏 Dat kostte me een half uur: twee automatische groepen en acht wachtrijrijen
+bleven achter, en daarna faalden vier RLS-tests die over het aantal automatische
+groepen gaan. Ik heb eerst naar 0302 gekeken en pas daarna naar de database.
+
+**Zet `rollback;` in elk probescript, ook in het script dat je één keer draait** —
+en kijk bij een onverwacht rode test éérst of je eigen vorige probe nog in de
+database ligt. De tests die hierop vielen waren niet kapot; ze lazen een teller
+over de hele database.
+
+⚠️ **Wat de poort hierna nog vond, en dat is het patroon om te verwachten:** twee
+ratels die niemand had bijgewerkt. `plafonddekking` ziet `goal_match_queue` als
+groeibaar via de `via_rpc`-tak (de INSERT-policy staat op `false`, maar
+`zoek_buddies_aan()` is een definer die `authenticated` mag uitvoeren), en
+`hulpfunctiemodel` zag een derde lidmaatschapstoets in
+`mag_melding_als_escalatie()`. **Beide zijn geen fouten maar metingen die om een
+opgeschreven reden vragen** — en ze kwamen pas boven toen de volle suite tegen
+een lokale stack liep, niet uit de code.
+
 ### 24-09-2026 — de auditronde, en wat er ónder de bevindingen zat
 
 `/audit` gedraaid en de drie punten eruit afgemaakt (QS8-597, QS8-598), plus de

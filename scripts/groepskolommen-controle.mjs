@@ -235,7 +235,35 @@ export const CENSUS = {
   },
   groups: {
     groepszichtbaar: true,
-    kolommen: 'id, name, icon, created_by, invite_code, invite_revoked, huddle_day, tz, evidence_policy, approval_rule, season_cadence, status, last_activity_at, created_at, zichtbaarheid, approval_quorum, ontdekbaar, categorie, omschrijving, voertaal',
+    // ⚠️ `automatisch` erbij op 05-10-2026 (QS8-233, 0300). Een groepsgenoot
+    //    kan hem lezen en dat is de bedoeling: hij zégt "deze groep is niet
+    //    door iemand van jullie opgericht", en dat is informatie die de leden
+    //    toekomt. Er valt niets uit af te leiden over iemands tegenslag — de
+    //    kolom gaat over de groep en niet over een lid. ⚠️⚠️ **Wat hij wél
+    //    draagt is een belofte die niet in deze tabel staat:** `beschermd` en
+    //    `niet ontdekbaar` hangen er met twee CHECKs aan vast, en de
+    //    `automatisch`-tak in beide zet-RPC's sluit de beheerdersroute af.
+    //    `authenticated` heeft géén UPDATE op deze kolom (📏 nagemeten: negen
+    //    andere kolommen wél) en `guard_group_update()` pint hem daarachter.
+    //    Rij 42 in `docs/decisions/002-domeinregel7-oppervlakken.md`.
+    kolommen: 'id, name, icon, created_by, invite_code, invite_revoked, huddle_day, tz, evidence_policy, approval_rule, season_cadence, status, last_activity_at, created_at, zichtbaarheid, approval_quorum, ontdekbaar, categorie, omschrijving, voertaal, automatisch',
+  },
+  goal_match_queue: {
+    // ⚠️⚠️ **Niet groepszichtbaar, en dat is de hele belofte van deze tabel.**
+    //    `goal_match_queue_select` is `user_id = (select auth.uid())` en de drie
+    //    schrijfpolicies staan op `false`; `authenticated` heeft alleen SELECT.
+    //    Een rij zegt dat deze persoon een doel in deze categorie met deze
+    //    streefdatum heeft en actief onbekenden zoekt, en dat is van niemand
+    //    anders — ook niet van een toekomstige groepsgenoot, want zodra de groep
+    //    er is staat de status op `gekoppeld` en is de rij nog steeds alleen van
+    //    de eigenaar.
+    //
+    // ⚠️ De tabelbrede grant mag hier omdat er geen kolom is die de eigenaar
+    //    niet mag zien: het zijn zijn eigen velden. Wat over ánderen gaat komt
+    //    niet uit de tabel maar uit `buddyzoek_stand()`, als één verzadigd
+    //    getal — rij 41 in `docs/decisions/002-domeinregel7-oppervlakken.md`.
+    groepszichtbaar: false,
+    kolommen: 'id, goal_id, user_id, status, group_id, created_at, expires_at, decided_at',
   },
   hero_appearances: {
     groepszichtbaar: false,

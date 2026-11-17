@@ -25,6 +25,9 @@ function groep(id: string, extra: Partial<Tables<'groups'>> = {}): Tables<'group
     evidence_policy: 'none',
     // QS8-231 — een groep die zich niet laat vinden, en dat is de standaard.
     ontdekbaar: false,
+    // QS8-233 — niet door de matcher samengesteld; dat is hier de standaard én
+    // de stand van elke groep die een mens oprichtte.
+    automatisch: false,
     categorie: null,
     omschrijving: null,
     voertaal: null,

@@ -63,6 +63,17 @@ const ONZICHTBAARHEID = [
   /alleen jij (ziet|leest)/i,
   /alleen voor jou/i,
   /ziet .{0,25}nooit/i,
+  // ⚠️⚠️ **De passieve vorm, en die ontbrak — QS8-233.** `/ziet .{0,25}nooit/`
+  //    vangt *"je groep ziet dit nooit"* en niet *"dit is er nooit te zien"*,
+  //    terwijl die tweede in het Nederlands minstens zo gewoon is. 📏 Gemeten op
+  //    05-10-2026 over beide catalogi: twee sleutels gebruiken hem, en
+  //    `radar.alleen_jij` werd alleen gevangen doordat hij óók *"alleen jij
+  //    ziet"* zegt. Eén sleutel hing er dus volledig buiten.
+  //
+  //    Dat is dezelfde klasse als de vier vormen hierboven: het register bewaakte
+  //    de zinnen die er toevallig in de actieve vorm stonden.
+  /nooit te zien/i,
+  /never visible/i,
   // ⚠️ `only you\b` en niet `only you`: dat tweede matcht ook *"only your
   //    group members"*, en dat is een scope-belofte en geen
   //    onzichtbaarheidsbelofte. Die vangen we hieronder apart, zodat het
@@ -81,6 +92,23 @@ const ONZICHTBAARHEID = [
  *    dan moet het scherm dat ook echt afdwingen.
  */
 const TOEGESTAAN: Readonly<Record<string, string>> = {
+  'buddyzoek.bevestig_bescherming':
+    'QS8-233. De zin geldt onvoorwaardelijk omdat een automatisch gevormde groep ' +
+    'niet open kán worden: `groups_automatisch_is_beschermd` is een CHECK, en de ' +
+    'derde pin in `guard_group_update()` houdt `automatisch` zelf vast. Daarom is ' +
+    'hier géén `_open`-tegenhanger nodig — en daarom heet hij ook niet ' +
+    '`_beschermd`: die naam betekent in dit project "het scherm kiest per groep", ' +
+    'en dat is precies wat hier niet gebeurt. 📏 Geijkt als `service_role`: ' +
+    '`zichtbaarheid = open` en `ontdekbaar = true` geven beide een 23514, en een ' +
+    'beheerder die `automatisch` patcht krijgt de raise uit de guard.',
+  'buddyzoek.bevestig_stoppen':
+    'QS8-233. "Niemand ziet het" gaat over uit de wáchtrij stappen, en die belofte ' +
+    'staat los van `groups.zichtbaarheid` — je bent op dat moment nog in geen ' +
+    'enkele groep. 📏 Gemeten: `goal_match_queue_select` is `user_id = auth.uid()` ' +
+    'en een ander krijgt nul rijen; `zoek_buddies_uit()` zet alleen status en ' +
+    '`decided_at`, en boekt geen punt, plaatst geen `group_events`-rij en geen ' +
+    'chatbericht. Dat is acceptatiecriterium 11 van het issue, en het is de reden ' +
+    'dat er geen bevestiging om die knop zit: wie eruit wil, wil eruit.',
   'koppel.uitleg_beschermd':
     'Wordt alleen getoond als groups.zichtbaarheid = beschermd; app/groep/[id].tsx kiest.',
   'koppel.uitleg_open':

@@ -1,0 +1,87 @@
+name: Koppelen
+
+# De koppelpas van QS8-233: verlopen wachtopdrachten laten verlopen, en uit de
+# wachtrij groepen van drie tot vijf vormen. De Edge Function roept zichzelf niet
+# aan — zonder deze planning staat er een wachtrij die nooit leegloopt, en dat is
+# erger dan geen knop: de gebruiker heeft zich aangemeld en er gebeurt niets.
+#
+# ⚠️ Waarom hier en niet via Supabase Cron. Supabase Cron ís pg_cron, en een Edge
+#    Function aanroepen vanuit de database vraagt `pg_net` plus een
+#    Authorization-header met de service-role-key. Die sleutel zou daarmee in de
+#    database komen te staan — precies wat een service-role-key hoort te
+#    vermijden, en in strijd met CLAUDE.md beveiligingsregel 4. Hier staat hij in
+#    GitHub Secrets en dus in een env var. Zelfde besluit en zelfde reden als bij
+#    `rollover.yml` (Quinten, 19-08-2026).
+
+on:
+  schedule:
+    # ⚠️ Op minuut 45, en dat is geen willekeur: `rollover` staat op :00 en
+    #    `notificaties` op :30. Drie jobs op hetzelfde moment delen dezelfde
+    #    gratis-tier-verbindingslimiet (`max_connections` is 60 voor de héle
+    #    database, zie CLAUDE.md), en een koppelpas die daarop stukloopt is een
+    #    wachtrij die stil blijft staan.
+    #
+    # ⚠️ Elk uur en niet dagelijks. Wie zich aanmeldt terwijl de bak al vol is,
+    #    hoort niet tot morgen te wachten — de wachtrij is het onderdeel van deze
+    #    feature dat het snelst "stuk" voelt, en dat staat met zoveel woorden in
+    #    het issue. De functie is idempotent, dus vaker draaien kost niets.
+    - cron: '45 * * * *'
+  # Handmatig starten, om te testen en om een gemiste run in te halen.
+  workflow_dispatch:
+
+# ⚠️ Twee koppelpassen tegelijk is niet gevaarlijk — `vorm_buddygroepen()` neemt
+#    een advisory lock en leest met `for update skip locked` — maar wel zinloos:
+#    de tweede wacht op de eerste en doet daarna niets meer. Bij een trage run
+#    schuift de volgende gewoon door.
+concurrency:
+  group: koppelen
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  koppelen:
+    name: Buddy's koppelen
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - name: Koppelpas aanroepen
+        env:
+          SUPABASE_URL: ${{ vars.SUPABASE_URL }}
+          SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: |
+          set -euo pipefail
+
+          if [ -z "${SUPABASE_URL:-}" ] || [ -z "${SERVICE_ROLE_KEY:-}" ]; then
+            echo "::error::SUPABASE_URL (variable) of SUPABASE_SERVICE_ROLE_KEY (secret) ontbreekt."
+            exit 1
+          fi
+
+          # ⚠️ Body en status apart. Zou dit alleen op de exitcode van curl
+          #    letten, dan telt een 500 met een keurige JSON-fout als succes —
+          #    en een stil falende koppelpas is erger dan geen koppelpas, want
+          #    niemand merkt het tot iemand klaagt dat hij weken wacht.
+          status=$(curl -s -S -o /tmp/koppelen.json -w '%{http_code}' \
+            --max-time 120 \
+            -X POST "${SUPABASE_URL}/functions/v1/koppelen" \
+            -H "Authorization: Bearer ${SERVICE_ROLE_KEY}" \
+            -H 'Content-Type: application/json')
+
+          echo "HTTP ${status}"
+          cat /tmp/koppelen.json
+
+          if [ "${status}" != "200" ]; then
+            echo "::error::Koppelen gaf HTTP ${status} in plaats van 200."
+            exit 1
+          fi
+
+          # De functie geeft {"ok":true,...} terug. Alles anders is een storing,
+          # ook als het toevallig met status 200 komt.
+          if ! grep -q '"ok":true' /tmp/koppelen.json; then
+            echo "::error::Koppelen antwoordde zonder ok:true."
+            exit 1
+          fi
+
+          echo "Koppelpas gedraaid."

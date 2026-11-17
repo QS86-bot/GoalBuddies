@@ -140,6 +140,19 @@ export const OPPERVLAKKEN = new Map([
 export const GEEN_OPPERVLAK = new Map([
   ['functie:lid_van_open_groep', 'De hulpfunctie zelf — dit ís het mechanisme.'],
   [
+    'functie:vorm_een_buddygroep',
+    'Noemt `zichtbaarheid` één keer, in de `insert into groups`, en zet hem daar hard ' +
+      "op `'beschermd'` (0300, QS8-233). Hij **varieert** dus niets wat een lid van een " +
+      'ánder ziet — hij legt de zuinigste stand vast en laat die niet kiezen. ⚠️ Dat de ' +
+      'groep daar nooit meer van afkomt is niet deze regel maar de CHECK ' +
+      '`groups_automatisch_is_beschermd` plus de `automatisch`-tak in beide zet-RPC\'s; ' +
+      'een `insert` die de goede waarde zet is een gewoonte, een CHECK is een ' +
+      'eigenschap. ⚠️⚠️ **Wat hier wél een oppervlak is, is de groep zelf** — mensen die ' +
+      'elkaar niet gekozen hebben zien wat rij 1 geeft. Dat staat als rij 42 in ' +
+      '`docs/decisions/002-domeinregel7-oppervlakken.md` en niet in deze lijst, want ' +
+      'OPPERVLAKKEN gaat over wat op `groups.zichtbaarheid` varieert.',
+  ],
+  [
     'functie:deelt_open_groep_met_doel',
     'Dezelfde hulpfunctie voor de doelkant: deelt de kijker een open groep met dít ' +
       'doel? Ook mechanisme en geen oppervlak.',
