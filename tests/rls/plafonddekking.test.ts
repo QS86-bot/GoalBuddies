@@ -162,6 +162,16 @@ const REGISTER: Readonly<Record<string, string>> = {
   invite_preview_limits:
     'PRIMARY KEY (group_id) — één rij per groep, en invite_preview() werkt hem ' +
     'bij in plaats van er een tweede naast te zetten.',
+  // ⚠️ De twee organisatietabellen (QS8-652, 0299) hebben geen `*_dagplafond`:
+  //    hun grens zit in de RPC, in `dagtellers`, en die telt de hándeling en
+  //    overleeft een `delete` (0234). 📏 Gemeten in `tests/rls/organisaties.test.ts`.
+  organization_members:
+    'word_organisatielid() telt elke poging, ook een foute, en weigert vanaf 20 in het ' +
+    'laatste etmaal; PRIMARY KEY (organization_id, user_id) en hoogstens 10 actieve ' +
+    'lidmaatschappen per persoon.',
+  organizations:
+    'maak_organisatie() weigert vanaf 3 nieuwe organisaties per persoon in het laatste ' +
+    'etmaal (dagteller organisaties) en vanaf 10 actieve lidmaatschappen.',
   points_ledger:
     'Geen eigen clientroute: elke rij hangt aan een handeling die zelf begrensd ' +
     'is. trek_goedkeuring_in() loopt langs UNIQUE (approval_id) op ' +
@@ -281,7 +291,11 @@ describe.skipIf(!beschikbaar)('elke groeibare tabel heeft een plafond of een red
     //    INSERT-kolomgrant op. Dat verschil is de hele opzet van die migratie —
     //    de ene tabel schrijf je zelf, de andere schrijft de server — en dat het
     //    hier als één in plaats van twee telt, is de meting die dat bevestigt.
-    expect(gevonden.length, 'het aantal groeibare tabellen is veranderd').toBe(32);
+    //
+    // ⚠️ En tweeëndertig werd vierendertig met `organizations` en
+    //    `organization_members` (QS8-652, 0299): allebei alleen via een RPC te
+    //    laten groeien, en allebei met de grens in die RPC.
+    expect(gevonden.length, 'het aantal groeibare tabellen is veranderd').toBe(34);
     // ⚠️ En zeventien werd achttien met `user_blocks` (QS8-496, 0276). Die tabel
     //    stond hierboven in REGISTER met de reden *"begrensd door het aantal
     //    mensen dat je kunt noemen"* — en die reden verviel toen `zoek_mensen()`
