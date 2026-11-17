@@ -45,6 +45,11 @@ const REGISTER: Readonly<Record<string, string>> = {
   organisatie_uitnodigcode: 'beheerderspoort; geeft een code en geen voortgang',
   vernieuw_organisatiecode: 'beheerderspoort op een schrijfactie',
   organisatieleden: 'toont de rol als label in de ledenlijst; de poort is is_organisatielid() en is voor beheerder en lid gelijk',
+  // QS8-695
+  benoem_organisatiebeheerder:
+    'beheerderspoort op een schrijfactie; schrijft admin alleen voor een actief lid met de rol member',
+  treed_terug_als_organisatiebeheerder:
+    'beheerderspoort op de eigen rij; de laatste actieve beheerder weigert, achter een for update op de organisatie',
 };
 
 const VRAAG = `

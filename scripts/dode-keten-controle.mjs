@@ -344,6 +344,14 @@ export const WACHT_OP_EEN_BESLUIT = {
     'Schrijf- of leespad van een organisatie (0299, QS8-652). De schermen zijn QS8-657. ' +
     '**Vraag:** krijgt hij daar een aanroeper? Zo ja, dan gaat deze rij weg zodra die er is; ' +
     'zo nee, dan hoort de RPC weg.',
+  benoem_organisatiebeheerder:
+    'Schrijfpad van een organisatiebeheerder (0300, QS8-695). De schermen zijn QS8-657. ' +
+    '**Vraag:** krijgt hij daar een aanroeper? Zo ja, dan gaat deze rij weg zodra die er is; ' +
+    'zo nee, dan hoort de RPC weg.',
+  treed_terug_als_organisatiebeheerder:
+    'Schrijfpad van een organisatiebeheerder (0300, QS8-695). De schermen zijn QS8-657. ' +
+    '**Vraag:** krijgt hij daar een aanroeper? Zo ja, dan gaat deze rij weg zodra die er is; ' +
+    'zo nee, dan hoort de RPC weg.',
 };
 
 /** Bestanden waarin een aanroep als "productie" telt. Tests en scripts niet. */
