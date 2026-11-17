@@ -1,6 +1,6 @@
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 
-import { bevindingen, isFout } from '../../scripts/realtime-identiteit-controle.mjs';
+import { bevindingen, draai, isFout } from '../../scripts/realtime-identiteit-controle.mjs';
 
 /**
  * Het verbod op `REPLICA IDENTITY FULL`, gemeten op productie — QS8-463.
@@ -107,5 +107,58 @@ describe('wat de controle met rúst moet laten', () => {
   it('een lege uitslag is geen fout', () => {
     expect(bevindingen([])).toEqual([]);
     expect(isFout([])).toBe(false);
+  });
+});
+
+/**
+ * De exitcode op de naad — QS8-684.
+ *
+ * ⚠️ **De belofte is: dezelfde uitslag en dezelfde exitcode op Linux en Windows,
+ *    en het proces sluit zichzelf niet af.** `draai()` geeft de code terug en
+ *    `process.exit()` komt er niet meer aan te pas; de Windows-crash zelf is hier
+ *    niet te zien (Linux) en is een meting voor Quinten. Wat wél te toetsen is dat
+ *    elke uitslag een getal is dat de aanroeper in `process.exitCode` zet.
+ */
+describe('draai: de exitcode zonder netwerk', () => {
+  afterEach(() => vi.restoreAllMocks());
+
+  const stil = () => {
+    vi.spyOn(console, 'log').mockImplementation(() => undefined);
+    vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+    vi.spyOn(console, 'error').mockImplementation(() => undefined);
+  };
+  const omgeving = { url: 'https://x.supabase.co', sleutel: 'sleutel', streng: false };
+
+  it('schone productie geeft 0', async () => {
+    stil();
+    const haalOp = vi.fn().mockResolvedValue([rij('goals', false, 'default')]);
+    await expect(draai(omgeving, haalOp)).resolves.toBe(0);
+  });
+
+  it('een gepubliceerde tabel met full geeft 1', async () => {
+    stil();
+    const haalOp = vi.fn().mockResolvedValue([rij('completions', true, 'full')]);
+    await expect(draai(omgeving, haalOp)).resolves.toBe(1);
+  });
+
+  it('een niet-gepubliceerde tabel met full meldt maar geeft 0', async () => {
+    stil();
+    const haalOp = vi.fn().mockResolvedValue([rij('goals', false, 'full')]);
+    await expect(draai(omgeving, haalOp)).resolves.toBe(0);
+  });
+
+  it('een mislukte productie-aanroep geeft 1', async () => {
+    stil();
+    const haalOp = vi.fn().mockRejectedValue(new Error('Productie lezen lukte niet (401)'));
+    await expect(draai(omgeving, haalOp)).resolves.toBe(1);
+  });
+
+  it('zonder sleutel: overslaan is 0, en streng is 1 — en er wordt niet opgehaald', async () => {
+    stil();
+    const haalOp = vi.fn();
+    const leeg = { url: undefined, sleutel: undefined };
+    await expect(draai({ ...leeg, streng: false }, haalOp)).resolves.toBe(0);
+    await expect(draai({ ...leeg, streng: true }, haalOp)).resolves.toBe(1);
+    expect(haalOp).not.toHaveBeenCalled();
   });
 });
