@@ -44,6 +44,24 @@ alternatief zou één verzoek per profiel besparen:
 
 Met 16 ontvangers kost dat 16 verzoeken. Dat is geen afweging die nu iets kost.
 
+**Bladeren op sleutel en niet op offset** (security-review op QS8-691). De lijst is
+nu "profielen met een token", en die krimpt tíjdens de run: `stuurWeb()` wist een
+verlopen abonnement, een gebruiker logt uit, een token verhuist. Met `range()` op
+een vaste offset schuift de volgende pagina dan één plek op en slaat hij precies één
+profiel met een token over, terwijl de run `volledig: true` zegt. De gemiste
+herinnering komt dan pas een volgende run, en GitHub levert die soms uren later.
+Vóór dit issue speelde dat niet: de lijst van álle profielen verandert alleen als er
+een account verdwijnt.
+
+`bladerOpSleutel()` vraagt daarom elke volgende pagina op met `gt('id', laatste)`,
+binnen de grenzen van het scharnier. Wat er vóór de grens verdwijnt, verschuift dan
+niets. `rijen()` uit `_shared/bladeren` (offset) is hier niet meer gebruikt; voor de
+rollover blijft hij goed genoeg.
+
+**Een fout bij het lezen van de tokens wordt gemeld** (`pushtokens_ophalen_mislukt`)
+in plaats van stil als "geen apparaat" geteld. Nu `zonderToken` bijna altijd 0 hoort
+te zijn, zou een storing er anders uitzien als een gewoon getal.
+
 ## Wat er in de uitvoer verandert
 
 * **`profielen`** telt nu de profielen met een token, niet alle profielen.
@@ -66,8 +84,10 @@ nagemaakte `profiles` past `!inner` toe zoals PostgREST dat doet:
   langs, en een profiel zonder token niet. Elke openstaande melding gaat één keer
   weg.
 * Een token dat na de pagina verhuist, krijgt niets, en telt als `zonderToken`.
-* Met de hand gebroken: `!inner` weggehaald, en apart de hele embed weggehaald.
-  Allebei werden alleen de bedoelde toets rood.
+* Tokens die tíjdens de run verdwijnen (1.000 profielen, vijf pagina's): elk profiel
+  met een token komt toch langs.
+* Met de hand gebroken: `!inner` weggehaald, apart de hele embed weggehaald, en
+  apart terug naar bladeren op offset. Elke keer werd alleen de bedoelde toets rood.
 
 ## Aannames — niet gemeten
 
@@ -78,4 +98,5 @@ nagemaakte `profiles` past `!inner` toe zoals PostgREST dat doet:
 
 ## Het pad terug
 
-`, push_tokens!inner(user_id)` uit de select halen. Geen migratie.
+`, push_tokens!inner(user_id)` uit de select halen. Bladeren op sleutel mag blijven;
+dat is ook voor de lijst van alle profielen correct. Geen migratie.

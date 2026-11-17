@@ -46,6 +46,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
  *    7. (QS8-691) `push_tokens!inner(user_id)` vervangen door
  *       `push_tokens(user_id)`, en apart de embed helemaal weggehaald → allebei
  *       alleen "slaat een profiel zonder token over…" rood.
+ *    8. (QS8-691) In `bladerOpSleutel()` weer op offset gebladerd → alleen
+ *       "slaat niemand over als tokens tíjdens de run verdwijnen" rood.
  */
 
 type Afhandelaar = (verzoek: Request) => Response | Promise<Response>;
@@ -72,6 +74,12 @@ const wereld = {
    * `apparatenVan()`: het toestel is intussen aan een ander account gekoppeld.
    */
   verhuisd: new Set<string>(),
+  /**
+   * Als `true`, verdwijnt een token zodra hij gelezen is — zoals `stuurWeb()`
+   * een verlopen abonnement wist. De lijst "profielen met een token" krimpt dan
+   * tíjdens de run.
+   */
+  wisNaLezen: false,
   verzonden: [] as Verzonden[],
   /** Elke push die bij Expo aankwam: het token. */
   pushes: [] as string[],
@@ -101,23 +109,26 @@ function keten(uitslag: () => unknown): unknown {
 const leeg = () => ({ data: [], error: null, count: 0 });
 
 function profielenQuery() {
-  let filter: (id: string) => boolean = () => true;
+  const filters: ((id: string) => boolean)[] = [];
   // ⚠️ `push_tokens!inner(…)` in de select laat alleen profielen met een token
   //    door, zoals PostgREST dat doet (QS8-691). Zonder `!inner` komen ze allemaal.
   let alleenMetToken = false;
   let van = 0;
-  let tot = 0;
+  let tot = Number.POSITIVE_INFINITY;
   const q = {
     select: (kolommen: string) => { alleenMetToken = /push_tokens!inner\(/.test(kolommen); return q; },
-    gte: (_k: string, w: string) => { filter = (id) => id >= w; return q; },
-    lt: (_k: string, w: string) => { filter = (id) => id < w; return q; },
+    gte: (_k: string, w: string) => { filters.push((id) => id >= w); return q; },
+    gt: (_k: string, w: string) => { filters.push((id) => id > w); return q; },
+    lt: (_k: string, w: string) => { filters.push((id) => id < w); return q; },
     order: () => q,
     range: (a: number, b: number) => { van = a; tot = b; return q; },
+    limit: (n: number) => { van = 0; tot = n - 1; return q; },
     then: async (klaar: (r: unknown) => void) => {
       await werkt(VERZOEK_MS);
       const data = wereld.profielen
         .filter((id) => !alleenMetToken || wereld.metToken.has(id))
-        .filter(filter).slice(van, tot + 1).map((id) => ({
+        .filter((id) => filters.every((f) => f(id)))
+        .slice(van, tot + 1).map((id) => ({
         id,
         tz: 'Europe/Amsterdam',
         week_start_day: 1,
@@ -154,6 +165,7 @@ function tokensQuery() {
       const data = wereld.metToken.has(wie) && !wereld.verhuisd.has(wie)
         ? [{ token: `ExponentPushToken[${wie}]`, platform: 'ios', p256dh: null, auth: null }]
         : [];
+      if (wereld.wisNaLezen) wereld.metToken.delete(wie);
       return klaar({ data, error: null });
     },
   };
@@ -295,7 +307,7 @@ beforeEach(() => {
   vi.setSystemTime(new Date('2026-11-17T04:02:00Z'));
   vi.stubGlobal('fetch', expo);
   Object.assign(wereld, {
-    profielen: [], metToken: new Set(), metWerk: new Set(), verhuisd: new Set(), verzonden: [], pushes: [], gezien: [], tegelijk: 0, hoogste: 0,
+    profielen: [], metToken: new Set(), metWerk: new Set(), verhuisd: new Set(), wisNaLezen: false, verzonden: [], pushes: [], gezien: [], tegelijk: 0, hoogste: 0,
   });
 });
 
@@ -404,5 +416,19 @@ describe('alleen profielen met een token komen langs — QS8-691', () => {
 
     for (const id of weg) expect(wereld.pushes).not.toContain(`ExponentPushToken[${id}]`);
     expect(bodies[0]?.zonderToken).toBe(weg.length);
+  });
+
+  it('slaat niemand over als tokens tíjdens de run verdwijnen', async () => {
+    // ⚠️ Security-review op QS8-691. De lijst is "profielen met een token", en
+    //    die krimpt terwijl de job erdoor bladert. Met een offset schuift de
+    //    volgende pagina dan op en valt er per pagina één profiel buiten,
+    //    terwijl de run `volledig: true` zegt. Meer dan één pagina (200) nodig.
+    zetKlaar(1_000, 1, 1_000);
+    wereld.wisNaLezen = true;
+    const alleMetToken = [...wereld.metToken].sort();
+    const { bodies } = await draai();
+
+    expect(bodies[0]?.volledig).toBe(true);
+    expect([...wereld.gezien].sort()).toEqual(alleMetToken);
   });
 });

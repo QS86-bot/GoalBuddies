@@ -10,7 +10,7 @@ import { GRACE_HOURS, type Weekday } from '../_shared/time/types.ts';
 import { inStilteVenster, verschovenUur } from '../_shared/time/stilte.ts';
 import { meld } from '../_shared/melden.ts';
 import { metCors } from '../_shared/cors.ts';
-import { rijen, verwerkBinnenBudget } from '../_shared/bladeren/index.ts';
+import { verwerkBinnenBudget } from '../_shared/bladeren/index.ts';
 import { nudgeBesluit } from '../_shared/notificaties/nudge-besluit.ts';
 // ⚠️ De heldenstem — QS8-475. `kiesStem()` draagt de prioriteitsregel en
 //    `magVerschijnen()` de dagregel; geen van beide wordt hier overgedaan.
@@ -69,8 +69,8 @@ const PROFIELEN_PER_PAGINA = 200;
  *    `notifications_sent_per_onderwerp` (0053, 📏 op productie nagelezen met
  *    `pg_indexes`, 17-11-2026), en de rij wordt **vóór** het versturen
  *    geschreven (`stuur()`). Twee profielen raken elkaars rijen dus nooit. Komt
- *    hetzelfde profiel twee keer langs — een verschuiving tussen twee pagina's,
- *    of een tweede run die overlapt — dan verliest de tweede insert op de index
+ *    hetzelfde profiel twee keer langs — een tweede run die overlapt (binnen
+ *    één run sinds QS8-691 niet meer: er wordt op sleutel gebladerd) — dan verliest de tweede insert op de index
  *    en wordt er niets verstuurd. Dat is de rem, en die staat onder test op de
  *    naad in `tests/beloftes/notificaties-binnen-de-wandklok.test.ts`.
  */
@@ -406,62 +406,102 @@ async function meldAlleProfielen(
  *    samen alles dekken. Woordelijk de vorm van de rollover (QS8-685).
  *
  * ⚠️ **In pagina's, en `order('id')` is de voorwaarde** — QS8-341. Zonder
- *    `range()` kapt een gezette `max-rows` in PostgREST de lijst stilzwijgend af;
- *    zonder stabiele sortering is `range()` betekenisloos. Een verschuiving
- *    tussen twee pagina's raakt hooguit één profiel dubbel, en dubbel verstuurt
- *    niets dubbel: zie `PROFIELEN_TEGELIJK`.
+ *    grens kapt een gezette `max-rows` in PostgREST de lijst stilzwijgend af.
+ *    Sinds QS8-691 op sleutel en niet op offset; waarom staat bij
+ *    `bladerOpSleutel()`.
  *
- * ⚠️ De `profielFout` gaat via `fout` naar buiten: leeg teruggeven laat
- *    `paginas()` netjes stoppen, en de aanroeper beslist wat er gebeurt.
+ * ⚠️ De `profielFout` gaat via `fout` naar buiten: de generator stopt dan, en
+ *    de aanroeper beslist wat er gebeurt.
  */
 async function* profielenVanafWillekeurigePlek(
   db: Db,
   fout: { waarde: Profielfout | null },
 ): AsyncGenerator<Profiel, void, undefined> {
   const scharnier = crypto.randomUUID();
+  yield* bladerOpSleutel(db, fout, { vanaf: scharnier, tot: null });
+  yield* bladerOpSleutel(db, fout, { vanaf: null, tot: scharnier });
+}
 
-  const haler = (kant: 'vanaf' | 'tot') => async (start: number, aantal: number): Promise<readonly Profiel[]> => {
-    if (fout.waarde !== null) return [];
-    const basis = db
-      .from('profiles')
-      // ⚠️ **Eén string-literal en geen samenstelling.** supabase-js leidt de vorm
-      //    van de rij af uit de lítterlijke tekst van deze selectie; een `+` maakt
-      //    er een gewone `string` van en dan wordt `data` een `GenericStringError[]`.
-      //    📏 `npm run edge:types:controle` viel er meteen over (TS2352) — dat is
-      //    de enige typecheck die deze map ziet, want `tsconfig.json` sluit hem uit.
-      //
-      // ⚠️⚠️ **`push_tokens!inner(user_id)` is een filter en geen bron** — QS8-691.
-      //    📏 Productie, 17-11-2026: 1.332 profielen, 16 met een token. Een
-      //    profiel zonder token stopt in `meldEenProfiel()` na `apparatenVan()`,
-      //    zonder iets te schrijven; daarvoor betaalde deze lus 1.316 verzoeken
-      //    per run. `!inner` laat PostgREST alleen profielen teruggeven met minstens
-      //    één token (via `push_tokens_user_id_fkey`, de enige foreign key naar
-      //    `profiles`). De embed is één-op-veel, dus een gebruiker met zes tokens
-      //    blijft één rij, en `order` en `range` werken op de profielen.
-      //
-      //    De tokens zelf worden hier **niet** gebruikt. `apparatenVan()` leest
-      //    ze per profiel vers, vlak voor het versturen. Een token kan van account
-      //    wisselen (`registreer_push_token`, 0055), en een pagina kan tientallen
-      //    seconden oud zijn als hij aan de beurt is. Dan gaat een melding naar
-      //    een toestel dat inmiddels van iemand anders is (security-review op
-      //    QS8-688, Laag 4: *wordt zwaarder als er tussen het lezen van de tokens
-      //    en het versturen langer gewacht wordt*).
-      // deno-fmt-ignore
-      .select('id, tz, week_start_day, reminder_enabled, reminder_time, reminder_tone, locale, notify_approval_request, notify_approval_received, notify_cycle_summary, notify_commitment_witness, quiet_from, quiet_to, push_tokens!inner(user_id)');
-    const gefilterd = kant === 'vanaf' ? basis.gte('id', scharnier) : basis.lt('id', scharnier);
-    const { data, error } = await gefilterd
-      .order('id', { ascending: true })
-      .range(start, start + aantal - 1);
-
-    if (error) {
-      fout.waarde = error;
-      return [];
+/**
+ * Eén aaneengesloten bereik van profielen met een token, bladerend op `id` en
+ * niet op offset — QS8-691.
+ *
+ * ⚠️⚠️ **Op sleutel en niet met `range()`, en dat is sinds QS8-691 een
+ *    correctheidseis** (security-review op QS8-691). De lijst is "profielen met
+ *    een token", en die krimpt tíjdens de run: `stuurWeb()` wist een verlopen
+ *    abonnement, een gebruiker logt uit, een token verhuist naar een ander
+ *    account. Met een offset schuift de volgende pagina dan één plek op en slaat
+ *    hij precies één profiel met een token over, terwijl de run `volledig: true`
+ *    meldt. Met `gt('id', laatste)` hangt de volgende pagina niet af van wat er
+ *    vóór de grens verdween: overslaan én dubbel tellen kunnen niet meer.
+ *
+ *    `rijen()` uit `_shared/bladeren` blijft op offset en is hier dus niet
+ *    gebruikt. Voor de rollover was offset goed genoeg: de lijst van álle
+ *    profielen verandert alleen als er een account verdwijnt.
+ *
+ * ⚠️ `vanaf` is inclusief (het scharnier zelf hoort bij de eerste helft), `tot`
+ *    exclusief. Samen dekken de twee aanroepen elk id precies één keer.
+ */
+async function* bladerOpSleutel(
+  db: Db,
+  fout: { waarde: Profielfout | null },
+  grens: { vanaf: string | null; tot: string | null },
+): AsyncGenerator<Profiel, void, undefined> {
+  let laatste: string | null = null;
+  for (;;) {
+    const pagina = await profielenPagina(db, grens, laatste);
+    if (pagina.error !== null) {
+      fout.waarde = pagina.error;
+      return;
     }
-    return (data ?? []) as Profiel[];
-  };
+    yield* pagina.rijen;
+    if (pagina.rijen.length < PROFIELEN_PER_PAGINA) return;
+    laatste = pagina.rijen[pagina.rijen.length - 1].id;
+  }
+}
 
-  yield* rijen(haler('vanaf'), PROFIELEN_PER_PAGINA);
-  yield* rijen(haler('tot'), PROFIELEN_PER_PAGINA);
+/** Eén pagina van `bladerOpSleutel()`: de profielen ná `laatste`, binnen `grens`. */
+async function profielenPagina(
+  db: Db,
+  grens: { vanaf: string | null; tot: string | null },
+  laatste: string | null,
+): Promise<{ rijen: readonly Profiel[]; error: Profielfout | null }> {
+  let vraag = db
+    .from('profiles')
+    // ⚠️ **Eén string-literal en geen samenstelling.** supabase-js leidt de vorm
+    //    van de rij af uit de lítterlijke tekst van deze selectie; een `+` maakt
+    //    er een gewone `string` van en dan wordt `data` een `GenericStringError[]`.
+    //    📏 `npm run edge:types:controle` viel er meteen over (TS2352) — dat is
+    //    de enige typecheck die deze map ziet, want `tsconfig.json` sluit hem uit.
+    //
+    // ⚠️⚠️ **`push_tokens!inner(user_id)` is een filter en geen bron** — QS8-691.
+    //    📏 Productie, 17-11-2026: 1.332 profielen, 16 met een token. Een
+    //    profiel zonder token stopt in `meldEenProfiel()` na `apparatenVan()`,
+    //    zonder iets te schrijven; daarvoor betaalde deze lus 1.316 verzoeken
+    //    per run. `!inner` laat PostgREST alleen profielen teruggeven met minstens
+    //    één token (via `push_tokens_user_id_fkey`, de enige foreign key naar
+    //    `profiles`). De embed is één-op-veel, dus een gebruiker met zes tokens
+    //    blijft één rij, en `order` en `limit` werken op de profielen.
+    //
+    //    De tokens zelf worden hier **niet** gebruikt. `apparatenVan()` leest
+    //    ze per profiel vers, vlak voor het versturen. Een token kan van account
+    //    wisselen (`registreer_push_token`, 0055), en een pagina kan tientallen
+    //    seconden oud zijn als hij aan de beurt is. Dan gaat een melding naar
+    //    een toestel dat inmiddels van iemand anders is (security-review op
+    //    QS8-688, Laag 4: *wordt zwaarder als er tussen het lezen van de tokens
+    //    en het versturen langer gewacht wordt*).
+    // deno-fmt-ignore
+    .select('id, tz, week_start_day, reminder_enabled, reminder_time, reminder_tone, locale, notify_approval_request, notify_approval_received, notify_cycle_summary, notify_commitment_witness, quiet_from, quiet_to, push_tokens!inner(user_id)');
+
+  if (laatste !== null) vraag = vraag.gt('id', laatste);
+  else if (grens.vanaf !== null) vraag = vraag.gte('id', grens.vanaf);
+  if (grens.tot !== null) vraag = vraag.lt('id', grens.tot);
+
+  // ⚠️ Gepagineerd met `limit` (onwrikbare regel 10): zonder grens kapt een
+  //    gezette `max-rows` in PostgREST de lijst stil af.
+  const { data, error } = await vraag.order('id', { ascending: true }).limit(PROFIELEN_PER_PAGINA);
+  if (error) return { rijen: [], error };
+  return { rijen: (data ?? []) as Profiel[], error: null };
 }
 
 /**
@@ -558,14 +598,24 @@ async function lokaleTijd(
 
 /** De apparaten waar dit profiel meldingen op ontvangt. */
 async function apparatenVan(db: Db, profiel: Profiel): Promise<Token[]> {
-  const { data: tokens } = await db
+  const { data: tokens, error } = await db
     .from('push_tokens')
     .select('token, platform, p256dh, auth')
     .eq('user_id', profiel.id);
 
-  const apparaten = (tokens ?? []) as Token[];
+  // ⚠️ **Sinds QS8-691 gemeld en niet stil als "geen apparaat" geteld**
+  //    (security-review op QS8-691). `zonderToken` hoort nu bijna altijd 0 te
+  //    zijn, en dan ziet een storing er anders uit als een gewoon getal.
+  if (error) {
+    console.error(`push-tokens ophalen mislukte voor een gebruiker: ${error.message}`);
+    await meld(new Error('push-tokens ophalen mislukte'), 'notificaties.apparaten', {
+      code: 'pushtokens_ophalen_mislukt',
+      sqlstate: error.code,
+    });
+    return [];
+  }
 
-  return apparaten;
+  return (tokens ?? []) as Token[];
 }
 
 /**
