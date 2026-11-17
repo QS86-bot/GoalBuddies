@@ -7,7 +7,7 @@ import { createClient } from 'jsr:@supabase/supabase-js@2';
 import { closableUserCycle, userCycle } from '../_shared/time/cycle.ts';
 import type { Weekday } from '../_shared/time/types.ts';
 import { meld } from '../_shared/melden.ts';
-import { rijen } from '../_shared/bladeren/index.ts';
+import { rijen, verwerkBinnenBudget } from '../_shared/bladeren/index.ts';
 import { metCors } from '../_shared/cors.ts';
 
 /**
@@ -168,6 +168,55 @@ Deno.serve(metCors(async (req: Request) => {
 const PROFIELEN_PER_PAGINA = 200;
 
 /**
+ * Hoeveel profielen er tegelijk onderhanden zijn — QS8-685.
+ *
+ * ⚠️ **Begrensd, en de grens is de database en niet deze functie.** Elk
+ *    profiel doet zijn verzoeken nog steeds ná elkaar (de volgorde binnen een
+ *    profiel is domeinregel 10 en 11), dus dit is ook het maximum aantal
+ *    gelijktijdige verzoeken dat deze functie bij PostgREST neerlegt. Die deelt
+ *    zijn eigen verbindingenpool, en `max_connections` is **60** voor de hele
+ *    database (CLAUDE.md, *Supabase gratis tier*). Acht laat ruim plaats voor
+ *    de app, de notificatiejob en Realtime.
+ *
+ * 📏 Zonder gelijktijdigheid kostte één profiel ≈ 0,45 s (run 550: 262
+ *    profielen in 119 s; 20:12: 405 in 191 s; 03:36: 368 in 162 s). Wat acht
+ *    tegelijk op productie oplevert is **niet gemeten** zolang deze versie niet
+ *    gedeployd is; het beslisdocument rekent met de aanname dat het lineair
+ *    schaalt en zegt wat er gemeten moet worden.
+ */
+const PROFIELEN_TEGELIJK = 8;
+
+/**
+ * Hoe lang na de start er nog een nieuw profiel mag beginnen — QS8-685.
+ *
+ * ⚠️⚠️ **Dit getal is wat het werk ná de lus garandeert.** 📏 De functie werd op
+ *    productie na 162 s en na 192 s afgesloten (`shutdown` in `function_logs`,
+ *    17-11-2026 03:39 en 16-11 20:15), midden in de lus. Wat ná de lus staat —
+ *    stille groepen, seizoensrecaps, vastgelopen goedkeuringen, de opruiming
+ *    van bijlagen — draaide daardoor sinds 16-11 18:47 niet meer. De
+ *    gedocumenteerde wandkloklimiet op de gratis tier is 150 s.
+ *
+ *    Honderd seconden laat vijftig over voor de laatste profielen die nog
+ *    lopen (één profiel duurt ≈ 0,5 s, met veel gemiste weken meer) en voor het
+ *    werk erna (📏 run 550: 1 s). Profielen die niet aan de beurt kwamen, komen
+ *    bij een volgende run aan bod: de startplek is willekeurig, zie
+ *    `profielenVanafWillekeurigePlek()`.
+ *
+ * ⚠️ Dit is geen deadline maar een laatste starttijd: een profiel dat loopt
+ *    wordt afgemaakt, nooit door déze functie halverwege afgebroken.
+ *
+ * ⚠️⚠️ **Het platform kan dat wél** (security-review op QS8-685). Valt de kill
+ *    tussen `status = 'missed'` en het minpunt of de weekpas in
+ *    `schrijfWeekAf()`, dan blijft die week voorgoed half verwerkt: volgende
+ *    runs zoeken alleen `todo` en `cancelled`. Dat kon al bij één profiel; met
+ *    acht tegelijk kan het er acht raken. De vijftig seconden marge zijn er om
+ *    dat buiten bereik te houden; de echte reparatie is de week in één RPC
+ *    (QS8-687). Uitleg en de schaalgrens in
+ *    `docs/decisions/2026-11-17-de-rollover-krijgt-een-budget-en-geen-muur.md`.
+ */
+const PROFIELBUDGET_MS = 100_000;
+
+/**
  * De systeemclient, met het type dat de aanroep zélf oplevert.
  *
  * ⚠️ **Een functie en geen `ReturnType<typeof createClient>`** — QS8-424, en dat
@@ -192,7 +241,7 @@ async function draaiRollover(auth: string): Promise<Response> {
   const db = maakClient(auth);
 
   const nu = new Date();
-  const { telling, profielFout } = await verwerkAlleProfielen(db, nu);
+  const { telling, profielFout } = await verwerkAlleProfielen(db, nu, nu.getTime() + PROFIELBUDGET_MS);
   const {
     gemist,
     vrijgesteld,
@@ -202,6 +251,7 @@ async function draaiRollover(auth: string): Promise<Response> {
     gered,
     overgeslagen,
     profielenGezien,
+    volledig,
   } = telling;
 
   // ⚠️ **Pas hier, en niet in `haalProfielen`.** Een 500 midden in de lus zou de
@@ -272,6 +322,12 @@ async function draaiRollover(auth: string): Promise<Response> {
       //    getal geen totaal meer maar een restant — precies het soort stille
       //    onwaarheid waar dit veld voor bedoeld is om hem te voorkomen.
       profielen: profielenGezien,
+      // ⚠️ **`false` betekent: het budget was op voordat elk profiel aan de
+      //    beurt was** (QS8-685). `rollover.yml` wordt daar rood van. De
+      //    volgende run begint op een andere plek, dus niemand blijft
+      //    structureel achteraan staan — maar zolang dit `false` is, groeit het
+      //    aantal gebruikers sneller dan deze job, en dat is werk.
+      volledig,
       geslapen,
       risicoBijgewerkt,
       // ⚠️ Om dezelfde reden als `recaps` en `alsnogGoedgekeurd`: een job zonder
@@ -313,6 +369,25 @@ async function draaiRollover(auth: string): Promise<Response> {
   );
 }
 
+/**
+ * Meldt dat niet elk profiel aan de beurt kwam — QS8-685.
+ *
+ * ⚠️ **Een storing en geen weetje.** Het werk erna draait gewoon door — daar is
+ *    het budget voor — maar de uitvoer zegt het, de workflow wordt er rood van,
+ *    en Sentry krijgt het. Een profiel dat wacht, wacht met zijn minpunt en zijn
+ *    straf; dat mag niet stil gebeuren.
+ *
+ * ⚠️ **`count` en niet `profielen`**: `scrubContext()` laat alleen de sleutels
+ *    uit `ALLOWED_KEYS` door en vervangt de rest door `[weggelaten]`. Gevonden
+ *    in de security-review op QS8-685; dezelfde val als bij `slaapStilleGroepen`.
+ */
+async function meldBudgetOp(profielenGezien: number): Promise<void> {
+  await meld(new Error('profielbudget op'), 'rollover.budget', {
+    code: 'rollover_profielbudget_op',
+    count: profielenGezien,
+  });
+}
+
 /** Wat één ronde over alle profielen aan de uitslag bijdraagt. */
 interface Profieltelling {
   gemist: number;
@@ -323,6 +398,8 @@ interface Profieltelling {
   gered: number;
   overgeslagen: number;
   profielenGezien: number;
+  /** `false` als het budget op was voordat elk profiel aan de beurt kwam. */
+  volledig: boolean;
 }
 
 /**
@@ -332,108 +409,124 @@ interface Profieltelling {
  *    teruggave en niet als worp: de aanroeper meldt hem **ná** de lus, zodat de
  *    profielen die al afgehandeld zijn niet onvermeld blijven. Dat was al de
  *    reden dat die controle onderaan stond, en die reden geldt hier onverkort.
+ *
+ * ⚠️⚠️ **Sinds QS8-685 parallel en binnen een budget.** Profielen zijn
+ *    onderling onafhankelijk — elke stap hieronder is per eigenaar, en de
+ *    unieke index op `points_ledger` vangt een dubbele boeking — maar de stappen
+ *    **binnen** één profiel blijven ná elkaar, in dezelfde volgorde:
+ *    straffen vóór weekdoelen (domeinregel 11), afschrijven vóór inschuiven,
+ *    minpunt vóór weekpas (domeinregel 10). `verwerkProfiel()` is woordelijk
+ *    het lichaam van de oude lus.
+ *
+ * ⚠️ De tellers zijn gewone `+=`'en op één object. Dat is veilig: JavaScript
+ *    draait op één draad, en elke `+=` staat ná zijn `await`.
  */
 async function verwerkAlleProfielen(
   db: Db,
   nu: Date,
+  stopNa: number,
 ): Promise<{ telling: Profieltelling; profielFout: { message: string; code?: string } | null }> {
-  let gemist = 0;
-  let vrijgesteld = 0;
-  let risicoBijgewerkt = 0;
+  const telling: Profieltelling = {
+    gemist: 0, vrijgesteld: 0, risicoBijgewerkt: 0, ingeschoven: 0,
+    verschuldigd: 0, gered: 0, overgeslagen: 0, profielenGezien: 0, volledig: false,
+  };
+  const fout: { waarde: { message: string; code?: string } | null } = { waarde: null };
 
-  // Geplande weekstappen die deze ronde een weekdoel geworden zijn — QS8-203.
-  let ingeschoven = 0;
+  const { volledig } = await verwerkBinnenBudget(
+    profielenVanafWillekeurigePlek(db, fout),
+    (profiel) => verwerkProfiel(db, profiel, nu, telling),
+    { gelijktijdig: PROFIELEN_TEGELIJK, stopNa, klok: () => new Date().getTime() },
+  );
+  telling.volledig = volledig;
+  if (!volledig) await meldBudgetOp(telling.profielenGezien);
 
-  // Straffen die verschuldigd zijn geworden — QS8-84.
-  let verschuldigd = 0;
+  return { telling, profielFout: fout.waarde };
+}
 
-  // Hoeveel gemiste weken er door een weekpas gered zijn — QS8-81. Een deelverzameling
-  // van `gemist`: het punt is afgeboekt, alleen de reeks bleef staan.
-  let gered = 0;
-  // Profielen die overgeslagen zijn omdat hun cyclus niet te bepalen was.
-  let overgeslagen = 0;
+/**
+ * Alle profielen, één keer, te beginnen op een willekeurige plek — QS8-685.
+ *
+ * ⚠️⚠️ **Waarom niet gewoon vooraan beginnen.** Met een budget komt niet elk
+ *    profiel elke run aan de beurt zodra er meer zijn dan het budget toelaat.
+ *    Begint elke run vooraan in `order('id')`, dan zijn het **elke keer
+ *    dezelfde** profielen die achteraan blijven staan — nooit een afgesloten
+ *    week, nooit een straf. 📏 Dat gebeurt vandaag al zonder budget: productie
+ *    telt 1.332 profielen, en de runs van 16-11 20:12 en 17-11 03:36 kwamen tot
+ *    405 en 368 voordat ze afgekapt werden, allebei vanaf het begin.
+ *
+ *    Een willekeurig scharnier verdeelt die pech over iedereen: eerst
+ *    `id >= scharnier`, dan `id < scharnier`. Dat zijn twee aaneengesloten
+ *    bereiken die samen alles dekken, elk met de stabiele `order('id')` die
+ *    `range()` nodig heeft.
+ *
+ * ⚠️ **Een randomiser en geen cursor in de database**, en dat is een keuze met
+ *    een prijs: hij garandeert gemiddeld eerlijkheid, niet per run. Een cursor
+ *    die onthoudt waar de vorige run stopte is strenger, maar vraagt een tabel
+ *    en dus een migratie — en die is voor dit issue afgebakend (QS8-685,
+ *    orchestrator 17-11). Zolang `volledig` op `true` staat speelt het verschil
+ *    niet.
+ *
+ * ⚠️ **In pagina's, en `order('id')` is de voorwaarde** — onveranderd sinds
+ *    QS8-206. PostgREST kent een `max-rows`; een ongepagineerde `select` kapt
+ *    dan stil af (onwrikbare regel 10). En zonder stabiele sortering is
+ *    `range()` betekenisloos. Een verschuiving tussen twee pagina's raakt
+ *    hooguit één profiel dubbel, en dubbel is onschadelijk: elke stap is
+ *    idempotent op de cyclus die hij afsluit.
+ *
+ * ⚠️ De `profielFout` gaat via `fout` naar buiten, zoals voorheen: leeg
+ *    teruggeven laat `paginas()` netjes stoppen, en de aanroeper beslist.
+ */
+async function* profielenVanafWillekeurigePlek(
+  db: Db,
+  fout: { waarde: { message: string; code?: string } | null },
+): AsyncGenerator<Profiel, void, undefined> {
+  const scharnier = crypto.randomUUID();
 
-  // ---------------------------------------------------------------------------
-  // De profielen, in pagina's
-  // ---------------------------------------------------------------------------
-  //
-  // ⚠️ **Dit was `.select('id, week_start_day, tz')` zonder meer**, en dat is de
-  //    dossierrij van 19-08. PostgREST kent een `max-rows`; staat die gezet, dan
-  //    kapt hij de lijst af en slaat deze job **stilzwijgend een deel van de
-  //    gebruikers over** — geen fout, geen melding, alleen weken die voor
-  //    niemand afgesloten worden. Onwrikbare regel 10.
-  //
-  // ⚠️ **`order('id')` is geen netheid maar de voorwaarde.** Zonder een stabiele
-  //    sortering is `range()` betekenisloos: Postgres mag rijen dan in elke
-  //    volgorde teruggeven, en dan overlappen pagina's elkaar én missen ze
-  //    rijen. Dit is dezelfde grendel als bij de cursorpaginering van 0121,
-  //    0125 en 0152, alleen hoeft het hier geen cursor te zijn — een job leest
-  //    alles en een verschuiving tussen twee pagina's raakt hooguit één profiel
-  //    dat deze ronde overgeslagen of dubbel bekeken wordt. Dubbel is
-  //    onschadelijk: elke stap hieronder is idempotent op de cyclus die hij
-  //    afsluit.
-  //
-  // ⚠️ **De paginagrootte is bewust klein.** Deze functie doet per profiel nog
-  //    meerdere query's, dus het geheugen is niet de grens maar de looptijd van
-  //    één Edge Function. Kleiner betekent meer ronden en niet meer werk.
-  // ⚠️ **De lus zelf staat in `src/shared/bladeren` en niet hier**, want daar
-  //    draait vitest. Wat hier blijft is de query — en die draagt de enige
-  //    eigenschap die `paginas()` níét kan bewaken: de `order`.
-  let profielenGezien = 0;
-  let profielFout: { message: string; code?: string } | null = null;
-
-  const haalProfielen = async (start: number, aantal: number): Promise<readonly Profiel[]> => {
-    const { data, error } = await db
-      .from('profiles')
-      .select('id, week_start_day, tz')
+  const haler = (kant: 'vanaf' | 'tot') => async (start: number, aantal: number) => {
+    if (fout.waarde !== null) return [];
+    const basis = db.from('profiles').select('id, week_start_day, tz');
+    const gefilterd = kant === 'vanaf' ? basis.gte('id', scharnier) : basis.lt('id', scharnier);
+    const { data, error } = await gefilterd
       .order('id', { ascending: true })
       .range(start, start + aantal - 1);
-
     if (error) {
-      profielFout = error;
-      // ⚠️ Leeg teruggeven en de fout apart onthouden: `paginas()` stopt dan
-      //    netjes en de aanroeper beslist wat er met de fout gebeurt. Gooien zou
-      //    de generator halverwege afbreken en de al verwerkte pagina's stil
-      //    laten vervallen.
+      fout.waarde = error;
       return [];
     }
     return (data ?? []) as Profiel[];
   };
 
-  // ⚠️ **`rijen()` en niet `paginas()`** — QS8-422. Hiervoor stonden hier twee
-  //    lussen boven elkaar, allebei op dezelfde inspringing omdat het lichaam
-  //    bij het invoeren van de paginering nooit herschreven is. Die buitenste
-  //    lus duwde élke vertakking hieronder een stap dieper dan de code leest;
-  //    zeven van de tweeëntwintig nesting-overtredingen in deze map kwamen
-  //    daarvandaan en niet uit de logica.
-  for await (const profiel of rijen(haalProfielen, PROFIELEN_PER_PAGINA)) {
-    profielenGezien += 1;
+  yield* rijen(haler('vanaf'), PROFIELEN_PER_PAGINA);
+  yield* rijen(haler('tot'), PROFIELEN_PER_PAGINA);
+}
 
-    const afsluitbaar = await afsluitbareCyclus(profiel, nu);
-    if (afsluitbaar === null) {
-      overgeslagen += 1;
-      continue;
-    }
+/**
+ * Sluit voor één profiel af wat afgesloten kan worden, en telt mee in `telling`.
+ *
+ * ⚠️ **Woordelijk het lichaam van de oude lus** (QS8-685), met `continue`
+ *    vervangen door `return`. Dat is dezelfde sprong: hij sloeg de rest van dít
+ *    profiel over en niets anders.
+ */
+async function verwerkProfiel(db: Db, profiel: Profiel, nu: Date, telling: Profieltelling): Promise<void> {
+  telling.profielenGezien += 1;
 
-    verschuldigd += await wikkelStraffenAf(db, profiel);
-
-    const afgesloten = await sluitVerstrekenWekenAf(db, profiel, afsluitbaar.startDate);
-    if (afgesloten === null) continue;
-
-    gemist += afgesloten.telling.gemist;
-    vrijgesteld += afgesloten.telling.vrijgesteld;
-    gered += afgesloten.telling.gered;
-
-    ingeschoven += await schuifWeekplanIn(db, profiel, nu);
-    risicoBijgewerkt += await herberekenReeksEnRisico(db, profiel, afgesloten.geraakteDoelen);
+  const afsluitbaar = await afsluitbareCyclus(profiel, nu);
+  if (afsluitbaar === null) {
+    telling.overgeslagen += 1;
+    return;
   }
 
-  const telling: Profieltelling = {
-    gemist, vrijgesteld, risicoBijgewerkt, ingeschoven,
-    verschuldigd, gered, overgeslagen, profielenGezien,
-  };
+  telling.verschuldigd += await wikkelStraffenAf(db, profiel);
 
-  return { telling, profielFout };
+  const afgesloten = await sluitVerstrekenWekenAf(db, profiel, afsluitbaar.startDate);
+  if (afgesloten === null) return;
+
+  telling.gemist += afgesloten.telling.gemist;
+  telling.vrijgesteld += afgesloten.telling.vrijgesteld;
+  telling.gered += afgesloten.telling.gered;
+
+  telling.ingeschoven += await schuifWeekplanIn(db, profiel, nu);
+  telling.risicoBijgewerkt += await herberekenReeksEnRisico(db, profiel, afgesloten.geraakteDoelen);
 }
 
 /**
