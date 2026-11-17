@@ -36,6 +36,14 @@ import {
   type Toon,
 } from '../_shared/notificaties/regels.ts';
 import {
+  ALARM_VANAF,
+  isWeg,
+  MAX_WISSEN_PER_RUN,
+  magWissen,
+  nieuweOpruimlijst,
+  noteerUitkomst,
+  opruimbesluit,
+  type Opruimlijst,
   verstuurWebPush,
   type VapidSleutels,
   type WebPushDoel,
@@ -375,12 +383,13 @@ async function meldAlleProfielen(
   };
 
   const fout: { waarde: Profielfout | null } = { waarde: null };
+  const opruim = nieuweOpruimlijst();
 
   const { volledig } = await verwerkBinnenBudget(
     profielenVanafWillekeurigePlek(db, fout),
     async (profiel) => {
       telling.profielenGezien += 1;
-      const uitkomst = await meldEenProfiel(db, profiel, nu, tel);
+      const uitkomst = await meldEenProfiel(db, profiel, nu, tel, opruim);
       if (uitkomst === 'overgeslagen') telling.overgeslagen += 1;
       if (uitkomst === 'zonderToken') telling.zonderToken += 1;
     },
@@ -393,6 +402,9 @@ async function meldAlleProfielen(
       count: telling.profielenGezien,
     });
   }
+  // ⚠️ Ná de budgetmelding: dit draait buiten het budget, en wordt de functie
+  //    hier gestopt, dan gaat er alleen opruimwerk verloren en geen melding.
+  await ruimOngeldigeOp(db, opruim);
 
   return { telling, profielFout: fout.waarde };
 }
@@ -524,6 +536,7 @@ async function meldEenProfiel(
   profiel: Profiel,
   nu: Date,
   tel: (stand: Verzendstand) => void,
+  opruim: Opruimlijst,
 ): Promise<'gedaan' | 'overgeslagen' | 'zonderToken'> {
   const tijd = await lokaleTijd(profiel, nu);
   if (tijd === null) {
@@ -548,7 +561,7 @@ async function meldEenProfiel(
   }
 
   const ronde: Meldronde = {
-    db, profiel, apparaten, inStilte, nu, lokaleDatum, lokaalUur, tel,
+    db, profiel, apparaten, inStilte, nu, lokaleDatum, lokaalUur, tel, opruim,
   };
 
   await stuurNudge(ronde);
@@ -641,6 +654,8 @@ interface Meldronde {
   lokaleDatum: string;
   lokaalUur: number;
   tel: (stand: Verzendstand) => void;
+  /** Van de hele run, niet van dit profiel — zie `Opruimlijst`. */
+  opruim: Opruimlijst;
 }
 
 /**
@@ -711,6 +726,7 @@ async function stuurNudge(ronde: Meldronde): Promise<void> {
     };
 
     const stand = await stuur(db, {
+      opruim: ronde.opruim,
       userId: profiel.id,
       apparaten,
       voorkeuren: profiel,
@@ -791,6 +807,7 @@ async function stuurGoedkeuringsverzoeken(ronde: Meldronde): Promise<void> {
     }
 
     const stand = await stuur(db, {
+      opruim: ronde.opruim,
       userId: profiel.id,
       apparaten,
       voorkeuren: profiel,
@@ -831,6 +848,7 @@ async function stuurOntvangenGoedkeuringen(ronde: Meldronde): Promise<void> {
     }
 
     const stand = await stuur(db, {
+      opruim: ronde.opruim,
       userId: profiel.id,
       apparaten,
       voorkeuren: profiel,
@@ -949,6 +967,7 @@ async function stuurCyclusoverzicht(ronde: Meldronde): Promise<void> {
       const weekpasGered = await weekpasVerbruikt(db, profiel.id, afgelopen.startDate);
 
       const stand = await stuur(db, {
+        opruim: ronde.opruim,
         userId: profiel.id,
         apparaten,
         voorkeuren: profiel,
@@ -1037,6 +1056,7 @@ async function stuurGetuigenissen(ronde: Meldronde): Promise<void> {
     }
 
     const stand = await stuur(db, {
+      opruim: ronde.opruim,
       userId: profiel.id,
       apparaten,
       voorkeuren: profiel,
@@ -1090,6 +1110,7 @@ async function stuurTeruggedraaideStraffen(ronde: Meldronde): Promise<void> {
     }
 
     const stand = await stuur(db, {
+      opruim: ronde.opruim,
       userId: profiel.id,
       apparaten,
       voorkeuren: profiel,
@@ -1547,21 +1568,36 @@ function vapidUitOmgeving(): VapidSleutels | null {
 /**
  * Levert af bij de browserabonnementen van één gebruiker.
  *
- * ⚠️ Een abonnement dat 404 of 410 geeft, bestaat niet meer — de gebruiker heeft
- *    zijn toestemming ingetrokken of de browser opnieuw geïnstalleerd. Die rij
- *    gaat weg, want anders probeert elke ronde opnieuw een adres dat nooit meer
- *    werkt. Elke ándere fout laat de rij staan: een storing van dit moment mag
- *    geen dataverlies worden. Dat onderscheid staat onder test in
- *    `src/modules/notifications/webpush-verzenden.test.ts`.
+ * ⚠️ Drie uitkomsten, drie handelingen, en alleen de eerste verwijdert hier:
+ *
+ *    - `weg` (404 of 410): het abonnement bestaat niet meer — de gebruiker heeft
+ *      zijn toestemming ingetrokken of de browser opnieuw geïnstalleerd. Dat zegt
+ *      de pushdienst, niet onze code, en de rij gaat meteen weg — binnen het
+ *      plafond van `MAX_WISSEN_PER_RUN`, dat `weg` en `ongeldig` samen delen.
+ *    - `ongeldig` (QS8-690): het abonnement zelf is niet te versleutelen. Dat
+ *      oordeel komt van onze eigen code en wordt hier alleen **genoteerd**; of
+ *      de rij weggaat beslist `ruimOngeldigeOp()` aan het eind van de run, achter
+ *      de stroomonderbreker van `opruimbesluit()`.
+ *    - `mislukt`: alles daarbuiten, ook een kapotte VAPID-sleutel of een
+ *      runtime die WebCrypto kwijt is. De rij blijft staan: een storing van dit
+ *      moment mag geen dataverlies worden.
+ *
+ *    De beslissingen staan onder test in
+ *    `src/modules/notifications/webpush-verzenden.test.ts`, de naad hier in
+ *    `tests/beloftes/notificaties-binnen-de-wandklok.test.ts`.
  */
 async function stuurWeb(
   db: Db,
   abonnementen: readonly Token[],
-  bericht: Bericht,
-  soort: Melding,
-  sleutels: VapidSleutels,
-  nu: Date,
+  verzending: {
+    readonly bericht: Bericht;
+    readonly soort: Melding;
+    readonly sleutels: VapidSleutels;
+    readonly nu: Date;
+    readonly opruim: Opruimlijst;
+  },
 ): Promise<number> {
+  const { bericht, soort, sleutels, nu, opruim } = verzending;
   let bezorgd = 0;
 
   for (const rij of abonnementen) {
@@ -1573,6 +1609,12 @@ async function stuurWeb(
     }
 
     const doel: WebPushDoel = { endpoint: rij.token, p256dh: rij.p256dh, auth: rij.auth };
+    // ⚠️ Deze run al `weg` (404/410): niet opnieuw versturen, wissen of tellen.
+    //    `apparaten` is één keer per profiel gelezen en geldt voor al zijn
+    //    meldingen; zonder deze regel kostte één verdwenen abonnement een plek
+    //    van het plafond per melding (tweede batch-review op QS8-690).
+    if (isWeg(opruim, doel)) continue;
+
     const uitkomst = await verstuurWebPush({
       doel,
       bericht: { titel: bericht.titel, body: bericht.body, pad: bericht.pad, soort },
@@ -1580,22 +1622,95 @@ async function stuurWeb(
       nu,
       fetchImpl: fetch,
     });
+    noteerUitkomst(opruim, doel, uitkomst);
 
-    if (uitkomst.status === 'bezorgd') {
-      bezorgd += 1;
-      continue;
+    if (uitkomst.status === 'bezorgd') bezorgd += 1;
+    else if (uitkomst.status === 'weg') {
+      if (magWissen(opruim, 'weg')) await verwijderAbonnement(db, doel, 'verdwenen abonnement');
     }
-
-    if (uitkomst.status === 'weg') {
-      const { error } = await db.from('push_tokens').delete().eq('token', rij.token);
-      if (error) console.error(`verlopen abonnement opruimen mislukte: ${error.message}`);
-      continue;
-    }
-
-    console.error(`web push mislukte: ${uitkomst.reden}`);
+    else if (uitkomst.status === 'mislukt') console.error(`web push mislukte: ${uitkomst.reden}`);
   }
 
   return bezorgd;
+}
+
+/**
+ * Verwijdert precies dit abonnement: endpoint én sleutels.
+ *
+ * ⚠️ **Op alle drie de kolommen, niet alleen op `token`** (batch-review
+ *    17-11-2026). Tussen het lezen in `apparatenVan()` en deze `delete` kan de
+ *    browser zich opnieuw geabonneerd hebben op hetzelfde endpoint, met nieuwe
+ *    sleutels — `registreer_push_token()` werkt de rij dan bij. Op `token` alleen
+ *    wist deze regel dat verse abonnement om het oordeel over het oude.
+ */
+async function verwijderAbonnement(db: Db, doel: WebPushDoel, wat: string): Promise<void> {
+  const { error } = await db
+    .from('push_tokens')
+    .delete()
+    .eq('token', doel.endpoint)
+    .eq('p256dh', doel.p256dh)
+    .eq('auth', doel.auth);
+  if (error) console.error(`${wat} opruimen mislukte: ${error.message}`);
+}
+
+/**
+ * Ruimt aan het eind van de run de ongeldige abonnementen op — of niets, als de
+ * stroomonderbreker gesprongen is — en meldt wat het plafond tegenhield.
+ *
+ * ⚠️ Ook na een afgekapte run (`volledig: false`): het besluit gaat over wat de
+ *    run gezien heeft, en de onderbreker telt alleen dat.
+ */
+async function ruimOngeldigeOp(db: Db, opruim: Opruimlijst): Promise<void> {
+  const { verwijder, onderbroken } = opruimbesluit(opruim);
+
+  if (onderbroken) {
+    console.error(
+      `alle ${opruim.getoetst.size} getoetste web-abonnementen van deze run waren ongeldig; niets opgeruimd`,
+    );
+    // ⚠️ **Pas vanaf `ALARM_VANAF` naar Sentry** (code-critic op het herstel). Een
+    //    run die één of twee web-meldingen verstuurt en toevallig alleen kapotte
+    //    rijen treft, is gezond; een alarm dat daarop afgaat leer je negeren, en
+    //    dit is het enige alarm dat een kapotte toets meldt.
+    if (opruim.getoetst.size >= ALARM_VANAF) {
+      await meld(new Error('elk web-abonnement ongeldig'), 'notificaties.opruimen', {
+        code: 'webpush_alles_ongeldig',
+        count: opruim.kandidaten.size,
+      });
+    }
+  }
+
+  for (const { doel, reden } of verwijder) {
+    if (!magWissen(opruim, 'ongeldig')) continue;
+    console.error(`ongeldig abonnement opgeruimd: ${reden}`);
+    await verwijderAbonnement(db, doel, 'ongeldig abonnement');
+  }
+
+  await meldPlafond(opruim);
+}
+
+/**
+ * Meldt wat het plafond tegenhield, met een eigen code per bron.
+ *
+ * ⚠️ **Twee codes en niet één** (tweede batch-review). Het plafond is bij een
+ *    gedeeltelijk kapotte toets de énige rem, en dan is dit alarm het enige
+ *    signaal. Normaal verloop (`weg`) mag dat signaal niet overstemmen: bij veel
+ *    gebruikers gaat `webpush_wisplafond_weg` vaker af, en
+ *    `webpush_wisplafond_ongeldig` is dan nog steeds te onderscheiden.
+ */
+async function meldPlafond(opruim: Opruimlijst): Promise<void> {
+  for (const bron of ['weg', 'ongeldig'] as const) {
+    const aantal = opruim.tegengehouden[bron];
+    if (aantal === 0) continue;
+    console.error(`${aantal} web-abonnement(en) (${bron}) niet gewist: plafond van ${MAX_WISSEN_PER_RUN} per run`);
+    // ⚠️ **Een eigen foutmelding per bron, en niet alleen een eigen `code`.**
+    //    Sentry groepeert op de melding; de `code` gaat in `extra` en maakt geen
+    //    eigen issue (security-review, derde ronde). Met één melding landde een
+    //    `_ongeldig` in het issue dat `_weg` al lang als routine had laten zien.
+    await meld(new Error(`wisplafond bereikt (${bron})`), 'notificaties.opruimen', {
+      code: `webpush_wisplafond_${bron}`,
+      count: aantal,
+    });
+  }
 }
 
 /**
@@ -1708,6 +1823,7 @@ async function stuur(
     nu: Date;
     voorkeuren: Meldingsvoorkeuren;
     inStilte: boolean;
+    opruim: Opruimlijst;
   },
 ): Promise<Verzendstand> {
   // ⚠️⚠️ **Het keelpunt, en het staat vóór de rij in `notifications_sent`.**
@@ -1764,7 +1880,7 @@ async function stuur(
     if (sleutels === null) {
       console.error('VAPID-sleutels ontbreken; web-abonnementen overgeslagen');
     } else {
-      bezorgd += await stuurWeb(db, web, bericht, opdracht.soort, sleutels, opdracht.nu);
+      bezorgd += await stuurWeb(db, web, { bericht, soort: opdracht.soort, sleutels, nu: opdracht.nu, opruim: opdracht.opruim });
     }
   }
 

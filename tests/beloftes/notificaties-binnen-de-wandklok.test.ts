@@ -1,5 +1,8 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { genereerVapidSleutelpaar } from '../../src/modules/notifications/webpush-crypto';
+import { scrubContext } from '../../supabase/functions/_shared/observability/scrub';
+
 /**
  * Twee beloftes van de notificatiejob, allebei op de naad — QS8-688:
  *
@@ -50,11 +53,61 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
  *       (nagemeten bij de review van de batch, 17-11-2026).
  *    8. (QS8-691) In `bladerOpSleutel()` weer op offset gebladerd → alleen
  *       "slaat niemand over als tokens tíjdens de run verdwijnen" rood.
+ *    9.–30. (QS8-690, drie reviewrondes, 📏 17-11-2026: telkens één mutatie in
+ *       de bron en `edge:sync`, en de rode toetsen hieronder zijn de toetsen van
+ *       dit bestand en `webpush-verzenden.test.ts` samen, **gemeten op de
+ *       suite zoals hij nu staat** — 61 toetsen):
+ *       - `abonnementFout()` noemt elke worp `ongeldig` → de drie
+ *         "maakt … een mislukking"-toetsen en hier "wist niets als WebCrypto
+ *         stuk is voor één abonnement…".
+ *       - geen onderbreker → 8 rood, waaronder hier "wist niets als elk
+ *         abonnement van de run ongeldig is" en beide alarmtoetsen van de
+ *         onderbreker.
+ *       - delete alleen op `token` → de drie "wist precies / hoogstens"-toetsen.
+ *       - elke uitkomst behalve `bezorgd` wist → 9 rood, waaronder de vijf
+ *         "wist niets…"-toetsen en "een verdwenen abonnement met drie
+ *         meldingen…".
+ *       - `ongeldig` meteen wissen → de onderbreker-toets, "…voor elk
+ *         abonnement stuk is" en "wist precies het ongeldige…".
+ *       - de payloadgrens vóór de abonnementstoets → alleen "toetst het
+ *         abonnement vóór de grens op de payload".
+ *       - `ligtOpP256()` uitgezet → alleen "ziet een punt dat niet op de curve
+ *         ligt als ongeldig zonder importKey…". ⚠️ Zonder die toets bleef alles
+ *         groen, want Node's `importKey()` vangt het punt wél; in Deno niet.
+ *       - plafond op 1000 → 6 rood: de drie plafondtoetsen en de drie
+ *         plafondalarmen.
+ *       - een `ongetoetst` mislukt telt toch mee → "telt een mislukking …
+ *         niet als bewijs" en "…voor elk abonnement stuk is".
+ *       - de logregel van de onderbreker weg → alleen de onderbreker-toets.
+ *       - de URL in de foutreden → alleen "zet geen endpoint in de reden…".
+ *       - uitkomsten tellen in plaats van rijen → alleen "weegt rijen…".
+ *       - de `isWeg()`-overslag in `stuurWeb()` weg → alleen "een verdwenen
+ *         abonnement met drie meldingen…".
+ *       - de code van het onderbreker-alarm veranderd → alleen "meldt
+ *         webpush_alles_ongeldig…"; `ALARM_VANAF` op 1000 → dezelfde.
+ *       - `ALARM_VANAF` op 1 → alleen "meldt niets naar Sentry … bij twee…".
+ *       - `meldPlafond()` niet aangeroepen, of één code voor beide bronnen →
+ *         3 rood: de twee "meldt webpush_wisplafond_…"-toetsen en "geeft de
+ *         twee plafondalarmen elk een eigen foutmelding…".
+ *       - de bron in `ruimOngeldigeOp()` op `weg` gezet → 2 rood: "meldt
+ *         webpush_wisplafond_ongeldig…" en "geeft de twee plafondalarmen…".
+ *       - één foutmelding voor beide bronnen → alleen "geeft de twee
+ *         plafondalarmen elk een eigen foutmelding…".
+ *       - een code met koppeltekens (komt niet door `scrubContext()`) → de drie
+ *         toetsen die op een plafondcode letten.
+ *       - `redirect: 'manual'` weg → alleen "volgt geen redirect…".
  */
 
 type Afhandelaar = (verzoek: Request) => Response | Promise<Response>;
 
 const VERZOEK_MS = 50;
+
+interface WebRij {
+  token: string;
+  platform: 'web';
+  p256dh: string;
+  auth: string;
+}
 
 interface Verzonden {
   user_id: string;
@@ -85,6 +138,22 @@ const wereld = {
   verzonden: [] as Verzonden[],
   /** Elke push die bij Expo aankwam: het token. */
   pushes: [] as string[],
+  /** Web-abonnementen per profiel; wie hier staat, heeft géén iOS-toestel. */
+  web: new Map<string, WebRij[]>(),
+  /** Wat de pushdienst per endpoint antwoordt; zonder rij 201. */
+  webAntwoord: new Map<string, number>(),
+  /** Elke `delete` op `push_tokens`, met zijn filters. */
+  gewist: [] as Record<string, unknown>[],
+  /** De omgeving van de functie (`Deno.env`). */
+  omgeving: {} as Record<string, string>,
+  /** Hoeveel voltooiingen elk profiel met werk te beoordelen heeft — één melding per stuk. */
+  werk: 1,
+  /** Elk verzoek aan een web-pushdienst: het endpoint. */
+  webpushes: [] as string[],
+  /** De `code` van elke `meld()` naar Sentry. */
+  alarmen: [] as string[],
+  /** De foutmelding van elke `meld()` — waarop Sentry groepeert. */
+  alarmteksten: [] as string[],
   gezien: [] as string[],
   tegelijk: 0,
   hoogste: 0,
@@ -154,19 +223,25 @@ function profielenQuery() {
 /** `push_tokens`: één iOS-toestel voor wie werk heeft; de teller voor gelijktijdigheid. */
 function tokensQuery() {
   let wie = '';
+  let wissen = false;
+  const filters: Record<string, unknown> = {};
   const q = {
     select: () => q,
-    delete: () => q,
-    eq: (_k: string, w: string) => { wie = w; return q; },
+    delete: () => { wissen = true; return q; },
+    eq: (k: string, w: string) => { filters[k] = w; if (k === 'user_id') wie = w; return q; },
     then: async (klaar: (r: unknown) => void) => {
+      if (wissen) {
+        await werkt(VERZOEK_MS);
+        wereld.gewist.push({ ...filters });
+        return klaar({ data: null, error: null });
+      }
       wereld.gezien.push(wie);
       wereld.tegelijk += 1;
       wereld.hoogste = Math.max(wereld.hoogste, wereld.tegelijk);
       await werkt(VERZOEK_MS);
       wereld.tegelijk -= 1;
-      const data = wereld.metToken.has(wie) && !wereld.verhuisd.has(wie)
-        ? [{ token: `ExponentPushToken[${wie}]`, platform: 'ios', p256dh: null, auth: null }]
-        : [];
+      const ios = [{ token: `ExponentPushToken[${wie}]`, platform: 'ios', p256dh: null, auth: null }];
+      const data = wereld.metToken.has(wie) && !wereld.verhuisd.has(wie) ? (wereld.web.get(wie) ?? ios) : [];
       if (wereld.wisNaLezen) wereld.metToken.delete(wie);
       return klaar({ data, error: null });
     },
@@ -220,10 +295,30 @@ async function rpc(naam: string, args: Record<string, unknown>) {
   await werkt(VERZOEK_MS);
   const wie = String(args.p_user_id ?? '');
   if (naam === 'te_beoordelen_voor' && wereld.metWerk.has(wie)) {
-    return { data: [{ completion_id: `voltooiing-van-${wie}`, owner_name: 'Buddy' }], error: null };
+    const rijen = Array.from({ length: wereld.werk }, (_, i) => ({
+      completion_id: i === 0 ? `voltooiing-van-${wie}` : `voltooiing-van-${wie}-${i}`,
+      owner_name: 'Buddy',
+    }));
+    return { data: rijen, error: null };
   }
   return { data: [], error: null };
 }
+
+/**
+ * `meld()` naar Sentry, vastgelegd op zijn `code`. Zonder deze nep zijn de
+ * alarmen van de opruiming niet te toetsen: 📏 tweede batch-review op QS8-690,
+ * `meld(...)` weghalen of `ALARM_VANAF` op 1000 liet alles groen.
+ */
+vi.mock('../../supabase/functions/_shared/melden.ts', () => ({
+  meld: async (fout: unknown, _waar: string, extra: Record<string, unknown> = {}) => {
+    // ⚠️ Vastgelegd zoals Sentry hem krijgt: ná `scrubContext()`. Een code die
+    //    de schoonmaak niet doorlaat, komt hier als `[weggelaten]` aan en wordt
+    //    dus rood in de toetsen die op de code letten.
+    wereld.alarmen.push(String(scrubContext(extra).code));
+    wereld.alarmteksten.push(fout instanceof Error ? fout.message : String(fout));
+    return 'verstuurd';
+  },
+}));
 
 vi.mock('jsr:@supabase/supabase-js@2', () => ({
   createClient: () => ({
@@ -237,8 +332,12 @@ vi.mock('jsr:@supabase/supabase-js@2', () => ({
   }),
 }));
 
-async function expo(_url: string, init: { body: string }): Promise<Response> {
+async function expo(url: string, init: { body: string }): Promise<Response> {
   await werkt(VERZOEK_MS);
+  if (!url.startsWith('https://exp.host/')) {
+    wereld.webpushes.push(url);
+    return new Response(null, { status: wereld.webAntwoord.get(url) ?? 201 });
+  }
   for (const b of JSON.parse(init.body) as { to: string }[]) wereld.pushes.push(b.to);
   return new Response('{"data":[]}', { status: 200 });
 }
@@ -255,7 +354,7 @@ async function handler(): Promise<Afhandelaar> {
   if (dezeTest !== undefined) return dezeTest;
   let gevangen: Afhandelaar | undefined;
   (globalThis as unknown as { Deno: unknown }).Deno = {
-    env: { get: (k: string) => (k === 'SUPABASE_URL' ? 'https://proef.supabase.co' : undefined) },
+    env: { get: (k: string) => (k === 'SUPABASE_URL' ? 'https://proef.supabase.co' : wereld.omgeving[k]) },
     serve: (a: Afhandelaar) => {
       gevangen = a;
       return { finished: Promise.resolve(), shutdown: () => Promise.resolve() };
@@ -310,6 +409,7 @@ beforeEach(() => {
   vi.stubGlobal('fetch', expo);
   Object.assign(wereld, {
     profielen: [], metToken: new Set(), metWerk: new Set(), verhuisd: new Set(), wisNaLezen: false, verzonden: [], pushes: [], gezien: [], tegelijk: 0, hoogste: 0,
+    web: new Map(), webAntwoord: new Map(), gewist: [], omgeving: {}, werk: 1, webpushes: [], alarmen: [], alarmteksten: [],
   });
 });
 
@@ -436,5 +536,212 @@ describe('alleen profielen met een token komen langs — QS8-691', () => {
 
     expect(bodies[0]?.volledig).toBe(true);
     expect([...wereld.gezien].sort()).toEqual(alleMetToken);
+  });
+});
+
+// Een geldig P-256-punt en een geheim van 16 octetten (zie webpush-verzenden.test.ts).
+const P256DH = 'BCVxsr7N_eNgVRqvHtD0zTZsEc6-VV-JvLexhqUzORcxaOzi6-AYWXvTBHm4bjyPjs7Vd8pZGH6SRpkNtoIAiw4';
+const AUTH = 'BTBZMqHH6r4Tts7J_aSIgg';
+const NIET_OP_DE_CURVE = 'B' + 'A'.repeat(86);
+
+/** Eén profiel per abonnement, elk met werk (`wereld.werk` meldingen) en één web-abonnement. */
+async function zetWebKlaar(p256dhs: readonly string[]): Promise<WebRij[]> {
+  zetKlaar(p256dhs.length, 1, 1);
+  const paar = await genereerVapidSleutelpaar();
+  wereld.omgeving = {
+    EXPO_PUBLIC_VAPID_PUBLIC_KEY: paar.publiek,
+    VAPID_PRIVATE_KEY: paar.prive,
+    VAPID_SUBJECT: 'mailto:test@example.com',
+  };
+  return wereld.profielen.map((id, i) => {
+    const rij: WebRij = {
+      token: `https://fcm.googleapis.com/fcm/send/${id}`, platform: 'web', p256dh: p256dhs[i] ?? P256DH, auth: AUTH,
+    };
+    wereld.web.set(id, [rij]);
+    return rij;
+  });
+}
+
+/**
+ * QS8-690, batch-review 17-11-2026 — welke uitkomst van een web push een rij in
+ * `push_tokens` kost, op de naad in `stuurWeb()`.
+ *
+ * ⚠️ **De belofte: `mislukt` wist niets, `weg` en `ongeldig` elk precies één
+ *    rij, en een run waarin álles `ongeldig` is wist niets.** De beslissing per
+ *    uitkomst staat onder test in `webpush-verzenden.test.ts`; wat ermee
+ *    gebeurt, staat in de Edge Function, en daar draaide tot nu geen enkele test.
+ *    📏 `if (uitkomst.status !== 'bezorgd')` vóór de delete bleef groen in de
+ *    hele suite.
+ */
+describe('web push: wat een rij in push_tokens kost — QS8-690', () => {
+  const filtersVan = (rij: WebRij) => ({ token: rij.token, p256dh: rij.p256dh, auth: rij.auth });
+
+  it('wist niets bij een storing van de pushdienst', async () => {
+    const rijen = await zetWebKlaar([P256DH, P256DH, P256DH]);
+    for (const rij of rijen) wereld.webAntwoord.set(rij.token, 500);
+    await draai();
+
+    expect(wereld.gewist).toEqual([]);
+  });
+
+  it('wist niets bij een kapotte VAPID-sleutel', async () => {
+    await zetWebKlaar([P256DH, P256DH, P256DH]);
+    wereld.omgeving.VAPID_PRIVATE_KEY = 'onzin';
+    await draai();
+
+    expect(wereld.gewist).toEqual([]);
+  });
+
+  it('wist precies het verdwenen abonnement, op endpoint én sleutels', async () => {
+    const rijen = await zetWebKlaar([P256DH, P256DH, P256DH]);
+    wereld.webAntwoord.set(rijen[1]!.token, 410);
+    await draai();
+
+    expect(wereld.gewist).toEqual([filtersVan(rijen[1]!)]);
+  });
+
+  it('wist precies het ongeldige abonnement als de run ook bruikbare zag', async () => {
+    const rijen = await zetWebKlaar([P256DH, NIET_OP_DE_CURVE, P256DH]);
+    await draai();
+
+    expect(wereld.gewist).toEqual([filtersVan(rijen[1]!)]);
+  });
+
+  it('wist niets als elk abonnement van de run ongeldig is — de stroomonderbreker', async () => {
+    await zetWebKlaar([NIET_OP_DE_CURVE, NIET_OP_DE_CURVE, NIET_OP_DE_CURVE]);
+    const log = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+    await draai();
+
+    expect(wereld.gewist).toEqual([]);
+    expect(log.mock.calls.map((c) => String(c[0]))).toContainEqual(expect.stringContaining('niets opgeruimd'));
+  });
+
+  it('wist niets als WebCrypto stuk is voor één abonnement terwijl de rest bezorgd wordt', async () => {
+    // ⚠️ **Dit is de toets op `abonnementFout()` en niet op de onderbreker.**
+    //    Is WebCrypto voor álle rijen stuk, dan springt de onderbreker en blijft
+    //    de toets hieronder groen, ook als `abonnementFout()` elke worp weer
+    //    `ongeldig` noemt (📏 gemeten bij de ijking, 17-11-2026). Hier wordt de
+    //    andere rij bezorgd, dus alleen de toets zelf houdt de delete tegen.
+    const ander = await crypto.subtle.generateKey({ name: 'ECDH', namedCurve: 'P-256' }, true, ['deriveBits']);
+    const rauw = new Uint8Array(await crypto.subtle.exportKey('raw', ander.publicKey));
+    const kapot = Buffer.from(rauw).toString('base64url');
+    await zetWebKlaar([P256DH, kapot, P256DH]);
+    const echt = crypto.subtle.importKey.bind(crypto.subtle);
+    vi.spyOn(crypto.subtle, 'importKey').mockImplementation(((...args: Parameters<typeof echt>) => {
+      const [formaat, data] = args;
+      if (formaat === 'raw' && Buffer.from(data as Uint8Array).equals(Buffer.from(rauw))) {
+        return Promise.reject(new TypeError('runtime kapot'));
+      }
+      return echt(...args);
+    }) as typeof crypto.subtle.importKey);
+    await draai();
+
+    expect(wereld.gewist).toEqual([]);
+  });
+
+  it('wist niets als WebCrypto voor elk abonnement stuk is', async () => {
+    await zetWebKlaar([P256DH, NIET_OP_DE_CURVE, P256DH]);
+    vi.spyOn(crypto.subtle, 'importKey').mockRejectedValue(new TypeError('runtime kapot'));
+    await draai();
+
+    expect(wereld.gewist).toEqual([]);
+  });
+
+  it('wist hoogstens drie rijen per run, ook als een fout bijna elk abonnement ongeldig maakt', async () => {
+    // ⚠️ **De les van de security-review op het herstel.** 📏 Een
+    //    `vanBase64url()` zonder `-`/`_`-vertaling maakt ≈ 96% van de abonnementen
+    //    ongeldig en laat de rest heel: de onderbreker springt dan niet, dit
+    //    plafond houdt het klein.
+    const rijen = await zetWebKlaar([P256DH, ...Array.from({ length: 6 }, () => NIET_OP_DE_CURVE)]);
+    await draai();
+
+    expect(wereld.gewist).toHaveLength(3);
+    for (const filter of wereld.gewist) expect(rijen.slice(1).map(filtersVan)).toContainEqual(filter);
+  });
+
+  it('deelt het plafond met verdwenen abonnementen', async () => {
+    const rijen = await zetWebKlaar([P256DH, P256DH, P256DH, P256DH, P256DH]);
+    for (const rij of rijen) wereld.webAntwoord.set(rij.token, 410);
+    await draai();
+
+    expect(wereld.gewist).toHaveLength(3);
+  });
+
+  it('een verdwenen abonnement met drie meldingen in één run kost één verzoek, één wis en één plek', async () => {
+    // ⚠️ Tweede batch-review op QS8-690: `apparaten` wordt één keer per profiel
+    //    gelezen en voor elke melding hergebruikt. Telde `weg` per melding, dan
+    //    vulde dit ene abonnement het hele plafond en bleven de ongeldige rijen
+    //    van de anderen staan.
+    wereld.werk = 3;
+    const rijen = await zetWebKlaar([P256DH, NIET_OP_DE_CURVE, NIET_OP_DE_CURVE, P256DH]);
+    const verdwenen = rijen[0]!;
+    wereld.webAntwoord.set(verdwenen.token, 410);
+    await draai();
+
+    expect(wereld.webpushes.filter((url) => url === verdwenen.token)).toHaveLength(1);
+    expect(wereld.gewist.filter((f) => f.token === verdwenen.token)).toEqual([filtersVan(verdwenen)]);
+    expect(wereld.gewist).toHaveLength(3);
+    expect(wereld.gewist).toContainEqual(filtersVan(rijen[1]!));
+    expect(wereld.gewist).toContainEqual(filtersVan(rijen[2]!));
+    expect(wereld.alarmen.filter((c) => c.startsWith('webpush_wisplafond'))).toEqual([]);
+    expect(wereld.alarmen).not.toContain('[weggelaten]');
+  });
+});
+
+describe('de alarmen van de opruiming — QS8-690, tweede batch-review', () => {
+  it('meldt webpush_alles_ongeldig als de onderbreker springt bij drie of meer getoetste abonnementen', async () => {
+    await zetWebKlaar([NIET_OP_DE_CURVE, NIET_OP_DE_CURVE, NIET_OP_DE_CURVE]);
+    await draai();
+
+    expect(wereld.alarmen).toContain('webpush_alles_ongeldig');
+  });
+
+  it('meldt niets naar Sentry als de onderbreker springt bij twee getoetste abonnementen', async () => {
+    await zetWebKlaar([NIET_OP_DE_CURVE, NIET_OP_DE_CURVE]);
+    await draai();
+
+    expect(wereld.gewist).toEqual([]);
+    expect(wereld.alarmen).not.toContain('webpush_alles_ongeldig');
+  });
+
+  it('meldt webpush_wisplafond_ongeldig, en niet _weg, als het plafond ongeldige rijen tegenhoudt', async () => {
+    await zetWebKlaar([P256DH, ...Array.from({ length: 5 }, () => NIET_OP_DE_CURVE)]);
+    await draai();
+
+    expect(wereld.alarmen).toContain('webpush_wisplafond_ongeldig');
+    expect(wereld.alarmen).not.toContain('webpush_wisplafond_weg');
+  });
+
+  it('meldt webpush_wisplafond_weg, en niet _ongeldig, als het plafond verdwenen abonnementen tegenhoudt', async () => {
+    const rijen = await zetWebKlaar([P256DH, P256DH, P256DH, P256DH, P256DH]);
+    for (const rij of rijen) wereld.webAntwoord.set(rij.token, 410);
+    await draai();
+
+    expect(wereld.alarmen).toContain('webpush_wisplafond_weg');
+    expect(wereld.alarmen).not.toContain('webpush_wisplafond_ongeldig');
+  });
+
+  it('geeft de twee plafondalarmen elk een eigen foutmelding — Sentry groepeert daarop', async () => {
+    const rijen = await zetWebKlaar([
+      P256DH, P256DH, P256DH, P256DH, P256DH, ...Array.from({ length: 4 }, () => NIET_OP_DE_CURVE),
+    ]);
+    for (const rij of rijen.slice(1, 5)) wereld.webAntwoord.set(rij.token, 410);
+    // Vier `weg` en vier `ongeldig` tegen een plafond van drie: `weg` wist
+    // tijdens het versturen en houdt er één over, `ongeldig` komt daarna en
+    // houdt er vier over. Beide bronnen melden dus.
+    await draai();
+
+    const plafond = wereld.alarmteksten.filter((t) => t.startsWith('wisplafond'));
+    expect(wereld.alarmen).toEqual(expect.arrayContaining(['webpush_wisplafond_weg', 'webpush_wisplafond_ongeldig']));
+    expect(plafond).toHaveLength(2);
+    expect(new Set(plafond).size).toBe(2);
+  });
+
+  it('meldt geen plafond als niets werd tegengehouden', async () => {
+    await zetWebKlaar([P256DH, NIET_OP_DE_CURVE, P256DH]);
+    await draai();
+
+    expect(wereld.alarmen.filter((c) => c.startsWith('webpush_'))).toEqual([]);
+    expect(wereld.alarmen).not.toContain('[weggelaten]');
   });
 });
