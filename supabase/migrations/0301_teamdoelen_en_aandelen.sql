@@ -12,7 +12,7 @@
 --   drop function if exists public.aandeel_blijft_in_teamgroep();
 --   alter table public.groups drop constraint if exists groups_team_beschermd_tot_qs8_661;
 --   drop function if exists public.neem_aandeel(uuid, text);
---   drop function if exists public.maak_teamdoel(uuid, text, text, date);
+--   drop function if exists public.maak_teamdoel(uuid, text, date, text);
 --   drop table if exists public.team_goal_shares;   -- met zijn trigger en functie
 --   drop function if exists public.vul_aandeel();
 --   drop table if exists public.team_goals;         -- met zijn trigger en functie
@@ -302,11 +302,14 @@ create policy team_goal_shares_delete on public.team_goal_shares
 -- 5. maak_teamdoel(): elk teamlid (besluit 20)
 -- ---------------------------------------------------------------------------
 
+-- ⚠️ Geen `DEFAULT NULL` (defaultnull:controle, QS8-594): de streefdatum is
+--    verplicht, en een lege beschrijving is ''. Zo zegt het type wat de functie
+--    aanneemt.
 create or replace function public.maak_teamdoel(
   p_group_id uuid,
   p_titel text,
-  p_beschrijving text default null,
-  p_streefdatum date default null
+  p_streefdatum date,
+  p_beschrijving text default ''
 )
 returns jsonb
 language plpgsql
@@ -362,14 +365,15 @@ begin
   return jsonb_build_object('ok', true, 'team_goal_id', v_id);
 end;
 $$;
-revoke all on function public.maak_teamdoel(uuid, text, text, date) from public, anon, authenticated;
-grant execute on function public.maak_teamdoel(uuid, text, text, date) to authenticated;
+revoke all on function public.maak_teamdoel(uuid, text, date, text) from public, anon, authenticated;
+grant execute on function public.maak_teamdoel(uuid, text, date, text) to authenticated;
 
 -- ---------------------------------------------------------------------------
 -- 6. neem_aandeel(): een nieuw persoonlijk doel, gekoppeld aan de teamgroep
 -- ---------------------------------------------------------------------------
 
-create or replace function public.neem_aandeel(p_team_goal_id uuid, p_titel text default null)
+-- `p_titel` leeg of weggelaten: het aandeel krijgt de titel van het teamdoel.
+create or replace function public.neem_aandeel(p_team_goal_id uuid, p_titel text default '')
 returns jsonb
 language plpgsql
 security definer
