@@ -96,7 +96,7 @@ Een groepslid leest de groepsrij, dus ook deze kolom.
 
 ## Wat getest is
 
-`tests/rls/teamgroepen.test.ts`: 15 toetsen, via PostgREST met het JWT van elke
+`tests/rls/teamgroepen.test.ts`: 17 toetsen (één `it.each`), via PostgREST met het JWT van elke
 gebruiker. Ze dekken criterium 8, 9 en 15 (a), (b) en (c), plus aanmaken, de pin,
 "nooit vindbaar" en het plafond. Zes mutaties per grendel met de hand, en elke keer
 werd de bedoelde toets rood; de uitslag staat in de kop van de test. Een zevende
@@ -105,11 +105,11 @@ mutatie, de poort uit `maak_teamgroep()`, staat in `scripts/definers-controle.mj
 ## Aannames, niet gemeten
 
 - **Het plafond van 25** (besluit 27) is niet gemeten. Het meetissue is QS8-665.
-- **Een race tussen lid worden van het team en vertrekken uit de organisatie.** De
-  trigger leest de stand van het organisatielidmaatschap op het moment van de
-  insert. Vertrekt iemand in dezelfde milliseconde, dan kan hij actief in het team
-  blijven tot een volgende handeling. Er is geen lock op de organisatierij in
-  `join_group_with_code()`.
+- **De race tussen lid worden van het team en vertrekken uit de organisatie** is
+  dicht met een `for share` op de organisatielidrij in `bewaak_teamlidmaatschap()`
+  (review M1): de vertrek-update wacht op de insert of andersom, en de cascade ziet
+  daarna het nieuwe teamlid. Dat is beredeneerd uit de lockvolgorde en niet met twee
+  gelijktijdige sessies gemeten.
 - **`zet_groepszichtbaarheid()`** door een organisatiebeheerder plaatst
   `group_opened` of `group_protected` met hem als onderwerp
   (`p_subject_id => auth.uid()`, nagelezen in de functie). De leden zien dus de naam
@@ -117,6 +117,26 @@ mutatie, de poort uit `maak_teamgroep()`, staat in `scripts/definers-controle.mj
   goed leest, is niet bekeken. Dat hoort bij QS8-656 (systeemberichten voor teams).
 - **`src/lib/database.types.ts`** kent `organization_id` en de nieuwe RPC's nog
   niet. Hergenereren gebeurt bij de uitrol, net als bij QS8-652.
+
+## Wat de securityreview vond
+
+- **H1, hersteld.** De beheerderstak in `guard_group_member_update()` gold ook voor
+  een organisatiebeheerder die zelf lid was, dus hij kon zijn eigen rol op `admin`
+  zetten en na uitzetten zichzelf weer activeren. De tak geldt nu alleen voor een
+  ánder lid (`old.user_id is distinct from auth.uid()`). Getoetst.
+- **M1, hersteld.** Zie de race hierboven.
+- **L3, hersteld.** Wie zelf de organisatie verlaat, laat in elk team een
+  `member_left`-gebeurtenis achter (`via: organisatie`), net als bij `verlaat_groep()`.
+  Een uitzetting door de beheerder laat geen spoor, zoals bij `verwijder_lid()`.
+- **L1, open.** Een gearchiveerd team kan niemand heropenen: de
+  organisatiebeheerder niet, en een team heeft vaak geen groepsbeheerder.
+- **L2, open.** `verwijder_lid()` geeft een organisatiebeheerder een ander antwoord
+  voor een lid dan voor een niet-lid. Dat is een kleine bestaanstoets, binnen zijn
+  eigen team.
+- **Buiten 0300.** Verwijdert de laatste organisatiebeheerder zijn account, dan
+  staan de teams zonder beheer.
+- **Toegestaan, ter kennisname.** Een organisatiebeheerder kan met de code lid
+  worden en het team op `open` zetten. Besluit 26 laat dat toe.
 
 ## Het pad terug
 

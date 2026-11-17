@@ -48,6 +48,8 @@ const REGISTER: Readonly<Record<string, string>> = {
   // QS8-653
   actief_organisatielid: 'leest alleen of iemand actief lid is; geeft een boolean en geen rol',
   maak_teamgroep: 'beheerderspoort op een schrijfactie (besluit 13)',
+  bewaak_teamlidmaatschap:
+    'triggerfunctie: leest of een nieuw teamlid actief organisatielid is, met for share tegen de race met vertrek (review M1); geen rol, geeft niets terug',
   is_teambeheerder:
     'beheerderspoort voor teambeheer (besluit 34 en 36). ⚠️ Via is_group_admin() ook in ' +
     'group_join_requests_select: een organisatiebeheerder leest de lidmaatschapsverzoeken ' +

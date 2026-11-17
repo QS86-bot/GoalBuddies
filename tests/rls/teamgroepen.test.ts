@@ -263,6 +263,45 @@ describe.runIf(rlsTestsConfigured)('een teamgroep hoort bij een organisatie (QS8
       expect(await lidStatus(team, dirk)).toBe('inactive');
     }, TEST_TIMEOUT);
 
+    it('(a) een organisatiebeheerder die zelf teamlid is, maakt zichzelf geen beheerder en zet zichzelf niet terug', async () => {
+      // Security-review op QS8-653, H1 (gemeten): via de beheerderstak bereikte
+      // hij de uitgang voor de eigen rij van een lid-beheerder.
+      const tweede = await createTestUser('team-tweede-beheerder');
+      await wordLid(anna, tweede, x);
+      const { error: rolFout } = await adminDb()
+        .from('organization_members' as never)
+        .update({ role: 'admin' } as never)
+        .eq('organization_id' as never, x as never)
+        .eq('user_id' as never, tweede.id as never);
+      expect(rolFout).toBeNull();
+
+      expect(uitkomst(await rpc(anna, 'join_group_with_code', { code: await codeVanGroep(team) }))).toBe('ok');
+      const promotie = await anna.db
+        .from('group_members')
+        .update({ role: 'admin' } as never)
+        .eq('group_id', team)
+        .eq('user_id', anna.id);
+      expect(promotie.error).not.toBeNull();
+      const { data: rol } = await adminDb()
+        .from('group_members')
+        .select('role')
+        .eq('group_id', team)
+        .eq('user_id', anna.id)
+        .single();
+      expect((rol as { role: string }).role).toBe('member');
+
+      expect(
+        uitkomst(await rpc(tweede, 'verwijder_lid', { p_group_id: team, p_user_id: anna.id, p_bevestigd: true })),
+      ).toBe('ok');
+      // ⚠️ **Zonder filter, met opzet.** Met een filter verbergt de leespolicy
+      //    haar inactieve rij al en raakt de update nul rijen: dan is deze toets
+      //    groen om een andere reden dan de bewaker. Zonder WHERE geldt alleen de
+      //    USING van `group_members_update`, en dan moet de bewaker weigeren.
+      const terug = await anna.db.from('group_members').update({ status: 'active' } as never);
+      expect(terug.error).not.toBeNull();
+      expect(await lidStatus(team, anna)).toBe('inactive');
+    }, TEST_TIMEOUT);
+
     it('(a) leest er geen groep, geen leden, geen chat en geen overzicht', async () => {
       expect(await rijen(anna, 'groups', 'id', team)).toBe(0);
       expect(await rijen(anna, 'group_members', 'group_id', team)).toBe(0);
@@ -303,6 +342,14 @@ describe.runIf(rlsTestsConfigured)('een teamgroep hoort bij een organisatie (QS8
       expect((data as unknown[]).length).toBe(0);
       // Zijn doel zelf blijft (besluit 14): alleen de koppeling vervalt.
       expect(await rijen(cleo, 'goals', 'id', doel)).toBe(1);
+      // En het vertrek laat hetzelfde spoor na als verlaat_groep() (review, L3).
+      const { data: spoor } = await adminDb()
+        .from('group_events')
+        .select('event_type')
+        .eq('group_id', team)
+        .eq('actor_id', cleo.id)
+        .eq('event_type', 'member_left');
+      expect((spoor as unknown[]).length).toBe(1);
     }, TEST_TIMEOUT);
 
     it('zet als organisatiebeheerder een teamlid uit, ook uit het team', async () => {

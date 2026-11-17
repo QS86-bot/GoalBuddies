@@ -263,13 +263,22 @@ begin
   --    die eerder lid was. `is_teambeheerder()` is precies de tak die
   --    `is_group_admin()` erbij kreeg; voor een groep zonder organisatie is hij
   --    altijd onwaar, dus daar verandert niets.
+  --
+  -- ⚠️⚠️ **Maar nooit op zijn eigen rij** (security-review op QS8-653, H1,
+  --    gemeten). Hieronder staat `if old.user_id = auth.uid() then return new`,
+  --    en die uitgang was alleen bereikbaar voor een lid-beheerder, wiens enige
+  --    wijziging op zijn eigen rij degraderen is (en dat vangt `last_admin`).
+  --    Een organisatiebeheerder die óók gewoon teamlid is, bereikte hem via deze
+  --    tak, en promoveerde zichzelf met één `update` tot `admin`, of zette
+  --    zichzelf na een uitzetting terug op `active`. Op zijn eigen rij geldt
+  --    voor hem dus wat voor elk lid geldt: de tak hieronder, `geen_groepsbeheerder`.
   if exists (
     select 1 from group_members m
     where m.group_id = old.group_id
       and m.user_id  = auth.uid()
       and m.role     = 'admin'
       and m.status  <> 'inactive'
-  ) or public.is_teambeheerder(old.group_id) then
+  ) or (old.user_id is distinct from auth.uid() and public.is_teambeheerder(old.group_id)) then
     -- ⚠️⚠️ **De restweigering, en die is er omdat 0204 er een weghaalt.** Tot
     --    hier stond `pauze_van_een_ander` als expliciete tak; die kon weg omdat
     --    de CHECK de waarde niet meer kent. Wat daarmee ook wegviel is het
@@ -846,7 +855,22 @@ begin
     return new;
   end if;
 
-  if not public.actief_organisatielid(v_org, new.user_id) then
+  -- ⚠️⚠️ **`for share` op de lidmaatschapsrij van de organisatie, en dat is de
+  --    race-reparatie** (security-review op QS8-653, M1, gemeten met twee
+  --    sessies). Zonder lock kon toetreden en tegelijk vertrekken een blijvend
+  --    teamlid achterlaten: de cascade zag de nog niet gecommitte insert niet, en
+  --    niets ruimt dat later op. Met de lock wacht het vertrek op de toetreding
+  --    (en ziet de cascade daarna het teamlid), of wacht de toetreding op het
+  --    vertrek (en leest dan `inactive` en weigert).
+  perform 1
+     from organization_members m
+     join organizations o on o.id = m.organization_id
+    where m.organization_id = v_org
+      and m.user_id = new.user_id
+      and m.status = 'active'
+      and o.status = 'active'
+      for share of m;
+  if not found then
     raise exception 'geen_organisatielid'
       using errcode = 'check_violation',
             hint = 'Een teamgroep neemt alleen actieve leden van zijn organisatie op (QS8-653).';
@@ -910,6 +934,16 @@ begin
        set status = 'inactive'
      where group_id = v_groep and user_id = new.user_id;
     perform set_config('app.organisatie_vertrek', '', true);
+
+    -- ⚠️ Een eigen vertrek laat hetzelfde spoor na als `verlaat_groep()`
+    --    (security-review op QS8-653, L3). Een uitzetting door een beheerder
+    --    schrijft `meld_uitzetting()` al als `member_removed`.
+    if (select auth.uid()) = new.user_id then
+      insert into group_events (group_id, actor_id, event_type, old_value, new_value)
+      values (v_groep, new.user_id, 'member_left',
+              jsonb_build_object('status', 'active'),
+              jsonb_build_object('via', 'organisatie'));
+    end if;
   end loop;
 
   return new;
