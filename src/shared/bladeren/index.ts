@@ -158,23 +158,38 @@ export async function verwerkBinnenBudget<T>(
     lopend.add(taak);
   };
 
+  // ⚠️ **`finally`, zodat ook een worp uit de bron zelf eerst de lopende rijen
+  //    afwacht** (security-review op QS8-685). Zonder dat valt zo'n fout uit
+  //    de lus terwijl er nog rijen lopen, en die kan het platform dan
+  //    halverwege afkappen.
   let volledig = false;
+  try {
+    volledig = await bied(iterator, lopend, budget, klok, () => fout !== null, start);
+  } finally {
+    await Promise.all(lopend);
+  }
+  if (!volledig) await iterator.return?.();
+  if (fout !== null) throw (fout as { waarde: unknown }).waarde;
+  return { verwerkt, volledig };
+}
+
+/** Biedt rijen aan tot de bron leeg is (`true`), het budget op is of er een fout is (`false`). */
+async function bied<T>(
+  iterator: AsyncIterator<T>,
+  lopend: ReadonlySet<Promise<void>>,
+  budget: Budget,
+  klok: () => number,
+  gefaald: () => boolean,
+  start: (rij: T) => void,
+): Promise<boolean> {
   for (;;) {
-    if (fout !== null || klok() >= budget.stopNa) break;
+    if (gefaald() || klok() >= budget.stopNa) return false;
     if (lopend.size >= budget.gelijktijdig) {
       await Promise.race(lopend);
       continue;
     }
     const volgende = await iterator.next();
-    if (volgende.done === true) {
-      volledig = true;
-      break;
-    }
+    if (volgende.done === true) return true;
     start(volgende.value);
   }
-
-  await Promise.all(lopend);
-  if (!volledig) await iterator.return?.();
-  if (fout !== null) throw (fout as { waarde: unknown }).waarde;
-  return { verwerkt, volledig };
 }

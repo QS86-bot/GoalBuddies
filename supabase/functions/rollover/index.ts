@@ -203,7 +203,15 @@ const PROFIELEN_TEGELIJK = 8;
  *    `profielenVanafWillekeurigePlek()`.
  *
  * ⚠️ Dit is geen deadline maar een laatste starttijd: een profiel dat loopt
- *    wordt afgemaakt, nooit halverwege afgebroken. Uitleg en de schaalgrens in
+ *    wordt afgemaakt, nooit door déze functie halverwege afgebroken.
+ *
+ * ⚠️⚠️ **Het platform kan dat wél** (security-review op QS8-685). Valt de kill
+ *    tussen `status = 'missed'` en het minpunt of de weekpas in
+ *    `schrijfWeekAf()`, dan blijft die week voorgoed half verwerkt: volgende
+ *    runs zoeken alleen `todo` en `cancelled`. Dat kon al bij één profiel; met
+ *    acht tegelijk kan het er acht raken. De vijftig seconden marge zijn er om
+ *    dat buiten bereik te houden; de echte reparatie is de week in één RPC
+ *    (QS8-687). Uitleg en de schaalgrens in
  *    `docs/decisions/2026-11-17-de-rollover-krijgt-een-budget-en-geen-muur.md`.
  */
 const PROFIELBUDGET_MS = 100_000;
@@ -293,18 +301,6 @@ async function draaiRollover(auth: string): Promise<Response> {
     return new Response(JSON.stringify({ error: 'profielen_ophalen_mislukt' }), { status: 500 });
   }
 
-  // ⚠️ **Niet alle profielen aan de beurt gekomen is een storing en geen
-  //    weetje.** Het werk erna draait gewoon door — dat is precies waar het
-  //    budget voor is — maar de uitvoer zegt het, de workflow wordt er rood van,
-  //    en Sentry krijgt het. Een profiel dat wacht, wacht met zijn minpunt en
-  //    zijn straf; dat mag niet stil gebeuren.
-  if (!volledig) {
-    await meld(new Error('profielbudget op'), 'rollover.budget', {
-      code: 'rollover_profielbudget_op',
-      profielen: profielenGezien,
-    });
-  }
-
   const geslapen = await slaapStilleGroepen(db);
 
   const seizoensrecaps = await maakSeizoensrecaps(db);
@@ -373,6 +369,25 @@ async function draaiRollover(auth: string): Promise<Response> {
   );
 }
 
+/**
+ * Meldt dat niet elk profiel aan de beurt kwam — QS8-685.
+ *
+ * ⚠️ **Een storing en geen weetje.** Het werk erna draait gewoon door — daar is
+ *    het budget voor — maar de uitvoer zegt het, de workflow wordt er rood van,
+ *    en Sentry krijgt het. Een profiel dat wacht, wacht met zijn minpunt en zijn
+ *    straf; dat mag niet stil gebeuren.
+ *
+ * ⚠️ **`count` en niet `profielen`**: `scrubContext()` laat alleen de sleutels
+ *    uit `ALLOWED_KEYS` door en vervangt de rest door `[weggelaten]`. Gevonden
+ *    in de security-review op QS8-685; dezelfde val als bij `slaapStilleGroepen`.
+ */
+async function meldBudgetOp(profielenGezien: number): Promise<void> {
+  await meld(new Error('profielbudget op'), 'rollover.budget', {
+    code: 'rollover_profielbudget_op',
+    count: profielenGezien,
+  });
+}
+
 /** Wat één ronde over alle profielen aan de uitslag bijdraagt. */
 interface Profieltelling {
   gemist: number;
@@ -423,6 +438,7 @@ async function verwerkAlleProfielen(
     { gelijktijdig: PROFIELEN_TEGELIJK, stopNa, klok: () => new Date().getTime() },
   );
   telling.volledig = volledig;
+  if (!volledig) await meldBudgetOp(telling.profielenGezien);
 
   return { telling, profielFout: fout.waarde };
 }

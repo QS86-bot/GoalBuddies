@@ -260,6 +260,22 @@ describe('verwerkBinnenBudget', () => {
     expect(klaar).toBe(3);
   });
 
+  it('wacht de lopende rijen ook af als de bron zelf gooit', async () => {
+    let klaar = 0;
+    async function* kapotNaDrie() {
+      yield 0; yield 1; yield 2;
+      throw new Error('bron kapot');
+    }
+    const werk = async () => {
+      await new Promise((r) => setTimeout(r, 5));
+      klaar += 1;
+    };
+    const p = verwerkBinnenBudget(kapotNaDrie(), werk, { gelijktijdig: 4, stopNa: Infinity, klok: () => 0 });
+
+    await expect(p).rejects.toThrow('bron kapot');
+    expect(klaar).toBe(3);
+  });
+
   it('weigert een gelijktijdigheid onder één', async () => {
     const p = verwerkBinnenBudget(reeks(1, { n: 0 }), async () => {}, { gelijktijdig: 0, stopNa: 1, klok: () => 0 });
     await expect(p).rejects.toThrow(RangeError);

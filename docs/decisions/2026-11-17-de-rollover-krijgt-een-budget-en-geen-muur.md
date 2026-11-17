@@ -85,14 +85,30 @@ de beurt. Dat is ver onder het schaaldoel van 100k+.
   `max_connections` is 60 voor de hele database. Wordt PostgREST de flessenhals,
   dan is de winst kleiner dan 8×. Meten: eerste run na de deploy, `profielen`
   en looptijd uit de uitvoer en `edge_logs`.
-* **Dat parallelle profielen elkaar niet raken.** Elke stap is per eigenaar, en
-  `points_ledger` heeft een unieke index. Triggers op `weekly_goals` die per
-  groep schrijven (systeemberichten, De Ketting) kunnen tussen twee leden van
-  dezelfde groep tegelijk lopen; een slot of deadlock komt dan binnen als een
-  zachte fout per stap, zoals elke andere fout in de lus. Niet gemeten.
+* **Dat parallelle profielen elkaar niet raken.** Elke stap is per eigenaar.
+  De security-review las de migratiebestanden (tot `0298`, niet productie op
+  `0302`): op `weekly_goals` staat geen trigger die per groep schrijft, en een
+  dubbel verwerkt profiel kan niets dubbel boeken (`points_ledger_dedupe_idx`,
+  `week_pass_events_uniek`, `weekly_plan_steps_een_per_cyclus`, en
+  `maak_straffen_verschuldigd` werkt met `where status = 'set'`). Op productie
+  niet nagelezen met `pg_get_functiondef()`.
 * **Dat 50 s marge genoeg is.** Een profiel met veel gemiste weken doet meer
   verzoeken dan drie. Het werk na de lus kostte in run 550 1 s, maar de
   opruiming van bijlagen kan bij een vol `BIJLAGE_PAS_LIMIET` langer duren.
+
+## Het risico dat blijft (security-review)
+
+**Het budget breekt geen profiel af, maar het platform kan dat wel.** Valt een
+kill tussen `status = 'missed'` en het minpunt of de weekpas in
+`schrijfWeekAf()`, dan blijft die week voorgoed half verwerkt: volgende runs
+zoeken alleen `todo` en `cancelled`. Dat kon al bij één profiel tegelijk; nu kan
+het er tot acht raken. De vijftig seconden marge na het budget zijn er om dat
+buiten bereik te houden. De echte reparatie is de week in één RPC (QS8-687).
+
+📏 Op productie staan nu **2** `missed`-weken zonder `cycle_missed`-boeking,
+allebei met een `cycle_start_date` vóór 01-11-2026. Ze komen dus niet uit de
+afgekapte runs van 16 en 17 november. Of ze terecht zijn
+(`minpunt_alleen_met_beoordelaar`), is niet uitgezocht.
 
 ## Wat afgewezen of uitgesteld is
 
