@@ -94,8 +94,12 @@ const PROFIELEN_TEGELIJK = 8;
  *    wacht.
  *
  * ⚠️ Geen deadline maar een laatste starttijd: een profiel dat loopt, maakt al
- *    zijn soorten af (zes sinds 0293: ook `commitment_reverted`). Profielen die niet aan de beurt kwamen, komen bij een
- *    volgende run aan bod — de startplek is willekeurig.
+ *    zijn soorten af (zes sinds 0293: ook `commitment_reverted`). Wat een profiel
+ *    mist dat niet aan de beurt kwam, hangt van de soort af: goedkeuringen,
+ *    getuigenissen en teruggedraaide straffen komen bij een volgende run aan
+ *    bod (de startplek is willekeurig), maar de nudge en het cyclusoverzicht
+ *    hangen aan het uur dat de gebruiker koos en vallen die dag weg. Daarom
+ *    is `volledig: false` rood en geen waarschuwing.
  */
 const PROFIELBUDGET_MS = 100_000;
 
