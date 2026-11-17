@@ -10,7 +10,7 @@ import { GRACE_HOURS, type Weekday } from '../_shared/time/types.ts';
 import { inStilteVenster, verschovenUur } from '../_shared/time/stilte.ts';
 import { meld } from '../_shared/melden.ts';
 import { metCors } from '../_shared/cors.ts';
-import { rijen } from '../_shared/bladeren/index.ts';
+import { rijen, verwerkBinnenBudget } from '../_shared/bladeren/index.ts';
 import { nudgeBesluit } from '../_shared/notificaties/nudge-besluit.ts';
 // ⚠️ De heldenstem — QS8-475. `kiesStem()` draagt de prioriteitsregel en
 //    `magVerschijnen()` de dagregel; geen van beide wordt hier overgedaan.
@@ -49,6 +49,59 @@ import {
  *    Function en niet het geheugen. Kleiner betekent meer ronden, niet meer werk.
  */
 const PROFIELEN_PER_PAGINA = 200;
+
+/**
+ * Hoeveel profielen er tegelijk onderhanden zijn — QS8-688.
+ *
+ * ⚠️ **Zelfde getal en zelfde reden als in de rollover** (QS8-685). Binnen één
+ *    profiel blijven de soorten ná elkaar. Eén stap vraagt twee dingen tegelijk
+ *    (`laatsteActiviteitDatum()`, `Promise.all`), dus deze functie legt
+ *    hoogstens **zestien** gelijktijdige verzoeken bij PostgREST neer, niet
+ *    acht (security-review op QS8-688). `max_connections` is **60** voor de
+ *    hele database, en PostgREST deelt zijn eigen pool. De rollover draait een
+ *    half uur eerder of later (`notificaties.yml`), dus de twee jobs tellen niet
+ *    op.
+ *
+ * ⚠️⚠️ **Parallel is hier veilig om een reden die je moet kennen voordat je dit
+ *    getal of de volgorde in `meldEenProfiel()` aanraakt.** Elke melding gaat
+ *    naar de eigenaar van het profiel dat onderhanden is, en de ontdubbeling is
+ *    per gebruiker: de unieke indexen `notifications_sent_per_dag` en
+ *    `notifications_sent_per_onderwerp` (0053, 📏 op productie nagelezen met
+ *    `pg_indexes`, 17-11-2026), en de rij wordt **vóór** het versturen
+ *    geschreven (`stuur()`). Twee profielen raken elkaars rijen dus nooit. Komt
+ *    hetzelfde profiel twee keer langs — een verschuiving tussen twee pagina's,
+ *    of een tweede run die overlapt — dan verliest de tweede insert op de index
+ *    en wordt er niets verstuurd. Dat is de rem, en die staat onder test op de
+ *    naad in `tests/beloftes/notificaties-binnen-de-wandklok.test.ts`.
+ */
+const PROFIELEN_TEGELIJK = 8;
+
+/**
+ * Hoe lang na de start er nog een nieuw profiel mag beginnen — QS8-688.
+ *
+ * ⚠️⚠️ **Dit getal is wat het antwoord binnen de wandklok houdt.** 📏 De functie
+ *    deed op 17-11-2026 om 04:02 ≈ 194 s over 1.200× `push_tokens`, één profiel
+ *    tegelijk, en kreeg om 04:05:15 `shutdown`; op 16-11 om 20:38:54 eindigde
+ *    hij met `Http: connection closed before message completed`. De
+ *    gedocumenteerde wandkloklimiet op de gratis tier is 150 s. Een afgekapte
+ *    run geeft geen antwoord, dus ook geen telling en geen `ok` — van buiten is
+ *    hij niet te onderscheiden van een run die niets deed.
+ *
+ *    Honderd seconden laat vijftig over voor de profielen die nog lopen. Een
+ *    profiel met apparaten doet meer dan drie verzoeken, en Expo en de
+ *    pushdienst van een browser hebben elk een timeout van 15 s (`stuurExpo`,
+ *    `stuurWeb`); vijftig seconden dekt ook een profiel dat op twee daarvan
+ *    wacht.
+ *
+ * ⚠️ Geen deadline maar een laatste starttijd: een profiel dat loopt, maakt al
+ *    zijn soorten af (zes sinds 0293: ook `commitment_reverted`). Wat een profiel
+ *    mist dat niet aan de beurt kwam, hangt van de soort af: goedkeuringen,
+ *    getuigenissen en teruggedraaide straffen komen bij een volgende run aan
+ *    bod (de startplek is willekeurig), maar de nudge en het cyclusoverzicht
+ *    hangen aan het uur dat de gebruiker koos en vallen die dag weg. Daarom
+ *    is `volledig: false` rood en geen waarschuwing.
+ */
+const PROFIELBUDGET_MS = 100_000;
 
 /**
  * De meldingen-job — EPIC 11 (QS8-91) en de dagelijkse nudge (QS8-77).
@@ -219,8 +272,8 @@ async function draaiNotificaties(auth: string): Promise<Response> {
   );
 
   const nu = new Date();
-  const { telling, profielFout } = await meldAlleProfielen(db, nu);
-  const { verstuurd, onderdrukt, overgeslagen, zonderToken, profielenGezien } = telling;
+  const { telling, profielFout } = await meldAlleProfielen(db, nu, nu.getTime() + PROFIELBUDGET_MS);
+  const { verstuurd, onderdrukt, overgeslagen, zonderToken, profielenGezien, volledig } = telling;
 
   // ⚠️ **De foutcontrole staat ná de lus, want daar wordt hij pas gezet.**
   //    Hij stond eerst vóór de query-definitie, en dan kan hij per constructie
@@ -249,7 +302,7 @@ async function draaiNotificaties(auth: string): Promise<Response> {
       sqlstate: fout.code,
     });
     // ⚠️ Een slug en niet de melding, om dezelfde gemeten reden als in de
-    //    rollover: `notificaties.yml:70` doet `cat` op deze body vóór de
+    //    rollover: `notificaties.yml` doet `cat` op deze body vóór de
     //    statuscontrole, en dat runlog staat publiek.
     return new Response(JSON.stringify({ error: 'profielen_ophalen_mislukt' }), { status: 500 });
   }
@@ -262,6 +315,8 @@ async function draaiNotificaties(auth: string): Promise<Response> {
       overgeslagen,
       zonderToken,
       profielen: profielenGezien,
+      // ⚠️ `notificaties.yml` wordt rood op `false` — QS8-688.
+      volledig,
     }),
     { headers: { 'Content-Type': 'application/json' } },
   );
@@ -274,24 +329,37 @@ interface Meldtelling {
   overgeslagen: number;
   zonderToken: number;
   profielenGezien: number;
+  /** `false` als het budget op was voordat elk profiel aan de beurt kwam. */
+  volledig: boolean;
 }
 
+type Profielfout = { message: string; code?: string };
+
 /**
- * Loopt alle profielen af en stuurt per profiel de vijf soorten meldingen.
+ * Loopt alle profielen af en stuurt per profiel zijn meldingen.
  *
  * ⚠️ **Uit `draaiNotificaties` getild in QS8-424**, met de `profielFout` als
  *    teruggave en niet als worp — om dezelfde reden als in de rollover: de
  *    aanroeper meldt hem ná de lus, zodat de profielen die al afgehandeld zijn
  *    niet onvermeld blijven.
+ *
+ * ⚠️⚠️ **Sinds QS8-688 parallel en binnen een budget**, met `verwerkBinnenBudget()`
+ *    uit `_shared/bladeren` — dezelfde lus als de rollover (QS8-685). Binnen één
+ *    profiel blijft alles ná elkaar en in dezelfde volgorde (`meldEenProfiel()`
+ *    is ongewijzigd); waarom profielen onderling parallel mogen, staat bij
+ *    `PROFIELEN_TEGELIJK`.
+ *
+ * ⚠️ De tellers zijn gewone `+=`'en op één object. Dat is veilig: JavaScript
+ *    draait op één draad, en elke `+=` staat ná zijn `await`.
  */
 async function meldAlleProfielen(
   db: Db,
   nu: Date,
-): Promise<{ telling: Meldtelling; profielFout: { message: string; code?: string } | null }> {
-  let verstuurd = 0;
-  let onderdrukt = 0;
-  let overgeslagen = 0;
-  let zonderToken = 0;
+  stopNa: number,
+): Promise<{ telling: Meldtelling; profielFout: Profielfout | null }> {
+  const telling: Meldtelling = {
+    verstuurd: 0, onderdrukt: 0, overgeslagen: 0, zonderToken: 0, profielenGezien: 0, volledig: false,
+  };
 
   // ⚠️ **Vijf keer hetzelfde tweeregelige paar stond hier uitgeschreven** —
   //    QS8-422. Dat is niet alleen een kopie te veel: op het diepste punt in
@@ -299,22 +367,63 @@ async function meldAlleProfielen(
   //    overschreden, en een aanroep telt niet mee voor `max-depth` omdat een
   //    functie de teller terugzet. De telling zelf is woordelijk dezelfde.
   const tel = (stand: Verzendstand): void => {
-    if (stand === 'verstuurd') verstuurd += 1;
-    if (stand === 'onderdrukt') onderdrukt += 1;
+    if (stand === 'verstuurd') telling.verstuurd += 1;
+    if (stand === 'onderdrukt') telling.onderdrukt += 1;
   };
 
-  // ⚠️ **In pagina's, met een expliciete `order`** — QS8-341, en dit is
-  //    woordelijk de reparatie die op 03-09 in de rollover landde en hier bleef
-  //    liggen. Zonder `range()` kapt een gezette `max-rows` in PostgREST de lijst
-  //    stilzwijgend af: geen fout, geen melding, alleen gebruikers die nooit een
-  //    melding krijgen.
-  //
-  // ⚠️ De `order` staat hier en niet in `paginas()`, want dat is de enige
-  //    eigenschap die die lus niet kan bewaken.
-  let profielFout: { message: string; code?: string } | null = null;
+  const fout: { waarde: Profielfout | null } = { waarde: null };
 
-  const haalProfielen = async (start: number, aantal: number): Promise<readonly Profiel[]> => {
-    const { data, error } = await db
+  const { volledig } = await verwerkBinnenBudget(
+    profielenVanafWillekeurigePlek(db, fout),
+    async (profiel) => {
+      telling.profielenGezien += 1;
+      const uitkomst = await meldEenProfiel(db, profiel, nu, tel);
+      if (uitkomst === 'overgeslagen') telling.overgeslagen += 1;
+      if (uitkomst === 'zonderToken') telling.zonderToken += 1;
+    },
+    { gelijktijdig: PROFIELEN_TEGELIJK, stopNa, klok: () => new Date().getTime() },
+  );
+  telling.volledig = volledig;
+  if (!volledig) {
+    await meld(new Error('profielbudget op'), 'notificaties.budget', {
+      code: 'notificaties_profielbudget_op',
+      count: telling.profielenGezien,
+    });
+  }
+
+  return { telling, profielFout: fout.waarde };
+}
+
+/**
+ * Alle profielen, één keer, te beginnen op een willekeurige plek — QS8-688.
+ *
+ * ⚠️⚠️ **Waarom niet vooraan beginnen.** Zodra het budget niet voor iedereen
+ *    genoeg is, zijn het bij een vaste startplek elke run **dezelfde** profielen
+ *    die achteraan blijven — en die krijgen dan nooit een herinnering, nooit een
+ *    goedkeuringsverzoek. 📏 Zonder budget gebeurde dat al: de run van 17-11
+ *    04:02 begon vooraan in `order('id')` en werd na ≈ 194 s afgekapt. Een
+ *    willekeurig scharnier verdeelt die pech over iedereen: eerst
+ *    `id >= scharnier`, dan `id < scharnier`, twee aaneengesloten bereiken die
+ *    samen alles dekken. Woordelijk de vorm van de rollover (QS8-685).
+ *
+ * ⚠️ **In pagina's, en `order('id')` is de voorwaarde** — QS8-341. Zonder
+ *    `range()` kapt een gezette `max-rows` in PostgREST de lijst stilzwijgend af;
+ *    zonder stabiele sortering is `range()` betekenisloos. Een verschuiving
+ *    tussen twee pagina's raakt hooguit één profiel dubbel, en dubbel verstuurt
+ *    niets dubbel: zie `PROFIELEN_TEGELIJK`.
+ *
+ * ⚠️ De `profielFout` gaat via `fout` naar buiten: leeg teruggeven laat
+ *    `paginas()` netjes stoppen, en de aanroeper beslist wat er gebeurt.
+ */
+async function* profielenVanafWillekeurigePlek(
+  db: Db,
+  fout: { waarde: Profielfout | null },
+): AsyncGenerator<Profiel, void, undefined> {
+  const scharnier = crypto.randomUUID();
+
+  const haler = (kant: 'vanaf' | 'tot') => async (start: number, aantal: number): Promise<readonly Profiel[]> => {
+    if (fout.waarde !== null) return [];
+    const basis = db
       .from('profiles')
       // ⚠️ **Eén string-literal en geen samenstelling.** supabase-js leidt de vorm
       //    van de rij af uit de lítterlijke tekst van deze selectie; een `+` maakt
@@ -322,41 +431,21 @@ async function meldAlleProfielen(
       //    📏 `npm run edge:types:controle` viel er meteen over (TS2352) — dat is
       //    de enige typecheck die deze map ziet, want `tsconfig.json` sluit hem uit.
       // deno-fmt-ignore
-      .select('id, tz, week_start_day, reminder_enabled, reminder_time, reminder_tone, locale, notify_approval_request, notify_approval_received, notify_cycle_summary, notify_commitment_witness, quiet_from, quiet_to')
+      .select('id, tz, week_start_day, reminder_enabled, reminder_time, reminder_tone, locale, notify_approval_request, notify_approval_received, notify_cycle_summary, notify_commitment_witness, quiet_from, quiet_to');
+    const gefilterd = kant === 'vanaf' ? basis.gte('id', scharnier) : basis.lt('id', scharnier);
+    const { data, error } = await gefilterd
       .order('id', { ascending: true })
       .range(start, start + aantal - 1);
 
     if (error) {
-      // ⚠️ Leeg teruggeven en de fout apart onthouden, net als in de rollover:
-      //    `paginas()` stopt dan netjes en de aanroeper beslist wat er gebeurt.
-      profielFout = error;
+      fout.waarde = error;
       return [];
     }
     return (data ?? []) as Profiel[];
   };
 
-  // ⚠️ **Per pagina verwerken en niet eerst alles inlezen.** Alle profielen in
-  //    het geheugen zetten lost de stille afkapping wél op, maar houdt de kosten
-  //    lineair in het tótale aantal gebruikers — precies wat dit issue aanwijst.
-  let profielenGezien = 0;
-
-  // ⚠️ **`rijen()` en niet `paginas()`** — QS8-422, en zelfde ingreep als in
-  //    de rollover. De buitenste lus las alleen pagina's uit om ze meteen weer
-  //    open te vouwen, en duwde daarmee élke vertakking hieronder een stap
-  //    dieper dan de code leest. Het diepste punt stond op zes.
-  for await (const profiel of rijen(haalProfielen, PROFIELEN_PER_PAGINA)) {
-    if (profielFout !== null) break;
-    profielenGezien += 1;
-    const uitkomst = await meldEenProfiel(db, profiel, nu, tel);
-    if (uitkomst === 'overgeslagen') overgeslagen += 1;
-    if (uitkomst === 'zonderToken') zonderToken += 1;
-  }
-
-  const telling: Meldtelling = {
-    verstuurd, onderdrukt, overgeslagen, zonderToken, profielenGezien,
-  };
-
-  return { telling, profielFout };
+  yield* rijen(haler('vanaf'), PROFIELEN_PER_PAGINA);
+  yield* rijen(haler('tot'), PROFIELEN_PER_PAGINA);
 }
 
 /**
