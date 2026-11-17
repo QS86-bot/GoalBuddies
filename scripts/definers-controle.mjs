@@ -662,6 +662,11 @@ const LEESREGISTER = new Map([
       'aanroepen.',
   ],
   [
+    'aandeel_wacht_op_teamgenoot',
+    'Predicaat op `m.user_id = auth.uid()`, plus de eigenaar als actief lid en een weekdoel op `pending`. Geeft een ' +
+      'boolean over de aanroeper; het goedkeurvenster van QS8-661 (0303). Getoetst in `tests/rls/aandeel-dicht.test.ts`.',
+  ],
+  [
     'maak_teamdoel',
     'Leest `groups.organization_id` van de opgegeven groep, en geeft dat niet terug: geen lid, geen teamgroep en ' +
       'een onbekend id krijgen alle drie `niet_toegestaan` (poort `is_group_member()`). Telt verder alleen de eigen ' +
