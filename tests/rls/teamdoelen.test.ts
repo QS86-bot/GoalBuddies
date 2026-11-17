@@ -33,9 +33,9 @@ import { psqlMetInvoer, stackBeschikbaarOfFaal } from './psql-stack';
  *    5. De lidmaatschapstoets uit `maak_teamdoel()` → alleen "laat alleen een
  *       teamlid een teamdoel maken" rood.
  *    6. `created_by` in de kolomgrant → alleen "geeft de aanmaker niet prijs" rood.
- *    7. De CHECK `groups_team_beschermd_tot_qs8_661` weg → rood op "kan tot
- *       QS8-661 niet in een open teamgroep staan" hier, en op "(a) beheert het
- *       team" in `tests/rls/teamgroepen.test.ts`; verder niets.
+ *    7. (De tijdelijke CHECK `groups_team_beschermd_tot_qs8_661` en zijn toets
+ *       zijn met QS8-661 weer weg; wat hem verving staat in
+ *       `tests/rls/aandeel-dicht.test.ts`.)
  *
  *    De lock in `neem_aandeel()` (review L1) is niet met een mutatie getoetst:
  *    een race tussen twee sessies is met deze opstelling niet betrouwbaar na te
@@ -200,16 +200,6 @@ describe.runIf(rlsTestsConfigured)('teamdoelen en aandelen (QS8-654)', () => {
   }
 
   describe('een teamdoel', () => {
-    it('kan tot QS8-661 niet in een open teamgroep staan (securityreview H1)', async () => {
-      const { data } = await adminDb().from('team_goals' as never).select('organization_id').eq('id' as never, teamdoel as never).single();
-      const org = (data as unknown as { organization_id: string }).organization_id;
-      expect(
-        uitkomst(
-          await rpc(anna, 'maak_teamgroep', { p_organization_id: org, p_naam: 'Open team', p_zichtbaarheid: 'open' }),
-        ),
-      ).toBe('fout 23514');
-    }, TEST_TIMEOUT);
-
     it('laat alleen een teamlid een teamdoel maken', async () => {
       const args = { p_titel: 'Nog een', p_streefdatum: streefdatum(30) };
       expect(uitkomst(await rpc(cleo, 'maak_teamdoel', { ...args, p_group_id: team }))).toBe('ok');
