@@ -75,6 +75,8 @@ die er niet zijn, is een toets die je uitzet.
 
 ## 5. Wat grendel 3 niet dekt — opgeschreven in plaats van overschreeuwd
 
+⚠️ **Gesloten in §8 (QS8-646), en in §9 (QS8-681) is de sluiting zelf getoetst.** Wat hieronder staat is de stand van 05-10-2026 en blijft staan als meting.
+
 `git status --porcelain` ziet geen pad dat `.gitignore` uitsluit. Een script dat
 bij import in `dist/` of `node_modules/` schrijft, komt er dus niet uit. De twee
 historische gevallen (`sync-edge-shared.mjs` kopieerde 19 bestanden,
@@ -156,3 +158,48 @@ geweigerd maar wordt als worp gemeld, en een script dat zijn eigen worp
 **opvangt** en doorgaat schreef ook niets. **Voorwaarde waaronder dit terugkomt:**
 een script dat bij import legitiem buiten de wegwerpmap moet schrijven; dan hoort
 dat pad in `--allow-fs-write` mét reden, en niet het model uit.
+
+## 9. Achteraf: de sonde toetste niet de grens maar het model (QS8-681)
+
+⚠️ **De sonde van §8 schreef alleen naar `tmpdir()`.** Dat bewijst dat het
+permissiemodel aan staat, niet dat `--allow-fs-write` smal is. 📏 Gemeten op
+17-11-2026, stand ervóór 5/5 groen: met een extra `--allow-fs-write=<repo>` bleef
+de toets **groen** terwijl een schrijfactie naar `node_modules/` of
+`dist/` weer door kon, precies het gat van QS8-638. Een verbreding naar `*`, `/` of
+`tmpdir()` werd al wel rood; de verbreding naar de repo niet. Gevonden door de
+`code-critic`-ronde op PR #668.
+
+**Gesloten met een tweede sondepad.** De sonde probeert nu twee paden:
+`tmpdir()` en `node_modules/.hoofdwacht-sonde-<pid>` in de repo (een
+`.gitignore`-pad). Het permissiemodel weigert vóór het bestandssysteem kijkt, dus
+het pad hoeft niet te bestaan. Wordt de grens verbreed, dan meldt de sonde
+`PERMISSIEMODEL UIT: <pad>` en wordt grendel 1 rood. 📏 IJking, één per keer,
+steeds teruggezet (`diff -q`):
+
+| mutatie | uitslag |
+| -- | -- |
+| `--allow-fs-write=<repo>` erbij | rood, grendel 1, meldt het `node_modules`-pad |
+| `--allow-fs-write=<repo>/node_modules` erbij | rood, idem |
+| `--allow-fs-write=<tmpdir>` erbij | rood, meldt het `tmpdir`-pad |
+| `--allow-fs-write=*` | rood, meldt beide paden |
+| alle drie de permissievlaggen weg | rood, meldt beide paden |
+| **stand ervóór:** sonde alleen `tmpdir()`, `--allow-fs-write=<repo>` erbij | **6/6 groen** — dit is het gat |
+| `has('--permission')` vervangen door een vlag die niet bestaat | rood op de Node-toets, met de melding |
+
+**Node-ondergrens: 22.13.** `--permission` is de stabiele naam sinds 22.13;
+daarvoor heette de vlag `--experimental-permission`. `package.json` zegt
+`>=22`. Dat is niet aangepast (een wijziging in `engines` raakt `package.json` en
+`package-lock.json`, en dus een eigen besluit); in plaats daarvan staat er een
+eerste toets die `process.allowedNodeEnvironmentFlags` leest en luid zegt
+*"gebruik 22.13 of nieuwer"*. Dat 22.0 t/m 22.12 de vlag niet kent is
+**niet gemeten** (alleen 22.23.4 beschikbaar); de bewering komt uit de Node-documentatie.
+
+⚠️ **Wat dit nog steeds niet dekt:** een **symlink** in de wegwerpmap die naar
+buiten wijst. 📏 Gemeten: `--allow-fs-write=<tuin>` met `<tuin>/link` naar een
+map buiten de tuin weigert een direct pad (`ERR_ACCESS_DENIED`) en laat
+`<tuin>/link/bestand` door. Node volgt symlinks onder het model niet. Het kind
+maakt zelf geen symlink aan en geen enkel script doet dat bij import; een script
+dat dat wel zou doen, schrijft dus buiten de tuin zonder dat een toets het ziet.
+**Voorwaarde waaronder dit terugkomt:** een script dat bij import `symlinkSync`
+aanroept. Ongemeten: macOS (waar `tmpdir()` zelf achter een symlink staat,
+`/var` naar `/private/var`) en Windows.
