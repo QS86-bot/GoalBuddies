@@ -114,6 +114,10 @@ const GEEN_CLIENTLEZER: Readonly<Record<string, string>> = {
     'De limiettabel achter het oningelogde uitnodigingseindpunt (0131). Hij ' +
     'bestaat juist om een niet-ingelogde bezoeker te remmen, dus leesrecht voor ' +
     'wie dan ook zou de rem meetbaar maken voor wie hem wil omzeilen.',
+  organization_role_events:
+    'Het spoor van rolwijzigingen in een organisatie (0300, QS8-695). Bewust zonder ' +
+    'leesoppervlak: besluit 6 zegt dat een beheerder niet meer ziet dan een lid, en ' +
+    'de huidige rol staat al in `organisatieleden()`. Alleen de twee rol-RPC\'s schrijven.',
 };
 
 const beschikbaar = stackBeschikbaarOfFaal(
