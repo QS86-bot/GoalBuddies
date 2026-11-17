@@ -1,3 +1,5 @@
+import { readFileSync } from 'node:fs';
+
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { bevindingen, draai, isFout } from '../../scripts/realtime-identiteit-controle.mjs';
@@ -161,4 +163,20 @@ describe('draai: de exitcode zonder netwerk', () => {
     await expect(draai({ ...leeg, streng: true }, haalOp)).resolves.toBe(1);
     expect(haalOp).not.toHaveBeenCalled();
   });
+});
+
+describe('geen process.exit() in de controles die netwerk gebruiken (QS8-684)', () => {
+  // ⚠️ De exitcode-tests hierboven blijven groen als iemand in de entry weer
+  //    `process.exit(await draai(...))` zet — en dat is precies de vorm die op
+  //    Windows crasht. Dit toetst de bron. Commentaar telt niet mee.
+  it.each(['realtime-identiteit-controle', 'wachtwoord-controle'])(
+    '%s sluit het proces niet af',
+    (naam) => {
+      const bron = readFileSync(`scripts/${naam}.mjs`, 'utf8')
+        .replace(/\/\*[\s\S]*?\*\//g, '')
+        .replace(/^\s*\/\/.*$/gm, '');
+      expect(bron).not.toMatch(/process\.exit\(/);
+      expect(bron).toMatch(/process\.exitCode\s*=/);
+    },
+  );
 });
