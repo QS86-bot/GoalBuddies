@@ -12,13 +12,20 @@ import { psql, stackBeschikbaarOfFaal } from './psql-stack';
  *    `wis_bewijsfotos_van_vertrekker()` (0230) deed er precies één, midden in de
  *    cascade. De hele transactie rolde terug en het account bleef bestaan.
  *
- * ⚠️ **De lokale stack heeft die trigger niet.** Daarom bouwt elke test hem
- *    hieronder na (binnen een transactie die terugrolt), met dezelfde regel als
- *    Supabase: weigeren tenzij `storage.allow_delete_query` op `'true'` staat.
- *    Zonder deze nabootsing slaagt de oude functie lokaal, en dan toetst de test
- *    niets van wat misging. Dat die nabootsing klopt met de échte trigger is
- *    niet gemeten (`storage.protect_delete` is hier niet te lezen); het enige dat
- *    uit de issuetekst volgt is de melding en de instelling.
+ * ⚠️ **De grendel komt sinds QS8-694 uit de shim, niet uit deze test.**
+ *    `supabase/shim/0000_supabase_shim.sql` draagt `storage.protect_delete()`
+ *    en `protect_objects_delete` woordelijk zoals op productie (📏 gelezen met
+ *    `pg_get_functiondef()` en `pg_get_triggerdef()` op 17-11-2026). Hier
+ *    stond een nabootsing per rij; de echte is **per statement**, en gaat dus
+ *    ook af als de `delete` niets raakt. Daarom faalde op productie ook een
+ *    gebruiker zónder bewijsfoto, en die toets staat nu hieronder.
+ *
+ * ⚠️ **`set local storage.allow_delete_query = 'false'`** in elke transactie.
+ *    De beheerverbinding van de tests zet die instelling aan
+ *    (`PSQL_OMGEVING` in `tests/rls/psql-stack.ts`), zoals het dashboard en de
+ *    Storage-API. Een verwijdering vanuit de app heeft hem niet, en die weg
+ *    toetst deze test. De weg via PostgREST zelf staat in
+ *    `tests/rls/accountverwijdering-langs-de-storagegrendel.test.ts`.
  */
 
 const beschikbaar = stackBeschikbaarOfFaal(
@@ -26,22 +33,12 @@ const beschikbaar = stackBeschikbaarOfFaal(
   import.meta.url,
 );
 
-const SUPABASE_GRENDEL = `
-  create function pg_temp.protect_delete() returns trigger language plpgsql as $f$
-  begin
-    if coalesce(current_setting('storage.allow_delete_query', true), '') <> 'true' then
-      raise exception 'Direct deletion from storage tables is not allowed. Use the Storage API instead.'
-        using errcode = '42501';
-    end if;
-    return old;
-  end $f$;
-  create trigger protect_objects_delete before delete on storage.objects
-    for each row execute function pg_temp.protect_delete();
-`;
+/** Zoals een verwijdering vanuit de app: zonder de vrijstelling van de Storage-API. */
+const ALS_DE_APP = `set local storage.allow_delete_query = 'false';`;
 
 /** Een gebruiker met één bewijsfoto in de emmer; `v` houdt uid en pad vast. */
 const OPZET = `
-  ${SUPABASE_GRENDEL}
+  ${ALS_DE_APP}
   create temp table v (uid uuid, pad text);
   insert into v (uid) values (shim_maak_gebruiker('bewijs-weg@proef.test', 'Weg'));
   update v set pad = gen_random_uuid() || '/' || uid || '/foto.jpg';
@@ -65,6 +62,26 @@ describe.skipIf(!beschikbaar)('QS8-692 — een account met een bewijsfoto is te 
       select count(*) from auth.users where email = 'bewijs-weg@proef.test';
     `);
     expect(uit).toBe('0');
+  });
+
+  it('slaagt ook zonder bewijsfoto, want de grendel van Supabase is per statement', () => {
+    // 📏 Productie had op 17-11 nul bewijsfoto's, en toch faalde 1.050 van de
+    //    1.050 verwijderingen: `delete from storage.objects` zonder treffer gaat
+    //    langs dezelfde statement-trigger.
+    const uit = psql(`begin; ${ALS_DE_APP}
+      create temp table k (uid uuid);
+      insert into k values (shim_maak_gebruiker('kaal-weg@proef.test', 'Kaal'));
+      delete from auth.users where id = (select uid from k);
+      select count(*) from auth.users where email = 'kaal-weg@proef.test';
+      rollback;`)
+      .split('\n').map((r) => r.trim())
+      .filter((r) => r !== '' && r !== 'BEGIN' && r !== 'ROLLBACK' && r !== 'SET');
+    expect(uit.at(-1)).toBe('0');
+  });
+
+  it('heeft de grendel van Supabase uit de shim, per statement', () => {
+    // De toetsen hierboven bewijzen niets als de grendel er niet staat.
+    expect(psql(`select (tgtype & 1) = 0 from pg_trigger where tgname = 'protect_objects_delete'`)).toBe('t');
   });
 
   it('laat de blob staan, want alleen de Storage-API haalt blob én rij weg', () => {
