@@ -661,6 +661,12 @@ const LEESREGISTER = new Map([
       'tijdzone van de groep en niets anders. Staat in `chain_links_select`, dus `authenticated` móet hem kunnen ' +
       'aanroepen.',
   ],
+  [
+    'maak_teamdoel',
+    'Leest `groups.organization_id` van de opgegeven groep, en geeft dat niet terug: geen lid, geen teamgroep en ' +
+      'een onbekend id krijgen alle drie `niet_toegestaan` (poort `is_group_member()`). Telt verder alleen de eigen ' +
+      'teamdoelen van vandaag (`created_by = auth.uid()`). Gemeten in `tests/rls/teamdoelen.test.ts` (QS8-654).',
+  ],
 ]);
 
 /**
