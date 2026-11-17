@@ -185,6 +185,8 @@ steeds teruggezet (`diff -q`):
 | alle drie de permissievlaggen weg | rood, meldt beide paden |
 | **stand ervóór:** sonde alleen `tmpdir()`, `--allow-fs-write=<repo>` erbij | **6/6 groen** — dit is het gat |
 | `has('--permission')` vervangen door een vlag die niet bestaat | rood op de Node-toets, met de melding |
+| **zelfde ijking opnieuw door een bouwsessie, 17-11-2026,** stand ervóór 6/6 groen, elke mutatie met `diff -q` teruggezet | dezelfde uitslagen, en bij elke rij viel precies één toets om: de zes bovenstaande uitkomsten staan, de verbreding van `tmpdir()` noemt het `tmpdir`-pad en die van `*` of de drie vlaggen weg beide paden |
+| bij een niet-bestaande `node_modules`: schone grens, en een verbrede grens | schoon geeft `ERR_ACCESS_DENIED` (groen); verbreed geeft `ENOENT` en dus `SONDE: ENOENT` (rood, niet stil) — gemeten met een kale `node --permission` in een wegwerpmap |
 
 **Node-ondergrens: 22.13.** `--permission` is de stabiele naam sinds 22.13;
 daarvoor heette de vlag `--experimental-permission`. `package.json` zegt
