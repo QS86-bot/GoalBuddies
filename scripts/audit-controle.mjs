@@ -307,19 +307,6 @@ export const NAGEKEKEN = {
       '`node_modules/zod` (4.6.7) hem wel draagt en de bundel zijn eigen 4.x-melding heeft. ' +
       'De rij valt weg zodra `@expo/cli` een zod ≥4.6.6 meeneemt; de controle meldt het zelf.',
   },
-  deepmerge: {
-    ernst: 'low',
-    advisories: [1243505],
-    reparatie: 'gratis',
-    in_bundel: false,
-    marker: 'first argument should be an array',
-    reden:
-      'Nieuw op 05-11-2026 (QS8-669): prototype poisoning via `mergeObject()` (`>=4.2.0 <=4.3.1`). ' +
-      '📏 `npm ls` zet hem onder `expo > @expo/config > deepmerge@4.3.1` — het inlezen van ' +
-      'app-config, bouw-tooling. Verse bouw: **nul** treffers op de foutmelding uit ' +
-      '`deepmerge/dist/cjs.js`, met `supabase` als positieve controlegrep. Niets in ' +
-      '`src/`, `app/` of `supabase/functions/` importeert hem.',
-  },
   glob: {
     ernst: 'moderate',
     advisories: [1244013],
