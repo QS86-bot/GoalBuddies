@@ -45,7 +45,9 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
  *       de vraag vooraf is een besparing, de index is de rem.
  *    7. (QS8-691) `push_tokens!inner(user_id)` vervangen door
  *       `push_tokens(user_id)`, en apart de embed helemaal weggehaald → allebei
- *       alleen "slaat een profiel zonder token over…" rood.
+ *       twee tests rood: "slaat een profiel zonder token over…" en "leest de
+ *       tokens vers: een token dat na de pagina verhuisd is, krijgt niets"
+ *       (nagemeten bij de review van de batch, 17-11-2026).
  *    8. (QS8-691) In `bladerOpSleutel()` weer op offset gebladerd → alleen
  *       "slaat niemand over als tokens tíjdens de run verdwijnen" rood.
  */

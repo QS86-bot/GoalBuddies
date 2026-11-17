@@ -27,7 +27,7 @@ op.
 
 **`push_tokens!inner(user_id)` in de select van `profiles`, als filter.** PostgREST
 geeft dan alleen profielen terug met minstens één token. De embed is één-op-veel, dus
-een gebruiker met zes tokens blijft één rij, en `order('id')` en `range()` werken op
+een gebruiker met zes tokens blijft één rij, en `order('id')` en `limit()` met `gt('id', laatste)` werken op
 de profielen (onwrikbare regel 10). Er is geen migratie voor nodig.
 
 **De tokens zelf komen niet uit de embed.** `apparatenVan()` leest ze per profiel
@@ -86,8 +86,13 @@ nagemaakte `profiles` past `!inner` toe zoals PostgREST dat doet:
 * Een token dat na de pagina verhuist, krijgt niets, en telt als `zonderToken`.
 * Tokens die tíjdens de run verdwijnen (1.000 profielen, vijf pagina's): elk profiel
   met een token komt toch langs.
-* Met de hand gebroken: `!inner` weggehaald, apart de hele embed weggehaald, en
-  apart terug naar bladeren op offset. Elke keer werd alleen de bedoelde toets rood.
+* Met de hand gebroken, en bij de review van de batch nagemeten (17-11-2026):
+  `!inner` vervangen door een gewone embed maakt **twee** tests rood: "slaat een
+  profiel zonder token over…" én "leest de tokens vers: een token dat na de pagina
+  verhuisd is, krijgt niets" (die telt het profiel dan als `zonderToken`). De hele
+  embed weghalen gaf bij de reviewer eveneens twee rood en terug naar bladeren op
+  offset één: "slaat niemand over als tokens tíjdens de run verdwijnen". De
+  eerdere regel "elke keer alleen de bedoelde toets" klopte dus niet.
 
 ## Aannames — niet gemeten
 
