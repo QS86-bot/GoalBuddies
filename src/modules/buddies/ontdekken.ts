@@ -4,7 +4,7 @@ import { type Pagina, type Resultaat, type RpcRij } from '../../shared/api';
 import { t } from '../../shared/i18n';
 import { schoneVrijeTekst } from '../../shared/tekst';
 
-import { leesVoertaal, type Voertaal } from './schemas';
+import { huddledagLabel, leesVoertaal, voertaalLabels, type Voertaal } from './schemas';
 
 /**
  * Groepen ontdekken en lidmaatschap aanvragen — QS8-231, migratie 0144.
@@ -74,6 +74,43 @@ function naarGroep(rij: RpcGroep): OntdekteGroep | null {
  * @param categorie één van de twaalf gebieden, of `null` voor alle
  * @param taal de voertaal, of `null` voor alle
  */
+/**
+ * De velden die `GroepsKaart` in `src/shared/ui` toont.
+ *
+ * ⚠️ Een eigen interface en geen import van `GroepsKaartGegevens`: de datalaag
+ *    importeert niets uit `shared/ui`, ook geen type (QS8-207). Lopen de twee
+ *    uiteen, dan weigert `tsc` op de plek waar een scherm deze aan de kaart
+ *    geeft.
+ */
+export interface GroepsKaartVelden {
+  readonly naam: string;
+  readonly categorie: string;
+  readonly categorieLabel: string;
+  readonly omschrijving: string | null;
+  readonly leden: number;
+  readonly huddledag: string;
+  readonly voertaal: string | null;
+}
+
+/**
+ * Een vindbare groep als de velden die `GroepsKaart` toont.
+ *
+ * ⚠️ Eén vertaling voor beide schermen die hem tonen (`app/groep/ontdek.tsx` en
+ *    het buddyzoekblok in `app/doel/samen.tsx`, QS8-643). Het categorielabel
+ *    komt van de aanroeper: dat staat in de module `goals`.
+ */
+export function groepsKaartVan(groep: OntdekteGroep, categorieLabel: string): GroepsKaartVelden {
+  return {
+    naam: groep.naam,
+    categorie: groep.categorie,
+    categorieLabel,
+    omschrijving: groep.omschrijving,
+    leden: groep.leden,
+    huddledag: huddledagLabel(groep.huddleDag),
+    voertaal: groep.voertaal === null ? null : voertaalLabels()[groep.voertaal] ?? groep.voertaal,
+  };
+}
+
 export async function fetchOntdekteGroepen(
   categorie: string | null,
   taal: string | null,
