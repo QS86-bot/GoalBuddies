@@ -89,7 +89,8 @@ criterium 4, 5, 10 en 12 zelf nagemeten. Verwerkt, elk eerst zelf nagelopen:
   of de helper raakt geregistreerd is, scant views en `BEGIN ATOMIC`-functies,
   en heeft voor elk een ijking.
 
-Weggezet in `docs/ENGINEER-REVIEW.md`, elk met de voorwaarde waaronder het
+Weggezet als ER-rij in de afleverregel op QS8-652 (de batchsessie vouwt ze in
+`docs/ENGINEER-REVIEW.md`, `docs/PROMPT-SESSIE.md` §12b), elk met de voorwaarde waaronder het
 zwaarder wordt: L6 (geen plafond per organisatie), L7 (de laatste beheerder
 via accountverwijdering, QS8-659), en de tellers per account in plaats van per
 mens, samen met de vraag of `db-tx-end` op Supabase op `commit` staat.
