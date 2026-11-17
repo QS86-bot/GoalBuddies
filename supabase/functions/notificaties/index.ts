@@ -310,6 +310,9 @@ async function draaiNotificaties(auth: string): Promise<Response> {
       onderdrukt,
       overgeslagen,
       zonderToken,
+      // ⚠️ **Sinds QS8-691 de profielen met minstens één token, niet alle
+      //    profielen.** 📏 17-11-2026: 16 in plaats van 1.332. Niets leest dit
+      //    veld behalve het runlog (`notificaties.yml` toetst `ok` en `volledig`).
       profielen: profielenGezien,
       // ⚠️ `notificaties.yml` wordt rood op `false` — QS8-688.
       volledig,
@@ -426,8 +429,25 @@ async function* profielenVanafWillekeurigePlek(
       //    er een gewone `string` van en dan wordt `data` een `GenericStringError[]`.
       //    📏 `npm run edge:types:controle` viel er meteen over (TS2352) — dat is
       //    de enige typecheck die deze map ziet, want `tsconfig.json` sluit hem uit.
+      //
+      // ⚠️⚠️ **`push_tokens!inner(user_id)` is een filter en geen bron** — QS8-691.
+      //    📏 Productie, 17-11-2026: 1.332 profielen, 16 met een token. Een
+      //    profiel zonder token stopt in `meldEenProfiel()` na `apparatenVan()`,
+      //    zonder iets te schrijven; daarvoor betaalde deze lus 1.316 verzoeken
+      //    per run. `!inner` laat PostgREST alleen profielen teruggeven met minstens
+      //    één token (via `push_tokens_user_id_fkey`, de enige foreign key naar
+      //    `profiles`). De embed is één-op-veel, dus een gebruiker met zes tokens
+      //    blijft één rij, en `order` en `range` werken op de profielen.
+      //
+      //    De tokens zelf worden hier **niet** gebruikt. `apparatenVan()` leest
+      //    ze per profiel vers, vlak voor het versturen. Een token kan van account
+      //    wisselen (`registreer_push_token`, 0055), en een pagina kan tientallen
+      //    seconden oud zijn als hij aan de beurt is. Dan gaat een melding naar
+      //    een toestel dat inmiddels van iemand anders is (security-review op
+      //    QS8-688, Laag 4: *wordt zwaarder als er tussen het lezen van de tokens
+      //    en het versturen langer gewacht wordt*).
       // deno-fmt-ignore
-      .select('id, tz, week_start_day, reminder_enabled, reminder_time, reminder_tone, locale, notify_approval_request, notify_approval_received, notify_cycle_summary, notify_commitment_witness, quiet_from, quiet_to');
+      .select('id, tz, week_start_day, reminder_enabled, reminder_time, reminder_tone, locale, notify_approval_request, notify_approval_received, notify_cycle_summary, notify_commitment_witness, quiet_from, quiet_to, push_tokens!inner(user_id)');
     const gefilterd = kant === 'vanaf' ? basis.gte('id', scharnier) : basis.lt('id', scharnier);
     const { data, error } = await gefilterd
       .order('id', { ascending: true })
@@ -475,10 +495,11 @@ async function meldEenProfiel(
   const apparaten = await apparatenVan(db, profiel);
 
   if (apparaten.length === 0) {
-    // Geen apparaat geregistreerd. Vandaag geldt dat voor iedereen, en de
-    // reden is per platform een andere (QS8-366): native heeft geen build
-    // uitgerold, en op web wacht de registratie op een VAPID-sleutelpaar en
-    // op de knop in Profiel — QS8-124.
+    // ⚠️ **Sinds QS8-691 bijna altijd nul.** De lus ziet alleen profielen met
+    //    een token (`push_tokens!inner`), dus hier komt alleen nog wie zijn
+    //    laatste token kwijtraakte tussen het ophalen van de pagina en dit
+    //    moment: uitgelogd, of het token ging naar een ander account. Daarom
+    //    blijft deze controle staan, en blijft `zonderToken` in de uitvoer.
     return 'zonderToken';
   }
 

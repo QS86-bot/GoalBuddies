@@ -43,6 +43,9 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
  *       reden dat de startplek daar vastgezet wordt.
  *    6. `alVerstuurd()` altijd `false` → alles groen, en dat is de bedoeling:
  *       de vraag vooraf is een besparing, de index is de rem.
+ *    7. (QS8-691) `push_tokens!inner(user_id)` vervangen door
+ *       `push_tokens(user_id)`, en apart de embed helemaal weggehaald → allebei
+ *       alleen "slaat een profiel zonder token over…" rood.
  */
 
 type Afhandelaar = (verzoek: Request) => Response | Promise<Response>;
@@ -60,8 +63,15 @@ interface Verzonden {
 /** De stand van de nagemaakte wereld voor één test. */
 const wereld = {
   profielen: [] as string[],
-  /** Profielen met een toestel én één voltooiing die op hun oordeel wacht. */
+  /** Profielen met een toestel (een rij in `push_tokens`). */
+  metToken: new Set<string>(),
+  /** Daarvan: wie één voltooiing heeft die op zijn oordeel wacht. */
   metWerk: new Set<string>(),
+  /**
+   * Wie zijn token kwijtraakt ná het ophalen van zijn pagina en vóór
+   * `apparatenVan()`: het toestel is intussen aan een ander account gekoppeld.
+   */
+  verhuisd: new Set<string>(),
   verzonden: [] as Verzonden[],
   /** Elke push die bij Expo aankwam: het token. */
   pushes: [] as string[],
@@ -92,17 +102,22 @@ const leeg = () => ({ data: [], error: null, count: 0 });
 
 function profielenQuery() {
   let filter: (id: string) => boolean = () => true;
+  // ⚠️ `push_tokens!inner(…)` in de select laat alleen profielen met een token
+  //    door, zoals PostgREST dat doet (QS8-691). Zonder `!inner` komen ze allemaal.
+  let alleenMetToken = false;
   let van = 0;
   let tot = 0;
   const q = {
-    select: () => q,
+    select: (kolommen: string) => { alleenMetToken = /push_tokens!inner\(/.test(kolommen); return q; },
     gte: (_k: string, w: string) => { filter = (id) => id >= w; return q; },
     lt: (_k: string, w: string) => { filter = (id) => id < w; return q; },
     order: () => q,
     range: (a: number, b: number) => { van = a; tot = b; return q; },
     then: async (klaar: (r: unknown) => void) => {
       await werkt(VERZOEK_MS);
-      const data = wereld.profielen.filter(filter).slice(van, tot + 1).map((id) => ({
+      const data = wereld.profielen
+        .filter((id) => !alleenMetToken || wereld.metToken.has(id))
+        .filter(filter).slice(van, tot + 1).map((id) => ({
         id,
         tz: 'Europe/Amsterdam',
         week_start_day: 1,
@@ -136,7 +151,7 @@ function tokensQuery() {
       wereld.hoogste = Math.max(wereld.hoogste, wereld.tegelijk);
       await werkt(VERZOEK_MS);
       wereld.tegelijk -= 1;
-      const data = wereld.metWerk.has(wie)
+      const data = wereld.metToken.has(wie) && !wereld.verhuisd.has(wie)
         ? [{ token: `ExponentPushToken[${wie}]`, platform: 'ios', p256dh: null, auth: null }]
         : [];
       return klaar({ data, error: null });
@@ -246,10 +261,15 @@ function profielen(n: number): string[] {
   }).sort();
 }
 
-/** Zet `n` profielen klaar, van wie elk `elkeMetWerk`-de een melding tegoed heeft. */
-function zetKlaar(n: number, elkeMetWerk: number): void {
+/**
+ * Zet `n` profielen klaar. Elk `elkeMetToken`-de heeft een toestel, en van die
+ * heeft elk `elkeMetWerk`-de een melding tegoed.
+ */
+function zetKlaar(n: number, elkeMetToken: number, elkeMetWerk = 1): void {
   wereld.profielen = profielen(n);
-  wereld.metWerk = new Set(wereld.profielen.filter((_, i) => i % elkeMetWerk === 0));
+  const metToken = wereld.profielen.filter((_, i) => i % elkeMetToken === 0);
+  wereld.metToken = new Set(metToken);
+  wereld.metWerk = new Set(metToken.filter((_, i) => i % elkeMetWerk === 0));
 }
 
 /** Draait `runs` aanroepen van de handler tegelijk en wacht ze allemaal af. */
@@ -275,7 +295,7 @@ beforeEach(() => {
   vi.setSystemTime(new Date('2026-11-17T04:02:00Z'));
   vi.stubGlobal('fetch', expo);
   Object.assign(wereld, {
-    profielen: [], metWerk: new Set(), verzonden: [], pushes: [], gezien: [], tegelijk: 0, hoogste: 0,
+    profielen: [], metToken: new Set(), metWerk: new Set(), verhuisd: new Set(), verzonden: [], pushes: [], gezien: [], tegelijk: 0, hoogste: 0,
   });
 });
 
@@ -287,8 +307,8 @@ afterEach(() => {
 });
 
 describe('de notificatiejob op de naad tussen de profielenlus en de wandklok', () => {
-  it('antwoordt binnen de wandklok, ook bij 20.000 profielen', async () => {
-    zetKlaar(20_000, 10);
+  it('antwoordt binnen de wandklok, ook bij 20.000 profielen met een token', async () => {
+    zetKlaar(20_000, 1, 10);
     const { statussen, bodies, duur } = await draai();
 
     expect(statussen).toEqual([200]);
@@ -298,7 +318,7 @@ describe('de notificatiejob op de naad tussen de profielenlus en de wandklok', (
   });
 
   it('zegt dat hij niet volledig was als het budget op is', async () => {
-    zetKlaar(20_000, 10);
+    zetKlaar(20_000, 1, 10);
     const { bodies } = await draai();
 
     expect(bodies[0]?.volledig).toBe(false);
@@ -306,8 +326,8 @@ describe('de notificatiejob op de naad tussen de profielenlus en de wandklok', (
     expect(bodies[0]?.profielen).toBe(wereld.gezien.length);
   });
 
-  it('ziet elk profiel precies één keer als het budget ruim is', async () => {
-    zetKlaar(450, 3);
+  it('ziet elk profiel met een token precies één keer als het budget ruim is', async () => {
+    zetKlaar(450, 1, 3);
     const { bodies } = await draai();
 
     expect(bodies[0]?.volledig).toBe(true);
@@ -316,7 +336,7 @@ describe('de notificatiejob op de naad tussen de profielenlus en de wandklok', (
   });
 
   it('houdt de gelijktijdigheid begrensd', async () => {
-    zetKlaar(450, 3);
+    zetKlaar(450, 1, 3);
     await draai();
 
     expect(wereld.hoogste).toBe(8);
@@ -325,7 +345,7 @@ describe('de notificatiejob op de naad tussen de profielenlus en de wandklok', (
 
 describe('de rem op dubbel versturen, nu de lus parallel loopt', () => {
   it('verstuurt elke melding één keer, ook als twee runs tegelijk over dezelfde profielen lopen', async () => {
-    zetKlaar(300, 3);
+    zetKlaar(300, 1, 3);
     // ⚠️ **Dezelfde startplek voor allebei**, zodat ze in de pas lopen en op
     //    hetzelfde moment bij hetzelfde profiel zijn. Dat is het geval waar
     //    `alVerstuurd()` niets tegen kan — beide vragen zien nog geen rij — en
@@ -342,12 +362,47 @@ describe('de rem op dubbel versturen, nu de lus parallel loopt', () => {
   });
 
   it('verstuurt niets opnieuw in de run erna', async () => {
-    zetKlaar(300, 3);
+    zetKlaar(300, 1, 3);
     await draai();
     const naEen = wereld.pushes.length;
     await draai();
 
     expect(naEen).toBe(wereld.metWerk.size);
     expect(wereld.pushes).toHaveLength(naEen);
+  });
+});
+
+describe('alleen profielen met een token komen langs — QS8-691', () => {
+  it('slaat een profiel zonder token over en ziet elk profiel met een token één keer', async () => {
+    // 📏 De verhouding van productie op 17-11-2026: 16 van 1.332.
+    zetKlaar(1_332, 83);
+    const { bodies } = await draai();
+
+    expect(wereld.metToken.size).toBe(17);
+    expect([...wereld.gezien].sort()).toEqual([...wereld.metToken].sort());
+    expect(bodies[0]?.profielen).toBe(wereld.metToken.size);
+    expect(bodies[0]?.zonderToken).toBe(0);
+    expect(bodies[0]?.volledig).toBe(true);
+  });
+
+  it('stuurt nog steeds elke melding die openstaat, en geen tweede', async () => {
+    zetKlaar(1_332, 83);
+    await draai();
+
+    const verwacht = [...wereld.metWerk].map((id) => `ExponentPushToken[${id}]`).sort();
+    expect([...wereld.pushes].sort()).toEqual(verwacht);
+  });
+
+  it('leest de tokens vers: een token dat na de pagina verhuisd is, krijgt niets', async () => {
+    // ⚠️ De reden dat `push_tokens!inner(user_id)` alleen filtert en de tokens
+    //    niet meeneemt (security-review op QS8-688, Laag 4). Een pagina kan
+    //    tientallen seconden oud zijn als hij aan de beurt is.
+    zetKlaar(1_332, 83);
+    const weg = [...wereld.metWerk].slice(0, 5);
+    for (const id of weg) wereld.verhuisd.add(id);
+    const { bodies } = await draai();
+
+    for (const id of weg) expect(wereld.pushes).not.toContain(`ExponentPushToken[${id}]`);
+    expect(bodies[0]?.zonderToken).toBe(weg.length);
   });
 });
