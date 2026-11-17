@@ -3,6 +3,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { genereerVapidSleutelpaar } from './webpush-crypto';
 import {
   abonnementFout,
+  isWeg,
   magWissen,
   MAX_WISSEN_PER_RUN,
   nieuweOpruimlijst,
@@ -379,6 +380,15 @@ describe('de rem na de security-review op het herstel — 17-11-2026', () => {
     expect(opruimbesluit(lijst).onderbroken).toBe(true);
   });
 
+  it('onthoudt een verdwenen abonnement, zodat de run hem niet opnieuw verstuurt of telt', () => {
+    const lijst = nieuweOpruimlijst();
+    expect(isWeg(lijst, DOEL)).toBe(false);
+    noteerUitkomst(lijst, DOEL, { status: 'weg', httpStatus: 410 });
+
+    expect(isWeg(lijst, DOEL)).toBe(true);
+    expect(isWeg(lijst, ANDER)).toBe(false);
+  });
+
   it('weegt rijen en geen uitkomsten', () => {
     const lijst = nieuweOpruimlijst();
     noteerUitkomst(lijst, DOEL, ONGELDIG);
@@ -391,11 +401,24 @@ describe('de rem na de security-review op het herstel — 17-11-2026', () => {
 
   it('laat per run hoogstens MAX_WISSEN_PER_RUN wissingen toe en telt de rest', () => {
     const lijst = nieuweOpruimlijst();
-    const toegestaan = Array.from({ length: MAX_WISSEN_PER_RUN + 2 }, () => magWissen(lijst)).filter(Boolean);
+    const toegestaan = Array.from({ length: MAX_WISSEN_PER_RUN + 2 }, () => magWissen(lijst, 'ongeldig')).filter(Boolean);
+    expect(magWissen(lijst, 'weg')).toBe(false);
 
     expect(MAX_WISSEN_PER_RUN).toBe(3);
     expect(toegestaan).toHaveLength(MAX_WISSEN_PER_RUN);
-    expect(lijst.tegengehouden).toBe(2);
+    expect(lijst.tegengehouden).toEqual({ ongeldig: 2, weg: 1 });
+  });
+
+  it('volgt geen redirect: een 3xx is mislukt en geen verdwenen abonnement', async () => {
+    // ⚠️ Security-review, derde ronde: een gevolgde redirect kon een 404 van een
+    //    ánder adres als `weg` laten binnenkomen, en `weg` wist een rij.
+    const doe = vi.fn(() => Promise.resolve(new Response(null, { status: 302, headers: { Location: 'https://elders.test/x' } })));
+    const uit = await verstuurWebPush({
+      doel: DOEL, bericht: BERICHT, sleutels: await sleutels(), nu: NU, fetchImpl: doe as unknown as typeof fetch,
+    });
+
+    expect(uit.status).toBe('mislukt');
+    expect((doe.mock.calls[0] as unknown as [string, RequestInit])[1].redirect).toBe('manual');
   });
 
   it('zet geen endpoint in de reden als de pushdienst onbereikbaar is', async () => {

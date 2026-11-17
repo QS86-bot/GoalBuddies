@@ -36,6 +36,8 @@ import {
   type Toon,
 } from '../_shared/notificaties/regels.ts';
 import {
+  ALARM_VANAF,
+  isWeg,
   MAX_WISSEN_PER_RUN,
   magWissen,
   nieuweOpruimlijst,
@@ -1607,6 +1609,12 @@ async function stuurWeb(
     }
 
     const doel: WebPushDoel = { endpoint: rij.token, p256dh: rij.p256dh, auth: rij.auth };
+    // ⚠️ Deze run al `weg` (404/410): niet opnieuw versturen, wissen of tellen.
+    //    `apparaten` is één keer per profiel gelezen en geldt voor al zijn
+    //    meldingen; zonder deze regel kostte één verdwenen abonnement een plek
+    //    van het plafond per melding (tweede batch-review op QS8-690).
+    if (isWeg(opruim, doel)) continue;
+
     const uitkomst = await verstuurWebPush({
       doel,
       bericht: { titel: bericht.titel, body: bericht.body, pad: bericht.pad, soort },
@@ -1618,7 +1626,7 @@ async function stuurWeb(
 
     if (uitkomst.status === 'bezorgd') bezorgd += 1;
     else if (uitkomst.status === 'weg') {
-      if (magWissen(opruim)) await verwijderAbonnement(db, doel, 'verdwenen abonnement');
+      if (magWissen(opruim, 'weg')) await verwijderAbonnement(db, doel, 'verdwenen abonnement');
     }
     else if (uitkomst.status === 'mislukt') console.error(`web push mislukte: ${uitkomst.reden}`);
   }
@@ -1652,8 +1660,6 @@ async function verwijderAbonnement(db: Db, doel: WebPushDoel, wat: string): Prom
  * ⚠️ Ook na een afgekapte run (`volledig: false`): het besluit gaat over wat de
  *    run gezien heeft, en de onderbreker telt alleen dat.
  */
-const ALARM_VANAF = 3;
-
 async function ruimOngeldigeOp(db: Db, opruim: Opruimlijst): Promise<void> {
   const { verwijder, onderbroken } = opruimbesluit(opruim);
 
@@ -1661,10 +1667,10 @@ async function ruimOngeldigeOp(db: Db, opruim: Opruimlijst): Promise<void> {
     console.error(
       `alle ${opruim.getoetst.size} getoetste web-abonnementen van deze run waren ongeldig; niets opgeruimd`,
     );
-    // ⚠️ **Pas vanaf drie naar Sentry** (code-critic op het herstel). Een run die
-    //    één of twee web-meldingen verstuurt en toevallig alleen kapotte rijen
-    //    treft, is gezond; een alarm dat daarop afgaat leer je negeren, en dit is
-    //    het enige alarm dat een kapotte toets meldt.
+    // ⚠️ **Pas vanaf `ALARM_VANAF` naar Sentry** (code-critic op het herstel). Een
+    //    run die één of twee web-meldingen verstuurt en toevallig alleen kapotte
+    //    rijen treft, is gezond; een alarm dat daarop afgaat leer je negeren, en
+    //    dit is het enige alarm dat een kapotte toets meldt.
     if (opruim.getoetst.size >= ALARM_VANAF) {
       await meld(new Error('elk web-abonnement ongeldig'), 'notificaties.opruimen', {
         code: 'webpush_alles_ongeldig',
@@ -1674,16 +1680,35 @@ async function ruimOngeldigeOp(db: Db, opruim: Opruimlijst): Promise<void> {
   }
 
   for (const { doel, reden } of verwijder) {
-    if (!magWissen(opruim)) continue;
+    if (!magWissen(opruim, 'ongeldig')) continue;
     console.error(`ongeldig abonnement opgeruimd: ${reden}`);
     await verwijderAbonnement(db, doel, 'ongeldig abonnement');
   }
 
-  if (opruim.tegengehouden > 0) {
-    console.error(`${opruim.tegengehouden} web-abonnement(en) niet gewist: plafond van ${MAX_WISSEN_PER_RUN} per run`);
-    await meld(new Error('wisplafond bereikt'), 'notificaties.opruimen', {
-      code: 'webpush_wisplafond',
-      count: opruim.tegengehouden,
+  await meldPlafond(opruim);
+}
+
+/**
+ * Meldt wat het plafond tegenhield, met een eigen code per bron.
+ *
+ * ⚠️ **Twee codes en niet één** (tweede batch-review). Het plafond is bij een
+ *    gedeeltelijk kapotte toets de énige rem, en dan is dit alarm het enige
+ *    signaal. Normaal verloop (`weg`) mag dat signaal niet overstemmen: bij veel
+ *    gebruikers gaat `webpush_wisplafond_weg` vaker af, en
+ *    `webpush_wisplafond_ongeldig` is dan nog steeds te onderscheiden.
+ */
+async function meldPlafond(opruim: Opruimlijst): Promise<void> {
+  for (const bron of ['weg', 'ongeldig'] as const) {
+    const aantal = opruim.tegengehouden[bron];
+    if (aantal === 0) continue;
+    console.error(`${aantal} web-abonnement(en) (${bron}) niet gewist: plafond van ${MAX_WISSEN_PER_RUN} per run`);
+    // ⚠️ **Een eigen foutmelding per bron, en niet alleen een eigen `code`.**
+    //    Sentry groepeert op de melding; de `code` gaat in `extra` en maakt geen
+    //    eigen issue (security-review, derde ronde). Met één melding landde een
+    //    `_ongeldig` in het issue dat `_weg` al lang als routine had laten zien.
+    await meld(new Error(`wisplafond bereikt (${bron})`), 'notificaties.opruimen', {
+      code: `webpush_wisplafond_${bron}`,
+      count: aantal,
     });
   }
 }

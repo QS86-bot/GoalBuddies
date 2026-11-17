@@ -233,9 +233,10 @@ export function ligtOpP256(punt: Uint8Array): boolean {
  *    private key`.
  *
  *    Alleen een fout die **uitsluitend van de rij afhangt** mag de rij kosten.
- *    Dat zijn er hier vijf en niet meer: de lengte en het eerste octet van
+ *    Dat zijn er hier zes en niet meer: de lengte en het eerste octet van
  *    `p256dh`, of het punt op de curve ligt (`ligtOpP256()`), de lengte van
- *    `auth`, en de twee excepties uit `FOUTEN_VAN_DE_RIJ`. Elke andere worp is
+ *    `auth`, en de twee excepties uit `FOUTEN_VAN_DE_RIJ` (waarvan `DataError`
+ *    in Deno nooit komt — zie daar). Elke andere worp is
  *    `mislukt` en de rij blijft staan.
  *
  * ⚠️ `importKey()` blijft staan als tweede slot, niet als de toets: in Node
@@ -284,7 +285,7 @@ async function maakPakket(invoer: {
   try {
     body = await versleutelPayload(invoer.doel, payload);
   } catch (fout) {
-    return { reden: `versleutelen mislukte: ${fout instanceof Error ? fout.message : String(fout)}` };
+    return { reden: `versleutelen mislukte: ${foutTekst(fout)}` };
   }
 
   try {
@@ -297,7 +298,7 @@ async function maakPakket(invoer: {
     });
     return { body, vapid };
   } catch (fout) {
-    return { reden: `VAPID-sleutel onbruikbaar: ${fout instanceof Error ? fout.message : String(fout)}` };
+    return { reden: `VAPID-sleutel onbruikbaar: ${foutTekst(fout)}` };
   }
 }
 
@@ -354,6 +355,12 @@ export async function verstuurWebPush(invoer: {
       body: body as BodyInit,
       // CLAUDE.md coderegel 14: elke externe call heeft een timeout.
       signal: AbortSignal.timeout(15_000),
+      // ⚠️ **Geen redirect volgen** (security-review, derde ronde op QS8-690).
+      //    `weg` wist een rij, en dat oordeel hoort van de pushdienst zelf te
+      //    komen. Volgt `fetch` een 3xx, dan kan een 404 van een ánder adres als
+      //    `weg` binnenkomen — en omzeilt de redirect de allowlist hierboven. Een
+      //    3xx is daarom `mislukt` (`uitkomstVan()`), en de rij blijft.
+      redirect: 'manual',
     });
 
     return uitkomstVan(antwoord.status);
@@ -379,10 +386,23 @@ export async function verstuurWebPush(invoer: {
  *    zijn web-meldingen in één run kwijt.
  *
  *    Drie per run, gedeeld door `weg` en `ongeldig`: de 9 kapotte rijen van
- *    17-11-2026 zijn zo in drie runs weg, en een fout kost per uur hoogstens drie
- *    rijen en een melding in Sentry. Wat boven het plafond valt, blijft staan.
+ *    17-11-2026 zijn zo in drie runs weg, en een fout kost per **run** hoogstens
+ *    drie rijen en een melding in Sentry. Per run en niet per uur: een
+ *    `workflow_dispatch` is een run en telt opnieuw. Wat boven het plafond valt,
+ *    blijft staan.
+ *
+ * ⚠️⚠️ **Per rij en niet per melding** (tweede batch-review, 17-11-2026). Eén
+ *    profiel krijgt in een run soms drie meldingen, en `apparaten` wordt één
+ *    keer per profiel gelezen. 📏 Telde `weg` per melding, dan kostte één
+ *    verdwenen abonnement drie plekken van het plafond, bleef een echt ongeldige
+ *    rij staan, en ging `webpush_wisplafond` als routineruis naar Sentry. Daarom
+ *    `noteerUitkomst()` en `isWeg()`: een rij die deze run al weg is, wordt niet
+ *    opnieuw verstuurd, niet opnieuw gewist en niet opnieuw geteld.
  */
 export const MAX_WISSEN_PER_RUN = 3;
+
+/** Waarom een rij gewist zou worden: de pushdienst zei 404/410, of de rij zelf deugt niet. */
+export type Wisbron = 'weg' | 'ongeldig';
 
 /**
  * Wat één run van de notificatiejob over het opruimen van abonnementen weet.
@@ -412,23 +432,44 @@ export interface Opruimlijst {
   readonly getoetst: Set<string>;
   /** De ongeldige abonnementen, één keer elk, met de reden. */
   readonly kandidaten: Map<string, { readonly doel: WebPushDoel; readonly reden: string }>;
+  /** De abonnementen die de pushdienst deze run `weg` noemde, één keer elk. */
+  readonly weg: Set<string>;
   /** Hoeveel rijen er deze run al gewist zijn, `weg` en `ongeldig` samen. */
   gewist: number;
-  /** Hoeveel wissingen het plafond tegenhield. */
-  tegengehouden: number;
+  /** Hoeveel rijen het plafond tegenhield, per bron — elk een eigen alarm. */
+  readonly tegengehouden: Record<Wisbron, number>;
 }
 
 export function nieuweOpruimlijst(): Opruimlijst {
-  return { getoetst: new Set(), kandidaten: new Map(), gewist: 0, tegengehouden: 0 };
+  return {
+    getoetst: new Set(),
+    kandidaten: new Map(),
+    weg: new Set(),
+    gewist: 0,
+    tegengehouden: { weg: 0, ongeldig: 0 },
+  };
 }
 
+/**
+ * Vanaf hoeveel getoetste abonnementen een gesprongen onderbreker naar Sentry
+ * gaat. Daaronder alleen een logregel: een run die één of twee web-meldingen
+ * verstuurt en toevallig alleen kapotte rijen treft, is gezond.
+ */
+export const ALARM_VANAF = 3;
+
 const sleutelVan = (doel: WebPushDoel): string => JSON.stringify([doel.endpoint, doel.p256dh, doel.auth]);
+
+/** Of de pushdienst dit abonnement deze run al `weg` noemde. Zie de kop van `MAX_WISSEN_PER_RUN`. */
+export function isWeg(lijst: Opruimlijst, doel: WebPushDoel): boolean {
+  return lijst.weg.has(sleutelVan(doel));
+}
 
 /** Noteert één uitkomst. Een `ongeldig` abonnement wordt kandidaat, niet verwijderd. */
 export function noteerUitkomst(lijst: Opruimlijst, doel: WebPushDoel, uitkomst: WebPushUitkomst): void {
   if (uitkomst.status === 'mislukt' && uitkomst.ongetoetst === true) return;
   lijst.getoetst.add(sleutelVan(doel));
   if (uitkomst.status === 'ongeldig') lijst.kandidaten.set(sleutelVan(doel), { doel, reden: uitkomst.reden });
+  if (uitkomst.status === 'weg') lijst.weg.add(sleutelVan(doel));
 }
 
 /**
@@ -437,9 +478,9 @@ export function noteerUitkomst(lijst: Opruimlijst, doel: WebPushDoel, uitkomst: 
  * ⚠️ Eén functie voor de vraag én de telling, zodat er tussen die twee geen
  *    `await` kan staan: acht profielen lopen tegelijk.
  */
-export function magWissen(lijst: Opruimlijst): boolean {
+export function magWissen(lijst: Opruimlijst, bron: Wisbron): boolean {
   if (lijst.gewist >= MAX_WISSEN_PER_RUN) {
-    lijst.tegengehouden += 1;
+    lijst.tegengehouden[bron] += 1;
     return false;
   }
   lijst.gewist += 1;

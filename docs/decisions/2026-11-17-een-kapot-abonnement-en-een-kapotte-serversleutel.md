@@ -37,7 +37,8 @@ bij staan verklaart waarom de andere zes niet op de sleutel strandden.
 ## Besluit
 
 1. `abonnementFout()` toetst het abonnement los van onze sleutels (65 octetten, `0x04`, een
-   punt dat WebCrypto als P-256 importeert, `auth` van 16 octetten). Faalt dat, dan
+   punt op P-256, `auth` van 16 octetten). *(De eerste versie liet het punt aan
+   `importKey()` over; in Deno toetst die het niet — zie besluit 4.)* Faalt dat, dan
    is de uitkomst `ongeldig` en gaat de rij uit `push_tokens`: de rij is de oorzaak en
    elke volgende ronde faalt hetzelfde. *(Verscherpt na de batch-review: zie besluit 4
    tot en met 6 hieronder.)*
@@ -73,10 +74,15 @@ code-critic toonde aan dat `abonnementFout()` **elke** exceptie ving als
 die besluit 1 hierboven uitsloot ("de rij is de oorzaak"), en het betekende dat één
 WebCrypto-regressie in één ronde elk web-abonnement wist.
 
-**4. `ongeldig` alleen bij vier oordelen die van de rij komen.** De lengte en het
-eerste octet van `p256dh`, de lengte van `auth`, en een `DOMException` met naam
-`DataError` (`importKey`: geen punt op de curve) of `InvalidCharacterError`
-(`atob`: geen base64). Elke andere worp is `mislukt` en de rij blijft.
+**4. `ongeldig` alleen bij oordelen die van de rij komen — zes, en die tellen
+overal hetzelfde.** (1) de lengte van `p256dh`, (2) zijn eerste octet, (3) of het
+punt op P-256 ligt (`ligtOpP256()`, zie hieronder), (4) de lengte van `auth`, en
+een `DOMException` met naam (5) `InvalidCharacterError` (`atob`: geen base64) of
+(6) `DataError` (`importKey`). Elke andere worp is `mislukt` en de rij blijft.
+
+⚠️ **(6) is in Deno dood.** 📏 Deno 2.9.6 geeft geen `DataError` op een punt buiten
+de curve (zie hieronder); in Node wel. Hij blijft staan als tweede slot achter (3),
+en de tests draaien in Node. Hij bepaalt in productie niets.
 
 ⚠️⚠️ **En het punt op de curve rekent de code zelf** (`ligtOpP256()`,
 `y² ≡ x³ − 3x + b mod p`). 📏 Gemeten in Deno 2.9.6 (`node_modules/.bin/deno`):
@@ -125,7 +131,8 @@ heeft — 📏 16 tokens van 9 gebruikers, dus de meesten — altijd waar, en da
 kapotte rij nooit weg. Over de run weegt elk bruikbaar abonnement van een ander mee als
 bewijs dat de toets werkt. *De prijs:* een run die alleen kapotte abonnementen ziet,
 ruimt niets op; de rij gaat pas weg in een run die ook een bruikbare tegenkomt.
-`weg` (404/410) valt erbuiten: dat oordeel komt van de pushdienst en blijft direct.
+`weg` (404/410) valt buiten de onderbreker: dat oordeel komt van de pushdienst en
+wordt direct uitgevoerd, maar deelt het plafond van 5a.
 
 *En daarom staat de toets op het abonnement nu vóór de grens op de payload.* Elke
 uitkomst telt in de onderbreker als een oordeel over het abonnement; een `mislukt`
@@ -135,5 +142,51 @@ om een te lang bericht had de toets nooit gezien.
 delete kan de browser zich op hetzelfde endpoint opnieuw geabonneerd hebben;
 op `token` alleen wiste het oordeel over het oude abonnement het nieuwe.
 
-**Pad terug:** de vorige vorm staat op `fc30d687`. Gaan rijen te traag weg, dan is de
-knop `MAX_WISSEN_PER_RUN` en niet het weghalen van de onderbreker.
+## Tweede batch-review, 17-11-2026
+
+PR #683 bleef draft om vier punten; alle vier zijn hier verwerkt.
+
+**7. Het plafond telt rijen en geen meldingen.** `apparaten` wordt één keer per
+profiel gelezen en voor elke melding van de run hergebruikt. 📏 Eén verdwenen
+abonnement met drie meldingen gebruikte drie plekken van het plafond, met drie
+deletes op dezelfde rij, en een echt ongeldige rij bleef staan. Nu onthoudt de run
+welke rijen de pushdienst `weg` noemde (`isWeg()`): die worden niet opnieuw
+verstuurd, gewist of geteld.
+
+**8. De alarmen staan onder test, en het plafond heeft een code per bron.**
+`webpush_alles_ongeldig` (vanaf `ALARM_VANAF` = 3 getoetste abonnementen),
+`webpush_wisplafond_weg` en `webpush_wisplafond_ongeldig`. Twee codes en niet één:
+bij een gedeeltelijk kapotte toets is het plafond de énige rem en dit alarm het
+enige signaal, en normaal verloop (`weg`) mag dat niet overstemmen. 📏 Eerder liet
+`meld()` weghalen of `ALARM_VANAF` op 1000 zetten alles groen; nu wordt elk van die
+mutaties rood (de lijst staat in de kop van
+`tests/beloftes/notificaties-binnen-de-wandklok.test.ts`).
+
+⚠️ **En een eigen foutmelding per bron**, niet alleen een eigen `code` (security-review,
+derde ronde). Sentry groepeert op de melding, en de `code` staat in `extra`: met één
+melding landde `_ongeldig` in het issue dat `_weg` al als routine had laten zien. De
+test legt de meldingen naast elkaar en toetst elke code ná `scrubContext()`.
+
+**9. `fetch` volgt geen redirect.** `weg` wist een rij en hoort van de pushdienst zelf
+te komen. Een gevolgde 3xx kon een 404 van een ander adres als `weg` laten binnenkomen,
+en omzeilde de allowlist van 0117. Nu `redirect: 'manual'`; een 3xx is `mislukt`.
+
+**"Per run", niet "per uur".** Het plafond geldt per run. De uurjob draait elk
+uur, maar een `workflow_dispatch` is ook een run en telt opnieuw.
+
+## Pad terug
+
+**`origin/main` zonder QS8-690** (bijvoorbeeld `ee355b66`): daar wist alleen een
+404/410 een rij, zonder plafond. Dat is het gedrag van vóór dit issue.
+
+⚠️ **Teruggaan zet ook besluit 9 terug:** daar volgt `fetch` weer redirects, en dan
+kan een 404 van een ander adres via een 3xx een rij wissen, zonder plafond. Wil je
+alleen het opruimen kwijt, zet dan `MAX_WISSEN_PER_RUN` op 0 en ga niet terug.
+
+⚠️ **`fc30d687` is geen terugvalpunt.** Dat is de eerste ronde, afgekeurd omdat
+`abonnementFout()` daar elke exceptie als `ongeldig` las: één WebCrypto-regressie
+wiste dan elk web-abonnement. Wie terug wil, gaat terug naar `main`, niet naar die
+commit.
+
+Gaan rijen te traag weg, dan is de knop `MAX_WISSEN_PER_RUN`, en niet het weghalen
+van de onderbreker.
