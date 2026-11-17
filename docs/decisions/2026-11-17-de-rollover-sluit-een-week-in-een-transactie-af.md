@@ -69,3 +69,20 @@ er met die vier gebeurt, en **vóór** het op productie wordt toegepast.
 Migratie eerst, edge function daarna (`docs/DEPLOY.md` §2.3a). De migratie voegt
 alleen toe: de gedeployde rollover blijft werken tot de nieuwe versie er staat. De
 nieuwe rollover werkt **niet** zonder de migratie, want hij roept de RPC aan.
+
+## Security-review (17-11-2026) en wat ermee gedaan is
+
+Eén ronde `security-reviewer`; elke bevinding is aan de functiedefinitie
+nagelopen. Oordeel: geen kritieke bevinding, wel aandacht.
+
+| bevinding | gedaan |
+| --- | --- |
+| **M1** een week die elke run faalt blijft stil `todo`, zonder minpunt, en de eigenaar kan er nog een voltooiing voor indienen | de RPC geeft `mislukt` terug; de edge function logt en meldt (`rollover_week_niet_afgesloten`). Test: "meldt een week die niet afsluit in `mislukt`" |
+| **M2** de updates hebben geen statusvoorwaarde en kunnen een net ingediende voltooiing overschrijven | `and status in ('todo', 'cancelled')` op beide updates, `if found` ervoor. ⚠️ **De race zelf is niet getoetst**: dat vraagt twee gelijktijdige sessies. Alleen de ondergrens staat onder test (een `pending` week blijft `pending`) |
+| **L1** `on conflict do nothing` zonder doel | niet gewijzigd. Vandaag slikt hij geen minpunt (geen pad zet een `missed` week terug naar `todo`). Wordt zwaarder als er een pad bijkomt dat dat wel doet |
+| **L2** twee runs tegelijk tellen dubbel | niet gewijzigd; alleen de telling, geen boeking |
+| **L3** geen test dat het minpunt blijft staan als de pas redt | test erbij, met `beoordeelbaar = true` |
+
+Niet op productie nagelezen: of `verbruik_weekpas` en
+`geen_minpunt_zonder_beoordelaar` daar gelijk zijn aan de lokale stack
+(`pg_get_functiondef()` is de waarheid).

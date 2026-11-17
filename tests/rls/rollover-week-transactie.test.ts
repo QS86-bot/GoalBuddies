@@ -116,6 +116,44 @@ describe.skipIf(!beschikbaar)('QS8-687 — sluit_verstreken_weken_af()', () => {
     expect(uit).toBe('todo,missed');
   });
 
+  it('meldt een week die niet afsluit in `mislukt`, zodat hij niet stil openblijft', () => {
+    const uit = laatsteRegel(`
+      ${week('kapot', '2026-01-05')}
+      create function pg_temp.faal() returns trigger language plpgsql as $f$
+        begin raise exception 'proef'; end $f$;
+      create trigger faal before insert on points_ledger for each row execute function pg_temp.faal();
+      select gemist || '/' || mislukt from sluit_verstreken_weken_af((select uid from v), date '2026-02-01');
+    `);
+    expect(uit).toBe('0/1');
+  });
+
+  it('laat het minpunt staan als de weekpas de reeks redt (domeinregel 10)', () => {
+    // ⚠️ Met `beoordeelbaar = true`, anders slaat 0065 het minpunt over en toetst
+    //    deze test niets.
+    const uit = laatsteRegel(`
+      ${week('w1', '2026-01-05')}
+      update weekly_goals set beoordeelbaar = true where goal_id = (select goal from v);
+      insert into week_pass_events (user_id, goal_id, event, cycle_start_date)
+        select uid, goal, 'earned', date '2025-12-01' from v;
+      ${STAP}
+      select (select count(*) from points_ledger where user_id = (select uid from v) and reason = 'cycle_missed')
+          || '/' || (select count(*) from week_pass_events where user_id = (select uid from v) and event = 'spent');
+    `);
+    expect(uit).toBe('1/1');
+  });
+
+  it('raakt een week niet meer aan die intussen niet meer open is', () => {
+    // ⚠️ Een weekdoel dat al `pending` is wordt niet eens geselecteerd; dit is de
+    //    ondergrens. De race zelf (status verandert ná de selectie) is met één
+    //    sessie niet na te bouwen — zie het beslisdocument.
+    const uit = laatsteRegel(`
+      ${week('w1', '2026-01-05')}
+      update weekly_goals set status = 'pending' where goal_id = (select goal from v);
+      ${STAP} ${STATUSSEN}
+    `);
+    expect(uit).toBe('pending');
+  });
+
   it('is niet aanroepbaar voor authenticated of anon', () => {
     const uit = psql(`
       select has_function_privilege('authenticated', 'public.sluit_verstreken_weken_af(uuid,date)', 'execute')

@@ -1031,6 +1031,19 @@ async function sluitVerstrekenWekenAf(
     return null;
   }
 
+  // ⚠️ **Een week die niet afsluit is een storing en geen weetje** (security-review
+  //    op QS8-687). De RPC draait hem terug en laat hem `todo`; faalt hij elke
+  //    run, dan krijgt hij nooit een minpunt en kan de eigenaar er nog een
+  //    voltooiing voor indienen. `count` en niet de week-id: `scrubContext()`
+  //    laat alleen toegestane sleutels door.
+  if (rij.mislukt > 0) {
+    console.error(`${rij.mislukt} week(en) niet afgesloten voor een profiel`);
+    await meld(new Error('week afsluiten mislukt'), 'rollover.weken', {
+      code: 'rollover_week_niet_afgesloten',
+      count: rij.mislukt,
+    });
+  }
+
   return {
     telling: { gemist: rij.gemist, vrijgesteld: rij.vrijgesteld, gered: rij.gered },
     geraakteDoelen: new Set(rij.geraakte_doelen),
@@ -1047,6 +1060,7 @@ interface Weekuitkomst {
 /** De rij die `sluit_verstreken_weken_af()` teruggeeft. */
 interface WekenUitkomst extends Weekuitkomst {
   geraakte_doelen: string[];
+  mislukt: number;
 }
 
 /**

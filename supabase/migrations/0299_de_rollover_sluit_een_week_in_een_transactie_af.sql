@@ -57,7 +57,8 @@ returns table (
   gemist           integer,
   vrijgesteld      integer,
   gered            integer,
-  geraakte_doelen  uuid[]
+  geraakte_doelen  uuid[],
+  mislukt          integer
 )
 language plpgsql
 security definer
@@ -68,6 +69,7 @@ declare
   v_gemist  integer := 0;
   v_vrij    integer := 0;
   v_gered   integer := 0;
+  v_mislukt integer := 0;
   v_doelen  uuid[]  := '{}';
   v_pauze   boolean;
   v_pas     boolean;
@@ -100,33 +102,48 @@ begin
            and b.ends_cycle   >= week.cycle_start_date
       ) into v_pauze;
 
+      -- ⚠️ `and status in (…)` op beide updates (security-review M2): de lus leest
+      --    een momentopname, en dient de eigenaar intussen een voltooiing in
+      --    (`todo` wordt `pending`), dan zou een update op alleen `id` die week
+      --    alsnog op `missed` zetten, mét minpunt. Geen rij geraakt = overslaan.
       if v_pauze then
-        update public.weekly_goals set status = 'excused' where id = week.id;
-        v_vrij := v_vrij + 1;
+        update public.weekly_goals set status = 'excused'
+         where id = week.id and status in ('todo', 'cancelled');
+        if found then
+          v_vrij := v_vrij + 1;
+        end if;
       else
-        update public.weekly_goals set status = 'missed' where id = week.id;
+        update public.weekly_goals set status = 'missed'
+         where id = week.id and status in ('todo', 'cancelled');
+        if found then
+          insert into public.points_ledger (user_id, goal_id, delta, reason, ref_type, ref_id)
+          values (p_owner_id, week.goal_id, week.points_miss, 'cycle_missed', 'weekly_goal', week.id)
+          on conflict do nothing;
 
-        insert into public.points_ledger (user_id, goal_id, delta, reason, ref_type, ref_id)
-        values (p_owner_id, week.goal_id, week.points_miss, 'cycle_missed', 'weekly_goal', week.id)
-        on conflict do nothing;
+          select public.verbruik_weekpas(p_owner_id, week.goal_id, week.cycle_start_date)
+            into v_pas;
 
-        select public.verbruik_weekpas(p_owner_id, week.goal_id, week.cycle_start_date)
-          into v_pas;
-
-        v_gemist := v_gemist + 1;
-        if v_pas is true then
-          v_gered := v_gered + 1;
+          v_gemist := v_gemist + 1;
+          if v_pas is true then
+            v_gered := v_gered + 1;
+          end if;
         end if;
       end if;
     exception when others then
       -- De subtransactie van dit blok is teruggedraaid: deze week staat weer
       -- open en komt bij de volgende run opnieuw aan bod. Geen gebruikerstekst
       -- in de melding, alleen het weekdoel en de SQLSTATE.
+      --
+      -- ⚠️ **En het getal gaat terug naar de aanroeper** (security-review M1): een
+      --    week die elke run faalt blijft anders stil `todo`, zonder minpunt, en
+      --    de eigenaar kan er dan nog een voltooiing voor indienen. `raise
+      --    warning` komt alleen in het Postgres-log, niet bij supabase-js.
+      v_mislukt := v_mislukt + 1;
       raise warning 'QS8-687: week % niet afgesloten (SQLSTATE %)', week.id, sqlstate;
     end;
   end loop;
 
-  return query select v_gemist, v_vrij, v_gered, v_doelen;
+  return query select v_gemist, v_vrij, v_gered, v_doelen, v_mislukt;
 end;
 $$;
 
