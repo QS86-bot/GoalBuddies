@@ -2,6 +2,8 @@ import { readFileSync, readdirSync, statSync } from 'node:fs';
 import { basename, join, relative } from 'node:path';
 import { pathToFileURL } from 'node:url';
 
+import { metSchuineStrepen } from './paden.mjs';
+
 /**
  * Elk scherm heeft een ingang — QS8-383.
  *
@@ -81,13 +83,18 @@ function bestandenIn(map) {
  * ⚠️ `_layout` en `+html` zijn geen schermen, en `index` valt weg uit het pad —
  *    `app/(tabs)/index.tsx` is `/(tabs)`.
  */
+export function routeVan(relatiefPad) {
+  const zonderEind = metSchuineStrepen(relatiefPad).slice(0, -'.tsx'.length);
+  return `/${zonderEind}`.replace(/\/index$/, '');
+}
+
 export function routesIn(wortel = 'app') {
   return bestandenIn(wortel)
     .filter((p) => p.endsWith('.tsx'))
     .filter((p) => !basename(p).startsWith('_') && !basename(p).startsWith('+'))
     .map((p) => ({
       bestand: p,
-      pad: `/${relative(wortel, p).slice(0, -'.tsx'.length)}`.replace(/\/index$/, ''),
+      pad: routeVan(relative(wortel, p)),
     }))
     .sort((a, b) => a.pad.localeCompare(b.pad));
 }

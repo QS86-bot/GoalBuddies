@@ -100,56 +100,74 @@ export function vergelijk({ schema, server }) {
   return null;
 }
 
-/* c8 ignore start */
-if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
-  const token = process.env.SUPABASE_ACCESS_TOKEN;
-  const streng = process.argv.includes('--streng');
+const ONTBREEKT =
+  'geen SUPABASE_ACCESS_TOKEN in de omgeving.\n' +
+  '  Deze controle vraagt de Auth-configuratie op via de Management API; zie QS8-234.';
 
-  const ONTBREEKT =
-    'geen SUPABASE_ACCESS_TOKEN in de omgeving.\n' +
-    '  Deze controle vraagt de Auth-configuratie op via de Management API; zie QS8-234.';
+async function uitManagementApi({ token }) {
+  const antwoord = await fetch(
+    `https://api.supabase.com/v1/projects/${PROJECT_REF}/config/auth`,
+    {
+      headers: { Authorization: `Bearer ${token}` },
+      // ⚠️ Elke externe call heeft een timeout — CLAUDE.md, coderegel 14.
+      signal: AbortSignal.timeout(30_000),
+    },
+  );
+  if (!antwoord.ok) throw new Error(`de API gaf ${antwoord.status}.`);
+  return antwoord.json();
+}
 
+const leesSchema = () => minimumUit(readFileSync(SCHEMA, 'utf8'));
+
+/**
+ * Draait de controle en geeft de **exitcode terug** — hij sluit het proces niet af.
+ *
+ * ⚠️ **Geen `process.exit()` na een `await fetch()`** (QS8-684). Op Windows
+ *    stort libuv dan in met een assertion in `src\win\async.c`, nadat de uitslag
+ *    al geprint was. De aanroeper zet `process.exitCode` en laat de event loop
+ *    leeglopen. `haalOp` en `lees` zijn injecteerbaar, dus de exitcode is zonder
+ *    netwerk te toetsen.
+ *
+ * @param {{ token?: string | undefined, streng?: boolean }} invoer
+ * @param {(invoer: { token: string }) => Promise<{ password_min_length?: number }>} [haalOp]
+ * @param {() => number} [lees]
+ * @returns {Promise<number>}
+ */
+export async function draai({ token, streng }, haalOp = uitManagementApi, lees = leesSchema) {
   if (!token) {
     console.error(
       streng
         ? `✗ wachtwoord-controle kon niet draaien — ${ONTBREEKT}`
         : `⚠ wachtwoord-controle: OVERGESLAGEN — ${ONTBREEKT}`,
     );
-    process.exit(streng ? 1 : 0);
+    return streng ? 1 : 0;
   }
 
-  const schema = minimumUit(readFileSync(SCHEMA, 'utf8'));
+  const schema = lees();
 
   let instellingen;
   try {
-    const antwoord = await fetch(
-      `https://api.supabase.com/v1/projects/${PROJECT_REF}/config/auth`,
-      {
-        headers: { Authorization: `Bearer ${token}` },
-        // ⚠️ Elke externe call heeft een timeout — CLAUDE.md, coderegel 14.
-        signal: AbortSignal.timeout(30_000),
-      },
-    );
-    if (!antwoord.ok) {
-      console.error(`✗ wachtwoord-controle: de API gaf ${antwoord.status}.`);
-      process.exit(1);
-    }
-    instellingen = await antwoord.json();
+    instellingen = await haalOp({ token });
   } catch (fout) {
-    console.error(`✗ wachtwoord-controle: ophalen mislukt — ${fout.message}`);
-    process.exit(1);
+    const melding = fout instanceof Error ? fout.message : String(fout);
+    console.error(`✗ wachtwoord-controle: ophalen mislukt — ${melding}`);
+    return 1;
   }
 
   const klacht = vergelijk({ schema, server: instellingen?.password_min_length });
 
   if (klacht === null) {
-    console.log(
-      `wachtwoord-controle: formulier en server eisen allebei ${schema} tekens.`,
-    );
-    process.exit(0);
+    console.log(`wachtwoord-controle: formulier en server eisen allebei ${schema} tekens.`);
+    return 0;
   }
 
   console.error(`wachtwoord-controle: ${klacht.melding}`);
-  process.exit(1);
+  return 1;
 }
-/* c8 ignore stop */
+
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+  process.exitCode = await draai({
+    token: process.env.SUPABASE_ACCESS_TOKEN,
+    streng: process.argv.includes('--streng'),
+  });
+}
