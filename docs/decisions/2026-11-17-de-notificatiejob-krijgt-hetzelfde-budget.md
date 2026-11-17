@@ -7,7 +7,8 @@
 ## Aanleiding
 
 De uurjob `notificaties` liep zijn profielen één voor één af. Per profiel haalt hij
-eerst de push-tokens op en loopt dan vijf soorten meldingen door. De looptijd groeide
+eerst de push-tokens op en loopt dan zes soorten meldingen door (de kop van
+`index.ts` zegt nog vijf; `commitment_reverted` kwam erbij in 0293). De looptijd groeide
 dus lineair met het aantal gebruikers. Daardoor botste hij op dezelfde twee grenzen
 als de rollover: de curl-timeout van 120 s in `.github/workflows/notificaties.yml` en
 de wandkloklimiet van de Edge Function.
@@ -55,7 +56,9 @@ die toets vast.
 Dezelfde vorm als de rollover (QS8-685), met dezelfde getallen:
 
 1. **Acht profielen tegelijk** (`PROFIELEN_TEGELIJK = 8`). Binnen één profiel blijven
-   de vijf soorten ná elkaar; `meldEenProfiel()` is ongewijzigd. De rollover draait
+   de soorten ná elkaar; `meldEenProfiel()` is ongewijzigd. Eén stap
+   (`laatsteActiviteitDatum()`) vraagt twee dingen tegelijk, dus het zijn hoogstens
+   zestien gelijktijdige verzoeken. De rollover draait
    een half uur ernaast, dus de twee jobs leggen niet tegelijk acht verzoeken bij
    PostgREST neer.
 2. **Een tijdbudget** (`PROFIELBUDGET_MS = 100_000`). Na 100 s begint er geen nieuw
@@ -105,6 +108,16 @@ dan opgebruikt door een bericht dat van een andere run kwam. Dat kon al voor dit
 issue. Nu kan het ook binnen één run, maar alleen als een profiel dubbel langskomt
 door een paginaverschuiving. Gevolg: hooguit een held die die dag niet meer spreekt.
 Geen dubbele push.
+
+**Een vals negatief van Expo of web push kan binnen één run een tweede push geven**
+(security-review). Geeft de 15 s-timeout op nádat Expo het bericht al heeft
+aangenomen, dan wist `stuur()` de rij (`bezorgd === 0`). Loopt hetzelfde profiel op
+dat moment in een tweede taak (paginaverschuiving), dan kan die opnieuw versturen.
+Dat is niet nieuw: hetzelfde vals negatief gaf vóór dit issue een tweede push een uur
+later, bij de volgende run. Parallel maakt die herkansing alleen sneller, en alleen
+in het zeldzame geval van een dubbele taak. Overlap tussen twee runs is juist kleiner
+geworden: de workflow heeft `concurrency: notificaties`, en curl geeft niet meer op
+terwijl de functie nog loopt.
 
 ## Wat afgewezen of uitgesteld is
 

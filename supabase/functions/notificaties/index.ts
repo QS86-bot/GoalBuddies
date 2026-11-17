@@ -54,9 +54,11 @@ const PROFIELEN_PER_PAGINA = 200;
  * Hoeveel profielen er tegelijk onderhanden zijn — QS8-688.
  *
  * ⚠️ **Zelfde getal en zelfde reden als in de rollover** (QS8-685). Binnen één
- *    profiel blijven de vijf soorten ná elkaar, dus dit is ook het maximum
- *    aantal gelijktijdige verzoeken dat deze functie bij PostgREST neerlegt, en
- *    `max_connections` is **60** voor de hele database. De rollover draait een
+ *    profiel blijven de soorten ná elkaar. Eén stap vraagt twee dingen tegelijk
+ *    (`laatsteActiviteitDatum()`, `Promise.all`), dus deze functie legt
+ *    hoogstens **zestien** gelijktijdige verzoeken bij PostgREST neer, niet
+ *    acht (security-review op QS8-688). `max_connections` is **60** voor de
+ *    hele database, en PostgREST deelt zijn eigen pool. De rollover draait een
  *    half uur eerder of later (`notificaties.yml`), dus de twee jobs tellen niet
  *    op.
  *
@@ -91,8 +93,8 @@ const PROFIELEN_TEGELIJK = 8;
  *    `stuurWeb`); vijftig seconden dekt ook een profiel dat op twee daarvan
  *    wacht.
  *
- * ⚠️ Geen deadline maar een laatste starttijd: een profiel dat loopt, maakt zijn
- *    vijf soorten af. Profielen die niet aan de beurt kwamen, komen bij een
+ * ⚠️ Geen deadline maar een laatste starttijd: een profiel dat loopt, maakt al
+ *    zijn soorten af (zes sinds 0293: ook `commitment_reverted`). Profielen die niet aan de beurt kwamen, komen bij een
  *    volgende run aan bod — de startplek is willekeurig.
  */
 const PROFIELBUDGET_MS = 100_000;
@@ -330,7 +332,7 @@ interface Meldtelling {
 type Profielfout = { message: string; code?: string };
 
 /**
- * Loopt alle profielen af en stuurt per profiel de vijf soorten meldingen.
+ * Loopt alle profielen af en stuurt per profiel zijn meldingen.
  *
  * ⚠️ **Uit `draaiNotificaties` getild in QS8-424**, met de `profielFout` als
  *    teruggave en niet als worp — om dezelfde reden als in de rollover: de
