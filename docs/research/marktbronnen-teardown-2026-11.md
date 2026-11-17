@@ -127,15 +127,20 @@ bronnen lezen) is daarmee **voor twee van de drie niet vervuld**; samen met de
 aparte Habit Huddle-sessie is punt 1 van QS8-649 **nog niet af**. Het oordeel over
 besluit 2 en 4 is aan Quinten.
 
-## 6. Aanname en volgende stap
+## 6. Besluit van Quinten (17-11-2026): de voorwaarde vervalt voor twee bronnen
+
+Quinten liet de voorwaarde van besluit 31 **vervallen voor goalgeniee.com en
+habi.app**. Die twee blijven ongemeten en dat is nu een besluit en geen open punt:
+de markt is voor deze twee **niet getoetst**, in geen van beide richtingen. Wat nog
+openstaat van besluit 31: `habithuddle.com` (aparte sessie, tak
+`claude/habithuddle-app-ontleding`). goalsandprogress.com is gelezen (§2).
+
+## 7. Aanname en volgende stap
 
 **Aanname, expliciet:** dat de afwezigheid van teams bij goalsandprogress iets zegt
 over de markt is niet gemeten; het is één site van één maker. Eén bron zonder
 teams zegt niets over of anderen ze hebben.
 
-**Volgende afgebakende stap (aan Quinten):**
-1. `www.goalgeniee.com` toestaan in een verse sessie (apex en `www` staan al in de
-   lijst van het issue); daarna eerst de voorwaarden, dan de publieke pagina's.
-2. habi.app: zelf lezen en de tekst aanleveren (optie B in de issuereactie), of de
-   bron laten vallen.
-3. Of de voorwaarde van besluit 31 voor deze twee komt te vervallen.
+**Volgende afgebakende stap:** het oordeel over de Habit Huddle-ontleding en dan
+het afvinken van punt 1 in QS8-649 (aan Quinten). Voor goalgeniee en habi.app is
+niets meer nodig.
