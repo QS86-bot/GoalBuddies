@@ -553,7 +553,12 @@ grant execute on function public.zet_organisatielid_uit(uuid, uuid) to authentic
 create or replace function public.organisatieleden(
   p_organization_id uuid,
   p_limit           integer default 20,
-  p_na_user_id      uuid default null
+  -- ⚠️ De nul-uuid en geen `DEFAULT NULL`: hij sorteert vóór elke echte id, dus
+  --    weglaten geeft de eerste pagina, en `defaultnull:controle` hoeft geen
+  --    type te corrigeren dat in het afschrift van productie nog niet bestaat.
+  --    Een meegestuurde `null` betekent hetzelfde (de `coalesce` hieronder) in
+  --    plaats van stil een lege lijst te geven.
+  p_na_user_id      uuid default '00000000-0000-0000-0000-000000000000'
 )
 returns table (user_id uuid, display_name text, role text)
 language sql
@@ -567,7 +572,7 @@ as $$
    where m.organization_id = p_organization_id
      and m.status = 'active'
      and public.is_organisatielid(p_organization_id)
-     and (p_na_user_id is null or m.user_id > p_na_user_id)
+     and m.user_id > coalesce(p_na_user_id, '00000000-0000-0000-0000-000000000000'::uuid)
    order by m.user_id
    limit greatest(0, least(coalesce(p_limit, 20), 50));
 $$;
