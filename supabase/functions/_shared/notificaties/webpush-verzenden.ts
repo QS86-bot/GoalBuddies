@@ -28,7 +28,7 @@
  *    eerste omdat `edge:sync` alleen daar extensies op zet; het tweede zodat een
  *    test elke antwoordcode kan voeden zonder netwerk.
  */
-import { PAYLOAD_MAX, vapidAuthorization, versleutelPayload } from './webpush-crypto.ts';
+import { PAYLOAD_MAX, vanBase64url, vapidAuthorization, versleutelPayload } from './webpush-crypto.ts';
 
 /** Een abonnement zoals het in `push_tokens` staat. */
 export interface WebPushDoel {
@@ -60,10 +60,18 @@ export interface WebPushBericht {
  *    gebeuren: het abonnement bestaat niet meer en de rij in `push_tokens` moet
  *    opgeruimd worden. Blijft hij staan, dan probeert elke ronde opnieuw een
  *    adres dat nooit meer werkt.
+ *
+ * ⚠️ `ongeldig` is een tweede reden om een rij op te ruimen en hij is smal
+ *    (QS8-690): het **abonnement zelf** is niet te gebruiken — `p256dh` of
+ *    `auth` zijn geen geldige sleutel, wat er ook met de pushdienst of met onze
+ *    eigen VAPID-sleutel is. Dat is een eigenschap van de rij en geen storing
+ *    van dit moment: elke volgende ronde faalt hetzelfde. Een kapotte
+ *    VAPID-sleutel is dat **niet** en blijft `mislukt`.
  */
 export type WebPushUitkomst =
   | { readonly status: 'bezorgd' }
   | { readonly status: 'weg'; readonly httpStatus: number }
+  | { readonly status: 'ongeldig'; readonly reden: string }
   | { readonly status: 'mislukt'; readonly reden: string };
 
 /**
@@ -142,6 +150,34 @@ export function isPushdienst(endpoint: string): boolean {
 }
 
 /**
+ * Of het abonnement zelf bruikbaar is, los van onze eigen sleutels — QS8-690.
+ *
+ * ⚠️ **Dit is wat "ongeldig" van "mislukt" scheidt.** Tot QS8-690 zat
+ *    `versleutelPayload()` en `vapidAuthorization()` in één `catch`, en dan is de
+ *    melding `versleutelen mislukte: …` van beide kanten dezelfde zin: een
+ *    kapot abonnement en een kapotte `VAPID_PRIVATE_KEY` zijn aan het log niet te
+ *    onderscheiden. 📏 Op productie stonden 11 meldingen in één run, 6 met
+ *    `invalid P-256 elliptic curve point` en 5 met `Unexpected error decoding
+ *    private key`.
+ *
+ *    Alleen een fout die **uitsluitend van de rij afhangt** mag de rij kosten.
+ *    Daarom hier een eigen toets op `p256dh` (65 octetten, `0x04`, en een punt
+ *    dat WebCrypto als P-256 accepteert) en `auth` (16 octetten), vóór de
+ *    sleutels van de server er iets mee te maken hebben.
+ */
+export async function abonnementFout(doel: Pick<WebPushDoel, 'p256dh' | 'auth'>): Promise<string | null> {
+  try {
+    const publiek = vanBase64url(doel.p256dh);
+    if (publiek.length !== 65 || publiek[0] !== 0x04) return 'p256dh is geen ongecomprimeerd P-256-punt van 65 octetten';
+    if (vanBase64url(doel.auth).length !== 16) return 'auth is niet 16 octetten';
+    await crypto.subtle.importKey('raw', publiek as BufferSource, { name: 'ECDH', namedCurve: 'P-256' }, false, []);
+    return null;
+  } catch (fout) {
+    return `abonnement niet te lezen: ${fout instanceof Error ? fout.message : String(fout)}`;
+  }
+}
+
+/**
  * De versleutelde body plus de VAPID-header, of de reden dat het niet lukte.
  *
  * ⚠️ **Apart sinds QS8-190**, en niet alleen om onder de vijftig regels te
@@ -149,25 +185,37 @@ export function isPushdienst(endpoint: string): boolean {
  *    hoort binnen één functie te blijven. `versleutelPayload()` valt om op een
  *    kapotte sleutel of een onleesbaar abonnement, en dat is geen reden om de
  *    rij op te ruimen — dat zou een configuratiefout omzetten in dataverlies.
+ *
+ * ⚠️ **Twee `try`'s sinds QS8-690, en elke reden noemt zijn kant.** Het
+ *    abonnement is al gecontroleerd door `abonnementFout()`; wat hier faalt is
+ *    dus het versleutelen zelf of onze eigen VAPID-sleutel. De tweede heet
+ *    `VAPID-sleutel onbruikbaar` en raakt elk abonnement: staat dat in het log,
+ *    kijk dan naar `VAPID_PRIVATE_KEY` in de omgeving van de functie en niet
+ *    naar de rijen in `push_tokens`.
  */
 async function maakPakket(invoer: {
   readonly doel: WebPushDoel;
   readonly sleutels: VapidSleutels;
   readonly nu: Date;
 }, payload: string): Promise<{ body: Uint8Array; vapid: { Authorization: string } } | { reden: string }> {
+  let body: Uint8Array;
   try {
-    return {
-      body: await versleutelPayload(invoer.doel, payload),
-      vapid: await vapidAuthorization({
-        endpoint: invoer.doel.endpoint,
-        publiekeSleutel: invoer.sleutels.publiek,
-        priveSleutel: invoer.sleutels.prive,
-        subject: invoer.sleutels.subject,
-        nu: invoer.nu,
-      }),
-    };
+    body = await versleutelPayload(invoer.doel, payload);
   } catch (fout) {
     return { reden: `versleutelen mislukte: ${fout instanceof Error ? fout.message : String(fout)}` };
+  }
+
+  try {
+    const vapid = await vapidAuthorization({
+      endpoint: invoer.doel.endpoint,
+      publiekeSleutel: invoer.sleutels.publiek,
+      priveSleutel: invoer.sleutels.prive,
+      subject: invoer.sleutels.subject,
+      nu: invoer.nu,
+    });
+    return { body, vapid };
+  } catch (fout) {
+    return { reden: `VAPID-sleutel onbruikbaar: ${fout instanceof Error ? fout.message : String(fout)}` };
   }
 }
 
@@ -187,6 +235,11 @@ export async function verstuurWebPush(invoer: {
   if (payload.length > PAYLOAD_MAX) {
     return { status: 'mislukt', reden: `bericht is ${payload.length} bytes, meer dan ${PAYLOAD_MAX}` };
   }
+
+  // ⚠️ Vóór de VAPID-sleutel en de pushdienst: een abonnement dat zelf niet deugt
+  //    is `ongeldig` en gaat weg, ook als onze sleutel op dit moment óók kapot is.
+  const abonnementReden = await abonnementFout(invoer.doel);
+  if (abonnementReden !== null) return { status: 'ongeldig', reden: abonnementReden };
 
   const pakket = await maakPakket(invoer, payload);
   if ('reden' in pakket) return { status: 'mislukt', reden: pakket.reden };

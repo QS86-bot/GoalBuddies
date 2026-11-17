@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from 'vitest';
 
 import { genereerVapidSleutelpaar } from './webpush-crypto';
 import {
+  abonnementFout,
   TTL_SECONDEN,
   uitkomstVan,
   verstuurWebPush,
@@ -157,5 +158,76 @@ describe('verstuurWebPush', () => {
     });
 
     expect(uit.status).toBe('mislukt');
+  });
+});
+
+/**
+ * QS8-690 — een kapot abonnement en een kapotte serversleutel zijn twee dingen.
+ *
+ * ⚠️ **De belofte is het onderscheid, niet de foutmelding.** 📏 Op productie
+ *    stonden 11 meldingen `web push mislukte: versleutelen mislukte: …` in één
+ *    run: 6 over een punt dat niet op de curve ligt (het abonnement) en 5 over een
+ *    privésleutel die niet te lezen is (onze eigen omgeving). Het log kon ze niet
+ *    uit elkaar houden, en dus ook de code niet: de rij opruimen om een kapotte
+ *    `VAPID_PRIVATE_KEY` is dataverlies voor élke gebruiker, en een kapot
+ *    abonnement laten staan is elk uur dezelfde fout.
+ */
+describe('QS8-690 — ongeldig abonnement of onbruikbare VAPID-sleutel', () => {
+  // 65 octetten die met 0x04 beginnen maar geen punt op P-256 zijn.
+  const NIET_OP_DE_CURVE = 'B' + 'A'.repeat(86);
+
+  it('ziet een p256dh die niet op de curve ligt als ongeldig, zonder verzoek', async () => {
+    const doe = antwoordt(201);
+    const uit = await verstuurWebPush({
+      doel: { ...DOEL, p256dh: NIET_OP_DE_CURVE },
+      bericht: BERICHT,
+      sleutels: await sleutels(),
+      nu: NU,
+      fetchImpl: doe,
+    });
+
+    expect(uit.status).toBe('ongeldig');
+    expect(doe).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    ['een eerste octet dat geen 0x04 is', { p256dh: 'E' + DOEL.p256dh.slice(1) }],
+    ['een p256dh van de verkeerde lengte', { p256dh: DOEL.p256dh + DOEL.p256dh + DOEL.p256dh }],
+    ['een auth van de verkeerde lengte', { auth: 'AAAA' }],
+    ['een p256dh die geen base64url is', { p256dh: '!!!' }],
+  ])('ziet %s als ongeldig', async (_naam, afwijking) => {
+    expect(await abonnementFout({ ...DOEL, ...afwijking })).not.toBeNull();
+  });
+
+  it('laat een geldig abonnement door', async () => {
+    expect(await abonnementFout(DOEL)).toBeNull();
+  });
+
+  it('noemt een kapotte privésleutel een mislukking van de server, en niet ongeldig', async () => {
+    // ⚠️ Dit is de helft die dataverlies voorkomt: de sleutel is van ons, het
+    //    abonnement is van de gebruiker.
+    const goed = await sleutels();
+    const uit = await verstuurWebPush({
+      doel: DOEL,
+      bericht: BERICHT,
+      sleutels: { ...goed, prive: 'onzin' },
+      nu: NU,
+      fetchImpl: antwoordt(201),
+    });
+
+    expect(uit.status).toBe('mislukt');
+    expect(uit.status === 'mislukt' && uit.reden).toContain('VAPID-sleutel onbruikbaar');
+  });
+
+  it('geeft een kapot abonnement voorrang boven een kapotte sleutel', async () => {
+    const uit = await verstuurWebPush({
+      doel: { ...DOEL, p256dh: NIET_OP_DE_CURVE },
+      bericht: BERICHT,
+      sleutels: { publiek: 'onzin', prive: 'onzin', subject: 'mailto:test@example.com' },
+      nu: NU,
+      fetchImpl: antwoordt(201),
+    });
+
+    expect(uit.status).toBe('ongeldig');
   });
 });

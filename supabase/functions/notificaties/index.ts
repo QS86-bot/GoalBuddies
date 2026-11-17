@@ -1586,7 +1586,10 @@ async function stuurWeb(
       continue;
     }
 
-    if (uitkomst.status === 'weg') {
+    if (uitkomst.status === 'weg' || uitkomst.status === 'ongeldig') {
+      // ⚠️ `ongeldig` (QS8-690) is een abonnement dat zelf niet te versleutelen is.
+      //    Dat verandert nooit meer; zonder opruimen faalt elke ronde opnieuw.
+      if (uitkomst.status === 'ongeldig') console.error(`ongeldig abonnement opgeruimd: ${uitkomst.reden}`);
       const { error } = await db.from('push_tokens').delete().eq('token', rij.token);
       if (error) console.error(`verlopen abonnement opruimen mislukte: ${error.message}`);
       continue;
