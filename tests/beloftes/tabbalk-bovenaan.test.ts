@@ -142,3 +142,28 @@ describe('de taakbalk hoort bij het scherm en niet bij de navigator', () => {
     expect(naBalk, 'de balk hoort vóór de scrollende romp te staan').toContain('{romp}');
   });
 });
+
+describe('het menu is een landmark met een bereikbare, benoemde stand (QS8-705)', () => {
+  /**
+   * ⚠️ **Op het web draagt `aria-current` de stand alleen**: react-native-web
+   *    negeert `accessibilityState`, dus een schermlezer hoort "huidige pagina"
+   *    nergens anders vandaan. 📏 Gemeten door de code-critic: `aria-current`
+   *    weghalen liet de suite groen. De 44 punten en de landmark zijn
+   *    bronvormen; ze zeggen niet dat het er goed uitziet.
+   */
+  const balk = bronZonderCommentaar(join(WORTEL, 'src', 'shared', 'ui', 'Taakbalk.tsx'));
+
+  it('markeert het actieve tabblad met aria-current', () => {
+    expect(balk).toMatch(/aria-current=\{actief\s*\?\s*'page'\s*:\s*undefined\}/);
+  });
+
+  it('is het menu een landmark met een naam', () => {
+    expect(balk).toMatch(/role="navigation"/);
+    expect(balk).toMatch(/accessibilityLabel=\{t\('tab\.navigatie'\)\}/);
+  });
+
+  it('geeft elke knop minstens 44 punten hoogte', () => {
+    expect(balk).toMatch(/minHeight:\s*44\b/);
+  });
+});
+

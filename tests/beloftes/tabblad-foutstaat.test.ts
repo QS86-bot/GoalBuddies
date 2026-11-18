@@ -3,6 +3,7 @@ import { join } from 'node:path';
 
 import { describe, expect, it, vi } from 'vitest';
 
+import { zonderCommentaar } from '../../scripts/zonder-commentaar.mjs';
 import { reportError } from '../../src/lib/observability';
 
 import { isHuddledagOp } from '../../src/modules/buddies/periods';
@@ -28,12 +29,19 @@ vi.mock('../../src/lib/observability', () => ({ reportError: vi.fn() }));
  *
  *   de `export { TabFout as ErrorBoundary }` uit `app/(tabs)/lijst.tsx` halen
  *      -> rood: 'exporteert elk tabblad de foutstaat' (lijst.tsx)
- *   de try/catch in `isHuddledagOp()` weghalen
- *      -> rood: 'een groep met een onbekende tijdzone is geen renderfout'
+ *   de zonetoets vooraf (`isGeldigeTijdzone`) uit `isHuddledagOp()` halen
+ *      -> TWEE rood (📏 gemeten 18-11-2026): 'een groep met een onbekende tijdzone
+ *         is geen renderfout' en 'meldt een onbekende zone precies één keer'
  *   `BREED_VANAF` naar 700
  *      -> rood: 'het breekpunt ligt op de kolombreedte plus de inhoud'
- *   een uitgecommentarieerde export in een tabbladbestand
+ *   een uitgecommentarieerde export in een tabbladbestand, met `//` én met
+ *   `/* … *\/` (de gedeelde knip uit `scripts/zonder-commentaar.mjs`)
  *      -> rood: 'exporteert elk tabblad de foutstaat'
+ *   de `action` uit `empty` in `app/(tabs)/groep.tsx` halen, of `action={empty.action}`
+ *   uit `AsyncView.tsx`
+ *      -> rood: 'de lege groepentab biedt de stap die erbij hoort' (twee toetsen)
+ *   `aria-current`, `role="navigation"` of `minHeight: 44` uit `Taakbalk.tsx` halen
+ *      -> rood in `tabbalk-bovenaan.test.ts`, 'het menu is een landmark …'
  *   `meldOnbekendeZoneEenmaal` weghalen of per render laten melden
  *      -> rood: 'meldt een onbekende zone precies één keer'
  */
@@ -42,14 +50,6 @@ const TABS = join(__dirname, '..', '..', 'app', '(tabs)');
 
 function tabbladen(): string[] {
   return readdirSync(TABS).filter((f) => f.endsWith('.tsx') && !f.startsWith('_'));
-}
-
-/** Een uitgecommentarieerde export is geen export. */
-function zonderRegelcommentaar(bron: string): string {
-  return bron
-    .split('\n')
-    .filter((regel) => !/^\s*\/\//.test(regel))
-    .join('\n');
 }
 
 const EXPORT = /export\s*\{\s*TabFout\s+as\s+ErrorBoundary\s*\}/;
@@ -65,12 +65,12 @@ describe('geen wit scherm op een tabblad', () => {
 
   it.each(tabbladen())('exporteert elk tabblad de foutstaat (%s)', (bestand) => {
     const bron = readFileSync(join(TABS, bestand), 'utf8');
-    expect(zonderRegelcommentaar(bron)).toMatch(EXPORT);
+    expect(zonderCommentaar(bron)).toMatch(EXPORT);
   });
 
   it.each(BUITEN_TABS)('exporteert ook %s de foutstaat', (bestand) => {
     const bron = readFileSync(join(TABS, bestand), 'utf8');
-    expect(zonderRegelcommentaar(bron)).toMatch(EXPORT);
+    expect(zonderCommentaar(bron)).toMatch(EXPORT);
   });
 
   it('een groep met een onbekende tijdzone is geen renderfout', () => {
@@ -109,3 +109,32 @@ describe('het menu', () => {
     expect(BREED_VANAF).toBeGreaterThanOrEqual(620 + 220);
   });
 });
+
+describe('de lege groepentab biedt de stap die erbij hoort (QS8-705)', () => {
+  /**
+   * ⚠️ **Dit is de naad uit regel 18, vraag 1:** `AsyncView` geeft door, de tab
+   *    vult in, en geen van de twee kan kapot zijn terwijl de ander werkt. 📏
+   *    Gemeten door de code-critic: de `action` uit `empty` halen, of
+   *    `action={empty.action}` uit `AsyncView`, liet de hele suite groen.
+   */
+  const groepTab = zonderCommentaar(readFileSync(join(TABS, 'groep.tsx'), 'utf8'));
+  const asyncView = zonderCommentaar(
+    readFileSync(join(__dirname, '..', '..', 'src', 'shared', 'ui', 'AsyncView.tsx'), 'utf8'),
+  );
+
+  it('vult de groepentab de lege staat met de knop "Groep aanmaken"', () => {
+    expect(groepTab).toMatch(
+      /empty=\{\{[\s\S]*?action:\s*\{\s*label:\s*t\('groepen\.aanmaken'\)[\s\S]*?\/groep\/nieuw/,
+    );
+  });
+
+  it('geeft AsyncView die actie door aan de lege staat', () => {
+    expect(asyncView).toMatch(/<EmptyState[^>]*action=\{empty\.action\}/);
+  });
+
+  it('toont de knop onder de lijst alleen als de lijst niet leeg is, nooit tweemaal', () => {
+    // Leeg: de knop zit in de lege staat. Gevuld: de knop zit onder de lijst.
+    expect(groepTab).toContain('<Groepsacties toonAanmaken={groepen?.length !== 0} />');
+  });
+});
+
