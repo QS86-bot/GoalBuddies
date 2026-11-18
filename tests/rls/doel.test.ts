@@ -68,7 +68,7 @@ describe('de naad: het harnas zelf', () => {
   const laad = async (env: Record<string, string | undefined>) => {
     const eigen = [
       'RLS_DOEL', 'EXPO_PUBLIC_SUPABASE_URL', 'SUPABASE_SERVICE_ROLE_KEY',
-      'SUPABASE_JWT_SECRET', 'EXPO_PUBLIC_SUPABASE_ANON_KEY', 'RLS_TEST_ALLOW_PROD',
+      'SUPABASE_JWT_SECRET', 'EXPO_PUBLIC_SUPABASE_ANON_KEY', 'RLS_TEST_ALLOW_PROD', 'RLS_LOKAAL_URL',
     ];
     for (const k of eigen) vi.stubEnv(k, env[k] ?? '');
     // stubEnv met '' is niet hetzelfde als afwezig; verwijder alleen onze eigen sleutels.
@@ -91,6 +91,11 @@ describe('de naad: het harnas zelf', () => {
   it('productie zonder het tweede slot: geblokkeerd bij het aanmaken van een client', async () => {
     const h = await laad({ ...PROD, RLS_DOEL: 'productie' });
     expect(h.doelsoort).toBe('productie');
+    expect(() => h.adminDb()).toThrow(/geblokkeerd/);
+  });
+
+  it('lokaal met een URL naar het productieproject: geblokkeerd zonder tweede slot', async () => {
+    const h = await laad({ RLS_DOEL: 'lokaal', RLS_LOKAAL_URL: 'https://wehgocadxehottiiyvsc.supabase.co' });
     expect(() => h.adminDb()).toThrow(/geblokkeerd/);
   });
 

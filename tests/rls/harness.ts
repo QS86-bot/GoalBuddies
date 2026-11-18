@@ -193,6 +193,9 @@ function requireEnv(): {
     );
   }
   if (doelsoort === 'lokaal') {
+    // QS8-702: ook een 'lokaal' doel mag niet stilletjes naar het echte project
+    // wijzen (RLS_LOKAAL_URL op *.supabase.co met het projectsecret).
+    if (url) guardProductie(url);
     if (!url || !jwtSecret) {
       throw new Error(
         'RLS_DOEL=lokaal vraagt een draaiende PostgREST. Start hem met ' +
