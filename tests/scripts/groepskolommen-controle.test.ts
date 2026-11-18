@@ -125,7 +125,7 @@ describe('de census zelf', () => {
     //    het zijn zijn eigen velden. Wat over ánderen gaat komt niet uit de
     //    tabel maar uit `buddyzoek_stand()`, als één verzadigd getal.
     //    `goal_match_queue_select` is `user_id = (select auth.uid())` en de drie
-    //    schrijfpolicies staan op `false`. Rij 41 in
+    //    schrijfpolicies staan op `false`. Rij 50 in
     //    `docs/decisions/002-domeinregel7-oppervlakken.md`.
     expect(Object.keys(CENSUS)).toHaveLength(43);
   });

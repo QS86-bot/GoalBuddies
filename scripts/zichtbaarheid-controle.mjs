@@ -208,6 +208,12 @@ export const GEEN_OPPERVLAK = new Map([
   ['functie:guard_group_update', 'Pint de kolom vast; een client mag hem niet schrijven.'],
   ['functie:create_group', 'Zet de beginstand. Nieuwe groepen zijn beschermd.'],
   [
+    'functie:maak_teamgroep',
+    'Zet de beginstand van een teamgroep, gekozen door de organisatiebeheerder (QS8-653, ' +
+      'besluit 18); standaard beschermd. Omzetten gaat daarna via `zet_groepszichtbaarheid()` ' +
+      '(besluit 26). Varieert zelf niets.',
+  ],
+  [
     'functie:invite_preview',
     'Geeft de stand van de gróep terug, niet iets over een lid — verantwoord in 0080: ' +
       'het is het feit dat iemand nodig heeft om te besluiten of hij meedoet.',

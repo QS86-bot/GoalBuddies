@@ -259,6 +259,20 @@ const REGISTER = new Map([
   ],
   ['zet_groepszichtbaarheid', 'Beheerderspoort (besluit A41). Gemeten: poort weg → 5 rood.'],
   [
+    'maak_teamgroep',
+    'Organisatiebeheerderspoort (QS8-653, besluit 13): alleen een beheerder van de organisatie ' +
+      'maakt er een team in, en de groepsrij krijgt die organisatie mee. Gemeten: poort weg → 1 rood ' +
+      '(`tests/rls/teamgroepen.test.ts`, "laat alleen een organisatiebeheerder een team maken").',
+  ],
+  [
+    'ruim_teamlidmaatschappen_op',
+    'Triggerfunctie (QS8-653) op `organization_members`, `after update of status`. Geen eigen ' +
+      'poort: de schrijfactie die hem aftrapt is alleen bereikbaar via `verlaat_organisatie()` ' +
+      '(lidmaatschapspoort) en `zet_organisatielid_uit()` (beheerderspoort); `organization_members` ' +
+      'heeft geen UPDATE-policy en geen schrijfgrant (0299). Schrijft alleen rijen van de persoon ' +
+      'die inactief werd. Gemeten: trigger weg → 2 rood.',
+  ],
+  [
     'herorden_weekplan',
     'Eigenaarspoort. ⚠️ **Was ongedekt tot QS8-286: nul rood van 995.** Elke bestaande test ' +
       'riep hem aan als de eigenaar op zijn eigen doel, dus de poort weghalen veranderde ' +
@@ -662,7 +676,7 @@ const LEESREGISTER = new Map([
       '`least(2, greatest(0, 3 - count(distinct user_id)))` over de wachtenden in jouw categorie, ' +
       'periodeband en week-startdag. Zonder die `least` is het een bevolkingsmeter op een bak waar je ' +
       'zelf in zit, met één verzoek te herhalen terwijl je de categorie varieert; mét is `0` niet van ' +
-      '`1` te onderscheiden. Rij 41 in `docs/decisions/002-domeinregel7-oppervlakken.md`.',
+      '`1` te onderscheiden. Rij 50 in `docs/decisions/002-domeinregel7-oppervlakken.md`.',
   ],
   [
     'zoek_buddies_aan',
