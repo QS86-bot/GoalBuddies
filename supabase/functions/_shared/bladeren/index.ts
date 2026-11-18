@@ -110,6 +110,20 @@ export interface Budget {
    * klok mee; een test een klok die alleen loopt als er gewerkt wordt.
    */
   klok: () => number;
+  /**
+   * Hoeveel rijen er in deze aanroep hoogstens beginnen — QS8-697. Weglaten
+   * betekent geen maximum.
+   *
+   * ⚠️⚠️ **Waarom naast `stopNa` een aantal, en dat is gemeten en niet
+   *    bedacht.** Een Edge Function op de gratis tier heeft twee muren: de
+   *    wandklok en de **CPU-tijd per aanroep**. `stopNa` beschermt alleen tegen
+   *    de eerste. 📏 De rollover met acht profielen tegelijk (v26, 18-11-2026)
+   *    deed 876 profielen in 63 s en werd toen afgekapt met `CPU Time exceeded`,
+   *    ruim binnen zijn tijdbudget van 100 s. CPU-tijd is vanuit de functie niet
+   *    te meten; het aantal rijen is wat er per rij aan CPU kost, opgeteld, en
+   *    dus de grootheid die je wél kunt begrenzen.
+   */
+  maxRijen?: number;
 }
 
 /**
@@ -147,6 +161,10 @@ export async function verwerkBinnenBudget<T>(
   werk: (rij: T) => Promise<void>,
   budget: Budget,
 ): Promise<Budgetuitslag> {
+  const { maxRijen } = budget;
+  if (maxRijen !== undefined && (!Number.isInteger(maxRijen) || maxRijen < 1)) {
+    throw new RangeError(`maxRijen moet een geheel getal ≥ 1 zijn, kreeg ${maxRijen}`);
+  }
   if (!Number.isInteger(budget.gelijktijdig) || budget.gelijktijdig < 1) {
     throw new RangeError(`gelijktijdig moet een geheel getal ≥ 1 zijn, kreeg ${budget.gelijktijdig}`);
   }
@@ -188,6 +206,7 @@ async function bied<T>(
   gefaald: () => boolean,
   start: (rij: T) => void,
 ): Promise<boolean> {
+  let gestart = 0;
   for (;;) {
     if (gefaald() || klok() >= budget.stopNa) return false;
     if (lopend.size >= budget.gelijktijdig) {
@@ -196,6 +215,10 @@ async function bied<T>(
     }
     const volgende = await iterator.next();
     if (volgende.done === true) return true;
+    // ⚠️ **Ná het lezen en niet ervoor** (QS8-697): zo is een bron met precies
+    //    `maxRijen` rijen volledig en niet "budget op". De gelezen rij begint niet.
+    if (gestart >= (budget.maxRijen ?? Infinity)) return false;
+    gestart += 1;
     start(volgende.value);
   }
 }
