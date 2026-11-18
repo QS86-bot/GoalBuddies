@@ -235,7 +235,7 @@ export const CENSUS = {
   },
   groups: {
     groepszichtbaar: true,
-    kolommen: 'id, name, icon, created_by, invite_code, invite_revoked, huddle_day, tz, evidence_policy, approval_rule, season_cadence, status, last_activity_at, created_at, zichtbaarheid, approval_quorum, ontdekbaar, categorie, omschrijving, voertaal',
+    kolommen: 'id, name, icon, created_by, invite_code, invite_revoked, huddle_day, tz, evidence_policy, approval_rule, season_cadence, status, last_activity_at, created_at, zichtbaarheid, approval_quorum, ontdekbaar, categorie, omschrijving, voertaal, organization_id',
   },
   hero_appearances: {
     groepszichtbaar: false,
@@ -263,7 +263,8 @@ export const CENSUS = {
   },
   points_ledger: {
     groepszichtbaar: false,
-    kolommen: 'id, user_id, group_id, goal_id, delta, reason, ref_type, ref_id, created_at, cycle_start_date, zonder_beoordelaar, ronde',
+    // `seizoen` (QS8-662, 0306): het kwartaallabel van een teambonus. Eigenaar-only, net als de rest van de rij.
+    kolommen: 'id, user_id, group_id, goal_id, delta, reason, ref_type, ref_id, created_at, cycle_start_date, zonder_beoordelaar, ronde, seizoen',
   },
   push_tokens: {
     groepszichtbaar: false,

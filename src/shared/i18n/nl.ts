@@ -105,6 +105,14 @@ export const nl = {
   'systeembericht.huddle_day_changed':
     '{naam} heeft de huddledag verzet. De week die nu loopt is meeverhuisd; wat er al afgesloten was blijft afgesloten.',
 
+  /**
+   * ⚠️ Migratie 0304 (QS8-656). Over het team, niet over een persoon: geen
+   *    {naam} en geen titel. Wie het teamdoel maakte of afrondde, staat er met
+   *    opzet niet in.
+   */
+  'systeembericht.team_goal_created': 'Er is een nieuw teamdoel. Neem je aandeel als je mee wilt doen.',
+  'systeembericht.team_goal_completed': 'Het team heeft een teamdoel afgerond.',
+
   /** Iemand die er niet meer is. Zie oppervlak 18 in beslisdocument 002. */
   'algemeen.oud_lid': 'Een oud-lid',
   // Het voegwoord van een opsomming. Staat hier omdat het per taal verschilt.
@@ -206,6 +214,10 @@ export const nl = {
   'commitment.begunstigde.naamloos': 'Een groepsgenoot',
   'commitment.fout.invoer': 'Controleer je invoer.',
   'commitment.fout.vastleggen': 'Vastleggen lukte niet. Probeer het opnieuw.',
+  // ⚠️ QS8-660 (0305): een werkaandeel en een vriendenkring zijn twee werelden.
+  'commitment.fout.teamstraf':
+    'Een afspraak op een teamaandeel heeft alleen je team of een teamgenoot als getuige. ' +
+    'En een team is alleen getuige van een teamaandeel. Kies een andere getuige.',
   'commitment.fout.intrekken': 'Intrekken lukte niet.',
   'commitment.fout.al_afgegaan':
     'Dit commitment is al in werking getreden en kan niet meer worden ingetrokken.',
