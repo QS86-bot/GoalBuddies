@@ -56,7 +56,7 @@ De service worker (`public/sw.js`) is alleen een pushontvanger en cachet niets; 
 
 ## Grendels
 
-`tests/beloftes/tabblad-foutstaat.test.ts`: elk bestand in `app/(tabs)/` exporteert de foutstaat; een onbekende zone is geen renderfout (en een geldige rekent nog); het breekpunt. Geijkt met de hand: export uit `lijst.tsx` halen geeft rood op de lijst-toets; de try/catch uit `isHuddledagOp()` halen geeft rood op de zone-toets; `BREED_VANAF` op 700 geeft rood op het breekpunt. Dat expo-router de export ook daadwerkelijk om de route zet is met Playwright gemeten en staat niet in CI.
+`tests/beloftes/tabblad-foutstaat.test.ts`: elk bestand in `app/(tabs)/` exporteert de foutstaat; een onbekende zone is geen renderfout (en een geldige rekent nog); het breekpunt. Geijkt met de hand (en `groepentab-en-menu.test.ts` voor de lege-staatknop en de menu-eigenschappen, zie daar): export uit `lijst.tsx` halen geeft rood op de lijst-toets; de `isGeldigeTijdzone`-toets uit `isHuddledagOp()` halen geeft rood op de zone-toets en op de eenmalig-melden-toets; een uitgecommentarieerde export geeft rood (de gedeelde knip `scripts/zonder-commentaar.mjs` haalt hem weg); `BREED_VANAF` op 700 geeft rood op het breekpunt. Dat expo-router de export ook daadwerkelijk om de route zet is met Playwright gemeten en staat niet in CI.
 
 ## Waar wat woont (aanvulling 18-11-2026, uit het klikpad van Quinten)
 

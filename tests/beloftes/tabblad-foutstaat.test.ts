@@ -3,6 +3,7 @@ import { join } from 'node:path';
 
 import { describe, expect, it, vi } from 'vitest';
 
+import { zonderCommentaar } from '../../scripts/zonder-commentaar.mjs';
 import { reportError } from '../../src/lib/observability';
 
 import { isHuddledagOp } from '../../src/modules/buddies/periods';
@@ -28,11 +29,13 @@ vi.mock('../../src/lib/observability', () => ({ reportError: vi.fn() }));
  *
  *   de `export { TabFout as ErrorBoundary }` uit `app/(tabs)/lijst.tsx` halen
  *      -> rood: 'exporteert elk tabblad de foutstaat' (lijst.tsx)
- *   de try/catch in `isHuddledagOp()` weghalen
- *      -> rood: 'een groep met een onbekende tijdzone is geen renderfout'
+ *   de `isGeldigeTijdzone`-toets in `isHuddledagOp()` weghalen
+ *      -> rood: 'een groep met een onbekende tijdzone is geen renderfout' en
+ *         'meldt een onbekende zone precies één keer'
  *   `BREED_VANAF` naar 700
  *      -> rood: 'het breekpunt ligt op de kolombreedte plus de inhoud'
- *   een uitgecommentarieerde export in een tabbladbestand
+ *   een uitgecommentarieerde export in een tabbladbestand (de gedeelde knip
+ *   `scripts/zonder-commentaar.mjs` haalt hem weg)
  *      -> rood: 'exporteert elk tabblad de foutstaat'
  *   `meldOnbekendeZoneEenmaal` weghalen of per render laten melden
  *      -> rood: 'meldt een onbekende zone precies één keer'
@@ -42,14 +45,6 @@ const TABS = join(__dirname, '..', '..', 'app', '(tabs)');
 
 function tabbladen(): string[] {
   return readdirSync(TABS).filter((f) => f.endsWith('.tsx') && !f.startsWith('_'));
-}
-
-/** Een uitgecommentarieerde export is geen export. */
-function zonderRegelcommentaar(bron: string): string {
-  return bron
-    .split('\n')
-    .filter((regel) => !/^\s*\/\//.test(regel))
-    .join('\n');
 }
 
 const EXPORT = /export\s*\{\s*TabFout\s+as\s+ErrorBoundary\s*\}/;
@@ -65,12 +60,12 @@ describe('geen wit scherm op een tabblad', () => {
 
   it.each(tabbladen())('exporteert elk tabblad de foutstaat (%s)', (bestand) => {
     const bron = readFileSync(join(TABS, bestand), 'utf8');
-    expect(zonderRegelcommentaar(bron)).toMatch(EXPORT);
+    expect(zonderCommentaar(bron)).toMatch(EXPORT);
   });
 
   it.each(BUITEN_TABS)('exporteert ook %s de foutstaat', (bestand) => {
     const bron = readFileSync(join(TABS, bestand), 'utf8');
-    expect(zonderRegelcommentaar(bron)).toMatch(EXPORT);
+    expect(zonderCommentaar(bron)).toMatch(EXPORT);
   });
 
   it('een groep met een onbekende tijdzone is geen renderfout', () => {
