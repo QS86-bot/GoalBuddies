@@ -28,18 +28,24 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
  * ⚠️ **Met de hand gebroken vóór hij geloofd werd**, per grendel apart:
  *
  *    1. `PROFIELBUDGET_MS` op `Infinity` gezet → "draait het werk na de lus"
- *       rood: de klok staat aan het eind ver boven de 150 s. Dat is de bug zelf.
- *    2. In `verwerkBinnenBudget()` de budgetcontrole weggehaald → dezelfde toets
- *       rood, de kleine run groen.
- *    3. `PROFIELEN_TEGELIJK` op 1 gezet → "houdt de gelijktijdigheid begrensd"
- *       rood (hoogste is 1 en niet 8), en "ziet elk profiel precies één keer"
- *       ook: 450 profielen à 0,45 s passen één tegelijk niet in 100 s.
+ *       en "zegt dat hij niet volledig was" rood (twee van de vijf; 📏 gemeten
+ *       18-11-2026): bij trage profielen (3 s per verzoek) staat de klok dan
+ *       aan het eind ver boven de 150 s. Dat is de bug zelf. Sinds QS8-697
+ *       moet de run traag zijn: bij 150 ms per verzoek stopt het aantal (390)
+ *       de lus al, en bleef deze mutatie groen.
+ *    2. In `verwerkBinnenBudget()` de budgetcontrole weggehaald → dezelfde twee
+ *       toetsen rood (📏 gemeten), de kleine run groen.
+ *    3. `PROFIELEN_TEGELIJK` op 1 gezet → drie rood (📏 gemeten 18-11-2026):
+ *       "houdt de gelijktijdigheid begrensd" (hoogste is 1 en niet 8), "ziet
+ *       elk profiel precies één keer" (390 profielen à 0,45 s passen één
+ *       tegelijk niet in 100 s) en "begint nooit meer dan 390 profielen".
  *    4. In `profielenVanafWillekeurigePlek()` het `tot`-bereik weggelaten →
  *       alleen "ziet elk profiel precies één keer" rood.
  *    5. `volledig` uit de uitvoer van de functie gehaald → beide
  *       `volledig`-toetsen rood (`rollover.yml` leest dat veld).
- *    6. `slaapStilleGroepen()` na de lus niet meer aangeroepen → alleen "draait
- *       het werk na de lus" rood.
+ *    6. `slaapStilleGroepen()` na de lus niet meer aangeroepen → twee rood
+ *       (📏 gemeten 18-11-2026): "draait het werk na de lus" en "begint nooit
+ *       meer dan 390 profielen per run, en draait daarna het werk na de lus".
 
  *    QS8-697, het maximum per run, ook per grendel:
  *
@@ -48,9 +54,12 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
  *    8. De `maxRijen`-toets in `verwerkBinnenBudget()` weggehaald → die toets
  *       én de unit-toets "begint niet meer dan maxRijen rijen" rood.
  *    9. De toets vóór het lezen gezet in plaats van erna → "ziet elk profiel
- *       precies één keer" (400 = het maximum) en de unit-toets "is volledig bij
+ *       precies één keer" (390 = het maximum) en de unit-toets "is volledig bij
  *       precies maxRijen" rood: een bron die precies past, heette dan onvolledig.
  */
+
+/** Verzoekduur van een trage run: één profiel kost 3 × 3 s. */
+const TRAAG_MS = 3_000;
 
 type Afhandelaar = (verzoek: Request) => Response | Promise<Response>;
 
@@ -72,6 +81,8 @@ const db = {
   hoogste: 0,
   klokNaDeLus: Number.NaN,
   start: 0,
+  /** Duur van één verzoek per profiel op de nagemaakte klok (ms). */
+  verzoekMs: 150,
 };
 
 /**
@@ -110,7 +121,7 @@ function legeQuery(tabel: string) {
   }
   q.maybeSingle = () => Promise.resolve({ data: null, error: null });
   q.then = async (klaar: (r: unknown) => void) => {
-    if (tabel === 'weekly_goals') await werkt(150);
+    if (tabel === 'weekly_goals') await werkt(db.verzoekMs);
     return klaar({ data: [], error: null });
   };
   return q;
@@ -123,7 +134,7 @@ async function rpc(naam: string, args: Record<string, unknown>) {
     db.tegelijk += 1;
     db.hoogste = Math.max(db.hoogste, db.tegelijk);
   }
-  if (PROFIEL_RPC.has(naam)) await werkt(150);
+  if (PROFIEL_RPC.has(naam)) await werkt(db.verzoekMs);
   if (naam === 'maak_straffen_verschuldigd') db.tegelijk -= 1;
   if (naam === NA_DE_LUS[0]) db.klokNaDeLus = Date.now() - db.start;
   const lijst = naam.startsWith('verlopen_') || naam === 'maak_seizoensrecaps' || naam === 'weekplan_kandidaten';
@@ -167,8 +178,9 @@ function profielen(n: number): string[] {
   }).sort();
 }
 
-async function draai(n: number) {
+async function draai(n: number, verzoekMs = 150) {
   db.profielen = profielen(n);
+  db.verzoekMs = verzoekMs;
   const h = await handler();
   db.start = Date.now();
   let klaar = false;
@@ -190,7 +202,7 @@ beforeEach(() => {
   vi.setSystemTime(new Date('2026-11-17T04:00:00Z'));
   Object.assign(db, {
     profielen: [], rpcs: [], verwerkteProfielen: [], tegelijk: 0, hoogste: 0,
-    klokNaDeLus: Number.NaN, start: 0,
+    klokNaDeLus: Number.NaN, start: 0, verzoekMs: 150,
   });
 });
 
@@ -200,8 +212,10 @@ afterEach(() => {
 });
 
 describe('de rollover op de naad tussen de profielenlus en het werk erna', () => {
-  it('draait het werk na de lus, binnen de wandklok, ook bij 20.000 profielen', async () => {
-    const { status, body, duur } = await draai(20_000);
+  it('draait het werk na de lus, binnen de wandklok, ook als elk profiel traag is', async () => {
+    // ⚠️ QS8-697: 3 s per verzoek (9 s per profiel). Het aantal (390) alleen zou hier 390 × 9 / 8
+    //    ≈ 440 s kosten; alleen het tijdbudget houdt de lus dan binnen de wandklok.
+    const { status, body, duur } = await draai(20_000, TRAAG_MS);
 
     expect(status).toBe(200);
     expect(body.ok).toBe(true);
@@ -213,10 +227,11 @@ describe('de rollover op de naad tussen de profielenlus en het werk erna', () =>
   });
 
   it('zegt dat hij niet volledig was als het budget op is', async () => {
-    const { body } = await draai(20_000);
+    const { body } = await draai(20_000, TRAAG_MS);
 
     expect(body.volledig).toBe(false);
-    expect(db.verwerkteProfielen.length).toBeLessThan(20_000);
+    // ⚠️ Onder het maximum: dan is het tijdbudget gestopt en niet het aantal.
+    expect(db.verwerkteProfielen.length).toBeLessThan(390);
     expect(body.profielen).toBe(db.verwerkteProfielen.length);
   });
 
@@ -231,7 +246,7 @@ describe('de rollover op de naad tussen de profielenlus en het werk erna', () =>
 
   it('begint nooit meer dan 390 profielen per run, en draait daarna het werk na de lus', async () => {
     // 📏 QS8-697: v26 werd na 876 profielen afgekapt op CPU-tijd, ruim binnen het tijdbudget.
-    //    450 profielen passen in de tijd (≈ 4 s nagemaakt); alleen het aantal mag hier stoppen.
+    //    450 profielen passen in de tijd (≈ 22 s nagemaakt); alleen het aantal mag hier stoppen.
     const { status, body } = await draai(450);
 
     expect(status).toBe(200);
