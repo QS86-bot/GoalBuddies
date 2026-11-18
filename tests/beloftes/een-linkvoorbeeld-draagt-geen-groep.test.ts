@@ -13,7 +13,7 @@
  *    invulplek, en `app/+html.tsx` bouwt zelf geen tag erbij. Elk van die vier
  *    is een eigen grendel met een eigen ijking (zie het commit-bericht).
  */
-import { readFileSync } from 'node:fs';
+import { readdirSync, readFileSync } from 'node:fs';
 
 import { describe, expect, it } from 'vitest';
 
@@ -23,6 +23,16 @@ import { LOGO_PAD, linkvoorbeeldTags } from '../../src/shared/web/linkvoorbeeld'
 import { uitnodigingsBericht } from '../../src/modules/buddies/samen';
 
 const APP = 'https://goalbuddies.q-projects.tech';
+function zonderCommentaar(bron: string): string {
+  return bron.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
+}
+
+function bronBestanden(map: string): string[] {
+  return readdirSync(new URL(`../../${map}`, import.meta.url), { recursive: true, withFileTypes: true })
+    .filter((e) => e.isFile() && /\.(ts|tsx)$/.test(e.name))
+    .map((e) => `${e.parentPath.slice(e.parentPath.indexOf(`/${map}`) + 1)}/${e.name}`);
+}
+
 const lees = (pad: string) => readFileSync(new URL(`../../${pad}`, import.meta.url), 'utf8');
 
 describe('linkvoorbeeldTags', () => {
@@ -74,20 +84,39 @@ describe('linkvoorbeeldTags', () => {
 });
 
 describe('de naad tussen de tags en de webexport', () => {
-  it('bouwt app/+html.tsx geen eigen og- of twitter-tag (grendel 4)', () => {
-    const html = lees('app/+html.tsx').replace(/\/\*[\s\S]*?\*\//g, '').replace(/\{\/\*[\s\S]*?\*\/\}/g, '');
-    expect(html).toContain('linkvoorbeeldTags(');
-    expect(html).not.toMatch(/og:|twitter:/);
+  it('bouwt nergens in app/ of src/ een eigen og- of twitter-tag, en gebruikt geen expo-router/head (grendel 4)', () => {
+    const bronnen = [...bronBestanden('app'), ...bronBestanden('src')].filter(
+      (f) => !f.endsWith('.test.ts') && !f.endsWith('.test.tsx') && !f.endsWith('src/shared/web/linkvoorbeeld.ts'),
+    );
+    const schuldig = bronnen.filter((f) => {
+      const bron = zonderCommentaar(lees(f));
+      return /(?<![a-z])og:[a-z]|(?<![a-z])twitter:[a-z]|expo-router\/head/.test(bron);
+    });
+    expect(schuldig).toEqual([]);
+    expect(zonderCommentaar(lees('app/+html.tsx'))).toContain('linkvoorbeeldTags(');
   });
 
   it('importeert linkvoorbeeld.ts niets dat een groep kan kennen (grendel 5)', () => {
     const bron = lees('src/shared/web/linkvoorbeeld.ts');
-    const imports = [...bron.matchAll(/^import .* from '([^']+)'/gm)].map((m) => m[1]);
+    const imports = [...bron.matchAll(/^import[\s\S]*?from '([^']+)'/gm)].map((m) => m[1]);
     expect(imports).toEqual(['../i18n/nl']);
   });
 });
 
 describe('uitnodigingsBericht', () => {
+  it('kent alleen link en naam, en de catalogus alleen die twee invulplekken (grendel 6)', () => {
+    expect(uitnodigingsBericht.length).toBe(2);
+    expect(lees('src/modules/buddies/samen.ts')).toMatch(
+      /export function uitnodigingsBericht\(\s*link: string,\s*naam: string \| null \| undefined,\s*\)/,
+    );
+    for (const catalogus of [nl, en] as const) {
+      for (const [sleutel, tekst] of Object.entries(catalogus)) {
+        if (!sleutel.startsWith('delen.uitnodiging_')) continue;
+        for (const m of tekst.matchAll(/\{(\w+)\}/g)) expect(['naam', 'link']).toContain(m[1]);
+      }
+    }
+  });
+
   it('noemt de afzender, de app en de link, en geen groep', () => {
     const b = uitnodigingsBericht(`${APP}/uitnodiging/ABC`, 'Quinten');
     expect(b.tekst).toContain('Quinten');
