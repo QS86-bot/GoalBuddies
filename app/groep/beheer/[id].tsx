@@ -24,6 +24,7 @@ import {
   huddledagLabel,
   type Bewijseis,
   toonCode,
+  uitnodigingsBericht,
   uitnodigingsLink,
   vernieuwUitnodiging,
   wijzigGroep,
@@ -780,8 +781,8 @@ export default function GroepBeheer() {
 
                 <Deelknop
                   label={t('beheer.deel')}
-                  titel={t('beheer.deel_titel', { groep: g.name })}
-                  tekst={uitnodigingsLink(clientEnv().appUrl, g.invite_code)}
+                  titel={deelBericht(g.invite_code, profiel?.display_name).onderwerp}
+                  tekst={deelBericht(g.invite_code, profiel?.display_name).tekst}
                 />
 
                 <Field
@@ -917,4 +918,9 @@ function EerderLid({
         : t('ontdek.eerder_vertrokken', { datum })}
     </Caption>
   );
+}
+
+/** De tekst en het onderwerp van de gedeelde uitnodiging — QS8-706. */
+function deelBericht(code: string, naam: string | undefined) {
+  return uitnodigingsBericht(uitnodigingsLink(clientEnv().appUrl, code), naam);
 }

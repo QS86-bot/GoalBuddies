@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 
 import { clientEnv } from '@/lib/env';
-import { useSession } from '@/modules/auth';
+import { useProfiel, useSession } from '@/modules/auth';
 import {
   fetchGroep,
   fetchGroepsoverzicht,
@@ -23,6 +23,7 @@ import {
   type Klassementsrij,
   type Pagina,
   type Zichtbaarheid,
+  uitnodigingsBericht,
   uitnodigingsLink,
   verlaatGroep,
   zichtbaarheidLabels,
@@ -99,6 +100,7 @@ export default function GroepDetail() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
   const { userId } = useSession();
+  const { profiel } = useProfiel();
 
   const {
     data: stand,
@@ -307,8 +309,8 @@ export default function GroepDetail() {
                 <Body muted>{t('groepdetail.link_uitleg')}</Body>
                 <Deelknop
                   label={t('groepdetail.deel')}
-                  titel={t('groepdetail.deel_titel', { groep: s.groep.name })}
-                  tekst={uitnodigingsLink(clientEnv().appUrl, s.groep.invite_code)}
+                  titel={deelBericht(s.groep.invite_code, profiel?.display_name).onderwerp}
+                  tekst={deelBericht(s.groep.invite_code, profiel?.display_name).tekst}
                 />
               </Card>
             )}
@@ -1258,3 +1260,8 @@ const styles = StyleSheet.create({
   },
   knoppen: { flexDirection: 'row', gap: space.blokGap - 3, flexWrap: 'wrap' },
 });
+
+/** De tekst en het onderwerp van de gedeelde uitnodiging — QS8-706. */
+function deelBericht(code: string, naam: string | undefined) {
+  return uitnodigingsBericht(uitnodigingsLink(clientEnv().appUrl, code), naam);
+}

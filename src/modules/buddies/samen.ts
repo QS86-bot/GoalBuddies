@@ -1,3 +1,4 @@
+import { t } from '../../shared/i18n';
 import { uitnodigingsLink } from './schemas';
 
 import type { DoelGroep } from './deling';
@@ -80,4 +81,31 @@ export function beginfase(
 
   const eerste = gekoppeld[0];
   return eerste ? { fase: 'gedeeld', groupId: eerste.group_id } : { fase: 'kiezen' };
+}
+
+/**
+ * De tekst die een gedeelde uitnodiging draagt — QS8-706.
+ *
+ * ⚠️ **Wie uitnodigt, wat GoalBuddies is en wat er bij het openen gebeurt — en
+ *    niets over de groep.** Dit is wat een ontvanger ziet in WhatsApp of in een
+ *    mail. De groepsnaam staat er bewust níet in: de tekst belandt in chats en
+ *    mailboxen van mensen die (nog) geen lid zijn, en een groepsnaam is voor
+ *    hen niet bedoeld. De link zelf draagt de code. De afzender is de
+ *    weergavenaam van degene die zelf op "delen" drukt.
+ */
+export function uitnodigingsBericht(
+  link: string,
+  naam: string | null | undefined,
+): { readonly tekst: string; readonly onderwerp: string } {
+  const schoon = typeof naam === 'string' ? naam.trim() : '';
+  if (schoon === '') {
+    return {
+      tekst: t('delen.uitnodiging_tekst_zonder_naam', { link }),
+      onderwerp: t('delen.uitnodiging_onderwerp_zonder_naam'),
+    };
+  }
+  return {
+    tekst: t('delen.uitnodiging_tekst', { naam: schoon, link }),
+    onderwerp: t('delen.uitnodiging_onderwerp', { naam: schoon }),
+  };
 }

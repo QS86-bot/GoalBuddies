@@ -2,6 +2,7 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useState } from 'react';
 
 import { clientEnv } from '@/lib/env';
+import { useProfiel } from '@/modules/auth';
 import {
   beginfase,
   deelbareUitnodiging,
@@ -10,6 +11,7 @@ import {
   fetchMijnGroepen,
   koppelbareGroepen,
   koppelDoelAanGroep,
+  uitnodigingsBericht,
   zichtbaarheidLabels,
   type DoelGroep,
 } from '@/modules/buddies';
@@ -270,6 +272,9 @@ function Gedeeld({ groupId, onKlaar }: { readonly groupId: string; readonly onKl
 }
 
 function Uitnodiging({ naam, link }: { readonly naam: string; readonly link: string | null }) {
+  const { profiel } = useProfiel();
+  const bericht = uitnodigingsBericht(link ?? '', profiel?.display_name);
+
   return (
     <Card>
       <Subheading>{t('samen.gekoppeld', { naam })}</Subheading>
@@ -280,8 +285,8 @@ function Uitnodiging({ naam, link }: { readonly naam: string; readonly link: str
       ) : (
         <Deelknop
           label={t('samen.deel')}
-          titel={t('samen.deel_titel', { groep: naam })}
-          tekst={link}
+          titel={bericht.onderwerp}
+          tekst={bericht.tekst}
         />
       )}
     </Card>
