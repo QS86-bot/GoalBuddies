@@ -9,6 +9,7 @@ import {
   verwijderAuthGebruiker,
   type TestUser,
 } from './harness';
+import { proefId } from './proefid';
 
 /**
  * Afronden van een teamdoel en de teambonus — QS8-662, criterium 13 en 14, en de
@@ -254,7 +255,7 @@ describe.runIf(rlsTestsConfigured)('afronden van een teamdoel en de teambonus (Q
       delta: 2,
       reason: 'team_goal_bonus',
       ref_type: 'team_goal',
-      ref_id: '00000000-0000-4000-8000-000000000662',
+      ref_id: proefId(1),
       created_at: new Date(Date.now() - 200 * 86_400_000).toISOString(),
       seizoen: '2020-01-01',
     } as never);
@@ -280,7 +281,7 @@ describe.runIf(rlsTestsConfigured)('afronden van een teamdoel en de teambonus (Q
     expect((await bonussen(bert)).map((b) => b.ref_id)).toEqual([eerste]);
     expect((await bonussen(cleo)).map((b) => b.ref_id)).toEqual([eerste]);
     expect((await bonussen(dirk)).map((b) => b.ref_id).sort()).toEqual(
-      ['00000000-0000-4000-8000-000000000662', tweede].sort(),
+      [proefId(1), tweede].sort(),
     );
     expect(await bonussen(eva)).toEqual([]);
   }, TEST_TIMEOUT);
@@ -294,7 +295,7 @@ describe.runIf(rlsTestsConfigured)('afronden van een teamdoel en de teambonus (Q
       delta: 2,
       reason: 'team_goal_bonus',
       ref_type: 'team_goal',
-      ref_id: '00000000-0000-4000-8000-000000000a01',
+      ref_id: proefId(2),
       created_at: new Date(Date.now() - 200 * 86_400_000).toISOString(),
       seizoen: kwartaal,
     } as never);
@@ -305,7 +306,7 @@ describe.runIf(rlsTestsConfigured)('afronden van een teamdoel en de teambonus (Q
       delta: 2,
       reason: 'team_goal_bonus',
       ref_type: 'team_goal',
-      ref_id: '00000000-0000-4000-8000-000000000a02',
+      ref_id: proefId(3),
       seizoen: kwartaal,
     } as never);
     expect(tweede.error?.code).toBe('23505');
@@ -315,7 +316,7 @@ describe.runIf(rlsTestsConfigured)('afronden van een teamdoel en de teambonus (Q
       delta: 2,
       reason: 'team_goal_bonus',
       ref_type: 'team_goal',
-      ref_id: '00000000-0000-4000-8000-000000000a03',
+      ref_id: proefId(4),
     } as never);
     expect(zonder.error?.code).toBe('23514');
   }, TEST_TIMEOUT);
