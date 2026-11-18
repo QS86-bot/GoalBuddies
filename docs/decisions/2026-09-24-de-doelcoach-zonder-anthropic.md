@@ -145,8 +145,8 @@ categorie, en 📏 er zijn er **twaalf** in `src/shared/categorieen/index.ts`
 | kosten om te doen | twaalf patronen schrijven en onderhouden, plus vertaling — dit is redactiewerk en geen programmeerwerk |
 
 ⚠️⚠️ **Wat de app hiermee inlevert, is een epic dat expres gebouwd is.** 📏 De
-twee primaire knoppen naar een nieuw doel — op `app/(tabs)/doelen.tsx` en
-`app/groep/[id].tsx` — wijzen sinds QS8-383 naar `app/doel/plan.tsx` en
+twee knoppen naar een nieuw doel — de primaire op `app/(tabs)/doelen.tsx` en
+een secundaire op `app/groep/[id].tsx` — wijzen sinds QS8-383 naar `app/doel/plan.tsx` en
 uitdrukkelijk niet meer naar `app/doel/nieuw.tsx`. De commentaarregels dáár
 noemen dat met zoveel woorden *"de hele epic waard"*. Richting 2 kiezen is die
 knoppen terugdraaien, en dat is een productbesluit en geen bezuiniging.

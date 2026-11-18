@@ -75,6 +75,8 @@ die er niet zijn, is een toets die je uitzet.
 
 ## 5. Wat grendel 3 niet dekt — opgeschreven in plaats van overschreeuwd
 
+⚠️ **Gesloten in §8 (QS8-646), en in §9 (QS8-681) is de sluiting zelf getoetst.** Wat hieronder staat is de stand van 05-10-2026 en blijft staan als meting.
+
 `git status --porcelain` ziet geen pad dat `.gitignore` uitsluit. Een script dat
 bij import in `dist/` of `node_modules/` schrijft, komt er dus niet uit. De twee
 historische gevallen (`sync-edge-shared.mjs` kopieerde 19 bestanden,
@@ -108,3 +110,98 @@ stond er in `git status` niets anders dan de bedoelde wijziging.
 Geen wijziging aan een script in `scripts/`. De tien van QS8-608 zijn gemeten
 inert en blijven dat; wat hier veranderde is de wacht die dat moet blijven
 vaststellen.
+
+## 8. Achteraf: de grens was er, en hij is gesloten (QS8-646)
+
+⚠️ **§5 beschreef maar één van twee grenzen.** De boomkant ziet geen pad dat
+`.gitignore` uitsluit, en dat stond hier. Dat de wegwerpmapkant alleen de `cwd`
+van het kind ziet stond nergens. 📏 Gemeten op 16-11-2026, stand ervóór 5/5
+groen, één mutatie per keer bovenaan `scripts/psql.mjs`, steeds teruggezet:
+
+| mutatie | uitslag vóór QS8-646 |
+| -- | -- |
+| `writeFileSync` met absoluut pad in de repo | rood (de boomkant) |
+| `writeFileSync` naar de `cwd` van het kind | rood (de wegwerpmapkant) |
+| `writeFileSync('/tmp/schrijf-bewijs.txt', …)` | **5/5 groen**, bestand op schijf |
+| `writeFileSync` naar een pad dat `.gitignore` uitsluit | **5/5 groen** |
+
+Er stond dus een bewering ("geen enkel script schrijft bij import") die breder
+las dan wat gemeten was, voor elk pad buiten repo en wegwerpmap.
+
+**Gesloten, niet opgeschreven.** 📏 Node's permissiemodel bestaat in de Node van
+CI (`'22'`, lokaal 22.23.4) onder de vlag `--permission` en werkt: een schrijfactie
+buiten `--allow-fs-write` is `ERR_ACCESS_DENIED`, ook voor `/tmp` en voor
+`.gitignore`-paden, en alle scripts laten zich er gewoon onder importeren. Het
+kind draait nu met `--permission --allow-fs-read=* --allow-fs-write=<wegwerpmap>`.
+De worp komt in `stuk` en dus in de uitvoer: de bestaande grendel 1 ziet hem, er
+is geen vierde toets bijgekomen.
+
+📏 **IJking, na de wijziging**, één per keer, steeds teruggezet en met `diff -q`
+bevestigd:
+
+| mutatie | welke toets valt om |
+| -- | -- |
+| `/tmp/schrijf-bewijs.txt` schrijven (bestand ontstaat niet meer) | *geen enkel script werpt of print bij import* |
+| schrijven naar `dist/` (`.gitignore`) | idem |
+| schrijven naar een nieuw bestand in de repo | idem (de boomkant is nu het tweede net) |
+| `console.log('hallo')` | idem |
+| `writeFileSync('rommel.txt')` in de `cwd` | *geen enkel script schrijft bij import* — de wegwerpmap is toegestaan, dus de lege-mapcontrole blijft nodig |
+| alle drie de permissievlaggen weg | idem, melding `PERMISSIEMODEL UIT` (de sonde) |
+
+⚠️ Alleen `--permission` weghalen is **geen** ijking van de sonde: Node weigert
+dan zelf te starten met `--allow-fs-*` en de toets wordt rood op een andere
+grond. De must-allow-helft is de stand ervóór: 5/5 groen met alle 112 scripts.
+
+⚠️ **Wat dit nog steeds niet dekt:** leesrecht is `*` (de scripts lezen
+`node_modules` en de repo), een kindproces starten is ook onder het model
+geweigerd maar wordt als worp gemeld, en een script dat zijn eigen worp
+**opvangt** en doorgaat schreef ook niets. **Voorwaarde waaronder dit terugkomt:**
+een script dat bij import legitiem buiten de wegwerpmap moet schrijven; dan hoort
+dat pad in `--allow-fs-write` mét reden, en niet het model uit.
+
+## 9. Achteraf: de sonde toetste niet de grens maar het model (QS8-681)
+
+⚠️ **De sonde van §8 schreef alleen naar `tmpdir()`.** Dat bewijst dat het
+permissiemodel aan staat, niet dat `--allow-fs-write` smal is. 📏 Gemeten op
+17-11-2026, stand ervóór 5/5 groen: met een extra `--allow-fs-write=<repo>` bleef
+de toets **groen** terwijl een schrijfactie naar `node_modules/` of
+`dist/` weer door kon, precies het gat van QS8-638. Een verbreding naar `*`, `/` of
+`tmpdir()` werd al wel rood; de verbreding naar de repo niet. Gevonden door de
+`code-critic`-ronde op PR #668.
+
+**Gesloten met een tweede sondepad.** De sonde probeert nu twee paden:
+`tmpdir()` en `node_modules/.hoofdwacht-sonde-<pid>` in de repo (een
+`.gitignore`-pad). Het permissiemodel weigert vóór het bestandssysteem kijkt, dus
+het pad hoeft niet te bestaan. Wordt de grens verbreed, dan meldt de sonde
+`PERMISSIEMODEL UIT: <pad>` en wordt grendel 1 rood. 📏 IJking, één per keer,
+steeds teruggezet (`diff -q`):
+
+| mutatie | uitslag |
+| -- | -- |
+| `--allow-fs-write=<repo>` erbij | rood, grendel 1, meldt het `node_modules`-pad |
+| `--allow-fs-write=<repo>/node_modules` erbij | rood, idem |
+| `--allow-fs-write=<tmpdir>` erbij | rood, meldt het `tmpdir`-pad |
+| `--allow-fs-write=*` | rood, meldt beide paden |
+| alle drie de permissievlaggen weg | rood, meldt beide paden |
+| **stand ervóór:** sonde alleen `tmpdir()`, `--allow-fs-write=<repo>` erbij | **6/6 groen** — dit is het gat |
+| `has('--permission')` vervangen door een vlag die niet bestaat | rood op de Node-toets, met de melding |
+| **zelfde ijking opnieuw door een bouwsessie, 17-11-2026,** stand ervóór 6/6 groen, elke mutatie met `diff -q` teruggezet | dezelfde uitslagen, en bij elke rij viel precies één toets om: de zes bovenstaande uitkomsten staan, de verbreding van `tmpdir()` noemt het `tmpdir`-pad en die van `*` of de drie vlaggen weg beide paden |
+| bij een niet-bestaande `node_modules`: schone grens, en een verbrede grens | schoon geeft `ERR_ACCESS_DENIED` (groen); verbreed geeft `ENOENT` en dus `SONDE: ENOENT` (rood, niet stil) — gemeten met een kale `node --permission` in een wegwerpmap |
+
+**Node-ondergrens: 22.13.** `--permission` is de stabiele naam sinds 22.13;
+daarvoor heette de vlag `--experimental-permission`. `package.json` zegt
+`>=22`. Dat is niet aangepast (een wijziging in `engines` raakt `package.json` en
+`package-lock.json`, en dus een eigen besluit); in plaats daarvan staat er een
+eerste toets die `process.allowedNodeEnvironmentFlags` leest en luid zegt
+*"gebruik 22.13 of nieuwer"*. Dat 22.0 t/m 22.12 de vlag niet kent is
+**niet gemeten** (alleen 22.23.4 beschikbaar); de bewering komt uit de Node-documentatie.
+
+⚠️ **Wat dit nog steeds niet dekt:** een **symlink** in de wegwerpmap die naar
+buiten wijst. 📏 Gemeten: `--allow-fs-write=<tuin>` met `<tuin>/link` naar een
+map buiten de tuin weigert een direct pad (`ERR_ACCESS_DENIED`) en laat
+`<tuin>/link/bestand` door. Node volgt symlinks onder het model niet. Het kind
+maakt zelf geen symlink aan en geen enkel script doet dat bij import; een script
+dat dat wel zou doen, schrijft dus buiten de tuin zonder dat een toets het ziet.
+**Voorwaarde waaronder dit terugkomt:** een script dat bij import `symlinkSync`
+aanroept. Ongemeten: macOS (waar `tmpdir()` zelf achter een symlink staat,
+`/var` naar `/private/var`) en Windows.

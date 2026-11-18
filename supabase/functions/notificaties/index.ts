@@ -10,7 +10,7 @@ import { GRACE_HOURS, type Weekday } from '../_shared/time/types.ts';
 import { inStilteVenster, verschovenUur } from '../_shared/time/stilte.ts';
 import { meld } from '../_shared/melden.ts';
 import { metCors } from '../_shared/cors.ts';
-import { rijen } from '../_shared/bladeren/index.ts';
+import { verwerkBinnenBudget } from '../_shared/bladeren/index.ts';
 import { nudgeBesluit } from '../_shared/notificaties/nudge-besluit.ts';
 // ⚠️ De heldenstem — QS8-475. `kiesStem()` draagt de prioriteitsregel en
 //    `magVerschijnen()` de dagregel; geen van beide wordt hier overgedaan.
@@ -36,6 +36,14 @@ import {
   type Toon,
 } from '../_shared/notificaties/regels.ts';
 import {
+  ALARM_VANAF,
+  isWeg,
+  MAX_WISSEN_PER_RUN,
+  magWissen,
+  nieuweOpruimlijst,
+  noteerUitkomst,
+  opruimbesluit,
+  type Opruimlijst,
   verstuurWebPush,
   type VapidSleutels,
   type WebPushDoel,
@@ -49,6 +57,59 @@ import {
  *    Function en niet het geheugen. Kleiner betekent meer ronden, niet meer werk.
  */
 const PROFIELEN_PER_PAGINA = 200;
+
+/**
+ * Hoeveel profielen er tegelijk onderhanden zijn — QS8-688.
+ *
+ * ⚠️ **Zelfde getal en zelfde reden als in de rollover** (QS8-685). Binnen één
+ *    profiel blijven de soorten ná elkaar. Eén stap vraagt twee dingen tegelijk
+ *    (`laatsteActiviteitDatum()`, `Promise.all`), dus deze functie legt
+ *    hoogstens **zestien** gelijktijdige verzoeken bij PostgREST neer, niet
+ *    acht (security-review op QS8-688). `max_connections` is **60** voor de
+ *    hele database, en PostgREST deelt zijn eigen pool. De rollover draait een
+ *    half uur eerder of later (`notificaties.yml`), dus de twee jobs tellen niet
+ *    op.
+ *
+ * ⚠️⚠️ **Parallel is hier veilig om een reden die je moet kennen voordat je dit
+ *    getal of de volgorde in `meldEenProfiel()` aanraakt.** Elke melding gaat
+ *    naar de eigenaar van het profiel dat onderhanden is, en de ontdubbeling is
+ *    per gebruiker: de unieke indexen `notifications_sent_per_dag` en
+ *    `notifications_sent_per_onderwerp` (0053, 📏 op productie nagelezen met
+ *    `pg_indexes`, 17-11-2026), en de rij wordt **vóór** het versturen
+ *    geschreven (`stuur()`). Twee profielen raken elkaars rijen dus nooit. Komt
+ *    hetzelfde profiel twee keer langs — een tweede run die overlapt (binnen
+ *    één run sinds QS8-691 niet meer: er wordt op sleutel gebladerd) — dan verliest de tweede insert op de index
+ *    en wordt er niets verstuurd. Dat is de rem, en die staat onder test op de
+ *    naad in `tests/beloftes/notificaties-binnen-de-wandklok.test.ts`.
+ */
+const PROFIELEN_TEGELIJK = 8;
+
+/**
+ * Hoe lang na de start er nog een nieuw profiel mag beginnen — QS8-688.
+ *
+ * ⚠️⚠️ **Dit getal is wat het antwoord binnen de wandklok houdt.** 📏 De functie
+ *    deed op 17-11-2026 om 04:02 ≈ 194 s over 1.200× `push_tokens`, één profiel
+ *    tegelijk, en kreeg om 04:05:15 `shutdown`; op 16-11 om 20:38:54 eindigde
+ *    hij met `Http: connection closed before message completed`. De
+ *    gedocumenteerde wandkloklimiet op de gratis tier is 150 s. Een afgekapte
+ *    run geeft geen antwoord, dus ook geen telling en geen `ok` — van buiten is
+ *    hij niet te onderscheiden van een run die niets deed.
+ *
+ *    Honderd seconden laat vijftig over voor de profielen die nog lopen. Een
+ *    profiel met apparaten doet meer dan drie verzoeken, en Expo en de
+ *    pushdienst van een browser hebben elk een timeout van 15 s (`stuurExpo`,
+ *    `stuurWeb`); vijftig seconden dekt ook een profiel dat op twee daarvan
+ *    wacht.
+ *
+ * ⚠️ Geen deadline maar een laatste starttijd: een profiel dat loopt, maakt al
+ *    zijn soorten af (zes sinds 0293: ook `commitment_reverted`). Wat een profiel
+ *    mist dat niet aan de beurt kwam, hangt van de soort af: goedkeuringen,
+ *    getuigenissen en teruggedraaide straffen komen bij een volgende run aan
+ *    bod (de startplek is willekeurig), maar de nudge en het cyclusoverzicht
+ *    hangen aan het uur dat de gebruiker koos en vallen die dag weg. Daarom
+ *    is `volledig: false` rood en geen waarschuwing.
+ */
+const PROFIELBUDGET_MS = 100_000;
 
 /**
  * De meldingen-job — EPIC 11 (QS8-91) en de dagelijkse nudge (QS8-77).
@@ -219,8 +280,8 @@ async function draaiNotificaties(auth: string): Promise<Response> {
   );
 
   const nu = new Date();
-  const { telling, profielFout } = await meldAlleProfielen(db, nu);
-  const { verstuurd, onderdrukt, overgeslagen, zonderToken, profielenGezien } = telling;
+  const { telling, profielFout } = await meldAlleProfielen(db, nu, nu.getTime() + PROFIELBUDGET_MS);
+  const { verstuurd, onderdrukt, overgeslagen, zonderToken, profielenGezien, volledig } = telling;
 
   // ⚠️ **De foutcontrole staat ná de lus, want daar wordt hij pas gezet.**
   //    Hij stond eerst vóór de query-definitie, en dan kan hij per constructie
@@ -249,7 +310,7 @@ async function draaiNotificaties(auth: string): Promise<Response> {
       sqlstate: fout.code,
     });
     // ⚠️ Een slug en niet de melding, om dezelfde gemeten reden als in de
-    //    rollover: `notificaties.yml:70` doet `cat` op deze body vóór de
+    //    rollover: `notificaties.yml` doet `cat` op deze body vóór de
     //    statuscontrole, en dat runlog staat publiek.
     return new Response(JSON.stringify({ error: 'profielen_ophalen_mislukt' }), { status: 500 });
   }
@@ -261,7 +322,12 @@ async function draaiNotificaties(auth: string): Promise<Response> {
       onderdrukt,
       overgeslagen,
       zonderToken,
+      // ⚠️ **Sinds QS8-691 de profielen met minstens één token, niet alle
+      //    profielen.** 📏 17-11-2026: 16 in plaats van 1.332. Niets leest dit
+      //    veld behalve het runlog (`notificaties.yml` toetst `ok` en `volledig`).
       profielen: profielenGezien,
+      // ⚠️ `notificaties.yml` wordt rood op `false` — QS8-688.
+      volledig,
     }),
     { headers: { 'Content-Type': 'application/json' } },
   );
@@ -274,24 +340,37 @@ interface Meldtelling {
   overgeslagen: number;
   zonderToken: number;
   profielenGezien: number;
+  /** `false` als het budget op was voordat elk profiel aan de beurt kwam. */
+  volledig: boolean;
 }
 
+type Profielfout = { message: string; code?: string };
+
 /**
- * Loopt alle profielen af en stuurt per profiel de vijf soorten meldingen.
+ * Loopt alle profielen af en stuurt per profiel zijn meldingen.
  *
  * ⚠️ **Uit `draaiNotificaties` getild in QS8-424**, met de `profielFout` als
  *    teruggave en niet als worp — om dezelfde reden als in de rollover: de
  *    aanroeper meldt hem ná de lus, zodat de profielen die al afgehandeld zijn
  *    niet onvermeld blijven.
+ *
+ * ⚠️⚠️ **Sinds QS8-688 parallel en binnen een budget**, met `verwerkBinnenBudget()`
+ *    uit `_shared/bladeren` — dezelfde lus als de rollover (QS8-685). Binnen één
+ *    profiel blijft alles ná elkaar en in dezelfde volgorde (`meldEenProfiel()`
+ *    is ongewijzigd); waarom profielen onderling parallel mogen, staat bij
+ *    `PROFIELEN_TEGELIJK`.
+ *
+ * ⚠️ De tellers zijn gewone `+=`'en op één object. Dat is veilig: JavaScript
+ *    draait op één draad, en elke `+=` staat ná zijn `await`.
  */
 async function meldAlleProfielen(
   db: Db,
   nu: Date,
-): Promise<{ telling: Meldtelling; profielFout: { message: string; code?: string } | null }> {
-  let verstuurd = 0;
-  let onderdrukt = 0;
-  let overgeslagen = 0;
-  let zonderToken = 0;
+  stopNa: number,
+): Promise<{ telling: Meldtelling; profielFout: Profielfout | null }> {
+  const telling: Meldtelling = {
+    verstuurd: 0, onderdrukt: 0, overgeslagen: 0, zonderToken: 0, profielenGezien: 0, volledig: false,
+  };
 
   // ⚠️ **Vijf keer hetzelfde tweeregelige paar stond hier uitgeschreven** —
   //    QS8-422. Dat is niet alleen een kopie te veel: op het diepste punt in
@@ -299,64 +378,146 @@ async function meldAlleProfielen(
   //    overschreden, en een aanroep telt niet mee voor `max-depth` omdat een
   //    functie de teller terugzet. De telling zelf is woordelijk dezelfde.
   const tel = (stand: Verzendstand): void => {
-    if (stand === 'verstuurd') verstuurd += 1;
-    if (stand === 'onderdrukt') onderdrukt += 1;
+    if (stand === 'verstuurd') telling.verstuurd += 1;
+    if (stand === 'onderdrukt') telling.onderdrukt += 1;
   };
 
-  // ⚠️ **In pagina's, met een expliciete `order`** — QS8-341, en dit is
-  //    woordelijk de reparatie die op 03-09 in de rollover landde en hier bleef
-  //    liggen. Zonder `range()` kapt een gezette `max-rows` in PostgREST de lijst
-  //    stilzwijgend af: geen fout, geen melding, alleen gebruikers die nooit een
-  //    melding krijgen.
-  //
-  // ⚠️ De `order` staat hier en niet in `paginas()`, want dat is de enige
-  //    eigenschap die die lus niet kan bewaken.
-  let profielFout: { message: string; code?: string } | null = null;
+  const fout: { waarde: Profielfout | null } = { waarde: null };
+  const opruim = nieuweOpruimlijst();
 
-  const haalProfielen = async (start: number, aantal: number): Promise<readonly Profiel[]> => {
-    const { data, error } = await db
-      .from('profiles')
-      // ⚠️ **Eén string-literal en geen samenstelling.** supabase-js leidt de vorm
-      //    van de rij af uit de lítterlijke tekst van deze selectie; een `+` maakt
-      //    er een gewone `string` van en dan wordt `data` een `GenericStringError[]`.
-      //    📏 `npm run edge:types:controle` viel er meteen over (TS2352) — dat is
-      //    de enige typecheck die deze map ziet, want `tsconfig.json` sluit hem uit.
-      // deno-fmt-ignore
-      .select('id, tz, week_start_day, reminder_enabled, reminder_time, reminder_tone, locale, notify_approval_request, notify_approval_received, notify_cycle_summary, notify_commitment_witness, quiet_from, quiet_to')
-      .order('id', { ascending: true })
-      .range(start, start + aantal - 1);
-
-    if (error) {
-      // ⚠️ Leeg teruggeven en de fout apart onthouden, net als in de rollover:
-      //    `paginas()` stopt dan netjes en de aanroeper beslist wat er gebeurt.
-      profielFout = error;
-      return [];
-    }
-    return (data ?? []) as Profiel[];
-  };
-
-  // ⚠️ **Per pagina verwerken en niet eerst alles inlezen.** Alle profielen in
-  //    het geheugen zetten lost de stille afkapping wél op, maar houdt de kosten
-  //    lineair in het tótale aantal gebruikers — precies wat dit issue aanwijst.
-  let profielenGezien = 0;
-
-  // ⚠️ **`rijen()` en niet `paginas()`** — QS8-422, en zelfde ingreep als in
-  //    de rollover. De buitenste lus las alleen pagina's uit om ze meteen weer
-  //    open te vouwen, en duwde daarmee élke vertakking hieronder een stap
-  //    dieper dan de code leest. Het diepste punt stond op zes.
-  for await (const profiel of rijen(haalProfielen, PROFIELEN_PER_PAGINA)) {
-    if (profielFout !== null) break;
-    profielenGezien += 1;
-    const uitkomst = await meldEenProfiel(db, profiel, nu, tel);
-    if (uitkomst === 'overgeslagen') overgeslagen += 1;
-    if (uitkomst === 'zonderToken') zonderToken += 1;
+  const { volledig } = await verwerkBinnenBudget(
+    profielenVanafWillekeurigePlek(db, fout),
+    async (profiel) => {
+      telling.profielenGezien += 1;
+      const uitkomst = await meldEenProfiel(db, profiel, nu, tel, opruim);
+      if (uitkomst === 'overgeslagen') telling.overgeslagen += 1;
+      if (uitkomst === 'zonderToken') telling.zonderToken += 1;
+    },
+    { gelijktijdig: PROFIELEN_TEGELIJK, stopNa, klok: () => new Date().getTime() },
+  );
+  telling.volledig = volledig;
+  if (!volledig) {
+    await meld(new Error('profielbudget op'), 'notificaties.budget', {
+      code: 'notificaties_profielbudget_op',
+      count: telling.profielenGezien,
+    });
   }
+  // ⚠️ Ná de budgetmelding: dit draait buiten het budget, en wordt de functie
+  //    hier gestopt, dan gaat er alleen opruimwerk verloren en geen melding.
+  await ruimOngeldigeOp(db, opruim);
 
-  const telling: Meldtelling = {
-    verstuurd, onderdrukt, overgeslagen, zonderToken, profielenGezien,
-  };
+  return { telling, profielFout: fout.waarde };
+}
 
-  return { telling, profielFout };
+/**
+ * Alle profielen, één keer, te beginnen op een willekeurige plek — QS8-688.
+ *
+ * ⚠️⚠️ **Waarom niet vooraan beginnen.** Zodra het budget niet voor iedereen
+ *    genoeg is, zijn het bij een vaste startplek elke run **dezelfde** profielen
+ *    die achteraan blijven — en die krijgen dan nooit een herinnering, nooit een
+ *    goedkeuringsverzoek. 📏 Zonder budget gebeurde dat al: de run van 17-11
+ *    04:02 begon vooraan in `order('id')` en werd na ≈ 194 s afgekapt. Een
+ *    willekeurig scharnier verdeelt die pech over iedereen: eerst
+ *    `id >= scharnier`, dan `id < scharnier`, twee aaneengesloten bereiken die
+ *    samen alles dekken. Woordelijk de vorm van de rollover (QS8-685).
+ *
+ * ⚠️ **In pagina's, en `order('id')` is de voorwaarde** — QS8-341. Zonder
+ *    grens kapt een gezette `max-rows` in PostgREST de lijst stilzwijgend af.
+ *    Sinds QS8-691 op sleutel en niet op offset; waarom staat bij
+ *    `bladerOpSleutel()`.
+ *
+ * ⚠️ De `profielFout` gaat via `fout` naar buiten: de generator stopt dan, en
+ *    de aanroeper beslist wat er gebeurt.
+ */
+async function* profielenVanafWillekeurigePlek(
+  db: Db,
+  fout: { waarde: Profielfout | null },
+): AsyncGenerator<Profiel, void, undefined> {
+  const scharnier = crypto.randomUUID();
+  yield* bladerOpSleutel(db, fout, { vanaf: scharnier, tot: null });
+  yield* bladerOpSleutel(db, fout, { vanaf: null, tot: scharnier });
+}
+
+/**
+ * Eén aaneengesloten bereik van profielen met een token, bladerend op `id` en
+ * niet op offset — QS8-691.
+ *
+ * ⚠️⚠️ **Op sleutel en niet met `range()`, en dat is sinds QS8-691 een
+ *    correctheidseis** (security-review op QS8-691). De lijst is "profielen met
+ *    een token", en die krimpt tíjdens de run: `stuurWeb()` wist een verlopen
+ *    abonnement, een gebruiker logt uit, een token verhuist naar een ander
+ *    account. Met een offset schuift de volgende pagina dan één plek op en slaat
+ *    hij precies één profiel met een token over, terwijl de run `volledig: true`
+ *    meldt. Met `gt('id', laatste)` hangt de volgende pagina niet af van wat er
+ *    vóór de grens verdween: overslaan én dubbel tellen kunnen niet meer.
+ *
+ *    `rijen()` uit `_shared/bladeren` blijft op offset en is hier dus niet
+ *    gebruikt. Voor de rollover was offset goed genoeg: de lijst van álle
+ *    profielen verandert alleen als er een account verdwijnt.
+ *
+ * ⚠️ `vanaf` is inclusief (het scharnier zelf hoort bij de eerste helft), `tot`
+ *    exclusief. Samen dekken de twee aanroepen elk id precies één keer.
+ */
+async function* bladerOpSleutel(
+  db: Db,
+  fout: { waarde: Profielfout | null },
+  grens: { vanaf: string | null; tot: string | null },
+): AsyncGenerator<Profiel, void, undefined> {
+  let laatste: string | null = null;
+  for (;;) {
+    const pagina = await profielenPagina(db, grens, laatste);
+    if (pagina.error !== null) {
+      fout.waarde = pagina.error;
+      return;
+    }
+    yield* pagina.rijen;
+    if (pagina.rijen.length < PROFIELEN_PER_PAGINA) return;
+    laatste = pagina.rijen[pagina.rijen.length - 1].id;
+  }
+}
+
+/** Eén pagina van `bladerOpSleutel()`: de profielen ná `laatste`, binnen `grens`. */
+async function profielenPagina(
+  db: Db,
+  grens: { vanaf: string | null; tot: string | null },
+  laatste: string | null,
+): Promise<{ rijen: readonly Profiel[]; error: Profielfout | null }> {
+  let vraag = db
+    .from('profiles')
+    // ⚠️ **Eén string-literal en geen samenstelling.** supabase-js leidt de vorm
+    //    van de rij af uit de lítterlijke tekst van deze selectie; een `+` maakt
+    //    er een gewone `string` van en dan wordt `data` een `GenericStringError[]`.
+    //    📏 `npm run edge:types:controle` viel er meteen over (TS2352) — dat is
+    //    de enige typecheck die deze map ziet, want `tsconfig.json` sluit hem uit.
+    //
+    // ⚠️⚠️ **`push_tokens!inner(user_id)` is een filter en geen bron** — QS8-691.
+    //    📏 Productie, 17-11-2026: 1.332 profielen, 16 met een token. Een
+    //    profiel zonder token stopt in `meldEenProfiel()` na `apparatenVan()`,
+    //    zonder iets te schrijven; daarvoor betaalde deze lus 1.316 verzoeken
+    //    per run. `!inner` laat PostgREST alleen profielen teruggeven met minstens
+    //    één token (via `push_tokens_user_id_fkey`, de enige foreign key naar
+    //    `profiles`). De embed is één-op-veel, dus een gebruiker met zes tokens
+    //    blijft één rij, en `order` en `limit` werken op de profielen.
+    //
+    //    De tokens zelf worden hier **niet** gebruikt. `apparatenVan()` leest
+    //    ze per profiel vers, vlak voor het versturen. Een token kan van account
+    //    wisselen (`registreer_push_token`, 0055), en een pagina kan tientallen
+    //    seconden oud zijn als hij aan de beurt is. Dan gaat een melding naar
+    //    een toestel dat inmiddels van iemand anders is (security-review op
+    //    QS8-688, Laag 4: *wordt zwaarder als er tussen het lezen van de tokens
+    //    en het versturen langer gewacht wordt*).
+    // deno-fmt-ignore
+    .select('id, tz, week_start_day, reminder_enabled, reminder_time, reminder_tone, locale, notify_approval_request, notify_approval_received, notify_cycle_summary, notify_commitment_witness, quiet_from, quiet_to, push_tokens!inner(user_id)');
+
+  if (laatste !== null) vraag = vraag.gt('id', laatste);
+  else if (grens.vanaf !== null) vraag = vraag.gte('id', grens.vanaf);
+  if (grens.tot !== null) vraag = vraag.lt('id', grens.tot);
+
+  // ⚠️ Gepagineerd met `limit` (onwrikbare regel 10): zonder grens kapt een
+  //    gezette `max-rows` in PostgREST de lijst stil af.
+  const { data, error } = await vraag.order('id', { ascending: true }).limit(PROFIELEN_PER_PAGINA);
+  if (error) return { rijen: [], error };
+  return { rijen: (data ?? []) as Profiel[], error: null };
 }
 
 /**
@@ -375,6 +536,7 @@ async function meldEenProfiel(
   profiel: Profiel,
   nu: Date,
   tel: (stand: Verzendstand) => void,
+  opruim: Opruimlijst,
 ): Promise<'gedaan' | 'overgeslagen' | 'zonderToken'> {
   const tijd = await lokaleTijd(profiel, nu);
   if (tijd === null) {
@@ -390,15 +552,16 @@ async function meldEenProfiel(
   const apparaten = await apparatenVan(db, profiel);
 
   if (apparaten.length === 0) {
-    // Geen apparaat geregistreerd. Vandaag geldt dat voor iedereen, en de
-    // reden is per platform een andere (QS8-366): native heeft geen build
-    // uitgerold, en op web wacht de registratie op een VAPID-sleutelpaar en
-    // op de knop in Profiel — QS8-124.
+    // ⚠️ **Sinds QS8-691 bijna altijd nul.** De lus ziet alleen profielen met
+    //    een token (`push_tokens!inner`), dus hier komt alleen nog wie zijn
+    //    laatste token kwijtraakte tussen het ophalen van de pagina en dit
+    //    moment: uitgelogd, of het token ging naar een ander account. Daarom
+    //    blijft deze controle staan, en blijft `zonderToken` in de uitvoer.
     return 'zonderToken';
   }
 
   const ronde: Meldronde = {
-    db, profiel, apparaten, inStilte, nu, lokaleDatum, lokaalUur, tel,
+    db, profiel, apparaten, inStilte, nu, lokaleDatum, lokaalUur, tel, opruim,
   };
 
   await stuurNudge(ronde);
@@ -452,14 +615,24 @@ async function lokaleTijd(
 
 /** De apparaten waar dit profiel meldingen op ontvangt. */
 async function apparatenVan(db: Db, profiel: Profiel): Promise<Token[]> {
-  const { data: tokens } = await db
+  const { data: tokens, error } = await db
     .from('push_tokens')
     .select('token, platform, p256dh, auth')
     .eq('user_id', profiel.id);
 
-  const apparaten = (tokens ?? []) as Token[];
+  // ⚠️ **Sinds QS8-691 gemeld en niet stil als "geen apparaat" geteld**
+  //    (security-review op QS8-691). `zonderToken` hoort nu bijna altijd 0 te
+  //    zijn, en dan ziet een storing er anders uit als een gewoon getal.
+  if (error) {
+    console.error(`push-tokens ophalen mislukte voor een gebruiker: ${error.message}`);
+    await meld(new Error('push-tokens ophalen mislukte'), 'notificaties.apparaten', {
+      code: 'pushtokens_ophalen_mislukt',
+      sqlstate: error.code,
+    });
+    return [];
+  }
 
-  return apparaten;
+  return (tokens ?? []) as Token[];
 }
 
 /**
@@ -481,6 +654,8 @@ interface Meldronde {
   lokaleDatum: string;
   lokaalUur: number;
   tel: (stand: Verzendstand) => void;
+  /** Van de hele run, niet van dit profiel — zie `Opruimlijst`. */
+  opruim: Opruimlijst;
 }
 
 /**
@@ -551,6 +726,7 @@ async function stuurNudge(ronde: Meldronde): Promise<void> {
     };
 
     const stand = await stuur(db, {
+      opruim: ronde.opruim,
       userId: profiel.id,
       apparaten,
       voorkeuren: profiel,
@@ -631,6 +807,7 @@ async function stuurGoedkeuringsverzoeken(ronde: Meldronde): Promise<void> {
     }
 
     const stand = await stuur(db, {
+      opruim: ronde.opruim,
       userId: profiel.id,
       apparaten,
       voorkeuren: profiel,
@@ -671,6 +848,7 @@ async function stuurOntvangenGoedkeuringen(ronde: Meldronde): Promise<void> {
     }
 
     const stand = await stuur(db, {
+      opruim: ronde.opruim,
       userId: profiel.id,
       apparaten,
       voorkeuren: profiel,
@@ -789,6 +967,7 @@ async function stuurCyclusoverzicht(ronde: Meldronde): Promise<void> {
       const weekpasGered = await weekpasVerbruikt(db, profiel.id, afgelopen.startDate);
 
       const stand = await stuur(db, {
+        opruim: ronde.opruim,
         userId: profiel.id,
         apparaten,
         voorkeuren: profiel,
@@ -877,6 +1056,7 @@ async function stuurGetuigenissen(ronde: Meldronde): Promise<void> {
     }
 
     const stand = await stuur(db, {
+      opruim: ronde.opruim,
       userId: profiel.id,
       apparaten,
       voorkeuren: profiel,
@@ -930,6 +1110,7 @@ async function stuurTeruggedraaideStraffen(ronde: Meldronde): Promise<void> {
     }
 
     const stand = await stuur(db, {
+      opruim: ronde.opruim,
       userId: profiel.id,
       apparaten,
       voorkeuren: profiel,
@@ -1387,21 +1568,36 @@ function vapidUitOmgeving(): VapidSleutels | null {
 /**
  * Levert af bij de browserabonnementen van één gebruiker.
  *
- * ⚠️ Een abonnement dat 404 of 410 geeft, bestaat niet meer — de gebruiker heeft
- *    zijn toestemming ingetrokken of de browser opnieuw geïnstalleerd. Die rij
- *    gaat weg, want anders probeert elke ronde opnieuw een adres dat nooit meer
- *    werkt. Elke ándere fout laat de rij staan: een storing van dit moment mag
- *    geen dataverlies worden. Dat onderscheid staat onder test in
- *    `src/modules/notifications/webpush-verzenden.test.ts`.
+ * ⚠️ Drie uitkomsten, drie handelingen, en alleen de eerste verwijdert hier:
+ *
+ *    - `weg` (404 of 410): het abonnement bestaat niet meer — de gebruiker heeft
+ *      zijn toestemming ingetrokken of de browser opnieuw geïnstalleerd. Dat zegt
+ *      de pushdienst, niet onze code, en de rij gaat meteen weg — binnen het
+ *      plafond van `MAX_WISSEN_PER_RUN` voor `weg` (`ongeldig` heeft een eigen).
+ *    - `ongeldig` (QS8-690): het abonnement zelf is niet te versleutelen. Dat
+ *      oordeel komt van onze eigen code en wordt hier alleen **genoteerd**; of
+ *      de rij weggaat beslist `ruimOngeldigeOp()` aan het eind van de run, achter
+ *      de stroomonderbreker van `opruimbesluit()`.
+ *    - `mislukt`: alles daarbuiten, ook een kapotte VAPID-sleutel of een
+ *      runtime die WebCrypto kwijt is. De rij blijft staan: een storing van dit
+ *      moment mag geen dataverlies worden.
+ *
+ *    De beslissingen staan onder test in
+ *    `src/modules/notifications/webpush-verzenden.test.ts`, de naad hier in
+ *    `tests/beloftes/notificaties-binnen-de-wandklok.test.ts`.
  */
 async function stuurWeb(
   db: Db,
   abonnementen: readonly Token[],
-  bericht: Bericht,
-  soort: Melding,
-  sleutels: VapidSleutels,
-  nu: Date,
+  verzending: {
+    readonly bericht: Bericht;
+    readonly soort: Melding;
+    readonly sleutels: VapidSleutels;
+    readonly nu: Date;
+    readonly opruim: Opruimlijst;
+  },
 ): Promise<number> {
+  const { bericht, soort, sleutels, nu, opruim } = verzending;
   let bezorgd = 0;
 
   for (const rij of abonnementen) {
@@ -1413,6 +1609,12 @@ async function stuurWeb(
     }
 
     const doel: WebPushDoel = { endpoint: rij.token, p256dh: rij.p256dh, auth: rij.auth };
+    // ⚠️ Deze run al `weg` (404/410): niet opnieuw versturen, wissen of tellen.
+    //    `apparaten` is één keer per profiel gelezen en geldt voor al zijn
+    //    meldingen; zonder deze regel kostte één verdwenen abonnement een plek
+    //    van het plafond per melding (tweede batch-review op QS8-690).
+    if (isWeg(opruim, doel)) continue;
+
     const uitkomst = await verstuurWebPush({
       doel,
       bericht: { titel: bericht.titel, body: bericht.body, pad: bericht.pad, soort },
@@ -1420,22 +1622,98 @@ async function stuurWeb(
       nu,
       fetchImpl: fetch,
     });
+    noteerUitkomst(opruim, doel, uitkomst);
 
-    if (uitkomst.status === 'bezorgd') {
-      bezorgd += 1;
-      continue;
+    if (uitkomst.status === 'bezorgd') bezorgd += 1;
+    else if (uitkomst.status === 'weg') {
+      if (magWissen(opruim, 'weg')) await verwijderAbonnement(db, doel, 'verdwenen abonnement');
     }
-
-    if (uitkomst.status === 'weg') {
-      const { error } = await db.from('push_tokens').delete().eq('token', rij.token);
-      if (error) console.error(`verlopen abonnement opruimen mislukte: ${error.message}`);
-      continue;
-    }
-
-    console.error(`web push mislukte: ${uitkomst.reden}`);
+    else if (uitkomst.status === 'mislukt') console.error(`web push mislukte: ${uitkomst.reden}`);
   }
 
   return bezorgd;
+}
+
+/**
+ * Verwijdert precies dit abonnement: endpoint én sleutels.
+ *
+ * ⚠️ **Op alle drie de kolommen, niet alleen op `token`** (batch-review
+ *    17-11-2026). Tussen het lezen in `apparatenVan()` en deze `delete` kan de
+ *    browser zich opnieuw geabonneerd hebben op hetzelfde endpoint, met nieuwe
+ *    sleutels — `registreer_push_token()` werkt de rij dan bij. Op `token` alleen
+ *    wist deze regel dat verse abonnement om het oordeel over het oude.
+ */
+async function verwijderAbonnement(db: Db, doel: WebPushDoel, wat: string): Promise<void> {
+  const { error } = await db
+    .from('push_tokens')
+    .delete()
+    .eq('token', doel.endpoint)
+    .eq('p256dh', doel.p256dh)
+    .eq('auth', doel.auth);
+  if (error) console.error(`${wat} opruimen mislukte: ${error.message}`);
+}
+
+/**
+ * Ruimt aan het eind van de run de ongeldige abonnementen op — of niets, als de
+ * stroomonderbreker gesprongen is — en meldt wat het plafond tegenhield.
+ *
+ * ⚠️ Ook na een afgekapte run (`volledig: false`): het besluit gaat over wat de
+ *    run gezien heeft, en de onderbreker telt alleen dat.
+ */
+async function ruimOngeldigeOp(db: Db, opruim: Opruimlijst): Promise<void> {
+  const { verwijder, onderbroken } = opruimbesluit(opruim);
+
+  if (onderbroken) {
+    console.error(
+      `alle ${opruim.getoetst.size} getoetste web-abonnementen van deze run waren ongeldig; niets opgeruimd`,
+    );
+    // ⚠️ **Pas vanaf `ALARM_VANAF` naar Sentry** (code-critic op het herstel). Een
+    //    run die één of twee web-meldingen verstuurt en toevallig alleen kapotte
+    //    rijen treft, is gezond; een alarm dat daarop afgaat leer je negeren, en
+    //    dit is het enige alarm voor een toets die álles afkeurt.
+    if (opruim.getoetst.size >= ALARM_VANAF) {
+      await meld(new Error('elk web-abonnement ongeldig'), 'notificaties.opruimen', {
+        code: 'webpush_alles_ongeldig',
+        count: opruim.kandidaten.size,
+      });
+    }
+  }
+
+  for (const { doel, reden } of verwijder) {
+    if (!magWissen(opruim, 'ongeldig')) continue;
+    console.error(`ongeldig abonnement opgeruimd: ${reden}`);
+    await verwijderAbonnement(db, doel, 'ongeldig abonnement');
+  }
+
+  await meldPlafond(opruim);
+}
+
+/**
+ * Meldt wat het plafond tegenhield, met een eigen code per bron.
+ *
+ * ⚠️ **Twee codes, twee foutmeldingen en twee plafonds** (tweede en derde
+ *    batch-review). Het plafond is bij een gedeeltelijk kapotte toets de énige
+ *    rem, en `webpush_wisplafond_ongeldig` dan het enige signaal. Normaal
+ *    verloop (`weg`) mag dat signaal niet overstemmen en ook niet veroorzaken:
+ *    `weg` heeft daarom een eigen plafond (`magWissen(opruim, 'weg')`), en
+ *    `_ongeldig` telt alleen wat `ongeldig` zelf opmaakte. Een eigen code alleen
+ *    was niet genoeg: met een gedeelde teller ging `_ongeldig` af na drie gewone
+ *    404/410's.
+ */
+async function meldPlafond(opruim: Opruimlijst): Promise<void> {
+  for (const bron of ['weg', 'ongeldig'] as const) {
+    const aantal = opruim.tegengehouden[bron];
+    if (aantal === 0) continue;
+    console.error(`${aantal} web-abonnement(en) (${bron}) niet gewist: plafond van ${MAX_WISSEN_PER_RUN} per run`);
+    // ⚠️ **Een eigen foutmelding per bron, en niet alleen een eigen `code`.**
+    //    Sentry groepeert op de melding; de `code` gaat in `extra` en maakt geen
+    //    eigen issue (security-review, derde ronde). Met één melding landde een
+    //    `_ongeldig` in het issue dat `_weg` al lang als routine had laten zien.
+    await meld(new Error(`wisplafond bereikt (${bron})`), 'notificaties.opruimen', {
+      code: `webpush_wisplafond_${bron}`,
+      count: aantal,
+    });
+  }
 }
 
 /**
@@ -1548,6 +1826,7 @@ async function stuur(
     nu: Date;
     voorkeuren: Meldingsvoorkeuren;
     inStilte: boolean;
+    opruim: Opruimlijst;
   },
 ): Promise<Verzendstand> {
   // ⚠️⚠️ **Het keelpunt, en het staat vóór de rij in `notifications_sent`.**
@@ -1604,7 +1883,7 @@ async function stuur(
     if (sleutels === null) {
       console.error('VAPID-sleutels ontbreken; web-abonnementen overgeslagen');
     } else {
-      bezorgd += await stuurWeb(db, web, bericht, opdracht.soort, sleutels, opdracht.nu);
+      bezorgd += await stuurWeb(db, web, { bericht, soort: opdracht.soort, sleutels, nu: opdracht.nu, opruim: opdracht.opruim });
     }
   }
 

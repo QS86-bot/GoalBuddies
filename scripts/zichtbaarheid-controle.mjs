@@ -148,7 +148,7 @@ export const GEEN_OPPERVLAK = new Map([
       '`groups_automatisch_is_beschermd` plus de `automatisch`-tak in beide zet-RPC\'s; ' +
       'een `insert` die de goede waarde zet is een gewoonte, een CHECK is een ' +
       'eigenschap. ⚠️⚠️ **Wat hier wél een oppervlak is, is de groep zelf** — mensen die ' +
-      'elkaar niet gekozen hebben zien wat rij 1 geeft. Dat staat als rij 42 in ' +
+      'elkaar niet gekozen hebben zien wat rij 1 geeft. Dat staat als rij 51 in ' +
       '`docs/decisions/002-domeinregel7-oppervlakken.md` en niet in deze lijst, want ' +
       'OPPERVLAKKEN gaat over wat op `groups.zichtbaarheid` varieert.',
   ],

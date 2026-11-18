@@ -140,6 +140,22 @@ beforeAll(() => {
   git(bron, 'checkout', '-q', 'main');
   git(bron, 'branch', '-q', '-D', 'quintenstrijdonk/qs8-781-nooit-geland');
 
+  // ⚠️ QS8-620: een vaste sessiebranch die blíjft staan, met een claim erop en
+  //    werk erachter. Zijn naam draagt per constructie geen issuenummer, dus
+  //    `botsendeBranches()` ziet hem niet — de claim-commit is het enige signaal.
+  git(bron, 'checkout', '-q', '-b', 'claude/vaste-sessiebranch-q7x');
+  git(bron, 'commit', '-q', '--allow-empty', '-m', 'claim: QS8-790 — bezet sinds 07:26 UTC');
+  git(bron, 'commit', '-q', '--allow-empty', '-m', 'Het werk zelf, nog niet af');
+  git(bron, 'checkout', '-q', 'main');
+
+  // ⚠️ En een kerkhof: een afgedwaalde branch zonder nummer met vijf
+  //    onafgeronde claims. 📏 Op de echte remote waren dat er 47 tot 153.
+  git(bron, 'checkout', '-q', '-b', 'quintenstrijdonk/overdracht-oud');
+  for (const nummer of [791, 792, 793, 794, 795]) {
+    git(bron, 'commit', '-q', '--allow-empty', '-m', `claim: QS8-${nummer} — bezet sinds 12:00 UTC`);
+  }
+  git(bron, 'checkout', '-q', 'main');
+
   git(bron, 'clone', '-q', '--bare', bron, afstand);
   git(werkmap, 'clone', '-q', afstand, kloon);
   git(kloon, 'config', 'user.name', 'IJking');
@@ -222,5 +238,106 @@ describe('wat de claim met rúst moet laten', () => {
     const { uit, code } = claim('QS8-778');
     expect(code).toBe(1);
     expect(uit).toContain('QS8-778 is al bezet');
+  });
+});
+
+/**
+ * Werk in uitvoering op een branch zonder issuenummer — QS8-620.
+ *
+ * ⚠️ **Waarom ook dit een integratietoets is.** `bezetteNaamlozeBranches()`
+ *    staat los getoetst in `tests/scripts/claim.test.ts`, elke vorm apart. Die
+ *    tests blijven groen als iemand de aanroep uit `hoofd()` haalt, of de
+ *    tak erachter laat doorlopen in plaats van te weigeren. Dat is regel 18
+ *    vraag 5: de keten die op wáárdeniveau doodloopt terwijl elk schakeltje af
+ *    is — precies de vorm waarin dit gat zelf is ontstaan.
+ *
+ * ⚠️ **En de belofte is weer "er blijft niets achter".** Een claim die
+ *    tegengehouden wordt mag geen branch op de remote neerzetten; een
+ *    cloudsessie krijgt die niet meer weg (QS8-240).
+ *
+ * IJKING — met de hand gedraaid op 05-10-2026, zeven mutaties, één per grendel,
+ * elke keer hersteld en met `diff -q` nagekeken. De tabel staat in
+ * `docs/decisions/2026-10-05-de-claim-ziet-een-vaste-sessiebranch-nooit.md`.
+ *
+ * ⚠️ **Wat dáár niet staat maar hier hoort: vier van die zeven zijn onzichtbaar
+ *    in `tests/scripts/claim.test.ts`.** De tak uit `hoofd()` halen, melden
+ *    zonder afbreken, `--hier` negeren en de grendel op een vaste branch
+ *    weghalen laten daar alle 41 toetsen groen, terwijl de claim precies de fout
+ *    van 28-09 weer maakt. Dat is waarom dit harnas bestaat, en het is de reden
+ *    om het niet te laten verdampen bij de volgende opschoning.
+ */
+describe('werk in uitvoering op een branch zonder issuenummer', () => {
+  it('weigert, en noemt de branch én de ouderdom van het bewijs', () => {
+    const voor = branchesOpAfstand();
+    const { uit, code } = claim('quintenstrijdonk/qs8-790-toch-maar-zelf-bouwen');
+
+    expect(code).toBe(1);
+    expect(uit).toContain('QS8-790 is al bezet');
+    expect(uit).toContain('claude/vaste-sessiebranch-q7x');
+    expect(uit).toContain('laatste commit');
+    expect(uit).toContain('onafgeronde claim');
+    // ⚠️ Dit is de belofte, niet de melding.
+    expect(branchesOpAfstand()).toEqual(voor);
+  });
+
+  /**
+   * ⚠️ **De must-allow-helft, en die weegt hier het zwaarst.** 📏 Zonder de
+   *    grens op `MAX_ONAFGERONDE_CLAIMS` meldde deze bron op de echte remote
+   *    honderden bezettingen waar er acht waren. Slaat hij aan op een kerkhof, dan
+   *    leer je de melding binnen een week overslaan.
+   */
+  it('laat een kerkhof zonder nummer met rust — vijf onafgeronde claims is geen bezetting', () => {
+    const { uit, code } = claim('quintenstrijdonk/qs8-791-wel-gewoon-bouwen');
+
+    expect(code).toBe(0);
+    expect(uit).toContain('QS8-791 bezet');
+    expect(uit).not.toContain('zónder het nummer');
+  });
+});
+
+describe('claimen vanaf een vaste sessiebranch', () => {
+  /** Zet de kloon op een branch zonder issuenummer, zoals baan A er op staat. */
+  function opVasteBranch() {
+    git(kloon, 'checkout', '-q', '-B', 'claude/eigen-sessie-abc', 'origin/main');
+  }
+
+  it('weigert de gewone weg, want die zou de sessie van haar eigen branch halen', () => {
+    opVasteBranch();
+    const voor = branchesOpAfstand();
+    const { uit, code } = claim('quintenstrijdonk/qs8-796-iets-nieuws');
+
+    expect(code).toBe(1);
+    expect(uit).toContain('claude/eigen-sessie-abc');
+    expect(uit).toContain('draagt geen issuenummer');
+    expect(uit).toContain('--hier');
+    expect(branchesOpAfstand()).toEqual(voor);
+  });
+
+  it('claimt met --hier op de branch zelf, en pusht hem', () => {
+    opVasteBranch();
+    const { uit, code } = claim('QS8-797', '--hier');
+
+    expect(code).toBe(0);
+    expect(uit).toContain('QS8-797 bezet op claude/eigen-sessie-abc');
+    expect(branchesOpAfstand()).toContain('claude/eigen-sessie-abc');
+
+    // De claim staat op de branch zelf en niet op een nieuwe.
+    expect(git(kloon, 'rev-parse', '--abbrev-ref', 'HEAD').trim()).toBe('claude/eigen-sessie-abc');
+    expect(git(kloon, 'log', '-1', '--format=%s')).toContain('claim: QS8-797');
+  });
+
+  /**
+   * ⚠️ **Dit is waar het issue om begon.** Na de `--hier`-claim hierboven staat
+   *    het werk op een branch zonder nummer op de remote — en nu ziet een
+   *    tweede sessie het wél. Zonder de leeskant van dit issue gaf deze claim
+   *    QS8-797 gewoon vrij.
+   */
+  it('en dan ziet een tweede sessie dat werk — de hele keten, heen en terug', () => {
+    git(kloon, 'checkout', '-q', 'main');
+    const { uit, code } = claim('quintenstrijdonk/qs8-797-tweede-sessie');
+
+    expect(code).toBe(1);
+    expect(uit).toContain('QS8-797 is al bezet');
+    expect(uit).toContain('claude/eigen-sessie-abc');
   });
 });

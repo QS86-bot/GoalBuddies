@@ -25,7 +25,8 @@ Gebruik `WebFetch` en `WebSearch`. Nooit `mcp__claude-in-chrome__*`.
 - **Naam:** GoalBuddies
 - **Doel:** Accountability- en doelen-app: AI-gestuurde doelopsplitsing, buddy-groepen
   met onafhankelijke doelen, peer-goedkeuring van voltooiingen, commitment devices,
-  en een instelbare start-van-de-week per gebruiker.
+  en een instelbare start-van-de-week per gebruiker, en sinds 04-11-2026
+  organisaties met teams en teamdoelen.
 - **Schaaldoel:** 100k+ users.
 - **Team:** Quinten (product owner, architect én enige developer).
   Claude Code is de primaire implementer. Engineer-review vanaf eind okt/nov 2026.
@@ -96,6 +97,19 @@ het afsluiten van een issue of Linear en de documenten hetzelfde zeggen.
   niet achter; ook daarom een merge-commit. Uitleg in
   `docs/decisions/2026-09-24-de-titel-van-een-merge-is-vrij-de-claim-commit-niet.md`.
 
+  ⚠️⚠️ **Werk je op één vaste branch, claim dan met `--hier` — sinds 05-10-2026
+  (QS8-620).** Een opgelegde sessiebranch (`claude/…`) draagt per constructie
+  nooit een issuenummer, en de branchlijst zag zulk werk daarom niet; QS8-603 is
+  zo twee keer gebouwd. `--hier` zet de claim-commit op de branch waar je al
+  staat en pusht hem, en een derde bron leest die commits terug.
+
+  ⚠️ **De standaardweg weigert nu op zo'n branch**, met `--hier` en
+  `git checkout main` als de twee uitwegen. Dat is geen pesterij: `zetClaim()`
+  doet `checkout -b … origin/main` en haalt je anders van je eigen werk af —
+  precies de reden dat zo'n sessie dit gereedschap niet gebruikte. Uitleg en de
+  meting in
+  `docs/decisions/2026-10-05-de-claim-ziet-een-vaste-sessiebranch-nooit.md`.
+
   ⚠️ **Het issue op In Progress zetten is géén claim gebleken.** Bij QS8-214 is
   dat gedáán, vóór de eerste regel code, en de andere sessie begon daarna
   alsnog. Wat wél gelezen wordt is de remote branchlijst, want daar leunen
@@ -137,6 +151,16 @@ het afsluiten van een issue of Linear en de documenten hetzelfde zeggen.
   de blokkeerrelatie in Linear en land ze in volgorde. Bundelen mag alleen als de
   issues één ondeelbare wijziging zijn — en dan hoort er één issue te zijn, geen
   acht.
+
+  ⚠️ **Eén benoemde uitzondering sinds 05-11-2026: de batch-PR van
+  `docs/PROMPT-SESSIE.md` §12.** De batchsessie mag meerdere afgeleverde issues
+  in één PR naar `main` brengen, mits elk issue zijn eigen tak houdt en met een
+  eigen `--no-ff`-merge landt waarvan het onderwerp het issuenummer draagt
+  (`Merge QS8-nnn: titel`). Het zijn dan nog steeds aparte takken en aparte
+  merge-commits; wat gedeeld wordt is de PR en dus de CI-uitslag. De afweging
+  staat in
+  `docs/decisions/2026-11-05-orchestrator-en-batchsessie-zonder-gedeelde-tak.md`.
+  Buiten §12 geldt de regel hierboven onverkort.
 - Nooit rechtstreeks op `main` committen zodra er code staat.
 - **Werk landt via een PR op GitHub**, met een merge-commit en niet met een
   squash: de commit-berichten in dit project dragen het waaróm, en squashen slaat
@@ -359,6 +383,11 @@ Voordat er één feature gebouwd wordt:
    van anderen alleen voor zover de groepsinstellingen dat toestaan — RLS bepaalt
    dit, niet de UI.
 
+   ⚠️ **Eén gedeeld object, sinds 04-11-2026: een teamdoel.** De aandelen eronder
+   blijven persoonlijke doelen. Collega's zien de teambalk en hun eigen aandeel,
+   nooit hoe ver een ander is (besluit 11 en 21 in
+   `docs/decisions/2026-11-03-zakelijk-gebruik-met-organisaties-en-teamdoelen.md`).
+
 5. **Commitment devices raken vertrouwen.** Alles wat een consequentie oplegt
    (inzet, verlies, publieke zichtbaarheid) moet expliciet bevestigd zijn,
    auditeerbaar, en nooit stilzwijgend geactiveerd.
@@ -455,6 +484,16 @@ Voordat er één feature gebouwd wordt:
    groepen van vreemden, leest eerst rij en reden in
    `docs/decisions/002-domeinregel7-oppervlakken.md` §6b.
 
+   ⚠️ **Teamgroepen (04-11-2026).** Voor een groep van een organisatie geldt deze
+   regel zwaarder, niet lichter. Aandeeldoelen blijven ook in een **open** teamgroep
+   beschermd, er is in een teamgroep nooit een klassement, een organisatiebeheerder
+   ziet niet meer dan een lid, en de teamteller bevat geen persoon. Een commitment met
+   een teamgroep als begunstigde wordt leesbaar zodra de straf verschuldigd is, zoals
+   bij elke begunstigde groep. Dat is het schaamtemoment waar deze regel voor bestaat,
+   in een groep die niet vrijwillig gekozen is, en het is een bewuste afwijking
+   (besluit 12, 18, 21, 22 en 29 in
+   `docs/decisions/2026-11-03-zakelijk-gebruik-met-organisaties-en-teamdoelen.md`).
+
    **Bij élk nieuw ding dat de groep te zien krijgt, twee vragen:** kan hieruit
    iemands gemiste week worden afgeleid, én kan iemand dat met één API-verzoek
    uitlezen buiten de UI om? De les van EPIC 5 is dat de schermen de regel netjes
@@ -543,6 +582,17 @@ Voordat er één feature gebouwd wordt:
     - **Score en voortgang zijn twee dingen.** Voortgang is mijlpaalgebaseerd en loopt
       alleen omhoog; de score kan dalen. Nooit in één balk tonen.
 
+    ⚠️ **De teambonus (besluit 28, 30 en 35, 04-11-2026): een uitzondering op
+    "missen is niet gratis".** Bij een afgerond teamdoel (een lid rondt af, een
+    teamgenoot keurt goed, nooit jezelf) krijgt iedereen die een aandeel had
+    **eenmalig `+2`, ook bij een gemist aandeel**, en ten hoogste één teambonus per
+    persoon per seizoen. Dat is een tweede beloning voor werk dat al punten opleverde
+    (de dubbeltelling die 0132 voor `goal_done` wegnam), en voor dit deel maakt een
+    gehaald of gemist aandeel geen verschil. Quinten koos dat bewust. De bonus staat
+    alleen in `points_ledger` van de eigenaar; geen bericht of overzicht noemt wie hem
+    kreeg. Uitleg in
+    `docs/decisions/2026-11-03-zakelijk-gebruik-met-organisaties-en-teamdoelen.md`.
+
     ⚠️ **Een deadline verschuiven kost geen punten** — een besluit, geen omissie
     (A7, herbevestigd 24-08-2026 als A43). De rem is het akkoord van een buddy en
     niet een minpunt: zonder akkoord blijft de datum staan, en met een minpunt
@@ -611,12 +661,25 @@ helpers uit `src/shared`, nooit de kale string-methodes.
 `telTekens()` uit `src/shared/tekst`, ook in een teller onder een invoerveld — een
 teller in grafemen bij een grens in codepunten is een nieuwe fout en geen
 reparatie. `telGrafemen()` is voor waar je écht zichtbare tekens bedoelt, zoals
-een preview, nooit voor een grens. Zod's `.max()` en `.length` tellen
+een preview, nooit voor een grens. JavaScript's `.length` telt
 UTF-16-eenheden; `char_length` in Postgres telt codepunten.
+
+⚠️ **Wat Zod telt is een eigenschap van een dependency, en die is al eens
+gewisseld — vastgelegd 05-11-2026 (QS8-673).** 📏 Onder zod 4.4.3 telden
+`.max()`, `.min()` en `.length()` UTF-16-eenheden; sinds 4.6 tellen ze
+codepunten, net als `char_length`. Dat maakt een kale `.max(n)` op gebruikerstekst
+vandaag gelijk aan de CHECK ernaast — en morgen misschien weer niet. Daarom
+blijft `telTekens()` de regel en niet de uitzondering: hij telt wat de database
+telt, onafhankelijk van wat Zod deze versie doet.
+`tests/beloftes/zod-telt-codepunten.test.ts` legt Zod's telling vast en wordt
+rood zodra die verschuift; onder 4.4.3 is dat met de hand gemeten.
 
 ⚠️ Bij een **ondergrens** gaat het verschil de gevaarlijke kant op: `.length` is
 altijd ≥ `char_length`, dus een client die in UTF-16 telt laat door wat Postgres
-weigert. Zie `docs/decisions/2026-08-28-tekst-zonder-grens.md` (QS8-118).
+weigert. Zie `docs/decisions/2026-08-28-tekst-zonder-grens.md` (QS8-118). Voor
+Zod's eigen `.min()` speelt dat sinds 4.6 niet meer; voor elke handgeschreven
+`.length`-toets nog onverkort — en het is de reden dat een ondergrens op
+gebruikerstekst hier `telTekens()` heet.
 
 ## Architectuur
 Modulaire monoliet. Module-communicatie alleen via `modules/<naam>/index.ts`.

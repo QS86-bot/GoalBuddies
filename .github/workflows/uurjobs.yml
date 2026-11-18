@@ -1,0 +1,49 @@
+name: Uurjobs
+
+# De hartslag van de uurjobs — QS8-637.
+#
+# ⚠️ Waarom dit bestaat: `rollover.yml` en `notificaties.yml` vragen om een run
+#    per uur, en GitHub's `schedule:` is best-effort. 📏 Gemeten op 05-10-2026
+#    over zeven dagen: 31 runs per workflow in plaats van ~168, en elke run die
+#    wél vuurde was groen. *Niet draaien* produceert geen fout, dus niets kon
+#    rood worden. Deze workflow leest de runlijst van die twee en wordt rood als
+#    de laatste geslaagde run langer geleden is dan `GETOLEREERDE_VERTRAGING_UUR`
+#    in `scripts/uurjobs-controle.mjs`. Een rode run van een geplande workflow
+#    wordt door GitHub gemaild — dat is het signaal.
+#
+# ⚠️ Hij is zelf een `schedule:` en dus zelf best-effort. Wie bewaakt de
+#    bewaker? Niemand; dat staat met zoveel woorden in
+#    `docs/decisions/2026-10-05-schedule-is-best-effort-en-de-hartslag-is-de-runlijst.md`.
+#    Op een niet-hele minuut, omdat GitHub op het hele uur het drukst is.
+#
+# Geen secrets: de runlijst van een publieke repo is openbaar, en voor een
+# private repo (QS8-126) is het `GITHUB_TOKEN` met `actions: read` genoeg.
+
+on:
+  schedule:
+    - cron: '47 * * * *'
+  workflow_dispatch:
+
+concurrency:
+  group: uurjobs
+  cancel-in-progress: false
+
+permissions:
+  actions: read
+  contents: read
+
+jobs:
+  hartslag:
+    name: Hartslag van de uurjobs
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Hebben de uurjobs gelopen?
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: node scripts/uurjobs-controle.mjs

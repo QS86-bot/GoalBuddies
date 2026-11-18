@@ -131,6 +131,12 @@ faalden ze dicht — een ongelezen garantie maakt de aanroep tot bevinding — m
 - **Geen bewijs dat er nooit twee rijen komen.** Het is een bewijs dat er een
   reden ópgeschreven staat waarom er één is. Een unieke index die later gedropt
   wordt, maakt deze controle rood — en dat is precies de bedoeling.
+  ⚠️ **Gecorrigeerd op 05-10-2026 (QS8-639): dit klopte niet toen het er stond.**
+  De controle las toen elke `create unique index` en volgde geen `drop` of
+  `rename`; een gedropte index bleef een garantie. 📏 Gemeten: 3 van 71. Sinds
+  QS8-639 speelt hij de migraties af, en `tests/rls/eenrij-garanties.test.ts` legt
+  het resultaat naast de database. Zie
+  `docs/decisions/2026-10-05-een-garantie-die-niet-meer-bestaat.md`.
 - **Geen vervanging van de RLS-suite.** Deze controle leest de bron en het schema;
   hij draait geen enkele query.
 - **Geen uitspraak over `.rpc()`.** Een RPC die meer dan één rij teruggeeft en met

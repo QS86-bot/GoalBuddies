@@ -75,13 +75,25 @@ import { beforeAll, describe, expect, it } from 'vitest';
  *       schrijfactie. Twee kanten, want een absoluut pad landt in de repo en
  *       een relatief pad in de `cwd` van het kind.
  *
- * ⚠️ **Wat grendel 3 níet dekt, en dat is gemeten en niet weggeredeneerd:**
- *    `git status --porcelain` ziet geen pad dat `.gitignore` uitsluit, dus een
- *    script dat bij import in `dist/` of `node_modules/` schrijft komt er niet
- *    uit. De historische gevallen (`sync-edge-shared.mjs`, `maak-iconen.mjs`)
- *    schreven allebei in de bewaakte boom. Hij leunt bovendien op de regel van
- *    QS8-442 dat een testbestand nooit buiten zijn eigen fixture schrijft —
- *    zonder die regel zou een gelijktijdige suite deze toets rood kunnen maken.
+ * ⚠️⚠️ **De schrijfgrens is sinds QS8-646 gesloten met Node's permissiemodel.**
+ *    📏 Tot dan zag grendel 3 alleen de repo (`git status --porcelain`, en dus
+ *    geen `.gitignore`-pad) en de `cwd` van het kind: een `writeFileSync` naar
+ *    `/tmp` of `dist/` liet 5/5 groen en het bestand stond er. Het kind draait
+ *    nu met `--permission --allow-fs-read=* --allow-fs-write=<wegwerpmap>`, dus
+ *    elke andere schrijfactie is `ERR_ACCESS_DENIED` en komt als worp in grendel 1.
+ *    De sonde meldt `PERMISSIEMODEL UIT` als het model niet werkt (te oude Node,
+ *    vlag weg), want anders is de grens een aanname. Hij probeert twee paden
+ *    (QS8-681): `tmpdir()` en een `.gitignore`-pad in de repo, zodat een
+ *    verbreed schrijfrecht naar de repo ook rood wordt. De ondergrens van Node
+ *    is **22.13**: daarvoor heette de vlag `--experimental-permission`, en
+ *    `package.json` zegt `>=22`; de eerste toets hieronder zegt dat luid. Alleen `--permission`
+ *    weghalen ijkt de sonde niet — haal alle drie de vlaggen weg.
+ *    De boomkant en de lege-mapcontrole blijven: de wegwerpmap is toegestaan.
+ *    Mutaties en uitslagen: `docs/decisions/2026-10-05-de-grendel-zag-alleen-de-luide-helft.md` §8.
+ *    Leesrecht is `*`; een script dat bij import legitiem buiten de wegwerpmap
+ *    moet schrijven vraagt een eigen pad in `--allow-fs-write`, mét reden.
+ *    Hij leunt bovendien op de regel van QS8-442 dat een testbestand nooit buiten
+ *    zijn eigen fixture schrijft.
  */
 const WORTEL = process.cwd();
 const MAP = join(WORTEL, 'scripts');
@@ -113,9 +125,39 @@ function boomstand(): string {
   return execFileSync('git', ['status', '--porcelain'], { cwd: WORTEL, encoding: 'utf8' });
 }
 
-/** De code die het kindproces draait: importeer alles, noteer wat je bereikt. */
-function kindcode(namen: string[], bereiktPad: string): string {
+/**
+ * De paden waar het kind NIET mag schrijven, en dus waar de sonde op test.
+ *
+ * ⚠️ Twee soorten, elk een andere verbreding van `--allow-fs-write`:
+ *    - `tmpdir()`: vangt `*` en `/` en de tijdelijke map zelf;
+ *    - `node_modules/` in de repo: een `.gitignore`-pad, precies het gat van
+ *      QS8-638 dat de boomkant niet ziet. Vangt een schrijfrecht dat naar de
+ *      repo (`WORTEL`) of naar `node_modules` verbreed wordt. Het pad bestaat
+ *      niet, en het permissiemodel weigert vóór het bestandssysteem kijkt; wordt
+ *      de grens verbreed, dan gaat de sonde dóór of geeft hij `ENOENT`, en allebei
+ *      is rood (`SONDE:` of `PERMISSIEMODEL UIT:`).
+ */
+function sondepaden(): string[] {
   return [
+    join(tmpdir(), `hoofdwacht-sonde-${process.pid}`),
+    join(WORTEL, 'node_modules', `.hoofdwacht-sonde-${process.pid}`),
+  ];
+}
+
+/** De code die het kindproces draait: importeer alles, noteer wat je bereikt. */
+function kindcode(namen: string[], bereiktPad: string, sondePaden: string[]): string {
+  return [
+    // ⚠️ De sonde: schrijf buiten de toegestane map, op elk pad dat de grens
+    //    moet weigeren. Lukt dat, dan staat het permissiemodel niet aan (of is
+    //    `--allow-fs-write` verbreed) en is de hele schrijfgrendel een aanname —
+    //    dat meldt de toets dan als eigen fout in plaats van stil groen te blijven.
+    //    Eén pad is niet genoeg (QS8-681): de sonde van QS8-646 schreef alleen naar
+    //    `tmpdir()`, en een schrijfrecht dat naar de repo verbreed werd bleef dan groen.
+    'const { writeFileSync: sondeSchrijf, rmSync: sondeWis } = await import("node:fs");',
+    `for (const sonde of ${JSON.stringify(sondePaden)}) {`,
+    '  try { sondeSchrijf(sonde, "x"); sondeWis(sonde); console.log("PERMISSIEMODEL UIT: " + sonde); }',
+    '  catch (f) { if (f.code !== "ERR_ACCESS_DENIED") { console.log("SONDE: " + f.code + " " + sonde); } }',
+    '}',
     // ⚠️ Dit is de oorspronkelijke belofte van QS8-599 en geen opsmuk: zonder
     //    argv wierp `poort.mjs` destijds uit `pathToFileURL(undefined)`.
     'process.argv.length = 1;',
@@ -155,11 +197,23 @@ function meet(): Run {
   mkdirSync(werkmap);
 
   const voor = boomstand();
-  const r = spawnSync(process.execPath, ['--input-type=module', '-e', kindcode(namen, bereiktPad)], {
-    cwd: werkmap,
-    encoding: 'utf8',
-    stdio: ['ignore', 'pipe', 'pipe'],
-  });
+  const sondePaden = sondepaden();
+  const r = spawnSync(
+    process.execPath,
+    [
+      '--permission',
+      '--allow-fs-read=*',
+      `--allow-fs-write=${tuin}`,
+      '--input-type=module',
+      '-e',
+      kindcode(namen, bereiktPad, sondePaden),
+    ],
+    {
+      cwd: werkmap,
+      encoding: 'utf8',
+      stdio: ['ignore', 'pipe', 'pipe'],
+    },
+  );
   const na = boomstand();
 
   return {
@@ -185,6 +239,16 @@ describe('een script importeren doet niets', () => {
     expect(alleScripts().length).toBeGreaterThan(100);
     expect(alleScripts()).toContain('poort.mjs');
     expect(alleScripts()).toContain('sync-edge-shared.mjs');
+  });
+
+  it('kent de permissievlag: Node 22.13 of nieuwer', () => {
+    // ⚠️ `package.json` zegt `>=22` en dat is te ruim voor deze toets. Zonder deze
+    //    controle krijgt wie op 22.0 t/m 22.12 draait "bad option" op stderr, en
+    //    dat leest als "een script print bij import".
+    expect(
+      process.allowedNodeEnvironmentFlags.has('--permission'),
+      `Node ${process.versions.node} kent --permission niet: gebruik 22.13 of nieuwer`,
+    ).toBe(true);
   });
 
   it('geen enkel script werpt of print bij import', () => {

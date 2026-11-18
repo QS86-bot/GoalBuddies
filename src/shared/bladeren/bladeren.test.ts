@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { paginas, rijen } from './index';
+import { paginas, rijen, verwerkBinnenBudget } from './index';
 
 /**
  * De ijking van `paginas()` — QS8-206.
@@ -171,5 +171,135 @@ describe('rijen', () => {
     await gen.next();
 
     expect(gevraagd).toEqual([0]);
+  });
+});
+
+/**
+ * De ijking van `verwerkBinnenBudget()` — QS8-685.
+ *
+ * ⚠️ **Een eigen klok, en die loopt alleen als er gewerkt wordt.** Elke rij
+ *    zet de klok `duur` ms vooruit, zodat "het budget is op" een eigenschap van
+ *    het aantal verwerkte rijen wordt en niet van de snelheid van de machine.
+ */
+async function* reeks(n: number, gelezen: { n: number }) {
+  for (let i = 0; i < n; i += 1) {
+    gelezen.n += 1;
+    yield i;
+  }
+}
+
+function proef(opties: { n: number; gelijktijdig: number; stopNa: number; duur?: number; maxRijen?: number }) {
+  let tijd = 0;
+  let tegelijk = 0;
+  let hoogste = 0;
+  const gezien: number[] = [];
+  const gelezen = { n: 0 };
+  const werk = async (rij: number) => {
+    tegelijk += 1;
+    hoogste = Math.max(hoogste, tegelijk);
+    await new Promise((r) => setTimeout(r, 0));
+    tijd += opties.duur ?? 0;
+    gezien.push(rij);
+    tegelijk -= 1;
+  };
+  const uitslag = verwerkBinnenBudget(reeks(opties.n, gelezen), werk, {
+    gelijktijdig: opties.gelijktijdig,
+    stopNa: opties.stopNa,
+    ...(opties.maxRijen === undefined ? {} : { maxRijen: opties.maxRijen }),
+    klok: () => tijd,
+  });
+  return { uitslag, gezien, gelezen, hoogste: () => hoogste };
+}
+
+describe('verwerkBinnenBudget', () => {
+  it('ziet elke rij precies één keer als het budget ruim is', async () => {
+    const p = proef({ n: 53, gelijktijdig: 4, stopNa: Infinity });
+    const uit = await p.uitslag;
+
+    expect(uit).toEqual({ verwerkt: 53, volledig: true });
+    expect([...p.gezien].sort((a, b) => a - b)).toEqual(Array.from({ length: 53 }, (_, i) => i));
+  });
+
+  it('heeft nooit meer dan `gelijktijdig` rijen tegelijk onderhanden', async () => {
+    const p = proef({ n: 40, gelijktijdig: 3, stopNa: Infinity });
+    await p.uitslag;
+
+    expect(p.hoogste()).toBe(3);
+  });
+
+  it('begint na het budget geen nieuwe rij, en zegt dat hij niet volledig was', async () => {
+    // 10 ms per rij, budget 100 ms, één tegelijk: na tien rijen staat de klok op 100.
+    const p = proef({ n: 1000, gelijktijdig: 1, stopNa: 100, duur: 10 });
+    const uit = await p.uitslag;
+
+    expect(uit).toEqual({ verwerkt: 10, volledig: false });
+    // ⚠️ De bron is niet verder gelezen dan wat er begonnen is.
+    expect(p.gelezen.n).toBe(10);
+  });
+
+  it('maakt wat loopt af als het budget opraakt', async () => {
+    const p = proef({ n: 1000, gelijktijdig: 4, stopNa: 1, duur: 1 });
+    const uit = await p.uitslag;
+
+    expect(uit.volledig).toBe(false);
+    expect(uit.verwerkt).toBe(p.gezien.length);
+    expect(uit.verwerkt).toBe(p.gelezen.n);
+  });
+
+  it('wacht de lopende rijen af voordat hij een fout doorgeeft', async () => {
+    let klaar = 0;
+    async function* tien() { for (let i = 0; i < 10; i += 1) yield i; }
+    const werk = async (rij: number) => {
+      if (rij === 2) throw new Error('kapot');
+      await new Promise((r) => setTimeout(r, 5));
+      klaar += 1;
+    };
+    const lopendBijWorp = verwerkBinnenBudget(tien(), werk, { gelijktijdig: 4, stopNa: Infinity, klok: () => 0 });
+
+    await expect(lopendBijWorp).rejects.toThrow('kapot');
+    // Rij 0, 1 en 3 waren begonnen toen rij 2 viel; die zijn afgemaakt.
+    expect(klaar).toBe(3);
+  });
+
+  it('wacht de lopende rijen ook af als de bron zelf gooit', async () => {
+    let klaar = 0;
+    async function* kapotNaDrie() {
+      yield 0; yield 1; yield 2;
+      throw new Error('bron kapot');
+    }
+    const werk = async () => {
+      await new Promise((r) => setTimeout(r, 5));
+      klaar += 1;
+    };
+    const p = verwerkBinnenBudget(kapotNaDrie(), werk, { gelijktijdig: 4, stopNa: Infinity, klok: () => 0 });
+
+    await expect(p).rejects.toThrow('bron kapot');
+    expect(klaar).toBe(3);
+  });
+
+  it('begint niet meer dan maxRijen rijen, ook als de tijd ruim is (QS8-697)', async () => {
+    const p = proef({ n: 1000, gelijktijdig: 4, stopNa: Infinity, maxRijen: 25 });
+    const uit = await p.uitslag;
+
+    expect(uit).toEqual({ verwerkt: 25, volledig: false });
+    expect(p.gezien).toHaveLength(25);
+  });
+
+  it('is volledig bij een bron van precies maxRijen rijen', async () => {
+    const p = proef({ n: 25, gelijktijdig: 4, stopNa: Infinity, maxRijen: 25 });
+
+    expect(await p.uitslag).toEqual({ verwerkt: 25, volledig: true });
+  });
+
+  it('weigert een maxRijen onder één', async () => {
+    const p = verwerkBinnenBudget(reeks(1, { n: 0 }), async () => {}, {
+      gelijktijdig: 1, stopNa: 1, maxRijen: 0, klok: () => 0,
+    });
+    await expect(p).rejects.toThrow(RangeError);
+  });
+
+  it('weigert een gelijktijdigheid onder één', async () => {
+    const p = verwerkBinnenBudget(reeks(1, { n: 0 }), async () => {}, { gelijktijdig: 0, stopNa: 1, klok: () => 0 });
+    await expect(p).rejects.toThrow(RangeError);
   });
 });

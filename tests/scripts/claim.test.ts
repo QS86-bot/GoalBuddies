@@ -1,7 +1,10 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+  MAX_ONAFGERONDE_CLAIMS,
+  bezetteNaamlozeBranches,
   botsendeBranches,
+  claimBericht,
   claimNaam,
   claimVoor,
   gelandVoor,
@@ -226,5 +229,120 @@ describe('claimVoor', () => {
     ['een claim zonder issuenummer', 449, 'claim: agentsturing naar risico — bezet sinds 15:05 UTC'],
   ])('laat %s met rust', (_naam, nummer, regel) => {
     expect(claimVoor(nummer, regel)).toBe(false);
+  });
+});
+
+/**
+ * Werk in uitvoering op een branch zonder issuenummer — QS8-620.
+ *
+ * ⚠️ **Beide helften, en de tweede is hier de zwaarste.** 📏 Op 05-10-2026
+ *    stonden er **176** unieke claim-commits vóór `main` — per branch geteld
+ *    **533** paren over 34 branches — terwijl er **acht** issues echt in
+ *    uitvoering waren. Een regel zonder grens meldt dus honderden bezettingen
+ *    waar er acht zijn, en een controle die alles meldt leer je te negeren. De
+ *    must-allow-helft bewaakt precies dat.
+ */
+function kerkhof(naam: string, aantal: number) {
+  return {
+    naam,
+    tip: '2026-09-13',
+    claims: Array.from(
+      { length: aantal },
+      (_, i) => `claim: QS8-${400 + i} — bezet sinds 12:00 UTC`,
+    ),
+  };
+}
+
+describe('bezetteNaamlozeBranches', () => {
+  /** Een vaste sessiebranch met één onafgerond issue — de normale toestand van baan A. */
+  const WERKBANK = {
+    naam: 'claude/modest-gauss-s0492n',
+    tip: '2026-10-05',
+    claims: ['claim: QS8-620 — bezet sinds 07:26 UTC'],
+  };
+
+  it('MUST-FIND: de vaste sessiebranch die dit issue bezet houdt', () => {
+    expect(bezetteNaamlozeBranches(620, [WERKBANK])).toEqual([WERKBANK]);
+  });
+
+  it('MUST-FIND: ook naast een kerkhof in dezelfde lijst', () => {
+    const takken = [kerkhof('quintenstrijdonk/overdracht-13-09', 153), WERKBANK];
+    expect(bezetteNaamlozeBranches(620, takken)).toEqual([WERKBANK]);
+  });
+
+  /**
+   * ⚠️ Deze branch wordt al door `botsendeBranches()` gevonden. Twee meldingen
+   *    over dezelfde branch maken de melding slechter in plaats van beter.
+   */
+  it('laat een branch met rust die het nummer wél in zijn naam draagt', () => {
+    const metNummer = {
+      naam: 'quintenstrijdonk/qs8-620-de-claim-ziet-een-vaste-sessiebranch-nooit',
+      tip: '2026-10-05',
+      claims: ['claim: QS8-620 — bezet sinds 07:26 UTC'],
+    };
+
+    expect(bezetteNaamlozeBranches(620, [metNummer])).toEqual([]);
+    // …en wél door de bron die er wel over gaat:
+    expect(botsendeBranches(620, [metNummer.naam])).toHaveLength(1);
+  });
+
+  /**
+   * 📏 `quintenstrijdonk/overdracht-13-09` droeg er op 05-10-2026 **153**, op
+   *    1832 commits vóór `main`. De claim staat er wél; bezetting is het niet.
+   */
+  it('laat een kerkhof met rust, ook al staat de claim er letterlijk in', () => {
+    const graf = kerkhof('quintenstrijdonk/overdracht-13-09', 153);
+
+    expect(graf.claims.some((regel) => claimVoor(420, regel))).toBe(true);
+    expect(bezetteNaamlozeBranches(420, [graf])).toEqual([]);
+  });
+
+  it('laat een claim voor een ánder issue met rust', () => {
+    expect(bezetteNaamlozeBranches(621, [WERKBANK])).toEqual([]);
+  });
+
+  it('zwijgt als er niets op de remote staat', () => {
+    expect(bezetteNaamlozeBranches(620, [])).toEqual([]);
+  });
+
+  it('erft de grenzen van claimVoor — een gestapelde claim telt niet voor het nummer eronder', () => {
+    const tak = {
+      naam: 'claude/sessiebranch',
+      tip: '2026-10-05',
+      claims: ['claim: QS8-381 — bezet, gestapeld op QS8-380'],
+    };
+
+    expect(bezetteNaamlozeBranches(381, [tak])).toEqual([tak]);
+    expect(bezetteNaamlozeBranches(380, [tak])).toEqual([]);
+  });
+
+  /** De grens zelf, aan beide kanten — anders bewaakt het getal niets. */
+  it('telt tot en met MAX_ONAFGERONDE_CLAIMS als werkbank en daarboven niet', () => {
+    expect(bezetteNaamlozeBranches(400, [kerkhof('claude/op-de-grens', MAX_ONAFGERONDE_CLAIMS)])).toHaveLength(1);
+    expect(bezetteNaamlozeBranches(400, [kerkhof('claude/erover', MAX_ONAFGERONDE_CLAIMS + 1)])).toEqual([]);
+  });
+});
+
+/**
+ * De naad tussen schrijven en lezen — regel 18, vraag 1.
+ *
+ * ⚠️ `claimBericht()` maakt het onderwerp en `claimVoor()` leest het terug. Dat
+ *    zijn twee correcte onderdelen met één belofte ertussen: *wat de claim
+ *    schrijft, vindt de claim terug*. Zonder deze toets kan iemand de vorm aan
+ *    één kant veranderen en blijft alles groen terwijl de claim onzichtbaar
+ *    wordt — precies het gat dat QS8-620 repareert, één laag lager.
+ */
+describe('claimBericht', () => {
+  it('schrijft een onderwerp dat claimVoor zelf terugleest', () => {
+    const [onderwerp] = claimBericht(620, '07:26', false);
+
+    expect(onderwerp).toBe('claim: QS8-620 — bezet sinds 07:26 UTC');
+    expect(claimVoor(620, onderwerp)).toBe(true);
+    expect(bezetteNaamlozeBranches(620, [{ naam: 'claude/x', tip: '2026-10-05', claims: [onderwerp] }])).toHaveLength(1);
+  });
+
+  it('zet de --vervolg-aantekening in de body, en alleen dan', () => {
+    expect(claimBericht(620, '07:26', true)[1]).toContain('Met --vervolg gezet');
+    expect(claimBericht(620, '07:26', false)[1]).not.toContain('Met --vervolg gezet');
   });
 });

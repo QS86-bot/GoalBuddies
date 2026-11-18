@@ -28,6 +28,11 @@ on:
     #    gebruiker in zijn eigen tijdzone. Met een dagelijkse job krijgt de helft
     #    van je gebruikers zijn nudge op het verkeerde moment.
     - cron: '30 * * * *'
+    #
+    # ⚠️ **Elk uur is wat hij vraagt en niet wat GitHub levert** — 📏 over zeven
+    #    dagen 31 runs in plaats van ~168, grootste gat 7,4 uur (QS8-637). Een nudge
+    #    komt dus tot een paar uur later binnen dan het gekozen tijdstip. Zie
+    #    `rollover.yml` en `docs/decisions/2026-10-05-schedule-is-best-effort-en-de-hartslag-is-de-runlijst.md`.
   workflow_dispatch:
 
 # Twee runs tegelijk is niet gevaarlijk — de unieke index op
@@ -60,8 +65,25 @@ jobs:
 
           # Body en status apart, om dezelfde reden als bij de rollover: een 500
           # met een keurige JSON-fout telt anders als succes.
+          #
+          # ⚠️⚠️ **`--max-time` ligt bóven de wandklok van de functie** (QS8-688,
+          #    zelfde ingreep als `rollover.yml` in QS8-685). Hier stond 120, en
+          #    📏 de functie deed op 17-11-2026 om 04:02 ≈ 194 s over 1.200
+          #    profielen voordat het platform hem afsloot (`shutdown` in
+          #    `function_logs`). curl gaf dan na 120 s op terwijl de functie nog
+          #    liep: rood zei "het antwoord kwam laat" en niet wát er misging.
+          #
+          #    De wandkloklimiet van een Edge Function is op de gratis tier 150 s
+          #    (gedocumenteerd); 📏 productie kapte de rollover af na 162 en
+          #    192 s, en deze functie na ≈ 194 s. 240 ligt boven alle vier, dus
+          #    curl geeft nooit eerder op dan het platform: een afgekapte functie
+          #    komt hier binnen als de foutstatus van het platform en niet als een
+          #    curl-timeout. De functie zelf begint na 100 s geen nieuw profiel
+          #    meer (`PROFIELBUDGET_MS`), dus een gezonde run antwoordt ruim
+          #    eronder. `timeout-minutes: 5` (300 s) ligt er weer boven.
+          #    TODO(paid-tier): de limiet wordt daar 400 s; dan ook dit getal.
           status=$(curl -s -S -o /tmp/notificaties.json -w '%{http_code}' \
-            --max-time 120 \
+            --max-time 240 \
             -X POST "${SUPABASE_URL}/functions/v1/notificaties" \
             -H "Authorization: Bearer ${SERVICE_ROLE_KEY}" \
             -H 'Content-Type: application/json')
@@ -76,6 +98,15 @@ jobs:
 
           if ! grep -q '"ok":true' /tmp/notificaties.json; then
             echo "::error::Notificaties antwoordde zonder ok:true."
+            exit 1
+          fi
+
+          # ⚠️ **Niet elk profiel aan de beurt gekomen is rood** (QS8-688). De
+          #    functie heeft dan netjes geantwoord, maar er zijn gebruikers die
+          #    dit uur hun herinnering of hun goedkeuringsverzoek niet kregen, en
+          #    een groene run zegt dat niet.
+          if grep -q '"volledig":false' /tmp/notificaties.json; then
+            echo "::error::Notificaties kwam niet aan alle profielen toe binnen zijn budget (volledig:false)."
             exit 1
           fi
 

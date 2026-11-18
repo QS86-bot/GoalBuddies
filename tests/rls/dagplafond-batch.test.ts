@@ -25,6 +25,7 @@ import { groepsperiodeVan } from '../../src/modules/buddies/periods';
 import { now, userCycle, type TimeZone } from '../../src/shared/time';
 
 import { adminDb, createTestUser, removeTestUsers, rlsTestsConfigured, type TestUser } from './harness';
+import { datumOver } from './datums';
 
 const SETUP_TIMEOUT = 240_000;
 
@@ -76,7 +77,7 @@ describe.runIf(rlsTestsConfigured)('een dagplafond begrenst ook de batch', () =>
 
     const doel = await alice.db
       .from('goals')
-      .insert({ owner_id: alice.id, title: 'Dagplafond', target_date: '2027-01-01' })
+      .insert({ owner_id: alice.id, title: 'Dagplafond', target_date: datumOver(60) })
       .select('id')
       .single();
     if (doel.error) throw new Error(`doel: ${doel.error.message}`);
@@ -108,7 +109,7 @@ describe.runIf(rlsTestsConfigured)('een dagplafond begrenst ook de batch', () =>
     bob = await createTestUser('dagplafond-mustallow');
     const bobsDoel = await bob.db
       .from('goals')
-      .insert({ owner_id: bob.id, title: 'Must-allow', target_date: '2027-01-01' })
+      .insert({ owner_id: bob.id, title: 'Must-allow', target_date: datumOver(60) })
       .select('id')
       .single();
     if (bobsDoel.error) throw new Error(`bobs doel: ${bobsDoel.error.message}`);
@@ -166,7 +167,7 @@ describe.runIf(rlsTestsConfigured)('een dagplafond begrenst ook de batch', () =>
         const rijen = Array.from({ length: 201 }, (_, i) => ({
           owner_id: alice.id,
           title: `doel ${i}`,
-          target_date: '2027-01-01',
+          target_date: datumOver(60),
         }));
         const { error } = await alice.db.from('goals').insert(rijen);
 

@@ -23,6 +23,7 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import { adminDb, createTestUser, removeTestUsers, rlsTestsConfigured, type TestUser } from './harness';
+import { datumOver } from './datums';
 
 const SETUP_TIMEOUT = 240_000;
 const TEST_TIMEOUT = 60_000;
@@ -225,7 +226,7 @@ describe.runIf(rlsTestsConfigured)('een beheerder raakt de rol van een ander nie
 
         const doel = await bram.db
           .from('goals')
-          .insert({ owner_id: bram.id, title: 'Opruimdoel', target_date: '2026-11-07' })
+          .insert({ owner_id: bram.id, title: 'Opruimdoel', target_date: datumOver(30) })
           .select('id')
           .single();
         if (doel.error) throw new Error(`doel: ${doel.error.message}`);
@@ -238,7 +239,7 @@ describe.runIf(rlsTestsConfigured)('een beheerder raakt de rol van een ander nie
         const vraag = await bram.db.rpc('vraag_deadline_verschuiving', {
           p_goal_id: doel.data.id,
           p_group_id: groep.id,
-          p_new_date: '2027-01-06',
+          p_new_date: datumOver(60),
           // ⚠️ `reason_too_short` — de RPC eist een echte toelichting. 📏 De eerste
           //    poging gaf die melding en niet een fout over de guard.
           p_reason: 'Ik heb meer tijd nodig omdat het project is uitgelopen.',

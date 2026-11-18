@@ -8,6 +8,7 @@ import {
   rlsTestsConfigured,
   type TestUser,
 } from './harness';
+import { datumOver } from './datums';
 
 /**
  * Welke kolommen van een doel de groep níet krijgt — QS8-392 en QS8-393,
@@ -102,7 +103,7 @@ describe.skipIf(!rlsTestsConfigured)('wat de groep van een doel te zien krijgt',
         owner_id: anna.id,
         title: 'ZZ doel van Anna',
         category: 'fitness',
-        target_date: '2026-12-31',
+        target_date: datumOver(60),
         identity_statement: ZIN,
         available_hours_per_week: 4,
       })
@@ -229,7 +230,7 @@ describe.skipIf(!rlsTestsConfigured)('wat de groep van een doel te zien krijgt',
             owner_id: anna.id,
             title: 'ZZ tweede doel',
             category: 'fitness',
-            target_date: '2026-12-31',
+            target_date: datumOver(60),
             identity_statement: 'ZZ tweede zin',
           })
           .select('id, owner_id, title, description, category, target_date, status, created_at, updated_at, ritme')

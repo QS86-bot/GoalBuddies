@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import type { IsoDate } from '../time';
 
-import { DAGEN_IN_STROOK, ritmestrook } from './ritmestrook';
+import { DAGEN_IN_STROOK, ritmestrook } from './strookdagen';
 
 const iso = (s: string) => s as IsoDate;
 

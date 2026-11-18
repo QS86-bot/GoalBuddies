@@ -123,8 +123,9 @@ Een migratie toepassen gaat zo:
    scripts/schema-opbouwen.sh
    ```
 
-3. **Pas hem toe** (MCP `apply_migration`, of `npm run db:push`) en **trek het
-   register meteen daarna gelijk**:
+3. **Pas hem toe** (MCP `apply_migration`, of met `psql` zoals §2.2b beschrijft;
+   `npm run db:push` bestaat sinds 01-09-2026 niet meer) en **trek het register
+   meteen daarna gelijk**:
 
    ```bash
    npm run register:uitlijnen
@@ -147,7 +148,7 @@ Een migratie toepassen gaat zo:
    tussen de geslaagde controles en las hij als "gelukt". Wil je dat een
    ontbrekende sleutel een fout is — en dat wil je overal waar hij er wél hoort
    te zijn — draai hem dan met `--streng` of met `REGISTER_CONTROLE_STRENG=1`.
-   `npm run db:push` doet dat zelf.
+   (`npm run db:push` deed dat vroeger zelf; zie §2.2b voor waarom hij weg is.)
 
 ⚠️⚠️ **Op `storage.objects` kun je alles behalve een index — 📏 gemeten
 12-09-2026 (QS8-439).** Die tabel is eigendom van `supabase_storage_admin`, en
@@ -750,7 +751,11 @@ cache vangt herhaalde vragen af.
 ## 2.9 De bewaartermijn van chatfoto's — en wat een rollback níet terugdraait
 
 Sinds migratie 0235 (QS8-396) is de fotobucket een doorgeefluik en geen archief.
-De rollover-functie haalt elk uur op wat weg mag en wist het:
+De rollover-functie haalt bij elke run op wat weg mag en wist het. ⚠️ *Elke run* is
+bedoeld als *elk uur*, maar GitHub's `schedule:` is best-effort: 📏 gemeten op
+05-10-2026 draaide hij over zeven dagen 31 keer in plaats van ~168, met een
+grootste gat van 9 uur (QS8-637). Een foto verdwijnt dus uiterlijk een paar uur
+later dan de termijn, en nooit eerder:
 
 ```sql
 select * from verlopen_chatfotos(500);   -- als service_role
@@ -803,8 +808,11 @@ opruimfuncties terug. **Het zet geen foto's terug.**
   as $$ select interval '3650 days' $$;
   ```
 
-⚠️ **Draai die stap vóór een rollback en niet erna.** De rollover draait elk uur;
-tussen "ik ga terugdraaien" en "het is teruggedraaid" past een ronde.
+⚠️ **Draai die stap vóór een rollback en niet erna.** De rollover is bedoeld elk uur
+en draait in de praktijk gemiddeld om de ~5 uur (QS8-637); tussen "ik ga
+terugdraaien" en "het is teruggedraaid" kan dus een ronde vallen, en wie wacht
+tot hij zeker weet dat er geen komt, wacht langer dan een uur. `npm run
+uurjobs:controle` zegt hoe lang geleden de laatste geslaagde run was.
 
 ---
 

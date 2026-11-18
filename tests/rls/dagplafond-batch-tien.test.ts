@@ -44,6 +44,7 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import { adminDb, createTestUser, removeTestUsers, rlsTestsConfigured, type TestUser } from './harness';
+import { datumOver } from './datums';
 
 const SETUP_TIMEOUT = 240_000;
 const TEST_TIMEOUT = 240_000;
@@ -80,7 +81,7 @@ async function maakDoelen(ownerId: string, aantal: number, naam: string): Promis
       Array.from({ length: aantal }, (_, i) => ({
         owner_id: ownerId,
         title: `${naam} ${i}`,
-        target_date: '2027-01-01',
+        target_date: datumOver(60),
       })),
     )
     .select('id');

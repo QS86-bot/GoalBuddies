@@ -3,8 +3,32 @@
 > Kopieer alles onder de streep in een nieuwe chat. Werk dit bestand bij aan het
 > eind van elke sessie — het is de overdracht, niet een archief.
 >
-> **Laatst bijgewerkt:** 17-09-2026 om 17:35 UTC, **t/m PR #527**. De lessen van
-> deze ronde staan als punt AL, AM en AN hieronder.
+> **Laatst bijgewerkt:** 05-11-2026 om 13:34 UTC, **t/m PR #657** (#655, #656
+> en #657 zijn gemerged; #656 om 13:15 UTC als `769b37d5`). Wat er die dag open
+> bleef staat in STAND VAN ZAKEN onder
+> *05-11-2026*, in twee rondes; de bijwerking daarvóór was 17-09-2026 (t/m PR
+> #527), met de lessen van die ronde als punt AL, AM en AN.
+>
+> ⚠️ **Sinds 05-11-2026 werkt dit project met een orchestrator, bouwsessies en een
+> batchsessie** (`docs/PROMPT-SESSIE.md` §12). Een bouwsessie raakt dit bestand
+> dan niet; de batchsessie vouwt de stand in. Deze bijwerking is op Quintens
+> eigen verzoek door de bouwsessie van baan A gedaan en landt op haar sessietak.
+> De tweede bijwerking van die dag (12:50 UTC) is door dezelfde sessie gedaan, op
+> een eigen documenttak vanaf `main`, zodat de twee afgeleverde issuetakken hun
+> afleversha houden.
+>
+> ⚠️ **Aanvulling van dezelfde dag door de sessie van het zakelijke spoor** (op de
+> sessietak `claude/keen-mendel-ejxo4e`, 05-11-2026 om 07:59 UTC, geteld t/m PR #650): de index
+> van PR #531 t/m #650 en het zakelijke spoor staan aan het eind van "STAND VAN ZAKEN",
+> "Waar te beginnen" heeft een nieuw punt 00, en bij uitspraken die aantoonbaar niet meer
+> klopten staat een **"Achterhaald"** (`grep -n Achterhaald docs/VOLGENDE-SESSIE.md`). Het
+> meeste onder "Waar te beginnen" is van september.
+>
+> ⚠️ **Aanvulling van 16-11-2026 (batchsessie):** PR #668 (QS8-646) is gemerged als
+> `a326c93a`; de stand staat in `docs/WERKVOORRAAD.md`. Het vervolg is QS8-681.
+>
+> ⚠️ **Aanvulling van 17-11-2026 (batchsessie):** PR #670 (QS8-683 en QS8-681) is gemerged als
+> `8d61a8e6`; de stand staat in `docs/WERKVOORRAAD.md`. Daarna landden #672 tot en met #682 (zelfde bestand), met `main` eenmaal rood door een nieuwe advisory (`picomatch`, #682). Het vervolg is de deploy en eerste run van `rollover` en `notificaties` door Quinten, en QS8-690 (twee keer teruggestuurd naar de bouwsessie; PR #683 blijft draft).
 >
 > ⚠️ **Die afkapping is met opzet een nummer en geen "alles".** Terwijl deze
 > bijwerking geschreven werd landden er drie PR's bij — de teller ging van
@@ -1522,6 +1546,21 @@ Ververs hem vóór je hem plakt met `git ls-remote --heads origin`. Hij staat er
 alleen omdat een sessie die meteen een bezet issue kiest, dat anders pas merkt
 ná het lezen van het issue.
 
+⚠️ **Achterhaald sinds 05-11-2026 — daarom staat de lijst niet meer in het blok.** De
+momentopname van 07-09 noemde QS8-122, QS8-252, QS8-261, QS8-270, QS8-284, QS8-287,
+QS8-295, QS8-296 en QS8-324 als bezet. 📏 Nagemeten in Linear: alle negen staan op Done,
+tussen 24-08 en 09-09. Wie het blok ongewijzigd plakte, zei tegen een sessie dat negen
+afgeronde issues bezet waren.
+
+Ook een ververste lijst vraagt een tweede blik: een branch op de remote betekent *hier zit
+iemand nu*, behalve als hij niet weg kan.
+📏 Van zeven van die negen issues staat de branch er nog, acht in totaal (`quintenstrijdonk/qs8-122-…`,
+`qs8-261-…` twee keer, `qs8-270-…`, `qs8-284-…`, `qs8-287-…`, `qs8-296-claim` en
+`claude/qs8-252-besluiten-a53-a56`), omdat een cloudsessie geen branches kan verwijderen
+(QS8-240). Lees de status in Linear erbij, en
+laat `npm run claim` de beslissing nemen: hij leest sinds QS8-449 en QS8-620 ook de gelande
+PR's en de claim-commits (`CLAUDE.md`, *Versiebeheer*).
+
 ```text
 Je werkt aan GoalBuddies (/home/user/GoalBuddies). Lees eerst CLAUDE.md en
 docs/WERKVOORRAAD.md sectie 0 — die twee zijn de grondwet en de stand.
@@ -1560,8 +1599,8 @@ Loopt een issue vast op iets dat Quintens hand vraagt (een sleutel, een
 dashboardinstelling, een betaalde tier): label het `wacht-op-Quinten`, laat het
 op Todo staan en ga door. Bouw geen work-around.
 
-BEZET OP DIT MOMENT — ververs met `git ls-remote --heads origin`:
-QS8-122, QS8-252, QS8-261, QS8-270, QS8-284, QS8-287, QS8-295, QS8-296, QS8-324.
+BEZET OP DIT MOMENT — NIET ververst. Vul in uit `git ls-remote --heads origin`
+(het issuenummer staat in de branchnaam) en uit Linear (In Progress en In Review):
 
 VIJF VALLEN DIE OP 07-09 ECHT ZIJN OPGETREDEN:
 - Migratienummers botsen tussen de laatste groene CI en de merge. Begin met
@@ -1585,14 +1624,21 @@ cwd van de sessie wijst vaak naar een ander project** (DN Projectbegeleiding, de
 Status Tracker). Een `git log` in de verkeerde map laat een schone, andere repo
 zien en dan lijkt er niets te doen.
 
+⚠️ **Omgevingsafhankelijk, gemarkeerd 05-11-2026.** Dit pad is Quintens eigen machine. Een
+cloudsessie begint in `/home/user/GoalBuddies`, zoals het blok hierboven al zegt, en daar
+is de cwd wel de repo. De les blijft staan: begin met `pwd` en
+`git rev-parse --show-toplevel`; het pad niet.
+
 `CLAUDE.md` staat al in je context en hoeft niet opnieuw ingelezen te worden —
 niet door jou en niet door een subagent. Lees `docs/WERKVOORRAAD.md` (sectie 0
 geeft de stand in tien regels) en dit bestand. Haal daarna de openstaande issues
 op uit het Linear-project GoalBuddies.
 
-⚠️ **Werk de doorloopbevindingen af en niet de volgorde in WERKVOORRAAD §4.** De
-bevindingen van 30-08 zijn geland; wat er nu voorligt staat in "Waar te
-beginnen" punt 0.
+⚠️ **Begin bij "Waar te beginnen" punt 00 en niet bij punt 0.** Deze zin zei hier tot
+05-11-2026 dat de doorloopbevindingen van 30-08 voorlagen, en die zijn lang geland. Sinds
+03-11-2026 is er een tweede spoor, zakelijk gebruik met organisaties en teamdoelen: besloten
+en **niet gebouwd**, met als poort QS8-649 (de epic is QS8-650). **Bouw daar niets van
+voordat je QS8-649 hebt gelezen.**
 
 ⚠️ **Er werkt een parallelle sessie in dezelfde repo, en op 03-09 kostte dat
 werk.** **Kijk naar de remote branches vóór je iets oppakt** — `git branch -r` —
@@ -1623,7 +1669,22 @@ geluk en geen afspraak. **Nagemeten op 04-09 stond migratie 0154 nog steeds
 alleen op `qs8-197-apple-en-google-knop`,** dus de blokkade van QS8-174 staat
 onveranderd.
 
+✅ **Achterhaald sinds 04-09-2026, gemarkeerd 05-11-2026:** de ✅-regel een paar alinea's hoger
+is de latere stand (#191 landde diezelfde dag), en QS8-174 zelf staat op Done sinds 07-09
+(nagemeten in Linear). Deze alinea beschrijft de ochtend van 04-09.
+
 ## STAND VAN ZAKEN
+
+⚠️ **Lees dit blok als logboek en niet als stand (gemarkeerd 05-11-2026).** Het is in de
+volgorde van schrijven gegroeid: een zin in de tegenwoordige tijd was waar op de datum van
+zijn subsectie, of bij de eerste alinea's hieronder op 21 t/m 28-08. Waar dat aantoonbaar niet
+meer klopt, staat een **"Achterhaald sinds"** erbij, met de meting. **Dat is niet uitputtend.**
+Nagelopen zijn de uitspraken over issues (tegen Linear), over commando's (tegen
+`package.json`) en over de branches (tegen `git ls-remote`). De subsecties van 22-09 t/m
+24-09 zijn daarna ook gelezen: ze bestaan vrijwel geheel uit lessen en niet uit stand, de
+ene stand-uitspraak daarin is gemarkeerd bij 24-09 (de lokale stack), en de ene omgevingsuitspraak
+die toetsbaar was (het npm-register is bereikbaar) klopte op 05-11-2026 nog. De stand zelf staat
+in `docs/WERKVOORRAAD.md` §0, en bewust alleen daar.
 
 Fase 1 is inhoudelijk af: elke epic staat, 0 t/m 12. EPIC 9 (het commitment
 device) is sinds 21-08 af, en EPIC 11 op de aflevering na — zie hieronder.
@@ -1633,7 +1694,8 @@ nog openstaat.** Dat mag omdat wat er van Fase 1 rest zíjn hand vraagt en geen
 code. **Op 28-08 is die opening ook weer dicht:** alle vier de `phase:v2`-issues
 die een sessie zelfstandig kon bouwen staan op `main` (QS8-56, QS8-65, QS8-79,
 QS8-78). Wat er in de backlog overblijft vraagt Quinten of een dependency.
-**Lees "Waar te beginnen" punt 0 vóór je iets doet.**
+**Lees "Waar te beginnen" punt 0 vóór je iets doet.** ⚠️ **Achterhaald sinds
+05-11-2026:** begin bij punt 00; punt 0 is van 31-08 t/m 09-09.
 
 **De app is live op `goalbuddies.q-projects.tech`** (QS8-99/QS8-100). Deployen is
 één commando:
@@ -1696,6 +1758,11 @@ beheren), QS8-76 (feestelijk moment) en QS8-85 (commitments informeel, met een
 test die het bewaakt). A45 is gedicht in migratie 0047.
 
 **Begin hier.** Dit is het zwaarste openstaande punt en het is geen feature.
+
+⚠️ **Achterhaald, en zonder referent (gemarkeerd 05-11-2026):** deze "Begin hier" wijst nergens
+meer naar. De alinea's tot en met "Zolang geen van beide rond is" zijn bij eerdere bijwerkingen
+uit hun context geraakt: wat met "hem" bedoeld wordt, staat er niet meer. De enige actuele
+beginplek is `CLAUDE.md` → `docs/WERKVOORRAAD.md` §0, en onderaan punt 00.
 
 ⚠️ **`goals.risk_status` is dichtgezet vóórdat de radar hem ging vullen**
 (migratie 0050). De drie risicokolommen wonen nu in `goal_risk`, eigenaar-only.
@@ -1785,6 +1852,10 @@ de eigenaar blokkeert. Uitleg in
 (beloning vrijgeven bij het halen van een doel) en QS8-84 (straf verschuldigd
 bij een gemiste deadline).
 
+✅ **Achterhaald, gemarkeerd 05-11-2026:** beide staan op Done sinds 21-08-2026 (Linear), en de
+alinea's bovenaan dit blok zeggen zelf dat EPIC 9 sinds 21-08 af is. Dit is een rest van een
+eerdere stand.
+
 `expo-notifications` staat erin en is ingeplugd; de job draait en selecteert
 `profiles.locale`. Maar **de app draait alléén op het web**, en web push is een
 ánder mechanisme: VAPID-sleutelpaar, een service worker, en een
@@ -1795,6 +1866,12 @@ A41 (mag de groep zien wat er fout gaat?) en A42 (blijven punten privé?) uit de
 groene notities raken domeinregel 7 in de kern. Verder A43 (minpunten bij
 zelfstandig verschuiven), A44 (is "zakelijke doelen" de koers?) en A46 (TRUNCATE
 intrekken). A37 staat er ook nog.
+
+✅ **Achterhaald sinds 24-08-2026, gemarkeerd 05-11-2026:** A37, A41, A42, A43 en A46 staan
+beslist in `docs/decisions/006-besluitenronde-24-08.md`, en `CLAUDE.md` draagt ze waar ze een
+regel werden (A41 bij domeinregel 7, A42 en A43 bij domeinregel 10). A44 is op 03/04-11-2026
+opnieuw beslist als onderdeel van het zakelijke spoor, zie het beslisdocument van 03-11. Er
+wacht hier dus geen besluit meer op Quinten; de openstaande punten staan in QS8-649.
 
 **A47 is af** — dat was "de testsuite past niet meer twee keer in een uur", en
 dat probleem bestaat niet meer sinds de suite niet meer inlogt (QS8-116).
@@ -2001,6 +2078,12 @@ script zelf niet doet is het cluster starten: `initdb` + `pg_ctl` op poort
 **5433** als de `postgres`-gebruiker, want als root weigert Postgres te starten
 en de scratchpad-map is voor die gebruiker niet doorloopbaar.
 
+⚠️ **Niet overal meer waar, gemeten 05-11-2026.** In een cloudsessie van die dag stond Postgres 16
+er wel, maar de PostgREST-binary niet op schijf. Of hij nog op te halen is, is niet nagemeten:
+de netwerkregels verschillen per omgeving en een wijziging bereikt een lopende sessie niet
+(zie "De valkuilen van 03-11 t/m 05-11-2026"). Reken dus niet op "de lokale stack draait gewoon";
+kijk eerst of hij kan, en noem het als aanname als je het niet kon meten.
+
 ⚠️ **Dit is geen vondst maar een gewoonte die ik te laat aannam.** QS8-268,
 QS8-426 en QS8-523 draaiden er al tegenaan, en QS8-569 beschrijft woordelijk
 dezelfde beweging: een controle **voeden** in plaats van hem ongemeten laten.
@@ -2195,6 +2278,357 @@ boven de vijftig regels en liep de ratel van 15 naar 21; een blok achter de
 main-guard voegt geen functie toe. Top-level `await` mag daarin — nagemeten, niet
 aangenomen. De prijs is één nestingniveau, dus `max-depth` kan erop omvallen.
 
+### 17-09-2026 t/m 06-10-2026 — PR #531 t/m #650: een index en geen verhaal
+
+⚠️ **Dit is een index en geen samenvatting, en dat is met opzet.** De lessen van deze
+reeks heb ik niet apart uit de PR's gehaald. Ze staan in `CLAUDE.md` (de ⚠️-alinea's met
+een datum erbij), in de beslisdocumenten (`docs/decisions/`: 71 documenten met een
+datum van 17-09 t/m 06-10) en, per issue, in de kopregel van `docs/WERKVOORRAAD.md`. Wil je
+weten wát een rij oploste, lees dan het issue; de titel hieronder is alles wat een
+merge-commit zegt.
+
+📏 **Hoe er geteld is, op 05-11-2026 om 07:59 UTC:** alle merge-commits "Merge pull request #N" met
+N > 527 die vanaf `origin/main` bereikbaar zijn, ontdubbeld op nummer. Dat zijn er
+**90**: **62** op de hoofdlijn van `main` en **28** alleen via een
+zijtak (die staan wel in de geschiedenis maar niet op de first-parent-lijn, en zijn
+hieronder als *(zijtak)* gemerkt). Van de 123 nummers 528 t/m 650 hebben **33** geen
+merge-commit: ze zijn zonder merge gesloten, of op een andere route binnengekomen. Kop van
+`main`: `8c7d1707` (06-10-2026). **De kloon waarmee dit geteld is, is ondiep** (oudste
+commit 09-09-2026): de telling dekt het hele bereik, maar kan niet verder terug. **Begin
+de volgende bijwerking bij #650.**
+
+| PR | datum | issue | onderwerp |
+|---|---|---|---|
+| #531 | 17-09 | QS8-531 | de verlooppoort meet aan de bevroren strafklok *(zijtak)* |
+| #532 | 17-09 | QS8-539 | punt AN zei twee sessies, het waren er drie *(zijtak)* |
+| #533 | 17-09 | QS8-543 | rij 590: het geval is gedicht, de voorwaarden zijn ingetreden *(zijtak)* |
+| #534 | 17-09 | QS8-544 | rij 587: de claim houdt op zijn eigen breedte *(zijtak)* |
+| #535 | 17-09 | — | de administratie-audit van QS8-452 met de hand gedraaid *(zijtak)* |
+| #538 | 18-09 | QS8-547 | het formaat van een foto komt uit de bytes *(zijtak)* |
+| #540 | 18-09 | QS8-549 | rij 606: één uitzondering waren er negen *(zijtak)* |
+| #542 | 18-09 | QS8-533 | het schild rond een straf meet aan de bevroren klok (0290) *(zijtak)* |
+| #543 | 18-09 | QS8-552 | een branch die nog niet geland is, is geen fout *(zijtak)* |
+| #545 | 18-09 | QS8-551 | dossierdrift:controle zegt ONGEMETEN bij een afgekapte kloon *(zijtak)* |
+| #547 | 18-09 | QS8-554 | rij 653: de twee DELETE-triggers zeggen niets *(zijtak)* |
+| #548 | 18-09 | QS8-555 | rij 764: 0279 zette het gevreesde lek dicht *(zijtak)* |
+| #549 | 19-09 | QS8-556 | dossierdrift:controle schrijft op wat hij niet ziet *(zijtak)* |
+| #550 | 19-09 | QS8-528 | topniveau-DML in een migratie staat onder een reden *(zijtak)* |
+| #552 | 19-09 | QS8-558 | een serverklok herken je aan wat hij doet, niet aan hoe hij heet *(zijtak)* |
+| #554 | 19-09 | QS8-557 | de quota-conjunct van weekly_plan_steps_insert staat onder een toets *(zijtak)* |
+| #555 | 19-09 | QS8-548 | de strafpoort meet aan de bevroren klok (0294) *(zijtak)* |
+| #556 | 19-09 | QS8-321 | de getuige hoort dat de straf niet meer verschuldigd is *(zijtak)* |
+| #557 | 19-09 | QS8-564 | de premisse onder rij 769 staat nu onder toets *(zijtak)* |
+| #558 | 19-09 | QS8-541 | typesdrift:controle telt namen in plaats van regels *(zijtak)* |
+| #559 | 19-09 | QS8-566 | de uitrolstand is hermeten en het dossier volgt het gemeten getal *(zijtak)* |
+| #560 | 19-09 | QS8-563 | CI beoordeelt een controle met dezelfde classificatie als de poort *(zijtak)* |
+| #561 | 21-09 | QS8-566 | 0283 t/m 0294 uitgerold, dossier op de gemeten stand *(zijtak)* |
+| #562 | 21-09 | QS8-562 | schema-opbouwen.sh noemt de gemeten oorzaak in plaats van de plausibele *(zijtak)* |
+| #563 | 21-09 | QS8-567 | knip:controle bewaakt nu ook de knip die er niet is *(zijtak)* |
+| #564 | 21-09 | QS8-568 | vijf belofte-tests knippen commentaar vóór ze toetsen *(zijtak)* |
+| #566 | 21-09 | QS8-571 | catalogus:controle knipt commentaar weg *(zijtak)* |
+| #571 | 21-09 | QS8-574 | acht belofte-tests knippen commentaar, en een grendel houdt de negende tegen *(zijtak)* |
+| #572 | 21-09 | — | 39 dossierrijen hermeten in helft A, 7 dicht |
+| #576 | 21-09 | QS8-572 | vier vormen gemeten, twee overgenomen |
+| #578 | 21-09 | QS8-578 | de copy-route blijft open, en dat is besloten |
+| #579 | 22-09 | QS8-583 | de werkprompt voor twee sessies staat in de repo, onder de eigenaarstoets |
+| #580 | 22-09 | QS8-582 | de wachtende run is niemands uitslag |
+| #581 | 22-09 | QS8-461 | leesroute_bewaking() toetst elke OR-tak apart (0295) |
+| #582 | 22-09 | QS8-585 | de lijst die niemand kon afleiden |
+| #583 | 22-09 | — | de overdracht draagt de triageronde en de valkuil van 22-09 |
+| #584 | 22-09 | QS8-588 | een herstel dat een migratie terugdraait |
+| #585 | 22-09 | — | dossierrij 545 sluit, QS8-461 is geland als 0295 |
+| #586 | 22-09 | QS8-590 | de vier productbesluiten van 22-09 staan in het besluitenlog |
+| #587 | 22-09 | QS8-592 | de grant die alleen opviel als niemand hem gebruikte |
+| #588 | 22-09 | QS8-593 | de namen klopten en de velden niet |
+| #589 | 22-09 | QS8-594 | de rij draagt het getal in plaats van alleen de klasse |
+| #590 | 22-09 | — | de overdracht draagt de grendelronde van baan B en de valkuilen van 22-09 |
+| #591 | 23-09 | QS8-586 | een melding komt aan, en de vier gaten die de review erin vond |
+| #592 | 23-09 | — | een afgebroken run levert geen rode `Alles groen` meer op |
+| #593 | 23-09 | — | 320 rijen van het dossier renderden helemaal niet als tabel |
+| #594 | 24-09 | — | de overdracht draagt de tweede grendelronde van baan B |
+| #595 | 24-09 | QS8-594 | een `DEFAULT NULL`-argument is getypt, of niemand stuurt er `null` heen |
+| #596 | 24-09 | — | de voorwaarden-pas, één keer gedraaid tegen productie |
+| #597 | 24-09 | QS8-591 | een beslisdocument is waar op zijn eigen dag |
+| #598 | 24-09 | — | een nieuw adviseur-object kan niet meer landen zonder de allowlist |
+| #599 | 24-09 | QS8-584 | `migratie:nieuw` leest zijn eigen bestandsnaam vóórdat hij schrijft |
+| #600 | 24-09 | — | de kop van /audit leest dezelfde bron als CI |
+| #601 | 24-09 | — | een script importeren werpt niet meer |
+| #602 | 24-09 | QS8-587 | kan de Doelcoach zonder de Anthropic-API? |
+| #603 | 24-09 | — | een uitzondering die niet over een uitzondering ging |
+| #604 | 28-09 | QS8-604 | de versietoets in beoordeelHerstel() staat apart en onder toets |
+| #605 | 24-09 | QS8-605 | elke `.single()` draagt een garantie dat er hoogstens één rij is |
+| #606 | 28-09 | QS8-607 | herstelWatOpenstond() voert zijn oordeel onder toets uit |
+| #607 | 24-09 | — | geen enkel script doet nog iets zodra je het importeert |
+| #608 | 28-09 | QS8-600 | HISTORISCH_JUIST wordt gelezen, en telt alleen in een beslisdocument |
+| #610 | 28-09 | QS8-601 | typesdrift-controle zet een veldverschil onder toets in de exitcode |
+| #611 | 28-09 | QS8-602 | de commentaarknip in toetsRij() van defaultnull-controle staat onder toets |
+| #614 | 24-09 | QS8-603 | §0 van de sessieprompt hermeten op zijn eigen commit |
+| #625 | 28-09 | QS8-611 | de claim herkent een landing ook aan de claim-commit die de merge meenam |
+| #626 | 28-09 | QS8-621 | §0 van de sessieprompt telt zijn negen getallen in één blok |
+| #627 | 28-09 | QS8-576 | knip:controle ziet ook een knip die geen benoemde functie is |
+| #628 | 28-09 | QS8-622 | audit:controle: de naad hoofd() → slotwoord() staat onder toets |
+| #629 | 05-10 | QS8-625 | NAGEKEKEN: brace-expansion, braces en node-forge nagemeten met een bouw |
+| #630 | 05-10 | QS8-624 | drie voorwaarden gemeten, en r746 kan niet afgaan |
+| #631 | 05-10 | QS8-627 | en QS8-628 — sessieprompt draagt de gemeten getallen, en Alles groen is cancelled |
+| #632 | 05-10 | QS8-623 | r755 telt elf kale stabiele aanroepen in een with check, niet twee |
+| #633 | 05-10 | QS8-631 | drie beweringen uit de voorwaarden-pas rechtgezet |
+| #634 | 05-10 | QS8-629 | + QS8-630 — elke aanhalingsvorm in de scriptsluiting, en een gesloten dossierrij |
+| #635 | 05-10 | QS8-620 | een vaste sessiebranch is nu zichtbaar voor de andere sessie |
+| #636 | 05-10 | QS8-637 | de uurjobs hebben een hartslag, en schedule: is als best-effort vastgelegd |
+| #637 | 05-10 | QS8-642 | de Middel-rijen die op een besluit wachten, als voorstellen met opties en prijs |
+| #638 | 05-10 | QS8-638 | de hoofdwacht ziet nu ook de stille helft |
+| #639 | 05-10 | QS8-633 | r898 zegt dat de drie foute getallen er niet als feit staan |
+| #640 | 05-10 | QS8-626 | een rpc-keten is leesbaar, en zijn garantie is het retourtype |
+| #641 | 05-10 | — | overdracht bijgewerkt na QS8-620 |
+| #642 | 05-10 | QS8-639 | eenrij:controle speelt de migraties af, zodat een gedropte of hernoemde index geen garantie blijft |
+| #643 | 05-10 | — | from QS86-bot/quintenstrijdonk/qs8-632-rij-169-draagt-138-bestanden-en-precies-een-regel-geen-van |
+| #644 | 05-10 | — | from QS86-bot/quintenstrijdonk/qs8-636-besluit-3-nooit-geldstraffen-mist-in-het-besluitenlog-wat |
+| #645 | 05-10 | — | from QS86-bot/quintenstrijdonk/qs8-635-twee-zinnen-van-qs8-587-kloppen-niet-rij-886-zegt-2-door-in |
+| #646 | 05-10 | QS8-644 | uurjobs:controle neemt de vereniging van drie runlijsten |
+| #647 | 05-10 | QS8-640 | een onware testkop rechtgezet en tien ontbrekende afrondingen |
+| #648 | 06-10 | QS8-647 | dossierrij 891 zegt wat er gemeten is |
+| #649 | 06-10 | QS8-648 | NAGEKEKEN: compression en source-map-js nagemeten met een bouw |
+| #650 | 06-10 | QS8-645 | rij 169: 11 van de 21 regels gaan over een grant |
+
+### 05-11-2026 — de eerste orchestratorronde, en wat er open bleef
+
+**De rolverdeling staat op `main`** (PR #652): orchestrator, bouwsessies zonder PR,
+batchsessie — `docs/PROMPT-SESSIE.md` §12, met het logboek in Linear QS8-667.
+Baan A (deze sessie) leverde twee takken af, allebei zonder PR, allebei In Review,
+en allebei met `git merge-tree` schoon tegen `main` = `b7586a11`:
+
+| Issue | Tak | Sha | Wat |
+|---|---|---|---|
+| QS8-651 | `claude/awesome-fermat-pp7z2v` | `31fd0ab4` | `enigeOfGekozen()` in `src/modules/buddies/deling.ts`: bij twee of meer groepen of mensen geen stille eerste meer bij de hulpvraag, de begunstigde van een straf, de vervangende getuige en de deelknop van De Lijst. Rij 41 in beslisdocument 002 |
+| QS8-668 | `quintenstrijdonk/qs8-668-nevenschadetestts-valt-sinds-november-om-op-een-vaste-moment` | `66cdcfee` | `nevenschade.test.ts` rekent haar seizoensmomenten uit de fixture met de helper `seizoensmomenten()` (bestand seizoensmoment.ts in tests/rls, alleen op die tak tot de batch landt); de registerrij in `scripts/jobbereik-controle.mjs` volgt mee |
+
+✅ **Na de merge van PR #651 (batchsessie, 05-11-2026 10:25 UTC, `1d5ae19b`):** punt 1 en 2 hieronder zijn geland. QS8-669 en QS8-668 zitten in de batch, de CI was groen op `80c1c7fd`, en de ER-rijen zijn ingevouwen. Punt 3 en 4 staan nog open. Erbij kwam: `zod` (high) en `shell-quote` (critical) zijn met PR #654 (QS8-670 en QS8-671) bijgewerkt. Zod telt daardoor sinds 4.6 codepunten; `CLAUDE.md` (sectie *Emoji*) zegt dat sinds QS8-673 ook, en de telling staat onder `tests/beloftes/zod-telt-codepunten.test.ts`, zie `docs/decisions/2026-11-05-zod-telt-sinds-4-6-codepunten.md`.
+
+⚠️ **Wat er open bleef, in volgorde van wat het blokkeert:**
+
+1. **QS8-669 — `audit:controle` rood op `main` en op elke tak** (`shell-quote`
+   critical, `zod` high, `glob`, `minimatch`, `deepmerge` nieuw; `uuid`,
+   `decode-uri-component` en `node-forge` veranderd; `braces` verdwenen). Een
+   baan-B-sessie heeft de tak sinds 09:53 UTC; mijn claim weigerde terecht.
+   **Tot dit landt is élke PR naar `main` rood op twee jobs**, ook de batch-PR
+   #651, die daarom op draft staat (besluit van Quinten, 10:00 UTC).
+2. **De batch** neemt daarna de twee takken hierboven mee; de vijf ER-rijen uit
+   de afleverregel van QS8-651 moeten door de batchsessie in
+   `docs/ENGINEER-REVIEW.md` gevouwen worden — een bouwsessie raakt dat bestand
+   niet. Twee ervan zijn bevindingen buiten de diff: het doelscherm toont met
+   `commitments.find((c) => c.type === 'penalty')` de óudste straf, ook een
+   ingetrokken (Middel), en wie alleen in een gearchiveerde groep zit ziet een
+   strafformulier zonder uitweg (Laag).
+3. **Teamgroepen (QS8-649): herbevestigen vóór de eerste migratie** dat een
+   gebruiker met *alleen* een teamgroep die groep als "de enige" krijgt bij een
+   hulpvraag of straf. `enigeOfGekozen()` kent geen teamgroepen; de aanroeper
+   moet filteren. Staat in `docs/decisions/2026-11-05-de-eerste-groep-is-geen-keuze.md`
+   §3 en hoort als reactie op QS8-649 (orchestrator).
+4. **Zondag 08-11 reviewt Quinten**; het klikpad staat in QS8-667. Ronde 2 daarvan
+   is QS8-651 en kan alleen als de batch zaterdag gemerged en gedeployd is.
+
+### De valkuilen van die dag
+
+⚠️⚠️ **`main` stond sinds 12-10 rood op zijn geplande runs, zonder dat er een
+commit bij kwam, en niemand zag het.** 📏 De push-run van 06-10 was groen; de
+schedule-runs van 12-10, 19-10, 26-10 en 02-11 op dezelfde sha waren rood. Twee
+oorzaken die allebei van de klok of van het npm-register komen en niet van de
+code: een vaste `MOMENT` tegen een `now()`-relatieve fixture (QS8-668) en nieuwe
+advisories (QS8-669). `hoofdrun:stand` kijkt ná een merge; een schedule-run
+kijkt niemand na. **Lees bij het begin van een ronde de laatste schedule-run op
+`main`**, niet alleen de laatste push-run — en zeg erbij welke het was.
+
+⚠️⚠️ **Een rode RLS-stap verbergt de stap erna.** De stap *Elke controle die de
+database nodig heeft* was sinds 06-10 op geen enkele run gedraaid, want hij
+staat achter de RLS-stap. Toen QS8-668 die groen maakte, viel hij voor het eerst
+om — op `jobbereik:controle`, waarvan het register `ZONDER_GRENS` op de
+aanroeptekst letterlijk sleutelt en mijn wijziging die tekst veranderde. Lokaal
+is die stap zonder database niet te meten; de poort zegt dan "ongemeten" en dat
+is correct maar leeg. **Verander je de tekst van een `.rpc('…')`-aanroep in
+`tests/`, kijk dan in `ZONDER_GRENS` of hij daar staat** — en lees na een groene
+RLS-stap altijd ook de stap erna.
+
+⚠️ **De derde vaste datum in dezelfde testfamilie verliep.** `2026-05-13` →
+`2026-11-15` → `2026-10-01`, elke keer met de uitleg erbij waarom díe datum
+klopte. Een datum die een `now()`-relatieve fixture moet raken is een tijdbom
+met een opschrift; **bereken het moment uit de fixture** — de vorm staat in
+`seizoensmomenten()` op de tak van QS8-668 (bestand seizoensmoment.ts in
+tests/rls; op deze tak bestaat het nog niet, daarom hier zonder pad). Grep op
+`p_op: '20` en `MOMENT = '` vond verder niets.
+
+⚠️ **De claim-commit zegt niet wíe er zit.** De orchestrator las de claim op
+QS8-668 als werk van de batchsessie en liet Quinten besluiten dat zij het mocht
+bouwen — terwijl de claim de mijne was en het werk al af. `npm run claim`
+voorkwam het dubbele werk op QS8-669 wél (de andere sessie was vijf minuten
+eerder), maar een claim draagt alleen een tijdstip. **Zet je sessie-id in de
+AFGELEVERD-regel en meld een claim meteen in het logboek-issue**, anders raadt
+de volgende lezer wie er zit.
+
+⚠️ **Een cloudsessie krijgt de RLS-suite niet lokaal.** De Postgres-binaries
+staan er, de PostgREST-download werd door de omgeving geweigerd. De meting is dan
+de CI-run op de afleversha — zeg dat in de afleverregel en lees die run ook
+echt, want de eerste bleek rood op iets anders dan verwacht.
+
+⚠️ **De security-reviewer vond wat de tests niet konden zien.** De regel van
+QS8-56 (*bij één groep wordt een oude keuze genegeerd*) stuurde na "kies
+Vrienden, ontkoppel Vrienden" de hulpvraag stil naar de overgebleven groep, met
+de keuzelijst verborgen. Een bronscan kan toestandsovergangen in een gemount
+component niet toetsen; dat is de klasse waar de reviewagent voor is. De regel is
+omgedraaid; `docs/decisions/2026-11-05-de-eerste-groep-is-geen-keuze.md` §3.
+
+### 05-11-2026, tweede ronde — QS8-672 en QS8-673, en wat er open bleef
+
+De orchestrator plande om 11:45 UTC twee banen in (QS8-667); baan A (deze
+sessie) bouwde ze na elkaar, allebei zonder PR, allebei In Review:
+
+| Issue | Tak | Sha | Wat |
+|---|---|---|---|
+| QS8-672 | `quintenstrijdonk/qs8-672-wachtwoord-bovengrens-telt-codepunten-bcrypt-kapt-op-72` | `5f9ef03a` | De wachtwoord-bovengrens telt **bytes**: `telBytes()` erbij in `src/shared/tekst` als vierde telling, `.max(72)` eruit, melding in nl en en noemt getal én eenheid. GoTrue weigert boven 72 bytes met een 400 en kapt níet af (aan de bron gelezen, `master`; niet tegen het project gemeten). `vertaal()` in `src/modules/auth/api.ts` kreeg een tak voor *longer than*, want de algemene wachtwoordtak gaf het omgekeerde advies |
+| QS8-673 | `quintenstrijdonk/qs8-673-zods-tekstlengte-telling-staat-nergens-onder-test-en-vijf` | `639e925b` | Een belofte-test die Zod's telling vastlegt naast `telTekens()` en de vijf kale `.max(n)`-schema's tegen de CHECK-getallen van productie; tegen zod 4.4.3 in `node_modules` vallen 12 van de 15 om. De sectie *Emoji* in `CLAUDE.md` en dertien commentaren zeggen nu wat onder welke versie gemeten is. Punt 4 alleen-lezen op productie gemeten: geen clientgrens ruimer dan zijn CHECK |
+
+⚠️ **Wat er open bleef, in volgorde van wat het blokkeert:**
+
+1. **PR #655 (QS8-672) is gemerged, en de ER-rij van 06-09-2026 (regel 534,
+   `WACHTWOORD_MAXIMUM`) is daarbij dichtgezet.** De onjuiste zin *"door bcrypt
+   stilzwijgend op 72 bytes afgekapt"* is weg: GoTrue weigert (aan de bron
+   gelezen, niet tegen het gehoste project gemeten, zie punt 5).
+2. **PR #656 (QS8-673) is op Quintens woord gemerged als `769b37d5`**, met een
+   eigen `--no-ff`-merge voor het issue. `CLAUDE.md` (sectie *Emoji*) zegt nu
+   wat onder welke versie gemeten is, en de telling staat onder
+   `tests/beloftes/zod-telt-codepunten.test.ts`. De CI was groen op `7ef454e1`.
+3. **QS8-641 wacht op de batch van QS8-233**, en die wacht op QS8-634 (besluit
+   van Quinten, 05-11 07:55 UTC). Productie draagt 0299–0302 die `main` niet
+   heeft; elke nieuwe migratie vanaf `main` botst daarop.
+4. **Punt 3 en 4 van de eerste ronde staan nog**: de teamgroep-herbevestiging
+   voor QS8-649 (als reactie op dat issue gezet), en de review van zondag 08-11.
+5. **Drie handmetingen die alleen Quinten kan doen**, uit de reviews van deze
+   ronde: één aanmelding met een wachtwoord van 73 bytes tegen een wegwerpadres
+   (of de GoTrue-versie van het project lezen) om *weigert, kapt niet af* ook
+   voor het gehoste project te zien; aanmelden met een emoji-wachtwoord op een
+   echt iOS- of Android-toestel (`TextEncoder` op Hermes is niet gemeten, al
+   gebruikt `src/lib/observability/edge-rapport.ts` hem al op het clientpad);
+   en de tak `quintenstrijdonk/qs8-651-…` @ `3b06ff01` — een tweede, niet
+   gemergede implementatie van QS8-651 uit een dubbele sessie — van de remote
+   halen, want een cloudsessie kan dat niet.
+6. **Twee kleine vervolgen, geen issue waard tot iemand ze wil**: de zeef in
+   `src/modules/ai/uitvoer.ts` telt met `.length` en is daarmee strenger dan
+   het schema (kost hooguit een AI-voorstel met veel emoji); en de nieuwe test
+   leest de zod-versie uit het pakket via de exports-regel voor `package.json`,
+   waar `core.version` uit `zod` robuuster is.
+
+### De valkuilen van die ronde
+
+⚠️⚠️ **Een ijking die uit `HEAD` herstelt, ijkt `HEAD`.** De eerste ijkingsronde
+van QS8-672 zette elke mutatie terug met `git checkout -- <bestand>` — en dat
+zette óók het ongecommitte werk terug. Drie mutaties liepen daardoor tegen de
+óude code en gaven alle drie dezelfde ene rode test. Het viel op doordat `<=`
+naar `<` onmogelijk hetzelfde rood kan geven als *de grens weg*. **Sla je werk
+eerst op als patch (of commit het) en herstel daaruit**; en als twee
+onverenigbare mutaties hetzelfde rood geven, is de ijking kapot, niet de test.
+
+⚠️⚠️ **Een ER-rij droeg een bewering die niemand gemeten had.** De rij van
+06-09 zei dat bcrypt een te lang wachtwoord *stilzwijgend afkapt*; het issue
+zette terecht als eerste criterium *meet dat eerst*, en de meting zei het
+omgekeerde (GoTrue weigert met een 400). De *wordt zwaarder als* van die rij
+was dus al die tijd een aanname die als feit stond. **Lees bij een rij die een
+externe component iets toedicht of er een 📏 bij staat** — en zo niet, meet
+voordat je erop bouwt.
+
+⚠️ **Wat een dependency telt is een eigenschap van de dependency, en dertien
+commentaren stelden het als eigenschap van de code.** Het issue noemde vijf
+plekken; de grep die *Wie bezit welk feit* voorschrijft vond er dertien, en de
+`code-critic` nog een veertiende die ik gemist had. De conclusie in al die
+commentaren (`telTekens()`) was goed; alleen de reden was verlopen. **Schrijf bij
+zo'n feit de versie waaronder het gemeten is**, dan verloopt het zichtbaar in
+plaats van stil.
+
+⚠️ **Een formatter zonder projectconfig herschrijft tienduizend regels.** `npx
+prettier --write` op vier bestanden zette de i18n-catalogi (bijna 5000 regels
+per stuk) om naar dubbele aanhalingstekens, want dit project heeft geen
+Prettier en geen `.prettierrc`. Teruggedraaid en de edits opnieuw gezet. **Kijk
+eerst in `package.json` welke formatter er ís**; hier is dat alleen ESLint.
+
+⚠️ **De reviewer weerlegde mijn eigen ijkingsverhaal.** Het beslisdocument van
+QS8-673 noemde twee gezinsgevallen "bewaken de naad niet"; de `code-critic`
+rekende voor dat ze tegen een sprong naar grafemen juist de énige bewaking zijn,
+en dat die richting beredeneerd was en niet geijkt. **Een ijkingstabel hoort
+per richting te zeggen wat er gemeten is en wat beredeneerd** — en de lichte
+review loont ook bij een issue dat alleen tests en commentaar raakt.
+
+⚠️ **Alleen-lezen op productie is wél een meting.** Punt 4 van QS8-673 (heeft
+elke kale `.max()` dezelfde grens als zijn CHECK) stond in het issue als
+*zonder database ongemeten*. Eén `pg_get_constraintdef`-query via de
+Supabase-MCP, alleen lezen, gaf alle 44 lengte-CHECKs in één keer. **"Geen
+lokale stack" is niet "geen database"**: voor een lezende vraag is productie
+bereikbaar, en dat mag van de bouwprompt — schrijf dan wel op dat de bron
+productie is en dat die 0299–0302 vóórloopt op de map.
+
+⚠️ **Het logboek kreeg een tijdstip dat zestien minuten in de toekomst lag.** De
+afleverregel van QS8-673 in QS8-667 zegt *12:58 UTC* en is om 12:42 geplaatst;
+een typefout, maar in een logboek dat juist bestaat om te zeggen wie wat wanneer
+deed. **Lees de klok, typ hem niet uit het hoofd.**
+
+### 03-11-2026 t/m 05-11-2026 — zakelijk gebruik is besloten en niet gebouwd
+
+⚠️ **De stand en de volgorde staan in `docs/WERKVOORRAAD.md` en in Linear, en bewust alleen
+daar** (QS8-125). Dit blok zegt alleen wat een nieuwe sessie moet weten om niet de verkeerde
+kant op te bouwen.
+
+- **Er is een poort.** QS8-649 sluit af wat open staat voordat het eerste issue een
+  organisatie-tabel aanmaakt. De epic is QS8-650 (QS8-651 t/m QS8-666). **De eerste
+  organisatie-migratie, QS8-652, is geblokkeerd door QS8-649.** QS8-651 (een expliciete
+  groepskeuze in plaats van "de eerste groep") staat los en mag eerder.
+- **De besluiten**, met per besluit het advies en wat een afwijking kost, staan in
+  `docs/decisions/2026-11-03-zakelijk-gebruik-met-organisaties-en-teamdoelen.md`. Het
+  datamodel op papier, de issueknip en de acceptatiecriteria staan in
+  `docs/decisions/2026-11-03-spec-organisaties-en-teamdoelen.md`, en de vragen voor een
+  jurist in `docs/research/vragen-voor-de-jurist-organisaties-en-teamdoelen.md`. A57 (het
+  klassement in elke groep) is niet gebouwd en heeft zijn eigen antwoorden in
+  `docs/decisions/2026-09-03-een-klassement-in-elke-groep.md`.
+- **Wat er in de grondwet veranderde:** `CLAUDE.md` domeinregel 4, 7 en 10 en de
+  projectregel Doel, en `PRD-accountability-app.md` §2.4 en §2.5, op 04/05-11-2026.
+- **Niets hiervan is gebouwd**, en er is geen migratie aangemaakt.
+
+### De valkuilen van 03-11 t/m 05-11-2026 — alle in mijn eigen metingen
+
+- **⚠️ Een teller die tekst telt, telt ook commentaar (05-11).** Het aantal plekken dat
+  `is_group_admin()` aanroept ging in drie metingen van een lijst met meldingsfuncties erin
+  (een treffer was aan de laatste functiedefinitie erboven toegewezen), via twaalf functies,
+  naar **negen functies en drie policies**. Die twaalf telden drie functies mee die de helper
+  alleen in commentaar noemen. 📏 Wat de fout aan het licht bracht was het lezen van twee van
+  die functies: de commentaren legden zelf uit waarom ze rechtstreeks op de tabel werken.
+  **Strip commentaar vóór je telt wat code doet, en lees de verdachten voordat je het getal
+  opschrijft.** Het getal staat in het zakelijke beslisdocument (besluit 34 en 36), met de
+  beperking dat een script bestanden las en geen database.
+- **⚠️ Een issue op Done is niet hetzelfde als gebouwd, en een verwijzing is niet
+  hetzelfde als een onderbouwing (04-11).** 📏 QS8-272 (A57) staat op Done, maar zijn
+  beschrijving zegt "De bouw staat nog open", en `groep_klassement()` poort in migratie 0141
+  (r.267) nog op `lid_van_open_groep()`. QS8-128 (A44) verwijst voor zijn onderbouwing naar
+  `docs/decisions/006-besluitenronde-24-08.md`, dat A44 niet bevat. **Lees het issue én zijn
+  reacties, en toets wat het beweert aan de code of het document waarnaar het wijst.**
+- **⚠️ Dat de gebruiker een netwerkwijziging deed, betekent niet dat de lopende sessie hem
+  ziet (04-11).** 📏 Vier domeinen gaven `403` op de proxy-verbinding (`curl -I`, alleen de
+  statuscode) terwijl GitHub doorkwam, en een dag later nog steeds. Of een wijziging pas voor
+  een nieuwe sessie geldt, is niet vastgesteld. **Meet de bereikbaarheid met één statuscode,
+  probeer niet te omzeilen, en schrijf op dat het ongemeten is.** Dit is wat punt 1 van de
+  poort QS8-649 openhoudt.
+
+  ✅ **Deels beantwoord op 10-11-2026, gemeten.** Via `create_environment` met
+  `switch_session: network_only` ging `habithuddle.com` in een lopende sessie binnen seconden
+  van `403` op de CONNECT naar `200`. Dat is de route met de omgevingstools. Of dezelfde
+  wijziging, door de gebruiker in het menu gedaan, ook een lopende sessie bereikt, blijft
+  ongemeten; de tool waarschuwt zelf dat de proxy een gecachte weergave tot ongeveer een uur kan
+  houden. Vraag dus een omgeving aan met een concrete behoefte in plaats van te wachten op een
+  menuwijziging, en meet daarna met één statuscode.
+- **⚠️ Tel rijen en geen nummers (04-11).** De issueknip uit het spec-voorstel noemde "elf"
+  issues, maar nummer 7 is gesplitst in 7a en 7b: het zijn er **twaalf**. Neem aantallen uit
+  de tabel zelf.
+- **⚠️ Twee valkuilen van de Linear-koppeling.** `replace_range` laat de `to`-tekst staan: zet
+  je hem ook in de vervangtekst, dan staat hij er twee keer en faalt de volgende bewerking op
+  "matches 2 locations" (de patch is atomair, dus er is niets opgeslagen). En een
+  issueverwijzing naast vetgedrukte tekst wordt door Linear geëscaped, waardoor er losse
+  sterretjes zichtbaar staan.
+
 ## WERKAFSPRAKEN — houd deze aan
 
 1. **Werk landt sinds 23-08 via een PR op GitHub**, niet meer met een lokale
@@ -2213,13 +2647,33 @@ aangenomen. De prijs is één nestingniveau, dus `max-depth` kan erop omvallen.
    naam — en toen koppelde Linear niets, dus zijn alle acht statussen met de hand
    bijgewerkt. Leunt een issue op een ander, gebruik dan de blokkeerrelatie in
    Linear en land ze in volgorde.
+
+   ⚠️⚠️ **Krijg je één vaste branch opgelegd, dan kun je deze afspraak niet
+   houden — en dan claim je met `--hier`.** Dat is sinds QS8-620 de weg; de regel
+   staat in `CLAUDE.md` bij *Versiebeheer* en de onderbouwing in
+   `docs/decisions/2026-10-05-de-claim-ziet-een-vaste-sessiebranch-nooit.md`.
+   Draai je de claim níet, dan ziet de andere sessie je werk nergens: dat is wat
+   QS8-603 twee keer liet bouwen. **De naam van je branch is dan geen nalatigheid
+   maar een gegeven; het overslaan van de claim wél een keuze.**
 2. `gh` werkt (ingelogd als QS86-bot, scopes repo, workflow, read:org, gist).
    Roep hem aan via het volledige pad: `"C:\Program Files\GitHub CLI\gh.exe"` —
    de PATH van een sessie is ouder dan de installatie. PR's kunnen dus, maar we
    mergen nog steeds lokaal; overleg als je dat wilt veranderen.
+
+   ⚠️ **Achterhaald sinds 23-08-2026 (afspraak 1 hierboven), gemarkeerd 05-11-2026:** *"we mergen
+   nog steeds lokaal"* is onwaar. Werk landt via een PR met een merge-commit (`CLAUDE.md`, *Versiebeheer*).
+   Het `gh.exe`-pad is Quintens machine. In de cloudsessie van 05-11-2026 was `gh` niet
+   beschikbaar voor PR's en liep alles via de GitHub-MCP; `gh api -X GET search/…` was er alleen
+   voor zoeken.
 3. Migraties mogen direct op het echte project (ref `wehgocadxehottiiyvsc`).
    **Nummer verder vanaf 0072.** Elke migratie idempotent, met een rollback-pad
    in de kop.
+
+   ⚠️ **Achterhaald, gemarkeerd 05-11-2026:** het nummer kies je niet met de hand en *"verder vanaf
+   0072"* is een stand van 23-08. Begin met `npm run migratie:nieuw -- "naam"` (`CLAUDE.md`,
+   *Commando's*). En *"mogen direct op het echte project"* is sinds 22-08 een afweging en geen
+   vrijbrief (`CLAUDE.md`, *Beslisbevoegdheid*): `pg_dump` vooraf, een rollback-pad in de kop, en
+   je verantwoordt het in het beslisdocument.
 
    ⚠️ **Sinds QS8-122 hoort er een stap bij:** de MCP-tool zet een tijdstempel
    als versie neer, ongeacht hoe je het bestand noemt. Lijn hem daarna uit — één
@@ -2227,6 +2681,10 @@ aangenomen. De prijs is één nestingniveau, dus `max-depth` kan erop omvallen.
    `npm run register:controle`. Die wordt rood als je het vergeet.
 4. Vóór elke merge: `npm run typecheck`, `npm run lint`, `npm test`,
    `npm run build` — **én lees de testteller vóórdat je commit.**
+
+   ⚠️ **Onvolledig, gemarkeerd 05-11-2026:** de poort is `npm run poort`, en niet deze vier. Die
+   draait ook beide testsuites en elke `*:controle`, en CI draait dezelfde lijst
+   (`CLAUDE.md`, *Commando's*). Deze vier laten de controles weg waarop een PR al eens rood ging.
 
    ⚠️ **Draai de suite en de commit nooit in één commando.** Dat is op 22-08
    misgegaan: ik las de uitslag pas achteraf en had toen al gecommit. De inhoud
@@ -2641,6 +3099,13 @@ aangenomen. De prijs is één nestingniveau, dus `max-depth` kan erop omvallen.
   controle die niemand ooit gevoed heeft. Wie aan de gereedschapskist wil werken,
   begint daar.
 
+  ⚠️ **Deels achterhaald, gemeten 05-11-2026 — de twee alinea's hierboven (31-08).** `tests/scripts/`
+  telt nu veertien testbestanden rond de migratiescripts (onder meer `migratiebranches`,
+  `migratieniveau` en `migraties-uitslag`), en `uitrolstand:controle` (QS8-517) legt de
+  productiestand sleutelloos naast de map, als opgeschreven meting en niet als bewijs van productie.
+  **Niet nagemeten:** of stap 1 t/m 3 elk een eigen toets hebben, en of de "tweede helft van
+  QS8-122" daarmee dicht is. Behandel beide uitspraken als onbewezen in plaats van als waar.
+
 - **⚠️ Een groene testsuite meet niet of de app te gébruiken is — 30-08.** Dit is
   de duurste van de lijst, want hij gold voor het hele project tegelijk. Op 30-08
   was er 1889 keer groen, 25 controlescripts, zeven review-agents over 99.500
@@ -3020,6 +3485,11 @@ aangenomen. De prijs is één nestingniveau, dus `max-depth` kan erop omvallen.
   deployt ze. Wie een migratie toepast maar de deploy vergeet, heeft een half
   werkende feature zonder één signaal. Draai `npm run edge:sync` vóór elke deploy.
 
+  ⚠️ **Deels achterhaald, gemarkeerd 05-11-2026:** *"buiten lint"* is sinds 11-09-2026 onwaar.
+  `eslint.config.js` dekt `supabase/functions/` sinds QS8-422 (nesting), en `regel15:controle`
+  telt er de lange functies (`CLAUDE.md`, regel 15). 📏 Nagemeten: `tsconfig.json` sluit
+  `supabase/functions` nog **wel** uit van de typecheck, en geen workflow deployt ze.
+
   ⚠️ **En op 26-08 bleek dat niet theoretisch: er draaide in productie code die
   op géén enkele branch stond.** Een functie was ooit gedeployd vanuit een
   ongecommitte werkboom, en die versie stuurde `fout.message` en `fout.stack`
@@ -3160,6 +3630,11 @@ aangenomen. De prijs is één nestingniveau, dus `max-depth` kan erop omvallen.
   gebeurde dat met de `'error'`/`'failed'`-statusbug; die is toen meegegaan in de
   PR die erop stuitte, met de reden in het beslisdocument.
 
+  ✅ **Achterhaald sinds 30-08-2026, gemarkeerd 05-11-2026:** de limiet is weg. Dit document zegt
+  zelf onder "Waar te beginnen" dat Linear weer issues aanneemt, en op 03/04-11 zijn er
+  achttien aangemaakt (QS8-649 t/m QS8-666). Het "bundel in dat geval" hieronder geldt dus niet
+  meer: één branch per issue is weer de regel, zonder die uitzondering.
+
   **Bundel in dat geval, maar schrijf op dat je gebundeld hebt en waarom** — één
   branch per issue is de regel, en een stilzwijgende uitzondering is hoe die
   regel verwatert.
@@ -3240,6 +3715,12 @@ aangenomen. De prijs is één nestingniveau, dus `max-depth` kan erop omvallen.
   de server met `pg_ctl -D /tmp/goalbuddies-lokale-stack/pgdata` en draai het
   script daarna opnieuw.
 
+  ⚠️ **De getallen in dit blok zijn van 01-09 en achterhaald, gemarkeerd 05-11-2026.** `CLAUDE.md`
+  telde op 10-09 al 52 controles (QS8-417) en noemt acht die in een cloudsessie standaard
+  ongemeten staan, niet vier. Zeg het getal niet uit je hoofd: `npm run poort` meldt per controle of
+  hij gemeten, ongemeten of rood is. Ook de niet-root-gebruiker verschilt per beeld: hier
+  `ubuntu`, op 24-09 `postgres` (STAND VAN ZAKEN); kijk met `id` wat er bestaat.
+
 - **⚠️ Vergelijk vóór een merge de `head_sha` van de groene run met de kop van de
   PR (01-09).** Bij #125 stond het groen op een **oudere** commit, en mergen had
   een kapotte migratiemap opgeleverd; bij #128 stond een tweede run op dezelfde
@@ -3266,6 +3747,12 @@ privé. Score en voortgang zijn twee dingen en staan nooit in één balk. Een
 leesbaar overzicht van de spelregels en het motivatiemodel staat in
 `docs/GoalBuddies — spelregels en motivatie.docx`.
 
+⚠️ **Incompleet sinds 04-11-2026, gemarkeerd 05-11-2026.** De regels van het puntenmodel staan in
+`CLAUDE.md` bij domeinregel 10, en dit is deels een kopie daarvan. Wat eraan ontbreekt is de
+**teambonus**: een afgerond teamdoel geeft iedereen met een aandeel eenmalig `+2`, ook bij een
+gemist aandeel (besloten en nog niet gebouwd). "Een buddy beoordelen +1" klopt nog met de
+database (`review_given`, 1 punt) en staat alleen hier.
+
 **Vier uitwegen als er iets misgaat, en ze zijn bewust verschillend:**
 verwijderen (binnen 24 uur, niets mee gebeurd, gratis), afsluiten (`cancelled`,
 telt als gemist zodra de week voorbij is), doorschuiven (het werk verhuist, de
@@ -3277,6 +3764,15 @@ DELETE-events geen RLS toe. Er staat een test op (`realtime_bewaking()`,
 migratie 0027).
 
 ## STAND VAN DE REPO
+
+⚠️ **Dit blok is van 28-08 t/m 02-09 en is op 05-11-2026 nagemeten, niet herschreven.** 📏 Met
+`git ls-remote --heads origin`: de drie rijen van de tabel (`wip/werkboom-26-08`,
+`quintenstrijdonk/qs8-122-…`, `fundering-16-08`) staan er nog, en wat erbij staat klopt nog.
+Wat niet meer klopt is de indruk dat de tabel *alle* oude branches noemt: de remote draagt er
+38, waarvan 24 `quintenstrijdonk/…`, en daarvan zijn er nu twee actief (QS8-651 en QS8-668).
+De rest is werk dat af is en dat een cloudsessie niet kan opruimen (QS8-240,
+`wacht-op-Quinten`). Wie een issue mag bouwen lees je dus niet uit het bestaan van een branch,
+maar uit `npm run claim` (`CLAUDE.md`, *Versiebeheer*).
 
 ⚠️ **Alles wat de bouwsessies van 28-08 t/m 01-09 opleverden staat op `main`.**
 Twee stapels, allebei in volgorde geland: #71 t/m #78 (QS8-56, QS8-65, QS8-79,
@@ -3293,6 +3789,10 @@ zie de valkuil daarover. Blijf uit `scripts/`, `.github/workflows/` en
 `src/modules/notifications/` tenzij je wijziging het echt vraagt; raak je er toch
 iets aan (zoals het register van `klokgrens-controle`), zeg dat dan in de
 commit-tekst.
+
+⚠️ **Achterhaald, gemarkeerd 05-11-2026:** dit was de afspraak van 28-08 met één bepaalde
+parallelle sessie. Wie waaraan werkt regelt nu de claim (`npm run claim`) en niet een verbod op
+mappen, en `scripts/` is juist waar de meeste grendels van dit project wonen.
 
 ⚠️ **In deze tabel staat met opzet geen commit-hash van `main` meer.** In de
 vorige versie stond hij er twee keer en op twee verschillende waarden, en tijdens
@@ -3381,6 +3881,46 @@ werken wel. Reken erop dat dit soort opruimwerk bij jou terechtkomt.
 
 ## Waar te beginnen
 
+### 00. Sinds 05-11-2026: begin bij de poort QS8-649
+
+⚠️ **Punt 0 en alles eronder is van 31-08 t/m 09-09 en historisch.** De prompt verwees er
+tot 05-11-2026 naar. Wat er nu voorligt staat in `docs/WERKVOORRAAD.md` §0 en in Linear, en
+bewust alleen daar; dit punt zegt alleen wat je moet doen om niet de verkeerde kant op te
+bouwen.
+
+1. **Lees QS8-649 en zijn reacties**, en daarna het beslisdocument
+   `docs/decisions/2026-11-03-zakelijk-gebruik-met-organisaties-en-teamdoelen.md`. Wat de
+   poort nog openhoudt staat als checklist in het issue.
+2. **Bouw niets aan organisaties of teamdoelen** zolang QS8-649 openstaat. De eerste
+   organisatie-migratie is QS8-652 en is daardoor geblokkeerd. Wat los van de organisaties
+   staat en eerder mag, is QS8-651.
+
+   ⚠️ **QS8-651 is niet meer vrij (nagemeten 05-11-2026).** Hij is om 07:55 UTC geclaimd, staat op In
+   Review en heeft een eigen branch (`quintenstrijdonk/qs8-651-…`, laatste commit 09:43 UTC);
+   het werk zit ook in `batch/2026-11-05`. Bouw hem niet opnieuw. Of er een PR open is, is niet
+   nagemeten: kijk zelf voordat je iets aanraakt.
+3. **Claim volgens `CLAUDE.md`** (`npm run claim`, en `--hier` op een vaste sessiebranch),
+   en lees het issue én zijn reacties vóór je begint.
+4. **Meet je iets anders dan het beslisdocument zegt**, corrigeer het dan zichtbaar, met de
+   meting erbij en met wat er eerst stond. Zo is het getal over `is_group_admin()` op
+   04/05-11 twee keer gecorrigeerd; zie "De valkuilen van 03-11 t/m 05-11-2026".
+5. **Er loopt sinds 10-11-2026 een ontleding van Habit Huddle (REA) in een aparte sessie**, op
+   branch `claude/habithuddle-app-ontleding`, met als uitkomst een nog niet bestaand bestand
+   habit-huddle-app-ontleding.md in docs/research. Begin daar niet nog een keer aan: kijk eerst
+   met `git branch -r` of de branch er is. Habit Huddle laat alleen inloggen met Google, Apple
+   of Discord (gemeten op `/app/start`), dus de ingelogde schermen komen uit schermafbeeldingen
+   van Quinten en nooit uit een sessie die inlogt. De sessie draait op de omgeving
+   `goalbuddies-habithuddle`, waar alleen `habithuddle.com` bij openstaat.
+
+   ⚠️ **De voorwaarden van Habit Huddle verbieden dit** (habithuddle.com/tos, in de bron
+   gecontroleerd op 10-11-2026): §7 geen reverse engineering van hun software, §10 geen
+   geautomatiseerde toegang zonder toestemming en geen commercieel gebruik zonder schriftelijke
+   toestemming. De eerste sessie stopte daar terecht, zoals haar opdracht zei. Quinten koos daarna
+   op 10-11-2026 bewust voor geautomatiseerd "op eigen risico", tegen mijn advies in, met deze
+   grenzen: alleen publieke pagina's, nooit ingelogd, hooguit 40 verzoeken, `robots.txt` volgen,
+   stoppen bij een blokkade, geen code, teksten, beeldmerk of assets overnemen. **Breid dat niet
+   uit zonder een nieuw besluit van hem.** Dit is geen juridisch advies.
+
 ### 0. Begin bij de doorloop van 30-08 — niet in het reviewdossier
 
 ⚠️ **Dit punt zei tot 31-08 het tegenovergestelde**, en het is leerzaam waarom.
@@ -3420,6 +3960,8 @@ zes geland met een groene poort:
 
 ⚠️ **Alleen QS8-174 staat nog open:** twee blokkades, `wacht-op-Quinten`. Zie
 punt 0 bovenaan dit bestand.
+
+✅ **Achterhaald: QS8-174 staat op Done sinds 07-09-2026** (nagemeten 05-11-2026).
 
 Buiten de batch landde op 04-09 nog **QS8-267** (#192, uit een parallelle
 sessie): de klokgrenstests rekenen nu op de klok van hun eigen grendel.
@@ -3469,9 +4011,9 @@ in vier soorten en géén daarvan is "pak het volgende issue":
 |---|---|
 | `wacht-op-Quinten` | zijn hand: een deploy, een sleutel, een dashboardinstelling, een besluit |
 | ~~`review:november`~~ | ⚠️ **Vervallen op 10/11-09: Quinten vroeg dit werk nú uit te voeren, en alle tien staan op Done.** Zie punt M bovenaan. De redenering dat het *"een oordeel en geen meting"* was, hield bij geen van de tien stand — er bleek telkens wél iets te meten of te grendelen |
-| feature-epics (QS8-200, QS8-230, QS8-252) | ⚠️ **niet meer "opsplitsen" — ze zijn af.** 📏 Op 09-09 nagelopen: 15 van de 16 kinderen Done. QS8-252 is gesloten, QS8-200 en QS8-230 dragen nu `wacht-op-Quinten` |
+| feature-epics (QS8-200, QS8-230, QS8-252) | ⚠️ **niet meer "opsplitsen" — ze zijn af.** 📏 Op 09-09 nagelopen: 15 van de 16 kinderen Done. QS8-252 is gesloten, QS8-200 en QS8-230 dragen nu `wacht-op-Quinten`. ⚠️ **Achterhaald, stand 05-11-2026:** QS8-200 is Done (22-09), QS8-233 staat op In Review en QS8-230 op Todo zonder dat label |
 | ~~De Lijst (QS8-378 t/m 381, QS8-386)~~ | ✅ **helemaal af.** De drie delen op 09-09, de staart QS8-386 op 10-09 — een taak is te hernoemen, dus het schrijfrecht op `todo_items.body` heeft een aanroeper |
-| De foto's (QS8-394 t/m 397) | QS8-395 en QS8-396 zijn gebouwd. **QS8-397 (versleuteling) is een besluit van Quinten** — sleutelbeheer, verlies van je sleutel is verlies van je foto's, en het raakt wat er aan een mens beloofd wordt. Niet op eigen gezag bouwen |
+| De foto's (QS8-394 t/m 397) | QS8-395 en QS8-396 zijn gebouwd. **QS8-397 (versleuteling) is een besluit van Quinten** — sleutelbeheer, verlies van je sleutel is verlies van je foto's, en het raakt wat er aan een mens beloofd wordt. Niet op eigen gezag bouwen. ⚠️ **Achterhaald, stand 05-11-2026:** QS8-397 staat op Canceled in Linear; lees zijn laatste reactie voordat je hem heropent of omzeilt |
 
 ⚠️ ~~**En er ligt sinds 11-09 één concreet, afgebakend stuk werk: QS8-262 ronde
 10.**~~ ✅ **Gedraaid op 11-09: 93 van de 102 meetbare policy-helften bewaakt, en
@@ -3496,6 +4038,9 @@ dat is er niet. Kies bewust één van deze drie:
    (A53 t/m A56), QS8-200 staat op Todo met `wacht-op-Quinten` omdat zijn meetlat
    een **doorloop met een vers account** vraagt en niet een telling, en QS8-230
    wacht op zijn laatste kind (QS8-233, `wacht-op-Quinten`).
+
+   ⚠️ **Stand 05-11-2026 (Linear):** QS8-200 is Done sinds 22-09, QS8-233 staat op In Review en
+   QS8-230 op Todo, allebei zonder `wacht-op-Quinten`.
 
    ⚠️ **De les die blijft:** een epic dat in Backlog blijft staan terwijl zijn
    kinderen aflopen, leest als voorraad die er niet is. Sluit hem, of geef hem het
@@ -3536,6 +4081,8 @@ dat is er niet. Kies bewust één van deze drie:
    de branch:** de migratie op productie toepassen en daarna `npm run types:db`.
    Zonder dat kent `database.types.ts` de nieuwe RPC niet en is hij niet
    type-veilig aan te roepen. De SQL is af en staat in het issue.
+
+   ✅ **Achterhaald: QS8-174 is Done sinds 07-09-2026**, nagemeten 05-11-2026.
 2. ~~**QS8-252 — de epic van 01-09**~~ — ✅ **af en gesloten op 09-09-2026.** Alle zes kinderen Done en alle vier de besluiten in de code nagemeten; de verantwoording staat als reactie bij het issue. Wat hieronder over A53 t/m A56 staat, is daarmee geschiedenis en geen opdracht meer.
    Vier besluiten (A53 t/m A56) uit een nieuwe Habit Huddle-ronde: een doel
    krijgt een **ritme** (`daily`, `times_per_week`, `weekly`), er komt een
@@ -3580,9 +4127,18 @@ dat is er niet. Kies bewust één van deze drie:
    Die tweede is dezelfde vorm als `tekst:controle` en `keten:controle`: een
    controle die nooit rood is geweest.
 
+   ✅ **Achterhaald: beide staan op Done sinds 01-09-2026** (nagemeten 05-11-2026). `db:push`
+   staat niet meer in `package.json`. Pak ze niet op.
+
 ⚠️ **Wat je níét kunt doen, en dat is de hele Todo-kolom.** Alles daar draagt
 `wacht-op-Quinten`. Het zwaartepunt is **QS8-243**, en dat issue is op 02-09
 voor de helft afgewerkt: **de migraties zijn toegepast, de Edge Functions niet.**
+
+⚠️ **Achterhaald, gemeten 05-11-2026:** de Todo-kolom telt 15 issues en 9 daarvan dragen het label.
+De overige zes zijn QS8-641 (productie draagt een migratie van een ongemergede branch; er is een
+branch voor), QS8-230 (de epic) en QS8-1 t/m QS8-4, die geen enkel label hebben. QS8-243 zelf staat
+op In Progress, en de Edge Functions zijn op 09-09 gedeployd (zie hieronder); de migratiestand staat
+in `docs/WERKVOORRAAD.md` en nergens anders.
 
 ⚠️ **En het getal noem je hier niet — deze regel heeft het op 01-09 zelf fout
 gehad.** Hier stond "productie staat op 0131", overgeschreven uit QS8-243. Toen
@@ -3734,6 +4290,10 @@ gedraaid is, blijft de Doelcoach vanaf het web onbereikbaar: de browser stuurt
 staan en het scherm wacht twee minuten voor het opgeeft — dus het lijkt op "de AI
 doet het niet" en niet op "er is niets gedeployd".
 
+✅ **Achterhaald sinds 09-09-2026 18:19 UTC, gemarkeerd 05-11-2026:** de drie Edge Functions zijn
+toen gedeployd (zie bij "De achterstand op productie" de ✅ over het edge-gat). Het commando
+hierboven is uitgevoerd; wat blijft is dat een deploy die ontbreekt zichzelf niet meldt.
+
 ⚠️ **Sinds 01-09 is dít lijstje niet meer de bron — QS8-243 is dat.** Daar staat
 het volledige stappenplan voor de achterstand op productie: de dump vooraf, de
 volgorde, `notify pgrst, 'reload schema'`, het uitlijnen van het register en
@@ -3850,6 +4410,10 @@ bovenliggende secties — en dat is precies hoe een openstaand punt stil sterft.
   database) hoort een eigen issue te zijn en is meegegaan in een andere PR, omdat
   Linear geen nieuwe issues aanneemt. Maak hem alsnog aan zodra dat kan.
 
+  ✅ **Achterhaald, gemeten 05-11-2026:** de bug is er niet meer. `JOB_STATUSSEN` in
+  `src/modules/ai/job-schemas.ts` is `queued`, `running`, `done`, `failed`, gelijk aan de CHECK
+  `ai_jobs_status_valid`, en dat bestand beschrijft de bug zelf. Er hoeft geen issue voor.
+
 ### En daarna: de metingen die er al lagen
 
 
@@ -3923,8 +4487,11 @@ leest — vier issues stáán op In Progress, maar geen ervan wacht op code:
 | ~~QS8-24~~ | ✅ **gedaan op 14-09-2026** — de gebeurtenis staat in Sentry met `server_name: app` | — |
 | QS8-124 | een rij in `push_tokens` met `p256dh` en `auth` | jij, punt 2 |
 | QS8-117 | één melding op een échte iPhone met de app op het beginscherm | jij — manifest, iconen, content-type en de iOS-uitleg staan er allemaal |
-| QS8-91 | ⚠️ **niets meer.** Het enige open criterium was "web push ontbreekt"; dat is sinds QS8-124 onwaar — `notificaties/index.ts` leest `p256dh`/`auth` en roept `verstuurWebPush()` aan | het bord loopt achter |
+| QS8-91 | ⚠️ **niets meer.** Het enige open criterium was "web push ontbreekt"; dat is sinds QS8-124 onwaar — `notificaties/index.ts` leest `p256dh`/`auth` en roept `verstuurWebPush()` aan | het bord liep achter: ✅ Done sinds 30-08-2026 (nagemeten 05-11-2026) |
 | QS8-25 | OAuth-providers aanzetten (Apple Developer-account, Google Cloud-project) en twee dashboardvinkjes | jij — grens 1 |
+
+📏 **Stand 05-11-2026 (Linear):** QS8-124, QS8-117 en QS8-25 staan op Todo met `wacht-op-Quinten`
+en niet meer op In Progress. QS8-91 is Done sinds 30-08 en QS8-24 sinds 14-09.
 
 En de backlog is uitsluitend `phase:v2` en `phase:v3`. De regel was dat die pas
 begint als Fase 1 zijn exit haalt — **een groep van drie draait ≥4 opeenvolgende
@@ -3962,5 +4529,9 @@ weggelegde bevinding zwaarder wordt door wat je erop bouwt) en **QS8-125** (deze
 drie documenten die dezelfde stand beschrijven en uiteenlopen). Het is dezelfde
 familie — niet *"wat is waar"* maar *"wie merkt het wanneer het niet meer waar
 is"* — dus behandel ze in één ronde.
+
+✅ **Achterhaald sinds 24-08-2026, gemarkeerd 05-11-2026:** beide staan op Done (Linear). QS8-123
+werd de regel `**Wordt zwaarder als:**` met `review:controle`, QS8-125 de eigendomsregel in
+`CLAUDE.md` met `docs:controle`. Ze zijn niet meer "af te hebben vóór november".
 
 Vraag alleen als doorgaan-onder-aanname echt onveilig zou zijn.

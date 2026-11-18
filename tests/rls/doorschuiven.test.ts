@@ -22,6 +22,7 @@ import {
   rlsTestsConfigured,
   type TestUser,
 } from './harness';
+import { datumOver } from './datums';
 
 const SETUP_TIMEOUT = 180_000;
 const TEST_TIMEOUT = 60_000;
@@ -65,7 +66,7 @@ describe.skipIf(!rlsTestsConfigured)('0091 — doorschuiven in één keer', () =
 
     const doel = await alice.db
       .from('goals')
-      .insert({ owner_id: alice.id, title: 'Doorschuifdoel', target_date: '2026-12-31' })
+      .insert({ owner_id: alice.id, title: 'Doorschuifdoel', target_date: datumOver(60) })
       .select('id')
       .single();
     if (doel.error || doel.data === null) throw new Error(`doel: ${doel.error?.message}`);

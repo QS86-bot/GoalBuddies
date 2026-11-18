@@ -224,53 +224,39 @@ export function beoordeel(bevindingen, allowlist = ALLOWLIST) {
 // Vanaf hier alleen nog het ophalen en het afdrukken.
 // ---------------------------------------------------------------------------
 
-/* c8 ignore start */
-if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
-  const token = process.env.SUPABASE_ACCESS_TOKEN;
-  const streng = process.argv.includes('--streng');
+const ONTBREEKT =
+  'geen SUPABASE_ACCESS_TOKEN in de omgeving.\n' +
+  '  Deze controle vraagt de Management API om Supabase’ eigen linter; zie QS8-235.';
 
-  const ONTBREEKT =
-    'geen SUPABASE_ACCESS_TOKEN in de omgeving.\n' +
-    '  Deze controle vraagt de Management API om Supabase’ eigen linter; zie QS8-235.';
-
-  if (!token) {
-    console.error(
-      streng
-        ? `✗ adviseur-controle kon niet draaien — ${ONTBREEKT}`
-        : `⚠ adviseur-controle: OVERGESLAGEN — ${ONTBREEKT}`,
-    );
-    process.exit(streng ? 1 : 0);
+/** Een niet-ok antwoord van de API: de statuscode is de melding. */
+export class ApiStatusFout extends Error {
+  /** @param {number} status */
+  constructor(status) {
+    super(`de API gaf ${status}.`);
+    this.status = status;
   }
+}
 
-  let bevindingen;
-  try {
-    const antwoord = await fetch(
-      `https://api.supabase.com/v1/projects/${PROJECT_REF}/advisors/security`,
-      {
-        headers: { Authorization: `Bearer ${token}` },
-        // ⚠️ Elke externe call heeft een timeout — CLAUDE.md, coderegel 14.
-        signal: AbortSignal.timeout(30_000),
-      },
-    );
-    if (!antwoord.ok) {
-      console.error(`✗ adviseur-controle: de API gaf ${antwoord.status}.`);
-      process.exit(1);
-    }
-    bevindingen = normaliseer(await antwoord.json());
-  } catch (fout) {
-    console.error(`✗ adviseur-controle: ophalen mislukt — ${fout.message}`);
-    process.exit(1);
-  }
+/**
+ * Haalt de ruwe linterbevindingen op. Gooit `ApiStatusFout` bij een niet-ok antwoord.
+ *
+ * @param {{ token: string }} invoer
+ * @returns {Promise<unknown>}
+ */
+async function uitManagementApi({ token }) {
+  const antwoord = await fetch(
+    `https://api.supabase.com/v1/projects/${PROJECT_REF}/advisors/security`,
+    {
+      headers: { Authorization: `Bearer ${token}` },
+      // ⚠️ Elke externe call heeft een timeout — CLAUDE.md, coderegel 14.
+      signal: AbortSignal.timeout(30_000),
+    },
+  );
+  if (!antwoord.ok) throw new ApiStatusFout(antwoord.status);
+  return antwoord.json();
+}
 
-  const { onverwacht, verouderd } = beoordeel(bevindingen);
-
-  if (onverwacht.length === 0 && verouderd.length === 0) {
-    console.log(
-      `adviseur-controle: ${bevindingen.length} bevindingen, allemaal verklaard.`,
-    );
-    process.exit(0);
-  }
-
+function drukRoodAf({ onverwacht, verouderd }) {
   console.error('adviseur-controle: de linter zegt iets wat niet op de lijst staat.\n');
   for (const b of onverwacht) {
     console.error(`  [${b.niveau}] ${b.naam}`);
@@ -286,6 +272,57 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
       'ALLOWLIST in scripts/adviseur-controle.mjs, of repareer hem. Een lege reden\n' +
       'is geen reden. Zie QS8-235.',
   );
-  process.exit(1);
 }
-/* c8 ignore stop */
+
+/**
+ * Draait de controle en geeft de **exitcode terug** — hij sluit het proces niet af.
+ *
+ * ⚠️ **Geen `process.exit()` na een `await fetch()`** (QS8-684). Op Windows
+ *    stort libuv dan in met een assertion in `src\win\async.c`, nadat de uitslag
+ *    al geprint was; gemeten op 18-11-2026 (exit -1073740791). De aanroeper zet
+ *    `process.exitCode` en laat de event loop leeglopen. `haalOp` is
+ *    injecteerbaar, dus de exitcode is zonder netwerk te toetsen.
+ *
+ * @param {{ token?: string | undefined, streng?: boolean }} invoer
+ * @param {(invoer: { token: string }) => Promise<unknown>} [haalOp]
+ * @returns {Promise<number>}
+ */
+export async function draai({ token, streng }, haalOp = uitManagementApi) {
+  if (!token) {
+    console.error(
+      streng
+        ? `✗ adviseur-controle kon niet draaien — ${ONTBREEKT}`
+        : `⚠ adviseur-controle: OVERGESLAGEN — ${ONTBREEKT}`,
+    );
+    return streng ? 1 : 0;
+  }
+
+  let bevindingen;
+  try {
+    bevindingen = normaliseer(await haalOp({ token }));
+  } catch (fout) {
+    const melding = fout instanceof Error ? fout.message : String(fout);
+    console.error(
+      fout instanceof ApiStatusFout
+        ? `✗ adviseur-controle: ${melding}`
+        : `✗ adviseur-controle: ophalen mislukt — ${melding}`,
+    );
+    return 1;
+  }
+
+  const oordeel = beoordeel(bevindingen);
+  if (oordeel.onverwacht.length === 0 && oordeel.verouderd.length === 0) {
+    console.log(`adviseur-controle: ${bevindingen.length} bevindingen, allemaal verklaard.`);
+    return 0;
+  }
+
+  drukRoodAf(oordeel);
+  return 1;
+}
+
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+  process.exitCode = await draai({
+    token: process.env.SUPABASE_ACCESS_TOKEN,
+    streng: process.argv.includes('--streng'),
+  });
+}

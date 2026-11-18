@@ -3,7 +3,7 @@ import { StyleSheet, View } from 'react-native';
 
 import { radius, space, useTheme } from '../theme';
 
-import { categoriemerk } from './categoriemerk';
+import { categoriemerk } from './merken';
 import { Caption } from './Text';
 
 /**

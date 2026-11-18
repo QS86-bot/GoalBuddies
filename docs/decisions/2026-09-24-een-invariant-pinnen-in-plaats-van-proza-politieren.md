@@ -25,10 +25,43 @@ Het precedent lag klaar: `uitrolproza:controle` telt prozabeweringen over de
 productiestand na en wordt rood als een rij een verlopen getal draagt. Hetzelfde
 zou hier moeten kunnen.
 
-📏 **Het kan niet, en het getal zegt waarom.** 138 bestanden noemen een grant in
-proza — 53 in `docs/`, 50 in `tests/`, 25 in `src/`, 10 in `scripts/`. Precies
-**één** regel in de hele boom draagt een getalsvorm die een script zou kunnen
-natellen (`(7 kolommen INSERT, 3 UPDATE)`).
+📏 **Het kan niet, en het getal zegt waarom.** **176** bestanden noemen een
+grant: 65 in `docs/`, 82 in `tests/`, 16 in `src/`, 13 in `scripts/`. Precies
+**één** regel in de hele boom draagt de letterlijke vorm die een script zou kunnen
+natellen (`(7 kolommen INSERT, 3 UPDATE)`), en dat is de dossierrij die deze vraag
+stelde. Geteld op `abe6dda^`, de stand waarop dit besluit genomen is:
+
+```bash
+git grep -l -i -w -E 'grants?' abe6dda^ -- docs tests src scripts | wc -l          # 176
+git grep -n -E '\([0-9]+ kolommen INSERT, [0-9]+ UPDATE\)' abe6dda^              # 1 regel
+git grep -n -i -E '\b([0-9]+|een|twee|drie|vier|vijf|zes|zeven|acht|negen|tien)\b (ongebruikte )?(kolommen|kolomrechten|schrijfrechten)\b' \
+  abe6dda^ -- docs/ENGINEER-REVIEW.md | wc -l                                    # 21
+```
+
+⚠️ **De derde regel is de ruimere vorm, en die bestaat wél.** 📏 21 dossierregels
+dragen een getal of telwoord bij *kolommen*, *kolomrechten* of *schrijfrechten*, en
+**11** daarvan gaan over een grant: de regels 150, 169, 174, 222, 228, 369, 441,
+479, 554, 627 en 629 op `abe6dda^`. Bijvoorbeeld *"23 ongebruikte kolomrechten"*
+(554), *"UPDATE op vier kolommen van `approval_withdrawals`"* (479) en *"Zeven
+schrijfrechten staan open"* (627). Elk staat in een eigen zinsvorm. Dat maakt de
+conclusie hieronder sterker en niet zwakker: er zijn veel telbare beweringen, en
+geen gedeelde vorm om er een controle op te bouwen.
+
+⚠️ **De andere tien gaan niet over een grant, en het commando onderscheidt dat
+niet.** 📏 Met de hand gelezen: twee over een trigger (482, 605), drie over de vorm
+van een tabel (507, 721, 730), één over een tekstlengte (219) en vier over iets
+anders (243, 313, 744, 808). Hier stond tot QS8-645 *"pint negen kolommen"* (605)
+als voorbeeld van een grantvorm; dat gaat over `guard_group_update`, een trigger.
+Het commando telt wat het belooft, een telwoord bij een van drie woorden, en niet
+of de zin over een grant gaat. Dat onderscheid is handwerk, en dat is opnieuw de
+reden dat hier geen controle op te bouwen is.
+
+⚠️ Hier stond tot QS8-632 *"138 bestanden — 53 in `docs/`, 50 in `tests/`, 25 in
+`src/`, 10 in `scripts/`"*, zonder het criterium waarmee geteld was. 📏 Geen enkel
+`git grep`-net op `abe6dda^` komt erop uit (`grant` geeft 234, `grant\b` 211,
+`\bgrant` 193, `\bgrants?\b` 176), en `src/` lag in die telling hóger dan in het
+smalste net terwijl `tests/` lager lag. Het was dus niet een strengere variant van
+hetzelfde net, maar een criterium dat nergens stond.
 
 ⚠️ `uitrolproza:controle` werkt juist doordat de uitrolstand **één getal op één
 bekende plek** is. Een grant is dat niet: hij is een tabel, een kolom, een

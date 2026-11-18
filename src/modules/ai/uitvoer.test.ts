@@ -160,10 +160,12 @@ describe('weekdoelenUit', () => {
   });
 
   /**
-   * ⚠️ De grens is 200 en wordt in UTF-16-eenheden gemeten, want dat is wat
-   *    `weekdoelSchema.max(200)` telt. `.length >= telTekens()` altijd, dus dit
-   *    is de striktere van de twee en laat niets door dat Zod daarna weigert.
-   *    Zie QS8-118, maar dan aan de bovengrens.
+   * ⚠️ De grens is 200 en `weekdoelenUit()` meet hem in UTF-16-eenheden
+   *    (`.length`), terwijl `weekdoelSchema` met `telTekens()` codepunten telt
+   *    en Zod sinds 4.6 ook (QS8-673). De zeef is dus de striktere van de twee:
+   *    `.length` ≥ codepunten altijd, dus wat hier doorkomt weigert het schema
+   *    nooit. Dit toetst het ASCII-geval, waar alle tellingen hetzelfde getal
+   *    geven; het verschil zit in `uitvoer.ts` beschreven.
    */
   it('weigert een veld dat over de grens van het schema gaat', () => {
     expect(

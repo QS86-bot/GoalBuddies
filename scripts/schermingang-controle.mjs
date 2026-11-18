@@ -2,6 +2,8 @@ import { readFileSync, readdirSync, statSync } from 'node:fs';
 import { basename, join, relative } from 'node:path';
 import { pathToFileURL } from 'node:url';
 
+import { metSchuineStrepen } from './paden.mjs';
+
 /**
  * Elk scherm heeft een ingang — QS8-383.
  *
@@ -47,21 +49,21 @@ export const ZONDER_PUSH = {
   //    dus deze controle bleef groen terwijl zijn onderbouwing onwaar was.
   //
   //    De echte ingang is de `<Link>` in `src/shared/ui/Taakbalk.tsx`, gevoed
-  //    door `TABBLADEN` in `src/shared/ui/taakbalk.ts`. Dat register is dus de
+  //    door `TABBLADEN` in `src/shared/ui/tabbladen.ts`. Dat register is dus de
   //    grendel geworden, en `tests/beloftes/taakbalk-overal.test.ts` legt deze
   //    vijf rijen daar één op één naast — beide richtingen.
   '/(tabs)':
-    '📏 Staat als `/` in `TABBLADEN` (`src/shared/ui/taakbalk.ts`): de taakbalk is de ingang.',
+    '📏 Staat als `/` in `TABBLADEN` (`src/shared/ui/tabbladen.ts`): de taakbalk is de ingang.',
   '/(tabs)/doelen':
-    '📏 Staat als `/doelen` in `TABBLADEN` (`src/shared/ui/taakbalk.ts`): de taakbalk is de ingang.',
+    '📏 Staat als `/doelen` in `TABBLADEN` (`src/shared/ui/tabbladen.ts`): de taakbalk is de ingang.',
   '/(tabs)/groep':
-    '📏 Staat als `/groep` in `TABBLADEN` (`src/shared/ui/taakbalk.ts`): de taakbalk is de ingang.',
+    '📏 Staat als `/groep` in `TABBLADEN` (`src/shared/ui/tabbladen.ts`): de taakbalk is de ingang.',
   '/(tabs)/profiel':
-    '📏 Staat als `/profiel` in `TABBLADEN` (`src/shared/ui/taakbalk.ts`): de taakbalk is de ingang.',
+    '📏 Staat als `/profiel` in `TABBLADEN` (`src/shared/ui/tabbladen.ts`): de taakbalk is de ingang.',
   // ⚠️ Het vijfde tabblad, sinds QS8-380. Beslispunt 1 van QS8-378 draaide de
   //    regel "vier en niet vijf" om; de kop van `_layout.tsx` legt uit waarom.
   '/(tabs)/lijst':
-    '📏 Staat als `/lijst` in `TABBLADEN` (`src/shared/ui/taakbalk.ts`): de taakbalk is de ingang.',
+    '📏 Staat als `/lijst` in `TABBLADEN` (`src/shared/ui/tabbladen.ts`): de taakbalk is de ingang.',
 };
 
 /** Alle `.tsx`-bestanden onder een map, recursief. */
@@ -81,13 +83,18 @@ function bestandenIn(map) {
  * ⚠️ `_layout` en `+html` zijn geen schermen, en `index` valt weg uit het pad —
  *    `app/(tabs)/index.tsx` is `/(tabs)`.
  */
+export function routeVan(relatiefPad) {
+  const zonderEind = metSchuineStrepen(relatiefPad).slice(0, -'.tsx'.length);
+  return `/${zonderEind}`.replace(/\/index$/, '');
+}
+
 export function routesIn(wortel = 'app') {
   return bestandenIn(wortel)
     .filter((p) => p.endsWith('.tsx'))
     .filter((p) => !basename(p).startsWith('_') && !basename(p).startsWith('+'))
     .map((p) => ({
       bestand: p,
-      pad: `/${relative(wortel, p).slice(0, -'.tsx'.length)}`.replace(/\/index$/, ''),
+      pad: routeVan(relative(wortel, p)),
     }))
     .sort((a, b) => a.pad.localeCompare(b.pad));
 }

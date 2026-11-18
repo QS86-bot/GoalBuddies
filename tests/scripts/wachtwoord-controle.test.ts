@@ -1,8 +1,8 @@
 import { readFileSync } from 'node:fs';
 
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 
-import { minimumUit, vergelijk } from '../../scripts/wachtwoord-controle.mjs';
+import { draai, minimumUit, vergelijk } from '../../scripts/wachtwoord-controle.mjs';
 import { WACHTWOORD_MINIMUM } from '../../src/modules/auth/schemas';
 
 /**
@@ -83,5 +83,46 @@ describe('vergelijk', () => {
   it('accepteert de grens precies, en niet één eronder', () => {
     expect(vergelijk({ schema: 12, server: 12 })).toBeNull();
     expect(vergelijk({ schema: 12, server: 11 })?.soort).toBe('server-lager');
+  });
+});
+
+/**
+ * De exitcode op de naad — QS8-684. `draai()` geeft hem terug en sluit het proces
+ * niet af; de Windows-crash (`src\\win\\async.c`) is op Linux niet te zien en is een
+ * meting voor Quinten. Hier staat wat wél te toetsen is: elke uitslag is een getal.
+ */
+describe('draai: de exitcode zonder netwerk', () => {
+  afterEach(() => vi.restoreAllMocks());
+
+  const stil = () => {
+    vi.spyOn(console, 'log').mockImplementation(() => undefined);
+    vi.spyOn(console, 'error').mockImplementation(() => undefined);
+  };
+  const lees = () => 8;
+
+  it('gelijke minima geven 0', async () => {
+    stil();
+    const haalOp = vi.fn().mockResolvedValue({ password_min_length: 8 });
+    await expect(draai({ token: 't', streng: false }, haalOp, lees)).resolves.toBe(0);
+  });
+
+  it('een lagere server geeft 1', async () => {
+    stil();
+    const haalOp = vi.fn().mockResolvedValue({ password_min_length: 6 });
+    await expect(draai({ token: 't', streng: false }, haalOp, lees)).resolves.toBe(1);
+  });
+
+  it('een mislukte API-aanroep geeft 1', async () => {
+    stil();
+    const haalOp = vi.fn().mockRejectedValue(new Error('de API gaf 500.'));
+    await expect(draai({ token: 't', streng: false }, haalOp, lees)).resolves.toBe(1);
+  });
+
+  it('zonder token: overslaan is 0, streng is 1 — en er wordt niet opgehaald', async () => {
+    stil();
+    const haalOp = vi.fn();
+    await expect(draai({ token: undefined, streng: false }, haalOp, lees)).resolves.toBe(0);
+    await expect(draai({ token: undefined, streng: true }, haalOp, lees)).resolves.toBe(1);
+    expect(haalOp).not.toHaveBeenCalled();
   });
 });

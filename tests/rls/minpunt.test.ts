@@ -29,6 +29,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import { addDays, now, userCycle, type IsoDate } from '../../src/shared/time';
 import { adminDb, createTestUser, removeTestUsers, rlsTestsConfigured, type TestUser } from './harness';
+import { datumOver } from './datums';
 
 const SETUP_TIMEOUT = 180_000;
 const TEST_TIMEOUT = 30_000;
@@ -126,7 +127,7 @@ describe.skipIf(!rlsTestsConfigured)('QS8-110 — Geen minpunt zonder beoordelaa
     const maakDoel = async (userId: string, titel: string): Promise<string> => {
       const { data, error } = await admin
         .from('goals')
-        .insert({ owner_id: userId, title: titel, category: 'other', target_date: '2026-12-31' })
+        .insert({ owner_id: userId, title: titel, category: 'other', target_date: datumOver(60) })
         .select('id')
         .single();
       if (error) throw new Error(`doel aanmaken: ${error.message}`);
