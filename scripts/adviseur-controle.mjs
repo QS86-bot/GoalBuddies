@@ -112,10 +112,6 @@ export const ALLOWLIST = [
       'bewaakt dat geen enkele client hem leest.',
   },
   {
-    sleutel: 'auth_leaked_password_protection',
-    reden: 'Bekend en open — QS8-141. Vraagt een schakelaar in het dashboard.',
-  },
-  {
     regel: 'anon_security_definer_function_executable',
     hoogstens: 1,
     reden:
@@ -126,14 +122,22 @@ export const ALLOWLIST = [
   },
   {
     regel: 'authenticated_security_definer_function_executable',
-    hoogstens: 76,
+    hoogstens: 81,
     reden:
-      'Bekend en open — QS8-181. 📏 Gemeten op 24-09-2026: de adviseur meldt er ' +
-      '**76**. Het plafond stond op 47 en is sindsdien met 29 overschreden zonder ' +
-      'dat iemand het zag, want deze controle vraagt een token en draait niet in ' +
-      'CI. ⚠️ Dit getal is een ratel en geen constante: `beoordeel()` faalt óók ' +
-      'als het aantal zákt zonder dat het plafond meezakt, zodat er geen ruimte ' +
-      'vrijkomt waar de volgende definer-functie stil in glijdt.',
+      'Bekend en open — QS8-181. 📏 Gemeten op 18-11-2026 (get_advisors op ' +
+      'productie, alleen lezen): de adviseur meldt er **81**. Op 24-09-2026 ' +
+      'waren het er 76, en het plafond stond op 47 voordat iemand het zag. De ' +
+      'vijf erbij zijn de buddywachtrij van QS8-233 (0299 en 0301, die op ' +
+      'productie staan): `buddyzoekopdrachten_over()`, `zoek_buddies_aan()`, ' +
+      '`zoek_buddies_uit()` en `buddyzoek_stand()` in twee handtekeningen. ' +
+      'Elk is per functie nagelopen: een `grant` die een migratie met zoveel ' +
+      'woorden geeft, een toets op `auth.uid()`, alleen eigen rijen, en geen ' +
+      'tegenslag van een ander. ⚠️ De aanname van de orchestrator (0272 en 0296) ' +
+      'klopte niet: die migraties zijn van 14-09 en 22-09, dus vóór het meetmoment, ' +
+      'en 81 min de vijf van 0299–0301 is precies 76. Dat is afgeleid en niet ' +
+      'gemeten: de lijst van 24-09 zelf is er niet meer. ⚠️ Dit getal is een ratel en geen constante: `beoordeel()` ' +
+      'faalt óók als het aantal zákt zonder dat het plafond meezakt, zodat er ' +
+      'geen ruimte vrijkomt waar de volgende definer-functie stil in glijdt.',
   },
 ];
 
