@@ -15,6 +15,7 @@ import { createHmac, randomUUID } from 'node:crypto';
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 
 import type { Database } from '../../src/lib/database.types.correcties';
+import { achtergeblevenMelding, bepaalDoel } from './doel';
 import { beoordeelWezen, wezentekst, type VerseGroep } from './wezen';
 
 export type TestDb = SupabaseClient<Database>;
@@ -40,11 +41,30 @@ export type TestDb = SupabaseClient<Database>;
  *
  *    Draai vóór een merge die auth, RLS, goedkeuring of commitments raakt dus
  *    beide: lokaal voor het snelle bewijs, productie voor de bevestiging.
+ *
+ * ⚠️ **Productie is nooit een stille standaard — QS8-702.** Het doel is
+ *    uitdrukkelijk, en zonder doel meet de suite niets (`geen`):
+ *
+ *      lokaal      RLS_DOEL=lokaal                    (npm run rls:lokaal)
+ *      productie   npx cross-env RLS_DOEL=productie RLS_TEST_ALLOW_PROD=1 vitest run tests/rls/<bestand>
+ *                  (cross-env werkt in cmd, PowerShell en bash; zet de waarden niet in je sessie of in .env)
+ *
+ *    Staan er Supabase-sleutels in de omgeving en is er geen doel gekozen
+ *    (`.env` wordt bij elke `npm test` geladen), dan faalt het laden van dit
+ *    bestand luid in plaats van naar productie te vallen. Zonder sleutels en
+ *    zonder doel slaan de tests zichzelf over, zoals altijd. De beslissing zelf
+ *    staat in `doel.ts`.
+ *
+ * ⚠️ **Een run tegen productie eindigt rood zolang er accounts achterblijven**
+ *    (`removeTestUsers()`), en dat is bedoeld: het is het signaal dat opruimen
+ *    daar niet werkt (QS8-692).
  */
-export type Doelsoort = 'productie' | 'lokaal';
+export type Doelsoort = 'productie' | 'lokaal' | 'geen';
 
-export const doelsoort: Doelsoort =
-  process.env.RLS_DOEL === 'lokaal' ? 'lokaal' : 'productie';
+const doelOordeel = bepaalDoel(process.env);
+if (doelOordeel.soort === 'geweigerd') throw new Error(doelOordeel.melding);
+
+export const doelsoort: Doelsoort = doelOordeel.soort;
 
 /**
  * ⚠️ Het secret staat hier als platte tekst en dat mag, want het hoort bij een
@@ -57,7 +77,9 @@ const LOKAAL_URL = 'http://127.0.0.1:3010';
 
 const url = doelsoort === 'lokaal'
   ? (process.env.RLS_LOKAAL_URL ?? LOKAAL_URL)
-  : process.env.EXPO_PUBLIC_SUPABASE_URL;
+  : doelsoort === 'productie'
+    ? process.env.EXPO_PUBLIC_SUPABASE_URL
+    : undefined;
 
 const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
@@ -71,7 +93,9 @@ const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
  */
 const jwtSecret = doelsoort === 'lokaal'
   ? (process.env.RLS_LOKAAL_JWT_SECRET ?? LOKAAL_SECRET)
-  : process.env.SUPABASE_JWT_SECRET;
+  : doelsoort === 'productie'
+    ? process.env.SUPABASE_JWT_SECRET
+    : undefined;
 
 /**
  * Draaien deze tests?
@@ -87,9 +111,11 @@ const jwtSecret = doelsoort === 'lokaal'
  *    plaats van overslaat is precies het faalbeeld dat QS8-116 kwam opruimen.
  */
 export const rlsTestsConfigured =
-  doelsoort === 'lokaal'
-    ? Boolean(url && jwtSecret)
-    : Boolean(url && process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY && serviceRoleKey && jwtSecret);
+  doelsoort === 'geen'
+    ? false
+    : doelsoort === 'lokaal'
+      ? Boolean(url && jwtSecret)
+      : Boolean(url && process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY && serviceRoleKey && jwtSecret);
 
 /**
  * Een sleutel voor een rol, getekend met hetzelfde secret dat PostgREST kent.
@@ -119,8 +145,9 @@ const PRODUCTIE_REF = 'wehgocadxehottiiyvsc';
  *    een slot op — niet omdat het vandaag misgaat, maar omdat het één slordige
  *    refactor verwijderd is van `delete from groups` zonder filter.
  *
- *    Zet `RLS_TEST_ALLOW_PROD=1` in .env als je bewust tegen het echte project
- *    wilt draaien.
+ *    Wil je bewust tegen het echte project draaien, geef het slot dan per run mee
+ *    (`npx cross-env RLS_DOEL=productie RLS_TEST_ALLOW_PROD=1 vitest run …`) en zet
+ *    het niet vast in .env of in je sessie.
  *
  * ⚠️ **Hier stond: "zodra er een lokale stack is, hoort deze regel te
  *    verdwijnen". Die stack is er sinds 24-08 (QS8-119) en de regel blijft
@@ -149,8 +176,9 @@ function guardProductie(target: string): void {
       '  npm run rls:stack   &&   npm run rls:lokaal',
       '',
       'Wil je tóch tegen het echte project — en daar is één goede reden voor,',
-      'namelijk de controletest op een echt GoTrue-token — zet dan bewust in .env:',
-      '  RLS_TEST_ALLOW_PROD=1',
+      'namelijk de controletest op een echt GoTrue-token — geef het slot dan per run mee',
+      '(niet vastzetten in .env of in je sessie):',
+      '  npx cross-env RLS_DOEL=productie RLS_TEST_ALLOW_PROD=1 vitest run tests/rls/<bestand>',
     ].join('\n'),
   );
 }
@@ -161,7 +189,16 @@ function requireEnv(): {
   serviceRoleKey: string;
   jwtSecret: string;
 } {
+  if (doelsoort === 'geen') {
+    throw new Error(
+      'Geen RLS-doel gekozen: de harnas maakt niets aan. Zet RLS_DOEL=lokaal ' +
+        '(npm run rls:lokaal), of bewust RLS_DOEL=productie met RLS_TEST_ALLOW_PROD=1.',
+    );
+  }
   if (doelsoort === 'lokaal') {
+    // QS8-702: ook een 'lokaal' doel mag niet stilletjes naar het echte project
+    // wijzen (RLS_LOKAAL_URL op *.supabase.co met het projectsecret).
+    if (url) guardProductie(url);
     if (!url || !jwtSecret) {
       throw new Error(
         'RLS_DOEL=lokaal vraagt een draaiende PostgREST. Start hem met ' +
@@ -799,17 +836,30 @@ export async function removeTestUsers(): Promise<void> {
     if (error) console.warn(`Wezen-groep ${groupId} opruimen mislukte: ${error.message}`);
   }
 
+  const achtergebleven: string[] = [];
+
   for (const id of ids) {
     const error = await verwijderAuthGebruiker(id);
 
     if (error) {
-      // Niet gooien: een halve opruiming is beter dan geen, en de volgende
-      // gebruiker verdient nog een poging.
+      // Niet meteen gooien: de volgende gebruiker verdient nog een poging. Maar
+      // wél tellen en aan het eind rood worden — QS8-702.
       console.warn(`Testgebruiker ${id} opruimen mislukte: ${error.message}`);
+      achtergebleven.push(`${id}: ${error.message}`);
     }
   }
 
-  await meldAchtergeblevenGroepen(new Set(groepen), new Set(ids));
+  // Beide meldingen verzamelen en één keer gooien, zodat de lezer niet maar de
+  // helft van de problemen ziet.
+  const meldingen: string[] = [];
+  try {
+    await meldAchtergeblevenGroepen(new Set(groepen), new Set(ids));
+  } catch (fout) {
+    meldingen.push(fout instanceof Error ? fout.message : String(fout));
+  }
+  const accountMelding = achtergeblevenMelding(achtergebleven, ids.length);
+  if (accountMelding !== null) meldingen.unshift(accountMelding);
+  if (meldingen.length > 0) throw new Error(meldingen.join('\n\n'));
 }
 
 /**
