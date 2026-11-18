@@ -65,7 +65,7 @@ export default function GroepTab() {
           body: t('groepen.leeg_tekst'),
           // QS8-705: de lege staat draagt zelf de stap die erbij hoort. Zonder
           // deze knop stond "groep maken" onderaan, onder een lege vlakte.
-          action: { label: t('groepen.leeg_actie'), onPress: () => router.push('/groep/nieuw') },
+          action: { label: t('groepen.aanmaken'), onPress: () => router.push('/groep/nieuw') },
         }}
       >
         {(lijst) => (
@@ -81,7 +81,7 @@ export default function GroepTab() {
         )}
       </AsyncView>
 
-      <Groepsacties heeftGroepen={(groepen?.length ?? 0) > 0} />
+      <Groepsacties toonAanmaken={groepen?.length !== 0} />
     </Screen>
   );
 }
@@ -90,13 +90,13 @@ export default function GroepTab() {
  * De knoppen onder de lijst. Los van `GroepTab`, want dat scherm zat op de
  * grens van regel 15 en QS8-705 voegde er regels aan toe.
  */
-function Groepsacties({ heeftGroepen }: { readonly heeftGroepen: boolean }) {
+function Groepsacties({ toonAanmaken }: { readonly toonAanmaken: boolean }) {
   const router = useRouter();
 
   return (
     <>
-      {/* Met groepen blijft "aanmaken" onderaan; zonder staat hij in de lege staat. */}
-      {heeftGroepen ? (
+      {/* Weg alleen als de lijst geladen is en leeg: dan staat hij in de lege staat. Tijdens laden en bij een fout blijft hij staan. */}
+      {toonAanmaken ? (
         <Button variant="primair" block onPress={() => router.push('/groep/nieuw')}>
           {t('groepen.aanmaken')}
         </Button>

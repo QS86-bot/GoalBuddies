@@ -15,6 +15,28 @@ import {
 } from './tabbladen';
 
 /**
+ * De vorm van het menu bij de breedte van dít venster.
+ *
+ * ⚠️ **Eerst `bovenrand`, en pas ná het hydrateren de echte breedte** (de
+ *    server-snapshot van `useSyncExternalStore`). De webexport
+ *    is vooraf getekend zonder venster; wie de breedte meteen leest, krijgt een
+ *    andere boom dan de server en React meldt een hydratiefout (#418, gemeten op
+ *    de eerste build van QS8-705, en via de globale fouthaak naar Sentry
+ *    gegaan). De smalle vorm is de conservatieve, dus die is de beginstand.
+ */
+const abonneer = (verandering: () => void) => {
+  const abonnement = Dimensions.addEventListener('change', verandering);
+  return () => abonnement.remove();
+};
+const leesVorm = (): Taakbalkvorm => taakbalkVorm(Dimensions.get('window').width);
+// Wat de server en de eerste clientronde zien.
+const serverVorm = (): Taakbalkvorm => 'bovenrand';
+
+export function useTaakbalkVorm(): Taakbalkvorm {
+  return useSyncExternalStore(abonneer, leesVorm, serverVorm);
+}
+
+/**
  * De taakbalk, op élk scherm dat er een hoort te hebben — QS8-437.
  *
  * ⚠️ **Dit is de énige tabbalk in de app.** De navigator in
@@ -45,28 +67,6 @@ import {
  *    en breekpunt in
  *    `docs/decisions/2026-11-18-de-navigatie-is-knoppen-en-een-renderfout-is-een-foutstaat.md`.
  */
-/**
- * De vorm van het menu bij de breedte van dít venster.
- *
- * ⚠️ **Eerst `bovenrand`, en pas ná het hydrateren de echte breedte** (de
- *    server-snapshot van `useSyncExternalStore`). De webexport
- *    is vooraf getekend zonder venster; wie de breedte meteen leest, krijgt een
- *    andere boom dan de server en React meldt een hydratiefout (#418, gemeten op
- *    de eerste build van QS8-705, en via de globale fouthaak naar Sentry
- *    gegaan). De smalle vorm is de conservatieve, dus die is de beginstand.
- */
-export function useTaakbalkVorm(): Taakbalkvorm {
-  return useSyncExternalStore(
-    (verandering) => {
-      const abonnement = Dimensions.addEventListener('change', verandering);
-      return () => abonnement.remove();
-    },
-    () => taakbalkVorm(Dimensions.get('window').width),
-    // Wat de server en de eerste clientronde zien.
-    () => 'bovenrand',
-  );
-}
-
 export function Taakbalk() {
   const theme = useTheme();
   const pad = usePathname();

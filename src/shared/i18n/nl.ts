@@ -840,7 +840,6 @@ export const nl = {
   'tab.fout_kop': 'Dit scherm kon niet getoond worden',
   'tab.fout_tekst': 'Er ging iets mis bij het opbouwen van dit scherm. Probeer het opnieuw, of ga met het menu naar een ander scherm.',
   'tab.fout_opnieuw': 'Dit scherm opnieuw laden',
-  'groepen.leeg_actie': 'Groep maken',
   'doelen.titel': 'Doelen',
   'doelen.leeg_titel': 'Nog geen doel',
   'doelen.leeg_tekst': 'Begin met één doel met een datum erop. De Doelcoach hakt het daarna in mijlpalen, en die mijlpalen worden je weekdoelen.',

@@ -526,7 +526,6 @@ export const en: Record<Sleutel, string> = {
   'tab.fout_kop': 'This screen could not be shown',
   'tab.fout_tekst': 'Something went wrong while building this screen. Try again, or use the menu to go to another screen.',
   'tab.fout_opnieuw': 'Reload this screen',
-  'groepen.leeg_actie': 'Create group',
   'doelen.titel': 'Goals',
   'doelen.leeg_titel': 'No goal yet',
   'doelen.leeg_tekst': 'Start with one goal with a date on it. The Goal Coach then cuts it into milestones, and those milestones become your weekly goals.',

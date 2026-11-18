@@ -1,5 +1,6 @@
 import {
   groupPeriod,
+  isGeldigeTijdzone,
   localDateIn,
   now,
   type GroupClock,
@@ -79,21 +80,29 @@ export function isHuddledagOp(
   groep: { readonly huddle_day: number; readonly tz: string },
   moment: Date,
 ): boolean {
-  // ⚠️ QS8-705: een groep waarvan `Intl` de tijdzone niet kent gooit hier een
-  //    RangeError, en dat is gemeten (lokale webexport, 18-11-2026) het verschil
-  //    tussen een lijstregel zonder "vandaag" en een leeg scherm. Dit is een
-  //    label bij een groep en geen berekening waar iets van afhangt, dus "niet de
-  //    huddledag" is de veilige terugval — mits de fout gemeld wordt, want een
-  //    groep met een onbekende zone is stuk en moet gevonden worden. Het
-  //    scherm erbovenop heeft daarnaast een foutstaat (`TabFout`) voor alles
-  //    wat dit niet vangt.
-  try {
-    const periode = groepsperiodeVan(groep, moment);
-    return localDateIn(periode.tz, moment) === periode.startDate;
-  } catch (fout) {
-    reportError(fout, 'groep.huddledag', { tz: String(groep.tz) });
+  // ⚠️ QS8-705: een zone die dít toestel niet kent (de database kent er meer
+  //    dan `Intl` op een oudere Hermes of Safari, zie 0119) gooit anders een
+  //    RangeError tijdens het renderen: gemeten het verschil tussen een lijstregel
+  //    zonder "vandaag" en een leeg scherm. Dit is een label bij een groep en
+  //    geen berekening waar iets van afhangt, dus "niet de huddledag" is de
+  //    veilige terugval. Alleen die ene toestand wordt opgevangen: elke andere
+  //    fout gaat door naar de foutstaat. Eén melding per zone, want dit staat op
+  //    het renderpad.
+  if (!isGeldigeTijdzone(groep.tz)) {
+    meldOnbekendeZoneEenmaal(groep.tz);
     return false;
   }
+
+  const periode = groepsperiodeVan(groep, moment);
+  return localDateIn(periode.tz, moment) === periode.startDate;
+}
+
+const GEMELDE_ZONES = new Set<string>();
+
+function meldOnbekendeZoneEenmaal(tz: string): void {
+  if (GEMELDE_ZONES.has(tz)) return;
+  GEMELDE_ZONES.add(tz);
+  reportError(new Error('Onbekende tijdzone op een groep'), 'groep.huddledag', { tz });
 }
 
 /**

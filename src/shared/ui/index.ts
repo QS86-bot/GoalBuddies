@@ -52,13 +52,11 @@ export { RisicoBadge } from './RisicoBadge';
 export { Taakbalk } from './Taakbalk';
 export {
   actiefTabblad,
-  BREED_VANAF,
   TABBLADEN,
-  taakbalkVorm,
   toontTaakbalk,
   ZONDER_TAAKBALK,
 } from './tabbladen';
-export type { Tabblad, Taakbalkvorm } from './tabbladen';
+export type { Tabblad } from './tabbladen';
 export { TabFout } from './TabFout';
 export { Screen, useTerug, type Terug } from './Screen';
 export { StreakCounter } from './StreakCounter';

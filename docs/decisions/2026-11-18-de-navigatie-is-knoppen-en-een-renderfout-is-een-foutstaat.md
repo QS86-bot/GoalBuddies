@@ -30,8 +30,10 @@ De service worker (`public/sw.js`) is alleen een pushontvanger en cachet niets; 
 1. **Een `ErrorBoundary` per tabblad** (`export { TabFout as ErrorBoundary }` in elk bestand van `app/(tabs)/`) en op `app/groep/[id].tsx`.
    *Niet* één op `app/(tabs)/_layout.tsx`: die vervangt de hele navigator, en de menuknoppen in de foutstaat wijzen dan naar een router die zelf in de fout staat. Gemeten: met een boundary per tabblad werkt het menu in de foutstaat (klik op Doelen toont Doelen; terug op Groep toont de herstelknop weer). *Niet* op de wortel: `RootLayout` draagt zelf de providers, dus een fallback daar heeft geen thema en geen veilige zone.
    De foutstaat toont nooit `error.message` (zelfde reden als `AsyncView`) en meldt de fout, want een door React gevangen fout haalt `window.onerror` niet.
-2. **`isHuddledagOp()` vangt een onbekende tijdzone** en geeft `false` (met `reportError`). Dat is een label bij een groep, geen berekening waar iets van afhangt. Elders (weekafsluiting, De Ketting) blijft een onbekende zone een fout, nu mét foutstaat. Dit raakt geen domeinregel 1: de berekening blijft in `shared/time`.
-3. **De lege groepentab draagt zelf de knop "Groep maken"** (`AsyncView` kreeg een optionele `empty.action`). Met groepen blijft "Groep aanmaken" onderaan staan; zonder groepen niet, anders staan er twee.
+2. **`isHuddledagOp()` toetst de tijdzone vooraf** (`isGeldigeTijdzone()` uit `shared/time`) en geeft bij een zone die dit toestel niet kent `false`, met één `reportError` per zone. Dat is een label bij een groep, geen berekening waar iets van afhangt. Elke andere fout wordt *niet* opgevangen en gaat naar de foutstaat; een brede `try/catch` zou een latere regressie in `shared/time` stil "niet vandaag" laten zeggen, en zou op het renderpad bij elke render een Sentry-event sturen (de eerste versie deed dat; verbeterd na de code-critic).
+   ⚠️ **De database weigert zo'n zone** (trigger in 0119 toetst tegen `pg_timezone_names`), dus `Mars/Olympus` komt in productie niet voor. Wat wél kan: de database kent er meer (1196) dan `Intl` op een oudere Hermes of Safari (418, gemeten in de kop van 0119), dus een zone die het toestel van de maker kent kan op dat van een medelid onbekend zijn. Dat is een aanname en niet gemeten; de test gebruikt een onbekende zone als stand-in.
+   ⚠️ **Dit beschermt alleen de lijstregel.** `app/groep/weekafsluiting/[id].tsx`, `app/groep/leden/[id].tsx` en `app/groep/chat/[id].tsx` rekenen de groepsperiode uit en hebben geen boundary: dezelfde zone geeft daar nog steeds een wit scherm zonder menu. (Een eerdere versie van dit document beweerde het tegendeel; dat was onjuist.)
+3. **De lege groepentab draagt zelf de knop "Groep aanmaken"** (`AsyncView` kreeg een optionele `empty.action`). De knop onderaan verdwijnt alleen als de lijst geladen is en leeg (anders staan er twee); tijdens het laden en bij een fout blijft hij staan.
 4. **Het menu is vijf knoppen** met rand, tikvlak van minstens 44 punten en 15 punten tekst. Rol `link` met `aria-current="page"` en niet `button`: het zijn bestemmingen met een adres (`Link` tekent een `<a href>`), en een schermlezer zegt dan "link, huidige pagina". Visueel is het een knop. Landmark `navigation` met label "Hoofdmenu". Alleen themakleuren (`panel`, `border`, `text`, `accent`); geen eigen kleur, geen heldkleur. Het actieve tabblad heeft naast de kleur een dikkere rand.
 5. **Twee vormen, breekpunt 900 punten (`BREED_VANAF`).** Breed: kolom links van 220 breed, onder elkaar. Smal: rij bovenin die omslaat naar een tweede regel (gemeten: 390 breed geeft 4 + 1 knoppen). Bewust niet verticaal op een telefoon (vijf gestapelde knoppen kosten 230 punten hoogte op elk scherm) en niet scrollend (scrollen verbergt tabbladen, en een verborgen tabblad is precies de klacht). 900 omdat de inhoud 620 breed is en een kolom van 220 daarnaast 840 nodig heeft; een tablet rechtop (768) houdt de rij.
 6. **Beginstand `bovenrand` en de echte breedte pas na het hydrateren** (`useSyncExternalStore` met server-snapshot). De webexport wordt vooraf getekend zonder venster.
@@ -39,7 +41,14 @@ De service worker (`public/sw.js`) is alleen een pushontvanger en cachet niets; 
 ## Wat dit niet is
 
 - Geen oorzaak-voor-productie. Wat er bij Quinten gebeurde, is een aanname tot Sentry het toont.
-- Geen boundary op alle 27 routes: alleen de vijf tabbladen en het groepsdetail. Een route zonder boundary valt terug op wat er vandaag is.
+- Geen boundary op alle 27 routes: alleen de vijf tabbladen en het groepsdetail. Een route zonder boundary valt terug op wat er vandaag is. Een vangnet als gewone React-boundary in de JSX van `RootLayout` om `<Stack>` (binnen de providers, dus mét thema; zie de bevinding van de code-critic) is niet gebouwd en wél de juiste volgende stap; het moet resetten op padwissel, anders is het menu in de foutstaat dood. **Vervolgissue.**
+- Geen oplossing voor een fout in `Screen`, `Taakbalk` of het thema zelf: de foutstaat tekent dezelfde rand en gooit dan opnieuw. Alleen dat vangnet in de wortel dekt dat, en dan zonder menu.
+- De herstelknop herlaadt het scherm; zit de fout in de data zelf, dan keert hij terug.
+
+## Open vragen voor Quinten (niet beslist door de bouwsessie)
+
+1. **Je vroeg knoppen onder elkaar; op een telefoon (390) en tablet (768) is het een rij van twee regels (~110 punten hoog).** Besluit 5 kiest dat als conservatieve vorm. Wil je de kolom ook op een telefoon, dan is dat één getal (`BREED_VANAF`) en een stijl, tegen de prijs van ~230 punten hoogte op elk scherm, óók in de groepschat met toetsenbord.
+2. De laatste knop (Profiel) staat op 390 alleen op de tweede regel en rekt uit over de volle breedte.
 
 ## Twee dingen die onderweg gemeten zijn en niet van dit issue zijn
 

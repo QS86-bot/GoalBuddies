@@ -49,8 +49,8 @@ export const TABBLADEN: readonly Tabblad[] = [
 /**
  * Vanaf welke breedte (in punten) het menu een kolom links is — QS8-705.
  *
- * ⚠️ **900 en niet 600.** De inhoud van `Screen` is 620 breed; een kolom van 200
- *    ernaast heeft dan 820 nodig om niets te klemmen. Op een tablet rechtop (768)
+ * ⚠️ **900 en niet 600.** De inhoud van `Screen` is 620 breed; een kolom van 220
+ *    ernaast heeft dan 840 nodig om niets te klemmen. Op een tablet rechtop (768)
  *    is de balk bovenin de conservatieve keuze, en dat is waar dit besluit op
  *    uitkomt: pas wie er echt ruimte voor heeft krijgt de kolom.
  */
