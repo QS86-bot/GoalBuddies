@@ -93,15 +93,25 @@ export function psqlBasisArgumenten(verbose = false): string[] {
  *    en verder niets — zelfde vorm als `magHierDraaien()` in
  *    `scripts/rls-dekking.mjs`. Een blocklist op de projectref mist een eigen
  *    domein en een hostnaam in hoofdletters; dat was de les van `guardProductie()`.
- *    `PGHOSTADDR` overschrijft `PGHOST` in libpq en wordt dus ook getoetst, en
- *    `PGSERVICE` verwijst naar een bestand dat hier niet te lezen is: geweigerd.
+ *    `PGHOSTADDR` overschrijft `PGHOST` in libpq en wordt dus ook getoetst,
+ *    `PGSERVICE` verwijst naar een bestand dat hier niet te lezen is (geweigerd),
+ *    en `PGDATABASE` moet een kale naam zijn: als `-d` leest psql er anders een
+ *    hele verbindingsstring in.
  */
 const LOOPBACK = ['localhost', '127.0.0.1', '::1'];
 
 export function psqlDoelFout(omgeving: NodeJS.ProcessEnv): string | null {
   const host = (omgeving.PGHOST ?? '').trim();
   const adres = (omgeving.PGHOSTADDR ?? '').trim();
-  const lokaal = (h: string) => h.startsWith('/') || LOOPBACK.includes(h.toLowerCase());
+  // ⚠️ Een lijst met komma's probeert libpq op volgorde: elk deel moet lokaal
+  //    zijn, anders valt hij door naar de volgende host als de eerste niet
+  //    antwoordt (security-review QS8-703).
+  const lokaal = (lijst: string) =>
+    lijst.split(',').every((h) => {
+      const deel = h.trim();
+      return deel.startsWith('/') || LOOPBACK.includes(deel.toLowerCase());
+    });
+  const db = (omgeving.PGDATABASE ?? 'goalbuddies_rls').trim();
   const weiger = (wat: string) =>
     `De RLS-suite weigert psql naar ${wat}: alleen een lokale database (loopback of ` +
     'een Unix-socket) mag. Zet PGHOST niet in .env of in je sessie, of draai met ' +
@@ -109,6 +119,10 @@ export function psqlDoelFout(omgeving: NodeJS.ProcessEnv): string | null {
 
   if ((omgeving.PGSERVICE ?? '').trim() !== '') return weiger(`de dienst "${omgeving.PGSERVICE}" (PGSERVICE)`);
   if (!lokaal(host)) return weiger(`de host "${host}"`);
+  // ⚠️ `PGDATABASE` gaat als `-d` mee, en daar leest psql ook een
+  //    verbindingsstring, een URI of `service=…` — met een eigen host die de
+  //    toets hierboven nooit ziet. Alleen een kale naam mag.
+  if (!/^[A-Za-z0-9_]+$/.test(db)) return weiger(`de database "${db}" (PGDATABASE is geen kale naam)`);
   if (adres !== '' && !lokaal(adres)) return weiger(`het adres "${adres}" (PGHOSTADDR)`);
   return null;
 }

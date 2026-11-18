@@ -182,7 +182,26 @@ documenten en een verhuizing is hier de duurste beweging.
 | `PGHOSTADDR` niet meer getoetst | *… "PGHOSTADDR":"3.14.15.92" wordt geweigerd* |
 | `doel.ts` weer de oude standaard (geen doel → productie) | *productiesleutels in .env, geen RLS_DOEL …* — de vitest-naad ziet hem ook |
 
-**Wat hier niet gebouwd is.** `tests/rls/globaal.ts` draait in het hoofdproces
+**De security-review van QS8-703 vond drie zijdeuren, en die zijn dicht**
+(elk geijkt; de toets die omviel staat tussen haakjes):
+
+- `PGDATABASE` gaat als `-d` mee, en daar leest psql ook een verbindingsstring,
+  een URI of `service=…`, met een eigen host. Alleen een kale naam mag nu
+  (*"…PGDATABASE is geen kale naam"*, drie vormen).
+- Een hostlijst met komma's die met een socketpad begint, kwam erdoor; libpq
+  probeert de hosts op volgorde. Elk deel wordt nu apart getoetst, ook in
+  `PGHOSTADDR` (*"/var/run/postgresql,db.… wordt geweigerd"*).
+- Op Windows is `process.env` hoofdletterongevoelig: `rls_test_allow_prod=1` in
+  `.env` opende het slot. `slotInDotenv()` en `overTeNemen()` vergelijken nu
+  zonder hoofdletters (*"{"rls_test_allow_prod":"1"} wordt geweigerd"*, *"ook
+  niet in kleine letters"*).
+
+**Wat hier niet gebouwd is.** Twee lage punten uit dezelfde review, als ER-rij:
+een controle ná het verbinden (`current_database()` en `inet_server_addr()`,
+zoals `scripts/rls-dekking.mjs` die doet), die ook een tunnel naar productie op
+loopback zou zien; en een allowlist op de host van `RLS_LOKAAL_URL` in plaats
+van de blocklist op de ref (schrijven vraagt daar ook het productiegeheim in
+`RLS_LOKAAL_JWT_SECRET`). `tests/rls/globaal.ts` draait in het hoofdproces
 van vitest en ziet `.env` niet (geen `setupFiles` daar); zijn psql-aanroepen
 gaan wel door dezelfde grendel. Een `PGHOST` in de **shell** van de gebruiker
 wordt net zo geweigerd als een in `.env`. Niet gemeten: de echte RLS-suite

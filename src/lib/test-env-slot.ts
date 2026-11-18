@@ -24,10 +24,22 @@
 /** De twee sleutels die alleen uit de procesomgeving mogen komen. */
 export const ALLEEN_UIT_DE_PROCESOMGEVING = ['RLS_DOEL', 'RLS_TEST_ALLOW_PROD'] as const;
 
+/**
+ * De waarde van een sleutel, ongeacht hoofdletters.
+ *
+ * ⚠️ Op Windows is `process.env` hoofdletterongevoelig: `rls_test_allow_prod=1`
+ *    in `.env` leest daar als `RLS_TEST_ALLOW_PROD` (security-review QS8-703).
+ *    Bij meerdere schrijfwijzen telt de laatste, zoals bij dotenv zelf.
+ */
+function waardeVan(bestand: Readonly<Record<string, string>>, sleutel: string): string | undefined {
+  const treffers = Object.entries(bestand).filter(([k]) => k.toUpperCase() === sleutel);
+  return treffers.at(-1)?.[1];
+}
+
 /** Zet `.env` het productieslot? Dan de melding, anders `null`. */
 export function slotInDotenv(bestand: Readonly<Record<string, string>>): string | null {
-  const vlag = bestand.RLS_TEST_ALLOW_PROD;
-  const doel = bestand.RLS_DOEL;
+  const vlag = waardeVan(bestand, 'RLS_TEST_ALLOW_PROD');
+  const doel = waardeVan(bestand, 'RLS_DOEL');
   const gevonden: string[] = [];
 
   if (vlag !== undefined && vlag.trim() !== '') gevonden.push(`RLS_TEST_ALLOW_PROD=${vlag}`);
@@ -55,7 +67,7 @@ export function overTeNemen(
   const uitgesloten = new Set<string>(ALLEEN_UIT_DE_PROCESOMGEVING);
   return Object.fromEntries(
     Object.entries(bestand).filter(
-      ([sleutel]) => !uitgesloten.has(sleutel) && !Object.hasOwn(omgeving, sleutel),
+      ([sleutel]) => !uitgesloten.has(sleutel.toUpperCase()) && !Object.hasOwn(omgeving, sleutel),
     ),
   );
 }

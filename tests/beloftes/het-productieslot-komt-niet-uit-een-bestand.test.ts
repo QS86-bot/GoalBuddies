@@ -16,6 +16,8 @@ describe('slotInDotenv — .env mag het productieslot niet zetten', () => {
     [{ RLS_DOEL: 'productie' }, /RLS_DOEL=productie/],
     [{ RLS_DOEL: ' Productie ' }, /RLS_DOEL= Productie /],
     [{ RLS_DOEL: 'productie', RLS_TEST_ALLOW_PROD: '1' }, /RLS_TEST_ALLOW_PROD=1 en RLS_DOEL=productie/],
+    [{ rls_test_allow_prod: '1' }, /RLS_TEST_ALLOW_PROD=1/],
+    [{ Rls_Doel: 'productie' }, /RLS_DOEL=productie/],
   ])('%j wordt geweigerd', (bestand, melding) => {
     expect(slotInDotenv(bestand)).toMatch(melding);
   });
@@ -40,6 +42,10 @@ describe('overTeNemen — wat er uit .env in de procesomgeving komt', () => {
     expect(overTeNemen({ RLS_DOEL: 'lokaal', RLS_TEST_ALLOW_PROD: '', A: '1' }, {})).toEqual({ A: '1' });
   });
 
+  it('ook niet in kleine letters (Windows leest process.env hoofdletterongevoelig)', () => {
+    expect(overTeNemen({ rls_doel: 'lokaal', rls_test_allow_prod: '', A: '1' }, {})).toEqual({ A: '1' });
+  });
+
   it('een waarde die het proces al heeft, wint — zoals dotenv zelf', () => {
     expect(overTeNemen({ A: 'uit-bestand', B: '2' }, { A: 'uit-proces' })).toEqual({ B: '2' });
   });
@@ -53,8 +59,10 @@ describe('psqlDoelFout — het psql-pad praat alleen met een lokale database', (
     [{ PGHOST: '::1' }],
     [{ PGHOST: '/var/run/postgresql' }],
     [{ PGHOST: '127.0.0.1', PGHOSTADDR: '127.0.0.1' }],
+    [{ PGHOST: '/var/run/postgresql, 127.0.0.1' }],
+    [{ PGHOST: '127.0.0.1', PGDATABASE: 'goalbuddies_rls_2' }],
   ])('%j mag', (omgeving) => {
-    expect(psqlDoelFout(omgeving as NodeJS.ProcessEnv)).toBeNull();
+    expect(psqlDoelFout(omgeving as unknown as NodeJS.ProcessEnv)).toBeNull();
   });
 
   it.each([
@@ -66,7 +74,15 @@ describe('psqlDoelFout — het psql-pad praat alleen met een lokale database', (
     [{ PGHOST: '' }, /host ""/],
     [{ PGHOST: '127.0.0.1', PGHOSTADDR: '3.14.15.92' }, /PGHOSTADDR/],
     [{ PGHOST: '127.0.0.1', PGSERVICE: 'productie' }, /PGSERVICE/],
+    [{ PGHOST: '/var/run/postgresql,db.wehgocadxehottiiyvsc.supabase.co' }, /host "\/var\/run/],
+    [{ PGHOST: '127.0.0.1', PGHOSTADDR: '127.0.0.1,3.14.15.92' }, /PGHOSTADDR/],
+    [
+      { PGHOST: '127.0.0.1', PGDATABASE: 'postgresql://postgres:x@db.wehgocadxehottiiyvsc.supabase.co/postgres' },
+      /PGDATABASE is geen kale naam/,
+    ],
+    [{ PGHOST: '127.0.0.1', PGDATABASE: 'service=prod' }, /PGDATABASE is geen kale naam/],
+    [{ PGHOST: '127.0.0.1', PGDATABASE: 'host=db.voorbeeld.nl dbname=postgres' }, /PGDATABASE is geen kale naam/],
   ])('%j wordt geweigerd', (omgeving, melding) => {
-    expect(psqlDoelFout(omgeving as NodeJS.ProcessEnv)).toMatch(melding);
+    expect(psqlDoelFout(omgeving as unknown as NodeJS.ProcessEnv)).toMatch(melding);
   });
 });
