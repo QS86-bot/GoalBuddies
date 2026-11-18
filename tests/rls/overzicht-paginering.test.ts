@@ -219,6 +219,25 @@ describe.skipIf(!rlsTestsConfigured)('group_overview — bladeren slaat niemand 
 
       expect(eerste[0]?.total_members).toBeGreaterThan(0);
       expect(tweede[0]?.total_members).toBe(eerste[0]?.total_members);
+
+      // ⚠️ **QS8-699: en het getal is dat van de hele groep, niet van de pagina.**
+      //    Sinds 0307 kiest de CTE `pagina` eerst de leden en rekent `leden` alleen
+      //    voor hen. Telt `total_members` uit `leden`, dan zeggen beide pagina's
+      //    hierboven "2" en blijven ze aan elkaar gelijk — groen, en fout. Daarom
+      //    hier: het totaal is wat je over álle pagina's heen te zien krijgt.
+      //
+      //    ⚠️ Rood gemaakt door in 0307 `(select count(*) from alle)` te vervangen
+      //    door `(select count(*) from leden)`.
+      const gezien = new Set<string>();
+      let cursor: { joinedAt: string; userId: string } | null = null;
+      for (let ronde = 0; ronde < 10; ronde += 1) {
+        const rijen: readonly Rij[] = await pagina(f.anna, 2, cursor);
+        if (rijen.length === 0) break;
+        for (const r of rijen) gezien.add(r.user_id);
+        cursor = cursorVan(rijen);
+      }
+      expect(gezien.size).toBeGreaterThan(2);
+      expect(eerste[0]?.total_members).toBe(gezien.size);
     },
     TEST_TIMEOUT,
   );
