@@ -306,7 +306,9 @@ describe('draai: de exitcode zonder netwerk', () => {
     const uit = stil();
     const haalOp = vi.fn().mockRejectedValue(new ApiStatusFout(401));
     await expect(draai({ token: 't', streng: false }, haalOp)).resolves.toBe(1);
-    expect(uit.error.mock.calls.join('\n')).toContain('de API gaf 401.');
+    const tekst = uit.error.mock.calls.join('\n');
+    expect(tekst).toContain('✗ adviseur-controle: de API gaf 401.');
+    expect(tekst).not.toContain('ophalen mislukt');
   });
 
   it('een netwerkfout en een onbegrepen antwoord geven allebei 1', async () => {

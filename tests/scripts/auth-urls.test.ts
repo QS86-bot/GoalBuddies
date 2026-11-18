@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-import { draai, redirectsVoor } from '../../scripts/auth-urls.mjs';
+import { draai, maakApi, redirectsVoor } from '../../scripts/auth-urls.mjs';
 
 /**
  * `auth:urls` leest en zet de Auth-URL's van het Supabase-project — QS8-99.
@@ -11,8 +11,10 @@ import { draai, redirectsVoor } from '../../scripts/auth-urls.mjs';
  *    exit -1073740791) is hier niet te zien en is een meting voor Quinten.
  *
  * ⚠️ **Niets hier roept de Management API aan.** `--zet` schrijft op productie;
- *    elke test geeft `draai()` een eigen `api` mee. De tests onder `zet: true`
- *    toetsen dat het PATCH-verzoek de verwachte vorm heeft — zonder het te sturen.
+ *    elke test geeft `draai()` een eigen `api` mee, en de naad met de echte HTTP-
+ *    aanroep (`maakApi`) draait tegen een vervangen `fetch`. De tests onder
+ *    `zet: true` toetsen de argumenten aan die `api`; dat het HTTP-verzoek zelf
+ *    de juiste vorm heeft toetst alleen de `maakApi`-test onderaan.
  */
 
 const APP = 'https://goalbuddies.q-projects.tech';
@@ -89,5 +91,51 @@ describe('draai: de exitcode zonder netwerk', () => {
       .mockRejectedValueOnce(new Error('PATCH config/auth gaf HTTP 500: x'));
     await expect(draai({ ...basis, zet: true }, api)).resolves.toBe(1);
     expect(api).toHaveBeenCalledTimes(2);
+  });
+});
+
+describe('maakApi: het HTTP-verzoek zelf, tegen een vervangen fetch', () => {
+  afterEach(() => vi.unstubAllGlobals());
+
+  function stubFetch(status: number, antwoord: unknown) {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: status >= 200 && status < 300,
+      status,
+      text: () => Promise.resolve(JSON.stringify(antwoord)),
+    });
+    vi.stubGlobal('fetch', fetchMock);
+    return fetchMock;
+  }
+
+  it('PATCH: methode, adres, token, Content-Type, body en timeout', async () => {
+    const fetchMock = stubFetch(200, { ok: true });
+    await maakApi({ token: 'sbp_x', ref: REF })('PATCH', { site_url: APP });
+
+    const [adres, opties] = fetchMock.mock.calls[0] as [string, RequestInit];
+    expect(adres).toBe(`https://api.supabase.com/v1/projects/${REF}/config/auth`);
+    expect(opties.method).toBe('PATCH');
+    expect(opties.headers).toEqual({
+      Authorization: 'Bearer sbp_x',
+      'Content-Type': 'application/json',
+    });
+    expect(opties.body).toBe(JSON.stringify({ site_url: APP }));
+    expect(opties.signal).toBeInstanceOf(AbortSignal);
+  });
+
+  it('GET: geen body en geen Content-Type', async () => {
+    const fetchMock = stubFetch(200, GOED);
+    await expect(maakApi({ token: 'sbp_x', ref: REF })('GET')).resolves.toEqual(GOED);
+
+    const [, opties] = fetchMock.mock.calls[0] as [string, RequestInit];
+    expect(opties.method).toBe('GET');
+    expect(opties.body).toBeUndefined();
+    expect(opties.headers).toEqual({ Authorization: 'Bearer sbp_x' });
+  });
+
+  it('een niet-ok antwoord wordt een fout met de statuscode', async () => {
+    stubFetch(401, { message: 'nee' });
+    await expect(maakApi({ token: 'sbp_x', ref: REF })('GET')).rejects.toThrow(
+      'GET config/auth gaf HTTP 401',
+    );
   });
 });
