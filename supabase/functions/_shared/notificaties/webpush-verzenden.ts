@@ -403,7 +403,8 @@ export async function verstuurWebPush(invoer: {
  *    **Drie per run, per bron**: drie voor `weg` en drie voor `ongeldig`, dus
  *    hoogstens zes rijen per run, en een kapotte toets hoogstens drie. De 9
  *    kapotte rijen van 17-11-2026 zijn zo op zijn vroegst in drie runs weg, en een kapotte toets
- *    kost per **run** hoogstens drie rijen en een melding in Sentry. Per run en
+ *    kost per **run** hoogstens drie rijen; een melding in Sentry komt alleen als
+ *    het plafond iets tegenhoudt of de onderbreker springt. Per run en
  *    niet per uur: een `workflow_dispatch` is een run en telt opnieuw. Wat boven
  *    het plafond valt, blijft staan.
  *

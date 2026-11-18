@@ -1670,7 +1670,7 @@ async function ruimOngeldigeOp(db: Db, opruim: Opruimlijst): Promise<void> {
     // ⚠️ **Pas vanaf `ALARM_VANAF` naar Sentry** (code-critic op het herstel). Een
     //    run die één of twee web-meldingen verstuurt en toevallig alleen kapotte
     //    rijen treft, is gezond; een alarm dat daarop afgaat leer je negeren, en
-    //    dit is het enige alarm dat een kapotte toets meldt.
+    //    dit is het enige alarm voor een toets die álles afkeurt.
     if (opruim.getoetst.size >= ALARM_VANAF) {
       await meld(new Error('elk web-abonnement ongeldig'), 'notificaties.opruimen', {
         code: 'webpush_alles_ongeldig',
