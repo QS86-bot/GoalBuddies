@@ -217,6 +217,24 @@ const PROFIELEN_TEGELIJK = 8;
 const PROFIELBUDGET_MS = 100_000;
 
 /**
+ * Hoeveel profielen er in één run hoogstens beginnen — QS8-697.
+ *
+ * ⚠️⚠️ **De muur die `PROFIELBUDGET_MS` niet ziet.** 📏 Run 556 (18-11-2026, v26,
+ *    `main` @ `7b566d9b`) deed 876 profielen in 63 s en werd toen afgekapt met
+ *    `CPU Time exceeded` (HTTP 546 `WORKER_RESOURCE_LIMIT`), ruim binnen het
+ *    tijdbudget. Het werk ná de lus draaide niet. De gratis tier begrenst de
+ *    CPU-tijd per aanroep, en die is vanuit de functie niet te meten; het aantal
+ *    profielen wel.
+ *
+ *    Vierhonderd is minder dan de helft van die 876, met marge voor een profiel
+ *    met veel gemiste weken (meer verzoeken, dus meer CPU) en voor het werk erna.
+ *    Wie dit getal verhoogt, meet eerst opnieuw waar `CPU Time exceeded` valt.
+ *    Profielen die niet aan de beurt kwamen, komen bij een volgende run aan bod
+ *    (willekeurige startplek), en `volledig: false` maakt de workflow rood.
+ */
+const PROFIELEN_PER_RUN = 400;
+
+/**
  * De systeemclient, met het type dat de aanroep zélf oplevert.
  *
  * ⚠️ **Een functie en geen `ReturnType<typeof createClient>`** — QS8-424, en dat
@@ -435,7 +453,12 @@ async function verwerkAlleProfielen(
   const { volledig } = await verwerkBinnenBudget(
     profielenVanafWillekeurigePlek(db, fout),
     (profiel) => verwerkProfiel(db, profiel, nu, telling),
-    { gelijktijdig: PROFIELEN_TEGELIJK, stopNa, klok: () => new Date().getTime() },
+    {
+      gelijktijdig: PROFIELEN_TEGELIJK,
+      stopNa,
+      maxRijen: PROFIELEN_PER_RUN,
+      klok: () => new Date().getTime(),
+    },
   );
   telling.volledig = volledig;
   if (!volledig) await meldBudgetOp(telling.profielenGezien);
