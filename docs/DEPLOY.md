@@ -479,13 +479,20 @@ vergelijking en slaat zichzelf lokaal over.
 beide** — lokaal voor het snelle bewijs, productie voor de bevestiging:
 
 ```bash
-npm test                        # slaat de RLS-suite over zonder .env
-npx vitest run tests/rls        # tegen productie, mét .env
+npm test                        # slaat de RLS-suite over zonder .env en zonder RLS_DOEL
+npm run rls:lokaal              # tegen de lokale stack (RLS_DOEL=lokaal)
+RLS_DOEL=productie RLS_TEST_ALLOW_PROD=1 npx vitest run tests/rls/<bestand>   # bewust tegen productie
 ```
 
+⚠️ **Productie is nooit een stille standaard (QS8-702).** Staan er Supabase-sleutels
+in `.env` en is `RLS_DOEL` niet gezet, dan faalt de suite luid bij het laden. Hij
+valt dus niet meer terug op productie. Een run tegen productie eindigt rood zolang
+er testaccounts achterblijven (accountverwijdering faalt daar tot QS8-692 is
+uitgerold), en dat is bedoeld.
+
 Tegen productie maakt de suite echte gebruikers aan en ruimt ze op met de
-service-role-key. Daar staat een slot op (`RLS_TEST_ALLOW_PROD=1` in `.env`) en
-dat blijft staan: er is nog één goede reden om er te draaien, en zolang die
+service-role-key. Daar staan twee sloten op (`RLS_DOEL=productie` én
+`RLS_TEST_ALLOW_PROD=1`; zet de tweede niet vast in `.env`) en ze blijven staan: er is nog één goede reden om er te draaien, en zolang die
 bestaat kan de héle suite er per ongeluk heen.
 
 #### In CI
