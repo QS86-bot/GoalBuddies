@@ -210,7 +210,7 @@ type LidRij = RpcRij<{ user_id: string; display_name: string; role: string }>;
 type TeamRij = RpcRij<{ id: string; name: string }>;
 
 /** De cursor is de laatste sleutel van een volle pagina; een korte pagina is de laatste. */
-function volgendeCursor(rijen: readonly { readonly sleutel: string }[], plafond: number): string | null {
+export function volgendeCursor(rijen: readonly { readonly sleutel: string }[], plafond: number): string | null {
   if (rijen.length < plafond) return null;
   // ⚠️ Een lege sleutel is geen cursor: hij zou als "geen cursor" gelezen worden
   //    en dezelfde eerste pagina opnieuw laden.

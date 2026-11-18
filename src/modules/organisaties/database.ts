@@ -7,7 +7,7 @@ import { supabase } from '../../lib/supabase';
 /**
  * TIJDELIJKE typebrug voor de organisatietabellen en -functies — QS8-657.
  *
- * ⚠️ **Dit bestand verdwijnt na de uitrol van 0299, 0300 en 0305.** Die
+ * ⚠️ **Dit bestand verdwijnt na de uitrol van 0299, 0300, 0301, 0302 en 0305.** Die
  *    migraties staan nog niet op productie, en `src/lib/database.types.ts` is
  *    een afschrift van productie dat `npm run types:db` in zijn geheel
  *    overschrijft (QS8-569). Zodra productie ze draagt en het afschrift is
@@ -82,6 +82,33 @@ type OrganisatieFuncties = {
     Args: MaakTeamgroepArgs;
     Returns: Json;
   };
+  // 0302: `null` voor een onbekend teamdoel én voor een teamdoel dat je niet leest.
+  teambalk: { Args: { p_team_goal_id: string }; Returns: number | null };
+  // 0301: `p_titel` blijft weg, het aandeel krijgt de titel van het teamdoel.
+  neem_aandeel: { Args: { p_team_goal_id: string; p_titel?: string }; Returns: Json };
+  maak_teamdoel: {
+    Args: { p_group_id: string; p_titel: string; p_streefdatum: string; p_beschrijving?: string };
+    Returns: Json;
+  };
+};
+
+/** De kolomgrant van 0301: `created_by` en `organization_id` staan er niet in en dus ook hier niet. */
+type TeamdoelRij = {
+  id: string;
+  group_id: string;
+  title: string;
+  description: string | null;
+  target_date: string;
+  status: string;
+  created_at: string;
+};
+
+/** Alleen de eigen rij is leesbaar (policy `team_goal_shares_select`). */
+type AandeelRij = {
+  goal_id: string;
+  team_goal_id: string;
+  user_id: string;
+  created_at: string;
 };
 
 type OrganisatieTabellen = {
@@ -93,6 +120,25 @@ type OrganisatieTabellen = {
   };
   organization_members: {
     Row: LidmaatschapRij;
+    Insert: GeenSchrijver;
+    Update: GeenSchrijver;
+    Relationships: [];
+  };
+  team_goals: {
+    Row: TeamdoelRij;
+    Insert: GeenSchrijver;
+    Update: GeenSchrijver;
+    Relationships: [];
+  };
+  team_goal_shares: {
+    Row: AandeelRij;
+    Insert: GeenSchrijver;
+    Update: GeenSchrijver;
+    Relationships: [];
+  };
+  // De kolom `groups.organization_id` (0299) staat voor groepsleden in de kolomgrant.
+  groups: {
+    Row: { organization_id: string | null };
     Insert: GeenSchrijver;
     Update: GeenSchrijver;
     Relationships: [];

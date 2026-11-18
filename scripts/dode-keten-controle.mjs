@@ -317,19 +317,8 @@ export const WACHT_OP_EEN_BESLUIT = {
   // ⚠️ De zeven organisatie-RPC's van 0299 stonden hier van 17-11-2026 (QS8-652)
   //    tot 18-11-2026: de migratie landde vóór de schermen, zoals de epic QS8-650
   //    het knipt. QS8-657 heeft de aanroepers gebouwd en de rijen zijn weg.
-  // ⚠️ De twee teamdoel-RPC's (QS8-654, 0301): zelfde reden, het scherm is QS8-658.
-  maak_teamdoel:
-    'Schrijfpad van een teamdoel (0301, QS8-654). Het scherm is QS8-658. ' +
-    '**Vraag:** krijgt hij daar een aanroeper? Zo ja, dan gaat deze rij weg zodra die er is; ' +
-    'zo nee, dan hoort de RPC weg.',
-  teambalk:
-    'Leespad van de teambalk (0302, QS8-655). Het scherm is QS8-658. ' +
-    '**Vraag:** krijgt hij daar een aanroeper? Zo ja, dan gaat deze rij weg zodra die er is; ' +
-    'zo nee, dan hoort de RPC weg.',
-  neem_aandeel:
-    'Schrijfpad van een aandeel (0301, QS8-654). Het scherm is QS8-658. ' +
-    '**Vraag:** krijgt hij daar een aanroeper? Zo ja, dan gaat deze rij weg zodra die er is; ' +
-    'zo nee, dan hoort de RPC weg.',
+  // ⚠️ De drie teamdoel-RPC's van 0301 en 0302 (QS8-654, QS8-655) stonden hier tot
+  //    18-11-2026: het scherm is QS8-658 en heeft de aanroepers gebouwd.
 };
 
 /** Bestanden waarin een aanroep als "productie" telt. Tests en scripts niet. */
