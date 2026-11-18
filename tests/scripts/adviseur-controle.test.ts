@@ -1,6 +1,12 @@
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 
-import { ALLOWLIST, beoordeel, normaliseer } from '../../scripts/adviseur-controle.mjs';
+import {
+  ALLOWLIST,
+  ApiStatusFout,
+  beoordeel,
+  draai,
+  normaliseer,
+} from '../../scripts/adviseur-controle.mjs';
 
 /**
  * `adviseur:controle` legt Supabase' eigen linter naast een allowlist — QS8-235.
@@ -227,5 +233,88 @@ describe('de allowlist zelf', () => {
       expect(heeftSleutel !== heeftRegel, JSON.stringify(regel)).toBe(true);
       if (heeftRegel) expect(typeof regel.hoogstens).toBe('number');
     }
+  });
+});
+
+/**
+ * De exitcode op de naad — QS8-684.
+ *
+ * ⚠️ **De belofte is: dezelfde uitslag en dezelfde exitcode op Linux en Windows,
+ *    en het proces sluit zichzelf niet af.** `draai()` geeft de code terug; de
+ *    Windows-crash zelf (`async.c`, exit -1073740791) is hier niet te zien en is
+ *    een meting voor Quinten. Wat wél te toetsen is dat elke uitslag een getal
+ *    is dat de ingang in `process.exitCode` zet — zonder netwerk, met een
+ *    geïnjecteerde `haalOp`.
+ */
+describe('draai: de exitcode zonder netwerk', () => {
+  afterEach(() => vi.restoreAllMocks());
+
+  const stil = () => ({
+    log: vi.spyOn(console, 'log').mockImplementation(() => undefined),
+    error: vi.spyOn(console, 'error').mockImplementation(() => undefined),
+  });
+
+  /** Precies de bevindingen die de allowlist verwacht: verklaard, niets te ruim. */
+  function verklaard() {
+    return ALLOWLIST.flatMap((regel) =>
+      regel.sleutel
+        ? [{ name: 'x', level: 'INFO', detail: '', cache_key: regel.sleutel }]
+        : Array.from({ length: regel.hoogstens ?? 0 }, () => ({
+            name: regel.regel,
+            level: 'WARN',
+            detail: '',
+            cache_key: '',
+          })),
+    );
+  }
+
+  it('alles verklaard geeft 0', async () => {
+    const uit = stil();
+    const haalOp = vi.fn().mockResolvedValue(verklaard());
+    await expect(draai({ token: 't', streng: false }, haalOp)).resolves.toBe(0);
+    expect(haalOp).toHaveBeenCalledWith({ token: 't' });
+    expect(uit.log.mock.calls.join('\n')).toContain('allemaal verklaard');
+  });
+
+  it('een onverwachte bevinding geeft 1 en noemt hem', async () => {
+    const uit = stil();
+    const haalOp = vi.fn().mockResolvedValue([
+      ...verklaard(),
+      { name: 'nieuw_ding', level: 'ERROR', detail: 'iets nieuws', cache_key: 'nieuw_ding_x' },
+    ]);
+    await expect(draai({ token: 't', streng: false }, haalOp)).resolves.toBe(1);
+    expect(uit.error.mock.calls.join('\n')).toContain('nieuw_ding');
+  });
+
+  it('een verouderde regel (de ratel naar beneden) geeft 1', async () => {
+    const uit = stil();
+    const haalOp = vi.fn().mockResolvedValue(verklaard().slice(1));
+    await expect(draai({ token: 't', streng: false }, haalOp)).resolves.toBe(1);
+    expect(uit.error.mock.calls.join('\n')).toContain('verouderd');
+  });
+
+  it('zonder token: overgeslagen is 0, streng is 1, en er wordt niets opgehaald', async () => {
+    const uit = stil();
+    const haalOp = vi.fn();
+    await expect(draai({ token: undefined, streng: false }, haalOp)).resolves.toBe(0);
+    expect(uit.error.mock.calls.join('\n')).toContain('OVERGESLAGEN');
+    await expect(draai({ token: undefined, streng: true }, haalOp)).resolves.toBe(1);
+    expect(haalOp).not.toHaveBeenCalled();
+  });
+
+  it('een API-statusfout geeft 1 met de statuscode', async () => {
+    const uit = stil();
+    const haalOp = vi.fn().mockRejectedValue(new ApiStatusFout(401));
+    await expect(draai({ token: 't', streng: false }, haalOp)).resolves.toBe(1);
+    expect(uit.error.mock.calls.join('\n')).toContain('de API gaf 401.');
+  });
+
+  it('een netwerkfout en een onbegrepen antwoord geven allebei 1', async () => {
+    const uit = stil();
+    const stuk = vi.fn().mockRejectedValue(new Error('fetch failed'));
+    await expect(draai({ token: 't', streng: false }, stuk)).resolves.toBe(1);
+    const raar = vi.fn().mockResolvedValue({ iets: 'anders' });
+    await expect(draai({ token: 't', streng: false }, raar)).resolves.toBe(1);
+    expect(uit.error.mock.calls.join('\n')).toContain('ophalen mislukt');
   });
 });
