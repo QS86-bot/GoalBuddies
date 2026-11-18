@@ -53,48 +53,53 @@ import { scrubContext } from '../../supabase/functions/_shared/observability/scr
  *       (nagemeten bij de review van de batch, 17-11-2026).
  *    8. (QS8-691) In `bladerOpSleutel()` weer op offset gebladerd → alleen
  *       "slaat niemand over als tokens tíjdens de run verdwijnen" rood.
- *    9.–30. (QS8-690, drie reviewrondes, 📏 17-11-2026: telkens één mutatie in
- *       de bron en `edge:sync`, en de rode toetsen hieronder zijn de toetsen van
- *       dit bestand en `webpush-verzenden.test.ts` samen, **gemeten op de
- *       suite zoals hij nu staat** — 61 toetsen):
- *       - `abonnementFout()` noemt elke worp `ongeldig` → de drie
- *         "maakt … een mislukking"-toetsen en hier "wist niets als WebCrypto
- *         stuk is voor één abonnement…".
- *       - geen onderbreker → 8 rood, waaronder hier "wist niets als elk
- *         abonnement van de run ongeldig is" en beide alarmtoetsen van de
- *         onderbreker.
- *       - delete alleen op `token` → de drie "wist precies / hoogstens"-toetsen.
- *       - elke uitkomst behalve `bezorgd` wist → 9 rood, waaronder de vijf
- *         "wist niets…"-toetsen en "een verdwenen abonnement met drie
- *         meldingen…".
- *       - `ongeldig` meteen wissen → de onderbreker-toets, "…voor elk
- *         abonnement stuk is" en "wist precies het ongeldige…".
+ *    9. QS8-690: elke grendel apart gebroken, 📏 gemeten op 18-11-2026 op de
+ *       suite zoals hij nu staat (64 toetsen in dit bestand en
+ *       `webpush-verzenden.test.ts` samen). Per mutatie het aantal rode
+ *       toetsen; "alleen" staat er alleen waar het er precies één is.
+ *       - `abonnementFout()` noemt elke worp `ongeldig` → 4: de drie "maakt …
+ *         een mislukking"-toetsen en "wist niets als WebCrypto stuk is voor
+ *         één abonnement…".
+ *       - geen onderbreker → 8, waaronder "wist niets als elk abonnement van de
+ *         run ongeldig is" en beide alarmtoetsen van de onderbreker.
+ *       - delete alleen op `token` → 5: elke toets die de filters van een
+ *         delete vergelijkt ("wist precies…" ×2, "wist hoogstens drie…",
+ *         "een verdwenen abonnement met drie meldingen…", "meldt geen
+ *         _ongeldig-alarm bij normaal verloop…").
+ *       - elke uitkomst behalve `bezorgd` wist → 11, waaronder de vijf "wist
+ *         niets…"-toetsen.
+ *       - de `weg`-tak in `stuurWeb()` ook voor `ongeldig` laten gelden
+ *         (`status === 'weg' || status === 'ongeldig'`) → 8,
+ *         waaronder "wist niets als elk abonnement van de run ongeldig is".
  *       - de payloadgrens vóór de abonnementstoets → alleen "toetst het
  *         abonnement vóór de grens op de payload".
  *       - `ligtOpP256()` uitgezet → alleen "ziet een punt dat niet op de curve
  *         ligt als ongeldig zonder importKey…". ⚠️ Zonder die toets bleef alles
  *         groen, want Node's `importKey()` vangt het punt wél; in Deno niet.
- *       - plafond op 1000 → 6 rood: de drie plafondtoetsen en de drie
- *         plafondalarmen.
- *       - een `ongetoetst` mislukt telt toch mee → "telt een mislukking …
+ *       - plafond op 1000 → 6: de drie plafondtoetsen en de drie plafondalarmen.
+ *       - een `ongetoetst` mislukt telt toch mee → 2: "telt een mislukking …
  *         niet als bewijs" en "…voor elk abonnement stuk is".
  *       - de logregel van de onderbreker weg → alleen de onderbreker-toets.
  *       - de URL in de foutreden → alleen "zet geen endpoint in de reden…".
  *       - uitkomsten tellen in plaats van rijen → alleen "weegt rijen…".
- *       - de `isWeg()`-overslag in `stuurWeb()` weg → alleen "een verdwenen
- *         abonnement met drie meldingen…".
- *       - de code van het onderbreker-alarm veranderd → alleen "meldt
- *         webpush_alles_ongeldig…"; `ALARM_VANAF` op 1000 → dezelfde.
+ *       - de `isWeg()`-overslag weg → alleen "een verdwenen abonnement met
+ *         drie meldingen…".
+ *       - de code van het onderbreker-alarm veranderd, of `ALARM_VANAF` op 1000
+ *         → alleen "meldt webpush_alles_ongeldig…".
  *       - `ALARM_VANAF` op 1 → alleen "meldt niets naar Sentry … bij twee…".
- *       - `meldPlafond()` niet aangeroepen, of één code voor beide bronnen →
- *         3 rood: de twee "meldt webpush_wisplafond_…"-toetsen en "geeft de
- *         twee plafondalarmen elk een eigen foutmelding…".
- *       - de bron in `ruimOngeldigeOp()` op `weg` gezet → 2 rood: "meldt
- *         webpush_wisplafond_ongeldig…" en "geeft de twee plafondalarmen…".
+ *       - `meldPlafond()` niet aangeroepen, één code voor beide bronnen, of een
+ *         code die `scrubContext()` niet doorlaat → telkens 3: de twee "meldt
+ *         webpush_wisplafond_…"-toetsen en "geeft de twee plafondalarmen…".
+ *       - de bron in `ruimOngeldigeOp()` op `weg` gezet → 3: "meldt
+ *         webpush_wisplafond_ongeldig…", "geeft de twee plafondalarmen…" en
+ *         "meldt geen _ongeldig-alarm bij normaal verloop…".
  *       - één foutmelding voor beide bronnen → alleen "geeft de twee
  *         plafondalarmen elk een eigen foutmelding…".
- *       - een code met koppeltekens (komt niet door `scrubContext()`) → de drie
- *         toetsen die op een plafondcode letten.
+ *       - één gedeelde teller voor beide bronnen (de vorm van vóór de derde
+ *         batch-review) → 2: "geeft weg een eigen plafond…" en "meldt geen
+ *         _ongeldig-alarm bij normaal verloop…".
+ *       - `isPushdienst()` ná `maakPakket()` → alleen "toetst het endpoint vóór
+ *         het versleutelen…".
  *       - `redirect: 'manual'` weg → alleen "volgt geen redirect…".
  */
 
@@ -659,7 +664,7 @@ describe('web push: wat een rij in push_tokens kost — QS8-690', () => {
     for (const filter of wereld.gewist) expect(rijen.slice(1).map(filtersVan)).toContainEqual(filter);
   });
 
-  it('deelt het plafond met verdwenen abonnementen', async () => {
+  it('wist hoogstens drie verdwenen abonnementen per run', async () => {
     const rijen = await zetWebKlaar([P256DH, P256DH, P256DH, P256DH, P256DH]);
     for (const rij of rijen) wereld.webAntwoord.set(rij.token, 410);
     await draai();
@@ -669,9 +674,8 @@ describe('web push: wat een rij in push_tokens kost — QS8-690', () => {
 
   it('een verdwenen abonnement met drie meldingen in één run kost één verzoek, één wis en één plek', async () => {
     // ⚠️ Tweede batch-review op QS8-690: `apparaten` wordt één keer per profiel
-    //    gelezen en voor elke melding hergebruikt. Telde `weg` per melding, dan
-    //    vulde dit ene abonnement het hele plafond en bleven de ongeldige rijen
-    //    van de anderen staan.
+    //    gelezen en voor elke melding hergebruikt. Zonder `isWeg()` kostte dit
+    //    ene abonnement drie verzoeken en drie deletes op één rij.
     wereld.werk = 3;
     const rijen = await zetWebKlaar([P256DH, NIET_OP_DE_CURVE, NIET_OP_DE_CURVE, P256DH]);
     const verdwenen = rijen[0]!;
@@ -726,15 +730,28 @@ describe('de alarmen van de opruiming — QS8-690, tweede batch-review', () => {
       P256DH, P256DH, P256DH, P256DH, P256DH, ...Array.from({ length: 4 }, () => NIET_OP_DE_CURVE),
     ]);
     for (const rij of rijen.slice(1, 5)) wereld.webAntwoord.set(rij.token, 410);
-    // Vier `weg` en vier `ongeldig` tegen een plafond van drie: `weg` wist
-    // tijdens het versturen en houdt er één over, `ongeldig` komt daarna en
-    // houdt er vier over. Beide bronnen melden dus.
+    // Vier `weg` en vier `ongeldig`, elk tegen een eigen plafond van drie:
+    // `weg` houdt er één tegen, `ongeldig` ook één. Beide bronnen melden dus.
     await draai();
 
     const plafond = wereld.alarmteksten.filter((t) => t.startsWith('wisplafond'));
     expect(wereld.alarmen).toEqual(expect.arrayContaining(['webpush_wisplafond_weg', 'webpush_wisplafond_ongeldig']));
     expect(plafond).toHaveLength(2);
     expect(new Set(plafond).size).toBe(2);
+  });
+
+  it('meldt geen _ongeldig-alarm bij normaal verloop: drie verdwenen, één ongeldig en één bezorgd', async () => {
+    // ⚠️ Derde batch-review, 📏 nagespeeld door de code-critic: met één gedeelde
+    //    teller vulden de drie 410's het plafond, werd de ongeldige rij als
+    //    tegengehouden geteld, en ging het alarm voor een kapotte toets af.
+    const rijen = await zetWebKlaar([P256DH, P256DH, P256DH, NIET_OP_DE_CURVE, P256DH]);
+    for (const rij of rijen.slice(0, 3)) wereld.webAntwoord.set(rij.token, 410);
+    await draai();
+
+    expect(wereld.gewist).toHaveLength(4);
+    expect(wereld.gewist).toContainEqual({ token: rijen[3]!.token, p256dh: rijen[3]!.p256dh, auth: rijen[3]!.auth });
+    expect(wereld.alarmen.filter((c) => c.startsWith('webpush_wisplafond'))).toEqual([]);
+    expect(wereld.alarmen).not.toContain('[weggelaten]');
   });
 
   it('meldt geen plafond als niets werd tegengehouden', async () => {

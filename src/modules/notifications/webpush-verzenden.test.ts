@@ -399,14 +399,36 @@ describe('de rem na de security-review op het herstel — 17-11-2026', () => {
     expect(opruimbesluit(lijst).onderbroken).toBe(true);
   });
 
-  it('laat per run hoogstens MAX_WISSEN_PER_RUN wissingen toe en telt de rest', () => {
+  it('laat per run en per bron hoogstens MAX_WISSEN_PER_RUN wissingen toe en telt de rest', () => {
     const lijst = nieuweOpruimlijst();
     const toegestaan = Array.from({ length: MAX_WISSEN_PER_RUN + 2 }, () => magWissen(lijst, 'ongeldig')).filter(Boolean);
-    expect(magWissen(lijst, 'weg')).toBe(false);
 
     expect(MAX_WISSEN_PER_RUN).toBe(3);
     expect(toegestaan).toHaveLength(MAX_WISSEN_PER_RUN);
-    expect(lijst.tegengehouden).toEqual({ ongeldig: 2, weg: 1 });
+    expect(lijst.tegengehouden).toEqual({ ongeldig: 2, weg: 0 });
+  });
+
+  it('geeft weg een eigen plafond: een vol ongeldig-plafond houdt geen verdwenen abonnement tegen, en andersom', () => {
+    // ⚠️ Derde batch-review: met één gedeelde teller ging `_ongeldig` af na
+    //    drie gewone 404/410's.
+    const lijst = nieuweOpruimlijst();
+    for (let i = 0; i < MAX_WISSEN_PER_RUN; i += 1) expect(magWissen(lijst, 'weg')).toBe(true);
+    expect(magWissen(lijst, 'ongeldig')).toBe(true);
+    expect(lijst.tegengehouden).toEqual({ ongeldig: 0, weg: 0 });
+  });
+
+  it('toetst het endpoint vóór het versleutelen: een vreemd adres heet geen VAPID-fout', async () => {
+    // ⚠️ Derde batch-review: stond `isPushdienst()` na `maakPakket()`, dan werd
+    //    een kapot endpoint met een kapotte sleutel als VAPID-fout gelogd.
+    const uit = await verstuurWebPush({
+      doel: { ...DOEL, endpoint: 'https://elders.test/push/x' },
+      bericht: BERICHT,
+      sleutels: { publiek: 'onzin', prive: 'onzin', subject: 'mailto:test@example.com' },
+      nu: NU,
+      fetchImpl: antwoordt(201),
+    });
+
+    expect(uit.status === 'mislukt' && uit.reden).toBe('endpoint is geen bekende pushdienst');
   });
 
   it('volgt geen redirect: een 3xx is mislukt en geen verdwenen abonnement', async () => {

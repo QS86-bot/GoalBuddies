@@ -1573,7 +1573,7 @@ function vapidUitOmgeving(): VapidSleutels | null {
  *    - `weg` (404 of 410): het abonnement bestaat niet meer — de gebruiker heeft
  *      zijn toestemming ingetrokken of de browser opnieuw geïnstalleerd. Dat zegt
  *      de pushdienst, niet onze code, en de rij gaat meteen weg — binnen het
- *      plafond van `MAX_WISSEN_PER_RUN`, dat `weg` en `ongeldig` samen delen.
+ *      plafond van `MAX_WISSEN_PER_RUN` voor `weg` (`ongeldig` heeft een eigen).
  *    - `ongeldig` (QS8-690): het abonnement zelf is niet te versleutelen. Dat
  *      oordeel komt van onze eigen code en wordt hier alleen **genoteerd**; of
  *      de rij weggaat beslist `ruimOngeldigeOp()` aan het eind van de run, achter
@@ -1691,11 +1691,14 @@ async function ruimOngeldigeOp(db: Db, opruim: Opruimlijst): Promise<void> {
 /**
  * Meldt wat het plafond tegenhield, met een eigen code per bron.
  *
- * ⚠️ **Twee codes en niet één** (tweede batch-review). Het plafond is bij een
- *    gedeeltelijk kapotte toets de énige rem, en dan is dit alarm het enige
- *    signaal. Normaal verloop (`weg`) mag dat signaal niet overstemmen: bij veel
- *    gebruikers gaat `webpush_wisplafond_weg` vaker af, en
- *    `webpush_wisplafond_ongeldig` is dan nog steeds te onderscheiden.
+ * ⚠️ **Twee codes, twee foutmeldingen en twee plafonds** (tweede en derde
+ *    batch-review). Het plafond is bij een gedeeltelijk kapotte toets de énige
+ *    rem, en `webpush_wisplafond_ongeldig` dan het enige signaal. Normaal
+ *    verloop (`weg`) mag dat signaal niet overstemmen en ook niet veroorzaken:
+ *    `weg` heeft daarom een eigen plafond (`magWissen(opruim, 'weg')`), en
+ *    `_ongeldig` telt alleen wat `ongeldig` zelf opmaakte. Een eigen code alleen
+ *    was niet genoeg: met een gedeelde teller ging `_ongeldig` af na drie gewone
+ *    404/410's.
  */
 async function meldPlafond(opruim: Opruimlijst): Promise<void> {
   for (const bron of ['weg', 'ongeldig'] as const) {

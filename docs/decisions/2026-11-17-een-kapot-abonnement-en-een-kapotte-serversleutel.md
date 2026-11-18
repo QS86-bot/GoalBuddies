@@ -49,7 +49,8 @@ bij staan verklaart waarom de andere zes niet op de sleutel strandden.
    deugt gaat weg, ook als onze sleutel óók kapot is.
 
 ⚠️ **Dit gooit gegevens weg** (grens 2 in `CLAUDE.md`): de 9 structureel kapotte rijen
-verdwijnen bij de eerstvolgende ronde na de deploy. Het zijn rijen die nooit iets
+verdwijnen na de deploy *(sinds besluit 5a: hoogstens drie per run, dus op zijn
+vroegst in drie runs)*. Het zijn rijen die nooit iets
 hebben kunnen afleveren en die de gebruiker met een nieuwe registratie vervangt;
 er gaat geen geschiedenis mee. Conservatiefste keuze die het issue afmaakt, maar
 wie de rijen eerst wil bekijken, haalt ze op met de telling hierboven.
@@ -112,13 +113,16 @@ een kapotte toets altijd geeft en een verzameling echte abonnementen nooit. Geto
 wordt per **rij** en niet per uitkomst, en een `mislukt` waarbij het abonnement zelf
 niet getoetst kon worden telt niet mee als bewijs.
 
-**5a. Een plafond: hoogstens 3 wissingen per run, `weg` en `ongeldig` samen**
+**5a. Een plafond: hoogstens 3 wissingen per run per bron, dus hoogstens 6 per run**
+*(eerst 3 gedeeld door `weg` en `ongeldig`; sinds de derde batch-review per bron, zie 10)*
 (security-review op het herstel). De onderbreker vangt alleen een fout die élk
 abonnement raakt. 📏 Een `vanBase64url()` zonder de `-`/`_`-vertaling raakt er volgens
 de reviewer 96,4% (gemeten over 20.000 sleutels; zelf nagerekend als ≈ (62/64)^109):
 de rest wordt bezorgd en de onderbreker springt niet. Wat boven het plafond valt
-blijft staan en gaat als `webpush_wisplafond` naar Sentry. De 9 kapotte rijen van
-17-11 zijn zo in drie runs weg.
+blijft staan en gaat naar Sentry, sinds 8 als `webpush_wisplafond_weg` of
+`webpush_wisplafond_ongeldig`. De 9 kapotte rijen van
+17-11 zijn zo op zijn vroegst in drie runs weg: een rij wordt alleen getoetst als
+zijn eigenaar die run een web-melding krijgt.
 
 *Waarom geen drempel op het aandeel.* De code-critic stelde "onderbreken boven 50%"
 voor. 📏 Op productie is vandaag 9 van 16 = 56% kapot; die drempel zou precies de
@@ -132,7 +136,7 @@ kapotte rij nooit weg. Over de run weegt elk bruikbaar abonnement van een ander 
 bewijs dat de toets werkt. *De prijs:* een run die alleen kapotte abonnementen ziet,
 ruimt niets op; de rij gaat pas weg in een run die ook een bruikbare tegenkomt.
 `weg` (404/410) valt buiten de onderbreker: dat oordeel komt van de pushdienst en
-wordt direct uitgevoerd, maar deelt het plafond van 5a.
+wordt direct uitgevoerd, binnen een eigen plafond (zie 10).
 
 *En daarom staat de toets op het abonnement nu vóór de grens op de payload.* Elke
 uitkomst telt in de onderbreker als een oordeel over het abonnement; een `mislukt`
@@ -157,7 +161,9 @@ verstuurd, gewist of geteld.
 `webpush_alles_ongeldig` (vanaf `ALARM_VANAF` = 3 getoetste abonnementen),
 `webpush_wisplafond_weg` en `webpush_wisplafond_ongeldig`. Twee codes en niet één:
 bij een gedeeltelijk kapotte toets is het plafond de énige rem en dit alarm het
-enige signaal, en normaal verloop (`weg`) mag dat niet overstemmen. 📏 Eerder liet
+enige signaal, en normaal verloop (`weg`) mag dat niet overstemmen. *(Dat hield pas
+stand met besluit 10: met één gedeelde teller ging `_ongeldig` nog af na drie gewone
+404/410's.)* 📏 Eerder liet
 `meld()` weghalen of `ALARM_VANAF` op 1000 zetten alles groen; nu wordt elk van die
 mutaties rood (de lijst staat in de kop van
 `tests/beloftes/notificaties-binnen-de-wandklok.test.ts`).
@@ -174,6 +180,34 @@ en omzeilde de allowlist van 0117. Nu `redirect: 'manual'`; een 3xx is `mislukt`
 **"Per run", niet "per uur".** Het plafond geldt per run. De uurjob draait elk
 uur, maar een `workflow_dispatch` is ook een run en telt opnieuw.
 
+## Derde batch-review, 17-11-2026
+
+**10. Een eigen plafond per bron.** 📏 De code-critic speelde na: drie gewone 410's,
+één bezorgde en één ongeldige rij gaven `gewist: 3` en `tegengehouden.ongeldig: 1`,
+en dus `webpush_wisplafond_ongeldig` bij normaal verloop. Dat is precies het alarm
+dat een kapotte toets moet melden. Nu telt `magWissen()` per bron: drie voor `weg`,
+drie voor `ongeldig`. Een run wist er daarmee hoogstens zes; een kapotte toets nog
+steeds hoogstens drie.
+
+⚠️ **Wat dit níet dicht** (security-review, vierde ronde). Langs `weg` kan normaal
+verloop het `_ongeldig`-alarm niet meer laten afgaan. Een gebruiker kan het nog wel
+zelf: `registreer_push_token()` toetst `p256dh` alleen op lengte, dus wie vier
+abonnementen met een punt buiten de curve registreert en een melding krijgt, laat
+`webpush_wisplafond_ongeldig` afgaan, en houdt de drie `ongeldig`-plekken van die run
+bezet. Er gaat geen gegeven verloren buiten wat het plafond toelaat, maar het enige
+alarm voor een kapotte toets kan zo ruis worden. **De reparatie is QS8-696**: dezelfde
+vormtoets bij het registreren, zodat `ongeldig` in de praktijk alleen nog rijen van
+vóór die migratie of een kapotte toets betekent. Tot dan staat dit open.
+
+Een naadtest bij besluit 10 legt normaal verloop vast: geen `_ongeldig`-alarm, en de
+ongeldige rij gaat gewoon weg.
+
+**11. `isPushdienst()` vóór het versleutelen.** Daarvoor werd een rij met een kapot
+endpoint (alleen van vóór 0117 mogelijk) als versleutel- of VAPID-fout gelogd. De
+sterkste reden: `vapidAuthorization()` doet `new URL(endpoint).origin`, dus een
+endpoint dat geen URL is gaf "VAPID-sleutel onbruikbaar" óók met een goede sleutel —
+en dat stuurt de beheerder naar het roteren van `VAPID_PRIVATE_KEY`.
+
 ## Pad terug
 
 **`origin/main` zonder QS8-690** (bijvoorbeeld `ee355b66`): daar wist alleen een
@@ -182,6 +216,12 @@ uur, maar een `workflow_dispatch` is ook een run en telt opnieuw.
 ⚠️ **Teruggaan zet ook besluit 9 terug:** daar volgt `fetch` weer redirects, en dan
 kan een 404 van een ander adres via een 3xx een rij wissen, zonder plafond. Wil je
 alleen het opruimen kwijt, zet dan `MAX_WISSEN_PER_RUN` op 0 en ga niet terug.
+⚠️ Dat stopt óók het opruimen van `weg` (404/410): verdwenen abonnementen blijven
+dan staan, en elke run met zo'n antwoord meldt `webpush_wisplafond_weg`. Op 0 gaat
+ook elke ongeldige rij naar `tegengehouden`, dus elke niet-onderbroken run met een
+ongeldige rij meldt `webpush_wisplafond_ongeldig` — het enige alarm voor een kapotte
+toets wordt dan ruis. Demp beide alarmen in Sentry zolang de knop op 0 staat, of kies
+tijdelijk 1.
 
 ⚠️ **`fc30d687` is geen terugvalpunt.** Dat is de eerste ronde, afgekeurd omdat
 `abonnementFout()` daar elke exceptie als `ongeldig` las: één WebCrypto-regressie

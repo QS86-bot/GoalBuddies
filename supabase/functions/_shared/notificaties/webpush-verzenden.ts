@@ -158,7 +158,9 @@ export function isPushdienst(endpoint: string): boolean {
 }
 
 /**
- * De uitkomst van de toets op het abonnement zelf: `null` als het bruikbaar is.
+ * Het oordeel van de toets op het abonnement zelf, als hij het afkeurt of niet
+ * kan toetsen. `abonnementFout()` geeft `Abonnementoordeel | null`; `null`
+ * betekent bruikbaar en hoort bij de functie, niet bij dit type.
  */
 export type Abonnementoordeel =
   | { readonly status: 'ongeldig'; readonly reden: string }
@@ -335,19 +337,26 @@ export async function verstuurWebPush(invoer: {
     return { status: 'mislukt', reden: `bericht is ${payload.length} bytes, meer dan ${PAYLOAD_MAX}` };
   }
 
-  const pakket = await maakPakket(invoer, payload);
-  if ('reden' in pakket) return { status: 'mislukt', reden: pakket.reden };
-  const { body, vapid } = pakket;
-
   // ⚠️ **Tweede slot, en het staat hier omdat dit de plek is die het doet.**
   //    0117 laat `registreer_push_token()` het adres al toetsen, maar deze
   //    `fetch()` draait onder `service_role` vanuit het Supabase-netwerk: hij is
   //    de aanvrager. Rijen die vóór 0117 zijn opgeslagen komen hier nog steeds
   //    langs, en een tweede schrijfpad naar `push_tokens` zou de eerste toets
   //    omzeilen. Een grendel op de plek van de handeling overleeft allebei.
+  //
+  // ⚠️ **En vóór het versleutelen** (derde batch-review). Stond hij erna, dan
+  //    werd een rij met een kapot endpoint als "versleutelen mislukte" of
+  //    "VAPID-sleutel onbruikbaar" gelogd: een fout over de verkeerde kant.
+  //    `vapidAuthorization()` doet `new URL(endpoint).origin`, dus een endpoint
+  //    dat geen URL is gaf die VAPID-fout óók met een goede sleutel — en dat
+  //    stuurt de beheerder naar het roteren van `VAPID_PRIVATE_KEY`.
   if (!isPushdienst(invoer.doel.endpoint)) {
     return { status: 'mislukt', reden: 'endpoint is geen bekende pushdienst' };
   }
+
+  const pakket = await maakPakket(invoer, payload);
+  if ('reden' in pakket) return { status: 'mislukt', reden: pakket.reden };
+  const { body, vapid } = pakket;
 
   try {
     const antwoord = await invoer.fetchImpl(invoer.doel.endpoint, {
@@ -381,7 +390,7 @@ export async function verstuurWebPush(invoer: {
 }
 
 /**
- * Hoeveel rijen één run van de notificatiejob ten hoogste uit `push_tokens` wist.
+ * Hoeveel rijen één run van de notificatiejob per bron ten hoogste uit `push_tokens` wist.
  *
  * ⚠️⚠️ **Het plafond is de rem die elke toekomstige fout klein houdt**
  *    (security-review op het herstel, 17-11-2026). De onderbreker hieronder vangt
@@ -391,17 +400,30 @@ export async function verstuurWebPush(invoer: {
  *    bezorgd, de onderbreker springt niet — en zonder plafond is bijna iedereen
  *    zijn web-meldingen in één run kwijt.
  *
- *    Drie per run, gedeeld door `weg` en `ongeldig`: de 9 kapotte rijen van
- *    17-11-2026 zijn zo in drie runs weg, en een fout kost per **run** hoogstens
- *    drie rijen en een melding in Sentry. Per run en niet per uur: een
- *    `workflow_dispatch` is een run en telt opnieuw. Wat boven het plafond valt,
- *    blijft staan.
+ *    **Drie per run, per bron**: drie voor `weg` en drie voor `ongeldig`, dus
+ *    hoogstens zes rijen per run, en een kapotte toets hoogstens drie. De 9
+ *    kapotte rijen van 17-11-2026 zijn zo op zijn vroegst in drie runs weg, en een kapotte toets
+ *    kost per **run** hoogstens drie rijen en een melding in Sentry. Per run en
+ *    niet per uur: een `workflow_dispatch` is een run en telt opnieuw. Wat boven
+ *    het plafond valt, blijft staan.
+ *
+ * ⚠️⚠️ **Een eigen plafond per bron, en niet één gedeeld** (derde batch-review,
+ *    17-11-2026). 📏 Met één teller vulden drie gewone 404/410's het plafond, en
+ *    werd daarna elke ongeldige rij als tegengehouden geteld: dan ging
+ *    `webpush_wisplafond_ongeldig` af bij normaal verloop, terwijl dat juist het
+ *    alarm is voor een kapotte toets. Gescheiden telt `_ongeldig` alleen nog wat
+ *    `ongeldig` zelf opmaakte.
+ *
+ * ⚠️ **Open tot QS8-696:** een gebruiker kan `_ongeldig` nog zelf laten afgaan
+ *    door abonnementen met een punt buiten de curve te registreren —
+ *    `registreer_push_token()` toetst alleen de lengte. Zie besluit 10 in
+ *    `docs/decisions/2026-11-17-een-kapot-abonnement-en-een-kapotte-serversleutel.md`.
  *
  * ⚠️⚠️ **Per rij en niet per melding** (tweede batch-review, 17-11-2026). Eén
  *    profiel krijgt in een run soms drie meldingen, en `apparaten` wordt één
  *    keer per profiel gelezen. 📏 Telde `weg` per melding, dan kostte één
  *    verdwenen abonnement drie plekken van het plafond, bleef een echt ongeldige
- *    rij staan, en ging `webpush_wisplafond` als routineruis naar Sentry. Daarom
+ *    rij staan, en ging het plafondalarm als routineruis naar Sentry. Daarom
  *    `noteerUitkomst()` en `isWeg()`: een rij die deze run al weg is, wordt niet
  *    opnieuw verstuurd, niet opnieuw gewist en niet opnieuw geteld.
  */
@@ -440,8 +462,8 @@ export interface Opruimlijst {
   readonly kandidaten: Map<string, { readonly doel: WebPushDoel; readonly reden: string }>;
   /** De abonnementen die de pushdienst deze run `weg` noemde, één keer elk. */
   readonly weg: Set<string>;
-  /** Hoeveel rijen er deze run al gewist zijn, `weg` en `ongeldig` samen. */
-  gewist: number;
+  /** Hoeveel rijen er deze run al gewist zijn, per bron — elk een eigen plafond. */
+  readonly gewist: Record<Wisbron, number>;
   /** Hoeveel rijen het plafond tegenhield, per bron — elk een eigen alarm. */
   readonly tegengehouden: Record<Wisbron, number>;
 }
@@ -451,7 +473,7 @@ export function nieuweOpruimlijst(): Opruimlijst {
     getoetst: new Set(),
     kandidaten: new Map(),
     weg: new Set(),
-    gewist: 0,
+    gewist: { weg: 0, ongeldig: 0 },
     tegengehouden: { weg: 0, ongeldig: 0 },
   };
 }
@@ -485,11 +507,11 @@ export function noteerUitkomst(lijst: Opruimlijst, doel: WebPushDoel, uitkomst: 
  *    `await` kan staan: acht profielen lopen tegelijk.
  */
 export function magWissen(lijst: Opruimlijst, bron: Wisbron): boolean {
-  if (lijst.gewist >= MAX_WISSEN_PER_RUN) {
+  if (lijst.gewist[bron] >= MAX_WISSEN_PER_RUN) {
     lijst.tegengehouden[bron] += 1;
     return false;
   }
-  lijst.gewist += 1;
+  lijst.gewist[bron] += 1;
   return true;
 }
 
