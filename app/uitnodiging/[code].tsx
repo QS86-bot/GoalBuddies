@@ -16,6 +16,7 @@ import {
   uitnodigingsStand,
   verwerkToetreding,
   type ToetredenUitvoer,
+  useAutomatischToetreden,
   vergeetOpenstaandeUitnodiging,
   zichtbaarheidLabels,
   zichtbaarheidUitleg,
@@ -65,10 +66,6 @@ export default function UitnodigingScherm() {
   const [bezig, setBezig] = useState(false);
   const [fout, setFout] = useState<string | null>(null);
   const [binnen, setBinnen] = useState<string | null>(null);
-
-  /** Had dit scherm al een sessie toen het openging? Dan kwam je hier niet via aanmelden. */
-  const sessieBijBinnenkomst = useRef<boolean | null>(null);
-  const automatischGeprobeerd = useRef(false);
 
   // ⚠️ Onthouden vóór alles, en apart van het laden. Gaat de bezoeker hierna
   //    aanmelden, dan overleeft de uitnodiging de bevestigingsmail en de
@@ -156,42 +153,14 @@ export default function UitnodigingScherm() {
     verwerkToetreding(uitkomst, uitvoer);
   }, [code, uitvoer]);
 
-  /**
-   * Verschijnt er een sessie terwijl dit scherm openstaat, dan kwam die van het
-   * aanmeldscherm hiernaast — en dan is toetreden geen extra stap meer.
-   *
-   * ⚠️ Deze route zet geen `bezig` vóór de aanroep, anders is dat een setState in
-   *    de body van een effect en dus een cascade van renders. De toestand
-   *    verandert hier uitsluitend in de callback.
-   *
-   * ⚠️ De ref en niet de state als slot. State is pas bij de volgende render
-   *    bijgewerkt, en tot dat moment zou een tweede effectronde nog een keer
-   *    kunnen toetreden — en elke toetreding kost een poging uit de dagelijkse
-   *    limiet van twintig.
-   */
-  useEffect(() => {
-    if (sessieLaadt) return;
-
-    // De momentopname staat in dezelfde effect-body als de beslissing die hem
-    // gebruikt. Dat is geen elegantie maar noodzaak: een ref uitlezen tijdens de
-    // render mag niet, en twee losse effecten geven geen vaste volgorde.
-    if (sessieBijBinnenkomst.current === null) {
-      sessieBijBinnenkomst.current = session !== null;
-    }
-
-    if (!session || uitnodiging === null || !code) return;
-    if (!magToetreden) return;
-    if (sessieBijBinnenkomst.current !== false) return;
-    if (automatischGeprobeerd.current) return;
-
-    automatischGeprobeerd.current = true;
-
-    neemDeel(code)
-      .then((uitkomst) => verwerkToetreding(uitkomst, uitvoer))
-      .catch(() => {
-        if (gemount.current) setFout(t('uitnodiging.deelnemen_mislukt'));
-      });
-  }, [sessieLaadt, session, uitnodiging, code, uitvoer, magToetreden]);
+  useAutomatischToetreden({
+    sessieLaadt,
+    ingelogd: session !== null,
+    code,
+    magToetreden,
+    uitvoer,
+    toetreden: neemDeel,
+  });
 
   return (
     <Screen
