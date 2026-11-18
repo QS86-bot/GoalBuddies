@@ -1,7 +1,7 @@
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it } from 'vitest';
 
 import { overTeNemen, slotInDotenv } from '../../src/lib/test-env-slot';
-import { psqlDoelFout } from '../rls/psql-stack';
+import { bestemmingFout, eisBestemming, psqlDoelFout, vergeetBestemming } from '../rls/psql-stack';
 
 /**
  * QS8-703 — het tweede productieslot van de RLS-suite, op onderdeelniveau.
@@ -60,7 +60,7 @@ describe('psqlDoelFout — het psql-pad praat alleen met een lokale database', (
     [{ PGHOST: '/var/run/postgresql' }],
     [{ PGHOST: '127.0.0.1', PGHOSTADDR: '127.0.0.1' }],
     [{ PGHOST: '/var/run/postgresql, 127.0.0.1' }],
-    [{ PGHOST: '127.0.0.1', PGDATABASE: 'goalbuddies_rls_2' }],
+    [{ PGHOST: '127.0.0.1', PGDATABASE: 'goalbuddies_rls' }],
   ])('%j mag', (omgeving) => {
     expect(psqlDoelFout(omgeving as unknown as NodeJS.ProcessEnv)).toBeNull();
   });
@@ -81,8 +81,68 @@ describe('psqlDoelFout — het psql-pad praat alleen met een lokale database', (
       /PGDATABASE is geen kale naam/,
     ],
     [{ PGHOST: '127.0.0.1', PGDATABASE: 'service=prod' }, /PGDATABASE is geen kale naam/],
+    [{ PGHOST: '127.0.0.1', PGDATABASE: 'postgres' }, /alleen goalbuddies_rls/],
+    [{ PGHOST: '127.0.0.1', PGDATABASE: 'goalbuddies_rls_2' }, /alleen goalbuddies_rls/],
     [{ PGHOST: '127.0.0.1', PGDATABASE: 'host=db.voorbeeld.nl dbname=postgres' }, /PGDATABASE is geen kale naam/],
   ])('%j wordt geweigerd', (omgeving, melding) => {
     expect(psqlDoelFout(omgeving as unknown as NodeJS.ProcessEnv)).toMatch(melding);
+  });
+});
+
+describe('bestemmingFout — waar psql werkelijk uitkwam (QS8-715)', () => {
+  it.each(['127.0.0.1|goalbuddies_rls', '::1|goalbuddies_rls', 'unix-socket|goalbuddies_rls', ' 127.0.0.1|goalbuddies_rls\n'])(
+    '%j mag',
+    (uitkomst) => {
+      expect(bestemmingFout(uitkomst, 'goalbuddies_rls')).toBeNull();
+    },
+  );
+
+  it.each([
+    ['10.0.0.5|goalbuddies_rls', /kwam uit op "10\.0\.0\.5"/],
+    ['52.47.1.2|postgres', /kwam uit op "52\.47\.1\.2"/],
+    ['127.0.0.1|postgres', /in database "postgres" en niet in "goalbuddies_rls"/],
+    ['', /kwam uit op ""/],
+  ])('%j wordt geweigerd', (uitkomst, melding) => {
+    expect(bestemmingFout(uitkomst, 'goalbuddies_rls')).toMatch(melding);
+  });
+});
+
+describe('eisBestemming — één keer per proces, en geen verbinding is geen fout', () => {
+  afterEach(() => vergeetBestemming());
+
+  it('een bestemming buiten loopback werpt, met een eigen melding en niet "geen database"', () => {
+    expect(() => eisBestemming(() => '10.0.0.5|goalbuddies_rls')).toThrow(/weigert te meten/);
+  });
+
+  it('geen verbinding (psql-exitcode 2): geeft dat terug, en meet de volgende keer opnieuw', () => {
+    let keren = 0;
+    const kapot = () => {
+      keren += 1;
+      throw Object.assign(new Error('could not connect'), { status: 2 });
+    };
+    expect(eisBestemming(kapot)).toBe('geen-verbinding');
+    expect(eisBestemming(kapot)).toBe('geen-verbinding');
+    expect(keren).toBe(2);
+  });
+
+  it.each([
+    ['een vraag die de server niet kent (exitcode 1)', { status: 1 }],
+    ['een time-out (geen exitcode)', { status: null, code: 'ETIMEDOUT' }],
+  ])('%s: niet vast te stellen, en dat werpt', (_naam, eigenschappen) => {
+    const kapot = () => {
+      throw Object.assign(new Error('kapot'), eigenschappen);
+    };
+    expect(() => eisBestemming(kapot)).toThrow(/niet vast te stellen/);
+  });
+
+  it('een goede bestemming wordt één keer gemeten', () => {
+    let keren = 0;
+    const goed = () => {
+      keren += 1;
+      return '127.0.0.1|goalbuddies_rls';
+    };
+    eisBestemming(goed);
+    eisBestemming(goed);
+    expect(keren).toBe(1);
   });
 });
