@@ -162,12 +162,31 @@ const REGISTER: Readonly<Record<string, string>> = {
   invite_preview_limits:
     'PRIMARY KEY (group_id) — één rij per groep, en invite_preview() werkt hem ' +
     'bij in plaats van er een tweede naast te zetten.',
+  // ⚠️ De twee organisatietabellen (QS8-652, 0299) hebben geen `*_dagplafond`:
+  //    hun grens zit in de RPC, in `dagtellers`, en die telt de hándeling en
+  //    overleeft een `delete` (0234). 📏 Gemeten in `tests/rls/organisaties.test.ts`.
+  organization_members:
+    'word_organisatielid() telt elke poging, ook een foute, en weigert vanaf 20 in het ' +
+    'laatste etmaal; PRIMARY KEY (organization_id, user_id) en hoogstens 10 actieve ' +
+    'lidmaatschappen per persoon.',
+  organizations:
+    'maak_organisatie() weigert vanaf 3 nieuwe organisaties per persoon in het laatste ' +
+    'etmaal (dagteller organisaties) en vanaf 10 actieve lidmaatschappen.',
   points_ledger:
     'Geen eigen clientroute: elke rij hangt aan een handeling die zelf begrensd ' +
     'is. trek_goedkeuring_in() loopt langs UNIQUE (approval_id) op ' +
     'approval_withdrawals; plan_adempauze() boekt alleen bij een herstel van een ' +
     'al afgeboekt punt, en dan hoogstens 1 rij per doel per cyclus.',
   reports: 'meld() weigert zodra meldingen_over() op nul staat.',
+  // ⚠️ De twee teamtabellen (QS8-654, 0301) groeien alleen via een RPC.
+  team_goal_shares:
+    'neem_aandeel() is de enige clientroute; UNIQUE (team_goal_id, user_id) geeft hoogstens één ' +
+    'aandeel per persoon per teamdoel, dus het aantal volgt team_goals. Elk aandeel maakt ' +
+    'bovendien een rij in goals, en die draagt doelen_dagplafond.',
+  team_goals:
+    'maak_teamdoel() weigert vanaf 10 teamdoelen per aanmaker in het laatste etmaal. ' +
+    '⚠️ Tellen-dan-invoegen: gelijktijdige aanroepen komen erboven (securityreview QS8-654, L5). ' +
+    'Een rem tegen een lus, geen beleid.',
   week_reviews: 'UNIQUE (group_id, user_id, group_period_start) — één weekafsluiting per periode.',
 };
 
@@ -281,7 +300,13 @@ describe.skipIf(!beschikbaar)('elke groeibare tabel heeft een plafond of een red
     //    INSERT-kolomgrant op. Dat verschil is de hele opzet van die migratie —
     //    de ene tabel schrijf je zelf, de andere schrijft de server — en dat het
     //    hier als één in plaats van twee telt, is de meting die dat bevestigt.
-    expect(gevonden.length, 'het aantal groeibare tabellen is veranderd').toBe(32);
+    //
+    // ⚠️ En tweeëndertig werd vierendertig met `organizations` en
+    //    `organization_members` (QS8-652, 0299): allebei alleen via een RPC te
+    //    laten groeien, en allebei met de grens in die RPC.
+    // ⚠️ En vierendertig werd zesendertig met `team_goals` en `team_goal_shares`
+    //    (QS8-654, 0301), om dezelfde reden.
+    expect(gevonden.length, 'het aantal groeibare tabellen is veranderd').toBe(36);
     // ⚠️ En zeventien werd achttien met `user_blocks` (QS8-496, 0276). Die tabel
     //    stond hierboven in REGISTER met de reden *"begrensd door het aantal
     //    mensen dat je kunt noemen"* — en die reden verviel toen `zoek_mensen()`
