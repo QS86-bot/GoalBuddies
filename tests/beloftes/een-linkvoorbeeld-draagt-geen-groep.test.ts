@@ -17,16 +17,13 @@ import { readdirSync, readFileSync } from 'node:fs';
 
 import { describe, expect, it } from 'vitest';
 
+import { zonderCommentaar } from '../../scripts/zonder-commentaar.mjs';
 import { en } from '../../src/shared/i18n/en';
 import { nl } from '../../src/shared/i18n/nl';
 import { LOGO_PAD, linkvoorbeeldTags } from '../../src/shared/web/linkvoorbeeld';
-import { uitnodigingsBericht } from '../../src/modules/buddies/samen';
+import { uitnodigingsBericht, uitnodigingsBerichtVoorCode } from '../../src/modules/buddies/samen';
 
 const APP = 'https://goalbuddies.q-projects.tech';
-function zonderCommentaar(bron: string): string {
-  return bron.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
-}
-
 function bronBestanden(map: string): string[] {
   return readdirSync(new URL(`../../${map}`, import.meta.url), { recursive: true, withFileTypes: true })
     .filter((e) => e.isFile() && /\.(ts|tsx)$/.test(e.name))
@@ -123,6 +120,11 @@ describe('uitnodigingsBericht', () => {
     expect(b.tekst).toContain('GoalBuddies');
     expect(b.tekst).toContain(`${APP}/uitnodiging/ABC`);
     expect(b.onderwerp).toContain('GoalBuddies');
+  });
+
+  it('zet de code om in dezelfde link die de uitnodigingspagina verwacht', () => {
+    const b = uitnodigingsBerichtVoorCode(`${APP}/`, 'vyhc-2x9g-srvh', 'Quinten');
+    expect(b.tekst).toContain(`${APP}/uitnodiging/VYHC2X9GSRVH`);
   });
 
   it('valt netjes terug zonder weergavenaam', () => {

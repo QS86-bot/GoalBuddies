@@ -83,14 +83,24 @@ export function beginfase(
   return eerste ? { fase: 'gedeeld', groupId: eerste.group_id } : { fase: 'kiezen' };
 }
 
+/** Het bericht voor een groepscode: de link en de tekst op één plek (QS8-706). */
+export function uitnodigingsBerichtVoorCode(
+  appUrl: string,
+  code: string,
+  naam: string | null | undefined,
+): { readonly tekst: string; readonly onderwerp: string } {
+  return uitnodigingsBericht(uitnodigingsLink(appUrl, code), naam);
+}
+
 /**
  * De tekst die een gedeelde uitnodiging draagt — QS8-706.
  *
  * ⚠️ **Wie uitnodigt, wat GoalBuddies is en wat er bij het openen gebeurt — en
  *    niets over de groep.** Dit is wat een ontvanger ziet in WhatsApp of in een
  *    mail. De groepsnaam staat er bewust níet in: de tekst belandt in chats en
- *    mailboxen van mensen die (nog) geen lid zijn, en een groepsnaam is voor
- *    hen niet bedoeld. De link zelf draagt de code. De afzender is de
+ *    mailboxen van mensen die (nog) geen lid zijn, en dat is een keuze die
+ *    voor het gecachte linkvoorbeeld vaststaat en hier voor de zekerheid
+ *    meegaat (opdracht QS8-706; de ontvanger ziet de groep zodra hij de link opent). De link zelf draagt de code. De afzender is de
  *    weergavenaam van degene die zelf op "delen" drukt.
  */
 export function uitnodigingsBericht(

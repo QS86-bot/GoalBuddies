@@ -20,7 +20,7 @@ import { nl } from '../i18n/nl';
  *    één bestand voor alle talen (`<html lang="nl">`).
  */
 
-export interface Metatag {
+interface Metatag {
   /** `property` voor Open Graph, `name` voor de rest. */
   readonly soort: 'property' | 'name';
   readonly sleutel: string;
@@ -29,7 +29,7 @@ export interface Metatag {
 
 /** Het logo: het 512-pixel-icoon uit `public/`, vierkant en dus als `summary`-kaart. */
 export const LOGO_PAD = '/icon-512.png';
-export const LOGO_MAAT = 512;
+const LOGO_MAAT = 512;
 
 export function linkvoorbeeldTags(appUrl: string): readonly Metatag[] {
   const basis = appUrl.replace(/\/+$/, '');

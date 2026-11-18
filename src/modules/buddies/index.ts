@@ -35,7 +35,7 @@ export {
 
 export { beslissendeGroep, enigeOfGekozen, koppelbareGroepen, type DoelGroep } from './deling';
 
-export { beginfase, deelbareUitnodiging, uitnodigingsBericht, type Beginfase } from './samen';
+export { beginfase, deelbareUitnodiging, uitnodigingsBericht, uitnodigingsBerichtVoorCode, type Beginfase } from './samen';
 
 export {
   BIJLAGE_BEWAARDAGEN,

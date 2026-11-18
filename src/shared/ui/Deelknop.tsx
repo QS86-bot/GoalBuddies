@@ -43,9 +43,7 @@ export function Deelknop({ tekst, titel, label, variant = 'primair' }: Props) {
     }
 
     try {
-      // Het mailonderwerp komt alleen via `subject` en dat werkt alleen op iOS; op
-      // Android is `title` de titel van het kiesvenster, dus daar vertrekt een
-      // mail zonder onderwerp. Dat is een grens van `Share`, geen keuze.
+      // `title` is het onderwerp op Android (EXTRA_SUBJECT); iOS leest `subject`.
       await Share.share({ message: tekst, title: titel }, { subject: titel });
     } catch {
       // De gebruiker die het deelvenster wegtikt komt hier ook terecht; dat is

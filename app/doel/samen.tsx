@@ -273,14 +273,14 @@ function Gedeeld({ groupId, onKlaar }: { readonly groupId: string; readonly onKl
 
 function Uitnodiging({ naam, link }: { readonly naam: string; readonly link: string | null }) {
   const { profiel } = useProfiel();
-  const bericht = uitnodigingsBericht(link ?? '', profiel?.display_name);
+  const bericht = link === null ? null : uitnodigingsBericht(link, profiel?.display_name);
 
   return (
     <Card>
       <Subheading>{t('samen.gekoppeld', { naam })}</Subheading>
       <Body muted>{t('samen.gekoppeld_tekst')}</Body>
 
-      {link === null ? (
+      {bericht === null ? (
         <Caption>{t('samen.link_gesloten')}</Caption>
       ) : (
         <Deelknop

@@ -440,14 +440,14 @@ export const nl = {
   // ⚠️ Geen van beide is een foutmelding met een uitroepteken. Delen dat niet
   //    lukt is een eigenschap van de browser en niet iets dat de gebruiker fout
   //    deed; de zin wijst hem naar wat wél werkt.
-  'delen.gekopieerd': 'Gekopieerd. Plak hem in je chat',
+  'delen.gekopieerd': 'Gekopieerd. Plak het in je chat',
   'delen.mislukt': 'Delen lukt hier niet. Selecteer de link hierboven',
   'delen.uitnodiging_onderwerp': '{naam} nodigt je uit voor GoalBuddies',
   'delen.uitnodiging_onderwerp_zonder_naam': 'Je bent uitgenodigd voor GoalBuddies',
-  'delen.uitnodiging_tekst': '{naam} nodigt je uit voor GoalBuddies, een app waarmee je samen met een kleine groep aan je doelen werkt. Open de link om te zien waar het over gaat en om mee te doen:\n{link}',
-  'delen.uitnodiging_tekst_zonder_naam': 'Je bent uitgenodigd voor GoalBuddies, een app waarmee je samen met een kleine groep aan je doelen werkt. Open de link om te zien waar het over gaat en om mee te doen:\n{link}',
+  'delen.uitnodiging_tekst': '{naam} nodigt je uit voor GoalBuddies, een app waarmee je samen met anderen aan je doelen werkt. Open de link om te zien waar het over gaat en om mee te doen:\n{link}',
+  'delen.uitnodiging_tekst_zonder_naam': 'Je bent uitgenodigd voor GoalBuddies, een app waarmee je samen met anderen aan je doelen werkt. Open de link om te zien waar het over gaat en om mee te doen:\n{link}',
   'linkvoorbeeld.titel': 'GoalBuddies',
-  'linkvoorbeeld.beschrijving': 'Haal je doelen samen met een kleine groep. Open de link om te zien waar je voor uitgenodigd bent.',
+  'linkvoorbeeld.beschrijving': 'Werk samen met anderen aan je doelen. GoalBuddies helpt je volhouden, met een groep die meekijkt en je aanmoedigt.',
 
   'stand.punten': 'Punten',
   'stand.langste_reeks': 'Langste reeks',

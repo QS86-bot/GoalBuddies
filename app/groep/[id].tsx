@@ -23,8 +23,7 @@ import {
   type Klassementsrij,
   type Pagina,
   type Zichtbaarheid,
-  uitnodigingsBericht,
-  uitnodigingsLink,
+  uitnodigingsBerichtVoorCode,
   verlaatGroep,
   zichtbaarheidLabels,
 } from '@/modules/buddies';
@@ -309,8 +308,8 @@ export default function GroepDetail() {
                 <Body muted>{t('groepdetail.link_uitleg')}</Body>
                 <Deelknop
                   label={t('groepdetail.deel')}
-                  titel={deelBericht(s.groep.invite_code, profiel?.display_name).onderwerp}
-                  tekst={deelBericht(s.groep.invite_code, profiel?.display_name).tekst}
+                  titel={uitnodigingsBerichtVoorCode(clientEnv().appUrl, s.groep.invite_code, profiel?.display_name).onderwerp}
+                  tekst={uitnodigingsBerichtVoorCode(clientEnv().appUrl, s.groep.invite_code, profiel?.display_name).tekst}
                 />
               </Card>
             )}
@@ -1260,8 +1259,3 @@ const styles = StyleSheet.create({
   },
   knoppen: { flexDirection: 'row', gap: space.blokGap - 3, flexWrap: 'wrap' },
 });
-
-/** De tekst en het onderwerp van de gedeelde uitnodiging — QS8-706. */
-function deelBericht(code: string, naam: string | undefined) {
-  return uitnodigingsBericht(uitnodigingsLink(clientEnv().appUrl, code), naam);
-}

@@ -283,10 +283,10 @@ export const en: Record<Sleutel, string> = {
   'delen.mislukt': 'Sharing does not work here. Select the link above',
   'delen.uitnodiging_onderwerp': '{naam} invites you to GoalBuddies',
   'delen.uitnodiging_onderwerp_zonder_naam': 'You are invited to GoalBuddies',
-  'delen.uitnodiging_tekst': '{naam} invites you to GoalBuddies, an app for working on your goals together with a small group. Open the link to see what it is about and to join:\n{link}',
-  'delen.uitnodiging_tekst_zonder_naam': 'You are invited to GoalBuddies, an app for working on your goals together with a small group. Open the link to see what it is about and to join:\n{link}',
+  'delen.uitnodiging_tekst': '{naam} invites you to GoalBuddies, an app for working on your goals together with others. Open the link to see what it is about and to join:\n{link}',
+  'delen.uitnodiging_tekst_zonder_naam': 'You are invited to GoalBuddies, an app for working on your goals together with others. Open the link to see what it is about and to join:\n{link}',
   'linkvoorbeeld.titel': 'GoalBuddies',
-  'linkvoorbeeld.beschrijving': 'Work on your goals together with a small group. Open the link to see what you are invited to.',
+  'linkvoorbeeld.beschrijving': 'Work on your goals together with others. GoalBuddies helps you keep going, with a group that cheers you on.',
 
   'stand.punten': 'Points',
   'stand.langste_reeks': 'Longest streak',
