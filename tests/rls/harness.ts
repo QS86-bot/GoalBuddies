@@ -40,11 +40,44 @@ export type TestDb = SupabaseClient<Database>;
  *
  *    Draai vóór een merge die auth, RLS, goedkeuring of commitments raakt dus
  *    beide: lokaal voor het snelle bewijs, productie voor de bevestiging.
+ *
+ * ⚠️⚠️ **Productie is sinds QS8-700 nooit meer de uitkomst van een ontbrekende
+ *    variabele.** Tot 18-11-2026 stond hier `RLS_DOEL === 'lokaal' ? 'lokaal' :
+ *    'productie'`: productie was de **standaard**, en `rlsTestsConfigured` was
+ *    waar zodra de vier productiesleutels in de omgeving stonden. Een kale
+ *    `npm test` of `npm run poort` op een machine met die sleutels en
+ *    `RLS_TEST_ALLOW_PROD=1` draaide zo de hele suite tegen productie en liet
+ *    daar 1865 `rls-…@example.com`-testgebruikers achter. 📏 Gemeten op
+ *    18-11-2026, vier pushclusters.
+ *
+ *    Nu zijn er **drie** standen, en alleen een uitdrukkelijke keuze wijst naar
+ *    een database:
+ *      - `RLS_DOEL=lokaal`     → `lokaal`, zoals altijd.
+ *      - `RLS_DOEL=productie`  → `productie`; en dan geldt `guardProductie()`
+ *                                met `RLS_TEST_ALLOW_PROD=1` óók nog. Twee
+ *                                uitdrukkelijke schakelaars, geen enkele impliciet.
+ *      - ontbreekt of iets anders → `geen` doel. `rlsTestsConfigured` is dan
+ *                                `false`, elke `describe.skipIf(!rlsTestsConfigured)`
+ *                                slaat zichzelf over, en `requireEnv()` wérpt —
+ *                                óók met de productiesleutels en
+ *                                `RLS_TEST_ALLOW_PROD=1` in de omgeving. Zo praat
+ *                                geen enkele RLS-test met productie zonder dat
+ *                                iemand het heeft gezegd.
+ *
+ *    De belofte eronder — "zonder `RLS_DOEL` raakt geen test productie" — staat
+ *    onder test in `tests/beloftes/rls-doel-raakt-productie-niet-vanzelf.test.ts`,
+ *    dat de harness in een kindproces laadt zodat de toets het gedrag meet en niet
+ *    deze bronregel. Uitleg in
+ *    `docs/decisions/2026-11-18-de-suite-raakt-productie-alleen-als-je-het-zegt.md`.
  */
-export type Doelsoort = 'productie' | 'lokaal';
+export type Doelsoort = 'productie' | 'lokaal' | 'geen';
 
 export const doelsoort: Doelsoort =
-  process.env.RLS_DOEL === 'lokaal' ? 'lokaal' : 'productie';
+  process.env.RLS_DOEL === 'lokaal'
+    ? 'lokaal'
+    : process.env.RLS_DOEL === 'productie'
+      ? 'productie'
+      : 'geen';
 
 /**
  * ⚠️ Het secret staat hier als platte tekst en dat mag, want het hoort bij een
@@ -55,9 +88,15 @@ export const doelsoort: Doelsoort =
 const LOKAAL_SECRET = 'super-geheim-lokaal-jwt-secret-voor-de-rls-suite';
 const LOKAAL_URL = 'http://127.0.0.1:3010';
 
-const url = doelsoort === 'lokaal'
-  ? (process.env.RLS_LOKAAL_URL ?? LOKAAL_URL)
-  : process.env.EXPO_PUBLIC_SUPABASE_URL;
+// ⚠️ Alleen een uitdrukkelijk doel levert een URL op. Bij `geen` is hij
+//    `undefined`, zodat `rlsTestsConfigured` hieronder niet per ongeluk op de
+//    productie-URL kan terugvallen — QS8-700.
+const url =
+  doelsoort === 'lokaal'
+    ? (process.env.RLS_LOKAAL_URL ?? LOKAAL_URL)
+    : doelsoort === 'productie'
+      ? process.env.EXPO_PUBLIC_SUPABASE_URL
+      : undefined;
 
 const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
@@ -69,9 +108,12 @@ const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
  *    meer in. Zie `tekenGebruikersToken()` voor waarom dat mag en wat het kost.
  *    Net als de service-role-key hoort het projectsecret niet in CI.
  */
-const jwtSecret = doelsoort === 'lokaal'
-  ? (process.env.RLS_LOKAAL_JWT_SECRET ?? LOKAAL_SECRET)
-  : process.env.SUPABASE_JWT_SECRET;
+const jwtSecret =
+  doelsoort === 'lokaal'
+    ? (process.env.RLS_LOKAAL_JWT_SECRET ?? LOKAAL_SECRET)
+    : doelsoort === 'productie'
+      ? process.env.SUPABASE_JWT_SECRET
+      : undefined;
 
 /**
  * Draaien deze tests?
@@ -85,11 +127,20 @@ const jwtSecret = doelsoort === 'lokaal'
  * ⚠️ Tegen productie blijft de oude voorwaarde staan. Zonder de sleutels slaan
  *    de tests zichzelf over in plaats van om te vallen; een suite die omvalt in
  *    plaats van overslaat is precies het faalbeeld dat QS8-116 kwam opruimen.
+ *
+ * ⚠️⚠️ **Bij `geen` doel is dit altijd `false` — QS8-700.** De productiesleutels
+ *    kunnen in de omgeving staan (de poort laadt `.env`), maar zonder een
+ *    uitdrukkelijke `RLS_DOEL` is er geen doel om tegen te meten. Dan slaat elke
+ *    `describe.skipIf(!rlsTestsConfigured)` zichzelf over, en wie tóch
+ *    `requireEnv()` aanroept, krijgt een worp in plaats van een client naar
+ *    productie.
  */
 export const rlsTestsConfigured =
   doelsoort === 'lokaal'
     ? Boolean(url && jwtSecret)
-    : Boolean(url && process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY && serviceRoleKey && jwtSecret);
+    : doelsoort === 'productie'
+      ? Boolean(url && process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY && serviceRoleKey && jwtSecret)
+      : false;
 
 /**
  * Een sleutel voor een rol, getekend met hetzelfde secret dat PostgREST kent.
@@ -161,6 +212,27 @@ function requireEnv(): {
   serviceRoleKey: string;
   jwtSecret: string;
 } {
+  // ⚠️⚠️ **De grendel onder de belofte van QS8-700, en hij staat hier met opzet:
+  //    vlák vóór er een client gebouwd wordt.** `rlsTestsConfigured` houdt de
+  //    `describe.skipIf`-blokken al dicht, maar dat is een afspraak die een
+  //    testbestand kan omzeilen door `adminDb()`/`anonDb()` buiten een gegate
+  //    blok aan te roepen. Deze worp is de bescherming: zonder een uitdrukkelijk
+  //    `RLS_DOEL` komt er geen `createClient()` en dus geen netwerkpoging — óók
+  //    niet met de productiesleutels en `RLS_TEST_ALLOW_PROD=1` in de omgeving.
+  if (doelsoort === 'geen') {
+    throw new Error(
+      [
+        'RLS_DOEL staat niet op "lokaal" of "productie", dus de RLS-suite heeft geen doel.',
+        '',
+        'Dat is sinds QS8-700 opzet: productie is nooit meer de uitkomst van een',
+        'ontbrekende variabele. Draai lokaal, of kies productie uitdrukkelijk:',
+        '  npm run rls:stack   &&   npm run rls:lokaal',
+        '  # of, alleen voor de controletest op een echt GoTrue-token:',
+        '  RLS_DOEL=productie  (met RLS_TEST_ALLOW_PROD=1)   npm run rls:token',
+      ].join('\n'),
+    );
+  }
+
   if (doelsoort === 'lokaal') {
     if (!url || !jwtSecret) {
       throw new Error(
