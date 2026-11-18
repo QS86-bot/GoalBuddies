@@ -123,9 +123,7 @@ export default function Profiel() {
             */}
             <Uitloggen />
 
-            <MeldingenIngang />
-
-            <OrganisatieIngang />
+            <Ingangen />
 
             {/*
               ⚠️ Hier stond een `StreakCounter` met een hardgecodeerde `cycles={0}`.
@@ -1505,6 +1503,22 @@ function MeldingenIngang() {
       <Body muted>{t('meldingen.ingang_tekst')}</Body>
       <Button onPress={() => router.push('/meldingen')}>{t('meldingen.ingang_knop')}</Button>
     </Card>
+  );
+}
+
+/**
+ * De ingangen naar schermen die geen eigen tabblad hebben.
+ *
+ * ⚠️ Eén component en niet twee regels in `Profiel`: die render zit op de grens van
+ *    de vijftig regels (`regel15:controle`), en een extra ingang er nog bij
+ *    duwde hem erover.
+ */
+function Ingangen() {
+  return (
+    <>
+      <MeldingenIngang />
+      <OrganisatieIngang />
+    </>
   );
 }
 

@@ -2433,8 +2433,6 @@ export const en: Record<Sleutel, string> = {
     'You are not in any organisation yet.',
   'organisatie.ingang_storing':
     'Your organisations could not be loaded.',
-  'organisatie.ingang_opnieuw':
-    'Try again',
   'organisatie.ingang_aanmaken':
     'Create an organisation',
   'organisatie.ingang_deelnemen':
@@ -2443,8 +2441,6 @@ export const en: Record<Sleutel, string> = {
     'Organisation',
   'organisatie.rol_beheerder':
     'admin',
-  'organisatie.rol_lid':
-    'member',
   'organisatie.jouw_rol_beheerder':
     'You are an admin of this organisation.',
   'organisatie.jouw_rol_lid':
@@ -2501,6 +2497,7 @@ export const en: Record<Sleutel, string> = {
     'Load more',
   'organisatie.meer_mislukt':
     'Loading more did not work. Please try again.',
+  'organisatie.uitzetten_label': 'Remove {naam} from the organisation',
   'organisatie.uitzetten_knop':
     'Remove',
   'organisatie.uitzetten_titel':
@@ -2582,7 +2579,7 @@ export const en: Record<Sleutel, string> = {
   'organisatie.laatste_beheerder':
     'You are the only admin of this organisation, so you cannot leave it.',
   'organisatie.verwijder_waarschuwing':
-    'If you are the only admin of {naam}, hand over the admin role first. Otherwise nobody can invite new members afterwards.',
+    'Are you the only admin of {naam}? Then nobody can invite new members there after you delete your account. Everyone already in keeps everything.',
   'organisatie.verwijder_waarschuwing_storing':
     'We could not check whether you are an admin of an organisation. If you are, and you are the only one, hand over the admin role first. Otherwise nobody can invite new members afterwards.',
 };

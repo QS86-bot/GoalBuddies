@@ -56,28 +56,28 @@ describe.runIf(rlsTestsConfigured)('de teams van een organisatie (QS8-657)', () 
       createTestUser('orgteams-yara'),
     ]);
     const o = await anna.db.rpc('maak_organisatie' as never, { p_naam: 'Teams BV' } as never);
-    org = (o.data as { organization_id: string }).organization_id;
+    org = (o.data as unknown as { organization_id: string }).organization_id;
     organisaties.push(org);
     const ander = await yara.db.rpc('maak_organisatie' as never, { p_naam: 'Ander BV' } as never);
-    organisaties.push((ander.data as { organization_id: string }).organization_id);
-    const code = (await anna.db.rpc('organisatie_uitnodigcode' as never, { p_organization_id: org } as never)).data as {
+    organisaties.push((ander.data as unknown as { organization_id: string }).organization_id);
+    const code = (await anna.db.rpc('organisatie_uitnodigcode' as never, { p_organization_id: org } as never)).data as unknown as {
       code: string;
     };
     for (const wie of [bert, cas]) {
       const w = await wie.db.rpc('word_organisatielid' as never, { p_code: code.code } as never);
-      expect((w.data as { ok: boolean }).ok).toBe(true);
+      expect((w.data as unknown as { ok: boolean }).ok).toBe(true);
     }
     for (const naam of ['Team Een', 'Team Twee', 'Team Drie']) {
       const t = await anna.db.rpc('maak_teamgroep' as never, { p_organization_id: org, p_naam: naam } as never);
       expect(t.error).toBeNull();
-      const id = (t.data as { group_id: string }).group_id;
+      const id = (t.data as unknown as { group_id: string }).group_id;
       team.push(id);
       groepen.push(id);
       registreerGroep(id);
     }
     const { data: g } = await adminDb().from('groups').select('invite_code').eq('id', team[0]!).single();
     const j = await bert.db.rpc('join_group_with_code', { code: (g as { invite_code: string }).invite_code });
-    expect((j.data as { ok: boolean }).ok).toBe(true);
+    expect((j.data as unknown as { ok: boolean }).ok).toBe(true);
   }, SETUP_TIMEOUT);
 
   afterAll(async () => {
@@ -153,7 +153,7 @@ describe.runIf(rlsTestsConfigured)('de teams van een organisatie (QS8-657)', () 
     'wie de organisatie verlaat, ziet de teams niet meer',
     async () => {
       const v = await cas.db.rpc('verlaat_organisatie' as never, { p_organization_id: org } as never);
-      expect((v.data as { ok: boolean }).ok).toBe(true);
+      expect((v.data as unknown as { ok: boolean }).ok).toBe(true);
       expect(await teams(cas, org)).toEqual([]);
     },
     TEST_TIMEOUT,

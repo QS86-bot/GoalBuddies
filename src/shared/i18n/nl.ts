@@ -3039,8 +3039,6 @@ export const nl = {
     'Je zit nog in geen enkele organisatie.',
   'organisatie.ingang_storing':
     'Je organisaties konden niet geladen worden.',
-  'organisatie.ingang_opnieuw':
-    'Opnieuw proberen',
   'organisatie.ingang_aanmaken':
     'Organisatie aanmaken',
   'organisatie.ingang_deelnemen':
@@ -3049,8 +3047,6 @@ export const nl = {
     'Organisatie',
   'organisatie.rol_beheerder':
     'beheerder',
-  'organisatie.rol_lid':
-    'lid',
   'organisatie.jouw_rol_beheerder':
     'Je bent beheerder van deze organisatie.',
   'organisatie.jouw_rol_lid':
@@ -3107,6 +3103,7 @@ export const nl = {
     'Meer laden',
   'organisatie.meer_mislukt':
     'Meer laden lukte niet. Probeer het opnieuw.',
+  'organisatie.uitzetten_label': '{naam} uit de organisatie zetten',
   'organisatie.uitzetten_knop':
     'Uitzetten',
   'organisatie.uitzetten_titel':
@@ -3188,7 +3185,7 @@ export const nl = {
   'organisatie.laatste_beheerder':
     'Je bent de enige beheerder van deze organisatie, dus je kunt hem niet verlaten.',
   'organisatie.verwijder_waarschuwing':
-    'Ben je de enige beheerder van {naam}, draag het beheer dan eerst over. Anders kan daarna niemand nog nieuwe leden uitnodigen.',
+    'Ben je de enige beheerder van {naam}? Dan kan na het verwijderen niemand daar nog nieuwe leden uitnodigen. Wie er al in zit, houdt alles.',
   'organisatie.verwijder_waarschuwing_storing':
     'We konden niet nagaan of je beheerder bent van een organisatie. Ben je dat en ben je de enige, draag het beheer dan eerst over. Anders kan daarna niemand nog nieuwe leden uitnodigen.',
 } as const;

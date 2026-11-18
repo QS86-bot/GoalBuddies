@@ -23,8 +23,6 @@ import { supabase } from '../../lib/supabase';
  *    daarom staat er in de api overal een kolomlijst.
  */
 
-type Publiek = Database['public'];
-
 type OrganisatieRij = {
   id: string;
   name: string;
@@ -40,11 +38,20 @@ type LidmaatschapRij = {
   joined_at: string;
 };
 
-type LeesTabel<R> = {
-  Row: R;
-  Insert: Record<string, never>;
-  Update: Record<string, never>;
-  Relationships: [];
+type GeenSchrijver = Record<string, never>;
+
+type LedenArgs = {
+  p_organization_id: string;
+  p_limit?: number;
+  p_na_user_id?: string;
+};
+
+type MaakTeamgroepArgs = {
+  p_organization_id: string;
+  p_naam: string;
+  p_huddledag?: number;
+  p_tz?: string;
+  p_zichtbaarheid?: string;
 };
 
 type OrganisatieFuncties = {
@@ -56,10 +63,13 @@ type OrganisatieFuncties = {
     Returns: Json;
   };
   organisatieleden: {
-    Args: { p_organization_id: string; p_limit?: number; p_na_user_id?: string };
+    Args: LedenArgs;
     Returns: { user_id: string; display_name: string; role: string }[];
   };
-  organisatie_uitnodigcode: { Args: { p_organization_id: string }; Returns: Json };
+  organisatie_uitnodigcode: {
+    Args: { p_organization_id: string };
+    Returns: Json;
+  };
   vernieuw_organisatiecode: {
     Args: { p_organization_id: string; p_intrekken?: boolean };
     Returns: Json;
@@ -69,27 +79,37 @@ type OrganisatieFuncties = {
     Returns: { id: string; name: string }[];
   };
   maak_teamgroep: {
-    Args: {
-      p_organization_id: string;
-      p_naam: string;
-      p_huddledag?: number;
-      p_tz?: string;
-      p_zichtbaarheid?: string;
-    };
+    Args: MaakTeamgroepArgs;
     Returns: Json;
   };
 };
 
-export type OrganisatieDatabase = Omit<Database, 'public'> & {
-  public: Omit<Publiek, 'Tables' | 'Functions'> & {
-    Tables: Publiek['Tables'] & {
-      organizations: LeesTabel<OrganisatieRij>;
-      organization_members: LeesTabel<LidmaatschapRij>;
-    };
-    Functions: Publiek['Functions'] & OrganisatieFuncties;
+type OrganisatieTabellen = {
+  organizations: {
+    Row: OrganisatieRij;
+    Insert: GeenSchrijver;
+    Update: GeenSchrijver;
+    Relationships: [];
+  };
+  organization_members: {
+    Row: LidmaatschapRij;
+    Insert: GeenSchrijver;
+    Update: GeenSchrijver;
+    Relationships: [];
   };
 };
 
-export function db(): SupabaseClient<OrganisatieDatabase> {
-  return supabase() as unknown as SupabaseClient<OrganisatieDatabase>;
+/** Wat er bovenop de correctielaag komt: alleen de tabellen en functies van 0299, 0300 en 0305. */
+type Uitbreiding = {
+  public: {
+    Tables: OrganisatieTabellen;
+    Functions: OrganisatieFuncties;
+  };
+};
+
+// ⚠️ `SupabaseClient<Database & …>` en niet een eigen alias: `tests/beloftes/typecorrecties.test.ts`
+//    leest de eerste naam achter de `<` en eist dat die uit de correctielaag
+//    komt. Zo is dat ook letterlijk waar.
+export function db(): SupabaseClient<Database & Uitbreiding> {
+  return supabase() as unknown as SupabaseClient<Database & Uitbreiding>;
 }

@@ -150,15 +150,13 @@ function useHandeling() {
 // Leden
 // ---------------------------------------------------------------------------
 
-function Ledenblok({
-  organisatieId,
-  beheerder,
-  onUitgezet,
-}: {
+interface LedenblokProps {
   readonly organisatieId: string;
   readonly beheerder: boolean;
   readonly onUitgezet: () => void;
-}) {
+}
+
+function Ledenblok({ organisatieId, beheerder, onUitgezet }: LedenblokProps) {
   const { userId } = useSession();
   const lijst = useBladerlijst((na) => fetchOrganisatieleden(organisatieId, na), [organisatieId]);
 
@@ -231,7 +229,11 @@ function Ledenrij({
         <Body>{lid.naam}</Body>
         {lid.rol === 'admin' ? <Caption>{t('organisatie.rol_beheerder')}</Caption> : null}
         {kanUitzetten && !open ? (
-          <Button variant="stil" onPress={() => setOpen(true)}>
+          <Button
+            variant="stil"
+            accessibilityLabel={t('organisatie.uitzetten_label', { naam: lid.naam })}
+            onPress={() => setOpen(true)}
+          >
             {t('organisatie.uitzetten_knop')}
           </Button>
         ) : null}
@@ -309,20 +311,42 @@ function TeamAanmaken({
   readonly onGemaakt: () => void;
 }) {
   const [open, setOpen] = useState(false);
-  const [naam, setNaam] = useState('');
   const [gemaakt, setGemaakt] = useState(false);
-  const handeling = useHandeling();
 
-  if (!open) {
+  if (open) {
     return (
-      <View style={styles.blok}>
-        {gemaakt ? <Caption>{t('organisatie.team_gemaakt')}</Caption> : null}
-        <Button variant="secundair" onPress={() => setOpen(true)}>
-          {t('organisatie.team_nieuw_knop')}
-        </Button>
-      </View>
+      <TeamFormulier
+        organisatieId={organisatieId}
+        onKlaar={(isGemaakt) => {
+          setOpen(false);
+          if (isGemaakt) {
+            setGemaakt(true);
+            onGemaakt();
+          }
+        }}
+      />
     );
   }
+
+  return (
+    <View style={styles.blok}>
+      {gemaakt ? <Caption>{t('organisatie.team_gemaakt')}</Caption> : null}
+      <Button variant="secundair" onPress={() => setOpen(true)}>
+        {t('organisatie.team_nieuw_knop')}
+      </Button>
+    </View>
+  );
+}
+
+function TeamFormulier({
+  organisatieId,
+  onKlaar,
+}: {
+  readonly organisatieId: string;
+  readonly onKlaar: (gemaakt: boolean) => void;
+}) {
+  const [naam, setNaam] = useState('');
+  const handeling = useHandeling();
 
   return (
     <View style={styles.blok}>
@@ -341,25 +365,13 @@ function TeamAanmaken({
           onPress={() =>
             void handeling.voerUit(
               () => maakTeam(organisatieId, naam),
-              () => {
-                setOpen(false);
-                setNaam('');
-                setGemaakt(true);
-                onGemaakt();
-              },
+              () => onKlaar(true),
             )
           }
         >
           {t('organisatie.team_opslaan')}
         </Button>
-        <Button
-          variant="stil"
-          disabled={handeling.bezig}
-          onPress={() => {
-            setOpen(false);
-            handeling.wisFout();
-          }}
-        >
+        <Button variant="stil" disabled={handeling.bezig} onPress={() => onKlaar(false)}>
           {t('bevestiging.annuleren')}
         </Button>
       </View>
@@ -425,17 +437,14 @@ function Codeblok({
   );
 }
 
-function CodeActies({
-  organisatieId,
-  code,
-  ingetrokken,
-  onVerandert,
-}: {
+interface CodeActiesProps {
   readonly organisatieId: string;
   readonly code: string;
   readonly ingetrokken: boolean;
   readonly onVerandert: () => void;
-}) {
+}
+
+function CodeActies({ organisatieId, code, ingetrokken, onVerandert }: CodeActiesProps) {
   const [actie, setActie] = useState<Codeactie | null>(null);
   const handeling = useHandeling();
 
@@ -450,16 +459,7 @@ function CodeActies({
       <Subheading>{toonCode(code)}</Subheading>
       {ingetrokken ? <Caption>{t('organisatie.code_ingetrokken')}</Caption> : null}
       {actie === null ? (
-        <View style={styles.rij}>
-          <Button variant="secundair" onPress={() => setActie('vernieuwen')}>
-            {t('organisatie.code_vernieuwen_knop')}
-          </Button>
-          {ingetrokken ? null : (
-            <Button variant="stil" onPress={() => setActie('intrekken')}>
-              {t('organisatie.code_intrekken_knop')}
-            </Button>
-          )}
-        </View>
+        <CodeKnoppen ingetrokken={ingetrokken} onKies={setActie} />
       ) : (
         <Bevestiging
           tekst={codeTekst(actie)}
@@ -476,6 +476,27 @@ function CodeActies({
             )
           }
         />
+      )}
+    </View>
+  );
+}
+
+function CodeKnoppen({
+  ingetrokken,
+  onKies,
+}: {
+  readonly ingetrokken: boolean;
+  readonly onKies: (actie: Codeactie) => void;
+}) {
+  return (
+    <View style={styles.rij}>
+      <Button variant="secundair" onPress={() => onKies('vernieuwen')}>
+        {t('organisatie.code_vernieuwen_knop')}
+      </Button>
+      {ingetrokken ? null : (
+        <Button variant="stil" onPress={() => onKies('intrekken')}>
+          {t('organisatie.code_intrekken_knop')}
+        </Button>
       )}
     </View>
   );

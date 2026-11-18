@@ -314,36 +314,9 @@ export const WACHT_OP_EEN_BESLUIT = {
   //    en deze controle meldde zelf dat de rij weg mocht zodra de aanroeper er
   //    was. Precies wat de kop hierboven belooft: een agenda, geen parkeerplaats.
   //
-  // ⚠️ De zeven organisatie-RPC's staan hier sinds 17-11-2026 (QS8-652): de
-  //    migratie landt vóór de schermen, zoals de epic QS8-650 het knipt.
-  maak_organisatie:
-    'Schrijf- of leespad van een organisatie (0299, QS8-652). De schermen zijn QS8-657. ' +
-    '**Vraag:** krijgt hij daar een aanroeper? Zo ja, dan gaat deze rij weg zodra die er is; ' +
-    'zo nee, dan hoort de RPC weg.',
-  word_organisatielid:
-    'Schrijf- of leespad van een organisatie (0299, QS8-652). De schermen zijn QS8-657. ' +
-    '**Vraag:** krijgt hij daar een aanroeper? Zo ja, dan gaat deze rij weg zodra die er is; ' +
-    'zo nee, dan hoort de RPC weg.',
-  verlaat_organisatie:
-    'Schrijf- of leespad van een organisatie (0299, QS8-652). De schermen zijn QS8-657. ' +
-    '**Vraag:** krijgt hij daar een aanroeper? Zo ja, dan gaat deze rij weg zodra die er is; ' +
-    'zo nee, dan hoort de RPC weg.',
-  zet_organisatielid_uit:
-    'Schrijf- of leespad van een organisatie (0299, QS8-652). De schermen zijn QS8-657. ' +
-    '**Vraag:** krijgt hij daar een aanroeper? Zo ja, dan gaat deze rij weg zodra die er is; ' +
-    'zo nee, dan hoort de RPC weg.',
-  organisatieleden:
-    'Schrijf- of leespad van een organisatie (0299, QS8-652). De schermen zijn QS8-657. ' +
-    '**Vraag:** krijgt hij daar een aanroeper? Zo ja, dan gaat deze rij weg zodra die er is; ' +
-    'zo nee, dan hoort de RPC weg.',
-  organisatie_uitnodigcode:
-    'Schrijf- of leespad van een organisatie (0299, QS8-652). De schermen zijn QS8-657. ' +
-    '**Vraag:** krijgt hij daar een aanroeper? Zo ja, dan gaat deze rij weg zodra die er is; ' +
-    'zo nee, dan hoort de RPC weg.',
-  vernieuw_organisatiecode:
-    'Schrijf- of leespad van een organisatie (0299, QS8-652). De schermen zijn QS8-657. ' +
-    '**Vraag:** krijgt hij daar een aanroeper? Zo ja, dan gaat deze rij weg zodra die er is; ' +
-    'zo nee, dan hoort de RPC weg.',
+  // ⚠️ De zeven organisatie-RPC's van 0299 stonden hier van 17-11-2026 (QS8-652)
+  //    tot 18-11-2026: de migratie landde vóór de schermen, zoals de epic QS8-650
+  //    het knipt. QS8-657 heeft de aanroepers gebouwd en de rijen zijn weg.
   // ⚠️ De twee teamdoel-RPC's (QS8-654, 0301): zelfde reden, het scherm is QS8-658.
   maak_teamdoel:
     'Schrijfpad van een teamdoel (0301, QS8-654). Het scherm is QS8-658. ' +
