@@ -56,6 +56,10 @@ const REGISTER: Readonly<Record<string, string>> = {
     'van zijn teams, zoals elke groepsbeheerder. Dat is beheer en geen voortgang (besluit 6); ' +
     'chat, overzicht, leden en teambalk blijven aan mag_groep_lezen() en dus aan het lidmaatschap. ' +
     'Grendel 1 hieronder ziet deze route via een tussenfunctie niet; zie de afleverregel van QS8-653.',
+  // QS8-659
+  trek_organisatiecode_in_zonder_beheerder:
+    'statementtrigger: telt of er een actieve beheerder overblijft en trekt anders de code in; ' +
+    'geeft niets terug en verleent niemand een rol (besluit van Quinten, 18-11-2026)',
 };
 
 const VRAAG = `
