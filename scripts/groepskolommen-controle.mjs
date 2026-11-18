@@ -291,7 +291,8 @@ export const CENSUS = {
   },
   points_ledger: {
     groepszichtbaar: false,
-    kolommen: 'id, user_id, group_id, goal_id, delta, reason, ref_type, ref_id, created_at, cycle_start_date, zonder_beoordelaar, ronde',
+    // `seizoen` (QS8-662, 0310): het kwartaallabel van een teambonus. Eigenaar-only, net als de rest van de rij.
+    kolommen: 'id, user_id, group_id, goal_id, delta, reason, ref_type, ref_id, created_at, cycle_start_date, zonder_beoordelaar, ronde, seizoen',
   },
   push_tokens: {
     groepszichtbaar: false,

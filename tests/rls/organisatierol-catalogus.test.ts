@@ -48,6 +48,9 @@ const REGISTER: Readonly<Record<string, string>> = {
   // QS8-653
   actief_organisatielid: 'leest alleen of iemand actief lid is; geeft een boolean en geen rol',
   maak_teamgroep: 'beheerderspoort op een schrijfactie (besluit 13)',
+  keur_teamdoel_goed:
+    'QS8-662 (0310): leest of iemand met een aandeel actief organisatielid is, voor de teambonus ' +
+    '(besluit van Quinten). Geen rol, en hij geeft niets terug behalve ok of een reden.',
   bewaak_teamlidmaatschap:
     'triggerfunctie: leest of een nieuw teamlid actief organisatielid is, met for share tegen de race met vertrek (review M1); geen rol, geeft niets terug',
   is_teambeheerder:

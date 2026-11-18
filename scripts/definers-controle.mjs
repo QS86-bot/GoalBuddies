@@ -259,6 +259,12 @@ const REGISTER = new Map([
   ],
   ['zet_groepszichtbaarheid', 'Beheerderspoort (besluit A41). Gemeten: poort weg → 5 rood.'],
   [
+    'keur_teamdoel_goed',
+    'Teamlidpoort (QS8-662, besluit 30): alleen een actief lid van de teamgroep, en nooit wie de afronding vroeg. ' +
+      'Schrijft de teambonus in het puntenboek van wie een aandeel heeft. Gemeten: poort weg → 3 rood ' +
+      '(`tests/rls/teambonus.test.ts`, de organisatiebeheerder keurt dan goed).',
+  ],
+  [
     'neem_aandeel',
     'Teamlidpoort (QS8-654, besluit 20): alleen een actief lid van de teamgroep neemt een aandeel, ' +
       'en het doel en de koppeling zijn van de aanroeper zelf. Gemeten: beide lidmaatschapstoetsen weg → ' +
