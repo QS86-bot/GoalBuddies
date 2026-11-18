@@ -24,6 +24,16 @@ import { adminDb, createTestUser, registreerGroep, removeTestUsers, rlsTestsConf
  *    4. De woordelijke policymelding voor een niet-eigenaar vervangen door een
  *       eigen tekst → alleen "verraadt een vreemde niet dat het doel een aandeel
  *       is" rood.
+ *    5–7. `straf_teamband_klopt()` weg uit `commitments_select`, uit
+ *       `getuigenissen()`, of uit `getuigenissen_voor()` en
+ *       `teruggedraaide_straffen_voor()` → telkens alleen "een getuige die het
+ *       team verlaat…" rood (besluit M1). ⚠️ `teruggedraaide_straffen_voor()` heeft
+ *       geen eigen toets: hij vraagt een eerdere melding én een teruggedraaide
+ *       straf, en draagt dezelfde regel als `getuigenissen_voor()`.
+ *    8. De tak voor een privédoel weg → alleen "weigert een collega … als getuige
+ *       van een privédoel" rood (besluit M2).
+ *    9. De lidmaatschapstoets voor de eigenaar weg → alleen "verraadt de eigenaar
+ *       niet of een vreemde groep een teamgroep is" rood (review L1).
  */
 
 const SETUP_TIMEOUT = 240_000;
@@ -58,6 +68,7 @@ describe.runIf(rlsTestsConfigured)('een teamstraf blijft in het team (QS8-660)',
   let bert: TestUser; // eigenaar: twee aandelen, een gewoon doel aan het team, en in de vriendengroep
   let cleo: TestUser; // teamgenoot
   let nina: TestUser; // vriendin van bert, geen teamlid
+  let org: string;
   let team: string;
   let vrienden: string;
   const aandeel: string[] = [];
@@ -71,7 +82,7 @@ describe.runIf(rlsTestsConfigured)('een teamstraf blijft in het team (QS8-660)',
       createTestUser('tstraf-nina'),
     ]);
     const o = await rpc(anna, 'maak_organisatie', { p_naam: 'Straf BV' });
-    const org = (o.data as { organization_id: string }).organization_id;
+    org = (o.data as { organization_id: string }).organization_id;
     organisaties.push(org);
     const code = await rpc(anna, 'organisatie_uitnodigcode', { p_organization_id: org });
     for (const wie of [bert, cleo]) {
@@ -170,6 +181,38 @@ describe.runIf(rlsTestsConfigured)('een teamstraf blijft in het team (QS8-660)',
     expect(opAandeel.error).toEqual(opGewoon.error);
   }, TEST_TIMEOUT);
 
+  async function prive(titel: string): Promise<string> {
+    const { data } = await bert.db
+      .from('goals')
+      .insert({ owner_id: bert.id, title: titel, target_date: datum(60) } as never)
+      .select('id')
+      .single();
+    return (data as { id: string }).id;
+  }
+
+  it('weigert een collega met wie je alleen het team deelt als getuige van een privédoel (besluit M2)', async () => {
+    const r = await leg(bert, straf(await prive('Privé met collega'), { persoon: cleo.id }));
+    expect(r.error?.hint).toBe(TEAMSTRAF_HINT);
+    // Controle: een vriend als getuige van een privédoel mag.
+    const v = await leg(bert, straf(await prive('Privé met vriend'), { persoon: nina.id }));
+    expect(v.error).toBeNull();
+  }, TEST_TIMEOUT);
+
+  it('verraadt de eigenaar niet of een vreemde groep een teamgroep is (review L1)', async () => {
+    const t = await rpc(anna, 'maak_teamgroep', { p_organization_id: org, p_naam: 'Ander team' });
+    const ander = (t.data as { group_id: string }).group_id;
+    groepen.push(ander);
+    registreerGroep(ander);
+    const g = await rpc(nina, 'create_group', { group_name: 'Andere vrienden' });
+    const vreemd = (g.data as { group: { id: string } }).group.id;
+    groepen.push(vreemd);
+    registreerGroep(vreemd);
+    const opTeam = await leg(bert, straf(await prive('Orakel A'), { groep: ander }));
+    const opVreemd = await leg(bert, straf(await prive('Orakel B'), { groep: vreemd }));
+    expect(opTeam.error?.code).toBe('42501');
+    expect(opTeam.error).toEqual(opVreemd.error);
+  }, TEST_TIMEOUT);
+
   it('controle: een gewoon doel met de vriendengroep mag gewoon', async () => {
     const { data } = await bert.db
       .from('goals')
@@ -205,5 +248,36 @@ describe.runIf(rlsTestsConfigured)('een teamstraf blijft in het team (QS8-660)',
     // En de straftekst staat niet in de teamchat.
     const { data: chat } = await cleo.db.from('chat_messages').select('body, payload').eq('group_id', team);
     expect(JSON.stringify(chat)).not.toContain(STRAFTEKST);
+  }, TEST_TIMEOUT);
+
+  it('een getuige die het team verlaat, leest de straf op het aandeel niet meer, ook niet via een vriendengroep (besluit M1)', async () => {
+    const getuigeStraf = await adminDb()
+      .from('commitments')
+      .select('id')
+      .eq('goal_id', aandeel[1]!)
+      .eq('beneficiary_user_id', cleo.id)
+      .single();
+    const id = (getuigeStraf.data as { id: string }).id;
+    expect((await adminDb().from('commitments').update({ status: 'due' } as never).eq('id', id)).error).toBeNull();
+    // Cleo zit óók met bert in de vriendengroep: dat is de band die anders bleef.
+    const { data: g } = await adminDb().from('groups').select('invite_code').eq('id', vrienden).single();
+    expect(uitkomst(await rpc(cleo, 'join_group_with_code', { code: (g as { invite_code: string }).invite_code }))).toBe('ok');
+
+    const routes = async (): Promise<number[]> => {
+      const direct = await cleo.db.from('commitments').select('id').eq('id', id);
+      const eigen = await cleo.db.rpc('getuigenissen');
+      const melding = await adminDb().rpc('getuigenissen_voor' as never, { p_user_id: cleo.id } as never);
+      expect(direct.error).toBeNull();
+      expect(eigen.error).toBeNull();
+      expect(melding.error).toBeNull();
+      return [
+        (direct.data as unknown[]).length,
+        (eigen.data as { id: string }[]).filter((r) => r.id === id).length,
+        (melding.data as { commitment_id: string }[]).filter((r) => r.commitment_id === id).length,
+      ];
+    };
+    expect(await routes()).toEqual([1, 1, 1]);
+    expect(uitkomst(await rpc(cleo, 'verlaat_organisatie', { p_organization_id: org }))).toBe('ok');
+    expect(await routes()).toEqual([0, 0, 0]);
   }, TEST_TIMEOUT);
 });

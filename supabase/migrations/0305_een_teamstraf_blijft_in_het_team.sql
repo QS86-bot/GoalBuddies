@@ -5,7 +5,11 @@
 -- ⚠️ **Voorlopig nummer.** Bouwt op 0304 van QS8-656. De batchsessie hernummert
 --    bij het landen, na 0302 van QS8-233 (besluit van Quinten, 18-11-2026).
 --
--- ROLLBACK-PAD (voegt alleen een weigering toe; geen gegevens):
+-- ROLLBACK-PAD (alleen een weigering en een smaller leesrecht; geen gegevens):
+--   commitments_select, getuigenissen(), getuigenissen_voor() en
+--   teruggedraaide_straffen_voor() terugzetten uit 0183, 0169 en 0293 (de
+--   lichamen hieronder zijn die, plus de QS8-660-regel);
+--   drop function if exists public.straf_teamband_klopt(uuid, uuid);
 --   drop trigger if exists commitments_teamstraf on public.commitments;
 --   drop function if exists public.bewaak_teamstraf();
 --
@@ -73,18 +77,39 @@ begin
             and m.status  <> 'inactive') then
       v_fout := true;
     end if;
-  elsif new.beneficiary_group_id is not null and exists (
-          select 1 from groups gr
-           where gr.id = new.beneficiary_group_id and gr.organization_id is not null) then
+  else
     -- 2. Een teamgroep is alleen begunstigde van een aandeel.
-    v_fout := true;
+    if new.beneficiary_group_id is not null and exists (
+         select 1 from groups gr
+          where gr.id = new.beneficiary_group_id and gr.organization_id is not null) then
+      v_fout := true;
+    end if;
+    -- 3. Besluit M2 (18-11-2026): de persoonlijke getuige van een privédoel deelt
+    --    een groep zónder organisatie met de eigenaar. Een collega met wie je
+    --    alleen het team deelt, is geen getuige van je privédoel.
+    if new.beneficiary_user_id is not null and not exists (
+         select 1
+           from group_members e
+           join group_members b  on b.group_id = e.group_id
+           join groups gr        on gr.id = e.group_id
+          where e.user_id = v_eigenaar and e.status <> 'inactive'
+            and b.user_id = new.beneficiary_user_id and b.status <> 'inactive'
+            and gr.organization_id is null) then
+      v_fout := true;
+    end if;
   end if;
 
   if not v_fout then
     return new;
   end if;
 
-  if v_uid is not null and v_eigenaar is distinct from v_uid then
+  -- ⚠️ Ook de eigenaar krijgt de melding van de policy als hij geen lid is van de
+  --    gekozen groep (securityreview L1). Anders is de eigen hint een orakel op
+  --    de vraag of een vreemde groeps-uuid een teamgroep is.
+  if v_uid is not null
+     and (v_eigenaar is distinct from v_uid
+          or (new.beneficiary_group_id is not null
+              and not public.is_group_member(new.beneficiary_group_id))) then
     raise exception 'new row violates row-level security policy for table "commitments"'
       using errcode = '42501';
   end if;
@@ -100,3 +125,269 @@ drop trigger if exists commitments_teamstraf on public.commitments;
 create trigger commitments_teamstraf
   before insert or update of goal_id, beneficiary_group_id, beneficiary_user_id on public.commitments
   for each row execute function public.bewaak_teamstraf();
+
+-- ---------------------------------------------------------------------------
+-- Besluit M1 (18-11-2026): een straf op een aandeel alleen voor wie nu in het team zit
+-- ---------------------------------------------------------------------------
+--
+-- De trigger hierboven toetst bij het schrijven. Lezen gebeurt later, en wie dan
+-- uit het team vertrokken is maar nog een vriendengroep met de eigenaar deelt,
+-- las de straf via `deelt_groep_met_eigenaar()` toch (securityreview, gemeten).
+-- Voor een aandeel eisen alle vier de leesroutes nu dat lezer én eigenaar actief
+-- lid van de teamgroep zijn; voor elk ander doel verandert er niets.
+
+create or replace function public.straf_teamband_klopt(p_goal_id uuid, p_lezer uuid)
+returns boolean
+language sql
+stable
+security definer
+set search_path = public, pg_temp
+as $$
+  select not exists (select 1 from team_goal_shares s where s.goal_id = p_goal_id)
+      or exists (
+           select 1
+             from team_goal_shares s
+             join team_goals t     on t.id = s.team_goal_id
+             join group_members l  on l.group_id = t.group_id
+                                  and l.user_id  = p_lezer
+                                  and l.status  <> 'inactive'
+             join group_members e  on e.group_id = t.group_id
+                                  and e.user_id  = s.user_id
+                                  and e.status  <> 'inactive'
+            where s.goal_id = p_goal_id
+         );
+$$;
+revoke all on function public.straf_teamband_klopt(uuid, uuid) from public, anon, authenticated;
+grant execute on function public.straf_teamband_klopt(uuid, uuid) to authenticated;
+
+drop policy if exists commitments_select on public.commitments;
+create policy commitments_select on public.commitments
+  for select to authenticated
+  using (
+    exists (
+      select 1 from goals g
+      where g.id = commitments.goal_id and g.owner_id = (select auth.uid())
+    )
+    or (
+      beneficiary_group_id is not null
+      and status = any (commitment_zichtbaar_voor_groep())
+      and mag_groep_lezen(beneficiary_group_id)
+      and straf_teamband_klopt(goal_id, (select auth.uid()))
+    )
+    or (
+      beneficiary_user_id = (select auth.uid())
+      and status = any (commitment_zichtbaar_voor_persoon())
+      and deelt_groep_met_eigenaar(goal_id)
+      and straf_teamband_klopt(goal_id, (select auth.uid()))
+    )
+  );
+
+-- De drie leesfuncties van de persoon-getuige, gekopieerd uit hun huidige
+-- definitie (0169, 0293) en aangevuld met de gemarkeerde regel (QS8-358).
+
+create or replace function public.getuigenissen()
+ RETURNS TABLE(id uuid, type text, body text, status text, confirmed_at timestamp with time zone, created_at timestamp with time zone, eigenaar_naam text)
+ LANGUAGE sql
+ STABLE SECURITY DEFINER
+ SET search_path TO 'public', 'pg_temp'
+AS $function$
+  select c.id,
+         c.type,
+         c.body,
+         c.status,
+         c.confirmed_at,
+         c.created_at,
+         p.display_name
+  from commitments c
+  join goals    g on g.id = c.goal_id
+  join profiles p on p.id = g.owner_id
+  where c.beneficiary_user_id = (select auth.uid())
+    and c.status = any (commitment_zichtbaar_voor_persoon())
+    -- ⚠️ De band die de aanwijzing droeg, moet er nog zijn — QS8-306. Dezelfde
+    --    invariant die `commitments_insert` bij het aanmaken eist, en dezelfde
+    --    die `getuigenissen_voor()` (0178) sinds QS8-298 voor de melding
+    --    hanteert. Hier mag het via de helper, want de kijker ís `auth.uid()`.
+    and deelt_groep_met_eigenaar(c.goal_id)
+    -- QS8-660 (besluit M1): een straf op een aandeel alleen voor wie nu in het team zit.
+    and straf_teamband_klopt(c.goal_id, (select auth.uid()))
+  order by c.confirmed_at desc, c.id;
+$function$;
+
+create or replace function public.getuigenissen_voor(p_user_id uuid)
+ RETURNS TABLE(commitment_id uuid, eigenaar_naam text)
+ LANGUAGE sql
+ STABLE SECURITY DEFINER
+ SET search_path TO 'public', 'pg_temp'
+AS $function$
+  select c.id, p.display_name
+  from commitments c
+  join goals    g on g.id = c.goal_id
+  join profiles p on p.id = g.owner_id
+  where c.beneficiary_user_id = p_user_id
+    -- ⚠️ De grens van domeinregel 11 en van `commitment_zichtbaar_voor_persoon()`.
+    --    Een straf die nog niet verschuldigd is, bestaat voor de getuige niet.
+    and c.status = 'due'
+    -- ⚠️ Nooit jezelf. `bewaak_begunstigde()` (0168) laat zo'n rij niet ontstaan,
+    --    ook niet als `service_role` — maar een melding sturen over je eigen straf
+    --    is een andere fout dan een rij die niet had mogen bestaan, en deze regel
+    --    kost niets. De opstelling die hem ijkt staat in
+    --    `tests/rls/getuigemelding.test.ts` en zet die trigger even uit.
+    and g.owner_id <> p_user_id
+    -- QS8-660 (besluit M1): een straf op een aandeel alleen voor wie nu in het team zit.
+    and straf_teamband_klopt(c.goal_id, p_user_id)
+    -- ⚠️ De groepsband die de aanwijzing droeg, moet er nog zijn — dezelfde band
+    --    die `commitments_insert` bij het aanmaken eiste, en verder niets.
+    --
+    --    ⚠️⚠️ **De eerste versie eiste méér dan dat en was daarmee fout.** Die
+    --    keek naar `goal_group_links` — of het dóél aan een gedeelde groep hangt
+    --    — omdat `te_beoordelen_voor()` (0054) dat doet. Maar dáár slaat het op
+    --    de voltooiing die de groep beoordeelt; hier is de invariant
+    --    `shares_group_with_user(beneficiary_user_id)`, en die eist alleen dat
+    --    eigenaar en getuige één groep delen. Een doel hóéft aan geen enkele
+    --    groep te hangen. De testopstelling viel er meteen over, en dat was
+    --    terecht: de conjunct sloot een geldige getuigenis uit.
+    --
+    --    De statusgrens is `<> 'inactive'` en niet `= 'active'`, precies zoals
+    --    `shares_group_with_user()` hem trekt: een lid met een adempauze
+    --    (`paused`) is nog steeds een groepsgenoot.
+    and exists (
+      select 1
+      from group_members eigenaar
+      join group_members getuige on getuige.group_id = eigenaar.group_id
+      where eigenaar.user_id  = g.owner_id
+        and eigenaar.status  <> 'inactive'
+        and getuige.user_id   = p_user_id
+        and getuige.status   <> 'inactive'
+    )
+    -- ⚠️ De anti-join. Zonder deze schuift het venster niet op en komt melding 51
+    --    nooit aan; zie de kop hierboven.
+    and not exists (
+      select 1
+      from notifications_sent n
+      where n.user_id = p_user_id
+        and n.kind    = 'commitment_witness'
+        and n.ref_id  = c.id
+    )
+  order by c.confirmed_at, c.id
+  -- ⚠️ Het dagplafond, en niet zomaar een limiet. `greatest(0, …)` want een
+  --    negatieve `limit` is een fout en geen lege uitkomst.
+  limit greatest(0, 5 - (
+    select count(*)
+    from notifications_sent n
+    where n.user_id = p_user_id
+      and n.kind    = 'commitment_witness'
+      and n.sent_at > now() - interval '24 hours'
+  ));
+$function$;
+
+create or replace function public.teruggedraaide_straffen_voor(p_user_id uuid)
+ RETURNS TABLE(commitment_id uuid, eigenaar_naam text)
+ LANGUAGE sql
+ STABLE SECURITY DEFINER
+ SET search_path TO 'public', 'pg_temp'
+AS $function$
+  select c.id, p.display_name
+  from commitments c
+  join goals    g on g.id = c.goal_id
+  join profiles p on p.id = g.owner_id
+  where c.beneficiary_user_id = p_user_id
+    -- De straf staat nu niet meer verschuldigd. Alleen déze toestand is er een
+    -- om over te berichten: `resolved` is afgewikkeld en `cancelled` valt onder
+    -- de redenering in de kop.
+    and c.status = 'set'
+    -- ⚠️ De grendel. Alleen wie de heenweg gehoord heeft, hoort de terugweg.
+    and exists (
+      select 1
+      from notifications_sent n
+      where n.user_id = p_user_id
+        and n.kind    = 'commitment_witness'
+        and n.ref_id  = c.id
+    )
+    -- Er is werkelijk teruggedraaid, en dat leest hij uit het auditspoor en niet
+    -- uit de huidige stand: `reverted` bestaat sinds QS8-308 juist omdat
+    -- `due -> set` het tegenovergestelde van triggeren is.
+    and exists (
+      select 1
+      from commitment_events e
+      where e.commitment_id = c.id
+        and e.event_type    = 'reverted'
+    )
+    -- ⚠️ Nooit jezelf — zelfde reden en zelfde vorm als in `getuigenissen_voor()`.
+    and g.owner_id <> p_user_id
+    -- QS8-660 (besluit M1): een straf op een aandeel alleen voor wie nu in het team zit.
+    and straf_teamband_klopt(c.goal_id, p_user_id)
+    -- ⚠️ De groepsband die de aanwijzing droeg, moet er nog zijn. Woordelijk
+    --    dezelfde eis als `shares_group_with_user()` hem trekt: `<> 'inactive'`
+    --    en niet `= 'active'`, want een lid met een adempauze is nog een
+    --    groepsgenoot.
+    and exists (
+      select 1
+      from group_members eigenaar
+      join group_members getuige on getuige.group_id = eigenaar.group_id
+      where eigenaar.user_id  = g.owner_id
+        and eigenaar.status  <> 'inactive'
+        and getuige.user_id   = p_user_id
+        and getuige.status   <> 'inactive'
+    )
+    -- ⚠️⚠️ **En hij moet in een groep zitten waar dít doel aan hangt. Die eis
+    --    staat hier ná de security-ronde en is een besluit van Quinten
+    --    (19-09-2026), geen afronding.**
+    --
+    --    📏 Zonder haar bereikt deze melding iemand buiten de kring die QS8-370
+    --    heeft afgebakend. End to end nagespeeld: alice zit in G1 (met bob) en
+    --    G2 (met dave), haar doel hangt **alleen** aan G2, en haar getuige is
+    --    **bob uit G1**. Dave willigt het uitstel in →
+    --    `teruggedraaide_straffen_voor(bob)` gaf **1 rij**. Bob hoorde dus iets
+    --    over een uitstel in een groep waar hij niet in zit.
+    --
+    --    Dat kan omdat `commitments_insert` alleen `shares_group_with_user()`
+    --    eist: een getuige deelt één of andere groep met de eigenaar, niet per
+    --    se de groep waar het doel aan hangt.
+    --
+    -- ⚠️⚠️ **Waarom dit ertoe doet, en dat hangt aan de gecorrigeerde meting
+    --    hierboven:** er is maar één oorzaak van een teruggang, dus deze melding
+    --    zegt onvermijdelijk *"er is een uitstelverzoek ingewilligd"*, hoe
+    --    neutraal de woorden ook zijn. Met drie oorzaken leek ze vaag; met één
+    --    is ze eenduidig. De bewoording beschermt niets als de gevolgtrekking
+    --    maar één kant op kan.
+    --
+    -- ⚠️ **Dit is nog steeds een verruiming van QS8-370 en niet een gelijkmaking.**
+    --    Die verruiming gaat over de gevráágde groep; hier mag óók een lid van
+    --    een andere gekoppelde groep het horen. Besluit van Quinten, en het
+    --    staat als eigen rij in `docs/decisions/002-domeinregel7-oppervlakken.md`.
+    and exists (
+      select 1
+      from goal_group_links l
+      join group_members m on m.group_id = l.group_id
+      where l.goal_id  = g.id
+        and m.user_id  = p_user_id
+        and m.status  <> 'inactive'
+    )
+    -- ⚠️ De anti-join, zonder welke het venster niet opschuift.
+    --
+    --    ⚠️⚠️ **Hij maakt de melding ook eenmalig per straf, en dat is een
+    --    gemeten grens en geen keuze van vandaag.** `notifications_sent_per_onderwerp`
+    --    is uniek op `(user_id, kind, ref_id)`, dus een straf die twee keer
+    --    heen en weer gaat, meldt één keer. Dat geldt net zo goed voor
+    --    `commitment_witness` zelf sinds 0178 — de tweede keer verschuldigd
+    --    worden is daar ook stil. Die eigenschap is hier overgenomen en niet
+    --    opgelost; hem doorbreken vraagt een andere sleutel dan `ref_id` en
+    --    raakt beide soorten.
+    and not exists (
+      select 1
+      from notifications_sent n
+      where n.user_id = p_user_id
+        and n.kind    = 'commitment_reverted'
+        and n.ref_id  = c.id
+    )
+  order by c.confirmed_at, c.id
+  -- Hetzelfde dagplafond als bij `getuigenissen_voor()`, en `greatest(0, …)` om
+  -- dezelfde reden: een negatieve `limit` is een fout en geen lege uitkomst.
+  limit greatest(0, 5 - (
+    select count(*)
+    from notifications_sent n
+    where n.user_id = p_user_id
+      and n.kind    = 'commitment_reverted'
+      and n.sent_at > now() - interval '24 hours'
+  ));
+$function$;

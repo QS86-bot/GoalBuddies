@@ -56,9 +56,34 @@ door collega's zodra hij verschuldigd is. Wat níet lekt:
 - de straftekst in de chat;
 - de inhoud via `straffen_bij_uitstelverzoek()` (alleen `goal_id`).
 
+## Wat de securityreview vond, en wat Quinten besloot
+
+- **M1, hersteld (besluit van Quinten):** de grens gold alleen bij het schrijven. Een
+  getuige die het team verliet maar nog een vriendengroep met de eigenaar deelde, las
+  de straf toch. Voor een aandeel eisen nu alle vier de leesroutes dat lezer én
+  eigenaar actief in het team zitten, via `straf_teamband_klopt()`:
+  `commitments_select`, `getuigenissen()`, `getuigenissen_voor()` en
+  `teruggedraaide_straffen_voor()`. Dat geldt ook andersom: vertrekt de eigenaar, dan
+  leest het team zijn straf op het aandeel niet meer.
+- **M2, hersteld (besluit van Quinten):** de persoonlijke getuige van een privédoel
+  moet een groep zonder organisatie met de eigenaar delen.
+- **M3 (besluit van Quinten):** de eigen bevestigingszin wacht op QS8-698. Tot dan
+  noemt de algemene zin het team bij naam.
+- **L1, hersteld:** de eigenaar kon aftasten of een vreemde groeps-uuid een teamgroep
+  is. Wie geen lid is van de gekozen groep, krijgt nu de melding van de policy.
+- **L2, hersteld:** `herstel_stuurloze_straf()` met een getuige buiten het team gaf een
+  ruwe fout. `herstel()` herkent nu de hint.
+- **L3, open:** een nieuw teamlid leest verschuldigde straffen van vóór zijn
+  lidmaatschap, net als in elke groep. Wordt zwaarder als: teamgroepen vaak van
+  samenstelling wisselen.
+- **Vóór de uitrol:** de migratie toetst geen bestaande rijen. In productie bestaan
+  nog geen aandelen of teamgroepen, dus er kan geen rij zijn die 0305 zou weigeren.
+  Controleer dat bij het landen met een `select` op `commitments` join
+  `team_goal_shares`, en op een teamgroep als begunstigde van een gewoon doel.
+
 ## Wat getest is
 
-`tests/rls/teamstraf.test.ts`: 8 tests via PostgREST.
+`tests/rls/teamstraf.test.ts`: 11 tests via PostgREST.
 - **Geweigerd:** een vriendengroep of vriend op een aandeel, het team op een gewoon
   doel, en dezelfde fout via `service_role`.
 - **Geen orakel:** een vreemde krijgt hetzelfde antwoord als bij een gewoon doel.
@@ -66,7 +91,8 @@ door collega's zodra hij verschuldigd is. Wat níet lekt:
   vriendengroep op een gewoon doel.
 - **Leesbaarheid:** de straf is pas leesbaar bij verschuldigd, met tekst. Het aandeel
   blijft dicht, en de chat noemt de tekst niet.
-- Vier mutaties met de hand.
+- M1 op drie leesroutes (direct, `getuigenissen()`, `getuigenissen_voor()`), M2 en L1.
+- Negen mutaties met de hand.
 
 ## Het pad terug
 
