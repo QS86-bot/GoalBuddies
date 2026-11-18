@@ -799,17 +799,33 @@ export async function removeTestUsers(): Promise<void> {
     if (error) console.warn(`Wezen-groep ${groupId} opruimen mislukte: ${error.message}`);
   }
 
+  // ⚠️⚠️ **Een mislukte verwijdering is rood en geen waarschuwing — QS8-692.**
+  //    📏 Op 09-11 en twee keer op 16-11 liep deze suite tegen productie en liet
+  //    **1.330** testaccounts achter: elke `admin.deleteUser` gaf HTTP 500, dit
+  //    blok maakte er een `console.warn` van, en de run bleef groen. Het
+  //    probleem was geen testprobleem maar het wisrecht van elke gebruiker.
+  //    "Een halve opruiming is beter dan geen" blijft waar — daarom gaat de lus
+  //    door — maar het eindoordeel is dat de run iets heeft achtergelaten.
+  const mislukt: string[] = [];
+
   for (const id of ids) {
     const error = await verwijderAuthGebruiker(id);
 
     if (error) {
-      // Niet gooien: een halve opruiming is beter dan geen, en de volgende
-      // gebruiker verdient nog een poging.
       console.warn(`Testgebruiker ${id} opruimen mislukte: ${error.message}`);
+      mislukt.push(`${id}: ${error.message}`);
     }
   }
 
   await meldAchtergeblevenGroepen(new Set(groepen), new Set(ids));
+
+  if (mislukt.length > 0) {
+    throw new Error(
+      `${mislukt.length} testgebruiker(s) konden niet verwijderd worden en staan nog op het doel:\n  ${mislukt.slice(0, 5).join('\n  ')}` +
+        (mislukt.length > 5 ? `\n  … en ${mislukt.length - 5} meer` : '') +
+        '\nDat is geen testfout: accountverwijdering zelf faalt (QS8-692).',
+    );
+  }
 }
 
 /**
