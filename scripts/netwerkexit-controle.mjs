@@ -28,6 +28,15 @@
  *      hier met opzet niet automatisch herkend: dat zou een blinde vlek zijn
  *      voor een globale `fetch` elders in hetzelfde bestand.
  *
+ * ⚠️ **Wat hij níet ziet, en dat staat hier zodat niemand denkt dat de hele
+ *    klasse bewaakt is:**
+ *    - een netwerkaanroep via een **ander bestand** (een geïmporteerde helper
+ *      die `fetch` doet) — hij leest één bestand tegelijk;
+ *    - een andere client dan de globale `fetch`: `node:https`, `undici`, een
+ *      alias als `const f = fetch`;
+ *    - submappen van `scripts/` (die zijn er vandaag niet).
+ *    `const { exit } = process` en `p = process;` volgt hij niet maar weigert hij.
+ *
  *    **De ratel slaat twee kanten op**, zoals `regel15:controle`: een
  *    registerrij voor een script dat het patroon niet (meer) draagt, of dat niet
  *    bestaat, is óók rood. Anders blijft een omgezet script in `OPEN` staan en
@@ -51,16 +60,33 @@ export const OPEN = {
   'uurjobs-controle.mjs': 'niet gemeten op Windows (QS8-704)',
 };
 
-/** Draagt de vorm, maar de exit valt vóór elke netwerkaanroep. */
+/**
+ * Draagt de vorm, niet de crash — mét het aantal exits en fetches dat er bij het
+ * lezen stond.
+ *
+ * ⚠️ **Het aantal is de grendel, niet de reden.** Een uitzondering per bestand
+ *    zou ook een exit dekken die er ná deze lezing bijkomt — in `deploy-web.mjs`
+ *    precies ná de upload, en dat is de crash van QS8-684 (code-critic,
+ *    18-11-2026). Verandert een van beide aantallen, dan is de rij rood tot
+ *    iemand opnieuw gelezen heeft en het aantal bijwerkt.
+ */
 export const UITGEZONDERD = {
-  'branches-controle.mjs':
-    '`fetch` is hier een parameter van hoofd() (standaard haalRemoteOp, een git ' +
-    'fetch via een child process) en niet de globale fetch; er is geen netwerk-await. ' +
-    'Gelezen op 18-11-2026.',
-  'deploy-web.mjs':
-    'process.exit() alleen in de preflight (scanOpGeheimen, eisEenSchoneBundel, de ' +
-    'DSN-controle in main) die vóór upload() en zetLive() draait; ná de fetches ' +
-    'wordt er geworpen en zet het entrypoint process.exitCode. Gelezen op 18-11-2026.',
+  'branches-controle.mjs': {
+    exits: 1,
+    fetches: 1,
+    reden:
+      '`fetch` is hier een parameter van hoofd() (standaard haalRemoteOp, een git ' +
+      'fetch via een child process) en niet de globale fetch; er is geen netwerk-await. ' +
+      'Gelezen op 18-11-2026.',
+  },
+  'deploy-web.mjs': {
+    exits: 5,
+    fetches: 5,
+    reden:
+      'de exit alleen in de preflight (scanOpGeheimen 3×, eisEenSchoneBundel, ' +
+      'eisDeDsnInDeBundel), die in main() vóór upload() en zetLive() draait; ná de ' +
+      'fetches wordt er geworpen en zet het entrypoint process.exitCode. Gelezen op 18-11-2026.',
+  },
 };
 
 /**
@@ -81,46 +107,87 @@ export function zonderCommentaar(bron) {
   return bron.replace(/^\s*\/\*[\s\S]*?\*\//gm, '').replace(/^\s*\/\/.*$/gm, '');
 }
 
-const FETCH = /(?<![\w$])fetch\s*\(/;
-const EXIT = /\bprocess\s*(?:\.\s*exit|\[\s*(['"`])exit\1\s*\])\s*\(/;
+/** De globale `fetch`, ook `fetch?.(`; een `.fetch(` op een object telt mee. */
+const FETCH = /(?<![\w$])fetch\s*(?:\?\.\s*)?\(/g;
 
-/** Draagt deze bron het patroon: een `fetch(` én een `process.exit(`? */
-export function draagtPatroon(bron) {
+/**
+ * Elke verwijzing naar `process.exit`, niet alleen een aanroep: ook
+ * `.then(process.exit)`, `process?.exit` en `process['exit']`. `exitCode` niet.
+ */
+const EXIT = /\bprocess\s*\??\.\s*exit\b(?!Code)|\bprocess\s*\[\s*(['"`])exit\1\s*\]/g;
+
+/**
+ * `const { exit } = process` maakt van elke `exit(` een exit die geen regex
+ * volgt. Die vorm volgen we niet, we weigeren hem — net als een alias.
+ */
+const ONTWIJKT = /\{[^}]*\bexit\b[^}]*\}\s*=\s*process\b|=\s*process\s*;/;
+
+/** Hoe vaak komen netwerk en exit voor in deze bron, zonder commentaar? */
+export function tel(bron) {
   const code = zonderCommentaar(bron);
-  return FETCH.test(code) && EXIT.test(code);
+  return {
+    fetches: (code.match(FETCH) ?? []).length,
+    exits: (code.match(EXIT) ?? []).length,
+    ontwijkt: ONTWIJKT.test(code),
+  };
+}
+
+/** Draagt deze bron het patroon: een `fetch(` én een `process.exit`? */
+export function draagtPatroon(bron) {
+  const { fetches, exits } = tel(bron);
+  return fetches > 0 && exits > 0;
+}
+
+/** Klachten over de registers: verweesd, verdwenen, of een ander aantal. */
+function registerklachten(tellingen, open, uitgezonderd) {
+  const klachten = [];
+  for (const [register, rijen] of [['OPEN', open], ['UITGEZONDERD', uitgezonderd]]) {
+    for (const naam of Object.keys(rijen).sort()) {
+      const t = tellingen.get(naam);
+      if (!t) klachten.push(`${register} noemt ${naam}, maar dat script bestaat niet.`);
+      else if (!(t.fetches > 0 && t.exits > 0)) {
+        klachten.push(`${register} noemt ${naam}, maar dat draagt het patroon niet meer: haal de rij weg.`);
+      }
+    }
+  }
+  for (const [naam, rij] of Object.entries(uitgezonderd)) {
+    const t = tellingen.get(naam);
+    if (!t || (t.exits === rij.exits && t.fetches === rij.fetches)) continue;
+    klachten.push(
+      `UITGEZONDERD ${naam}: gelezen bij ${rij.exits} exit(s) en ${rij.fetches} fetch(es), ` +
+        `nu ${t.exits} en ${t.fetches}. Lees opnieuw of de reden nog geldt, en werk het aantal bij.`,
+    );
+  }
+  return klachten;
 }
 
 /**
  * @param {{ naam: string, bron: string }[]} scripts
- * @param {{ open?: Record<string, string>, uitgezonderd?: Record<string, string> }} [registers]
+ * @param {{ open?: Record<string, string>, uitgezonderd?: Record<string, { exits: number, fetches: number, reden: string }> }} [registers]
  * @returns {{ klachten: string[], open: string[] }}
  */
 export function controleer(scripts, registers = {}) {
   const open = registers.open ?? OPEN;
   const uitgezonderd = registers.uitgezonderd ?? UITGEZONDERD;
-  const dragers = new Set(scripts.filter((s) => draagtPatroon(s.bron)).map((s) => s.naam));
-  const bestaand = new Set(scripts.map((s) => s.naam));
+  const tellingen = new Map(scripts.map((s) => [s.naam, tel(s.bron)]));
   const klachten = [];
 
-  for (const naam of [...dragers].sort()) {
-    if (naam in open || naam in uitgezonderd) continue;
+  for (const [naam, t] of [...tellingen].sort(([a], [b]) => a.localeCompare(b))) {
+    if (t.ontwijkt) {
+      klachten.push(`${naam} haalt exit uit het process-object (destructuring of alias); zet process.exitCode.`);
+    }
+    const drager = t.fetches > 0 && t.exits > 0;
+    if (!drager || naam in open || naam in uitgezonderd) continue;
     klachten.push(
-      `${naam} combineert een fetch-aanroep met process.exit. Zet de exit om naar ` +
+      `${naam} combineert een fetch-aanroep met een proces-exit. Zet hem om naar ` +
         '`process.exitCode` (zie scripts/realtime-identiteit-controle.mjs), of zet hem ' +
-        'met een gemeten reden in UITGEZONDERD.',
+        'met een gemeten reden en aantal in UITGEZONDERD.',
     );
   }
 
-  for (const [register, rijen] of [['OPEN', open], ['UITGEZONDERD', uitgezonderd]]) {
-    for (const naam of Object.keys(rijen).sort()) {
-      if (!bestaand.has(naam)) klachten.push(`${register} noemt ${naam}, maar dat script bestaat niet.`);
-      else if (!dragers.has(naam)) {
-        klachten.push(`${register} noemt ${naam}, maar dat draagt het patroon niet meer: haal de rij weg.`);
-      }
-    }
-  }
-
-  return { klachten, open: Object.keys(open).filter((n) => dragers.has(n)).sort() };
+  klachten.push(...registerklachten(tellingen, open, uitgezonderd));
+  const isDrager = (n) => (tellingen.get(n)?.fetches ?? 0) > 0 && (tellingen.get(n)?.exits ?? 0) > 0;
+  return { klachten, open: Object.keys(open).filter(isDrager).sort() };
 }
 
 function leesScripts() {
@@ -139,7 +206,7 @@ function main() {
   }
 
   if (klachten.length === 0) {
-    console.log('netwerkexit-controle: geen nieuw script dat fetch en process.exit combineert.');
+    console.log('netwerkexit-controle: geen nieuw script dat fetch en een proces-exit combineert.');
     return 0;
   }
 

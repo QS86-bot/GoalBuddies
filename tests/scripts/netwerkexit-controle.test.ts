@@ -26,14 +26,18 @@ describe('draagtPatroon — de vormen die hij moet vinden', () => {
     ['process["exit"]', 'process["exit"](1);'],
     ['process[`exit`]', 'process[`exit`](1);'],
     ['de exit vóór de fetch in de tekst', 'process.exit(1);'],
+    ['als referentie in .then', 'main().then(process.exit);'],
+    ['optionele keten', 'process?.exit(1);'],
+    ['via .call', 'process.exit.call(null, 1);'],
   ])('%s', (_naam, exit) => {
     expect(draagtPatroon(MET_FETCH + exit)).toBe(true);
     expect(draagtPatroon(exit + '\n' + MET_FETCH)).toBe(true);
   });
 
-  it('een fetch zonder await, en globalThis.fetch, tellen ook', () => {
+  it('een fetch zonder await, globalThis.fetch en fetch?.() tellen ook', () => {
     expect(draagtPatroon('fetch(url).then(() => process.exit(0));')).toBe(true);
     expect(draagtPatroon('await globalThis.fetch(url);\nprocess.exit(1);')).toBe(true);
+    expect(draagtPatroon('await fetch?.(url);\nprocess.exit(1);')).toBe(true);
   });
 
   it('ziet code achter een string met /** erin', () => {
@@ -60,6 +64,7 @@ describe('draagtPatroon — wat hij met rust laat', () => {
 
 describe('controleer — de registers en de ratel', () => {
   const drager = { naam: 'a.mjs', bron: MET_FETCH + 'process.exit(1);' };
+  const rij = (exits: number, fetches: number) => ({ exits, fetches, reden: 'gelezen' });
   const schoon = { naam: 'b.mjs', bron: MET_FETCH + 'process.exitCode = 1;' };
 
   it('een drager buiten beide registers is rood', () => {
@@ -75,8 +80,22 @@ describe('controleer — de registers en de ratel', () => {
   });
 
   it('een drager in UITGEZONDERD is niet rood en niet open', () => {
-    const r = controleer([drager], { open: {}, uitgezonderd: { 'a.mjs': 'reden' } });
+    const r = controleer([drager], { open: {}, uitgezonderd: { 'a.mjs': rij(1, 1) } });
     expect(r).toEqual({ klachten: [], open: [] });
+  });
+
+  it('een exit erbij in een uitgezonderd script is rood (de uitzondering geldt het gelezen aantal)', () => {
+    const meer = { naam: 'a.mjs', bron: drager.bron + '\nawait fetch(b);\nprocess.exit(2);' };
+    const { klachten } = controleer([meer], { open: {}, uitgezonderd: { 'a.mjs': rij(1, 1) } });
+    expect(klachten).toEqual([expect.stringMatching(/UITGEZONDERD a\.mjs: gelezen bij 1 exit.*nu 2 en 2/)]);
+  });
+
+  it.each([
+    ['destructuring', 'const { exit } = process;\nexit(1);'],
+    ['een alias', 'const p = process;\np.exit(1);'],
+  ])('%s van process is rood, ook zonder fetch', (_naam, bron) => {
+    const { klachten } = controleer([{ naam: 'c.mjs', bron }], { open: {}, uitgezonderd: {} });
+    expect(klachten).toEqual([expect.stringMatching(/^c\.mjs haalt exit uit het process-object/)]);
   });
 
   it('een registerrij voor een script zonder het patroon is rood (de ratel slaat terug)', () => {
@@ -85,7 +104,7 @@ describe('controleer — de registers en de ratel', () => {
   });
 
   it('een registerrij voor een script dat niet bestaat is rood', () => {
-    const { klachten } = controleer([], { open: {}, uitgezonderd: { 'weg.mjs': 'r' } });
+    const { klachten } = controleer([], { open: {}, uitgezonderd: { 'weg.mjs': rij(1, 1) } });
     expect(klachten).toEqual([expect.stringMatching(/UITGEZONDERD noemt weg\.mjs.*bestaat niet/)]);
   });
 });
@@ -110,9 +129,14 @@ describe('de echte boom (QS8-704, acceptatiecriterium 1)', () => {
     ]);
   });
 
-  it('elke registerrij draagt een reden', () => {
-    for (const reden of [...Object.values(OPEN), ...Object.values(UITGEZONDERD)]) {
-      expect(reden.trim().length).toBeGreaterThan(10);
+  it('elke registerrij draagt een reden, en een uitzondering het gelezen aantal', () => {
+    // ⚠️ Een lengte toetst de reden niet; het aantal wel — dat bewaakt hierboven
+    //    de toets "een exit erbij in een uitgezonderd script is rood".
+    const redenen = [...Object.values(OPEN), ...Object.values(UITGEZONDERD).map((r) => r.reden)];
+    for (const reden of redenen) expect(reden.trim().length).toBeGreaterThan(10);
+    for (const r of Object.values(UITGEZONDERD)) {
+      expect(r.exits).toBeGreaterThan(0);
+      expect(r.fetches).toBeGreaterThan(0);
     }
   });
 
