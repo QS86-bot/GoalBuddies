@@ -30,6 +30,8 @@
 > ⚠️ **Aanvulling van 17-11-2026 (batchsessie):** PR #670 (QS8-683 en QS8-681) is gemerged als
 > `8d61a8e6`; de stand staat in `docs/WERKVOORRAAD.md`. Daarna landden #672 tot en met #682 (zelfde bestand), met `main` eenmaal rood door een nieuwe advisory (`picomatch`, #682). Het vervolg is de deploy en eerste run van `rollover` en `notificaties` door Quinten, en QS8-690 (twee keer teruggestuurd naar de bouwsessie; PR #683 blijft draft).
 >
+> ⚠️ **Aanvulling van 18-11-2026 (batchsessie):** daarna landden #684 tot en met #691 (zelfde bestand, `docs/WERKVOORRAAD.md`); #683 en #685 zijn gesloten en #689 (het wisrecht) is draft en wacht op QS8-233 en QS8-643. Het vervolg is #689 hernummeren zodra die twee op `main` staan, en de deploys van Quinten (`notificaties` is gepauzeerd).
+>
 > ⚠️ **Die afkapping is met opzet een nummer en geen "alles".** Terwijl deze
 > bijwerking geschreven werd landden er drie PR's bij — de teller ging van
 > achttien naar negentien naar tweeëntwintig. Een tabel die zegt *alles van
