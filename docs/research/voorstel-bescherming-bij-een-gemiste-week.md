@@ -79,6 +79,9 @@ die ik niet gemeten heb en die een bouwsessie moet nameten:
 
 ## 7. Besluit voor Quinten
 
+> **18-11-2026: Quinten koos "eerst het gat nameten"** (bouwsessie, tegen de database, productie alleen
+> lezen). Pas bij een echt gat een issue voor optie B. Zie `verbeterplan-goalbuddies-uit-habit-huddle.md`, Fase 0.3 en 6.
+
 Optie B bouwen als eigen, afgebakend issue? Alleen als hij het gat van §3 in de praktijk
 herkent, en nadat een bouwsessie het gemeten heeft tegen de database. Zonder die meting is het gat
 een aanname.
