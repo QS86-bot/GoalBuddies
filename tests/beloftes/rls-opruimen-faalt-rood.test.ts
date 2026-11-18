@@ -42,7 +42,7 @@ vi.mock('@supabase/supabase-js', () => {
 
 describe('removeTestUsers eindigt rood bij een mislukte verwijdering', () => {
   it('gooit met het aantal achtergebleven accounts', async () => {
-    const { createTestProfile, removeTestUsers } = await import('./harness');
+    const { createTestProfile, removeTestUsers } = await import('../rls/harness');
     verwijderFout = { message: 'Database error deleting user' };
 
     await createTestProfile('een');
@@ -52,7 +52,7 @@ describe('removeTestUsers eindigt rood bij een mislukte verwijdering', () => {
   });
 
   it('blijft groen als alles weg is (tegenproef)', async () => {
-    const { createTestProfile, removeTestUsers } = await import('./harness');
+    const { createTestProfile, removeTestUsers } = await import('../rls/harness');
     verwijderFout = null;
 
     await createTestProfile('drie');

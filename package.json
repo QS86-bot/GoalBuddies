@@ -17,7 +17,7 @@
     "migratie:nieuw": "node scripts/migratie-nieuw.mjs",
     "typecheck": "tsc --noEmit",
     "lint": "eslint . --max-warnings 0",
-    "test": "vitest run",
+    "test": "vitest run --project unit",
     "tellers": "node scripts/tellers.mjs",
     "test:watch": "vitest",
     "types:db": "node scripts/db-types.mjs",

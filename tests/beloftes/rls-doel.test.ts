@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-import { achtergeblevenMelding, bepaalDoel } from './doel';
+import { achtergeblevenMelding, bepaalDoel } from '../rls/doel';
 
 /**
  * QS8-702 — productie is nooit een stille standaard, en een mislukte teardown
@@ -74,7 +74,7 @@ describe('de naad: het harnas zelf', () => {
     // stubEnv met '' is niet hetzelfde als afwezig; verwijder alleen onze eigen sleutels.
     for (const k of eigen) if (!(k in env)) delete process.env[k];
     vi.resetModules();
-    return import('./harness');
+    return import('../rls/harness');
   };
 
   it('productiesleutels zonder RLS_DOEL: het laden faalt, er wordt niets aangemaakt', async () => {
