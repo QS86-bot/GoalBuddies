@@ -1156,8 +1156,8 @@ En dan de twee stappen die geen enkele machine voor je doet:
    zwaarste bevinding onjuist omdat ze een migratiebestand las waar de gedeployde
    functie strenger was.
 
-6. **Draai de RLS-suite en lees de uitslag.** `npm test` doet dit lokaal mee,
-   maar alleen omdat `.env` de sleutels heeft. Controleer dat de teller klopt —
+6. **Draai de RLS-suite en lees de uitslag.** `npm test` draait sinds QS8-702 alleen het unit-project; de RLS-suite draai je met `npm run rls:lokaal` (na `npm run rls:stack`). Vroeger deed `npm test` dit mee,
+   maar alleen omdat `.env` de sleutels had. Controleer dat de teller klopt —
    staat er `skipped` bij `tests/rls/`, dan heb je géén RLS-dekking gedraaid en
    zegt groen niets over autorisatie.
    ✅ **Sinds QS8-270 hoef je dat niet meer met de hand te zien voor de vier

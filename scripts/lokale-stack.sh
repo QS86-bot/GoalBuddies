@@ -23,7 +23,7 @@
 #
 # Gebruik:
 #   scripts/lokale-stack.sh          # opbouwen en starten
-#   RLS_DOEL=lokaal npm test         # de suite ertegenaan
+#   npm run rls:lokaal               # de suite ertegenaan (npm test draait alleen het unit-project)
 #   scripts/lokale-stack.sh --stop
 #
 # Voorwaarden: Postgres 16 waarop je superuser bent, en de PostgREST-binary.
@@ -169,7 +169,7 @@ for _ in $(seq 1 40); do
   if curl -s --noproxy '*' --max-time 2 "http://127.0.0.1:${POORT}/" >/dev/null 2>&1; then
     echo "✓ PostgREST luistert op http://127.0.0.1:${POORT}"
     echo
-    echo "  Draai de suite met:  RLS_DOEL=lokaal npm test"
+    echo "  Draai de suite met:  npm run rls:lokaal"
     exit 0
   fi
   sleep 0.5

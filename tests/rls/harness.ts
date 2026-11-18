@@ -46,7 +46,8 @@ export type TestDb = SupabaseClient<Database>;
  *    uitdrukkelijk, en zonder doel meet de suite niets (`geen`):
  *
  *      lokaal      RLS_DOEL=lokaal                    (npm run rls:lokaal)
- *      productie   RLS_DOEL=productie RLS_TEST_ALLOW_PROD=1 npx vitest run tests/rls/<bestand>
+ *      productie   npx cross-env RLS_DOEL=productie RLS_TEST_ALLOW_PROD=1 vitest run tests/rls/<bestand>
+ *                  (cross-env werkt in cmd, PowerShell en bash; zet de waarden niet in je sessie of in .env)
  *
  *    Staan er Supabase-sleutels in de omgeving en is er geen doel gekozen
  *    (`.env` wordt bij elke `npm test` geladen), dan faalt het laden van dit
@@ -144,8 +145,9 @@ const PRODUCTIE_REF = 'wehgocadxehottiiyvsc';
  *    een slot op — niet omdat het vandaag misgaat, maar omdat het één slordige
  *    refactor verwijderd is van `delete from groups` zonder filter.
  *
- *    Zet `RLS_TEST_ALLOW_PROD=1` in .env als je bewust tegen het echte project
- *    wilt draaien.
+ *    Wil je bewust tegen het echte project draaien, geef het slot dan per run mee
+ *    (`npx cross-env RLS_DOEL=productie RLS_TEST_ALLOW_PROD=1 vitest run …`) en zet
+ *    het niet vast in .env of in je sessie.
  *
  * ⚠️ **Hier stond: "zodra er een lokale stack is, hoort deze regel te
  *    verdwijnen". Die stack is er sinds 24-08 (QS8-119) en de regel blijft
@@ -174,8 +176,9 @@ function guardProductie(target: string): void {
       '  npm run rls:stack   &&   npm run rls:lokaal',
       '',
       'Wil je tóch tegen het echte project — en daar is één goede reden voor,',
-      'namelijk de controletest op een echt GoTrue-token — zet dan bewust in .env:',
-      '  RLS_TEST_ALLOW_PROD=1',
+      'namelijk de controletest op een echt GoTrue-token — geef het slot dan per run mee',
+      '(niet vastzetten in .env of in je sessie):',
+      '  npx cross-env RLS_DOEL=productie RLS_TEST_ALLOW_PROD=1 vitest run tests/rls/<bestand>',
     ].join('\n'),
   );
 }

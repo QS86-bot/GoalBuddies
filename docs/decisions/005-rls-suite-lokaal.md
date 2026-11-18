@@ -18,7 +18,7 @@ product noemt.
 
 ## Het besluit: een lokale opstelling, en die is de standaard
 
-`RLS_DOEL=lokaal npm test` praat tegen een **echte PostgREST** op een database die
+`npm run rls:lokaal` (`RLS_DOEL=lokaal`) praat tegen een **echte PostgREST** op een database die
 uit `supabase/migrations/` is opgebouwd. Geen credentials, geen productie, geen
 netwerk.
 

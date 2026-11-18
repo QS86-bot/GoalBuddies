@@ -40,7 +40,7 @@ export function heeftProductiesleutels(env: Omgeving): boolean {
 const KEUZE =
   'Kies een doel:\n' +
   '  lokaal (aanbevolen):  npm run rls:stack   &&   npm run rls:lokaal\n' +
-  '  productie (bewust):   RLS_DOEL=productie RLS_TEST_ALLOW_PROD=1 npx vitest run tests/rls/<bestand>';
+  '  productie (bewust):   npx cross-env RLS_DOEL=productie RLS_TEST_ALLOW_PROD=1 vitest run tests/rls/<bestand>';
 
 export function bepaalDoel(env: Omgeving): DoelOordeel {
   const doel = env.RLS_DOEL;
@@ -71,7 +71,8 @@ export function bepaalDoel(env: Omgeving): DoelOordeel {
  * ⚠️ **Een mislukte verwijdering is een rode suite en geen waarschuwing.**
  *    Accountverwijdering faalt op productie voor iedereen (QS8-692); omgezet in
  *    een `console.warn` bleef elke run groen en groeide het aantal achtergebleven
- *    accounts van 260 (09-11) naar 1.865 (18-11). `null` betekent: alles weg.
+ *    accounts van 260 (09-11) naar 1.865 (18-11; meting van Quinten op `auth.users`, niet door
+ *    deze test). `null` betekent: alles weg.
  */
 export function achtergeblevenMelding(
   achtergebleven: readonly string[],

@@ -479,9 +479,9 @@ vergelijking en slaat zichzelf lokaal over.
 beide** — lokaal voor het snelle bewijs, productie voor de bevestiging:
 
 ```bash
-npm test                        # slaat de RLS-suite over zonder .env en zonder RLS_DOEL
+npm test                        # alleen het unit-project: draait de RLS-suite nooit
 npm run rls:lokaal              # tegen de lokale stack (RLS_DOEL=lokaal)
-RLS_DOEL=productie RLS_TEST_ALLOW_PROD=1 npx vitest run tests/rls/<bestand>   # bewust tegen productie
+npx cross-env RLS_DOEL=productie RLS_TEST_ALLOW_PROD=1 vitest run tests/rls/<bestand>   # bewust tegen productie (werkt in cmd, PowerShell en bash)
 ```
 
 ⚠️ **Productie is nooit een stille standaard (QS8-702).** Staan er Supabase-sleutels
