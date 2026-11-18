@@ -165,18 +165,42 @@ describe('draai: de exitcode zonder netwerk', () => {
   });
 });
 
+/**
+ * Haalt commentaar uit een script, en alleen commentaar.
+ *
+ * ⚠️ **Een blokcommentaar begint aan het begin van een regel.** De knip zonder
+ *    anker las `${app}/**` in `scripts/auth-urls.mjs` als het begin van een
+ *    blokcommentaar en haalde daarmee zestien regels weg — een `process.exit(1)`
+ *    in `redirectsVoor()` bleef onzichtbaar (📏 gemeten door de code-critic op
+ *    PR #688). Zelfde klasse als de knip op `//` in een URL (QS8-412): de knip
+ *    die een controle scherp houdt, is zelf een grendel.
+ */
+function zonderCommentaar(bron: string): string {
+  return bron.replace(/^\s*\/\*[\s\S]*?\*\//gm, '').replace(/^\s*\/\/.*$/gm, '');
+}
+
 describe('geen process.exit() in de controles die netwerk gebruiken (QS8-684)', () => {
   // ⚠️ De exitcode-tests hierboven blijven groen als iemand in de entry weer
   //    `process.exit(await draai(...))` zet — en dat is precies de vorm die op
   //    Windows crasht. Dit toetst de bron. Commentaar telt niet mee.
-  it.each(['realtime-identiteit-controle', 'wachtwoord-controle'])(
+  it.each([
+    'realtime-identiteit-controle',
+    'wachtwoord-controle',
+    'adviseur-controle',
+    'auth-urls',
+  ])(
     '%s sluit het proces niet af',
     (naam) => {
-      const bron = readFileSync(`scripts/${naam}.mjs`, 'utf8')
-        .replace(/\/\*[\s\S]*?\*\//g, '')
-        .replace(/^\s*\/\/.*$/gm, '');
+      const bron = zonderCommentaar(readFileSync(`scripts/${naam}.mjs`, 'utf8'));
       expect(bron).not.toMatch(/process\.exit\(/);
       expect(bron).toMatch(/process\.exitCode\s*=/);
     },
   );
+
+  it('ziet code achter een string met /** erin, en laat echt commentaar met rust', () => {
+    const blind = 'const a = [`${app}/**`];\nprocess.exit(1);\n/** later commentaar */\nconst c = 2;\n';
+    expect(zonderCommentaar(blind)).toMatch(/process\.exit\(1\)/);
+    const commentaar = '/**\n * process.exit(1) staat hier alleen in uitleg\n */\n// process.exit(2)\nconst b = 1;\n';
+    expect(zonderCommentaar(commentaar)).not.toMatch(/process\.exit/);
+  });
 });
