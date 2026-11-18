@@ -169,7 +169,12 @@ describe('geen process.exit() in de controles die netwerk gebruiken (QS8-684)', 
   // ⚠️ De exitcode-tests hierboven blijven groen als iemand in de entry weer
   //    `process.exit(await draai(...))` zet — en dat is precies de vorm die op
   //    Windows crasht. Dit toetst de bron. Commentaar telt niet mee.
-  it.each(['realtime-identiteit-controle', 'wachtwoord-controle'])(
+  it.each([
+    'realtime-identiteit-controle',
+    'wachtwoord-controle',
+    'adviseur-controle',
+    'auth-urls',
+  ])(
     '%s sluit het proces niet af',
     (naam) => {
       const bron = readFileSync(`scripts/${naam}.mjs`, 'utf8')
