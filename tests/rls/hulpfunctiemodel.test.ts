@@ -161,6 +161,16 @@ const REGISTER: Readonly<Record<string, Rij>> = {
     open: true,
     reden: 'De open-groepvariant van shares_group_with_goal(), zelfde model (0141).',
   },
+  aandeel_wacht_op_teamgenoot: {
+    nietInactief: 2,
+    alleenActief: 0,
+    archief: true,
+    open: false,
+    reden:
+      'Het goedkeurvenster voor een aandeel (0303, QS8-661): zelfde model als ' +
+      'shares_group_with_goal(), kijker én eigenaar actief en de groep niet gearchiveerd, ' +
+      'want het staat in dezelfde leesregels. Alleen zolang er een weekdoel op pending staat.',
+  },
   shares_group_with_user: {
     nietInactief: 2,
     alleenActief: 0,

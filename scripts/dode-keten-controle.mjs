@@ -313,6 +313,23 @@ export const WACHT_OP_EEN_BESLUIT = {
   //    eigen kaart op `app/groep/[id].tsx`, bewust niet naast het klassement —
   //    en deze controle meldde zelf dat de rij weg mocht zodra de aanroeper er
   //    was. Precies wat de kop hierboven belooft: een agenda, geen parkeerplaats.
+  //
+  // ⚠️ De zeven organisatie-RPC's van 0299 stonden hier van 17-11-2026 (QS8-652)
+  //    tot 18-11-2026: de migratie landde vóór de schermen, zoals de epic QS8-650
+  //    het knipt. QS8-657 heeft de aanroepers gebouwd en de rijen zijn weg.
+  // ⚠️ De twee teamdoel-RPC's (QS8-654, 0301): zelfde reden, het scherm is QS8-658.
+  maak_teamdoel:
+    'Schrijfpad van een teamdoel (0301, QS8-654). Het scherm is QS8-658. ' +
+    '**Vraag:** krijgt hij daar een aanroeper? Zo ja, dan gaat deze rij weg zodra die er is; ' +
+    'zo nee, dan hoort de RPC weg.',
+  teambalk:
+    'Leespad van de teambalk (0302, QS8-655). Het scherm is QS8-658. ' +
+    '**Vraag:** krijgt hij daar een aanroeper? Zo ja, dan gaat deze rij weg zodra die er is; ' +
+    'zo nee, dan hoort de RPC weg.',
+  neem_aandeel:
+    'Schrijfpad van een aandeel (0301, QS8-654). Het scherm is QS8-658. ' +
+    '**Vraag:** krijgt hij daar een aanroeper? Zo ja, dan gaat deze rij weg zodra die er is; ' +
+    'zo nee, dan hoort de RPC weg.',
 };
 
 /** Bestanden waarin een aanroep als "productie" telt. Tests en scripts niet. */
@@ -679,18 +696,37 @@ export function zonderChecks(sql) {
  * @type {Record<string, string[]>}
  */
 export const GEDEELDE_WAARDEN = {
-  active: ['goals', 'group_members', 'groups'],
+  // ⚠️ **`organizations` en `organization_members` — QS8-652, migratie 0299.**
+  //    Met de hand nagelopen per tabel: `active` is op beide de default en
+  //    wordt door `maak_organisatie()` en `word_organisatielid()` geschreven;
+  //    `admin` door `maak_organisatie()`, `member` door `word_organisatielid()`,
+  //    `inactive` door `verlaat_organisatie()` en `zet_organisatielid_uit()`.
+  //    ⚠️ `organizations.status = 'archived'` heeft vandaag **géén** schrijver:
+  //    de archiveer-RPC uit besluit 13 is niet gebouwd. Deze controle ziet dat
+  //    niet — de waarde staat als tekst in de where-clausules van 0299 en telt
+  //    daardoor als geschreven (📏 een rij in `BEWUST_ONGESCHREVEN` werd hier
+  //    meteen als verlopen gemeld). Het staat daarom als keuze 7 in
+  //    `docs/decisions/2026-11-17-organisaties-en-lidmaatschappen.md`.
+  // ⚠️ **`team_goals` — QS8-654, migratie 0301.** Met de hand nagelopen: `active`
+  //    is de default en wordt door `maak_teamdoel()` geschreven. `completed` en
+  //    `archived` hebben vandaag **géén** schrijver: afronden is QS8-662, en
+  //    archiveren is niet gepland. Dezelfde blinde vlek als bij
+  //    `organizations.archived` hierboven; het staat in de aannames van
+  //    `docs/decisions/2026-11-17-teamdoelen-en-aandelen.md`.
+  active: ['goals', 'group_members', 'groups', 'organization_members', 'organizations', 'team_goals'],
+  admin: ['group_members', 'organization_members'],
   approved: ['completion_approvals', 'deadline_requests', 'weekly_goals'],
-  archived: ['goal_events', 'goals', 'groups'],
+  archived: ['goal_events', 'goals', 'groups', 'organizations', 'team_goals'],
   building: ['goals', 'groups', 'profiles'],
   business: ['goals', 'groups', 'profiles'],
   cancelled: ['commitment_events', 'commitments', 'weekly_goals'],
-  completed: ['goal_events', 'goals'],
+  completed: ['goal_events', 'goals', 'team_goals'],
   connection: ['goals', 'groups', 'profiles'],
   created: ['commitment_events', 'goal_events'],
   creativity: ['goals', 'groups', 'profiles'],
   done: ['ai_jobs', 'milestones'],
   en: ['groups', 'milestone_tips', 'profiles'],
+  inactive: ['group_members', 'organization_members'],
   fitness: ['goals', 'groups', 'profiles'],
   // ⚠️ **Met de hand nagelopen per tabel, zoals de melding vraagt (QS8-379).**
   //    `daily_moves`: `deelDagzet()` schrijft `group`, de kolom staat in de
@@ -724,6 +760,7 @@ export const GEDEELDE_WAARDEN = {
   lucerna: ['hero_appearances', 'hero_profiles'],
   meridian: ['hero_appearances', 'hero_profiles'],
   milestone_done: ['chat_messages', 'points_ledger'],
+  member: ['group_members', 'organization_members'],
   mindfulness: ['goals', 'groups', 'profiles'],
   nl: ['groups', 'milestone_tips', 'profiles'],
   nutrition: ['goals', 'groups', 'profiles'],

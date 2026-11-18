@@ -259,6 +259,27 @@ const REGISTER = new Map([
   ],
   ['zet_groepszichtbaarheid', 'Beheerderspoort (besluit A41). Gemeten: poort weg → 5 rood.'],
   [
+    'neem_aandeel',
+    'Teamlidpoort (QS8-654, besluit 20): alleen een actief lid van de teamgroep neemt een aandeel, ' +
+      'en het doel en de koppeling zijn van de aanroeper zelf. Gemeten: beide lidmaatschapstoetsen weg → ' +
+      '1 rood (`tests/rls/teamdoelen.test.ts`, "kan maar één keer per persoon, en niet door wie geen ' +
+      'teamlid is").',
+  ],
+  [
+    'maak_teamgroep',
+    'Organisatiebeheerderspoort (QS8-653, besluit 13): alleen een beheerder van de organisatie ' +
+      'maakt er een team in, en de groepsrij krijgt die organisatie mee. Gemeten: poort weg → 1 rood ' +
+      '(`tests/rls/teamgroepen.test.ts`, "laat alleen een organisatiebeheerder een team maken").',
+  ],
+  [
+    'ruim_teamlidmaatschappen_op',
+    'Triggerfunctie (QS8-653) op `organization_members`, `after update of status`. Geen eigen ' +
+      'poort: de schrijfactie die hem aftrapt is alleen bereikbaar via `verlaat_organisatie()` ' +
+      '(lidmaatschapspoort) en `zet_organisatielid_uit()` (beheerderspoort); `organization_members` ' +
+      'heeft geen UPDATE-policy en geen schrijfgrant (0299). Schrijft alleen rijen van de persoon ' +
+      'die inactief werd. Gemeten: trigger weg → 2 rood.',
+  ],
+  [
     'herorden_weekplan',
     'Eigenaarspoort. ⚠️ **Was ongedekt tot QS8-286: nul rood van 995.** Elke bestaande test ' +
       'riep hem aan als de eigenaar op zijn eigen doel, dus de poort weghalen veranderde ' +
@@ -532,6 +553,13 @@ export function beoordeel(gevonden, register = REGISTER, soort = undefined) {
  *    iemand opschrijft waarom hij open mag.
  */
 const LEESREGISTER = new Map([
+  [
+    'organisatieteams',
+    'Poort: `is_organisatielid(p_organization_id)` (QS8-657, 0305), als one-time filter vóór de scan. ' +
+      'Geeft id en naam van de teams van je eigen organisatie, aan elk actief lid hetzelfde (besluit 6); ' +
+      'geen persoon, dus geen gemiste week af te leiden. Een niet-lid en een verzonnen id krijgen nul ' +
+      'rijen. Gemeten: poort weg → 2 rood in `tests/rls/organisatieteams.test.ts`.',
+  ],
   // --- Predicaten: geven een boolean over de aanroeper zélf -----------------
   //
   // ⚠️ Deze acht zijn de predicaten. Ze lezen `group_members` als eigenaar
@@ -639,6 +667,17 @@ const LEESREGISTER = new Map([
     '⚠️ **Geen poort.** Geeft de datum van vandaag in de tijdzone van een groep, voor elk uuid. Wat eruit lekt is de ' +
       'tijdzone van de groep en niets anders. Staat in `chain_links_select`, dus `authenticated` móet hem kunnen ' +
       'aanroepen.',
+  ],
+  [
+    'aandeel_wacht_op_teamgenoot',
+    'Predicaat op `m.user_id = auth.uid()`, plus de eigenaar als actief lid en een weekdoel op `pending`. Geeft een ' +
+      'boolean over de aanroeper; het goedkeurvenster van QS8-661 (0303). Getoetst in `tests/rls/aandeel-dicht.test.ts`.',
+  ],
+  [
+    'maak_teamdoel',
+    'Leest `groups.organization_id` van de opgegeven groep, en geeft dat niet terug: geen lid, geen teamgroep en ' +
+      'een onbekend id krijgen alle drie `niet_toegestaan` (poort `is_group_member()`). Telt verder alleen de eigen ' +
+      'teamdoelen van vandaag (`created_by = auth.uid()`). Gemeten in `tests/rls/teamdoelen.test.ts` (QS8-654).',
   ],
 ]);
 
