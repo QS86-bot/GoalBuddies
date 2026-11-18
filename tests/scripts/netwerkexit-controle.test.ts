@@ -114,19 +114,25 @@ describe('de echte boom (QS8-704, acceptatiecriterium 1)', () => {
     .filter((naam) => /\.(?:mjs|js|cjs)$/.test(naam))
     .map((naam) => ({ naam, bron: readFileSync(`scripts/${naam}`, 'utf8') }));
 
-  it('meldt precies de acht open scripts, en niets is rood', () => {
+  it('niets is rood en niets staat open (de acht van QS8-704 zijn omgezet)', () => {
     const r = controleer(scripts);
     expect(r.klachten).toEqual([]);
-    expect(r.open).toEqual([
-      'edge-gedeployd.mjs',
-      'functies-controle.mjs',
-      'migratie-hernummer.mjs',
-      'migratieregister-controle.mjs',
-      'migratieregister-uitlijnen.mjs',
-      'rls-dekking.mjs',
-      'sentry-proef.mjs',
-      'uurjobs-controle.mjs',
-    ]);
+    expect(r.open).toEqual([]);
+  });
+
+  it.each([
+    'edge-gedeployd',
+    'functies-controle',
+    'migratie-hernummer',
+    'migratieregister-controle',
+    'migratieregister-uitlijnen',
+    'rls-dekking',
+    'sentry-proef',
+    'uurjobs-controle',
+  ])('%s draagt het patroon niet meer en zet process.exitCode', (naam) => {
+    const bron = readFileSync(`scripts/${naam}.mjs`, 'utf8');
+    expect(draagtPatroon(bron)).toBe(false);
+    expect(bron).toMatch(/process\.exitCode\s*=/);
   });
 
   it('elke registerrij draagt een reden, en een uitzondering het gelezen aantal', () => {

@@ -298,5 +298,9 @@ export async function hoofd(leesBestanden = leesWorkflows, haal = haalRuns, nu =
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
-  hoofd().then((code) => process.exit(code));
+  // ⚠️ `process.exitCode` en geen proces-exit: dit draait na een `await fetch`
+  //    (de GitHub-API), en dat crasht op Windows (QS8-684, QS8-704).
+  hoofd().then((code) => {
+    process.exitCode = code;
+  });
 }

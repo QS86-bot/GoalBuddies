@@ -18,10 +18,8 @@
  *    tellen mee, en elke `fetch(`, niet alleen een ge-`await`-te.
  *
  * ⚠️⚠️ **Twee registers, en ze wegen anders.**
- *    - `OPEN`: draagt het patroon en is niet gemeten op Windows. Of ze eerst
- *      gemeten of meteen omgezet worden is een keuze van Quinten (QS8-704). Ze
- *      worden gemeld, niet rood. Komt er één bij, dan is dat rood — zo groeit de
- *      klasse niet stil verder.
+ *    - `OPEN`: draagt het patroon en wacht op een keuze. Gemeld, niet rood.
+ *      Leeg sinds QS8-704: de acht die er stonden zijn omgezet.
  *    - `UITGEZONDERD`: draagt de vorm, maar niet de crash — de exit valt
  *      aantoonbaar vóór elke netwerkaanroep, of `fetch` is een eigen binding en
  *      niet de globale. Mét wat er gelezen is als reden. Een eigen binding wordt
@@ -48,17 +46,15 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 
 const WORTEL = fileURLToPath(new URL('..', import.meta.url));
 
-/** Draagt het patroon, niet gemeten op Windows; de keuze ligt bij Quinten (QS8-704). */
-export const OPEN = {
-  'edge-gedeployd.mjs': 'niet gemeten op Windows (QS8-704)',
-  'functies-controle.mjs': 'niet gemeten op Windows (QS8-704)',
-  'migratie-hernummer.mjs': 'niet gemeten op Windows (QS8-704)',
-  'migratieregister-controle.mjs': 'niet gemeten op Windows (QS8-704)',
-  'migratieregister-uitlijnen.mjs': 'niet gemeten op Windows (QS8-704)',
-  'rls-dekking.mjs': 'niet gemeten op Windows (QS8-704)',
-  'sentry-proef.mjs': 'niet gemeten op Windows (QS8-704)',
-  'uurjobs-controle.mjs': 'niet gemeten op Windows (QS8-704)',
-};
+/**
+ * Draagt het patroon en is (nog) niet omgezet. Leeg sinds 18-11-2026: de acht
+ * scripts die hier stonden zijn op Quintens besluit meteen omgezet naar
+ * `process.exitCode` (QS8-704). Het register blijft bestaan voor de volgende
+ * keer dat omzetten op een keuze moet wachten; een rij hier is gemeld, niet rood.
+ *
+ * @type {Record<string, string>}
+ */
+export const OPEN = {};
 
 /**
  * Draagt de vorm, niet de crash — mét het aantal exits en fetches dat er bij het
