@@ -256,27 +256,6 @@ export const NAGEKEKEN = {
       'geregistreerd staat. `npm audit` noemt `fixAvailable: true`; niet gedaan, want dat ' +
       'raakt de lockfile.',
   },
-  picomatch: {
-    ernst: 'high',
-    advisories: [1247710],
-    reparatie: 'brekend',
-    in_bundel: false,
-    marker: 'Expected pattern to be a non-empty string',
-    reden:
-      'Nieuw op 17-11-2026, tussen de CI-run van #681 (16:24 UTC, groen) en die van `main` ' +
-      '(18:02 UTC, rood): ReDoS door herhaalde extglobs met één tak (`<=4.0.7`, GHSA-fc5q-39xc-vjpf). ' +
-      'Geen commit veranderde iets, de advisory-database kreeg een nieuwe wortel. 📏 `npm ls` zet ' +
-      'hem onder `expo > @expo/cli` en `@expo/metro-config` (4.0.5), onder `react-native > ' +
-      'tinyglobby > fdir` en onder `micromatch` en `jest-util` (2.3.2): bundler, dev-server, test- ' +
-      'en bouw-tooling, geen app-code. Verse `npx expo export --platform web` met ' +
-      'dummy-EXPO_PUBLIC-waarden, `dist/` van 5,4 MB met twee JS-bestanden: **nul** treffers op ' +
-      '`Expected pattern to be a non-empty string` (en op `Expected a non-empty string`), tegen ' +
-      'een treffer op de controlegrep `supabase`. ⚠️ **`reparatie: brekend` is wat npm zegt** ' +
-      '(`fixAvailable` wijst naar `react-native@0.83.10`, `isSemVerMajor: true`) en dus geen ' +
-      'advies: niet gerepareerd, want dat raakt de lockfile en een major van `react-native`. ' +
-      'De advisory raakt ook de versies die `micromatch` en `jest-util` binnenhalen; die staan ' +
-      'als gevolg in het rapport en niet als eigen wortel.',
-  },
   compression: {
     ernst: 'high',
     advisories: [1241221],
