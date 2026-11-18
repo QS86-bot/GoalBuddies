@@ -61,12 +61,17 @@ export {
 } from './chatdoc';
 
 export {
+  actieVoor,
   lidmaatschapStand,
   magAutomatischToetreden,
+  titelIsVerlopen,
   uitnodigingsStand,
+  type Actie,
   type LidmaatschapStand,
   type UitnodigingsStand,
 } from './uitnodiging-stand';
+
+export { verwerkToetreding, type ToetredenUitvoer } from './uitnodiging-toetreden';
 
 export {
   bewaarOpenstaandeUitnodiging,
