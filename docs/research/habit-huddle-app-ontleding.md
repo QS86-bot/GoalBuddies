@@ -15,8 +15,8 @@ habithuddle.com gemaakt voor deze lijst, en er is niets omzeild. Status van elke
 
 | # | Scherm | Wat er wél van gemeten is (bron) | Waarom het ertoe doet |
 |---|---|---|---|
-| 1 | **Nudges en waves** (versturen, ontvangen) | Alleen dat ze bestaan: een meldingsoptie "nudges en waves" (s19), tellers "nudges 0 gegeven / 0 ontvangen" (s5) en "wave streaks" (s1). Niet: wie ze kan sturen, aan wie, wat de ontvanger leest. | Domeinregel 7: een nudge richting iemand die nog niet heeft ingecheckt zegt iets over een gemiste dag. Tot dit gezien is: **niet overnemen**. |
-| 2 | **De check-in zelf**, ook de flexibele | Alleen de uitkomst: een kalenderlegenda "Floor" en een teller "ceiling days" (s5), en vloer/plafond als twee regels (s14). Niet: het scherm waar je kiest, en wat er daarna gebeurt. | Het kernmoment van hun retentie; regel 8 en regel 9. |
+| 1 | **Nudges en waves** (versturen, ontvangen) | Alleen dat ze bestaan: een meldingsoptie "nudges en waves" (s19), tellers "nudges 0 gegeven / 0 ontvangen" (s5) en "wave streaks" (s1). Niet: wie ze kan sturen, aan wie, wat de ontvanger leest. | Domeinregel 7: een nudge richting iemand die nog niet heeft ingecheckt zegt iets over een gemiste dag. Tot dit gezien is: **niet overnemen**. Quinten meldt op 18-11-2026 dat hij dit niet kan tonen omdat het een betaald account vraagt; dat is zijn mededeling, door mij niet gecontroleerd. |
+| 2 | **De check-in zelf**, ook de flexibele | Alleen de uitkomst: een kalenderlegenda "Floor" en een teller "ceiling days" (s5), en vloer/plafond als twee regels (s14). Niet: het scherm waar je kiest, en wat er daarna gebeurt. | Het kernmoment van hun retentie; regel 8 en regel 9. Quinten kan de flexibele variant niet tonen (zelfde reden als rij 1, niet door mij gecontroleerd). |
 | 3 | **Een groep met meerdere leden**, ledenlijst, wat een ander lid van jou ziet | Alleen een groep met één lid (s1, s14). | Regel 4 en 7: welke velden een lid van een ander ziet. |
 | 4 | **Uitnodigen en toetreden** | Alleen de knoppen "Invite" en "Join" (s1, s3). Een deel van de aanmeldflow staat publiek in §7. | Uitnodigingen zijn een spamvector (regel 5 van de beveiliging). |
 | 5 | **Gewoonte aanmaken** en het opgeslagen plan met "Saved" nadat je ingelogd bent | De bewaarlijst als begrip staat publiek in §7; het scherm erna niet. | Vergelijking met onze doelopsplitsing. |
@@ -348,3 +348,36 @@ Niet de hele lijst. Eén afgebakend issue ligt voor de hand: **bescherming bij e
 daarvoor het volledigst is. De open vraag voor Quinten: levert hij nog schermafbeeldingen van
 de check-in (flexibel), de gewoonte aanmaken, nudges en een groep met meerdere leden? Zonder
 nudges geen oordeel erover.
+
+## 19. Aanvulling 18-11-2026: Discover in detail (s20) en de grens van wat Quinten kan tonen
+
+**Wat Quinten meldt (niet door mij gecontroleerd):** hij kan de schermen van nudges en van de
+flexibele check-in niet maken, omdat hij geen betaald account heeft. Dat past bij rij 1 en 2 in §0,
+die daarmee op "niet zichtbaar zonder betaald account" staan, niet alleen "zonder account".
+Ik leid daar niet uit af dat nudges of de flexibele check-in betaald zijn; het is wat hij ziet.
+
+**Wat s20 laat zien (GEMETEN, schermafbeelding + zijn uitleg).** Een scherm van Discover, uitgebreider
+dan s3:
+- Een **groepenlijst met rangorde** (topgroepen met kettinglengte), waarvan een deel een label
+  "sponsored" draagt, en een **community-lijst** met "176 groepen om aan mee te doen".
+- Per groep op de lijst: een naam, de gewoonte, een zin over wie de groep wil zijn (identiteit), een
+  doelzin, het ledenaantal, een label "looking for members" en een knop om mee te doen.
+- Een **consistentiepercentage per groep** op de community-lijst (in het voorbeeld uiteenlopend,
+  van 45 tot 100 procent) en een kettingteller.
+- De lijst verschilt van s3: de kettingcijfers bij de topgroepen zijn anders. De lijst is dus
+  levend en er is geen vaste rangorde.
+
+**AFGELEID:** het consistentiepercentage is een groepsgemiddelde dat aan **iedere bezoeker** getoond
+wordt, niet alleen aan leden. Een percentage onder de honderd betekent dat er dagen gemist zijn,
+ook al noemt het scherm geen persoon. Dat is een afgeleide naam-loze versie van "wie faalt".
+
+**Overdraagbaar?**
+| Mechanisme | Overdraagbaar | Toets |
+|---|---|---|
+| Groepskaart met gewoonte, identiteitszin en doelzin | **Voorwaardelijk** | Alleen binnen een eigen of uitgenodigde groep; een publiek overzicht is uitgesloten (PRD, QS8-230). De opbouw van de kaart (gewoonte, wie wil ik zijn, doel) past wel bij onze doelen. |
+| Consistentiepercentage per groep, publiek | **Nee** | Regel 7: een publiek getal onder 100 maakt gemiste dagen afleidbaar. Een teller die alleen oploopt (de Ketting) is wel toegestaan. |
+| Rangorde van groepen, "sponsored", "looking for members" | **Nee** | Commercieel oppervlak en publieke ontdekking (regel 5 en QS8-230). |
+
+**Volgende stap voor dit bestand:** niets nieuws meten zonder meer materiaal. Voor rij 1 en 2 in §0 zijn er
+twee wegen: Quinten vindt een betaald account de moeite waard (grens 1: dat is een besluit dat hem
+geld kost), of die rijen blijven bewust ongemeten, en nudges worden niet overgenomen.
