@@ -735,9 +735,9 @@ export const GEDEELDE_WAARDEN = {
   //    meteen als verlopen gemeld). Het staat daarom als keuze 7 in
   //    `docs/decisions/2026-11-17-organisaties-en-lidmaatschappen.md`.
   // ⚠️ **`team_goals` — QS8-654, migratie 0301.** Met de hand nagelopen: `active`
-  //    is de default en wordt door `maak_teamdoel()` geschreven. `completed` en
-  //    `archived` hebben vandaag **géén** schrijver: afronden is QS8-662, en
-  //    archiveren is niet gepland. Dezelfde blinde vlek als bij
+  //    is de default en wordt door `maak_teamdoel()` geschreven. `completed`
+  //    schrijft `keur_teamdoel_goed()` sinds QS8-662 (0306). `archived` heeft
+  //    vandaag **géén** schrijver: archiveren is niet gepland. Dezelfde blinde vlek als bij
   //    `organizations.archived` hierboven; het staat in de aannames van
   //    `docs/decisions/2026-11-17-teamdoelen-en-aandelen.md`.
   active: ['goals', 'group_members', 'groups', 'organization_members', 'organizations', 'team_goals'],
