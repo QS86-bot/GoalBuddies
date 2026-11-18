@@ -843,10 +843,17 @@ export async function removeTestUsers(): Promise<void> {
     }
   }
 
-  await meldAchtergeblevenGroepen(new Set(groepen), new Set(ids));
-
-  const melding = achtergeblevenMelding(achtergebleven, ids.length);
-  if (melding !== null) throw new Error(melding);
+  // Beide meldingen verzamelen en één keer gooien, zodat de lezer niet maar de
+  // helft van de problemen ziet.
+  const meldingen: string[] = [];
+  try {
+    await meldAchtergeblevenGroepen(new Set(groepen), new Set(ids));
+  } catch (fout) {
+    meldingen.push(fout instanceof Error ? fout.message : String(fout));
+  }
+  const accountMelding = achtergeblevenMelding(achtergebleven, ids.length);
+  if (accountMelding !== null) meldingen.unshift(accountMelding);
+  if (meldingen.length > 0) throw new Error(meldingen.join('\n\n'));
 }
 
 /**

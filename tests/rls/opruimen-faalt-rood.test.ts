@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from 'vitest';
+import { afterAll, describe, expect, it, vi } from 'vitest';
 
 /**
  * QS8-702 — een mislukte accountverwijdering maakt de suite rood.
@@ -10,6 +10,10 @@ import { describe, expect, it, vi } from 'vitest';
  */
 vi.hoisted(() => {
   process.env.RLS_DOEL = 'lokaal';
+});
+
+afterAll(() => {
+  delete process.env.RLS_DOEL;
 });
 
 let verwijderFout: { message: string } | null = null;

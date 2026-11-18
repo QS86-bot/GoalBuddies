@@ -143,3 +143,10 @@ describe('de RLS-map zelf', () => {
     expect(met.length).toBeGreaterThanOrEqual(4);
   });
 });
+
+describe('stackOordeel — een productierun meet de lokale database niet (QS8-702)', () => {
+  it('slaat de psql-delen over bij RLS_DOEL=productie, ook als er een stack draait', () => {
+    expect(stackOordeel('1', 'productie')).toBe('overslaan');
+    expect(stackOordeel(null, 'productie')).toBe('overslaan');
+  });
+});

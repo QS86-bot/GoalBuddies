@@ -17,6 +17,9 @@
  *    bestaande slot `RLS_TEST_ALLOW_PROD=1` (zie `guardProductie()` in het
  *    harnas). Het productiecommando staat in de kop van `harness.ts`.
  *
+ * ⚠️ `RLS_DOEL=` (lege string) telt als een bewering en wordt geweigerd, net als
+ *    in `psql-stack.ts`: wie het veld noemt, bedoelde iets.
+ *
  * Pure functie met de omgeving als argument, zodat hij met de hand te voeden is.
  */
 export type DoelOordeel =
@@ -29,7 +32,9 @@ type Omgeving = Readonly<Record<string, string | undefined>>;
 
 /** Staan er sleutels in de omgeving waarmee dit naar het echte project kan schrijven? */
 export function heeftProductiesleutels(env: Omgeving): boolean {
-  return Boolean(env.SUPABASE_SERVICE_ROLE_KEY || env.EXPO_PUBLIC_SUPABASE_URL);
+  // Alleen de service-role-key telt: de URL en de anon-key zijn publiek en staan
+  // in elke app-`.env`; een kale `npm test` daarmee moet stil blijven overslaan.
+  return Boolean(env.SUPABASE_SERVICE_ROLE_KEY);
 }
 
 const KEUZE =

@@ -34,6 +34,15 @@ describe('bepaalDoel', () => {
     expect(oordeel.soort === 'geweigerd' && oordeel.melding).toMatch(/RLS_DOEL=productie/);
   });
 
+  it('alleen de publieke URL en anon-key (app-.env) blijft stil overslaan', () => {
+    expect(
+      bepaalDoel({
+        EXPO_PUBLIC_SUPABASE_URL: PROD.EXPO_PUBLIC_SUPABASE_URL,
+        EXPO_PUBLIC_SUPABASE_ANON_KEY: PROD.EXPO_PUBLIC_SUPABASE_ANON_KEY,
+      }).soort,
+    ).toBe('geen');
+  });
+
   it.each(['', 'prod', 'Lokaal', 'true'])('een onbekende waarde (%j) valt niet terug op productie', (waarde) => {
     expect(bepaalDoel({ RLS_DOEL: waarde }).soort).toBe('geweigerd');
     expect(bepaalDoel({ RLS_DOEL: waarde, ...PROD }).soort).toBe('geweigerd');
@@ -57,12 +66,13 @@ describe('de naad: het harnas zelf', () => {
   });
 
   const laad = async (env: Record<string, string | undefined>) => {
-    for (const k of [
+    const eigen = [
       'RLS_DOEL', 'EXPO_PUBLIC_SUPABASE_URL', 'SUPABASE_SERVICE_ROLE_KEY',
       'SUPABASE_JWT_SECRET', 'EXPO_PUBLIC_SUPABASE_ANON_KEY', 'RLS_TEST_ALLOW_PROD',
-    ]) vi.stubEnv(k, env[k] ?? '');
-    // stubEnv met '' is niet hetzelfde als afwezig; verwijder expliciet.
-    for (const k of Object.keys(process.env)) if (process.env[k] === '' && !(k in env)) delete process.env[k];
+    ];
+    for (const k of eigen) vi.stubEnv(k, env[k] ?? '');
+    // stubEnv met '' is niet hetzelfde als afwezig; verwijder alleen onze eigen sleutels.
+    for (const k of eigen) if (!(k in env)) delete process.env[k];
     vi.resetModules();
     return import('./harness');
   };

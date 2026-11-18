@@ -241,6 +241,9 @@ export type Stackoordeel = 'meten' | 'overslaan' | 'geen-verbinding' | 'schema-l
  *    alleen het aanroepen en het formuleren.
  */
 export function stackOordeel(uitkomst: string | null, rlsDoel: string | undefined): Stackoordeel {
+  // QS8-702: een productierun meet het échte project via REST; de lokale
+  // database zegt daar niets over, dus psql-delen slaan zich over.
+  if (rlsDoel === 'productie') return 'overslaan';
   if (uitkomst === '1') return 'meten';
   if (rlsDoel === undefined) return 'overslaan';
   return uitkomst === null ? 'geen-verbinding' : 'schema-loopt-achter';
