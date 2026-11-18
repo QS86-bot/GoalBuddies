@@ -198,6 +198,15 @@ const REGISTER: Readonly<Record<string, string>> = {
     'approval_withdrawals; plan_adempauze() boekt alleen bij een herstel van een ' +
     'al afgeboekt punt, en dan hoogstens 1 rij per doel per cyclus.',
   reports: 'meld() weigert zodra meldingen_over() op nul staat.',
+  // ⚠️ De twee teamtabellen (QS8-654, 0305) groeien alleen via een RPC.
+  team_goal_shares:
+    'neem_aandeel() is de enige clientroute; UNIQUE (team_goal_id, user_id) geeft hoogstens één ' +
+    'aandeel per persoon per teamdoel, dus het aantal volgt team_goals. Elk aandeel maakt ' +
+    'bovendien een rij in goals, en die draagt doelen_dagplafond.',
+  team_goals:
+    'maak_teamdoel() weigert vanaf 10 teamdoelen per aanmaker in het laatste etmaal. ' +
+    '⚠️ Tellen-dan-invoegen: gelijktijdige aanroepen komen erboven (securityreview QS8-654, L5). ' +
+    'Een rem tegen een lus, geen beleid.',
   week_reviews: 'UNIQUE (group_id, user_id, group_period_start) — één weekafsluiting per periode.',
 };
 
@@ -327,7 +336,14 @@ describe.skipIf(!beschikbaar)('elke groeibare tabel heeft een plafond of een red
     //    en `organization_members` (652) is vijfendertig. De twee getallen hierboven
     //    zijn elk gemeten op een tak waar de ander nog niet in zat; de som is hier
     //    uitgerekend en niet gemeten, want er is geen database in deze omgeving.
-    expect(gevonden.length, 'het aantal groeibare tabellen is veranderd').toBe(35);
+    //
+    // ⚠️ En vierendertig werd zesendertig met `team_goals` en `team_goal_shares`
+    //    (QS8-654, 0305), om dezelfde reden.
+    //
+    // ⚠️ Beide samen: vijfendertig (233 en 652) plus `team_goals` en `team_goal_shares`
+    //    (654) is zevenendertig. Uitgerekend en niet gemeten, want er is geen database
+    //    in deze omgeving.
+    expect(gevonden.length, 'het aantal groeibare tabellen is veranderd').toBe(37);
     // ⚠️ En zeventien werd achttien met `user_blocks` (QS8-496, 0276). Die tabel
     //    stond hierboven in REGISTER met de reden *"begrensd door het aantal
     //    mensen dat je kunt noemen"* — en die reden verviel toen `zoek_mensen()`

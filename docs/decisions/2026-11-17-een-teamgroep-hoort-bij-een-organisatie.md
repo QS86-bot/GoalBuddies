@@ -1,7 +1,7 @@
 # Een teamgroep hoort bij een organisatie
 
 **Datum:** 17-11-2026 · **Issue:** QS8-653 (epic QS8-650) · **Migratie:** `0304` (voorlopig nummer) ·
-**Bouwt voort op:** QS8-652 (`0299`, organisaties en lidmaatschappen) ·
+**Bouwt voort op:** QS8-652 (`0303`, organisaties en lidmaatschappen) ·
 **Besluiten:** 9, 13, 18, 26, 27, 34 en 36 in
 `docs/decisions/2026-11-03-zakelijk-gebruik-met-organisaties-en-teamdoelen.md`
 
@@ -96,7 +96,7 @@ Een groepslid leest de groepsrij, dus ook deze kolom.
 
 ## Wat getest is
 
-`tests/rls/teamgroepen.test.ts`: 17 toetsen (één `it.each`), via PostgREST met het JWT van elke
+`tests/rls/teamgroepen.test.ts`: 16 toetsen, via PostgREST met het JWT van elke
 gebruiker. Ze dekken criterium 8, 9 en 15 (a), (b) en (c), plus aanmaken, de pin,
 "nooit vindbaar" en het plafond. Zes mutaties per grendel met de hand, en elke keer
 werd de bedoelde toets rood; de uitslag staat in de kop van de test. Een zevende

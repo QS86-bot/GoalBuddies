@@ -259,6 +259,13 @@ const REGISTER = new Map([
   ],
   ['zet_groepszichtbaarheid', 'Beheerderspoort (besluit A41). Gemeten: poort weg → 5 rood.'],
   [
+    'neem_aandeel',
+    'Teamlidpoort (QS8-654, besluit 20): alleen een actief lid van de teamgroep neemt een aandeel, ' +
+      'en het doel en de koppeling zijn van de aanroeper zelf. Gemeten: beide lidmaatschapstoetsen weg → ' +
+      '1 rood (`tests/rls/teamdoelen.test.ts`, "kan maar één keer per persoon, en niet door wie geen ' +
+      'teamlid is").',
+  ],
+  [
     'maak_teamgroep',
     'Organisatiebeheerderspoort (QS8-653, besluit 13): alleen een beheerder van de organisatie ' +
       'maakt er een team in, en de groepsrij krijgt die organisatie mee. Gemeten: poort weg → 1 rood ' +
@@ -686,6 +693,12 @@ const LEESREGISTER = new Map([
       'klasse gebruikt — zonder die lock lazen gelijktijdige aanroepen allemaal dezelfde teller en ' +
       'schreven er allemaal langs (📏 gemeten met een burst van twaalf op één startsignaal: 10 rijen ' +
       'waar het plafond 3 is).',
+  ],
+  [
+    'maak_teamdoel',
+    'Leest `groups.organization_id` van de opgegeven groep, en geeft dat niet terug: geen lid, geen teamgroep en ' +
+      'een onbekend id krijgen alle drie `niet_toegestaan` (poort `is_group_member()`). Telt verder alleen de eigen ' +
+      'teamdoelen van vandaag (`created_by = auth.uid()`). Gemeten in `tests/rls/teamdoelen.test.ts` (QS8-654).',
   ],
 ]);
 

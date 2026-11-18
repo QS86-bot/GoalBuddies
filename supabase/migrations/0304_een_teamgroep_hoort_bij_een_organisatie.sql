@@ -2,7 +2,7 @@
 -- groepen, een organisatiebeheerder als teambeheerder zonder lid te zijn, en de
 -- vertrek-cascade (QS8-653, epic QS8-650).
 --
--- ⚠️ **Voorlopig nummer.** Deze migratie bouwt op 0299 van QS8-652, en productie
+-- ⚠️ **Voorlopig nummer.** Deze migratie bouwt op 0303 van QS8-652, en productie
 --    draagt al 0299–0302 van QS8-233 (QS8-641). Wie als tweede landt
 --    hernummert (`npm run migratie:hernummer`); de inhoud hangt niet aan het
 --    nummer.
@@ -891,7 +891,7 @@ revoke all on function public.bewaak_teamlidmaatschap() from public, anon, authe
 -- ---------------------------------------------------------------------------
 --
 -- ⚠️ **Een trigger op `organization_members` en geen regel in de twee RPC's
---    van 0299.** Zo vangt hij elke route naar inactief, ook een die later
+--    van 0303.** Zo vangt hij elke route naar inactief, ook een die later
 --    bijkomt, en blijven de lichamen van QS8-652 onaangeroerd.
 -- ⚠️ De opruiming is die van `verwijder_lid()`: openstaande deadlineverzoeken
 --    ingetrokken, de koppelingen van zijn doelen aan die groep weg, en dan
