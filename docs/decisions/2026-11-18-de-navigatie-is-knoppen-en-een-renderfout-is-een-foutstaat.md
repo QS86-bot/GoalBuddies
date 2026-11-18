@@ -35,7 +35,7 @@ De service worker (`public/sw.js`) is alleen een pushontvanger en cachet niets; 
    ⚠️ **Dit beschermt alleen de lijstregel.** `app/groep/weekafsluiting/[id].tsx`, `app/groep/leden/[id].tsx` en `app/groep/chat/[id].tsx` rekenen de groepsperiode uit en hebben geen boundary: dezelfde zone geeft daar nog steeds een wit scherm zonder menu. (Een eerdere versie van dit document beweerde het tegendeel; dat was onjuist.)
 3. **De lege groepentab draagt zelf de knop "Groep aanmaken"** (`AsyncView` kreeg een optionele `empty.action`). De knop onderaan verdwijnt alleen als de lijst geladen is en leeg (anders staan er twee); tijdens het laden en bij een fout blijft hij staan.
 4. **Het menu is vijf knoppen** met rand, tikvlak van minstens 44 punten en 15 punten tekst. Rol `link` met `aria-current="page"` en niet `button`: het zijn bestemmingen met een adres (`Link` tekent een `<a href>`), en een schermlezer zegt dan "link, huidige pagina". Visueel is het een knop. Landmark `navigation` met label "Hoofdmenu". Alleen themakleuren (`panel`, `border`, `text`, `accent`); geen eigen kleur, geen heldkleur. Het actieve tabblad heeft naast de kleur een dikkere rand.
-5. **Twee vormen, breekpunt 900 punten (`BREED_VANAF`).** Breed: kolom links van 220 breed, onder elkaar. Smal: rij bovenin die omslaat naar een tweede regel (gemeten: 390 breed geeft 4 + 1 knoppen). Bewust niet verticaal op een telefoon (vijf gestapelde knoppen kosten 230 punten hoogte op elk scherm) en niet scrollend (scrollen verbergt tabbladen, en een verborgen tabblad is precies de klacht). 900 omdat de inhoud 620 breed is en een kolom van 220 daarnaast 840 nodig heeft; een tablet rechtop (768) houdt de rij.
+5. **Twee vormen, breekpunt 900 punten (`BREED_VANAF`), en op beide staan de knoppen onder elkaar.** Breed: een kolom links van 220 breed naast de inhoud. Smal: dezelfde kolom gestapeld bovenaan over de volle breedte, want naast de inhoud laat een kolom van 220 op een telefoon (390) maar 170 punten over. *Eerst* was de smalle vorm een omslaande rij (de conservatieve keuze uit het issue); Quinten besliste op 18-11-2026 dat het ook op een telefoon onder elkaar moet. **De prijs, bewust genomen:** vijf knoppen van 44 punten met tussenruimte nemen bovenaan elk scherm ongeveer 260 punten hoogte in, ook in de groepschat met toetsenbord omhoog. Is dat in de praktijk te veel, dan is een inklapbaar menu de volgende stap en geen terugkeer naar scrollen of afkappen. Scrollen en afkappen blijven uitgesloten: dat verbergt tabbladen.
 6. **Beginstand `bovenrand` en de echte breedte pas na het hydrateren** (`useSyncExternalStore` met server-snapshot). De webexport wordt vooraf getekend zonder venster.
 
 ## Wat dit niet is
@@ -47,8 +47,7 @@ De service worker (`public/sw.js`) is alleen een pushontvanger en cachet niets; 
 
 ## Open vragen voor Quinten (niet beslist door de bouwsessie)
 
-1. **Je vroeg knoppen onder elkaar; op een telefoon (390) en tablet (768) is het een rij van twee regels (~110 punten hoog).** Besluit 5 kiest dat als conservatieve vorm. Wil je de kolom ook op een telefoon, dan is dat één getal (`BREED_VANAF`) en een stijl, tegen de prijs van ~230 punten hoogte op elk scherm, óók in de groepschat met toetsenbord.
-2. De laatste knop (Profiel) staat op 390 alleen op de tweede regel en rekt uit over de volle breedte.
+1. ~~Menu als rij op een telefoon~~ Beslist: ook op een telefoon onder elkaar (besluit 5). Meet na de deploy of ~260 punten bovenaan elk scherm te veel is.
 
 ## Twee dingen die onderweg gemeten zijn en niet van dit issue zijn
 

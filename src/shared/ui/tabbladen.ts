@@ -58,7 +58,7 @@ export const BREED_VANAF = 900;
 
 export type Taakbalkvorm = 'zijkant' | 'bovenrand';
 
-/** Kolom links op een breed scherm, anders een rij bovenin. */
+/** Kolom links op een breed scherm, anders dezelfde kolom gestapeld bovenaan. */
 export function taakbalkVorm(breedte: number): Taakbalkvorm {
   return breedte >= BREED_VANAF ? 'zijkant' : 'bovenrand';
 }

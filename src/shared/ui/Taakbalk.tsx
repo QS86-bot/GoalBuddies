@@ -61,8 +61,9 @@ export function useTaakbalkVorm(): Taakbalkvorm {
  *    knop met een rand en een tikvlak van minstens 44 punten.
  *
  * ⚠️ **Twee vormen, en welke bepaalt `taakbalkVorm()`.** Breed: een kolom links,
- *    onder elkaar van boven naar beneden. Smal: een rij bovenin die liever
- *    omslaat naar een tweede regel dan scrolt of afkapt — scrollen verbergt
+ *    onder elkaar van boven naar beneden. Smal: dezelfde kolom, gestapeld
+ *    bovenaan over de volle breedte (Quinten wilde ook op een telefoon
+ *    knoppen onder elkaar). Nooit scrollend of afkappend: scrollen verbergt
  *    tabbladen, en een verborgen tabblad is precies wat dit issue is. Afweging
  *    en breekpunt in
  *    `docs/decisions/2026-11-18-de-navigatie-is-knoppen-en-een-renderfout-is-een-foutstaat.md`.
@@ -168,9 +169,10 @@ function Tab({ pad, sleutel, actief, zijkant }: TabProps) {
 }
 
 const styles = StyleSheet.create({
+  // Smal: dezelfde kolom, maar bovenaan over de volle breedte in plaats van
+  // ernaast. Besluit van Quinten 18-11-2026: ook op een telefoon onder elkaar.
   bovenrand: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
+    flexDirection: 'column',
     gap: space.blokGap - 5,
     padding: space.blokGap - 3,
     borderBottomWidth: StyleSheet.hairlineWidth,
@@ -190,7 +192,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: space.blokGap + 3,
   },
   // Smal: vijf gelijke knoppen die een regel delen en omslaan als het niet past.
-  knopRij: { flexGrow: 1, flexBasis: 72, alignItems: 'center' },
+  knopRij: { alignItems: 'flex-start' },
   knopZijkant: { alignItems: 'flex-start' },
   label: { fontSize: 15, fontWeight: '600' },
 });
