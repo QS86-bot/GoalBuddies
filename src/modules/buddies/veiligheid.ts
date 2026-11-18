@@ -5,6 +5,7 @@ import { type Resultaat } from '../../shared/api';
 import { t, type Sleutel } from '../../shared/i18n';
 import { schoneVrijeTekst } from '../../shared/tekst';
 
+import { meldingenIngangStand, type Meldingeningang } from './meldingeningang';
 import { type Meldreden } from './veiligheid-schemas';
 
 /**
@@ -301,6 +302,31 @@ export async function fetchOpenstaandeMeldingen(
   }
 
   return data ?? [];
+}
+
+/**
+ * Laadt wat de ingang nodig heeft: wacht er iets, en zo niet, mag ik beoordelen?
+ *
+ * ⚠️ **De client raadt de rol niet.** De tweede vraag gaat naar
+ *    `moderatiepoort()` (0297, voor de client leesbaar sinds 0299), dezelfde poort
+ *    die `openstaande_meldingen()` zelf gebruikt. Hij wordt alleen gesteld als er
+ *    niets wacht: wacht er iets, dan is het antwoord per definitie ja.
+ *
+ * ⚠️ Een storing in een van beide gooit. De kaart toont dan zijn foutstaat, want
+ *    stilte is hier de gevaarlijke richting (zie `MeldingenIngang`).
+ */
+export async function laadMeldingenIngang(): Promise<Meldingeningang> {
+  const wachtend = await fetchOpenstaandeMeldingen({ limiet: 1 });
+  if (wachtend.length > 0) return meldingenIngangStand(wachtend.length, true);
+
+  const { data, error } = await supabase().rpc('moderatiepoort');
+
+  if (error) {
+    reportError(error, 'safety.moderatiepoort');
+    throw new Error(t('meldingen.laden_mislukt'));
+  }
+
+  return meldingenIngangStand(0, data === true);
 }
 
 /**

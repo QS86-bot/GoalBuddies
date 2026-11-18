@@ -13,7 +13,7 @@ import {
   type Profiel as ProfielRij,
 } from '@/modules/auth';
 import { useAvatarKeuze } from '@/modules/auth/react';
-import { deblokkeer, fetchBlokkades, fetchOpenstaandeMeldingen } from '@/modules/buddies';
+import { deblokkeer, fetchBlokkades, laadMeldingenIngang } from '@/modules/buddies';
 import { fetchBuddyBijdrage } from '@/modules/completions';
 import {
   herinneringVelden,
@@ -1465,10 +1465,7 @@ function Blokkades() {
  */
 function MeldingenIngang() {
   const router = useRouter();
-  const { data, loading, error, herlaad } = useAsync(
-    () => fetchOpenstaandeMeldingen({ limiet: 1 }),
-    [],
-  );
+  const { data, loading, error, herlaad } = useAsync(() => laadMeldingenIngang(), []);
 
   if (loading) return null;
 
@@ -1493,13 +1490,20 @@ function MeldingenIngang() {
     );
   }
 
-  if (data === undefined || data.length === 0) return null;
+  if (data === undefined || data === 'geen') return null;
+
+  // ⚠️ QS8-705: `rustig` houdt de ingang zichtbaar voor wie mag beoordelen, ook
+  //    als er niets wacht. Vóór dit issue verdween hij dan, en een beheerder met
+  //    een lege wachtrij wist niet dat /meldingen bestond.
+  const wacht = data === 'wacht';
 
   return (
     <Card>
-      <Subheading>{t('meldingen.ingang_kop')}</Subheading>
-      <Body muted>{t('meldingen.ingang_tekst')}</Body>
-      <Button onPress={() => router.push('/meldingen')}>{t('meldingen.ingang_knop')}</Button>
+      <Subheading>{t(wacht ? 'meldingen.ingang_kop' : 'meldingen.ingang_rustig_kop')}</Subheading>
+      <Body muted>{t(wacht ? 'meldingen.ingang_tekst' : 'meldingen.ingang_rustig_tekst')}</Body>
+      <Button onPress={() => router.push('/meldingen')}>
+        {t('meldingen.ingang_knop')}
+      </Button>
     </Card>
   );
 }
