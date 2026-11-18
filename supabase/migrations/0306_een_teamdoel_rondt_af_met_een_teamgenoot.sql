@@ -16,6 +16,9 @@
 --     drop column if exists afronding_goedgekeurd_door,
 --     drop column if exists afronding_gevraagd_op,
 --     drop column if exists afronding_gevraagd_door;
+--   drop index if exists public.points_ledger_teambonus_per_seizoen_idx;
+--   alter table public.points_ledger drop constraint if exists points_ledger_teambonus_heeft_seizoen;
+--   alter table public.points_ledger drop column if exists seizoen;
 --   alter table public.points_ledger drop constraint points_ledger_reason_valid;
 --   -- en de CHECK uit 0132 terugzetten.
 --
@@ -35,6 +38,8 @@
 --    correctieboeking.
 -- 3. Wie het seizoensplafond al bereikt heeft, **ziet niets**: geen rij in het
 --    puntenboek, geen melding. Het teamdoel wordt gewoon afgerond.
+-- 5. **Minstens één gedane stap** (besluit van 18-11-2026 op review M2): een
+--    teamdoel rondt pas af als de teambalk boven nul staat.
 -- 4. Wat telt is de stand **op het moment van goedkeuren**: wie dan een
 --    gekoppeld aandeel heeft, actief lid van de teamgroep is én actief lid van
 --    de organisatie, krijgt de +2.
@@ -61,6 +66,23 @@ alter table public.points_ledger add constraint points_ledger_reason_valid check
   -- QS8-662: de teambonus, eenmalig +2 per persoon per teamdoel (besluit 28).
   'team_goal_bonus'
 ));
+
+-- ⚠️⚠️ **Het kwartaal staat op de rij, en de database weigert er twee**
+--    (securityreview H1, beredeneerd en op predicaatniveau gedraaid). Eerst werd
+--    het kwartaal per goedkeuring omgerekend naar de tijdzone van díe teamgroep.
+--    Met teamgroepen in verschillende tijdzones viel een eerdere bonus uit een
+--    oostelijker groep dan nog in het vorige kwartaal, en rond de jaarwisseling
+--    haalde iemand zo één bonus per tijdzone: tot +76 in plaats van +2. Nu draagt
+--    elke bonus zijn kwartaallabel (het begin, in de tijdzone van de groep die
+--    hem gaf), en een unieke index staat er hoogstens één per label toe, ook voor
+--    `service_role`. Rond een kwartaalwissel kan iemand nog een bonus met het
+--    oude en één met het nieuwe label krijgen; dat is één per kwartaal.
+alter table public.points_ledger add column if not exists seizoen date;
+alter table public.points_ledger drop constraint if exists points_ledger_teambonus_heeft_seizoen;
+alter table public.points_ledger add constraint points_ledger_teambonus_heeft_seizoen
+  check (reason <> 'team_goal_bonus' or seizoen is not null);
+create unique index if not exists points_ledger_teambonus_per_seizoen_idx
+  on public.points_ledger (user_id, seizoen) where reason = 'team_goal_bonus';
 
 -- ---------------------------------------------------------------------------
 -- 2. De afronding op het teamdoel
@@ -145,8 +167,15 @@ begin
   if v_team.status <> 'active' then
     return jsonb_build_object('ok', false, 'reason', 'niet_actief');
   end if;
-  if v_team.afronding_gevraagd_op is not null then
+  -- ⚠️ Een aanvraag van een verwijderd account telt niet meer (securityreview
+  --    M1): de foreign key zet de aanvrager op null, en zonder deze regel bleef
+  --    het teamdoel voorgoed vastzitten op `al_gevraagd`.
+  if v_team.afronding_gevraagd_op is not null and v_team.afronding_gevraagd_door is not null then
     return jsonb_build_object('ok', false, 'reason', 'al_gevraagd');
+  end if;
+  -- Besluit van Quinten (18-11-2026, review M2): minstens één gedane stap.
+  if not exists (select 1 from team_progress_events e where e.team_goal_id = p_team_goal_id) then
+    return jsonb_build_object('ok', false, 'reason', 'nog_geen_stap');
   end if;
 
   update team_goals
@@ -189,6 +218,17 @@ begin
   if v_team.afronding_gevraagd_op is null then
     return jsonb_build_object('ok', false, 'reason', 'niet_gevraagd');
   end if;
+  -- Review M1: de aanvrager heeft zijn account verwijderd. Dan is er geen
+  -- aanvraag meer; een ander lid kan opnieuw aanvragen.
+  if v_team.afronding_gevraagd_door is null then
+    update team_goals set afronding_gevraagd_op = null where id = p_team_goal_id;
+    return jsonb_build_object('ok', false, 'reason', 'niet_gevraagd');
+  end if;
+  -- Besluit van Quinten (18-11-2026, review M2): minstens één gedane stap, ook
+  -- op het moment van goedkeuren.
+  if not exists (select 1 from team_progress_events e where e.team_goal_id = p_team_goal_id) then
+    return jsonb_build_object('ok', false, 'reason', 'nog_geen_stap');
+  end if;
   -- Domeinregel 3: nooit jezelf. De trigger en de CHECK houden dit ook tegen;
   -- hier staat het voor een nette reden.
   if v_team.afronding_gevraagd_door = v_uid then
@@ -229,19 +269,22 @@ begin
 
     -- Ten hoogste één teambonus per persoon per seizoen (besluit 35). Wie hem
     -- al heeft, ziet niets (besluit 3).
+    -- De lock en deze toets geven een nette weg; de grendel is de unieke index
+    -- op (user_id, seizoen), en `on conflict do nothing` laat hem zwijgen.
     if exists (
       select 1 from points_ledger pl
        where pl.user_id = r.user_id
          and pl.reason  = 'team_goal_bonus'
-         and (pl.created_at at time zone coalesce(nullif(v_tz, ''), 'UTC'))::date >= v_seizoensbegin
+         and pl.seizoen = v_seizoensbegin
     ) then
       continue;
     end if;
 
     -- Eenmalig per persoon per teamdoel: `points_ledger_dedupe_idx` op
-    -- (user_id, reason, ref_type, ref_id, ronde).
-    insert into points_ledger (user_id, group_id, delta, reason, ref_type, ref_id)
-    values (r.user_id, v_team.group_id, 2, 'team_goal_bonus', 'team_goal', p_team_goal_id)
+    -- (user_id, reason, ref_type, ref_id, ronde). Eenmalig per kwartaallabel:
+    -- `points_ledger_teambonus_per_seizoen_idx`.
+    insert into points_ledger (user_id, group_id, delta, reason, ref_type, ref_id, seizoen)
+    values (r.user_id, v_team.group_id, 2, 'team_goal_bonus', 'team_goal', p_team_goal_id, v_seizoensbegin)
     on conflict do nothing;
   end loop;
 

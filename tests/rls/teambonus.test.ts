@@ -1,6 +1,14 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
-import { adminDb, createTestUser, registreerGroep, removeTestUsers, rlsTestsConfigured, type TestUser } from './harness';
+import {
+  adminDb,
+  createTestUser,
+  registreerGroep,
+  removeTestUsers,
+  rlsTestsConfigured,
+  verwijderAuthGebruiker,
+  type TestUser,
+} from './harness';
 
 /**
  * Afronden van een teamdoel en de teambonus — QS8-662, criterium 13 en 14, en de
@@ -24,6 +32,12 @@ import { adminDb, createTestUser, registreerGroep, removeTestUsers, rlsTestsConf
  *       van de teamgroep, apart weg → **groen**, en dat is gemeten en geen
  *       vergissing: de twee dekken elkaar. Wie de organisatie verlaat, wordt
  *       ook in de teamgroep inactief (0300). Beide samen weg → 14 rood, op Eva.
+ *    8. De unieke index `points_ledger_teambonus_per_seizoen_idx` weg → alleen
+ *       H1 rood (securityreview).
+ *    9. De toets "minstens één gedane stap" weg, in de aanvraag én de
+ *       goedkeuring → alleen 13(a, d) rood (besluit M2). ⚠️ Die in de goedkeuring
+ *       alleen is niet apart te raken: de aanvraag weigert al eerder.
+ *   10. Het opruimen van een aanvraag zonder aanvrager weg → alleen M1 rood.
  */
 
 const SETUP_TIMEOUT = 240_000;
@@ -67,8 +81,36 @@ describe.runIf(rlsTestsConfigured)('afronden van een teamdoel en de teambonus (Q
     return (td.data as { team_goal_id: string }).team_goal_id;
   }
 
+  const aandelen: Record<string, string> = {};
+
   async function aandeel(wie: TestUser, td: string): Promise<void> {
-    expect(uitkomst(await rpc(wie, 'neem_aandeel', { p_team_goal_id: td }))).toBe('ok');
+    const a = await rpc(wie, 'neem_aandeel', { p_team_goal_id: td });
+    expect(uitkomst(a)).toBe('ok');
+    aandelen[`${wie.id}:${td}`] = (a.data as { goal_id: string }).goal_id;
+  }
+
+  /** Eén gedane stap op het aandeel van `wie`: zonder kan een teamdoel niet af (besluit M2). */
+  async function stap(wie: TestUser, td: string): Promise<void> {
+    const doel = aandelen[`${wie.id}:${td}`]!;
+    const { data, error } = await wie.db
+      .from('milestones')
+      .insert({ goal_id: doel, title: 'Stap', order_index: Object.keys(aandelen).length } as never)
+      .select('id')
+      .single();
+    expect(error).toBeNull();
+    const klaar = await wie.db.from('milestones').update({ status: 'done' } as never).eq('id', (data as { id: string }).id);
+    expect(klaar.error).toBeNull();
+  }
+
+  /** Het begin van het lopende kwartaal in de tijdzone van de teamgroep, uit de database zelf. */
+  async function ditKwartaal(): Promise<string> {
+    const { data, error } = await adminDb().rpc('seizoensgrens' as never, {
+      p_tz: 'Europe/Amsterdam',
+      p_cadence: 'quarterly',
+    } as never);
+    expect(error).toBeNull();
+    const eind = new Date(`${(data as unknown as { season_end: string }[])[0]!.season_end}T00:00:00Z`);
+    return new Date(eind.getTime() + 86_400_000).toISOString().slice(0, 10);
   }
 
   async function bonussen(wie: TestUser): Promise<{ ref_id: string; delta: number }[]> {
@@ -131,6 +173,9 @@ describe.runIf(rlsTestsConfigured)('afronden van een teamdoel en de teambonus (Q
     eerste = await teamdoel(bert, 'Kwartaal');
     await aandeel(bert, eerste);
     await aandeel(cleo, eerste);
+    // Besluit M2: zonder gedane stap kan het niet.
+    expect(uitkomst(await rpc(bert, 'vraag_teamdoel_afronding', { p_team_goal_id: eerste }))).toBe('nog_geen_stap');
+    await stap(bert, eerste);
     expect(uitkomst(await rpc(bert, 'vraag_teamdoel_afronding', { p_team_goal_id: eerste }))).toBe('ok');
     expect(uitkomst(await rpc(bert, 'keur_teamdoel_goed', { p_team_goal_id: eerste }))).toBe('eigen_afronding');
     // De organisatiebeheerder die geen lid is, keurt niets goed.
@@ -197,6 +242,7 @@ describe.runIf(rlsTestsConfigured)('afronden van een teamdoel en de teambonus (Q
     await aandeel(bert, tweede);
     await aandeel(cleo, tweede);
     await aandeel(eva, tweede);
+    await stap(cleo, tweede);
     // Andersom dan bij het eerste: cleo vraagt, bert keurt goed.
     expect(uitkomst(await rpc(cleo, 'vraag_teamdoel_afronding', { p_team_goal_id: tweede }))).toBe('ok');
 
@@ -210,6 +256,7 @@ describe.runIf(rlsTestsConfigured)('afronden van een teamdoel en de teambonus (Q
       ref_type: 'team_goal',
       ref_id: '00000000-0000-4000-8000-000000000662',
       created_at: new Date(Date.now() - 200 * 86_400_000).toISOString(),
+      seizoen: '2020-01-01',
     } as never);
     expect(oud.error).toBeNull();
     // Eva vertrekt vóór de goedkeuring uit de organisatie: geen bonus.
@@ -236,5 +283,58 @@ describe.runIf(rlsTestsConfigured)('afronden van een teamdoel en de teambonus (Q
       ['00000000-0000-4000-8000-000000000662', tweede].sort(),
     );
     expect(await bonussen(eva)).toEqual([]);
+  }, TEST_TIMEOUT);
+
+  it('H1: de database staat hoogstens één teambonus per kwartaallabel toe, ook voor service_role', async () => {
+    const kwartaal = await ditKwartaal();
+    // Een bonus met het label van dit kwartaal maar een oude aanmaakdatum, zoals
+    // er een uit een teamgroep in een andere tijdzone kan komen.
+    const zelfdeLabel = await adminDb().from('points_ledger').insert({
+      user_id: eva.id,
+      delta: 2,
+      reason: 'team_goal_bonus',
+      ref_type: 'team_goal',
+      ref_id: '00000000-0000-4000-8000-000000000a01',
+      created_at: new Date(Date.now() - 200 * 86_400_000).toISOString(),
+      seizoen: kwartaal,
+    } as never);
+    expect(zelfdeLabel.error).toBeNull();
+    // Een tweede met hetzelfde label: de database weigert, ook voor service_role.
+    const tweede = await adminDb().from('points_ledger').insert({
+      user_id: eva.id,
+      delta: 2,
+      reason: 'team_goal_bonus',
+      ref_type: 'team_goal',
+      ref_id: '00000000-0000-4000-8000-000000000a02',
+      seizoen: kwartaal,
+    } as never);
+    expect(tweede.error?.code).toBe('23505');
+    // En een bonus zonder label kan niet bestaan.
+    const zonder = await adminDb().from('points_ledger').insert({
+      user_id: eva.id,
+      delta: 2,
+      reason: 'team_goal_bonus',
+      ref_type: 'team_goal',
+      ref_id: '00000000-0000-4000-8000-000000000a03',
+    } as never);
+    expect(zonder.error?.code).toBe('23514');
+  }, TEST_TIMEOUT);
+
+  it('M1: een aanvraag van een verwijderd account houdt het teamdoel niet vast', async () => {
+    const fien = await createTestUser('tbonus-fien');
+    const code = await rpc(anna, 'organisatie_uitnodigcode', { p_organization_id: org });
+    expect(uitkomst(await rpc(fien, 'word_organisatielid', { p_code: (code.data as { code: string }).code }))).toBe('ok');
+    const { data: g } = await adminDb().from('groups').select('invite_code').eq('id', team).single();
+    expect(uitkomst(await rpc(fien, 'join_group_with_code', { code: (g as { invite_code: string }).invite_code }))).toBe('ok');
+    const derde = await teamdoel(fien, 'Jaar');
+    await aandeel(fien, derde);
+    await aandeel(dirk, derde);
+    await stap(dirk, derde);
+    expect(uitkomst(await rpc(fien, 'vraag_teamdoel_afronding', { p_team_goal_id: derde }))).toBe('ok');
+    expect(await verwijderAuthGebruiker(fien.id)).toBeNull();
+
+    // De teamgenoot krijgt een nette reden en geen fout, en kan zelf opnieuw aanvragen.
+    expect(uitkomst(await rpc(dirk, 'keur_teamdoel_goed', { p_team_goal_id: derde }))).toBe('niet_gevraagd');
+    expect(uitkomst(await rpc(dirk, 'vraag_teamdoel_afronding', { p_team_goal_id: derde }))).toBe('ok');
   }, TEST_TIMEOUT);
 });

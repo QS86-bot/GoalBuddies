@@ -53,6 +53,28 @@ omdat jouw besluit het organisatielidmaatschap noemt.
 `afronding_goedgekeurd_door` zijn voor een client niet leesbaar. Rij 46 belooft een
 afronding zonder persoon.
 
+## Wat de securityreview vond (blokkerend), en wat ermee gebeurde
+
+- **H1, hersteld:** het plafond van één per kwartaal was te omzeilen met teamgroepen in
+  verschillende tijdzones. Het kwartaal werd per goedkeuring omgerekend naar de
+  tijdzone van díe groep, dus rond de jaarwisseling viel een eerdere bonus uit een
+  oostelijker groep nog in het vorige kwartaal: tot +76 in plaats van +2. Nu draagt
+  elke bonus zijn kwartaallabel (`points_ledger.seizoen`), en een unieke index staat er
+  hoogstens één per label toe, ook voor `service_role`. Rond een kwartaalwissel kan
+  iemand nog één bonus met het oude en één met het nieuwe label krijgen.
+  ⚠️ Dit voegt een kolom toe aan een bestaande tabel (`points_ledger`); hij is leeg
+  voor elke andere reden, en een CHECK eist hem alleen bij een teambonus.
+- **M1, hersteld:** een teamdoel liep voorgoed vast als de aanvrager zijn account
+  verwijderde. Een aanvraag zonder aanvrager telt nu niet meer: de goedkeuring ruimt
+  hem op met `niet_gevraagd`, en een ander lid kan opnieuw aanvragen.
+- **M2, besluit van Quinten:** minstens één gedane stap. Een teamdoel rondt pas af als
+  de teambalk boven nul staat, bij de aanvraag en bij de goedkeuring.
+- **L1, open:** één lid en één willekeurige teamgenoot kunnen een teamdoel van het hele
+  team definitief afsluiten; er is geen quorum. Wordt zwaarder als: teamdoelen aan iets
+  anders gaan hangen dan de bonus, zoals een straf of een rapportage.
+- **L2, hersteld met H1:** het plafond stond alleen in de RPC; nu staat het in de
+  index.
+
 ## Wat het kost (besluit 28)
 
 Dit is een tweede beloning voor werk dat al punten opleverde: de dubbeltelling die 0132
@@ -63,14 +85,18 @@ hoogstens +2 per persoon per kwartaal.
 
 ## Wat getest is
 
-`tests/rls/teambonus.test.ts`: 7 tests via PostgREST.
+`tests/rls/teambonus.test.ts`: 9 tests via PostgREST.
 - Criterium 13 (a) tot en met (d): nooit jezelf, via de RPC en via `service_role` (de
   trigger en de CHECK apart); eenmalig; alleen in het eigen puntenboek; zonder
   goedkeuring niets.
 - Criterium 14: twee leden die elkaars afronding goedkeuren.
 - Besluit 2 (definitief), besluit 4 (een laat aandeel telt), een vertrokken
   organisatielid krijgt niets, en een bonus uit een vorig kwartaal telt niet mee.
-- Zeven mutaties met de hand; de uitslag staat in de kop van de test.
+- H1 (de database weigert een tweede bonus per kwartaallabel), M1 (een verwijderde
+  aanvrager) en M2 (geen afronding zonder gedane stap).
+- Tien mutaties met de hand; de uitslag staat in de kop van de test. ⚠️ De
+  tijdzone-aanval zelf is niet als keten nagespeeld: `now()` is lokaal niet te
+  verzetten. De index die hem afvangt is wel getoetst.
 
 ## Het pad terug
 
