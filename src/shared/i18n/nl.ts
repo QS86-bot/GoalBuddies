@@ -214,6 +214,10 @@ export const nl = {
   'commitment.begunstigde.naamloos': 'Een groepsgenoot',
   'commitment.fout.invoer': 'Controleer je invoer.',
   'commitment.fout.vastleggen': 'Vastleggen lukte niet. Probeer het opnieuw.',
+  // ⚠️ QS8-660 (0305): een werkaandeel en een vriendenkring zijn twee werelden.
+  'commitment.fout.teamstraf':
+    'Een afspraak op een teamaandeel heeft alleen je team of een teamgenoot als getuige. ' +
+    'En een team is alleen getuige van een teamaandeel. Kies een andere getuige.',
   'commitment.fout.intrekken': 'Intrekken lukte niet.',
   'commitment.fout.al_afgegaan':
     'Dit commitment is al in werking getreden en kan niet meer worden ingetrokken.',

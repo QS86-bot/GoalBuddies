@@ -4,7 +4,7 @@ import { supabase } from '../../lib/supabase';
 import { t } from '../../shared/i18n';
 import { invoerfout, type Resultaat } from '../../shared/api';
 
-import { commitmentSchema, type CommitmentInvoer } from './commitment-schemas';
+import { commitmentSchema, TEAMSTRAF_HINT, type CommitmentInvoer } from './commitment-schemas';
 
 // ⚠️ Opnieuw geëxporteerd zodat de aanroepers via `modules/<naam>/index.ts`
 //    ongemoeid blijven. De definitie staat sinds 25-08-2026 in `shared/api`;
@@ -352,6 +352,12 @@ async function maak(
     .single();
 
   if (error) {
+    // ⚠️ QS8-660: een afspraak op een teamaandeel blijft in het team, en een
+    //    team is alleen getuige van een teamaandeel (`bewaak_teamstraf()`, 0305).
+    //    Herkend aan de vaste `hint` en niet aan de zin, zodat een andere
+    //    formulering in de database dit niet stil breekt. Geen `reportError`:
+    //    dit is een weigering die de gebruiker kan herstellen, geen storing.
+    if (error.hint === TEAMSTRAF_HINT) return { ok: false, melding: t('commitment.fout.teamstraf') };
     reportError(error, 'commitments.create', { goal_id: goalId, name: type });
     return { ok: false, melding: t('commitment.fout.vastleggen') };
   }
