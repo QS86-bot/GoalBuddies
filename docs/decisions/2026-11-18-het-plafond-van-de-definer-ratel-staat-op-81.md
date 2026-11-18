@@ -21,15 +21,19 @@
 De orchestrator nam aan dat het ging om 0272 (`zoek_mensen`, `vindbaar_voor_mij`)
 en 0296 (`handel_melding_af`, `openstaande_meldingen`, `is_platform_beheerder`).
 
-📏 **Dat is niet zo.** 0272 is van 14-09-2026 en 0296 van 22-09-2026, allebei vóór
-het meetmoment van 24-09 waarop het plafond op 76 is gezet. Alle vijf staan wel op
-de lijst van 81, maar ze zaten er toen al in.
+**Dat is niet gemeten, en de datums pleiten ertegen.** 0272 is van 14-09-2026 en
+stond op productie vóór 24-09 (productie was op 17-09 gelijk aan de map). Voor
+0296 is dat niet vast te stellen: 22-09 is de datum van het besluit in zijn kop,
+`docs/WERKVOORRAAD.md` boekt QS8-586 (0296 t/m 0298) onder 24-09, en de
+git-geschiedenis is platgeslagen. Of zijn drie functies in de 76 zaten, is dus
+een aanname.
 
-📏 Wat het wél is, gemeten door de 81 uit `get_advisors` (productie, alleen
-lezen, 18-11 20:15 UTC) naast de `grant`-regels van 0299 t/m 0302 te leggen:
-productie staat op **0302**, `origin/main` op **0298**. 0299 t/m 0302 zijn de
-buddywachtrij van QS8-233, staan op productie en nog niet op `main`. Ze geven
-`authenticated` precies **vijf** lintregels: 81 min 5 is 76.
+📏 Wat wél gemeten is: de 81 uit `get_advisors` (productie, alleen lezen, 18-11
+20:15 UTC) naast de `grant`-regels van de buddywachtrij van QS8-233. Productie
+staat op **0302**, `origin/main` op **0298**; de wachtrij staat op productie en
+niet op `main`, en zijn nummers (0299 en 0301) worden op andere takken voor iets
+anders gebruikt — de hernummering volgt QS8-641. Die wachtrij geeft `authenticated`
+precies **vijf** lintregels, allemaal in de lijst van 81.
 
 ⚠️ **Wat dit niet bewijst.** De lijst van 24-09 zelf is er niet meer, dus "76
 exact deze 76" is afgeleid uit het getal en niet vergeleken per naam. Wat wél
@@ -45,7 +49,7 @@ niet geërfd, wat `tests/rls/functiegrants.test.ts` vraagt.
 
 | functie | migratie | toets op `auth.uid()` | wat de aanroeper ziet of kan | groepsgrens, domeinregel 7 | oordeel |
 | --- | --- | --- | --- | --- | --- |
-| `buddyzoekopdrachten_over()` | 0299 | `null` geeft 0 (faalt dicht) | alleen het eigen aantal vrije aanvragen vandaag, een getal | niets groepszichtbaars | bedoeld |
+| `buddyzoekopdrachten_over()` | wachtrij, eerste migratie | `null` geeft 0 (faalt dicht) | alleen het eigen aantal vrije aanvragen vandaag, een getal | niets groepszichtbaars | bedoeld |
 | `zoek_buddies_aan(uuid, boolean)` | 0299, herzien in 0301 en 0302 | `null` geeft een uitzondering | alleen een eigen doel (`owner_id = auth.uid()`), schrijft één eigen wachtrijrij; "bestaat niet" en "is niet van jou" geven één antwoord | niets groepszichtbaars; de plafonds (3 wachtend, 10 groepen, 5 per dag) staan onder een advisory-lock per gebruiker | bedoeld |
 | `zoek_buddies_uit(uuid)` | 0299 | `null` geeft een uitzondering | alleen de eigen rij van het eigen doel, `for update`; een al gekoppelde rij wordt niet geraakt (`already_matched`) | niets groepszichtbaars | bedoeld |
 | `buddyzoek_stand(uuid)` | 0301 | via `eigenaarsdatum(auth.uid())` en `g.owner_id = auth.uid()` | status, "nog nodig" (afgekapt op 0 tot 2), tijdstempels en `group_id` van het eigen verzoek | geen identiteit van wachtende anderen, alleen een afgekapt getal | bedoeld |
@@ -93,3 +97,18 @@ Plafond met de hand teruggezet, en gekeken welke toets omvalt:
 Op 76 vallen er negen om omdat 81 meldingen dan allemaal onverwacht zijn. Op 82
 is het smaller, en dáár zie je de bedoelde grendels: de bovengrens (82e), de
 ondergrens (80) en de stand zelf.
+
+## 6. Wat dit omkeert, en wat nog openstaat
+
+- De toetsfixture van 24-09 hield `auth_leaked_password_protection` er met opzet
+  in (`docs/decisions/2026-09-24-de-allowlist-bewoog-niet-mee.md`). Dat is hier
+  teruggedraaid: de fixture was groen terwijl de echte controle rood stond.
+- ⚠️ **Mogelijk is leaked-password protection alleen op een betaald
+  Supabase-abonnement beschikbaar** (uit het geheugen van de reviewer, niet
+  geverifieerd). Dan zwijgt de adviseur omdat de functie er niet is, en is "de
+  schakelaar staat aan" de minst waarschijnlijke verklaring. Eén keer in het
+  dashboard kijken beslist dit; de uitkomst hoort op QS8-141.
+- Twee passages in andere documenten zijn nu achterhaald en worden door de
+  batchsessie bijgewerkt (ER-rij in de afleverregel): `docs/ENGINEER-REVIEW.md`
+  zegt dat de leaked-password-rij op de allowlist staat, `docs/VOLGENDE-SESSIE.md`
+  zegt dat de schakelaar uit staat.

@@ -126,18 +126,18 @@ export const ALLOWLIST = [
     reden:
       'Bekend en open — QS8-181. 📏 Gemeten op 18-11-2026 (get_advisors op ' +
       'productie, alleen lezen): de adviseur meldt er **81**. Op 24-09-2026 ' +
-      'waren het er 76, en het plafond stond op 47 voordat iemand het zag. De ' +
-      'vijf erbij zijn de buddywachtrij van QS8-233 (0299 en 0301, die op ' +
-      'productie staan): `buddyzoekopdrachten_over()`, `zoek_buddies_aan()`, ' +
-      '`zoek_buddies_uit()` en `buddyzoek_stand()` in twee handtekeningen. ' +
-      'Elk is per functie nagelopen: een `grant` die een migratie met zoveel ' +
-      'woorden geeft, een toets op `auth.uid()`, alleen eigen rijen, en geen ' +
-      'tegenslag van een ander. ⚠️ De aanname van de orchestrator (0272 en 0296) ' +
-      'klopte niet: die migraties zijn van 14-09 en 22-09, dus vóór het meetmoment, ' +
-      'en 81 min de vijf van 0299–0301 is precies 76. Dat is afgeleid en niet ' +
-      'gemeten: de lijst van 24-09 zelf is er niet meer. ⚠️ Dit getal is een ratel en geen constante: `beoordeel()` ' +
-      'faalt óók als het aantal zákt zonder dat het plafond meezakt, zodat er ' +
-      'geen ruimte vrijkomt waar de volgende definer-functie stil in glijdt.',
+      'waren het er 76, en het plafond van 47 was met 29 overschreden voordat ' +
+      'iemand het zag. De vijf erbij zijn de buddywachtrij van QS8-233: ' +
+      '`buddyzoekopdrachten_over()`, `zoek_buddies_aan()`, `zoek_buddies_uit()` ' +
+      'en `buddyzoek_stand()` in twee handtekeningen. Ze staan op productie en ' +
+      'nog niet op `main`, en hun migratienummers volgen QS8-641. Elk is per ' +
+      'functie nagelopen: een `grant` die een migratie met zoveel woorden geeft, ' +
+      'een toets op `auth.uid()`, alleen eigen rijen, en geen tegenslag van een ' +
+      'ander. ⚠️ Dat precies deze vijf het verschil met 76 zijn is afgeleid uit ' +
+      'het getal en niet per naam vergeleken: de lijst van 24-09 is er niet ' +
+      'meer. ⚠️ Dit getal is een ratel en geen constante: `beoordeel()` faalt ' +
+      'óók als het aantal zákt zonder dat het plafond meezakt, zodat er geen ' +
+      'ruimte vrijkomt waar de volgende definer-functie stil in glijdt.',
   },
 ];
 

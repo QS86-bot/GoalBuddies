@@ -60,7 +60,7 @@ const BEKENDE_SLEUTELS = [
  *    (`invite_preview`) en **81** die `authenticated` mag aanroepen — gemeten met
  *    `get_advisors` op productie. Op 24-09-2026 waren het er 76; de vijf erbij
  *    zijn `buddyzoekopdrachten_over()`, `zoek_buddies_aan()`, `zoek_buddies_uit()`
- *    en `buddyzoek_stand()` in twee handtekeningen (0299 en 0301, QS8-233).
+ *    en `buddyzoek_stand()` in twee handtekeningen (buddywachtrij van QS8-233, nog niet op `main`).
  *
  * ⚠️ `auth_leaked_password_protection` staat er niet meer in: de adviseur meldt
  *    hem op 18-11 niet meer, en een rij die niets aanwijst is per ontwerp rood.
