@@ -479,14 +479,20 @@ vergelijking en slaat zichzelf lokaal over.
 beide** — lokaal voor het snelle bewijs, productie voor de bevestiging:
 
 ```bash
-npm test                        # slaat de RLS-suite over zonder .env
-npx vitest run tests/rls        # tegen productie, mét .env
+npm run rls:lokaal              # de hele suite tegen de lokale stack
+npm run rls:token               # alleen de controletest, tegen productie
 ```
 
-Tegen productie maakt de suite echte gebruikers aan en ruimt ze op met de
-service-role-key. Daar staat een slot op (`RLS_TEST_ALLOW_PROD=1` in `.env`) en
-dat blijft staan: er is nog één goede reden om er te draaien, en zolang die
-bestaat kan de héle suite er per ongeluk heen.
+⚠️ **Sinds QS8-700 raakt een kale `npm test` of `npx vitest run tests/rls` géén
+productie meer.** `npm test` is de `unit`-groep en raakt geen database; en zonder
+een uitdrukkelijk `RLS_DOEL` slaat de RLS-suite zichzelf over — óók met de
+productiesleutels en `RLS_TEST_ALLOW_PROD=1` in `.env`. De enige weg naar
+productie is uitdrukkelijk: `RLS_DOEL=productie` (dat zet `rls:token`) **plus**
+`RLS_TEST_ALLOW_PROD=1`. Tegen productie maakt de controletest echte gebruikers
+aan en ruimt ze op met de service-role-key; daar staat het slot
+`RLS_TEST_ALLOW_PROD=1` op, en dat blijft staan zolang die ene reden bestaat.
+Uitleg in
+`docs/decisions/2026-11-18-de-suite-raakt-productie-alleen-als-je-het-zegt.md`.
 
 #### In CI
 

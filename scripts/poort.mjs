@@ -30,7 +30,23 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 
 const WORTEL = fileURLToPath(new URL('..', import.meta.url));
 
-/** De stappen, in de volgorde waarin ze het snelst iets zeggen. */
+/**
+ * De stappen, in de volgorde waarin ze het snelst iets zeggen.
+ *
+ * ⚠️ **`tests` is sinds QS8-700 alleen de `unit`-groep** (`npm test` =
+ *    `vitest run --project unit`), en de RLS-bestanden draaien uitsluitend via de
+ *    stap `RLS-suite` hieronder. Dat lost twee dingen tegelijk op: het kale
+ *    `vitest run` draaide béíde groepen, dus de RLS-suite liep twee keer — en
+ *    erger, de oude standaard liet `tests` tegen productie praten zodra de
+ *    productiesleutels en `RLS_TEST_ALLOW_PROD=1` in de omgeving stonden. Nu raakt
+ *    `tests` nooit een database en de `RLS-suite` alleen de lokale stack. Uitleg
+ *    in `docs/decisions/2026-11-18-de-suite-raakt-productie-alleen-als-je-het-zegt.md`.
+ *
+ * ⚠️ **`RLS-suite` blijft `database: true` en meldt `ongemeten` zonder stack.**
+ *    Dat is geen groen: zie de drieverdeling in `beoordeel()`. Zonder `RLS_DOEL`
+ *    (de poort zet `rls:lokaal`, dus die staat er wél) zou de suite zichzelf
+ *    stil overslaan — met stack meet hij, zonder stack is hij ongemeten.
+ */
 export const STAPPEN = [
   { naam: 'typecheck', commando: 'typecheck', soort: 'basis' },
   { naam: 'lint', commando: 'lint', soort: 'basis' },

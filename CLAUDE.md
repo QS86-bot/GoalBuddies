@@ -1071,6 +1071,15 @@ npm run build
 controle die niet meegedraaid was: de controle deed precies zijn werk, de poort
 was de inschatting van een mens over zijn eigen werk.
 
+⚠️ **`npm run test` is sinds QS8-700 alleen de `unit`-groep**
+(`vitest run --project unit`) en raakt nooit een database. De RLS-suite draait
+uitsluitend via `npm run rls:lokaal` (lokale stack) of `npm run rls:token` (de
+controletest tegen productie — alleen met `RLS_DOEL=productie` én
+`RLS_TEST_ALLOW_PROD=1`). Zonder een uitdrukkelijk `RLS_DOEL` praat geen RLS-test
+met productie, ook niet met de productiesleutels in de omgeving. De meting en de
+afweging staan in
+`docs/decisions/2026-11-18-de-suite-raakt-productie-alleen-als-je-het-zegt.md`.
+
 ⚠️⚠️ **En CI draait ze sinds 10-09-2026 óók allemaal, uit dezelfde lijst**
 (QS8-417). Daarvóór somde `ci.yml` ze met de hand op: 📏 **26 van de 52** stonden
 in geen enkele workflow, waaronder `schermingang:`, `registerdrift:`, `exports:`
