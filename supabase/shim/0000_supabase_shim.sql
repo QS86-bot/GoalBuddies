@@ -343,6 +343,14 @@ create trigger protect_objects_delete before delete on storage.objects
 --    ⚠️ **PostgREST verbindt als `authenticator` en krijgt hem níet.** Een RPC als
 --    `verwijder_mijn_account()` of `shim_verwijder_gebruiker()` loopt dus tegen
 --    precies dezelfde grendel als op productie. Dat is de route die er telt.
+--
+-- ⚠️⚠️ **En dus bewijst een `psql`-sessie hier niets over deze grendel, ook niet
+--    met `set role authenticated`.** De standaard hangt aan de rol waarmee je
+--    inlogt, en een `set role` erna verandert hem niet. 📏 Gemeten in de
+--    security-review van QS8-701: `current_setting` geeft daar gewoon `true`.
+--    Wie een verwijdering via `psql` wil toetsen, zet eerst zelf
+--    `set local storage.allow_delete_query = 'false'`, zoals
+--    `tests/rls/accountverwijdering-storagegrendel.test.ts` doet.
 do $$
 begin
   execute format('alter role postgres in database %I set storage.allow_delete_query = %L',

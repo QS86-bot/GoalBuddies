@@ -595,8 +595,13 @@ export async function verwijderAuthGebruiker(id: string): Promise<{ message: str
   const { error } = await admin.auth.admin.deleteUser(id);
   // ⚠️ QS8-701: een gebruiker die een test zelf al verwijderd heeft (A3 in
   //    `besluiten.test.ts`) is geen mislukte opruiming. GoTrue antwoordt dan met
-  //    404; elke andere fout komt terug, en `removeTestUsers()` gooit erop.
-  if (error && error.status === 404) return null;
+  //    `user_not_found`; elke andere fout komt terug, en `removeTestUsers()`
+  //    gooit erop.
+  //
+  // ⚠️ Op de code en niet op status 404 (security-review QS8-701): een 404 van
+  //    een proxy of een verlegde route zou anders als "al weg" tellen, en dan
+  //    fluistert het harnas weer.
+  if (error && error.code === 'user_not_found') return null;
   return error ? { message: error.message } : null;
 }
 
