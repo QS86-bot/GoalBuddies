@@ -130,7 +130,21 @@ describe.runIf(rlsTestsConfigured)('de teams van een organisatie (QS8-657)', () 
         na = pagina[0]!.id;
       }
       expect(gezien).toEqual(alles.map((r) => r.id));
-      expect(gezien.length).toBe(3);
+      expect(gezien.length).toBe(alles.length);
+    },
+    TEST_TIMEOUT,
+  );
+
+  it(
+    'een gearchiveerd team staat er niet in, voor niemand',
+    async () => {
+      // Een organisatiebeheerder mag een team archiveren (is_teambeheerder, 0300).
+      const a = await anna.db.rpc('archiveer_groep', { p_group_id: team[2]!, p_bevestigd: true });
+      expect(a.error).toBeNull();
+      for (const wie of [anna, bert, cas]) {
+        const rijen = (await teams(wie, org, { p_limit: 50 })) as { id: string }[];
+        expect(rijen.map((r) => r.id).sort(), wie.email).toEqual([team[0]!, team[1]!].sort());
+      }
     },
     TEST_TIMEOUT,
   );
@@ -141,6 +155,22 @@ describe.runIf(rlsTestsConfigured)('de teams van een organisatie (QS8-657)', () 
       const v = await cas.db.rpc('verlaat_organisatie' as never, { p_organization_id: org } as never);
       expect((v.data as { ok: boolean }).ok).toBe(true);
       expect(await teams(cas, org)).toEqual([]);
+    },
+    TEST_TIMEOUT,
+  );
+
+  it(
+    'een gearchiveerde organisatie geeft niemand nog teams',
+    async () => {
+      // Er is nog geen archiveer-RPC voor een organisatie (keuze 7 van 0299);
+      // service_role zet de stand, zoals een latere RPC dat zou doen.
+      const z = await adminDb()
+        .from('organizations' as never)
+        .update({ status: 'archived' } as never)
+        .eq('id' as never, org as never);
+      expect(z.error).toBeNull();
+      expect(await teams(anna, org)).toEqual([]);
+      expect(await teams(bert, org)).toEqual([]);
     },
     TEST_TIMEOUT,
   );
