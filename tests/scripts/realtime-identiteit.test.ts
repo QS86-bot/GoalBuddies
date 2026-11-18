@@ -198,7 +198,7 @@ describe('geen process.exit() in de controles die netwerk gebruiken (QS8-684)', 
   );
 
   it('ziet code achter een string met /** erin, en laat echt commentaar met rust', () => {
-    const blind = 'const a = [`${app}/**`];\nprocess.exit(1);\n';
+    const blind = 'const a = [`${app}/**`];\nprocess.exit(1);\n/** later commentaar */\nconst c = 2;\n';
     expect(zonderCommentaar(blind)).toMatch(/process\.exit\(1\)/);
     const commentaar = '/**\n * process.exit(1) staat hier alleen in uitleg\n */\n// process.exit(2)\nconst b = 1;\n';
     expect(zonderCommentaar(commentaar)).not.toMatch(/process\.exit/);
