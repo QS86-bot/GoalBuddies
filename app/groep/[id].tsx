@@ -1258,3 +1258,7 @@ const styles = StyleSheet.create({
   },
   knoppen: { flexDirection: 'row', gap: space.blokGap - 3, flexWrap: 'wrap' },
 });
+
+// ⚠️ QS8-705: "Naar mijn groepen" stond op dit scherm, en een renderfout hier gaf
+//    hetzelfde witte scherm als op het tabblad.
+export { TabFout as ErrorBoundary } from '@/shared/ui';
