@@ -38,19 +38,37 @@ gekozen".
 
 Tussen het verwijderen van een account en de eerstvolgende rolloverrun (elk uur)
 staat de foto nog als wees op de opslag. Hij is dan al onleesbaar: de leespolicy
-van 0227 zoekt een weekdoel dat na de cascade niet meer bestaat. Dat laatste is niet
-tegen productie gemeten. De bytes gaan binnen een uur weg, niet in dezelfde
-transactie. Vóór 0230 was dat "meteen" (op papier; op productie faalde het).
+`bewijsfotos_select` (0227) laat een lid alleen lezen via `mag_bewijsfoto_lezen()`, een
+`exists` op `completions.attachment_url` met dat pad, en die rij is na de cascade
+weg. Dat is gelezen en niet getoetst: geen test leest het object via het JWT van een
+voormalig groepsgenoot, en het is niet tegen productie gemeten. De bytes gaan binnen
+een uur weg, niet in dezelfde transactie. Onder 0230 was dat "meteen" (op papier; op
+productie faalde het, en vóór 0230 wiste niets).
 
 ## Gemeten (lokaal, Postgres 16, 302 migraties)
 
-`tests/rls/bewijsfoto-accountverwijdering.test.ts`, zeven tests, met een nagebouwde
-`protect_delete`-trigger (de lokale stack heeft die van Supabase niet; **dat de
-nabootsing klopt met de echte trigger is niet gemeten**). Met de oude functie van
-0230 teruggezet vallen drie tests om, waaronder "slaagt, ook als storage.objects een
-delete weigert": dat is de productiefout, lokaal gereproduceerd. Verder met de hand
-gebroken: de uuid-controle, de `not exists` en de emmerfilter; elke keer viel de
-bedoelde test om.
+`tests/rls/bewijsfoto-accountverwijdering.test.ts`, **negen** tests, op een lokale
+stack waarvan de shim (`supabase/shim/0000_supabase_shim.sql`) `storage.protect_delete()`
+en `protect_objects_delete` draagt, per statement. Die twee zijn volgens de
+bouwsessie van QS8-694 op 17-11 met `pg_get_functiondef` en `pg_get_triggerdef` van
+productie gelezen en woordelijk overgenomen; dat is hun meting en niet de mijne, en
+een dode kopie blijft een kopie.
+
+Gemeten door de code-critic op de batch (18-11, lokaal, Postgres 16 en PostgREST
+12.2.3, 302 migraties): de drie testbestanden van deze batch zijn **34 van 34 groen**.
+Met de functie van 0230 teruggezet vallen er **negen** om, niet drie:
+
+* `bewijsfoto-accountverwijdering.test.ts`: 4 ("slaagt…", "slaagt ook zonder bewijsfoto…",
+  "laat de blob staan", "wijst … aan als wees");
+* `accountverwijdering-langs-de-storagegrendel.test.ts`: 3, alle met `42501`;
+* `een-bewijsfoto-volgt-zijn-voltooiing.test.ts`: 1;
+* `removeTestUsers()` gooit in `afterAll`: "4 testgebruiker(s) konden niet verwijderd
+  worden". Acceptatiecriterium 2 is daarmee gemeten, en het werkt.
+
+Met de trigger omgezet naar `for each row` wordt "heeft de grendel … per statement"
+rood en worden de "zónder foto"-toetsen terecht groen: de grendel is de test en geen
+toeval. Verder met de hand gebroken: de uuid-controle, de `not exists` en de
+emmerfilter; elke keer viel de bedoelde test om (bij `not exists` drie).
 
 ## Niet gemeten
 
@@ -59,10 +77,11 @@ bedoelde test om.
   productie. Meten na de toepassing van de migratie en de deploy van `rollover`.
 * De rollover-kant (`verlopen_bewijsfotos` → `storage.remove()`) is niet end-to-end
   gedraaid: er is hier geen Storage-API. Alleen de typecheck en de lint hebben hem gezien.
-* `removeTestUsers()` rood bij een mislukte verwijdering: niet gedraaid, de RLS-suite
-  heeft PostgREST nodig.
-* De 1.330 achtergebleven testaccounts (QS8-693) blijven staan; opruimen is bulk
-  verwijderen op productie (grens 2) en wacht op Quintens backup.
+* `removeTestUsers()` rood bij een mislukte verwijdering: door de bouwsessie niet
+  gedraaid; later wel gemeten door de code-critic (zie *Gemeten*).
+* De achtergebleven testaccounts (QS8-693) zijn volgens de orchestrator op 18-11
+  opgeruimd (dump `backups\goalbuddies-2026-11-18-15-40.sql`, 2 echte gebruikers);
+  dat is niet door deze batch nagemeten.
 
 ## Volgorde
 

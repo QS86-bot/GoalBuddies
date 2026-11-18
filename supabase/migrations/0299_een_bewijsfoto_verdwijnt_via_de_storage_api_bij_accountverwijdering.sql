@@ -1,10 +1,13 @@
 -- 0299 — een bewijsfoto verdwijnt via de Storage-API bij accountverwijdering (QS8-692)
 --
--- ⚠️⚠️ NUMMER 0299 IS EEN VOORLOPIG NUMMER. `origin/quintenstrijdonk/qs8-687-…` en
---    `origin/claude/beautiful-archimedes-lncmyl` dragen ook een 0299, en productie
---    draagt 0299–0302 die `main` niet heeft (QS8-641). Hernummeren met
---    `npm run migratie:hernummer` vóór dit op productie komt; wie als tweede
---    merget, hernummert (QS8-318).
+-- ⚠️⚠️ NUMMER 0299 IS EEN VOORLOPIG NUMMER. Productie draagt 0299–0302 die `main`
+--    niet heeft (QS8-233/641), en `npm run migraties:controle` meldt (18-11) acht
+--    branches met een eigen 0299 (qs8-661, 662, 665, 666, 687, 695, 696 en 699).
+--    Hernummeren met `npm run migratie:hernummer` vóór dit op productie komt; wie
+--    als tweede merget, hernummert (QS8-318).
+--    ⚠️ Bij het hernummeren: `0299` staat hier ook als de productienummers hierboven
+--    (niet meeveranderen) en in de `COMMENT ON`-strings verderop (die belanden in de
+--    databasecatalogus). Kale verwijzingen raakt de tool niet aan; lees ze per regel.
 --
 -- ROLLBACK:
 --   drop function if exists public.verlopen_bewijsfotos(integer);
