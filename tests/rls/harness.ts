@@ -7,6 +7,12 @@
  *    PostgREST-API, met een echt JWT van een echte gebruiker. Dat is wat hier
  *    gebouwd wordt.
  *
+ * ⚠️ **Dit bestand moet laadbaar blijven onder kaal `node
+ *    --experimental-strip-types`** (geen `enum`, `namespace`, parameter
+ *    properties of pad-aliassen; type-imports als `import type`).
+ *    `tests/beloftes/rls-doel-raakt-productie-niet-vanzelf.test.ts` laadt het
+ *    zo in een kindproces om te meten waar het heen praat (QS8-702).
+ *
  * Bewust níét `src/lib/supabase.ts` hergebruiken: die client trekt React Native
  * en AsyncStorage mee, en draait sessies in opslag die tussen tests blijft hangen.
  */
@@ -160,8 +166,13 @@ const PRODUCTIE_REF = 'wehgocadxehottiiyvsc';
  *    Wat wél veranderd is: dit is niet langer de enige weg. `RLS_DOEL=lokaal`
  *    raakt het echte project niet en heeft geen credentials nodig.
  */
-function guardProductie(target: string): void {
-  if (!target.includes(PRODUCTIE_REF)) return;
+function guardProductie(target: string, altijd = false): void {
+  // ⚠️ Op de hostnaam in kleine letters en niet op de ruwe string: supabase-js
+  //    maakt van `WEHGOCADXEHOTTIIYVSC.supabase.co` gewoon een verzoek naar
+  //    productie, dus een hoofdlettergevoelige `includes` liet die vorm door
+  //    zonder tweede slot (security-review QS8-702, M2).
+  const naarProductie = altijd || hostnaam(target).includes(PRODUCTIE_REF);
+  if (!naarProductie) return;
   if (process.env.RLS_TEST_ALLOW_PROD === '1') return;
 
   throw new Error(
@@ -181,6 +192,15 @@ function guardProductie(target: string): void {
       '  npx cross-env RLS_DOEL=productie RLS_TEST_ALLOW_PROD=1 vitest run tests/rls/<bestand>',
     ].join('\n'),
   );
+}
+
+/** De hostnaam in kleine letters; een onleesbare URL telt als zichzelf. */
+function hostnaam(target: string): string {
+  try {
+    return new URL(target).hostname.toLowerCase();
+  } catch {
+    return target.toLowerCase();
+  }
 }
 
 function requireEnv(): {
@@ -222,7 +242,10 @@ function requireEnv(): {
         'Of draai zonder credentials met RLS_DOEL=lokaal.',
     );
   }
-  guardProductie(url);
+  // ⚠️ `RLS_DOEL=productie` vraagt het tweede slot altijd, los van de URL: een
+  //    custom domain of proxy draagt de projectref niet, en dan was één
+  //    handeling genoeg geweest waar eis (a) van QS8-702 er twee vraagt.
+  guardProductie(url, true);
   return { url, anonKey, serviceRoleKey, jwtSecret };
 }
 

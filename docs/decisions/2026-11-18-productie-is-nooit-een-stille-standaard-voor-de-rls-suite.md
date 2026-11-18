@@ -42,7 +42,7 @@ machine met de sleutels maakte opnieuw accounts aan.
 
 | # | eis | waar | uitvoering |
 | -- | -- | -- | -- |
-| a | productie nooit stil | `tests/rls/doel.ts` | alleen `RLS_DOEL=productie` **én** `RLS_TEST_ALLOW_PROD=1` (`guardProductie()`, ook voor een lokaal doel) |
+| a | productie nooit stil | `tests/rls/doel.ts`, `guardProductie()` | alleen `RLS_DOEL=productie` **én** `RLS_TEST_ALLOW_PROD=1`. Bij `productie` vraagt het slot de vlag **altijd**, los van de URL; bij `lokaal` als de hostnaam (kleine letters) de projectref draagt |
 | b | sleutel zonder doel faalt luid | `tests/rls/doel.ts` | `SUPABASE_SERVICE_ROLE_KEY` gezet en geen `RLS_DOEL` → het laden van de harness werpt |
 | c | teardown rood | `removeTestUsers()` + `achtergeblevenMelding()` | de suite eindigt rood met het aantal achtergebleven accounts |
 | d | `npm test` = unit | `package.json`, `scripts/poort.mjs` | `vitest run --project unit`; de poortstap `tests` erft dat, de RLS-suite heeft een eigen stap `rls:lokaal`; CI-job `rls` ongewijzigd |
@@ -64,7 +64,7 @@ werd elke app-`.env` rood.
 | **`npm test`** | `vitest run --project unit` | idem | gelijk; op `main`. |
 | **`scripts/poort.mjs`** | niet aangeraakt | kopcommentaar bij `STAPPEN` | **B's bedoeling, korter.** De stap verandert niet (hij erft van `npm test`); het commentaar noemt de keten en de grendel die hem bewaakt. |
 | **Gedragstest** | in-proces, `vi.stubEnv` + `vi.resetModules` (`rls-doel.test.ts`) | kindproces (`rls-doel-kindproces.mjs` + `los-ts-op.mjs`) | **Beide.** Ze toetsen iets anders: in-proces wat de harness *werpt*, het kindproces *waar hij heen praat*, met een kale omgeving zonder de `.env` van de ouder. B's driver is herschreven op A's doelmodel en meet nu verzoek-adressen (zie hieronder). |
-| **Vorm-grendel `npm test`** | geen | toets op `scripts.test` | **B, uitgebreid** met de poortstap: de keten `poort → npm run test → --project unit` wordt in één toets gelezen. |
+| **Vorm-grendel `npm test`** | geen | toets op `scripts.test` | **B**, plus `rls:lokaal` zet zijn doel zelf. De poortstap zelf legt `tests/scripts/poort.test.ts` al vast; die wordt niet gedubbeld. |
 | **`CLAUDE.md`** | geen | ⚠️-alinea bij *Commando's* | **B, ingekort** tot één alinea, mits `npm run docs:controle` groen blijft. |
 | **`DEPLOY.md`, `.env.example`** | bijgewerkt | eigen tekst met `rls:token` | **A.** B's tekst noemt een script dat niet komt. |
 | **Beslisdocument** | dit bestand | eigen bestand | **samengevoegd hier.** |
@@ -73,41 +73,53 @@ werd elke app-`.env` rood.
 
 `tests/beloftes/rls-doel-raakt-productie-niet-vanzelf.test.ts` laadt de harness
 in een **kindproces** (`node --experimental-strip-types`, met de resolve-hook
-`tests/beloftes/los-ts-op.mjs` omdat de harness `./doel` zonder extensie
-importeert). De omgeving is kaal en nep: de productieref in een
-`.invalid`-adres, betekenisloze sleutels. De driver vervangt `fetch` door een
-**spion die nooit verbindt**: hij legt de host van elk verzoek vast en antwoordt
-zelf met `[]`. Daarna bouwt hij `adminDb()` en doet één `select`.
+`tests/beloftes/los-ts-op.mjs` omdat de harness `./doel` en `./wezen` zonder
+extensie importeert; daarom `engines` nu `>=22.6`). De omgeving is kaal en nep:
+de productieref in een `.invalid`-adres, betekenisloze sleutels. De driver
+vervangt `fetch` door een **spion die nooit verbindt**: hij legt de host van elk
+verzoek vast en antwoordt zelf met `[]`. Daarna `adminDb()` en `anonDb()` met
+een `select`, en `createTestUser()` — de route waarlangs de accounts kwamen.
 
 | geval | belofte (eerste toets) | verder |
 | -- | -- | -- |
 | geen `RLS_DOEL`, sleutels + `RLS_TEST_ALLOW_PROD=1` | geen verzoek naar de productieref | laden faalt met *RLS_DOEL is niet gezet* |
 | `RLS_DOEL=productie`, zonder vlag | geen verzoek naar de productieref | client geweigerd met *geblokkeerd* |
+| idem, URL in hoofdletters / eigen domein zonder ref | **geen enkel** verzoek | geblokkeerd (security-review, M2) |
 | `RLS_DOEL=lokaal`, sleutels + vlag | geen verzoek naar de productieref | alle verzoeken naar `127.0.0.1` |
+| `RLS_DOEL=lokaal`, `RLS_LOKAAL_URL` naar productie in hoofdletters, zonder vlag | geen verzoek naar de productieref | geblokkeerd |
 | ijkpunt: `RLS_DOEL=productie` + vlag | de spion zíet een verzoek naar de productieref | zonder dit punt kon "geen verzoek" altijd groen zijn |
 
 ⚠️ De spion antwoordt in plaats van te weigeren: supabase-js probeert een
 mislukt verzoek opnieuw met wachttijd (📏 ~7 s per geval, boven de 5 s-grens van
-vitest).
+vitest). Hij ziet alleen `fetch`: geen psql, geen realtime-WebSocket.
 
-**Geijkt met de hand, per grendel, met de suite ervóór groen (19/19 over
-`rls-doel.test.ts` en deze):**
+**Geijkt met de hand, per grendel, op de eindstand.** Ervóór groen: **53/53**
+over `rls-doel.test.ts` (15), deze test (7 kindproces + 2 vorm, samen 9 —
+`it.each` telt per rij) en `tests/scripts/poort.test.ts` (29). Elke mutatie
+daarna teruggezet; erna weer 53/53.
 
 | mutatie | wat omviel |
 | -- | -- |
-| M1 — de oude standaard terug (`doel.ts`: geen doel → `productie`) | kindproces *"zonder RLS_DOEL…"* op **`expected [ Array(1) ] to deeply equal []`** — er ging een verzoek naar de productieref. Plus vijf toetsen in `rls-doel.test.ts`. |
-| M2 — `guardProductie()` laat alles door | kindproces *"RLS_DOEL=productie zonder RLS_TEST_ALLOW_PROD"* op hetzelfde verzoek; plus twee in-proces-toetsen op *to throw*. |
-| M3 — lokaal leest `EXPO_PUBLIC_SUPABASE_URL` | kindproces *"RLS_DOEL=lokaal…"* op het verzoek naar de productieref; plus de in-proces-toets voor `RLS_LOKAAL_URL` (die laatste als bijvangst: de mutatie negeert de variabele die hij zet). |
+| M1 — de oude standaard terug (`doel.ts`: geen doel → `productie`) | kindproces *"zonder RLS_DOEL…"* op **`expected [ …(3) ] to deeply equal []`**: drie verzoeken naar de productieref. Plus vijf toetsen in `rls-doel.test.ts`. |
+| M2 — `guardProductie()` laat alles door | de vier kindprocesgevallen zonder vlag, op het verzoek; plus twee in-proces-toetsen op *to throw*. |
+| M3 — lokaal leest `EXPO_PUBLIC_SUPABASE_URL` | kindproces *"RLS_DOEL=lokaal, mét sleutels…"* op het verzoek; plus de in-proces-toets voor `RLS_LOKAAL_URL` (bijvangst: de mutatie negeert die variabele). |
+| M6 — productie-tak weer alleen op de ref | alleen *"…een eigen domein zonder projectref"*. |
+| M7 — hoofdlettergevoelige `includes` terug | alleen *"RLS_DOEL=lokaal met RLS_LOKAAL_URL … in hoofdletters"*. (Vóór dat geval erbij kwam bleef M7 groen: na M6 telt de hoofdlettervergelijking alleen nog in de lokale tak.) |
 | M4 — `"test": "vitest run"` | alleen *"`npm run test` is beperkt tot de unit-groep"*. |
-| M5 — poortstap `tests` → een ander script | alleen *"de poortstap `tests` roept `npm run test` aan…"*. |
+| M5 — poortstap `tests` → een ander script | alleen `poort.test.ts` *"draait de twee suites én de basis"* — die toets bestond al. |
 
-Elke mutatie is daarna teruggezet; na afloop weer 19/19 en 6/6. Bij M1–M3 viel
-het kindproces om op de **belofte** (een verzoek naar productie) en niet op een
-eigenschap van het onderdeel; daarom staat die toets in elk geval vooraan.
+Bij M1–M3 en M6–M7 viel het kindproces om op de **belofte** (een verzoek naar
+productie) en niet op een eigenschap van het onderdeel; daarom staat die toets
+in elk geval vooraan. M4 en M5 bewaken de vórm van twee commando's, niet het
+gedrag.
 
-⚠️ M4 en M5 bewaken de vórm van twee commando's, niet het gedrag. Het gedrag
-draagt het kindproces: ook als iemand de RLS-groep weer in `npm test` haalt,
-gaat er zonder doel niets naar productie.
+⚠️⚠️ **Wat deze test níet sluit: ER-rij *"Geen test start vitest als kindproces
+met een echte `.env`"*.** Het incident liep via vitest: `src/lib/test-env.ts`
+laadt `.env`, daarna laadt de harness. Dit kindproces draait kaal `node`
+zonder `test-env.ts` en omzeilt precies die naad. Wat hij bewijst is dat de
+harness onder een gegeven omgeving niet naar productie praat; dát de `.env` die
+omgeving wordt, staat nog altijd alleen met de hand gemeten (code-critic,
+PR #690). De rij blijft open.
 
 ## Wat níet veranderd is
 
@@ -126,7 +138,22 @@ gaat er zonder doel niets naar productie.
 - De productietak van `verwijderAuthGebruiker()` (`deleteUser`).
 - Of de kindprocestest op Windows draait: `process.execPath` en
   `--experimental-strip-types` zijn platformonafhankelijk en `OS_SLEUTELS`
-  draagt `Path`, `SystemRoot` en `windir`, maar gedraaid is hij alleen op Linux
-  (Node 22.23).
+  draagt `Path`, `SystemRoot` en `windir` (niet `USERPROFILE`, `APPDATA`),
+  maar gedraaid is hij alleen op Linux (Node 22.23).
+
+## Wat de security-review vond en hier níet gebouwd is
+
+Allebei staan ze al als rij in `docs/ENGINEER-REVIEW.md` (PR #690); deze ronde
+bevestigt ze en voegt een faalscenario toe:
+
+- **Het psql-pad** (`tests/rls/psql-stack.ts`): `stackOordeel()` meet zodra de
+  probe slaagt, ook zonder `RLS_DOEL`, tegen wat `PG*` aanwijst (ook uit `.env`).
+  Wijst `PG*` naar de pooler van productie, dan schrijven de psql-tests daar als
+  `postgres` — via `npx vitest` of `npm run test:watch`, niet via `npm test`.
+- **`.env` als keuze per run**: `test-env.ts` laadt ook `RLS_DOEL` en
+  `RLS_TEST_ALLOW_PROD`. "Per run, nooit in `.env`" is een afspraak, geen slot.
+
+Beide raken `src/lib/test-env.ts` en het psql-pad buiten de REST-harness; ze
+horen bij een vervolgissue en niet in de samenvoeging van twee versies.
 - AC4 van QS8-702: of het aantal `rls-%@example.com`-accounts op productie na de
   merge niet meer groeit. Twee tellingen met een uur ertussen, alleen lezen.

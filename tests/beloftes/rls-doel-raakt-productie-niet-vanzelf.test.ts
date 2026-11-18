@@ -5,8 +5,6 @@ import { fileURLToPath } from 'node:url';
 
 import { describe, expect, it } from 'vitest';
 
-import { STAPPEN } from '../../scripts/poort.mjs';
-
 /**
  * De belofte van QS8-702, gemeten als gedrag: **zonder een uitdrukkelijk
  * `RLS_DOEL` gaat er geen verzoek naar productie — óók niet met de
@@ -76,7 +74,8 @@ function laadHarness(extra: Record<string, string>): Uitkomst {
   return JSON.parse(uit.trim()) as Uitkomst;
 }
 
-const naarProductie = (r: Uitkomst) => r.verzoeken.filter((host) => host.includes(PRODUCTIE_REF));
+const naarProductie = (r: Uitkomst) =>
+  r.verzoeken.filter((host) => host.toLowerCase().includes(PRODUCTIE_REF));
 
 describe('QS8-702 — de harness praat alleen met productie als je het zegt (kindproces)', () => {
   it('zonder RLS_DOEL, mét sleutels en RLS_TEST_ALLOW_PROD=1: laden faalt luid, geen verzoek', () => {
@@ -114,6 +113,29 @@ describe('QS8-702 — de harness praat alleen met productie als je het zegt (kin
     expect(r.verzoeken.every((host) => host.startsWith('127.0.0.1'))).toBe(true);
   });
 
+  it.each([
+    ['de productieref in hoofdletters', `https://${PRODUCTIE_REF.toUpperCase()}.supabase.invalid`],
+    ['een eigen domein zonder projectref', 'https://api.voorbeeld.invalid'],
+  ])('RLS_DOEL=productie zonder vlag, %s: geblokkeerd, geen verzoek', (_naam, adres) => {
+    const r = laadHarness({ RLS_DOEL: 'productie', EXPO_PUBLIC_SUPABASE_URL: adres });
+
+    // Elk verzoek telt hier: met dit adres herkent `naarProductie` het niet.
+    expect(r.verzoeken).toEqual([]);
+
+    expect(r.clientGebouwd).toBe(false);
+    expect(r.clientFout).toMatch(/geblokkeerd/);
+  });
+
+  it('RLS_DOEL=lokaal met RLS_LOKAAL_URL naar productie in hoofdletters, zonder vlag: geblokkeerd, geen verzoek', () => {
+    const adres = `https://${PRODUCTIE_REF.toUpperCase()}.supabase.invalid`;
+    const r = laadHarness({ RLS_DOEL: 'lokaal', RLS_LOKAAL_URL: adres });
+
+    expect(naarProductie(r)).toEqual([]);
+
+    expect(r.clientGebouwd).toBe(false);
+    expect(r.clientFout).toMatch(/geblokkeerd/);
+  });
+
   it('ijkpunt: RLS_DOEL=productie mét RLS_TEST_ALLOW_PROD=1 wordt wél gezien als verzoek naar productie', () => {
     // ⚠️ De tegenhelft, en de reden dat de drie toetsen hierboven iets zeggen:
     //    als de spion een verzoek naar de productieref níet zou zien, waren
@@ -130,8 +152,9 @@ describe('QS8-702 — de harness praat alleen met productie als je het zegt (kin
  * De tweede schakel: **wat vóór elke push draait, start de RLS-groep niet.** Een
  * kaal `vitest run` draait béíde vitest-projecten; zo bereikte een
  * `npm run poort` productie. De keten is `poort.mjs` stap `tests` →
- * `npm run test` → `vitest run --project unit`, en elke schakel wordt hier
- * gelezen.
+ * `npm run test` → `vitest run --project unit`. De eerste schakel legt
+ * `tests/scripts/poort.test.ts` al vast ('de opstelling zelf'); hier staan de
+ * twee scripts in `package.json`.
  *
  * ⚠️ **Eerlijk opgeschreven: dit toetst de vórm van twee commando's, niet het
  *    gedrag.** Het is de grendel tegen het stil terugzetten van het besluit. Dat
@@ -142,18 +165,15 @@ const PAKKET = JSON.parse(
   readFileSync(fileURLToPath(new URL('../../package.json', import.meta.url)), 'utf8'),
 ) as { scripts: Record<string, string> };
 
-describe('QS8-702 — de poort en `npm test` draaien alleen de unit-groep', () => {
-  it('de poortstap `tests` roept `npm run test` aan, en de RLS-suite heeft een eigen stap met RLS_DOEL=lokaal', () => {
-    expect(STAPPEN.find((s) => s.naam === 'tests')?.commando).toBe('test');
-    const rls = STAPPEN.find((s) => s.naam === 'RLS-suite');
-    expect(rls?.commando).toBe('rls:lokaal');
-    expect(PAKKET.scripts['rls:lokaal']).toMatch(/\bRLS_DOEL=lokaal\b/);
-  });
-
+describe('QS8-702 — `npm test` draait alleen de unit-groep, de RLS-suite alleen met een doel', () => {
   it('`npm run test` is beperkt tot de unit-groep', () => {
     const test = PAKKET.scripts.test ?? '';
     expect(test).toMatch(/\bvitest run\b/);
     expect(test).toMatch(/--project[= ]unit\b/);
     expect(test).not.toMatch(/--project[= ]rls\b/);
+  });
+
+  it('`npm run rls:lokaal` zet het doel zelf', () => {
+    expect(PAKKET.scripts['rls:lokaal']).toMatch(/\bRLS_DOEL=lokaal\b/);
   });
 });

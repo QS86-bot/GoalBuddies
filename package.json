@@ -126,7 +126,7 @@
     "handtekening:controle": "node scripts/handtekening-controle.mjs"
   },
   "engines": {
-    "node": ">=22"
+    "node": ">=22.6"
   },
   "dependencies": {
     "@expo/vector-icons": "^15.1.1",

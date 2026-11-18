@@ -18,6 +18,11 @@
  *    terugzetten) veilig is: de omgeving draagt nepsleutels en een
  *    `.invalid`-adres, en de spion laat niets door.
  *
+ * ⚠️ **De grens van de spion:** hij ziet `fetch` en niets anders — geen psql,
+ *    geen realtime-WebSocket, geen `node:http`. De harness gebruikt vandaag alleen
+ *    `fetch`; het psql-pad van de suite (`tests/rls/psql-stack.ts`) valt hier
+ *    buiten en heeft een eigen dossierrij.
+ *
  * Argument: het absolute pad naar `tests/rls/harness.ts`.
  */
 import { register } from 'node:module';
@@ -41,15 +46,24 @@ function eersteRegel(fout) {
   return String(fout instanceof Error ? fout.message : fout).split('\n')[0];
 }
 
-/** Bouw een client en doe één verzoek; de spion vangt het. */
+/**
+ * Bouw een client en doe één verzoek, en maak een testaccount aan — de route
+ * waarlangs de 1.865 accounts op productie kwamen. De spion vangt alles.
+ */
 async function probeer(harness) {
   try {
-    const db = harness.adminDb();
-    await db.from('profiles').select('id').limit(1);
-    return { clientGebouwd: true, clientFout: null };
+    await harness.adminDb().from('profiles').select('id').limit(1);
+    await harness.anonDb().from('profiles').select('id').limit(1);
   } catch (fout) {
     return { clientGebouwd: false, clientFout: eersteRegel(fout) };
   }
+  try {
+    await harness.createTestUser('kindproces');
+  } catch {
+    // Het antwoord van de spion is geen echte gebruiker; dat deze stap daarop
+    // strandt is verwacht. Wat telt is het verzoek dat hij probeerde.
+  }
+  return { clientGebouwd: true, clientFout: null };
 }
 
 async function meet(harnessPad) {
