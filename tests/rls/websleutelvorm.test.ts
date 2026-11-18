@@ -112,7 +112,7 @@ describe.skipIf(!rlsTestsConfigured)('registreer_push_token() toetst de vorm van
     TEST_TIMEOUT,
   );
 
-  const geweigerd: ReadonlyArray<[string, string, string, string]> = [
+  const geweigerd: readonly (readonly [string, string, string, string])[] = [
     ['niet op de curve', nietOpDeCurve(), ECHTE_AUTH, 'p256dh_ongeldig'],
     ['het eerste octet is geen 0x04', metPrefix(0x05), ECHTE_AUTH, 'p256dh_ongeldig'],
     ['een p256dh van de verkeerde lengte', ECHTE_P256DH.slice(0, 80), ECHTE_AUTH, 'p256dh_ongeldig'],
