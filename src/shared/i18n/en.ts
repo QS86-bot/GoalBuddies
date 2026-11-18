@@ -38,6 +38,8 @@ export const en: Record<Sleutel, string> = {
     '{naam} made this group discoverable. People you don’t know yet can see the name, the topic, the description and the number of members. Nothing else.',
   'systeembericht.huddle_day_changed':
     '{naam} moved the huddle day. The week that is running moved along with it; anything already closed stays closed.',
+  'systeembericht.team_goal_created': 'There is a new team goal. Take your share if you want to join in.',
+  'systeembericht.team_goal_completed': 'The team completed a team goal.',
 
   'algemeen.oud_lid': 'A former member',
   'algemeen.en': 'and',
@@ -116,6 +118,9 @@ export const en: Record<Sleutel, string> = {
   'commitment.begunstigde.naamloos': 'A group member',
   'commitment.fout.invoer': 'Check what you entered.',
   'commitment.fout.vastleggen': 'Saving did not work. Please try again.',
+  'commitment.fout.teamstraf':
+    'An agreement on a team share can only have your team or a teammate as its witness. ' +
+    'And a team can only witness a team share. Choose another witness.',
   'commitment.fout.intrekken': 'Withdrawing did not work.',
   'commitment.fout.al_afgegaan':
     'This commitment has already come into effect and can no longer be withdrawn.',
