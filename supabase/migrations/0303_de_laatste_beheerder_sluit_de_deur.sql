@@ -43,7 +43,10 @@
 --    verwijderen en samen in twee organisaties zitten, kúnnen dan in een
 --    deadlock (40P01) lopen — en dan faalt het wisrecht. Hier staan alle rijen
 --    van één statement in `oud`, en wordt er vergrendeld op volgorde van id: de
---    volgorde van `verlaat_organisatie()` (eerst de organisatierij).
+--    volgorde van `verlaat_organisatie()` (eerst de organisatierij). ⚠️ Voor
+--    accountverwijdering gold dat pas nadat `verwijder_mijn_account()` zelf de
+--    organisaties als eerste vergrendelt (sectie 2): de cascade lockt anders al
+--    een teamgroep vóór deze trigger draait (K1).
 --
 --    ⚠️ **Dat is een redenering en geen meting.** 📏 Een rijvariant van deze
 --    trigger bleef groen in de race van `tests/rls/teamvertrek.test.ts` (twee
@@ -52,10 +55,20 @@
 --    hier gekozen omdat hij de volgorde afdwingt in plaats van hem te
 --    veronderstellen; geen toets onderscheidt de twee vandaag.
 --
--- ⚠️ **Hij gooit nooit.** Een fout in deze trigger draait de accountverwijdering
---    terug, en dat is precies het wisrecht dat besluit 2 onverkort wil. Er staat
---    daarom alleen een `update` van één booleaanse kolom in, die geen CHECK
---    raakt.
+-- ⚠️ **Hij hoort nooit te gooien**, want een fout erin draait de
+--    accountverwijdering terug — precies het wisrecht dat besluit 2 onverkort
+--    wil. ⚠️⚠️ **Maar dat is een doel en geen garantie** (security-ronde, M1):
+--    een UPDATE toetst álle CHECKs van de rij opnieuw, ook die op de naam. 📏
+--    Gemeten met een strengere naam-CHECK `not valid`: de laatste beheerder kon
+--    zijn account niet meer verwijderen. Dezelfde val zit al in de
+--    `created_by`-set-null van 0299. Een naamregel aanscherpen zonder de
+--    bestaande namen mee te nemen, breekt dus het wisrecht. Bewust géén
+--    `exception when others`: dan bleef de code stil open bij nul beheerders.
+--
+-- ⚠️ `for no key update` en niet `for update` (security-ronde, M2): zo botst
+--    hij niet met de FK-locks van gewone schrijvers (een nieuw lid, een nieuw
+--    team), en wél met de `for update` van `verlaat_organisatie()`, zodat de
+--    serialisatie blijft.
 --
 -- ⚠️ **Na de lock opnieuw tellen** (READ COMMITTED: een volatile functie leest
 --    per statement een verse snapshot). Verwijderen twee beheerders tegelijk
@@ -74,7 +87,7 @@ begin
     from organizations o
    where o.id in (select organization_id from oud where role = 'admin' and status = 'active')
    order by o.id
-     for update;
+     for no key update;
 
   update organizations o
      set invite_revoked = true
@@ -137,6 +150,23 @@ begin
   if mij is null then
     return jsonb_build_object('ok', false, 'reason', 'not_signed_in');
   end if;
+
+  -- ⚠️⚠️ QS8-659 (security-ronde, K1): **eerst de organisaties, dan pas de
+  --    rest.** De cascade hieronder lockt een teamgroep (`groups.created_by`
+  --    set null) vóór de statementtrigger van 0303 de organisatierij vraagt;
+  --    `verlaat_organisatie()` en `zet_organisatielid_uit()` doen het andersom
+  --    (organisatie, dan via de vertrek-trigger van 0300 de teamgroep). 📏 Met
+  --    drie sessies gemeten: 40P01, en de accountverwijdering viel om. Door de
+  --    organisaties hier als eerste te nemen, op volgorde van id, is de volgorde
+  --    overal organisatie → groep. Ook de organisaties die hij aanmaakte
+  --    (`organizations.created_by` set null, 0299): daar zat dezelfde inversie.
+  perform 1
+    from organizations o
+   where o.created_by = mij
+      or o.id in (select m.organization_id from organization_members m
+                   where m.user_id = mij and m.role = 'admin' and m.status = 'active')
+   order by o.id
+     for no key update;
 
   -- ⚠️ Laatste beheerder van een groep met andere leden? Dan eerst het
   --    beheerderschap overdragen. Zonder deze regel blijft er een groep achter

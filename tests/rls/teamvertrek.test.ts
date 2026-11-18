@@ -433,3 +433,91 @@ describe.skipIf(!METEN)('twee beheerders verwijderen tegelijk hun account (QS8-6
     TEST_TIMEOUT,
   );
 });
+
+// ---------------------------------------------------------------------------
+// De naad met vertrek: accountverwijdering tegen verlaat_organisatie()
+// ---------------------------------------------------------------------------
+
+const D = randomUUID();
+const V = randomUUID();
+const PAUZE = randomUUID();
+
+/**
+ * D (beheerder, maker van een teamgroep) verwijdert zijn account terwijl V
+ * (beheerder, lid van die teamgroep) de organisatie verlaat.
+ *
+ * ⚠️⚠️ **Gevonden in de security-ronde op QS8-659 (K1), en dit is de toets die
+ *    hem vasthoudt.** De cascade vanuit `profiles` lockt eerst de teamgroep
+ *    (`groups.created_by` set null) en vraagt pas daarna, in de statementtrigger,
+ *    de organisatierij. `verlaat_organisatie()` doet het andersom: eerst de
+ *    organisatie, dan (via de vertrek-trigger van 0300) de teamgroep. Dat is een
+ *    cyclus, en Postgres breekt hem af met 40P01 — in de gemeten run viel de
+ *    accountverwijdering om. Dat is het wisrecht dat besluit 2 onverkort wil.
+ *
+ * ⚠️ Een derde sessie houdt een `group_events`-rij van D vast, zodat D's cascade
+ *    gegarandeerd ná de groepslock en vóór de organisatielock pauzeert. Zonder
+ *    die pauze is de botsing een kwestie van timing, en dan meet de toets niets.
+ */
+function opzetVertrek(): string {
+  return psql(`
+    insert into auth.users (id, email) values
+      ('${D}', 'vertrekdl-${D}@proef.nl'), ('${V}', 'vertrekdl-${V}@proef.nl')
+      on conflict (id) do nothing;
+    select set_config('request.jwt.claims', '{"sub":"${D}","role":"authenticated"}', false);
+    create temp table ijk_org as select (public.maak_organisatie('Deadlock BV')->>'organization_id')::uuid as id;
+    create temp table ijk_grp as select (public.maak_teamgroep((select id from ijk_org), 'Deadlock Team')->>'group_id')::uuid as id;
+    select set_config('request.jwt.claims', '{"sub":"${V}","role":"authenticated"}', false);
+    select public.word_organisatielid((select invite_code from public.organizations where id = (select id from ijk_org)));
+    select public.join_group_with_code((select invite_code from public.groups where id = (select id from ijk_grp)));
+    reset request.jwt.claims;
+    update public.organization_members set role = 'admin'
+     where organization_id = (select id from ijk_org) and user_id = '${V}';
+    update public.organizations set created_by = null where id = (select id from ijk_org);
+    insert into public.group_events (id, group_id, actor_id, event_type)
+      values ('${PAUZE}', (select id from ijk_grp), '${D}', 'member_left');
+    select 'ORG|' || (select id from ijk_org) || '|' || (select id from ijk_grp);
+  `);
+}
+
+function ruimOpVertrek(org: string, grp: string): void {
+  psql(`
+    delete from public.group_events where group_id = '${grp}';
+    delete from public.group_members where group_id = '${grp}';
+    delete from public.groups where id = '${grp}';
+    delete from public.organization_members where organization_id = '${org}';
+    delete from public.organizations where id = '${org}';
+    delete from public.dagtellers where sleutel in ('${D}', '${V}', '${org}');
+    delete from auth.users where id in ('${D}', '${V}');
+  `);
+}
+
+describe.skipIf(!METEN)('accountverwijdering tegen vertrek (QS8-659, review K1)', () => {
+  it(
+    'de verwijdering lukt, ook als een andere beheerder tegelijk vertrekt',
+    async () => {
+      const regel = opzetVertrek()
+        .split('\n')
+        .find((r) => r.startsWith('ORG|'))!;
+      const [, org, grp] = regel.split('|') as [string, string, string];
+      try {
+        const uit = await psqlParallel(
+          [
+            `begin; select 1 from public.group_events where id = '${PAUZE}' for update; select pg_sleep(2); commit;`,
+            `select pg_sleep(0.3); begin; set local role authenticated;
+             select set_config('request.jwt.claims', '{"sub":"${D}","role":"authenticated"}', true);
+             select 'D|' || public.verwijder_mijn_account()::text; commit;`,
+            `select pg_sleep(0.8); begin; set local role authenticated;
+             select set_config('request.jwt.claims', '{"sub":"${V}","role":"authenticated"}', true);
+             select 'V|' || public.verlaat_organisatie('${org}')::text; commit;`,
+          ],
+          { gelijktijdig: 3 },
+        );
+        expect(uit[1]).toMatch(/D\|.*"ok": true/);
+        expect(psql(`select count(*) from auth.users where id = '${D}';`).trim()).toBe('0');
+      } finally {
+        ruimOpVertrek(org, grp);
+      }
+    },
+    TEST_TIMEOUT,
+  );
+});

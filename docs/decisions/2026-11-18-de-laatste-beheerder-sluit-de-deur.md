@@ -57,14 +57,40 @@ Gegeven als antwoord op een meerkeuzevraag in de bouwsessie. Beide keren is het 
 | 6 | **Ook een gearchiveerde organisatie krijgt de intrekking** | Er is geen reden om een code open te laten op een organisatie die niemand meer beheert |
 | 7 | `organizations` gaat **niet** in `KERNTABELLEN` van `definers:controle` | Buiten dit issue; de catalogustest dekt de functies die de lidtabel raken |
 
+## De security-ronde: blokkerend, en in dezelfde ronde gesloten
+
+- **K1 (kritiek), deadlock tegen vertrek.** De cascade van een
+  accountverwijdering lockt eerst een teamgroep (`groups.created_by` set null)
+  en pas daarna, in de trigger, de organisatierij. `verlaat_organisatie()` en
+  `zet_organisatielid_uit()` doen het andersom: eerst de organisatie, dan via
+  de vertrek-trigger van 0300 de teamgroep. 📏 Met drie sessies gemeten, eerst
+  door de reviewer en daarna door mij als toets: 40P01, en de
+  accountverwijdering viel om. Dat is precies het wisrecht dat besluit 2
+  onverkort wil.
+  **Gesloten:** `verwijder_mijn_account()` vergrendelt nu als eerste stap de
+  organisaties waarvan hij actief beheerder of aanmaker is, op volgorde van id.
+  De volgorde is daarmee overal organisatie → groep. De toets in
+  `tests/rls/teamvertrek.test.ts` was rood vóór de fix en is erna groen.
+  Geijkt: zonder die eerste lock valt precies deze toets weer om.
+  **Restrisico:** een verwijdering buiten deze RPC om (de Auth-admin-API, het
+  dashboard) houdt de omgekeerde volgorde. Zie de ER-rij in de afleverregel.
+- **M1, "hij gooit nooit" klopte niet.** Een UPDATE toetst álle CHECKs van de
+  rij opnieuw, ook die op de naam. Met een strengere naam-CHECK `not valid`
+  kon de laatste beheerder zijn account niet verwijderen. Dezelfde val zit al in
+  de set-null op `created_by` uit 0299. De kop zegt het nu. Er komt bewust
+  géén `exception when others`, want dan bleef de code stil open.
+- **M2:** `for no key update` in plaats van `for update`, zodat de lock niet
+  botst met de FK-locks van gewone schrijvers. Niet apart gemeten.
+
 ## Gemeten (lokale stack, 18-11-2026)
 
 - 306 migraties afgespeeld; `0303` twee keer achter elkaar zonder fout. Het
   verschil met de gedeployde `verwijder_mijn_account()` is precies één
   voorwaarde (met `diff` tegen `pg_get_functiondef()` gemeten).
-- `tests/rls/teamvertrek.test.ts`: 9 tests groen, waarvan één met twee echte
-  psql-sessies tegelijk.
-- **IJking, acht mutaties, elk apart teruggezet:**
+- `tests/rls/teamvertrek.test.ts`: 10 tests groen. Eén toets draait met twee
+  echte psql-sessies tegelijk, de K1-toets met drie.
+- **IJking, negen mutaties, elk apart teruggezet** (de negende is de eerste
+  lock in `verwijder_mijn_account()` weghalen, waarna de K1-toets omvalt):
   - de delete-trigger weg → de toets op de laatste beheerder en de racetoets;
   - de update-trigger weg → alleen de update-route;
   - de `not exists`-voorwaarde weg → de must-allow (twee beheerders);
