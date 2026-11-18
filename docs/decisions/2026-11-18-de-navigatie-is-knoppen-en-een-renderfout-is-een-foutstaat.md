@@ -64,24 +64,20 @@ Het menu heeft vijf bestemmingen en geen zesde. Wat daarbuiten bereikbaar is, wo
 
 | bestemming | ingang | zichtbaar voor |
 |---|---|---|
-| `/meldingen` | kaart op het tabblad **Profiel** (`MeldingenIngang` in `app/(tabs)/profiel.tsx`). Wacht er iets: "Er wacht een melding". Wacht er niets: "Meldingen" met de zin dat er nu niets wacht. | platformbeheerder en beheerder van minstens één groep waar je niet inactief in bent; voor niemand anders. Bij een storing een foutkaart met herstelknop. |
+| `/meldingen` | kaart "Er wacht een melding" op het tabblad **Profiel** (`MeldingenIngang` in `app/(tabs)/profiel.tsx`) | alleen een beheerder met minstens één openstaande melding die hij mag beoordelen; bij een storing een foutkaart met herstelknop |
 | `/beoordelen` | kaart "Te beoordelen" bovenaan het tabblad **Groep** en op **Vandaag** (`TeBeoordelenKaart`) | wie iets te beoordelen heeft |
 | `/groep/nieuw`, `/groep/deelnemen`, `/mensen/zoek`, `/groep/ontdek` | knoppen op het tabblad **Groep** | iedereen |
 
-📏 **Waarom Quinten `/meldingen` eerst niet vond.** De kaart verscheen alleen als `openstaande_meldingen()` een rij gaf. Een beheerder met een lege wachtrij en een gewone gebruiker krijgen allebei nul rijen, dus voor beiden was de ingang onzichtbaar.
+📏 **Waarom Quinten `/meldingen` niet vond, en waarom dat geen fout is.** De kaart stelt de database één vraag, "is er iets voor mij" (`fetchOpenstaandeMeldingen({ limiet: 1 })`), en verschijnt alleen bij een rij. Een beheerder met een lege wachtrij en een gewone gebruiker krijgen allebei een lege lijst terug, dus de kaart is voor beiden onzichtbaar. Dat is het ontwerp van QS8-586 en `app/meldingen.tsx`: de client vraagt nooit "ben ik beheerder" (een rolcontrole in de schermlaag is een tweede waarheid naast de RPC).
 
-### Besluit: de permanente ingang (op verzoek van Quinten, 18-11-2026, migratie 0299)
+### Besluit van Quinten (18-11-2026): de ingang blijft smal, alleen bij openstaande meldingen
 
-De client mag niet zelf een rol raden (een rolcontrole in de schermlaag is een tweede waarheid naast de RPC, zie `app/meldingen.tsx`). De vraag "beoordeel ik ergens iets?" gaat daarom naar de database, en de functie bestaat al: `moderatiepoort()` uit 0297 (M3), de kostenpoort binnen `openstaande_meldingen()`. Hij was nooit aan `authenticated` gegeven.
+Er is eerst een permanente ingang gebouwd (migratie 0299: `moderatiepoort()` aan `authenticated`, een rustige kaart voor iedereen die mag beoordelen). Quinten koos daarna de smalle vorm: **alleen een beheerder met openstaande meldingen ziet de kaart**, en dat is de toestand van QS8-586. De permanente variant en 0299 zijn teruggedraaid (commit `d777c544` is ongedaan gemaakt; de historie bewaart hem).
 
-- **0299 is alleen een grant** (en een commentaar), geen nieuwe functie en dus geen nieuwe logica. Een wrapper had een tweede definitie betekend die uit elkaar kan lopen met de poort die `openstaande_meldingen()` zelf gebruikt. De gegenereerde types kennen `moderatiepoort` al (`Args: never; Returns: boolean`), dus er is geen typecorrectie en geen handwerk in `database.types.ts`.
-- **Wat hij prijsgeeft:** één boolean over de aanroeper zelf (geen argumenten, leest `auth.uid()`). Niets over een ander, dus domeinregel 7 is niet in beeld. `anon` krijgt hem niet.
-- **De vraag is "mag ik kijken" en niet "wacht er iets".** De poort is ruimer dan beoordelen: een beheerder van een groep zonder meldingen krijgt ook `true`. Voor een ingang is dat gewenst; wat er te zien is blijft uitsluitend `openstaande_meldingen()` bepalen.
-- **Volgorde op het scherm** (`meldingenIngangStand`, `src/modules/buddies/meldingeningang.ts`): wat wacht wint altijd van wat je mag, zodat de urgentie niet achter een rustige kaart verdwijnt; de tweede vraag wordt alleen gesteld als er niets wacht.
-- **Elke beheerder van een groep ziet de rustige kaart**, dus ook wie alleen zijn eigen groep aanmaakte (de maker is beheerder). Dat is een keuze: ze kúnnen beoordelen. Wil je dat smaller, dan is dat een eigen besluit over wat "mogen beoordelen" betekent, en niet een knop in het scherm.
-- **Bekende ruimte (security-review, laag):** de poort kijkt niet naar `groups.status`, dus een beheerder die alleen nog in een gearchiveerde of slapende groep zit, ziet de rustige kaart zonder dat er iets te beoordelen valt. Dat is geen lek: `mag_melding_als_beheerder()` toetst de status net zo min, en `tests/rls/hulpfunctiemodel.test.ts` legt `archief: false` bewust vast. **Wordt zwaarder als:** `moderatiepoort()` ooit als autorisatiepoort gaat dienen in plaats van als kostenpoort.
-- **Migratie wacht op de batch.** Rollback: `revoke execute on function public.moderatiepoort() from public, anon, authenticated;`.
-- Gemeten lokaal tegen een schema op 0299 (302 migraties, ook elk twee keer achter elkaar): `tests/rls/moderatiepoort-leesbaar.test.ts` (7), met drie mutaties per grendel. `tests/rls/functiegrants.test.ts` is **niet gedraaid**: hij vraagt PostgREST en die binary ontbreekt in de cloudsessie.
+Wat dat betekent, zodat de volgende lezer het niet als omissie leest:
+- Een beheerder met een lege wachtrij ziet geen ingang. Dat is gewenst en geen fout.
+- Er is geen migratie en geen nieuwe database-vraag; de client vraagt alleen "is er iets voor mij" (`fetchOpenstaandeMeldingen({ limiet: 1 })`).
+- Wie `/meldingen` wil openen zonder dat er iets wacht, gebruikt het adres. Wordt dat te onvindbaar, dan is `moderatiepoort()` leesbaar maken (0299, security-reviewer akkoord) de uitgewerkte route.
 
 De uitnodigingspagina voor bestaande leden (QS8-708) en het delen van de uitnodiging (QS8-706) zijn buiten dit issue gelaten.
 

@@ -2204,8 +2204,6 @@ export const en: Record<Sleutel, string> = {
   'meldingen.titel': 'Reports',
   'meldingen.ingang_kop': 'A report is waiting',
   'meldingen.ingang_tekst': 'Someone reported something you can review.',
-  'meldingen.ingang_rustig_kop': 'Reports',
-  'meldingen.ingang_rustig_tekst': 'Nothing is waiting for you right now. If someone reports something in a group where you can review, you will find it here.',
   'meldingen.ingang_knop': 'View reports',
   'meldingen.ingang_storing': 'We could not check whether anything is waiting for you.',
   'meldingen.ingang_opnieuw': 'Try again',

@@ -90,7 +90,6 @@ export {
   fetchBlokkades,
   fetchMeldingenOver,
   fetchOpenstaandeMeldingen,
-  laadMeldingenIngang,
   handelMeldingAf,
   meldBericht,
   meldPersoon,
@@ -240,4 +239,3 @@ export {
   zoekMensen,
 } from './zoeken';
 export type { GevondenPersoon } from './zoeken';
-export { meldingenIngangStand, type Meldingeningang } from './meldingeningang';
