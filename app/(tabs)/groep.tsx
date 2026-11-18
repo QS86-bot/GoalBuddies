@@ -63,6 +63,9 @@ export default function GroepTab() {
         empty={{
           title: t('groepen.leeg_titel'),
           body: t('groepen.leeg_tekst'),
+          // QS8-705: de lege staat draagt zelf de stap die erbij hoort. Zonder
+          // deze knop stond "groep maken" onderaan, onder een lege vlakte.
+          action: { label: t('groepen.leeg_actie'), onPress: () => router.push('/groep/nieuw') },
         }}
       >
         {(lijst) => (
@@ -78,9 +81,26 @@ export default function GroepTab() {
         )}
       </AsyncView>
 
-      <Button variant="primair" block onPress={() => router.push('/groep/nieuw')}>
-        {t('groepen.aanmaken')}
-      </Button>
+      <Groepsacties heeftGroepen={(groepen?.length ?? 0) > 0} />
+    </Screen>
+  );
+}
+
+/**
+ * De knoppen onder de lijst. Los van `GroepTab`, want dat scherm zat op de
+ * grens van regel 15 en QS8-705 voegde er regels aan toe.
+ */
+function Groepsacties({ heeftGroepen }: { readonly heeftGroepen: boolean }) {
+  const router = useRouter();
+
+  return (
+    <>
+      {/* Met groepen blijft "aanmaken" onderaan; zonder staat hij in de lege staat. */}
+      {heeftGroepen ? (
+        <Button variant="primair" block onPress={() => router.push('/groep/nieuw')}>
+          {t('groepen.aanmaken')}
+        </Button>
+      ) : null}
       <Button variant="secundair" block onPress={() => router.push('/groep/deelnemen')}>
         {t('groepen.heb_code')}
       </Button>
@@ -97,7 +117,7 @@ export default function GroepTab() {
       <Button variant="stil" block onPress={() => router.push('/groep/ontdek')}>
         {t('groepen.ontdekken')}
       </Button>
-    </Screen>
+    </>
   );
 }
 
@@ -147,3 +167,7 @@ function GroepKaart({
 const styles = StyleSheet.create({
   lijst: { gap: space.blokGap },
 });
+
+// ⚠️ QS8-705: een renderfout op dit tabblad is een foutstaat met herstelknop en
+//    geen wit scherm. Zie `src/shared/ui/TabFout.tsx`.
+export { TabFout as ErrorBoundary } from '@/shared/ui';

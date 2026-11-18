@@ -50,8 +50,16 @@ export { MemberRow } from './MemberRow';
 export { MilestoneProgress } from './MilestoneProgress';
 export { RisicoBadge } from './RisicoBadge';
 export { Taakbalk } from './Taakbalk';
-export { actiefTabblad, TABBLADEN, toontTaakbalk, ZONDER_TAAKBALK } from './tabbladen';
-export type { Tabblad } from './tabbladen';
+export {
+  actiefTabblad,
+  BREED_VANAF,
+  TABBLADEN,
+  taakbalkVorm,
+  toontTaakbalk,
+  ZONDER_TAAKBALK,
+} from './tabbladen';
+export type { Tabblad, Taakbalkvorm } from './tabbladen';
+export { TabFout } from './TabFout';
 export { Screen, useTerug, type Terug } from './Screen';
 export { StreakCounter } from './StreakCounter';
 export { Weekpas } from './Weekpas';

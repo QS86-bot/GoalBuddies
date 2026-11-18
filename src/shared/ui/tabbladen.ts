@@ -46,6 +46,23 @@ export const TABBLADEN: readonly Tabblad[] = [
   { pad: '/profiel', sleutel: 'tab.profiel' },
 ];
 
+/**
+ * Vanaf welke breedte (in punten) het menu een kolom links is — QS8-705.
+ *
+ * ⚠️ **900 en niet 600.** De inhoud van `Screen` is 620 breed; een kolom van 200
+ *    ernaast heeft dan 820 nodig om niets te klemmen. Op een tablet rechtop (768)
+ *    is de balk bovenin de conservatieve keuze, en dat is waar dit besluit op
+ *    uitkomt: pas wie er echt ruimte voor heeft krijgt de kolom.
+ */
+export const BREED_VANAF = 900;
+
+export type Taakbalkvorm = 'zijkant' | 'bovenrand';
+
+/** Kolom links op een breed scherm, anders een rij bovenin. */
+export function taakbalkVorm(breedte: number): Taakbalkvorm {
+  return breedte >= BREED_VANAF ? 'zijkant' : 'bovenrand';
+}
+
 /** Een scherm dat de balk met reden niet krijgt. */
 interface Uitzondering {
   /** Het pad zelf, of een prefix met een `/` erachter. */
