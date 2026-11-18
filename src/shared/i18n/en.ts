@@ -38,6 +38,8 @@ export const en: Record<Sleutel, string> = {
     '{naam} made this group discoverable. People you don’t know yet can see the name, the topic, the description and the number of members. Nothing else.',
   'systeembericht.huddle_day_changed':
     '{naam} moved the huddle day. The week that is running moved along with it; anything already closed stays closed.',
+  'systeembericht.team_goal_created': 'There is a new team goal. Take your share if you want to join in.',
+  'systeembericht.team_goal_completed': 'The team completed a team goal.',
 
   'algemeen.oud_lid': 'A former member',
   'algemeen.en': 'and',

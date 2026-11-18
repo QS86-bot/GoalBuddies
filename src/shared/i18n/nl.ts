@@ -105,6 +105,14 @@ export const nl = {
   'systeembericht.huddle_day_changed':
     '{naam} heeft de huddledag verzet. De week die nu loopt is meeverhuisd; wat er al afgesloten was blijft afgesloten.',
 
+  /**
+   * ⚠️ Migratie 0308 (QS8-656). Over het team, niet over een persoon: geen
+   *    {naam} en geen titel. Wie het teamdoel maakte of afrondde, staat er met
+   *    opzet niet in.
+   */
+  'systeembericht.team_goal_created': 'Er is een nieuw teamdoel. Neem je aandeel als je mee wilt doen.',
+  'systeembericht.team_goal_completed': 'Het team heeft een teamdoel afgerond.',
+
   /** Iemand die er niet meer is. Zie oppervlak 18 in beslisdocument 002. */
   'algemeen.oud_lid': 'Een oud-lid',
   // Het voegwoord van een opsomming. Staat hier omdat het per taal verschilt.

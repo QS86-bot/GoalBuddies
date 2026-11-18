@@ -141,6 +141,25 @@ export const SYSTEEM_GEBEURTENISSEN = [
    *    want de gebeurtenis zelf is geen tegenslag.
    */
   'huddle_day_changed',
+  /**
+   * ⚠️ **Toegevoegd in migratie 0308 (QS8-656).** Twee berichten over een
+   *    teamdoel: aangemaakt en afgerond. Ze gaan over de gróép, net als
+   *    `chain_milestone` en `season_recap`: **geen persoon en geen titel**. Een
+   *    titel in een bericht is een kopie die de autorisatie overleeft, en wie het
+   *    teamdoel maakte staat ook in `team_goals` niet in de kolomgrant (0301).
+   *
+   *    ⚠️ Er is **geen** bericht over een aandeel: geen achterstand, geen
+   *       mijlpaal, geen bevestigde week (0303). En geen bericht over wie de
+   *       teambonus kreeg.
+   *
+   *    ⚠️ **Een uitblijvend `team_goal_completed` is wel een signaal**, anders dan
+   *       de regel hierboven bij `group_discoverable` vraagt: een teamdoel dat
+   *       zijn datum haalt zonder afrondbericht, haalde het niet. Dat is
+   *       groepsbreed en noemt niemand, en het teamdoel zelf toont zijn status
+   *       toch al aan de groep (002 rij 43). Daarom mag het hier.
+   */
+  'team_goal_created',
+  'team_goal_completed',
 ] as const;
 
 export type SysteemGebeurtenis = (typeof SYSTEEM_GEBEURTENISSEN)[number];

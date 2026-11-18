@@ -149,6 +149,10 @@ describe('domeinregel 7: falen is nooit publiek', () => {
       //    verhuisd, en uit dat getal is af te leiden wie er nog niet had
       //    afgesloten. Het bericht draagt het daarom niet.
       'huddle_day_changed',
+      // ⚠️ QS8-656 (migratie 0308). Over het teamdoel en niet over een persoon:
+      //    geen naam en geen titel. Er is met opzet geen bericht over een aandeel.
+      'team_goal_created',
+      'team_goal_completed',
     ]);
   });
 
