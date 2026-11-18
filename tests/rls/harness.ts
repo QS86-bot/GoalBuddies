@@ -593,6 +593,10 @@ export async function verwijderAuthGebruiker(id: string): Promise<{ message: str
   }
 
   const { error } = await admin.auth.admin.deleteUser(id);
+  // ⚠️ QS8-701: een gebruiker die een test zelf al verwijderd heeft (A3 in
+  //    `besluiten.test.ts`) is geen mislukte opruiming. GoTrue antwoordt dan met
+  //    404; elke andere fout komt terug, en `removeTestUsers()` gooit erop.
+  if (error && error.status === 404) return null;
   return error ? { message: error.message } : null;
 }
 
@@ -799,17 +803,44 @@ export async function removeTestUsers(): Promise<void> {
     if (error) console.warn(`Wezen-groep ${groupId} opruimen mislukte: ${error.message}`);
   }
 
+  const mislukt: string[] = [];
   for (const id of ids) {
     const error = await verwijderAuthGebruiker(id);
-
-    if (error) {
-      // Niet gooien: een halve opruiming is beter dan geen, en de volgende
-      // gebruiker verdient nog een poging.
-      console.warn(`Testgebruiker ${id} opruimen mislukte: ${error.message}`);
-    }
+    // Eerst iedereen proberen: een halve opruiming is beter dan geen, en de
+    // volgende gebruiker verdient nog een poging. Gooien gebeurt hieronder.
+    if (error) mislukt.push(`${id}: ${error.message}`);
   }
 
   await meldAchtergeblevenGroepen(new Set(groepen), new Set(ids));
+  gooiBijMisluktOpruimen(mislukt, ids.length);
+}
+
+/**
+ * Een testgebruiker die niet weg kon, maakt het bestand rood — QS8-701.
+ *
+ * ⚠️⚠️ **Dit was een `console.warn`, en daardoor bleven er 1865 testgebruikers
+ *    op productie staan zonder dat één run rood werd** (QS8-700). De oorzaak was
+ *    geen fout in de suite maar in de app: elke profielverwijdering liep op
+ *    Supabase' storagegrendel (42501), ook die van een echte gebruiker die zijn
+ *    account opzegde. **De suite had het antwoord al die tijd in handen en
+ *    fluisterde het.** Een mislukte verwijdering is hier dus geen opruimdetail
+ *    maar een bevinding over het wisrecht.
+ *
+ * Geëxporteerd zodat `tests/rls/accountverwijdering-storagegrendel.test.ts` hem
+ * los kan voeden.
+ */
+export function gooiBijMisluktOpruimen(mislukt: readonly string[], totaal: number): void {
+  if (mislukt.length === 0) return;
+  throw new Error(
+    [
+      `Opruimen: ${mislukt.length} van de ${totaal} testgebruikers konden niet weg.`,
+      '',
+      ...mislukt.slice(0, 5).map((m) => `  - ${m}`),
+      '',
+      '⚠️ Dit is niet alleen rommel: een gebruiker die niet te verwijderen is,',
+      '   is een gebruiker die zijn account niet kan opzeggen (QS8-701).',
+    ].join('\n'),
+  );
 }
 
 /**

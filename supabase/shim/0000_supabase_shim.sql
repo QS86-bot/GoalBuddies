@@ -295,3 +295,56 @@ immutable
 as $$
   select (string_to_array(name, '/'))[1:greatest(array_length(string_to_array(name, '/'), 1) - 1, 0)];
 $$;
+
+-- ---------------------------------------------------------------------------
+-- De grendel van productie op een kale delete in storage — QS8-701
+-- ---------------------------------------------------------------------------
+--
+-- ⚠️⚠️ **Dit stond hier niet, en daardoor heeft deze stack nooit kunnen zien dat
+--    accountverwijdering op productie voor iedereen faalde.** Supabase zet op
+--    `storage.objects` en `storage.buckets` een `before delete`-trigger **per
+--    statement** die elke SQL-delete weigert met 42501, tenzij
+--    `storage.allow_delete_query = 'true'` gezet is. Per statement betekent: hij
+--    vuurt ook als er geen rij matcht. 0230 doet zo'n delete in een trigger op
+--    `profiles`, dus elke profielverwijdering liep erop vast. 📏 Gemeten in
+--    QS8-701, met deze definitie letterlijk overgenomen.
+--
+--    Functie en triggers hieronder zijn letterlijk overgenomen van productie
+--    (`pg_get_functiondef` en `pg_get_triggerdef`, 18-11-2026). Ze staan hier,
+--    in de steiger, en niet in een migratie: op productie bestaan ze al en zijn
+--    ze van Supabase.
+create or replace function storage.protect_delete()
+ returns trigger
+ language plpgsql
+as $function$
+BEGIN
+    -- Check if storage.allow_delete_query is set to 'true'
+    IF COALESCE(current_setting('storage.allow_delete_query', true), 'false') != 'true' THEN
+        RAISE EXCEPTION 'Direct deletion from storage tables is not allowed. Use the Storage API instead.'
+            USING HINT = 'This prevents accidental data loss from orphaned objects.',
+                  ERRCODE = '42501';
+    END IF;
+    RETURN NULL;
+END;
+$function$;
+
+drop trigger if exists protect_buckets_delete on storage.buckets;
+create trigger protect_buckets_delete before delete on storage.buckets
+  for each statement execute function storage.protect_delete();
+drop trigger if exists protect_objects_delete on storage.objects;
+create trigger protect_objects_delete before delete on storage.objects
+  for each statement execute function storage.protect_delete();
+
+-- ⚠️ **De beheerdersverbinding mag wél, en alleen die.** De tests ruimen hun
+--    objecten op met een kale `psql`-delete als `postgres`. Op productie doet de
+--    storage-dienst dat: die zet deze instelling zelf. Hier krijgt de rol
+--    `postgres` hem daarom als standaard, en alleen in deze database.
+--
+--    ⚠️ **PostgREST verbindt als `authenticator` en krijgt hem níet.** Een RPC als
+--    `verwijder_mijn_account()` of `shim_verwijder_gebruiker()` loopt dus tegen
+--    precies dezelfde grendel als op productie. Dat is de route die er telt.
+do $$
+begin
+  execute format('alter role postgres in database %I set storage.allow_delete_query = %L',
+                 current_database(), 'true');
+end $$;

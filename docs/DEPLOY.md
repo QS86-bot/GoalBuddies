@@ -580,6 +580,11 @@ het raakt het hele AVG-verwijderpad:
   roept de Storage-API aan, na de rij;
 - **een account verwijderen** ruimt de metadata-rijen op (migratie `0224` voor de
   chat, `0230` voor het bewijs), maar de blobs blijven staan;
+  ⚠️ **en tot QS8-701 (migratie `0299`) lukte zelfs dat niet**: Supabase'
+  `storage.protect_delete()` weigert elke SQL-delete op `storage.objects` met
+  42501, ook bij nul rijen, en daarmee faalde elke accountverwijdering. Een
+  SQL-delete op `storage.objects` zet sindsdien `storage.allow_delete_query` om
+  die ene delete heen, en zet hem daarna terug;
 - **een groep verwijderen** laat de objecten volledig als wees achter: de cascade
   raakt alleen `chat_messages`;
 - **een weekdoel of doel verwijderen** doet hetzelfde voor `bewijsfotos`:
