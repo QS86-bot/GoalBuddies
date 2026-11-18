@@ -398,7 +398,7 @@ begin
   -- ⚠️ **Het eigen lidmaatschap vastzetten** (securityreview, L1). Zonder lock kan
   --    een gelijktijdig vertrek de koppelingen opruimen vóór deze functie de
   --    hare legt, en dan hangt het aandeel aan een groep waar de eigenaar geen
-  --    lid meer van is. Dezelfde vorm als `bewaak_teamlidmaatschap()` (0300).
+  --    lid meer van is. Dezelfde vorm als `bewaak_teamlidmaatschap()` (0304).
   perform 1 from group_members m
    where m.group_id = v_team.group_id and m.user_id = v_uid and m.status <> 'inactive'
      for share;
