@@ -40,6 +40,16 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
  *       `volledig`-toetsen rood (`rollover.yml` leest dat veld).
  *    6. `slaapStilleGroepen()` na de lus niet meer aangeroepen → alleen "draait
  *       het werk na de lus" rood.
+
+ *    QS8-697, het maximum per run, ook per grendel:
+ *
+ *    7. `maxRijen` niet doorgegeven in `rollover/index.ts` → alleen "begint
+ *       nooit meer dan 390 profielen" rood.
+ *    8. De `maxRijen`-toets in `verwerkBinnenBudget()` weggehaald → die toets
+ *       én de unit-toets "begint niet meer dan maxRijen rijen" rood.
+ *    9. De toets vóór het lezen gezet in plaats van erna → "ziet elk profiel
+ *       precies één keer" (400 = het maximum) en de unit-toets "is volledig bij
+ *       precies maxRijen" rood: een bron die precies past, heette dan onvolledig.
  */
 
 type Afhandelaar = (verzoek: Request) => Response | Promise<Response>;
@@ -211,15 +221,28 @@ describe('de rollover op de naad tussen de profielenlus en het werk erna', () =>
   });
 
   it('ziet elk profiel precies één keer als het budget ruim is', async () => {
-    const { body } = await draai(450);
+    // ⚠️ Precies `PROFIELEN_PER_RUN` (QS8-697): de grenswaarde is volledig, niet "budget op".
+    const { body } = await draai(390);
 
     expect(body.volledig).toBe(true);
-    expect(body.profielen).toBe(450);
+    expect(body.profielen).toBe(390);
     expect([...db.verwerkteProfielen].sort()).toEqual(db.profielen);
   });
 
+  it('begint nooit meer dan 390 profielen per run, en draait daarna het werk na de lus', async () => {
+    // 📏 QS8-697: v26 werd na 876 profielen afgekapt op CPU-tijd, ruim binnen het tijdbudget.
+    //    450 profielen passen in de tijd (≈ 4 s nagemaakt); alleen het aantal mag hier stoppen.
+    const { status, body } = await draai(450);
+
+    expect(status).toBe(200);
+    expect(db.verwerkteProfielen.length).toBe(390);
+    expect(body.profielen).toBe(390);
+    expect(body.volledig).toBe(false);
+    for (const stap of NA_DE_LUS) expect(db.rpcs).toContain(stap);
+  });
+
   it('houdt de gelijktijdigheid begrensd', async () => {
-    await draai(450);
+    await draai(390);
 
     // ⚠️ Een grens en geen vaste waarde, zoals bij de notificatiejob: de piek hangt af van de
     //    snelheid van de runner (daar gaf een CI-run 4 in plaats van 8, 17-11-2026).

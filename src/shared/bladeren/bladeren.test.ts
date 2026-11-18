@@ -188,7 +188,7 @@ async function* reeks(n: number, gelezen: { n: number }) {
   }
 }
 
-function proef(opties: { n: number; gelijktijdig: number; stopNa: number; duur?: number }) {
+function proef(opties: { n: number; gelijktijdig: number; stopNa: number; duur?: number; maxRijen?: number }) {
   let tijd = 0;
   let tegelijk = 0;
   let hoogste = 0;
@@ -205,6 +205,7 @@ function proef(opties: { n: number; gelijktijdig: number; stopNa: number; duur?:
   const uitslag = verwerkBinnenBudget(reeks(opties.n, gelezen), werk, {
     gelijktijdig: opties.gelijktijdig,
     stopNa: opties.stopNa,
+    ...(opties.maxRijen === undefined ? {} : { maxRijen: opties.maxRijen }),
     klok: () => tijd,
   });
   return { uitslag, gezien, gelezen, hoogste: () => hoogste };
@@ -274,6 +275,27 @@ describe('verwerkBinnenBudget', () => {
 
     await expect(p).rejects.toThrow('bron kapot');
     expect(klaar).toBe(3);
+  });
+
+  it('begint niet meer dan maxRijen rijen, ook als de tijd ruim is (QS8-697)', async () => {
+    const p = proef({ n: 1000, gelijktijdig: 4, stopNa: Infinity, maxRijen: 25 });
+    const uit = await p.uitslag;
+
+    expect(uit).toEqual({ verwerkt: 25, volledig: false });
+    expect(p.gezien).toHaveLength(25);
+  });
+
+  it('is volledig bij een bron van precies maxRijen rijen', async () => {
+    const p = proef({ n: 25, gelijktijdig: 4, stopNa: Infinity, maxRijen: 25 });
+
+    expect(await p.uitslag).toEqual({ verwerkt: 25, volledig: true });
+  });
+
+  it('weigert een maxRijen onder één', async () => {
+    const p = verwerkBinnenBudget(reeks(1, { n: 0 }), async () => {}, {
+      gelijktijdig: 1, stopNa: 1, maxRijen: 0, klok: () => 0,
+    });
+    await expect(p).rejects.toThrow(RangeError);
   });
 
   it('weigert een gelijktijdigheid onder één', async () => {
