@@ -104,6 +104,10 @@ function Groepsacties({ toonAanmaken }: { readonly toonAanmaken: boolean }) {
       <Button variant="secundair" block onPress={() => router.push('/groep/deelnemen')}>
         {t('groepen.heb_code')}
       </Button>
+      <Button variant="stil" block onPress={() => router.push('/groep/ontdek')}>
+        {t('groepen.ontdekken')}
+      </Button>
+
       {/*
         ⚠️ QS8-231. Onderaan en niet bovenaan: wie hier komt heeft meestal al een
            groep of een link. Zoeken is de derde weg naar binnen en niet de
@@ -111,11 +115,7 @@ function Groepsacties({ toonAanmaken }: { readonly toonAanmaken: boolean }) {
            tabblad iets anders maken dan het is.
       */}
       <Button variant="stil" block onPress={() => router.push('/mensen/zoek')}>
-        {t('mensen.titel')}
-      </Button>
-
-      <Button variant="stil" block onPress={() => router.push('/groep/ontdek')}>
-        {t('groepen.ontdekken')}
+        {t('groepen.mensen_zoeken')}
       </Button>
     </>
   );

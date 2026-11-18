@@ -58,3 +58,27 @@ De service worker (`public/sw.js`) is alleen een pushontvanger en cachet niets; 
 ## Grendels
 
 `tests/beloftes/tabblad-foutstaat.test.ts`: elk bestand in `app/(tabs)/` exporteert de foutstaat; een onbekende zone is geen renderfout (en een geldige rekent nog); het breekpunt. Geijkt met de hand: export uit `lijst.tsx` halen geeft rood op de lijst-toets; de try/catch uit `isHuddledagOp()` halen geeft rood op de zone-toets; `BREED_VANAF` op 700 geeft rood op het breekpunt. Dat expo-router de export ook daadwerkelijk om de route zet is met Playwright gemeten en staat niet in CI.
+
+## Waar wat woont (aanvulling 18-11-2026, uit het klikpad van Quinten)
+
+Het menu heeft vijf bestemmingen en geen zesde. Wat daarbuiten bereikbaar is, woont op een tabblad:
+
+| bestemming | ingang | zichtbaar voor |
+|---|---|---|
+| `/meldingen` | kaart "Er wacht een melding" op het tabblad **Profiel** (`MeldingenIngang` in `app/(tabs)/profiel.tsx`) | iedereen met minstens één openstaande melding die hij mag beoordelen; bij een storing een foutkaart met herstelknop |
+| `/beoordelen` | kaart "Te beoordelen" bovenaan het tabblad **Groep** en op **Vandaag** (`TeBeoordelenKaart`) | wie iets te beoordelen heeft |
+| `/groep/nieuw`, `/groep/deelnemen`, `/mensen/zoek`, `/groep/ontdek` | knoppen op het tabblad **Groep** | iedereen |
+
+📏 **Waarom Quinten `/meldingen` niet vond, en waarom dat geen fout is.** De kaart stelt de database één vraag, "is er iets voor mij" (`fetchOpenstaandeMeldingen({ limiet: 1 })`), en verschijnt alleen bij een rij. Een beheerder met een lege wachtrij en een gewone gebruiker krijgen allebei een lege lijst terug, dus de kaart is voor beiden onzichtbaar. Dat is het ontwerp van QS8-586 en `app/meldingen.tsx`: de client vraagt nooit "ben ik beheerder" (een rolcontrole in de schermlaag is een tweede waarheid naast de RPC).
+
+**Wat dit dus niet oplevert, en niet in dit issue is gebouwd:** een ingang die er áltijd staat voor wie mag beoordelen. Dat kan alleen met een nieuwe vraag aan de database ("mag ik beoordelen", los van of er iets wacht), dus een nieuwe RPC en migratie op een auth-pad, en dat vraagt de security-reviewer en een eigen besluit. Het menu krijgt daarom geen zesde knop en toont niets aan niet-beheerders. **Open vraag voor Quinten:** wil je die permanente ingang? Dan is het een eigen issue met migratie.
+
+De uitnodigingspagina voor bestaande leden (QS8-708) en het delen van de uitnodiging (QS8-706) zijn buiten dit issue gelaten.
+
+## De naam en inhoud van de Groep-tab (critical-user, 18-11-2026)
+
+Quinten noemde de groepspagina "de instellingenpagina". Het woord "instellen" staat nergens op de tab, de lijst of het groepsscherm; het gevoel komt uit de **volgorde** van `app/groep/[id].tsx`: bovenaan de regel "Zichtbaarheid van deze groep", onderaan vier regelblokken (doel delen, beheren, verlaten, terug). De weekafsluiting staat als vijfde blok midden in de scroll.
+
+**Gewijzigd (alleen tekst en knopvolgorde):** kop van de lijst "Je groepen" (was "Groep", de tab blijft "Groep"); "Ik heb een uitnodiging" (de lege staat zegt "uitnodigingslink", de knop zei "code"); "Een groep vinden om mee te doen" (gelijk aan de kop erachter) vóór "Iemand zoeken op naam" (twee gelijke "zoeken"-knoppen onder elkaar waren niet uit elkaar te houden); "Alle leden" in plaats van de kop herhalen.
+
+**Niet gewijzigd en een besluit voor Quinten:** (1) de zichtbaarheidsregel naar beneden verplaatsen. Besluit A41 vraagt dat de stand continu zichtbaar is voor een gewoon lid; verplaatsen mag, weghalen niet, en welke plek volstaat is zijn keuze. (2) de weekafsluiting hoger zetten, vooral op de huddledag. (3) de blokken doel delen, beheren en verlaten achter één "Groep regelen" zetten. (4) een kop boven de doelkaarten van de leden ("Waar jullie aan werken"). Een tekstwijziging lost geen van de vier op.
