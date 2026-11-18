@@ -14,10 +14,9 @@ export {
   zetLidUit,
   type Organisatie,
   type Organisatielid,
+  type Resultaat,
   type Organisatieteam,
   type Uitnodigcode,
 } from './api';
-
-export { useBladerlijst } from './react';
 
 export { ORGANISATIENAAM_MAX } from './schemas';

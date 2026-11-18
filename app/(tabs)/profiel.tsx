@@ -33,6 +33,7 @@ import {
   stilleUrenVelden,
   uurUit,
 } from '@/modules/notifications';
+import { fetchMijnOrganisaties } from '@/modules/organisaties';
 import { clientEnv } from '@/lib/env';
 import { huidigInstallatieadvies } from '@/shared/pwa';
 import { opmaaktaal, t, taal, zetTaal, type Taal,
@@ -123,6 +124,8 @@ export default function Profiel() {
             <Uitloggen />
 
             <MeldingenIngang />
+
+            <OrganisatieIngang />
 
             {/*
               ⚠️ Hier stond een `StreakCounter` met een hardgecodeerde `cycles={0}`.
@@ -390,6 +393,7 @@ function AccountVerwijderen() {
     <Card nested>
       <Subheading>{t('profiel.zeker_weten')}</Subheading>
       <Body>{t('profiel.geen_backup')}</Body>
+      <OrganisatieWaarschuwing />
       <Field
         label={t('profiel.typ_woord', { woord: WOORD })}
         value={bevestiging}
@@ -1501,6 +1505,81 @@ function MeldingenIngang() {
       <Body muted>{t('meldingen.ingang_tekst')}</Body>
       <Button onPress={() => router.push('/meldingen')}>{t('meldingen.ingang_knop')}</Button>
     </Card>
+  );
+}
+
+/**
+ * Je organisaties, met de twee ingangen — QS8-657.
+ *
+ * ⚠️ Een storing laat de kaart staan met een foutzin en een knop, zoals
+ *    `MeldingenIngang`: wegblijven zou "ik zit in geen organisatie" lijken.
+ *    De twee knoppen om er een te maken of lid te worden staan er altijd.
+ */
+function OrganisatieIngang() {
+  const router = useRouter();
+  const { data, loading, error, herlaad } = useAsync(() => fetchMijnOrganisaties(), []);
+
+  return (
+    <Card>
+      <Subheading>{t('organisatie.ingang_kop')}</Subheading>
+      <Body muted>{t('organisatie.ingang_uitleg')}</Body>
+      <AsyncView
+        loading={loading}
+        error={error}
+        data={data}
+        isEmpty={(rijen) => rijen.length === 0}
+        onRetry={herlaad}
+        empty={{ title: t('organisatie.ingang_kop'), body: t('organisatie.ingang_leeg') }}
+      >
+        {(rijen) => (
+          <View style={styles.keuzes}>
+            {rijen.map((organisatie) => (
+              <Button
+                key={organisatie.id}
+                variant="secundair"
+                onPress={() => router.push(`/organisatie/${organisatie.id}`)}
+              >
+                {organisatie.naam}
+              </Button>
+            ))}
+          </View>
+        )}
+      </AsyncView>
+      <View style={styles.keuzes}>
+        <Button variant="stil" onPress={() => router.push('/organisatie/nieuw')}>
+          {t('organisatie.ingang_aanmaken')}
+        </Button>
+        <Button variant="stil" onPress={() => router.push('/organisatie/deelnemen')}>
+          {t('organisatie.ingang_deelnemen')}
+        </Button>
+      </View>
+    </Card>
+  );
+}
+
+/**
+ * Wat er met een organisatie gebeurt als de enige beheerder zijn account opzegt.
+ *
+ * ⚠️ Er staat niet dat de code wordt ingetrokken: dat gebeurt niet. De waarschuwing
+ *    zegt alleen wat er daarna niet meer kan. Een laadfout geeft een algemene
+ *    zin en nooit stilte, want dit is de plek waar iemand het nog kan regelen.
+ */
+function OrganisatieWaarschuwing() {
+  const { data, error } = useAsync(() => fetchMijnOrganisaties(), []);
+
+  if (error !== null) return <Body>{t('organisatie.verwijder_waarschuwing_storing')}</Body>;
+
+  const beheerd = (data ?? []).filter((organisatie) => organisatie.rol === 'admin');
+  if (beheerd.length === 0) return null;
+
+  return (
+    <View style={styles.keuzes}>
+      {beheerd.map((organisatie) => (
+        <Body key={organisatie.id}>
+          {t('organisatie.verwijder_waarschuwing', { naam: organisatie.naam })}
+        </Body>
+      ))}
+    </View>
   );
 }
 

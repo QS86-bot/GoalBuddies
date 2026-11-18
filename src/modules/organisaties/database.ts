@@ -25,29 +25,29 @@ import { supabase } from '../../lib/supabase';
 
 type Publiek = Database['public'];
 
-interface OrganisatieRij {
+type OrganisatieRij = {
   id: string;
   name: string;
   status: string;
   created_at: string;
-}
+};
 
-interface LidmaatschapRij {
+type LidmaatschapRij = {
   organization_id: string;
   user_id: string;
   role: string;
   status: string;
   joined_at: string;
-}
+};
 
-interface LeesTabel<R> {
+type LeesTabel<R> = {
   Row: R;
   Insert: Record<string, never>;
   Update: Record<string, never>;
   Relationships: [];
-}
+};
 
-interface OrganisatieFuncties {
+type OrganisatieFuncties = {
   maak_organisatie: { Args: { p_naam: string }; Returns: Json };
   word_organisatielid: { Args: { p_code: string }; Returns: Json };
   verlaat_organisatie: { Args: { p_organization_id: string }; Returns: Json };
@@ -78,7 +78,7 @@ interface OrganisatieFuncties {
     };
     Returns: Json;
   };
-}
+};
 
 export type OrganisatieDatabase = Omit<Database, 'public'> & {
   public: Omit<Publiek, 'Tables' | 'Functions'> & {
