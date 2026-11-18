@@ -24,21 +24,24 @@ Ook de schaalgrens uit dat document ("≈ 1.780 profielen per run") vervalt. Gem
 
 ## Besluit
 
-`verwerkBinnenBudget()` krijgt een optioneel **maximum aantal rijen** (`maxRijen`), naast het tijdbudget. De rollover zet het op **400** (`PROFIELEN_PER_RUN`).
+`verwerkBinnenBudget()` krijgt een optioneel **maximum aantal rijen** (`maxRijen`), naast het tijdbudget. De rollover zet het op **390** (`PROFIELEN_PER_RUN`).
 
 * **Waarom een aantal:** CPU-tijd is vanuit de functie niet te meten, en het aantal profielen is wat er aan CPU kost, opgeteld.
-* **Waarom 400:** minder dan de helft van de gemeten 876. Dat laat marge voor profielen met veel gemiste weken (meer verzoeken, dus meer CPU) en voor het werk erna.
+* **Waarom 390:** minder dan de helft van de gemeten 876, en geen veelvoud van de paginagrootte (200). De helper leest de rij ná het maximum; bij 400 zou dat altijd een extra `select` zijn die bij een fout de hele run een 500 geeft (security-review).
+* **Waarom die marge:** voor profielen met veel gemiste weken (meer verzoeken, dus meer CPU) en voor het werk erna.
 * **Wat er met de rest gebeurt:** de willekeurige startplek van QS8-685 zorgt dat de volgende run anderen pakt, en `volledig: false` maakt de workflow rood.
 * **De notificatiejob** gebruikt dezelfde helper zonder maximum en verandert niet. Of die dezelfde muur heeft, is niet gemeten. Sinds QS8-691 loopt hij alleen nog langs profielen met een push-token.
 
 ## De stand vandaag
 
-Productie telt 1.332 profielen, waarvan 1.330 achtergebleven testaccounts (QS8-693). Tot die weg zijn, is elke run `volledig: false` en dus rood, en doet hij er ~4 runs over om iedereen langs te gaan. Dat is eerlijk: er wachten (nep)profielen. Na de opruiming zijn het er 2.
+Productie telt 1.332 profielen, waarvan 1.330 achtergebleven testaccounts (QS8-693). Tot die weg zijn, is elke run `volledig: false` en dus rood. Dat is eerlijk: er wachten (nep)profielen. Na de opruiming zijn het er 2.
+
+⚠️ **Een willekeurige startplek garandeert geen dekking.** Elke run pakt een aaneengesloten boog van 390 profielen vanaf een willekeurig uuid, dus ≈ 29% per run, en niet gelijk verdeeld: wie na een groot gat in de uuid-ruimte staat, valt vaker in de boog. Na 4 runs is de verwachte dekking ≈ 76%; een profiel kan in zeldzame gevallen meer dan een dag wachten (≈ 0,7²⁴ per profiel). Dat is uitstel en geen verlies, want alles is idempotent en wordt later ingehaald. Alleen een cursor geeft een garantie (QS8-687). Berekend door de security-review, niet gemeten.
 
 ## Aannames — niet gemeten
 
-* Dat de CPU per profiel ongeveer gelijk blijft. Een profiel dat veel weken tegelijk afsluit, kost meer. De marge van 400 tegen 876 is voor dat geval.
-* Dat 400 profielen plus het werk ná de lus binnen de CPU-limiet blijven. Dat moet de eerste run na de deploy laten zien.
+* Dat de CPU per profiel ongeveer gelijk blijft. Een profiel dat veel weken tegelijk afsluit, kost meer. De marge van 390 tegen 876 is voor dat geval.
+* Dat 390 profielen plus het werk ná de lus binnen de CPU-limiet blijven. Dat moet de eerste run na de deploy laten zien.
 
 ## Wat erop volgt
 

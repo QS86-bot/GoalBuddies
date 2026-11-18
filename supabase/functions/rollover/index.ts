@@ -226,13 +226,20 @@ const PROFIELBUDGET_MS = 100_000;
  *    CPU-tijd per aanroep, en die is vanuit de functie niet te meten; het aantal
  *    profielen wel.
  *
- *    Vierhonderd is minder dan de helft van die 876, met marge voor een profiel
- *    met veel gemiste weken (meer verzoeken, dus meer CPU) en voor het werk erna.
+ *    390 is minder dan de helft van die 876, met marge voor een profiel met
+ *    veel gemiste weken (meer verzoeken, dus meer CPU) en voor het werk erna.
  *    Wie dit getal verhoogt, meet eerst opnieuw waar `CPU Time exceeded` valt.
+ *
+ * ⚠️ **Geen veelvoud van `PROFIELEN_PER_PAGINA`, en dat is met opzet**
+ *    (security-review op QS8-697). `verwerkBinnenBudget()` leest de rij ná het
+ *    maximum om te weten of de bron leeg was. Bij 400 = 2 × 200 is dat altijd
+ *    de eerste rij van een nieuwe pagina: een extra `select` die niets oplevert,
+ *    en die bij een fout de hele run een 500 geeft zonder het werk na de lus.
+ *    Bij 390 staat rij 391 op een pagina die er al is.
  *    Profielen die niet aan de beurt kwamen, komen bij een volgende run aan bod
  *    (willekeurige startplek), en `volledig: false` maakt de workflow rood.
  */
-const PROFIELEN_PER_RUN = 400;
+const PROFIELEN_PER_RUN = 390;
 
 /**
  * De systeemclient, met het type dat de aanroep zélf oplevert.
