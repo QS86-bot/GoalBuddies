@@ -101,6 +101,10 @@ export function topniveauDml(sql) {
  * @type {Record<string, { bevat: string, reden: string }[]>}
  */
 export const DML_MET_REDEN = {
+  '0303': [
+    { bevat: 'update public.organizations o set invite_revoked = true',
+      reden: '`where not o.invite_revoked and not exists (actieve beheerder)` — na de run staat de vlag op true, dus de tweede run matcht niets (QS8-659)' },
+  ],
   '0033': [
     { bevat: 'update chat_messages m set sender_id = null',
       reden: '`where sender_id is not null and not exists (profiel)` — na de run is die kolom null, dus de tweede run raakt niets' },

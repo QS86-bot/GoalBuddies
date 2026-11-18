@@ -57,6 +57,9 @@ const REGISTER: Readonly<Record<string, string>> = {
     'chat, overzicht, leden en teambalk blijven aan mag_groep_lezen() en dus aan het lidmaatschap. ' +
     'Grendel 1 hieronder ziet deze route via een tussenfunctie niet; zie de afleverregel van QS8-653.',
   // QS8-659
+  verwijder_mijn_account:
+    'vergrendelt als eerste stap de organisaties waarvan hij beheerder of aanmaker is (review K1, ' +
+    'lockvolgorde organisatie → groep); leest geen rol uit voor een ander en geeft niets terug over de organisatie',
   trek_organisatiecode_in_zonder_beheerder:
     'statementtrigger: telt of er een actieve beheerder overblijft en trekt anders de code in; ' +
     'geeft niets terug en verleent niemand een rol (besluit van Quinten, 18-11-2026)',
