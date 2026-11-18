@@ -9,6 +9,7 @@
 --   commitments_select, getuigenissen(), getuigenissen_voor() en
 --   teruggedraaide_straffen_voor() terugzetten uit 0183, 0169 en 0293 (de
 --   lichamen hieronder zijn die, plus de QS8-660-regel);
+--   drop function if exists public.straf_teamband_klopt_voor_mij(uuid);
 --   drop function if exists public.straf_teamband_klopt(uuid, uuid);
 --   drop trigger if exists commitments_teamstraf on public.commitments;
 --   drop function if exists public.bewaak_teamstraf();
@@ -84,10 +85,21 @@ begin
           where gr.id = new.beneficiary_group_id and gr.organization_id is not null) then
       v_fout := true;
     end if;
-    -- 3. Besluit M2 (18-11-2026): de persoonlijke getuige van een privédoel deelt
-    --    een groep zónder organisatie met de eigenaar. Een collega met wie je
-    --    alleen het team deelt, is geen getuige van je privédoel.
-    if new.beneficiary_user_id is not null and not exists (
+    -- 3. Besluit M2 (18-11-2026): een collega met wie je alleen het team deelt,
+    --    is geen getuige van je privédoel. Dus: deelt de getuige een teamgroep met
+    --    de eigenaar, dan moet hij ook een groep zónder organisatie met hem delen.
+    --    ⚠️ Niet "moet een groep delen": die eis is van de policy en geldt voor
+    --    clients; hier erbij zou hij ongemerkt ook `service_role` binden.
+    if new.beneficiary_user_id is not null
+       and exists (
+         select 1
+           from group_members e
+           join group_members b  on b.group_id = e.group_id
+           join groups gr        on gr.id = e.group_id
+          where e.user_id = v_eigenaar and e.status <> 'inactive'
+            and b.user_id = new.beneficiary_user_id and b.status <> 'inactive'
+            and gr.organization_id is not null)
+       and not exists (
          select 1
            from group_members e
            join group_members b  on b.group_id = e.group_id
@@ -157,8 +169,23 @@ as $$
             where s.goal_id = p_goal_id
          );
 $$;
+-- ⚠️ **Geen grant voor `authenticated`**: hij neemt de lezer als parameter, en een
+--    client die hem mag aanroepen kan het voor een ander vragen. Alleen de
+--    definer-functies hieronder roepen hem aan; de policy gebruikt de variant
+--    met `auth.uid()`.
 revoke all on function public.straf_teamband_klopt(uuid, uuid) from public, anon, authenticated;
-grant execute on function public.straf_teamband_klopt(uuid, uuid) to authenticated;
+
+create or replace function public.straf_teamband_klopt_voor_mij(p_goal_id uuid)
+returns boolean
+language sql
+stable
+security definer
+set search_path = public, pg_temp
+as $$
+  select public.straf_teamband_klopt(p_goal_id, (select auth.uid()));
+$$;
+revoke all on function public.straf_teamband_klopt_voor_mij(uuid) from public, anon, authenticated;
+grant execute on function public.straf_teamband_klopt_voor_mij(uuid) to authenticated;
 
 drop policy if exists commitments_select on public.commitments;
 create policy commitments_select on public.commitments
@@ -172,13 +199,13 @@ create policy commitments_select on public.commitments
       beneficiary_group_id is not null
       and status = any (commitment_zichtbaar_voor_groep())
       and mag_groep_lezen(beneficiary_group_id)
-      and straf_teamband_klopt(goal_id, (select auth.uid()))
+      and straf_teamband_klopt_voor_mij(goal_id)
     )
     or (
       beneficiary_user_id = (select auth.uid())
       and status = any (commitment_zichtbaar_voor_persoon())
       and deelt_groep_met_eigenaar(goal_id)
-      and straf_teamband_klopt(goal_id, (select auth.uid()))
+      and straf_teamband_klopt_voor_mij(goal_id)
     )
   );
 

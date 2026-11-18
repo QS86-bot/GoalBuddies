@@ -24,7 +24,7 @@ import { adminDb, createTestUser, registreerGroep, removeTestUsers, rlsTestsConf
  *    4. De woordelijke policymelding voor een niet-eigenaar vervangen door een
  *       eigen tekst → alleen "verraadt een vreemde niet dat het doel een aandeel
  *       is" rood.
- *    5–7. `straf_teamband_klopt()` weg uit `commitments_select`, uit
+ *    5–7. De teamband weg uit `commitments_select` (`straf_teamband_klopt_voor_mij()`), uit
  *       `getuigenissen()`, of uit `getuigenissen_voor()` en
  *       `teruggedraaide_straffen_voor()` → telkens alleen "een getuige die het
  *       team verlaat…" rood (besluit M1). ⚠️ `teruggedraaide_straffen_voor()` heeft
@@ -273,7 +273,7 @@ describe.runIf(rlsTestsConfigured)('een teamstraf blijft in het team (QS8-660)',
       return [
         (direct.data as unknown[]).length,
         (eigen.data as { id: string }[]).filter((r) => r.id === id).length,
-        (melding.data as { commitment_id: string }[]).filter((r) => r.commitment_id === id).length,
+        (melding.data as unknown as { commitment_id: string }[]).filter((r) => r.commitment_id === id).length,
       ];
     };
     expect(await routes()).toEqual([1, 1, 1]);
