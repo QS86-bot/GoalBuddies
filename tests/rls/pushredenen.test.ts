@@ -30,7 +30,7 @@ const beschikbaar = stackBeschikbaarOfFaal(
 );
 
 describe.skipIf(!beschikbaar)('de weigergronden van registreer_push_token', () => {
-  it('staan alle negen in de lijst waar de copy op leunt', () => {
+  it('staan alle elf in de lijst waar de copy op leunt', () => {
     // ⚠️ Commentaar wordt niet gestript en dat hoeft hier niet: er wordt op de
     //    vorm `'reason', '<naam>'` gezocht, en die staat alleen in de
     //    `jsonb_build_object`-aanroepen. Een reden die in een commentaar besproken
@@ -40,7 +40,7 @@ describe.skipIf(!beschikbaar)('de weigergronden van registreer_push_token', () =
          from pg_proc p
          join pg_namespace n on n.oid = p.pronamespace
          cross join lateral regexp_matches(
-           p.prosrc, '''reason'', ''([a-z_]+)''', 'g') as m(gevonden)
+           p.prosrc, '''reason'', ''([a-z0-9_]+)''', 'g') as m(gevonden)
         where n.nspname = 'public' and p.proname = 'registreer_push_token'`,
     ).trim();
 
@@ -50,7 +50,12 @@ describe.skipIf(!beschikbaar)('de weigergronden van registreer_push_token', () =
     //    bestaat niet meer", en dan is een vergelijking van twee lege lijsten
     //    groen terwijl er niets meer gemeten wordt. Zelfde reden als bij
     //    `goal_events_type_valid` in `policies.test.ts`.
-    expect(inDeDatabase).toHaveLength(9);
+    // ⚠️⚠️ **Het patroon was `[a-z_]+`, en dat zag `p256dh_ongeldig` niet** (QS8-696).
+    //    Een reden met een cijfer viel stil buiten de vergelijking: de database
+    //    telde er tien, de lijst elf, en de test gaf de verkeerde reden voor
+    //    rood. Erger was de andere kant: had de lijst die reden ook gemist, dan
+    //    waren beide kanten even blind geweest en de test groen.
+    expect(inDeDatabase).toHaveLength(11);
     expect(inDeDatabase).toEqual([...PUSH_WEIGERGRONDEN].sort());
   }, 120_000);
 });
