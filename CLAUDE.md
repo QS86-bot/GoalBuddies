@@ -1071,6 +1071,14 @@ npm run build
 controle die niet meegedraaid was: de controle deed precies zijn werk, de poort
 was de inschatting van een mens over zijn eigen werk.
 
+⚠️ **`npm test` is sinds 18-11-2026 alleen de `unit`-groep, en de RLS-suite
+kiest productie nooit uit zichzelf** (QS8-702). Een kale `npm test` en de poort
+draaiden de suite tegen productie zodra `.env` de sleutels droeg, en lieten daar
+1.865 testaccounts achter. Productie vraagt nu `RLS_DOEL=productie` **én**
+`RLS_TEST_ALLOW_PROD=1`, per run en nooit in `.env`; een service-role-sleutel
+zonder doel faalt luid. Uitleg en de ijking in
+`docs/decisions/2026-11-18-productie-is-nooit-een-stille-standaard-voor-de-rls-suite.md`.
+
 ⚠️⚠️ **En CI draait ze sinds 10-09-2026 óók allemaal, uit dezelfde lijst**
 (QS8-417). Daarvóór somde `ci.yml` ze met de hand op: 📏 **26 van de 52** stonden
 in geen enkele workflow, waaronder `schermingang:`, `registerdrift:`, `exports:`
