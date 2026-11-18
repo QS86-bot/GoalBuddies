@@ -1092,9 +1092,10 @@ mechanisme laat staan, groeit terug — en hij doet dat onder een rij die
 kiest productie nooit uit zichzelf** (QS8-702). Een kale `npm test` en de poort
 draaiden de suite tegen productie zodra `.env` de sleutels droeg. Productie
 vraagt nu `RLS_DOEL=productie` **én** `RLS_TEST_ALLOW_PROD=1`, en een
-service-role-sleutel zonder doel faalt luid. "Die twee per run, nooit in
-`.env`" is een **afspraak en geen slot**: `src/lib/test-env.ts` laadt ze gewoon
-mee. Uitleg en de ijking in
+service-role-sleutel zonder doel faalt luid. **Die twee komen alleen uit de
+procesomgeving** (QS8-703): zet `.env` het slot, dan maakt `src/lib/test-env.ts`
+elke test rood, en het psql-pad weigert elke host die niet lokaal is. Uitleg en
+de ijking in
 `docs/decisions/2026-11-18-productie-is-nooit-een-stille-standaard-voor-de-rls-suite.md`.
 
 ⚠️ **Een controle zonder database is niet groen maar *ongemeten*.** De poort houdt
