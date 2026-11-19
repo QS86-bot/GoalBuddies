@@ -2,6 +2,8 @@ import { readFileSync } from 'node:fs';
 
 import { describe, expect, it } from 'vitest';
 
+import { zonderCommentaar } from '../../scripts/zonder-commentaar.mjs';
+
 /**
  * De groepsdagmelding houdt zijn vorm in de job — QS8-755.
  *
@@ -23,7 +25,7 @@ function lichaam(naam: string): string {
 }
 
 describe('stuurGroepsdigest', () => {
-  const f = lichaam('stuurGroepsdigest').replace(/\/\/[^\n]*/g, '');
+  const f = zonderCommentaar(lichaam('stuurGroepsdigest'));
 
   it('kijkt eerst naar de opt-in en het uur, en pas dan naar de database', () => {
     const optIn = f.indexOf('notify_group_digest');

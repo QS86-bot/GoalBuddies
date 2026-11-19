@@ -2,7 +2,10 @@ import { describe, expect, it } from 'vitest';
 
 import { GROEPSDIGEST_GEBEURTENISSEN } from '../../src/modules/notifications/regels';
 
+import { proefId } from './proefid';
 import { psql, psqlMetInvoer, stackBeschikbaarOfFaal } from './psql-stack';
+
+const COMMITMENT_ID = proefId(1);
 
 /**
  * De groepsdagmelding houdt zijn beloftes in de database — QS8-755, migratie 0310.
@@ -275,9 +278,9 @@ describe.skipIf(!beschikbaar)('de groepsdagmelding (0310)', () => {
     () => {
       const u = scenario(`
         insert into notifications_sent (user_id, kind, local_date, ref_type, ref_id)
-          values (pg_temp.id('carol'), 'commitment_witness', current_date, 'commitment', '00000000-0000-0000-0000-0000000000aa');
+          values (pg_temp.id('carol'), 'commitment_witness', current_date, 'commitment', '${COMMITMENT_ID}');
         select pg_temp.zet('tweede', pg_temp.poging(format($q$insert into notifications_sent (user_id, kind, local_date, ref_type, ref_id)
-          values (%L, 'commitment_witness', current_date + 1, 'commitment', %L)$q$, pg_temp.id('carol'), '00000000-0000-0000-0000-0000000000aa')));
+          values (%L, 'commitment_witness', current_date + 1, 'commitment', %L)$q$, pg_temp.id('carol'), '${COMMITMENT_ID}')));
       `);
       // Dezelfde (gebruiker, soort, onderwerp) op een andere dag botst nog steeds.
       expect(u.tweede).toBe('23505');

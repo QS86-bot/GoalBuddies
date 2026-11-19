@@ -721,7 +721,9 @@ export const GEDEELDE_WAARDEN = {
   //    ⚠️ Kijk hier opnieuw zodra die twee geland zijn. Schrijft er dán nog
   //       niets, dan is dát de bevinding en horen de waarden uit de CHECK.
   forge: ['hero_appearances', 'hero_profiles'],
-  group: ['daily_moves', 'todo_items'],
+  // QS8-755: `group` is ook `ref_type` van de `group_digest`-rij in `notifications_sent`
+  // (groepsdigest_voor() kiest hem, stuurGroepsdigest() schrijft hem via stuur()).
+  group: ['daily_moves', 'notifications_sent', 'todo_items'],
   huddle_day_changed: ['chat_messages', 'group_events'],
   ignis: ['hero_appearances', 'hero_profiles'],
   lucerna: ['hero_appearances', 'hero_profiles'],
