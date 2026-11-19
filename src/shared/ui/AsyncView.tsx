@@ -22,7 +22,11 @@ interface Props<T> {
   readonly data: T | undefined;
   /** Bepaalt of `data` als leeg telt. Een lege lijst is geen "geen data". */
   readonly isEmpty: (data: T) => boolean;
-  readonly empty: { readonly title: string; readonly body: string };
+  readonly empty: {
+    readonly title: string;
+    readonly body: string;
+    readonly action?: { readonly label: string; readonly onPress: () => void } | undefined;
+  };
   readonly onRetry?: (() => void) | undefined;
   readonly children: (data: T) => React.ReactNode;
 }
@@ -66,7 +70,7 @@ export function AsyncView<T>({
   }
 
   if (data === undefined || isEmpty(data)) {
-    return <EmptyState title={empty.title} body={empty.body} />;
+    return <EmptyState title={empty.title} body={empty.body} action={empty.action} />;
   }
 
   return <>{children(data)}</>;

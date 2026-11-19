@@ -1,11 +1,13 @@
 import {
   groupPeriod,
+  isGeldigeTijdzone,
   localDateIn,
   now,
   type GroupClock,
   type Groepsperiode,
   type Weekday,
 } from '../../shared/time';
+import { reportError } from '../../lib/observability';
 
 /**
  * De tweede klok — QS8-58.
@@ -78,8 +80,29 @@ export function isHuddledagOp(
   groep: { readonly huddle_day: number; readonly tz: string },
   moment: Date,
 ): boolean {
+  // ⚠️ QS8-705: een zone die dít toestel niet kent (de database kent er meer
+  //    dan `Intl` op een oudere Hermes of Safari, zie 0119) gooit anders een
+  //    RangeError tijdens het renderen: gemeten het verschil tussen een lijstregel
+  //    zonder "vandaag" en een leeg scherm. Dit is een label bij een groep en
+  //    geen berekening waar iets van afhangt, dus "niet de huddledag" is de
+  //    veilige terugval. Alleen die ene toestand wordt opgevangen: elke andere
+  //    fout gaat door naar de foutstaat. Eén melding per zone, want dit staat op
+  //    het renderpad.
+  if (!isGeldigeTijdzone(groep.tz)) {
+    meldOnbekendeZoneEenmaal(groep.tz);
+    return false;
+  }
+
   const periode = groepsperiodeVan(groep, moment);
   return localDateIn(periode.tz, moment) === periode.startDate;
+}
+
+const GEMELDE_ZONES = new Set<string>();
+
+function meldOnbekendeZoneEenmaal(tz: string): void {
+  if (GEMELDE_ZONES.has(tz)) return;
+  GEMELDE_ZONES.add(tz);
+  reportError(new Error('Onbekende tijdzone op een groep'), 'groep.huddledag', { tz });
 }
 
 /**

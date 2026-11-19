@@ -1,4 +1,4 @@
-import { useRouter, type Href } from 'expo-router';
+import { usePathname, useRouter, type Href } from 'expo-router';
 import { useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -7,7 +7,8 @@ import { t } from '../i18n';
 import { radius, space, useTheme } from '../theme';
 
 import { focusRing } from './a11y';
-import { Taakbalk } from './Taakbalk';
+import { Taakbalk, useTaakbalkVorm } from './Taakbalk';
+import { toontTaakbalk } from './tabbladen';
 import { Eyebrow, Heading } from './Text';
 
 /**
@@ -119,6 +120,14 @@ export function Screen({ title, eyebrow, children, scroll = true, terug }: Props
   //    De grendel staat in `tests/beloftes/tabbalk-bovenaan.test.ts`.
   const bovenrand = insets.top;
 
+  // ⚠️ QS8-705: breed staat het menu als kolom naast de inhoud, smal als rij
+  //    erboven. `Screen` weet dat omdat hij de hoogtehouder is; `Taakbalk`
+  //    tekent alleen wat hij te zien krijgt. Beide vragen dezelfde functie
+  //    (`taakbalkVorm`), dus er is één breekpunt.
+  const pad = usePathname();
+  const vorm = useTaakbalkVorm();
+  const zijkant = toontTaakbalk(pad) && vorm === 'zijkant';
+
   // ⚠️ `flex: 1` erbij zodra het scherm níét scrollt, en alleen dan. Dit blok is
   //    dan de enige hoogtehouder, en een View zonder flex krimpt in React Native
   //    naar zijn inhoud — waardoor een lijst die zelf scrollt (de groepschat,
@@ -156,15 +165,22 @@ export function Screen({ title, eyebrow, children, scroll = true, terug }: Props
   );
 
   return (
-    <View style={[...buiten, { paddingTop: bovenrand }]}>
+    <View
+      style={[
+        ...buiten,
+        { paddingTop: bovenrand },
+        zijkant ? styles.naastElkaar : null,
+      ]}
+    >
       <Taakbalk />
-      {romp}
+      {zijkant ? <View style={styles.vult}>{romp}</View> : romp}
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   scherm: { flex: 1 },
+  naastElkaar: { flexDirection: 'row' },
   // De ruimte tussen de balk (of de bovenrand) en de kop van het scherm.
   rand: { paddingTop: space.shell },
   vult: { flex: 1 },
