@@ -333,6 +333,29 @@ export const afstand = {
   xl: 24,
 } as const;
 
+export type Afstandsschaal = { readonly [K in keyof typeof afstand]: number };
+
+/**
+ * De afstandsschaal bij een dichtheid (QS8-731). **Ruim is de schaal hierboven, ongewijzigd**; compact is
+ * driekwart ervan, naar boven afgerond zodat de kleinste stap nooit onder 3 zakt.
+ *
+ * ⚠️ Dit is de enige plek waar de dichtheid een getal wordt. De factor is geen besluit van Quinten maar de
+ *    aanname van deze bouwsessie (niet gemeten op een toestel); een andere factor is een regel in `COMPACT_FACTOR`.
+ */
+export const COMPACT_FACTOR = 0.75;
+
+export function afstandVoor(dichtheid: 'ruim' | 'compact'): Afstandsschaal {
+  if (dichtheid === 'ruim') return afstand;
+  const schaal = (n: number): number => Math.max(3, Math.round(n * COMPACT_FACTOR));
+  return {
+    xs: schaal(afstand.xs),
+    s: schaal(afstand.s),
+    m: schaal(afstand.m),
+    l: schaal(afstand.l),
+    xl: schaal(afstand.xl),
+  };
+}
+
 /** De grootte van een teller of ander groot cijfer (QS8-723). */
 export const cijfer = {
   klein: 20,

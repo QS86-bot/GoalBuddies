@@ -3,7 +3,6 @@ import { describe, expect, it } from 'vitest';
 import { contrastRatio, WCAG } from './contrast';
 import { kleinsteAfstand, kleurafstand, MIN_AFSTAND } from './kleurafstand';
 import { navy, navyLight, PALETSLEUTELS, roles } from './tokens';
-import { themeForPreference } from './themes';
 import {
   allePaletten,
   STANDAARD_MODUS,
@@ -11,7 +10,6 @@ import {
   UITERLIJK_IDS,
   UITERLIJKEN,
   uiterlijk,
-  uiterlijkVoorVoorkeur,
 } from './uiterlijken';
 
 /**
@@ -76,18 +74,6 @@ describe.each(paletten)('palet %s', (_naam, u) => {
 describe('de standaard en de bestaande voorkeur (E8, E9)', () => {
   it('is B en donker voor een nieuwe gebruiker', () => {
     expect([STANDAARD_UITERLIJK, STANDAARD_MODUS]).toEqual(['B', 'donker']);
-  });
-
-  it('laat elke bestaande voorkeur hetzelfde thema geven als de brug naar B zegt', () => {
-    for (const voorkeur of ['systeem', 'navy', 'navy-licht'] as const) {
-      for (const scheme of ['light', 'dark', 'unspecified'] as const) {
-        const { id, modus } = uiterlijkVoorVoorkeur(voorkeur, scheme);
-        expect(id).toBe('B');
-        expect(themeForPreference(voorkeur, scheme).colors, `${voorkeur}/${scheme}`).toBe(
-          UITERLIJKEN[id][modus].colors,
-        );
-      }
-    }
   });
 });
 

@@ -67,6 +67,20 @@ export const BEWAKER = 'uurjobs.yml';
 const UUR = 3_600_000;
 
 /**
+ * Workflows die een uurjob zijn of worden, maar bewust niet op de planning staan.
+ * De reden staat hier én in het bestand zelf.
+ *
+ * ⚠️ `koppelen.yml` (QS8-233): de Edge Function `koppelen` staat niet op productie
+ *    en wordt pas gedeployd ná de meldingstest van QS8-634 (besluit van Quinten,
+ *    17-11-2026, QS8-641). Elk uur aanroepen is elk uur een rode run. Zet je hem
+ *    aan, haal hem dan hier weg: `uurjobsUit()` vindt hem dan vanzelf.
+ */
+export const BEWUST_NIET_GEPLAND = {
+  'koppelen.yml':
+    'de Edge Function koppelen staat niet op productie; pas aan na de meldingstest van QS8-634',
+};
+
+/**
  * De uurjobs in een map: elke workflow met een `cron:`-regel die elk uur vuurt
  * (`<minuut> * * * *`).
  *

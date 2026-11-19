@@ -6,7 +6,7 @@
  *    losse kleur laat ze uit elkaar lopen.
  */
 
-export type { Categoriekleuren, Heldkleuren, Heldpalet, Palette } from './tokens';
+export type { Afstandsschaal, Categoriekleuren, Heldkleuren, Heldpalet, Palette } from './tokens';
 export {
   categoriekleurenNavy,
   categoriekleurenNavyLight,
@@ -15,6 +15,7 @@ export {
   heldkleurenNavy,
   heldkleurenNavyLight,
   afstand,
+  afstandVoor,
   cijfer,
   HELDPALETSLEUTELS,
   PALETSLEUTELS,
@@ -29,7 +30,6 @@ export {
   allePaletten,
   STANDAARD_MODUS,
   STANDAARD_UITERLIJK,
-  uiterlijkVoorVoorkeur,
   MODI,
   schaduwVoor,
   UITERLIJK_IDS,
@@ -45,11 +45,13 @@ export {
 export {
   navyLightTheme,
   navyTheme,
-  parsePreference,
+  STANDAARD_THEMAKEUZE,
   themeFor,
-  themeForPreference,
+  themeVoorKeuze,
+  uiterlijkIdVoor,
+  type Dichtheid as ThemaDichtheid,
   type Theme,
-  type ThemePreference,
+  type Themakeuze,
 } from './themes';
 
-export { ThemeProvider, useTheme, useThemePreference } from './ThemeProvider';
+export { ThemeProvider, useTheme } from './ThemeProvider';
