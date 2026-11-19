@@ -38,7 +38,7 @@ import {
  *    voorstel dat de toets moet halen; de waarde is niet heilig, de toets wel.
  */
 
-export type UiterlijkId = 'A' | 'B' | 'C-baai' | 'C-avondgloed';
+export type UiterlijkId = 'A' | 'B' | 'C-baai' | 'C-avondgloed' | 'C-bosrand' | 'C-pruim' | 'C-koraal';
 export type Modus = 'donker' | 'licht';
 
 /**
@@ -130,6 +130,80 @@ const avondLicht: Palette = {
   knop: '#8e24aa',
 };
 
+/**
+ * Bosrand, Pruim en Koraal (QS8-725). Zelfde vorm als Baai en Avondgloed: het accent is de tweede tint van het
+ * verloop, en de achtergrond begint op `bg`. De waarden die van het voorstel afwijken, staan met hun meting in
+ * `docs/decisions/2026-11-19-bosrand-pruim-en-koraal.md`.
+ */
+const bosDonker: Palette = {
+  ...cBasisDonker,
+  bg: '#06180f',
+  panel: '#172820',
+  panelDark: '#12241b',
+  accent: '#a3e635',
+  accentDim: '#86b82c',
+  gridLine: 'rgba(163,230,53,0.028)',
+  knop: '#a3e635',
+  knopTekst: '#142400',
+};
+
+const bosLicht: Palette = {
+  ...cBasisLicht,
+  bg: '#f2fbe9',
+  panelDark: '#e8f5dc',
+  border: '#d3e5c3',
+  accent: '#185818',
+  accentDim: '#104410',
+  gridLine: 'rgba(24,88,24,0.035)',
+  knop: '#185818',
+};
+
+const pruimDonker: Palette = {
+  ...cBasisDonker,
+  bg: '#150b30',
+  panel: '#261c3e',
+  panelDark: '#21173a',
+  accent: '#c084fc',
+  accentDim: '#9d6ad0',
+  gridLine: 'rgba(192,132,252,0.028)',
+  knop: '#c084fc',
+  knopTekst: '#1d0538',
+};
+
+const pruimLicht: Palette = {
+  ...cBasisLicht,
+  bg: '#f7f0ff',
+  panelDark: '#f0e6fb',
+  border: '#e0d0f2',
+  accent: '#8020d0',
+  accentDim: '#6a18ad',
+  gridLine: 'rgba(128,32,208,0.035)',
+  knop: '#8020d0',
+};
+
+const koraalDonker: Palette = {
+  ...cBasisDonker,
+  bg: '#2a0f1c',
+  panel: '#331e29',
+  panelDark: '#2e1a25',
+  accent: '#fb7185',
+  accentDim: '#cf5c6d',
+  gridLine: 'rgba(251,113,133,0.028)',
+  knop: '#fb7185',
+  knopTekst: '#340a10',
+};
+
+const koraalLicht: Palette = {
+  ...cBasisLicht,
+  bg: '#fff3f3',
+  panelDark: '#fbe8e8',
+  border: '#f0d2d2',
+  accent: '#981840',
+  accentDim: '#7a1233',
+  gridLine: 'rgba(152,24,64,0.035)',
+  knop: '#981840',
+};
+
 /** A: blauwgroen op navy. Donker en licht. */
 const aDonker: Palette = {
   ...navy,
@@ -172,6 +246,36 @@ export const UITERLIJKEN: Readonly<Record<UiterlijkId, Uiterlijk>> = {
     licht: palet(avondLicht, categoriekleurenNavyLight, heldkleurenNavyLight, {
       achtergrond: ['#fbf3fa', '#f6dff2'],
       accent: ['#9a3412', '#8e24aa'],
+    }),
+  },
+  'C-bosrand': {
+    donker: palet(bosDonker, categoriekleurenNavy, heldkleurenNavy, {
+      achtergrond: ['#06180f', '#0c4026'],
+      accent: ['#00e8a8', '#a3e635'],
+    }),
+    licht: palet(bosLicht, categoriekleurenNavyLight, heldkleurenNavyLight, {
+      achtergrond: ['#f2fbe9', '#d9f5e3'],
+      accent: ['#006888', '#185818'],
+    }),
+  },
+  'C-pruim': {
+    donker: palet(pruimDonker, categoriekleurenNavy, heldkleurenNavy, {
+      achtergrond: ['#150b30', '#3b1a6e'],
+      accent: ['#f0abfc', '#c084fc'],
+    }),
+    licht: palet(pruimLicht, categoriekleurenNavyLight, heldkleurenNavyLight, {
+      achtergrond: ['#f7f0ff', '#efe1ff'],
+      accent: ['#b808c0', '#8020d0'],
+    }),
+  },
+  'C-koraal': {
+    donker: palet(koraalDonker, categoriekleurenNavy, heldkleurenNavy, {
+      achtergrond: ['#2a0f1c', '#6b2230'],
+      accent: ['#fdba74', '#fb7185'],
+    }),
+    licht: palet(koraalLicht, categoriekleurenNavyLight, heldkleurenNavyLight, {
+      achtergrond: ['#fff3f3', '#ffe4dc'],
+      accent: ['#681030', '#981840'],
     }),
   },
   // B is het huidige stelsel (goud met groen voor voortgang): ongewijzigd.
