@@ -91,7 +91,7 @@ describe('de standaard en de bestaande voorkeur (E8, E9)', () => {
   });
 });
 
-describe('één statusrood (QS8-743 besloten; de waarde is daar)', () => {
+describe('één statusrood (QS8-743; de waarde en zijn metingen staan in statusrood.test.ts)', () => {
   it('is binnen een modus in elk uiterlijk dezelfde kleur, zodat het rood niet per uiterlijk kan uiteenlopen', () => {
     for (const modus of ['donker', 'licht'] as const) {
       const rood = new Set(UITERLIJK_IDS.map((id) => UITERLIJKEN[id][modus].colors.red));

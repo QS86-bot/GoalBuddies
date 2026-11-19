@@ -72,7 +72,7 @@ function palet(
 
 /**
  * C: een levendig verloop op een eigen ondergrond. De statuskleuren (`green`, `orange`, `red`) zijn die van
- * navy: één statusrood voor de hele app is besloten (QS8-743) en wordt daar vastgesteld, niet hier.
+ * navy: één statusrood voor de hele app (QS8-743), vastgesteld in `tokens.ts` en getoetst in `statusrood.test.ts`.
  * Categoriekleuren en helden worden gedeeld met A en B.
  *
  * ⚠️ `accent` is de tweede tint van het verloop; de eerste staat in `verloop.accent`. De toets leest allebei.

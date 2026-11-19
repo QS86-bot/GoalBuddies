@@ -78,7 +78,9 @@ export const navy: Palette = {
   accentDim: '#cd9d34',
   green: '#3fbf8f',
   orange: '#f0803c',
-  red: '#f05a54',
+  // ⚠️ QS8-743: het ene statusrood van de hele app, donker. Was `#f05a54`; de reden en de metingen staan in
+  //    `docs/decisions/2026-11-19-een-statusrood-voor-de-hele-app.md`. Wijzig deze twee waarden nooit zonder `statusrood.test.ts`.
+  red: '#ff3f1e',
   grey: '#6e7fa8',
   text: '#ffffff',
   textSecondary: 'rgba(255,255,255,0.68)',
@@ -96,7 +98,8 @@ export const navyLight: Palette = {
   accentDim: '#8a6620',
   green: '#1f7a56',
   orange: '#b3541c',
-  red: '#b8352f',
+  // ⚠️ QS8-743: licht. Was `#b8352f`. Haalt ook 4,5:1 voor tekst; waarom deze waarde staat in het beslisdocument.
+  red: '#cd0034',
   grey: '#6b7793',
   text: '#141e3c',
   textSecondary: '#55607a',
