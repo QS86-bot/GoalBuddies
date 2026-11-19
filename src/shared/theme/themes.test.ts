@@ -46,12 +46,13 @@ describe('knoplabels blijven leesbaar in beide modi', () => {
    *    Deze test is de reden dat dat ontdekt is, en de reden dat het zo blijft.
    */
   const gevallen = [
-    ['navy (donker)', navyTheme, navyTheme.colors.accent, '#141e3c'],
-    ['navy-licht', navyLightTheme, navyLightTheme.colors.accentDim, '#ffffff'],
+    ['navy (donker)', navyTheme],
+    ['navy-licht', navyLightTheme],
   ] as const;
 
-  it.each(gevallen)('%s: label op de primaire knop haalt AA', (_naam, _theme, vlak, label) => {
-    expect(contrastRatio(label, vlak)).toBeGreaterThanOrEqual(WCAG.AA_TEXT);
+  // ⚠️ Toetst wat `Button` rendert: `knop` en `knopTekst` uit het palet (QS8-723).
+  it.each(gevallen)('%s: label op de primaire knop haalt AA', (_naam, theme) => {
+    expect(contrastRatio(theme.colors.knopTekst, theme.colors.knop)).toBeGreaterThanOrEqual(WCAG.AA_TEXT);
   });
 
   it.each(gevallen)('%s: label op de secundaire knop haalt AA', (_naam, theme) => {

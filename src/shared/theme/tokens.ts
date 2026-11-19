@@ -36,7 +36,38 @@ export interface Palette {
   readonly text: string;
   readonly textSecondary: string;
   readonly gridLine: string;
+  /**
+   * De vulling van de primaire knop (QS8-723). Staat in het palet en niet in
+   * `Button`, want een ander uiterlijk heeft een ander accent en dus een andere
+   * combinatie die de contrastdrempel haalt.
+   */
+  readonly knop: string;
+  /** De tekst op `knop`; moet 4,5 tegen `knop` halen. */
+  readonly knopTekst: string;
 }
+
+/**
+ * Alle sleutels die een palet moet dragen. Eén lijst, zodat een test kan zeggen
+ * *"dit palet mist `knop`"* in plaats van dat TypeScript het alleen bij de
+ * letterlijke definitie ziet (QS8-723, criterium 1).
+ */
+export const PALETSLEUTELS = [
+  'bg',
+  'panel',
+  'panelDark',
+  'border',
+  'accent',
+  'accentDim',
+  'green',
+  'orange',
+  'red',
+  'grey',
+  'text',
+  'textSecondary',
+  'gridLine',
+  'knop',
+  'knopTekst',
+] as const satisfies readonly (keyof Palette)[];
 
 export const navy: Palette = {
   bg: '#0e1730',
@@ -52,6 +83,8 @@ export const navy: Palette = {
   text: '#ffffff',
   textSecondary: 'rgba(255,255,255,0.68)',
   gridLine: 'rgba(232,182,72,0.028)',
+  knop: '#e8b648',
+  knopTekst: '#141e3c',
 };
 
 export const navyLight: Palette = {
@@ -68,6 +101,8 @@ export const navyLight: Palette = {
   text: '#141e3c',
   textSecondary: '#55607a',
   gridLine: 'rgba(20,30,60,0.035)',
+  knop: '#8a6620',
+  knopTekst: '#ffffff',
 };
 
 /**
@@ -277,7 +312,29 @@ export const radius = {
   sm: 4,
   base: 8,
   md: 14,
+  /** De grote ronde vlakken van een kaart met één hoofdhandeling (QS8-723). */
+  lg: 22,
   pill: 999,
+} as const;
+
+/**
+ * Een vaste afstandsschaal (QS8-723). Naast `space`, dat de Q-Projects-maten per
+ * onderdeel draagt: dit is de schaal voor nieuw werk, zodat een nieuw scherm niet
+ * opnieuw getallen verzint.
+ */
+export const afstand = {
+  xs: 4,
+  s: 8,
+  m: 12,
+  l: 16,
+  xl: 24,
+} as const;
+
+/** De grootte van een teller of ander groot cijfer (QS8-723). */
+export const cijfer = {
+  klein: 20,
+  middel: 28,
+  groot: 40,
 } as const;
 
 /** Ruimte in `[verticaal, horizontaal]`, exact zoals in het Q-Projects-stelsel. */

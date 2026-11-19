@@ -1,18 +1,13 @@
 import type { ColorSchemeName } from 'react-native';
 
 import {
-  categoriekleurenNavy,
-  categoriekleurenNavyLight,
-  heldkleurenNavy,
-  heldkleurenNavyLight,
-  navy,
-  navyLight,
   roles,
   shadow,
   type Categoriekleuren,
   type Heldpalet,
   type Palette,
 } from './tokens';
+import { schaduwVoor, UITERLIJKEN, type Modus } from './uiterlijken';
 
 /** De twee thema's van het Q-Projects navy-stelsel. */
 
@@ -40,25 +35,27 @@ export interface Theme {
   readonly shadow: (typeof shadow)['navy'] | (typeof shadow)['navyLight'];
 }
 
-export const navyTheme: Theme = {
-  name: 'navy',
-  dark: true,
-  colors: navy,
-  roles: roles(navy),
-  families: categoriekleurenNavy,
-  helden: heldkleurenNavy,
-  shadow: shadow.navy,
-};
+/**
+ * ⚠️ Afgeleid van `UITERLIJKEN.B` en niet nog eens samengesteld (QS8-723): zo bestaat het
+ *    huidige uiterlijk op één plek, en kan een wijziging aan B niet ongemerkt afwijken van wat de
+ *    app toont.
+ */
+function themaVan(name: Theme['name'], modus: Modus): Theme {
+  const u = UITERLIJKEN.B[modus];
+  return {
+    name,
+    dark: modus === 'donker',
+    colors: u.colors,
+    roles: u.roles,
+    families: u.families,
+    helden: u.helden,
+    shadow: schaduwVoor(modus),
+  };
+}
 
-export const navyLightTheme: Theme = {
-  name: 'navy-licht',
-  dark: false,
-  colors: navyLight,
-  roles: roles(navyLight),
-  families: categoriekleurenNavyLight,
-  helden: heldkleurenNavyLight,
-  shadow: shadow.navyLight,
-};
+export const navyTheme: Theme = themaVan('navy', 'donker');
+
+export const navyLightTheme: Theme = themaVan('navy-licht', 'licht');
 
 /**
  * Het thema dat bij een systeemvoorkeur hoort.
