@@ -20,7 +20,7 @@ import type { Resultaat } from './weekly';
  *    beide takken heen vallen: hij breekt de reeks niet en telt er ook niet bij
  *    op. Dat is precies wat "de reeks wacht" hoort te betekenen.
  *
- * ⚠️ **Een adempauze is van jou alleen (sinds migratie 0306, besluit Quinten
+ * ⚠️ **Een adempauze is van jou alleen (sinds migratie 0307, besluit Quinten
  *    19-11-2026).** `breathers_select` is eigenaar-only; de groepstak van
  *    A50/QS8-227 is ingetrokken. De groep leest de rij niet, ook niet dat er een
  *    pauze loopt. Wat de groep hoort is een gewoon chatbericht dat het lid

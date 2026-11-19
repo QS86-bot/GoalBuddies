@@ -1,6 +1,6 @@
 # De adempauze is van jou alleen
 
-**Datum:** 19-11-2026 · **Migratie:** 0306 · **Issue:** QS8-753 (deel A: de database; deel B, het bericht zelf, is in dezelfde branch gebouwd; de copy `adempauze.groep_ziet` is bewust niet vervangen, zie B3)
+**Datum:** 19-11-2026 · **Migratie:** 0307 · **Issue:** QS8-753 (deel A: de database; deel B, het bericht zelf, is in dezelfde branch gebouwd; de copy `adempauze.groep_ziet` is bewust niet vervangen, zie B3)
 **Besluit van:** Quinten, 19-11-2026 · **Raakt:** domeinregel 7, domeinregel 10, A50, QS8-227
 **Status:** gebouwd, migratie wacht op Quintens "backup gedaan" (`docs/PROMPT-SESSIE.md` §12d).
 

@@ -557,7 +557,7 @@ deze twee functies er zijn.
 | `points_ledger` | **alleen eigen rijen** | systeem | ✗ | ✗ |
 | `user_streaks` | **alleen eigenaar**; groepsgenoten zien alleen `current_streak` via view | systeem | systeem | ✗ |
 | `week_pass_events` | **alleen eigenaar** | systeem | ✗ | ✗ |
-| `breathers` | **alleen eigenaar** (sinds 0306, besluit 19-11-2026; was: groepsleden zagen de hele aankondiging, besluit A50) | eigen | eigen | eigen |
+| `breathers` | **alleen eigenaar** (sinds 0307, besluit 19-11-2026; was: groepsleden zagen de hele aankondiging, besluit A50) | eigen | eigen | eigen |
 | `commitments` | eigenaar; begunstigde groep pas ná `unlocked`/`due` | eigenaar | eigenaar, vóór trigger | ✗ |
 | `commitment_events` | als het commitment | systeem | ✗ | ✗ |
 | `chat_messages` | `is_group_member(group_id)` | lid, `sender_id = auth.uid()` | eigen, 15 min | eigen |
@@ -576,7 +576,7 @@ gebruiker, en dat is precies de uitzondering die domeinregel 7 zelf maakt —
 tegenslag mag de groep bereiken via de gebruiker zelf. Zie
 `docs/decisions/002-domeinregel7-oppervlakken.md` oppervlak 21.
 
-⚠️ **Teruggedraaid op 19-11-2026 (migratie 0306): de matrix zegt weer wat hij
+⚠️ **Teruggedraaid op 19-11-2026 (migratie 0307): de matrix zegt weer wat hij
 oorspronkelijk zei, in de strengste vorm.** `breathers_select` is eigenaar-only; de
 groep leest de rij niet meer, ook niet dát er een pauze loopt. Wat de groep hoort
 is een gewoon chatbericht dat het lid zelf plaatst. De alinea hierboven is de

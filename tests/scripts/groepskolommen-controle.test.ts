@@ -157,7 +157,7 @@ describe('de census zelf', () => {
     //    wat verdween is de tabelbrede grant waar deze census over gaat.
     // ⚠️ 23 sinds 0298: `reports` stond als groepszichtbaar in de census en
     //    heeft geen tabelbrede grant meer. Zie de toets hierboven.
-    // ⚠️ 22 sinds 0306: `breathers_select` is eigenaar-only (besluit 19-11-2026).
+    // ⚠️ 22 sinds 0307: `breathers_select` is eigenaar-only (besluit 19-11-2026).
     expect(groeps).toHaveLength(22);
     expect(groeps).not.toContain('breathers');
     expect(groeps).toContain('groups');

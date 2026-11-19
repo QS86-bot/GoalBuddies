@@ -1605,7 +1605,7 @@ describe.skipIf(!rlsTestsConfigured)('EPIC 8 — De Ketting', () => {
       'is ook met terugwerkende kracht alleen voor de eigenaar zichtbaar',
       async () => {
         // ⚠️ **Dit was een acceptatiecriterium van QS8-227 en is op 19-11-2026
-        //    omgedraaid (0306).** De aankondiging aan de groep was de enige rem op
+        //    omgedraaid (0307).** De aankondiging aan de groep was de enige rem op
         //    een pauze achteraf; die rem is bewust opgegeven (B2 in
         //    `docs/decisions/2026-11-19-de-adempauze-is-van-jou-alleen.md`). Wat
         //    blijft is dat de richting in de tijd er niet toe doet: ook een pauze

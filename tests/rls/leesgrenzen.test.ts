@@ -28,7 +28,7 @@ import { adminDb, createTestUser, removeTestUsers, rlsTestsConfigured, type Test
  * ⚠️ **Per helft, niet per policy.** Twee van de vier policies zijn een `or`
  *    van twee clausules: *"ik ben de eigenaar"* óf *"ik deel een groep met dit
  *    doel"*. Die zijn afzonderlijk te breken, dus ze horen afzonderlijk geijkt.
- *    `breathers_select` was de derde en is sinds 0306 (besluit 19-11-2026) alleen
+ *    `breathers_select` was de derde en is sinds 0307 (besluit 19-11-2026) alleen
  *    nog de eigenaarshelft: zijn groepsgenoot-geval staat hieronder omgedraaid.
  *    Het doel `soloGoalId` hangt met opzet aan géén enkele groep: daar kán de
  *    groepshelft niets doen, dus wat de eigenaar daar ziet, ziet hij via de
@@ -251,7 +251,7 @@ describe.skipIf(!rlsTestsConfigured)('de leesgrenzen van domeinregel 7', () => {
     return (data ?? []).length;
   }
 
-  describe('breathers — een adempauze is van jou alleen (0306, besluit 19-11-2026)', () => {
+  describe('breathers — een adempauze is van jou alleen (0307, besluit 19-11-2026)', () => {
     it(
       'de eigenaar ziet zijn adempauze op een doel zonder enige groep',
       async () => {

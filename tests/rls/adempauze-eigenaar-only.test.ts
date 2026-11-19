@@ -14,7 +14,7 @@ import {
 import { psql, stackBeschikbaarOfFaal } from './psql-stack';
 
 /**
- * Een adempauze is van jou alleen — migratie 0306, besluit Quinten 19-11-2026.
+ * Een adempauze is van jou alleen — migratie 0307, besluit Quinten 19-11-2026.
  *
  * ⚠️ **De belofte is niet "de policy zegt `user_id = auth.uid()`".** Dat is het
  *    onderdeel. De belofte is een eigenschap van het geheel:

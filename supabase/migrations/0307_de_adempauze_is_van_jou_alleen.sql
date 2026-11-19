@@ -1,4 +1,4 @@
--- 0306_de_adempauze_is_van_jou_alleen.sql — `breathers_select` wordt eigenaar-only:
+-- 0307_de_adempauze_is_van_jou_alleen.sql — `breathers_select` wordt eigenaar-only:
 -- de groepstak van A50/QS8-227 vervalt (besluit Quinten, 19-11-2026).
 --
 -- ROLLBACK-PAD (de policy zoals 0122 hem zette, letterlijk):
