@@ -22,6 +22,8 @@ import { t, taal } from '@/shared/i18n';
 import type { IsoDate } from '@/shared/time';
 import {
   bevestigingen,
+  Actiekaart,
+  Afvinkcirkel,
   Bevestiging,
   Body,
   Button,
@@ -293,6 +295,70 @@ function useKaart(p: KaartProps) {
 
 type Kaart = ReturnType<typeof useKaart>;
 
+const ritmeLoopt = (p: KaartProps, k: Kaart) => k.telDagen && !k.afgerond && p.localDate !== null;
+
+/**
+ * ⚠️ De regel onder de titel zegt waar je staat ten opzichte van je vlóér, en
+ *    niet ten opzichte van je plafond. De vloer is de belofte die telt
+ *    (domeinregel 8); het plafond is de bonus. Andersom framen maakt van
+ *    elke gehaalde week een half gehaalde week.
+ */
+function ritmeStand(p: KaartProps, k: Kaart): string {
+  if (k.afgeleidNiveau === 'ceiling') return t('ritme.plafond_gehaald');
+  if (k.afgeleidNiveau === 'floor') return t('ritme.vloer_gehaald');
+  const { weekdoel } = p;
+  return t('ritme.vloer_nog_niet', { aantal: (weekdoel.floor_days ?? weekdoel.ceiling_days ?? 0) - k.afgevinkt });
+}
+
+/**
+ * De kop van de kaart — QS8-727. Bij een ritme-weekdoel is dat een actiekaart:
+ * titel en stand links, de grote afvinkcirkel rechts, met vloer en plafond eronder.
+ * Elk ander weekdoel houdt zijn gewone kop; zijn hoofdhandeling is afronden.
+ *
+ * ⚠️ De cirkel toont het niveau dat de week al heeft (`afgeleidNiveau`) en doet bij
+ *    een tik hetzelfde als de knop die er stond: vandaag afvinken of ongedaan maken.
+ *    Een nog lege cirkel is neutraal; er bestaat geen "gemist".
+ */
+function KaartKop({ p, k }: { readonly p: KaartProps; readonly k: Kaart }) {
+  const { weekdoel } = p;
+  const ritme = ritmeLoopt(p, k);
+  const bereik = (
+    <FloorCeiling
+      title={weekdoel.title}
+      floorText={weekdoel.floor_text}
+      ceilingText={weekdoel.ceiling_text}
+      status={weekdoel.status as WeeklyGoalStatus}
+      achieved="none"
+      viewer="owner"
+      bevestigingen={p.bevestigingsstand}
+      zonderTitel={ritme}
+    />
+  );
+  if (!ritme) return bereik;
+
+  return (
+    <Actiekaart
+      titel={weekdoel.title}
+      subtitel={ritmeStand(p, k)}
+      actie={
+        <Afvinkcirkel
+          label={
+            p.vandaagAfgevinkt
+              ? t('ritme.maak_ongedaan_label', { titel: weekdoel.title })
+              : t('ritme.vink_af_label', { titel: weekdoel.title })
+          }
+          niveau={k.afgeleidNiveau}
+          vandaagAfgevinkt={p.vandaagAfgevinkt}
+          busy={k.vinkBezig}
+          onPress={() => void k.wisselVandaag()}
+        />
+      }
+    >
+      {bereik}
+    </Actiekaart>
+  );
+}
+
 /**
  * Eén weekdoel, met de mogelijkheid het af te ronden — QS8-46.
  *
@@ -325,15 +391,7 @@ export function WeekdoelKaart(p: KaartProps) {
         <Viering soort="weekdoel" onKlaar={() => setGevierd(true)} />
       ) : null}
 
-      <FloorCeiling
-        title={weekdoel.title}
-        floorText={weekdoel.floor_text}
-        ceilingText={weekdoel.ceiling_text}
-        status={weekdoel.status as WeeklyGoalStatus}
-        achieved="none"
-        viewer="owner"
-        bevestigingen={p.bevestigingsstand}
-      />
+      <KaartKop p={p} k={k} />
 
       <RitmeBlok p={p} k={k} />
       <WeekTip p={p} />
@@ -381,7 +439,7 @@ function AfsluitVraag({
  */
 function RitmeBlok({ p, k }: { readonly p: KaartProps; readonly k: Kaart }) {
   const { weekdoel } = p;
-  if (!(k.telDagen && !k.afgerond && p.localDate !== null)) return null;
+  if (!ritmeLoopt(p, k)) return null;
 
   return (
     <View style={styles.afvinken}>
@@ -406,35 +464,6 @@ function RitmeBlok({ p, k }: { readonly p: KaartProps; readonly k: Kaart }) {
       {p.cyclusStart === null ? null : (
         <Ritmestrook startDatum={p.cyclusStart} afgevinkt={p.afgevinkteDagen} />
       )}
-
-      {/*
-        ⚠️ De regel eronder zegt waar je staat ten opzichte van je vlóér, en
-           niet ten opzichte van je plafond. De vloer is de belofte die telt
-           (domeinregel 8); het plafond is de bonus. Andersom framen maakt van
-           elke gehaalde week een half gehaalde week.
-      */}
-      <Caption>
-        {k.afgeleidNiveau === 'ceiling'
-          ? t('ritme.plafond_gehaald')
-          : k.afgeleidNiveau === 'floor'
-            ? t('ritme.vloer_gehaald')
-            : t('ritme.vloer_nog_niet', {
-                aantal: (weekdoel.floor_days ?? weekdoel.ceiling_days ?? 0) - k.afgevinkt,
-              })}
-      </Caption>
-
-      <Button
-        variant={p.vandaagAfgevinkt ? 'stil' : 'secundair'}
-        busy={k.vinkBezig}
-        accessibilityLabel={
-          p.vandaagAfgevinkt
-            ? t('ritme.maak_ongedaan_label', { titel: weekdoel.title })
-            : t('ritme.vink_af_label', { titel: weekdoel.title })
-        }
-        onPress={() => void k.wisselVandaag()}
-      >
-        {p.vandaagAfgevinkt ? t('ritme.maak_ongedaan') : t('ritme.vink_af')}
-      </Button>
     </View>
   );
 }
