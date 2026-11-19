@@ -3,7 +3,16 @@ import { describe, expect, it } from 'vitest';
 import { contrastRatio, WCAG } from './contrast';
 import { kleinsteAfstand, kleurafstand, MIN_AFSTAND } from './kleurafstand';
 import { navy, navyLight, PALETSLEUTELS, roles } from './tokens';
-import { allePaletten, UITERLIJK_IDS, UITERLIJKEN, uiterlijk } from './uiterlijken';
+import { themeForPreference } from './themes';
+import {
+  allePaletten,
+  STANDAARD_MODUS,
+  STANDAARD_UITERLIJK,
+  UITERLIJK_IDS,
+  UITERLIJKEN,
+  uiterlijk,
+  uiterlijkVoorVoorkeur,
+} from './uiterlijken';
 
 /**
  * De belofte van QS8-723: **elk uiterlijk is een volledig palet dat contrast en onderscheid haalt, per palet gemeten.**
@@ -61,6 +70,33 @@ describe.each(paletten)('palet %s', (_naam, u) => {
     expect(r.neutral).toBe(p.grey);
     expect(r.neutral).not.toBe(r.atRisk);
     expect(kleurafstand(p.grey, p.red)).toBeGreaterThanOrEqual(MIN_AFSTAND);
+  });
+});
+
+describe('de standaard en de bestaande voorkeur (E8, E9)', () => {
+  it('is B en donker voor een nieuwe gebruiker', () => {
+    expect([STANDAARD_UITERLIJK, STANDAARD_MODUS]).toEqual(['B', 'donker']);
+  });
+
+  it('laat elke bestaande voorkeur hetzelfde thema geven als de brug naar B zegt', () => {
+    for (const voorkeur of ['systeem', 'navy', 'navy-licht'] as const) {
+      for (const scheme of ['light', 'dark', 'unspecified'] as const) {
+        const { id, modus } = uiterlijkVoorVoorkeur(voorkeur, scheme);
+        expect(id).toBe('B');
+        expect(themeForPreference(voorkeur, scheme).colors, `${voorkeur}/${scheme}`).toBe(
+          UITERLIJKEN[id][modus].colors,
+        );
+      }
+    }
+  });
+});
+
+describe('één statusrood (QS8-743 besloten; de waarde is daar)', () => {
+  it('is binnen een modus in elk uiterlijk dezelfde kleur, zodat het rood niet per uiterlijk kan uiteenlopen', () => {
+    for (const modus of ['donker', 'licht'] as const) {
+      const rood = new Set(UITERLIJK_IDS.map((id) => UITERLIJKEN[id][modus].colors.red));
+      expect([...rood], modus).toHaveLength(1);
+    }
   });
 });
 

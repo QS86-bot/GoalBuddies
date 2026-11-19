@@ -22,3 +22,15 @@ het blauwgroenste dat de toets haalt. Het is een voorstel dat de toets moet hale
 - **`exports:controle` ziet deze map niet** (hij leest alleen de barrels van `src/modules/*`), dus dode exports in `src/shared/theme` vindt geen controle.
 - **De kop van `tokens.ts`** zegt op deze tak nog *"verzin hier nooit een kleur bij"*; de bijgewerkte kop staat op de tak van QS8-722. Samenvoegen is tekstueel schoon, maar de zin *"veranderen pas in QS8-723"*
   is dan achterhaald en hoort bij die merge bijgewerkt te worden.
+
+## Nagelopen tegen de besluiten na de start (19-11-2026, zesde en zevende ronde)
+
+- **Het bord (criterium 8).** `src/shared/theme/heldenbord.ts`: `heldVlak()` geeft per held en per palet `palet` zolang het accent `WCAG.AA_LARGE` haalt op `bg` én `panel`, anders `bord` met het neutrale
+  palet-vlak (`bg`, `panel`, `panelDark`, `text`) dat het best contrasteert. Geen nieuwe kleur. 📏 Gemeten: op alle vier de paletten blijft elke held op `palet`, dus er rendert nog geen bord;
+  alleen de hook staat vast. `HELDENOPPERVLAKKEN` is leeg en `onbevoegdeGebruikers()` wordt rood zodra een ander bestand de module noemt. Het **component** zelf is niet gebouwd: er is nog geen
+  heldenoppervlak dat hem nodig heeft (OPEN: bouwen bij het eerste palet waar `soort: 'bord'` voorkomt, QS8-724).
+- **Standaard B en donker (E8, E9).** `STANDAARD_UITERLIJK` en `STANDAARD_MODUS` bestaan als constanten; `uiterlijkVoorVoorkeur()` laat elke bestaande voorkeur (`systeem | navy | navy-licht`) op B wijzen.
+  `ThemeProvider` is ongewijzigd: de opslag en de terugval op donker is QS8-729.
+- **Eén statusrood (QS8-743).** De waarde is niet vastgesteld; een toets eist alleen dat `red` binnen een modus in elk uiterlijk dezelfde kleur is.
+- **Geijkt met de hand:** een bordgebruiker in `Card.tsx`, `leesbaarOpPalet` altijd waar, een eigen rood in A, de brug voor `navy` naar licht; elke keer rood op de bedoelde toets, daarna schoon.
+- **Niet gemeten:** rendering op een scherm of apparaat; hoe helden op een toekomstig C-palet lezen.

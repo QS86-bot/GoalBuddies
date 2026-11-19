@@ -23,8 +23,12 @@ export {
   space,
 } from './tokens';
 export { contrastRatio, WCAG } from './contrast';
+export { heldVlak, type HeldVlak } from './heldenbord';
 export {
   allePaletten,
+  STANDAARD_MODUS,
+  STANDAARD_UITERLIJK,
+  uiterlijkVoorVoorkeur,
   MODI,
   schaduwVoor,
   UITERLIJK_IDS,
