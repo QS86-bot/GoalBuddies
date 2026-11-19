@@ -25,9 +25,11 @@ import { adminDb, createTestUser, removeTestUsers, rlsTestsConfigured, type Test
  *    dat de rij zichtbaar ís voor wie hem hoort te zien, en pas daarna dat hij
  *    onzichtbaar is voor wie hem niet hoort te zien.
  *
- * ⚠️ **Per helft, niet per policy.** Drie van de vier policies zijn een `or`
+ * ⚠️ **Per helft, niet per policy.** Twee van de vier policies zijn een `or`
  *    van twee clausules: *"ik ben de eigenaar"* óf *"ik deel een groep met dit
  *    doel"*. Die zijn afzonderlijk te breken, dus ze horen afzonderlijk geijkt.
+ *    `breathers_select` was de derde en is sinds 0306 (besluit 19-11-2026) alleen
+ *    nog de eigenaarshelft: zijn groepsgenoot-geval staat hieronder omgedraaid.
  *    Het doel `soloGoalId` hangt met opzet aan géén enkele groep: daar kán de
  *    groepshelft niets doen, dus wat de eigenaar daar ziet, ziet hij via de
  *    eigenaarshelft.
@@ -249,7 +251,7 @@ describe.skipIf(!rlsTestsConfigured)('de leesgrenzen van domeinregel 7', () => {
     return (data ?? []).length;
   }
 
-  describe('breathers — een adempauze is van jou, en van wie je groep met je deelt', () => {
+  describe('breathers — een adempauze is van jou alleen (0306, besluit 19-11-2026)', () => {
     it(
       'de eigenaar ziet zijn adempauze op een doel zonder enige groep',
       async () => {
@@ -262,9 +264,20 @@ describe.skipIf(!rlsTestsConfigured)('de leesgrenzen van domeinregel 7', () => {
     );
 
     it(
-      'een groepsgenoot ziet de adempauze op het gekoppelde doel',
+      'de eigenaar ziet zijn adempauze op het gekoppelde doel (tegentest)',
       async () => {
-        expect(await telZichtbaar(w.groepsgenoot, 'breathers', 'goal_id', w.groepsGoalId)).toBe(1);
+        expect(await telZichtbaar(w.eigenaar, 'breathers', 'goal_id', w.groepsGoalId)).toBe(1);
+      },
+      TEST_TIMEOUT,
+    );
+
+    it(
+      'een groepsgenoot ziet de adempauze op het gekoppelde doel níet meer',
+      async () => {
+        expect(
+          await telZichtbaar(w.groepsgenoot, 'breathers', 'goal_id', w.groepsGoalId),
+          'de groepstak (A50/QS8-227) is op 19-11-2026 ingetrokken',
+        ).toBe(0);
       },
       TEST_TIMEOUT,
     );
@@ -285,7 +298,7 @@ describe.skipIf(!rlsTestsConfigured)('de leesgrenzen van domeinregel 7', () => {
     );
 
     it(
-      'een groepsgenoot ziet de adempauze op een niet-gekoppeld doel níet',
+      'een groepsgenoot ziet de adempauze op een niet-gekoppeld doel ook niet',
       async () => {
         expect(
           await telZichtbaar(w.groepsgenoot, 'breathers', 'goal_id', w.soloGoalId),

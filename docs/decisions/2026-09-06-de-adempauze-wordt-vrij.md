@@ -3,6 +3,8 @@
 **Datum:** 06-09-2026 · **Issue:** QS8-227 · **Migratie:** 0166
 **Besluit van:** Quinten, 30-08-2026 · **Advies daarvóór:** tegen
 
+> ⚠️ **§3 is op 19-11-2026 achterhaald (migratie 0306):** `breathers_select` is eigenaar-only en de aankondiging aan de groep, de rem die hieronder overblijft, is bewust opgegeven — zie `docs/decisions/2026-11-19-de-adempauze-is-van-jou-alleen.md` (B2).
+
 ---
 
 ## 1. Wat er verandert

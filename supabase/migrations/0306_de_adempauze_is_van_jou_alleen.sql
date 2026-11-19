@@ -1,0 +1,62 @@
+-- 0306_de_adempauze_is_van_jou_alleen.sql — `breathers_select` wordt eigenaar-only:
+-- de groepstak van A50/QS8-227 vervalt (besluit Quinten, 19-11-2026).
+--
+-- ROLLBACK-PAD (de policy zoals 0122 hem zette, letterlijk):
+--   drop policy if exists breathers_select on public.breathers;
+--   create policy breathers_select on public.breathers
+--     for select to authenticated
+--     using (((user_id = ( select auth.uid() )) OR (EXISTS ( SELECT 1
+--      FROM goals g
+--     WHERE ((g.id = breathers.goal_id) AND shares_group_with_goal(g.id))))))
+--     ;
+--
+-- ⚠️ Het rollback-pad verruimt weer: het geeft de groep leesrecht op de
+--    adempauzes van haar leden terug, ook de bestaande. Doe dat alleen op een
+--    besluit van Quinten, niet als reflex bij een rode test.
+--
+-- ⚠️ **Wacht op Quintens "backup gedaan"** (docs/PROMPT-SESSIE.md §12d): deze
+--    migratie bevat een `policy` en wordt dus niet door een bouwsessie op
+--    productie gezet. Er staat geen `drop table`, `delete` of `truncate` in en
+--    er gaat geen rij verloren; wat verandert is wie een bestaande rij leest.
+--
+-- ---------------------------------------------------------------------------
+-- Waarom
+-- ---------------------------------------------------------------------------
+--
+-- Besluit van Quinten, 19-11-2026: een adempauze is van jou alleen. A50
+-- (25-08-2026) en QS8-227 lieten de groep lezen dát er een pauze liep, begin en
+-- eind incluis, als de enige rem die overbleef op een pauze met terugwerkende
+-- kracht. Dat besluit vervalt, zoals A17 op 20-08-2026 verviel (0050).
+--
+-- Wat de groep nog hoort, hoort ze van het lid zelf: een gewoon chatbericht
+-- dat het lid uit eigen beweging plaatst. Geen nieuw systeemtype, dus geen
+-- migratie daarvoor. Uitleg, het benoemde restant (`ketting_stand()` blijft het
+-- aantal pauzerende leden tonen) en de opgegeven rem staan in
+-- `docs/decisions/2026-11-19-de-adempauze-is-van-jou-alleen.md`.
+--
+-- ---------------------------------------------------------------------------
+-- Wat dit raakt en wat niet
+-- ---------------------------------------------------------------------------
+--
+-- 📏 Nagelopen in de migraties: de functies die `breathers` lezen zijn
+--    `plan_adempauze()`, `annuleer_adempauze()` en `ketting_stand()`, alle drie
+--    SECURITY DEFINER en dus onafhankelijk van deze policy. De rollover en de
+--    notificaties lezen als `service_role`. Er is geen view op `breathers`.
+--    De client leest de tabel alleen voor de eigenaar
+--    (`src/modules/goals/adempauze.ts`). Er verandert dus niets voor de eigenaar.
+--
+-- ⚠️ `breathers_write` bestaat niet meer (0048) en INSERT/UPDATE/DELETE zijn
+--    ingetrokken van `authenticated`; die kant blijft zoals hij was.
+--
+-- ⚠️ `breathers` staat niet in de realtime-publicatie en blijft op REPLICA
+--    IDENTITY DEFAULT; `tests/rls/adempauze-eigenaar-only.test.ts` toetst dat.
+--
+-- ⚠️ `user_id` is geïndexeerd (`breathers_geen_dubbele_start` begint met
+--    `user_id`), en de nieuwe vorm filtert alleen daarop.
+--
+-- ---------------------------------------------------------------------------
+
+drop policy if exists breathers_select on public.breathers;
+create policy breathers_select on public.breathers
+  for select to authenticated
+  using ((user_id = ( select auth.uid() )));

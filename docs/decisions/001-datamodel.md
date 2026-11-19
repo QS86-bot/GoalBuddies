@@ -557,7 +557,7 @@ deze twee functies er zijn.
 | `points_ledger` | **alleen eigen rijen** | systeem | ✗ | ✗ |
 | `user_streaks` | **alleen eigenaar**; groepsgenoten zien alleen `current_streak` via view | systeem | systeem | ✗ |
 | `week_pass_events` | **alleen eigenaar** | systeem | ✗ | ✗ |
-| `breathers` | eigenaar; **groepsleden zien de hele aankondiging, incl. begin en eind** (besluit A50, 25-08-2026) | eigen | eigen | eigen |
+| `breathers` | **alleen eigenaar** (sinds 0306, besluit 19-11-2026; was: groepsleden zagen de hele aankondiging, besluit A50) | eigen | eigen | eigen |
 | `commitments` | eigenaar; begunstigde groep pas ná `unlocked`/`due` | eigenaar | eigenaar, vóór trigger | ✗ |
 | `commitment_events` | als het commitment | systeem | ✗ | ✗ |
 | `chat_messages` | `is_group_member(group_id)` | lid, `sender_id = auth.uid()` | eigen, 15 min | eigen |
@@ -575,6 +575,13 @@ document wijkt: **deze matrix.** Aankondigen is de eigen handeling van de
 gebruiker, en dat is precies de uitzondering die domeinregel 7 zelf maakt —
 tegenslag mag de groep bereiken via de gebruiker zelf. Zie
 `docs/decisions/002-domeinregel7-oppervlakken.md` oppervlak 21.
+
+⚠️ **Teruggedraaid op 19-11-2026 (migratie 0306): de matrix zegt weer wat hij
+oorspronkelijk zei, in de strengste vorm.** `breathers_select` is eigenaar-only; de
+groep leest de rij niet meer, ook niet dát er een pauze loopt. Wat de groep hoort
+is een gewoon chatbericht dat het lid zelf plaatst. De alinea hierboven is de
+geschiedenis en geen geldend besluit meer. Zie
+`docs/decisions/2026-11-19-de-adempauze-is-van-jou-alleen.md`.
 
 *"systeem"* betekent: alleen via een Edge Function met `service_role`, nooit vanuit de
 client. De `service_role`-key komt nooit client-side (`CLAUDE.md`, beveiligingsregel 4).

@@ -150,7 +150,9 @@ Correctheidsregel 7 kent geen uitzondering voor "het is maar één aftrekking".
 
 ---
 
-## A50 — de groep mag de adempauze zien ✅ vastgelegd
+## A50 — de groep mag de adempauze zien ✅ vastgelegd — ⚠️ teruggedraaid 19-11-2026 (0306)
+
+> `breathers_select` is sinds 0306 eigenaar-only; zie `docs/decisions/2026-11-19-de-adempauze-is-van-jou-alleen.md`. De tekst hieronder is de geschiedenis.
 
 **Besluit: de matrix wijkt, niet de code.**
 
