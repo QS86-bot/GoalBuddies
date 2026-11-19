@@ -4,13 +4,13 @@ import { createTestUser, removeTestUsers, rlsTestsConfigured, type TestUser } fr
 import { psql } from './psql-stack';
 
 /**
- * Na veertien dagen in de buddywachtrij — QS8-643, migratie 0305.
+ * Na veertien dagen in de buddywachtrij — QS8-643, migratie 0306.
  *
  * ⚠️⚠️ **De belofte: wie tevergeefs zocht, ziet dát, en kan opnieuw zoeken — ook
  *    als de matcher nooit gedraaid heeft.** Dat laatste is geen randgeval maar
  *    de stand van productie: de Edge Function `koppelen` is daar niet uitgerold
  *    (QS8-641), en zij is de enige die `wachtend` op `verlopen` zette. Zonder
- *    0305 bleef zo'n rij `wachtend`: de stand zei "we zoeken", en "opnieuw
+ *    0306 bleef zo'n rij `wachtend`: de stand zei "we zoeken", en "opnieuw
  *    zoeken" kreeg `already_queued` en deed niets.
  *
  *    De twee naden uit de acceptatiecriteria staan hier elk apart:

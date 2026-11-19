@@ -75,14 +75,14 @@ function naarGroep(rij: RpcGroep): OntdekteGroep | null {
  * @param taal de voertaal, of `null` voor alle
  */
 /**
- * De velden die `GroepsKaart` in `src/shared/ui` toont.
+ * De velden die `OntdekGroepKaart` in `src/shared/ui` toont.
  *
- * ⚠️ Een eigen interface en geen import van `GroepsKaartGegevens`: de datalaag
+ * ⚠️ Een eigen interface en geen import van `OntdekGroepKaartGegevens`: de datalaag
  *    importeert niets uit `shared/ui`, ook geen type (QS8-207). Lopen de twee
  *    uiteen, dan weigert `tsc` op de plek waar een scherm deze aan de kaart
  *    geeft.
  */
-export interface GroepsKaartVelden {
+export interface OntdekGroepKaartVelden {
   readonly naam: string;
   readonly categorie: string;
   readonly categorieLabel: string;
@@ -93,13 +93,13 @@ export interface GroepsKaartVelden {
 }
 
 /**
- * Een vindbare groep als de velden die `GroepsKaart` toont.
+ * Een vindbare groep als de velden die `OntdekGroepKaart` toont.
  *
  * ⚠️ Eén vertaling voor beide schermen die hem tonen (`app/groep/ontdek.tsx` en
  *    het buddyzoekblok in `app/doel/samen.tsx`, QS8-643). Het categorielabel
  *    komt van de aanroeper: dat staat in de module `goals`.
  */
-export function groepsKaartVan(groep: OntdekteGroep, categorieLabel: string): GroepsKaartVelden {
+export function groepsKaartVan(groep: OntdekteGroep, categorieLabel: string): OntdekGroepKaartVelden {
   return {
     naam: groep.naam,
     categorie: groep.categorie,

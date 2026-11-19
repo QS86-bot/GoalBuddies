@@ -1,4 +1,4 @@
--- 0305_een_verlopen_zoekopdracht_is_zichtbaar_en_houdt_opnieuw_zoeken_niet_tegen.sql
+-- 0306_een_verlopen_zoekopdracht_is_zichtbaar_en_houdt_opnieuw_zoeken_niet_tegen.sql
 -- — wie veertien dagen tevergeefs in de buddywachtrij stond, ziet dát, en kan
 -- opnieuw zoeken zonder dat een niet-omgezette rij hem tegenhoudt (QS8-643).
 --

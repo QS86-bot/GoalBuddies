@@ -23,7 +23,7 @@ import {
   Caption,
   Card,
   Choice,
-  GroepsKaart,
+  OntdekGroepKaart,
   Screen,
   useAsync,
 } from '@/shared/ui';
@@ -190,7 +190,7 @@ export default function GroepenOntdekken() {
         {(lijst) => (
           <View style={styles.lijst}>
             {lijst.map((groep) => (
-              <GroepsKaart
+              <OntdekGroepKaart
                 key={groep.groupId}
                 groep={groepsKaartVan(groep, categorieLabels()[groep.categorie as Categorie] ?? groep.categorie)}
                 aangevraagd={aangevraagd.includes(groep.groupId)}

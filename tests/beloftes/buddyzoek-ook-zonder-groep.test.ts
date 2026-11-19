@@ -54,13 +54,13 @@ describe('de buddyzoekkaart staat buiten de AsyncView van Samen()', () => {
 });
 
 const KAART = zonderCommentaar(
-  readFileSync(join(__dirname, '..', '..', 'src', 'shared', 'ui', 'GroepsKaart.tsx'), 'utf8'),
+  readFileSync(join(__dirname, '..', '..', 'src', 'shared', 'ui', 'OntdekGroepKaart.tsx'), 'utf8'),
 );
 
 describe('een verlopen zoekopdracht leidt ergens naartoe', () => {
   it('de verlopen staat heeft een knop naar alle groepen, en de alternatieven gebruiken de gedeelde kaart', () => {
     expect(lichaam('function Verlopen(')).toContain("router.push('/groep/ontdek')");
-    expect(lichaam('function Alternatieven(')).toContain('<GroepsKaart');
+    expect(lichaam('function Alternatieven(')).toContain('<OntdekGroepKaart');
     // ⚠️ Geen eigen kopie meer die met één tik verstuurt (code-review op QS8-643).
     expect(BRON).not.toMatch(/vraagLidmaatschapAan\([^)]*''\)/);
   });
@@ -78,7 +78,7 @@ describe('een verlopen zoekopdracht leidt ergens naartoe', () => {
  *    `onVraagAan` aan. Met de hand gebroken (📏 17-11-2026): de eerste knop
  *    `onVraagAan('')` laten aanroepen → beide toetsen hieronder rood.
  */
-describe('GroepsKaart vraagt in twee stappen aan', () => {
+describe('OntdekGroepKaart vraagt in twee stappen aan', () => {
   it('de aanvraagknop opent alleen het formulier', () => {
     const knop = /onPress=\{([^}]*)\}>\s*\{t\('ontdek\.aanvragen'\)\}/.exec(KAART);
     expect(knop?.[1]).toBe('() => setOpen(true)');

@@ -38,7 +38,7 @@ import {
   Caption,
   Card,
   Deelknop,
-  GroepsKaart,
+  OntdekGroepKaart,
   Screen,
   Subheading,
   useAsync,
@@ -676,7 +676,7 @@ function nogNodigTekst(nogNodig: number): string {
  *    terug op zijn lege staat. Hier staat wat er gebeurd is, met de datum, en
  *    daaronder een weg verder: een groep om aan te vragen, of de uitdrukkelijke
  *    zin dat er nu geen is. "Zoek opnieuw" staat eronder (`Aanmelden`, met
- *    dezelfde bevestiging als de eerste keer — zie migratie 0305 §2).
+ *    dezelfde bevestiging als de eerste keer — zie migratie 0306 §2).
  *
  * ⚠️ **Domeinregel 7.** Dit is een tegenvaller en hij is alleen voor jou: de
  *    stand komt uit een RPC die op `owner_id` filtert, en er gaat niets naar een
@@ -713,7 +713,7 @@ function Verlopen({
  *    QS8-643: "of een expliciete 'er is nu niets'". En de foutstand is een
  *    foutstand: bij een storing beweren we niet dat er niets is.
  *
- * ⚠️ **`GroepsKaart` uit `shared/ui`, en geen eigen kopie.** De eerste versie
+ * ⚠️ **`OntdekGroepKaart` uit `shared/ui`, en geen eigen kopie.** De eerste versie
  *    verstuurde met één tik een aanvraag die niet in te trekken is; de kaart van
  *    het ontdekscherm doet dat bewust in twee stappen (code-review op QS8-643).
  *
@@ -743,7 +743,7 @@ function Alternatieven({
         <>
           <Caption>{t('buddyzoek.alternatief_uitleg')}</Caption>
           {groepen.map((groep) => (
-            <GroepsKaart
+            <OntdekGroepKaart
               key={groep.groupId}
               groep={groepsKaartVan(groep, categorieLabels()[groep.categorie as Categorie] ?? groep.categorie)}
               aangevraagd={false}
@@ -766,7 +766,7 @@ async function laadKandidaten(doelId: string): Promise<readonly OntdekteGroep[]>
   return fetchBuddyzoekAlternatieven(doel?.category ?? null);
 }
 
-/** `null` bij succes, anders de melding — de vorm die `GroepsKaart` verwacht. */
+/** `null` bij succes, anders de melding — de vorm die `OntdekGroepKaart` verwacht. */
 async function vraagAan(groupId: string, bericht: string): Promise<string | null> {
   const uitkomst = await vraagLidmaatschapAan(groupId, bericht);
   return uitkomst.ok ? null : uitkomst.melding;

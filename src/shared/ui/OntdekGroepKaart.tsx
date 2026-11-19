@@ -17,7 +17,7 @@ import { Body, Caption, Subheading } from './Text';
  *    van een `OntdekteGroep` naar deze velden staat in `groepsKaartVan()` in
  *    `src/modules/buddies/ontdekken.ts`, op één plek voor beide schermen.
  */
-export interface GroepsKaartGegevens {
+export interface OntdekGroepKaartGegevens {
   readonly naam: string;
   readonly categorie: string;
   readonly categorieLabel: string;
@@ -29,7 +29,7 @@ export interface GroepsKaartGegevens {
 }
 
 interface Props {
-  readonly groep: GroepsKaartGegevens;
+  readonly groep: OntdekGroepKaartGegevens;
   readonly aangevraagd: boolean;
   /** De dagrem is op. De database weigert sowieso; dit voorkomt de weigering. */
   readonly geblokkeerd: boolean;
@@ -51,7 +51,7 @@ interface Props {
  * ⚠️ De kaart toont precies de velden uit de kolomlijst van `ontdek_groepen()` en
  *    geen extra. Komt er ooit iets bij, dan begint dat in die functie.
  */
-export function GroepsKaart({ groep, aangevraagd, geblokkeerd, onVraagAan }: Props) {
+export function OntdekGroepKaart({ groep, aangevraagd, geblokkeerd, onVraagAan }: Props) {
   const [open, setOpen] = useState(false);
   const [bericht, setBericht] = useState('');
   const [bezig, setBezig] = useState(false);
