@@ -60,6 +60,7 @@ export {
   isGeldigeTijdzone,
   localDateIn,
   localDateOf,
+  lokaalUur,
   toIsoDate,
   weekdagPeildatum,
   weekdayOf,

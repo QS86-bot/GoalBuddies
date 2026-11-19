@@ -197,6 +197,17 @@ export function partsIn(tz: TimeZone, at: Date): Parts {
   };
 }
 
+/**
+ * Het uur van de dag (0-23) op de wandklok van `tz` — QS8-749.
+ *
+ * ⚠️ De enige weg voor "hoe laat was het voor deze gebruiker": een scherm dat
+ *    `getHours()` aanroept krijgt de tijdzone van het toestel en niet die van
+ *    het profiel (correctheidsregel 7).
+ */
+export function lokaalUur(tz: TimeZone, at: Date | string): number {
+  return partsIn(tz, typeof at === 'string' ? new Date(at) : at).hour;
+}
+
 /** De UTC-offset van `tz` op het moment `at`, in milliseconden. */
 function offsetMsAt(tz: TimeZone, at: Date): number {
   const p = partsIn(tz, at);

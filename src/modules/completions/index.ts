@@ -21,6 +21,12 @@ export {
 export { oordeelSchema, type OordeelInvoer } from './approval-schemas';
 
 export {
+  fetchEigenVoltooiingsmomenten,
+  type Voltooiingsmoment,
+  type Voltooiingsmomenten,
+} from './statistiek';
+
+export {
   beoordeel,
   dienOpnieuwIn,
   fetchBeoordelingen,
