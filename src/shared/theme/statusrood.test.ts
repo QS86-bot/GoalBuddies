@@ -2,6 +2,7 @@ import { readdirSync, readFileSync, statSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 
+import { zonderCommentaar } from '../../../scripts/zonder-commentaar.mjs';
 import { contrastRatio, WCAG } from './contrast';
 import { kleurafstand, MIN_AFSTAND } from './kleurafstand';
 import { roles } from './tokens';
@@ -17,7 +18,7 @@ import { allePaletten, MODI, UITERLIJKEN, UITERLIJK_IDS, type Modus } from './ui
  */
 
 /**
- * De twee Koraal-kleuren uit `docs/research/fase-1-acceptatiecriteria.md` §12.3 (donker). Nog geen palet: QS8-725
+ * De twee Koraal-kleuren uit de fase-1-acceptatiecriteria §12.3 op branch claude/habithuddle-app-ontleding (donker). Nog geen palet: QS8-725
  * bouwt ze. Ze staan hier als ankerpunt, zodat het rood er al ruimte voor houdt voordat Koraal bestaat.
  * Het lichte Koraal bestaat nog niet; zodra QS8-725 het kiest, toetst `uiterlijken.test.ts` het via de tabel.
  */
@@ -130,10 +131,7 @@ function rodeLezers(bronnen: Record<string, string>): string[] {
     .sort();
 }
 
-/** Commentaar telt niet mee: ook `//` in een URL snijdt geen code af, want we knippen alleen aan het regeleinde. */
-function strip(tekst: string): string {
-  return tekst.replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|[^:])\/\/[^\n]*/g, '$1');
-}
+const strip = zonderCommentaar;
 
 function bronnenIn(mappen: string[]): Record<string, string> {
   const uit: Record<string, string> = {};
