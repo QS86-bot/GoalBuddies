@@ -34,6 +34,8 @@
 >
 > ⚠️ **Aanvulling van 19-11-2026 (batchsessie):** #697 (QS8-708 en 712) en #696 (QS8-702, 703, 709 en 704) zijn gemerged; de stand staat in `docs/WERKVOORRAAD.md`. Twee valkuilen uit die ronde: (1) **een groene CI is pas bewijs op de exacte kop én de huidige base** — `main` verschoof tweemaal terwijl #696 op CI wachtte, en elke keer was de uitslag een base te oud; meet `git rev-list --count tak..origin/main` vlak vóór je "klaar" meldt. (2) **Een mutatie die twee grendels tegelijk breekt bewijst niets**: de eerste meting van de psql-grendel haalde regel 137 én 324 weg en zag één toets omvallen; alleen regel 137 weghalen liet alles groen. Het vervolg is QS8-720.
 >
+> ⚠️ **Aanvulling van 19-11-2026 (batchsessie, #701):** QS8-718 (de deploy-workflow) is gemerged; de stand staat in `docs/WERKVOORRAAD.md`. Valkuil uit die ronde: **een nieuwe grendel van `main` kan een bouwtak rood maken die er afzonderlijk groen uitzag** — `knip:controle` eiste een rij in `MET_REDEN` voor een YAML-knip, en dat bleek pas op de merge-commit. Draai na het samenvoegen de hele CI-repobaan lokaal (`node scripts/ci-controles.mjs --baan repo`), niet alleen wat bij de inhoud hoort. Het vervolg is aan Quinten: de omgeving `productie`, de secrets en de eerste droge run.
+>
 > ⚠️ **Die afkapping is met opzet een nummer en geen "alles".** Terwijl deze
 > bijwerking geschreven werd landden er drie PR's bij — de teller ging van
 > achttien naar negentien naar tweeëntwintig. Een tabel die zegt *alles van
