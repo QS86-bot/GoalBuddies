@@ -46,14 +46,14 @@ export function WeekstrookBlok({ v }: { readonly v: Gegevens }) {
 
   return (
     <View style={styles.blok}>
-      <View style={styles.rij} accessibilityRole="list">
+      <View style={styles.rij} accessibilityRole="list" accessibilityLabel={t('weekstrook.titel')}>
         {dagen.map((dag) => (
           <Dag key={dag.datum} dag={dag} />
         ))}
       </View>
       {v.error !== null && v.error !== undefined ? (
         <Caption>{t('weekstrook.fout')}</Caption>
-      ) : leeg && !v.loading ? (
+      ) : leeg && !v.loading && v.afvinkingen !== undefined ? (
         <Caption>{t('weekstrook.leeg')}</Caption>
       ) : null}
     </View>

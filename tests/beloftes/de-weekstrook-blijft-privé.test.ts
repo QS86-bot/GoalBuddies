@@ -53,13 +53,13 @@ describe('de weekstrook blijft privé', () => {
 
   it('kent geen gemist-staat of foutkleur voor een lege dag', () => {
     for (const bron of STROOK) {
-      expect(bron).not.toMatch(/gemist|missed|missing|danger|#[0-9a-f]{3,8}\b|rgba?\(/i);
+      expect(bron).not.toMatch(/gemist|missed|missing|danger|error|warning|'red'|#[0-9a-f]{3,8}\b|rgba?\(/i);
     }
     const nl = readFileSync(join(ROOT, 'src/shared/i18n/nl.ts'), 'utf8');
     const en = readFileSync(join(ROOT, 'src/shared/i18n/en.ts'), 'utf8');
     for (const cat of [nl, en]) {
       const regels = cat.split('\n').filter((r) => r.includes("'weekstrook."));
-      expect(regels.length).toBe(6);
+      expect(regels.length).toBe(7);
       for (const r of regels) expect(r).not.toMatch(/gemist|missed|miss|mislukt|achter|behind/i);
     }
   });
