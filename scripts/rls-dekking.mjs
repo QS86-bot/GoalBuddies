@@ -879,8 +879,17 @@ function schrijfSpoor(policy, helft) {
  *    uitvoert niet: 📏 de `weiger`-tak uitzetten liet 2508 van 2508 toetsen
  *    groen, en dan valt een weigering door naar het weggooien van het spoor.
  *    Alleen de beslissing eruit halen had het gat één laag verplaatst — de
- *    regel die haar uitvoert stond dan nog steeds hier, ongetoetst. Een
- *    exitcode teruggeven evenmin: dan zit de naad in de aanroeper.
+ *    regel die haar uitvoert stond dan nog steeds hier, ongetoetst.
+ *
+ * ⚠️⚠️ **Sinds QS8-704 geeft hij bij een weigering wél de exitcode terug**, en
+ *    hier stond dat dát verworpen was: *"dan zit de naad in de aanroeper"*. De
+ *    afweging is omgedraaid omdat de oude stop het proces-exit van Node was, en
+ *    dat crasht op Windows na de `await fetch` in `koppelingOfMeldFout()`
+ *    (besluit Quinten, 18-11-2026). De naad in `hoofd()` — keer terug op de
+ *    code, vóór `psql(VRAAG)` — staat daarom onder een eigen toets in
+ *    `tests/scripts/rls-dekking.test.ts`, *"hoofd keert terug op de stop"*.
+ *
+ * @returns de exitcode bij een weigering, anders `undefined`
  *
  * @param io de buitenwereld; de standaard is de echte, de toets geeft een nep
  */
@@ -898,11 +907,14 @@ export function herstelWatOpenstond(io = ECHT_HERSTEL) {
     //    enige aanwijzing wissen dat er iets openstond; automatisch terugzetten
     //    zou een migratie terugdraaien. Allebei zijn erger dan stoppen.
     //
-    // ⚠️ **En stoppen gebeurt met `process.exit` en niet met een `throw`.** Deze
-    //    aanroep staat binnen de `try` die een psql-fout vertaalt naar *"geen
-    //    database"*; een worp zou hier dus als een ontbrekende stack gemeld
-    //    worden terwijl de stack gewoon draait. Dat is woordelijk de klasse van
-    //    QS8-268, waar zes scripts jarenlang de verkeerde oorzaak noemden.
+    // ⚠️ **En stoppen gebeurt met een teruggegeven code en niet met een
+    //    `throw`.** Deze aanroep staat binnen de `try` die een psql-fout vertaalt
+    //    naar *"geen database"*; een worp zou hier dus als een ontbrekende stack
+    //    gemeld worden terwijl de stack gewoon draait. Dat is woordelijk de klasse
+    //    van QS8-268, waar zes scripts jarenlang de verkeerde oorzaak noemden.
+    //    Tot QS8-704 stopte hij met het proces-exit van Node; dat crasht op
+    //    Windows na een `await fetch`, en `koppelingOfMeldFout()` doet er een.
+    //    `hoofd()` keert nu terug op wat `stop` teruggeeft.
     io.fout(
       `\n✗ het herstel van ${naam} is niet veilig af te spelen.\n` +
         `  ${reden}.\n\n` +
@@ -912,8 +924,8 @@ export function herstelWatOpenstond(io = ECHT_HERSTEL) {
         '  Heeft een migratie hem bewust gewijzigd, gooi dan alléén het spoor weg —\n' +
         '  de definitie erin is dan de oude en hoort nergens meer terug te komen.\n',
     );
-    // ⚠️ De `return` is voor de toets: de echte `stop` keert nooit terug, een
-    //    nep wel, en dan mag hij niet doorvallen naar het weggooien.
+    // ⚠️ De `return` draagt de code naar `hoofd()`, en hij mag niet doorvallen
+    //    naar het weggooien.
     return io.stop(1);
   }
 
@@ -933,7 +945,8 @@ const ECHT_HERSTEL = {
   huidig: (policy) => huidigePolicy(policy),
   voerUit: (sql) => psql(sql),
   gooiWeg: () => rmSync(HERSTELBESTAND),
-  stop: (code) => process.exit(code),
+  // Geeft de code terug; `hoofd()` keert erop terug (QS8-704).
+  stop: (code) => code,
   log: (tekst) => console.log(tekst),
   fout: (tekst) => console.error(tekst),
 };
@@ -1479,7 +1492,7 @@ async function hoofd() {
 
   let ruw;
   try {
-    herstelWatOpenstond();
+    const gestopt = herstelWatOpenstond(); if (gestopt !== undefined) return gestopt;
     ruw = psql(VRAAG);
   } catch (fout) {
     console.error(
@@ -1734,5 +1747,9 @@ async function hoofd() {
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
-  hoofd().then((code) => process.exit(code));
+  // ⚠️ `process.exitCode` en geen proces-exit: dit draait na een `await fetch`
+  //    (`koppelingOfMeldFout()`), en dat crasht op Windows (QS8-684, QS8-704).
+  hoofd().then((code) => {
+    process.exitCode = code;
+  });
 }

@@ -71,6 +71,7 @@
     "wachtwoord:controle": "node scripts/wachtwoord-controle.mjs",
     "aansluiting:controle": "node scripts/aansluiting-controle.mjs",
     "afstemgetal:controle": "node scripts/afstemgetal-controle.mjs",
+    "netwerkexit:controle": "node scripts/netwerkexit-controle.mjs",
     "verbindingen:controle": "node scripts/verbindingen-controle.mjs",
     "datums:controle": "node scripts/vaste-datum-controle.mjs",
     "lockfile:controle": "node scripts/lockfile-controle.mjs",

@@ -76,80 +76,77 @@ function gemaskeerd(sleutel) {
   return sleutel.length <= 8 ? '********' : `${sleutel.slice(0, 4)}…${sleutel.slice(-4)}`;
 }
 
-// ⚠️ Het werk staat in een blok achter de main-guard, en niet in een
-//    `hoofd()`: zo doet importeren niets (QS8-608) zonder dat er een lange
-//    functie bijkomt die coderegel 15 zou breken. Top-level `await` mag
-//    binnen dit blok — gemeten, niet aangenomen.
-if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
-  const droog = process.argv.includes('--droog');
-  const app = process.argv.includes('--app');
-  const env = leesEnv();
+/**
+ * ⚠️ **De twee kanten lezen een andere variabele, en dat is geen slordigheid.**
+ *    De Edge Functions krijgen `SENTRY_DSN` uit hun eigen omgeving
+ *    (`npx supabase secrets set`); de app leest `EXPO_PUBLIC_SENTRY_DSN`, en die
+ *    heeft sinds 30-08 een standaard in `src/lib/env.ts` — dus voor `--app` is
+ *    er niets meer te configureren. Dezelfde volgorde als `clientEnv()`: een
+ *    expliciet gezette waarde wint, ook een lege.
+ */
+function dsnVoorDeApp(env) {
+  const gezet = env['EXPO_PUBLIC_SENTRY_DSN'];
+  if (gezet !== undefined) return gezet;
 
-  /**
-   * ⚠️ **De twee kanten lezen een andere variabele, en dat is geen slordigheid.**
-   *    De Edge Functions krijgen `SENTRY_DSN` uit hun eigen omgeving
-   *    (`npx supabase secrets set`); de app leest `EXPO_PUBLIC_SENTRY_DSN`, en die
-   *    heeft sinds 30-08 een standaard in `src/lib/env.ts` — dus voor `--app` is
-   *    er niets meer te configureren. Dezelfde volgorde als `clientEnv()`: een
-   *    expliciet gezette waarde wint, ook een lege.
-   */
-  function dsnVoorDeApp() {
-    const gezet = env['EXPO_PUBLIC_SENTRY_DSN'];
-    if (gezet !== undefined) return gezet;
-
-    const standaard = standaardDsnUit(readFileSync(join(WORTEL, 'src', 'lib', 'env.ts'), 'utf8'));
-    if (standaard === null) {
-      console.error('  ✗ Kon STANDAARD_SENTRY_DSN niet vinden in src/lib/env.ts.');
-      console.error('    Is de constante hernoemd? Werk standaardDsnUit() bij.');
-      process.exit(1);
-    }
-    return standaard;
+  const standaard = standaardDsnUit(readFileSync(join(WORTEL, 'src', 'lib', 'env.ts'), 'utf8'));
+  if (standaard === null) {
+    console.error('  ✗ Kon STANDAARD_SENTRY_DSN niet vinden in src/lib/env.ts.');
+    console.error('    Is de constante hernoemd? Werk standaardDsnUit() bij.');
   }
+  return standaard;
+}
 
-  const dsn = app ? dsnVoorDeApp() : (env['SENTRY_DSN'] ?? '');
+/** De DSN voor deze kant, of `null` na een melding. */
+function kiesDsn(env, app) {
+  const dsn = app ? dsnVoorDeApp(env) : (env['SENTRY_DSN'] ?? '');
+  if (dsn === null) return null;
+  if (dsn !== '') return dsn;
 
-  if (dsn === '') {
-    if (app) {
-      console.error('  ✗ EXPO_PUBLIC_SENTRY_DSN staat expliciet op leeg — de app meldt dan niets.');
-      console.error('    Haal hem uit .env om op de standaard uit src/lib/env.ts terug te vallen.');
-    } else {
-      console.error('  ✗ SENTRY_DSN ontbreekt. Zet hem in .env of in de omgeving:');
-      console.error("      SENTRY_DSN='https://<sleutel>@<host>/<project-id>'");
-    }
-    process.exit(1);
+  if (app) {
+    console.error('  ✗ EXPO_PUBLIC_SENTRY_DSN staat expliciet op leeg — de app meldt dan niets.');
+    console.error('    Haal hem uit .env om op de standaard uit src/lib/env.ts terug te vallen.');
+  } else {
+    console.error('  ✗ SENTRY_DSN ontbreekt. Zet hem in .env of in de omgeving:');
+    console.error("      SENTRY_DSN='https://<sleutel>@<host>/<project-id>'");
   }
+  return null;
+}
 
-  console.log(`  · kant       ${app ? 'app (server_name: app, runtime: web)' : 'edge (server_name: edge, runtime: deno)'}`);
-
-  let rapport;
+/** De rapportmodule van de Edge Functions, of `null` na een melding. */
+async function laadRapport() {
   try {
-    // ⚠️ **Een `file://`-URL en niet het kale pad.** Op Windows begint dat pad met
-    //    een stationsletter, en Node's ESM-lader leest `C:` dan als een protocol:
-    //    "Only URLs with a scheme in: file, data, and node are supported. Received
-    //    protocol 'c:'". Op Linux werkt het kale pad wél, dus CI en deze
-    //    ontwikkelomgeving zagen er niets van — het brak pas op de machine waar
-    //    het script juist gedraaid moest worden, op 26-08-2026, bij de allereerste
-    //    echte run.
-    //
-    //    Vijf andere scripts in deze map gebruiken `pathToFileURL` al voor hun
-    //    entrypoint-controle. Het huispatroon was er; dit script volgde het niet.
-    rapport = await import(pathToFileURL(KOPIE).href);
+  // ⚠️ **Een `file://`-URL en niet het kale pad.** Op Windows begint dat pad met
+  //    een stationsletter, en Node's ESM-lader leest `C:` dan als een protocol:
+  //    "Only URLs with a scheme in: file, data, and node are supported. Received
+  //    protocol 'c:'". Op Linux werkt het kale pad wél, dus CI en deze
+  //    ontwikkelomgeving zagen er niets van — het brak pas op de machine waar
+  //    het script juist gedraaid moest worden, op 26-08-2026, bij de allereerste
+  //    echte run.
+  //
+  //    Vijf andere scripts in deze map gebruiken `pathToFileURL` al voor hun
+  //    entrypoint-controle. Het huispatroon was er; dit script volgde het niet.
+    return await import(pathToFileURL(KOPIE).href);
   } catch (fout) {
     console.error(`  ✗ Kon ${KOPIE} niet laden: ${fout instanceof Error ? fout.message : 'onbekend'}`);
     console.error('    Draai `npm run edge:sync` — de kopie voor de Edge Functions ontbreekt of is stuk.');
-    process.exit(1);
+    return null;
   }
+}
 
-  const ontleed = rapport.ontleedDsn(dsn);
-  if (ontleed === null) {
-    console.error('  ✗ SENTRY_DSN is onbruikbaar. Verwacht: https://<sleutel>@<host>/<project-id>');
-    process.exit(1);
+/** `goalbuddies@<versie>` uit `app.json`, of `undefined`. Zelfde vorm als de app. */
+function releaseVanDeApp() {
+  try {
+    const versie = JSON.parse(readFileSync(join(WORTEL, 'app.json'), 'utf8')).expo?.version;
+    return typeof versie === 'string' && versie.trim() !== ''
+      ? `goalbuddies@${versie.trim()}`
+      : undefined;
+  } catch {
+    return undefined;
   }
+}
 
-  console.log(`  · host       ${ontleed.host}`);
-  console.log(`  · project    ${ontleed.projectId}`);
-  console.log(`  · sleutel    ${gemaskeerd(ontleed.sleutel)}`);
-
+/** Bouwt de proefmelding met vuile tekst erin, en de verzending ervan. */
+function proefVerzending(rapport, ontleed, app) {
   const fout = new Error(
     "proefmelding van npm run sentry:proef voor iemand@voorbeeld.nl " +
       "met token eyJhbGciOi.JIUzI1NiJ9.abc en waarde 'Mijn gemiste week'",
@@ -183,44 +180,36 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
     { id, ...kant, ...beschrijving, omgeving: 'proef' },
     new Date(),
   );
+  return { id, verzending };
+}
 
-  /** `goalbuddies@<versie>` uit `app.json`, of `undefined`. Zelfde vorm als de app. */
-  function releaseVanDeApp() {
-    try {
-      const versie = JSON.parse(readFileSync(join(WORTEL, 'app.json'), 'utf8')).expo?.version;
-      return typeof versie === 'string' && versie.trim() !== ''
-        ? `goalbuddies@${versie.trim()}`
-        : undefined;
-    } catch {
-      return undefined;
-    }
-  }
+const VUIL = [
+  'iemand@voorbeeld.nl',
+  'voorbeeld.nl',
+  'eyJhbGciOi',
+  'Mijn gemiste week',
+  'deze notitie hoort er niet doorheen te komen',
+];
 
+/** Drukt af wat er over de lijn gaat; `true` als er geen gebruikerstekst in zit. */
+function toonEnToetsSchoon(verzending) {
   console.log(`  · url        ${verzending.url}`);
   console.log('\n  Wat er over de lijn gaat:\n');
   for (const regel of verzending.body.split('\n')) console.log(`    ${regel}`);
 
-  const VUIL = [
-    'iemand@voorbeeld.nl',
-    'voorbeeld.nl',
-    'eyJhbGciOi',
-    'Mijn gemiste week',
-    'deze notitie hoort er niet doorheen te komen',
-  ];
   const gelekt = VUIL.filter((stuk) => verzending.body.includes(stuk));
 
   console.log('');
   if (gelekt.length > 0) {
     console.error(`  ✗ Er gaat gebruikerstekst mee: ${gelekt.join(', ')}`);
-    process.exit(1);
+    return false;
   }
   console.log('  ✓ Geen e-mailadres, token, geciteerde waarde of notitie in de bytes');
+  return true;
+}
 
-  if (droog) {
-    console.log('  · --droog: niets verstuurd');
-    process.exit(0);
-  }
-
+/** Verstuurt de proef naar de ingest; geeft de exitcode terug. */
+async function verstuur(verzending, id) {
   let antwoord;
   try {
     antwoord = await fetch(verzending.url, {
@@ -231,7 +220,7 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
     });
   } catch (netwerk) {
     console.error(`  ✗ De ingest was niet te bereiken: ${netwerk instanceof Error ? netwerk.message : 'onbekend'}`);
-    process.exit(1);
+    return 1;
   }
 
   const tekst = await antwoord.text();
@@ -240,12 +229,58 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
     // ⚠️ Dit is het geval dat de code tot 26-08 als 'verstuurd' meldde.
     console.error(`  ✗ De ingest weigerde de melding: HTTP ${antwoord.status}`);
     console.error(`    ${tekst.slice(0, 300)}`);
-    process.exit(1);
+    return 1;
   }
 
   console.log(`  ✓ HTTP ${antwoord.status} — de ingest heeft hem aangenomen`);
   console.log(`    antwoord: ${tekst.slice(0, 200)}`);
   console.log(`\n  Zoek in Sentry op event-id ${id}.`);
   console.log('  Staat hij er, dan is de draadvorm bewezen in plaats van aangenomen.');
-  process.exit(0);
+  return 0;
+}
+
+/**
+ * Het werk, met een exitcode als uitkomst.
+ *
+ * ⚠️ **Een `hoofd()` die de code teruggeeft, en geen blok met het proces-exit
+ *    van Node** — QS8-704. Twee exits stonden ná de `await fetch` naar de
+ *    ingest, en dat crasht op Windows (QS8-684). Het werk is in kleine functies
+ *    geknipt zodat geen ervan de vijftig regels haalt (regel 15) en importeren
+ *    nog steeds niets doet (QS8-608).
+ */
+async function hoofd() {
+  const droog = process.argv.includes('--droog');
+  const app = process.argv.includes('--app');
+
+  const dsn = kiesDsn(leesEnv(), app);
+  if (dsn === null) return 1;
+
+  console.log(`  · kant       ${app ? 'app (server_name: app, runtime: web)' : 'edge (server_name: edge, runtime: deno)'}`);
+
+  const rapport = await laadRapport();
+  if (rapport === null) return 1;
+
+  const ontleed = rapport.ontleedDsn(dsn);
+  if (ontleed === null) {
+    console.error('  ✗ SENTRY_DSN is onbruikbaar. Verwacht: https://<sleutel>@<host>/<project-id>');
+    return 1;
+  }
+
+  console.log(`  · host       ${ontleed.host}`);
+  console.log(`  · project    ${ontleed.projectId}`);
+  console.log(`  · sleutel    ${gemaskeerd(ontleed.sleutel)}`);
+
+  const { id, verzending } = proefVerzending(rapport, ontleed, app);
+  if (!toonEnToetsSchoon(verzending)) return 1;
+
+  if (droog) {
+    console.log('  · --droog: niets verstuurd');
+    return 0;
+  }
+
+  return verstuur(verzending, id);
+}
+
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+  process.exitCode = await hoofd();
 }

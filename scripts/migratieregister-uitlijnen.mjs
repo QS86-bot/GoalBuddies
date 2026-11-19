@@ -33,11 +33,57 @@ import { vergelijk } from './migratieregister-vergelijk.mjs';
 
 const WORTEL = fileURLToPath(new URL('..', import.meta.url));
 
-// ⚠️ Het werk staat in een blok achter de main-guard, en niet in een
-//    `hoofd()`: zo doet importeren niets (QS8-608) zonder dat er een lange
-//    functie bijkomt die coderegel 15 zou breken. Top-level `await` mag
-//    binnen dit blok — gemeten, niet aangenomen.
-if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+/** De migraties zoals ze in de repo staan: `0057_commitments_afwikkelen.sql`. */
+function uitDeRepo() {
+  return readdirSync(join(WORTEL, 'supabase', 'migrations'))
+    .filter((naam) => naam.endsWith('.sql'))
+    .map((naam) => {
+      const stam = naam.slice(0, -4);
+      const scheiding = stam.indexOf('_');
+      return { versie: stam.slice(0, scheiding), naam: stam.slice(scheiding + 1), bestand: naam };
+    })
+    .sort((a, b) => a.versie.localeCompare(b.versie));
+}
+
+/**
+ * @param {string} url
+ * @param {string} serviceRoleKey
+ * @param {string} functie
+ * @param {unknown} body
+ */
+async function rpc(url, serviceRoleKey, functie, body) {
+  const antwoord = await fetch(`${url}/rest/v1/rpc/${functie}`, {
+    method: 'POST',
+    headers: {
+      apikey: serviceRoleKey,
+      Authorization: `Bearer ${serviceRoleKey}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(body),
+    // ⚠️ Elke externe call heeft een timeout — CLAUDE.md, coderegel 14.
+    signal: AbortSignal.timeout(15_000),
+  });
+
+  if (!antwoord.ok) {
+    throw new Error(
+      `${functie} aanroepen lukte niet (${antwoord.status}). Staan migratie 0072 en ` +
+        '0081 al op dit project, en draai je met de service-role-key?',
+    );
+  }
+
+  return antwoord.json();
+}
+
+/**
+ * Het werk, met een exitcode als uitkomst.
+ *
+ * ⚠️ **Een `hoofd()` die de code teruggeeft, en geen blok met het proces-exit
+ *    van Node** — QS8-704. De exits stonden ná de `await fetch` naar het
+ *    project, en dat crasht op Windows (QS8-684). De hulpfuncties staan op
+ *    moduleniveau zodat `hoofd()` kort blijft (regel 15) en importeren niets
+ *    doet (QS8-608).
+ */
+async function hoofd() {
   const url = process.env.EXPO_PUBLIC_SUPABASE_URL;
   const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
@@ -46,51 +92,11 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
       'migratieregister-uitlijnen: overgeslagen — geen EXPO_PUBLIC_SUPABASE_URL en\n' +
         '  SUPABASE_SERVICE_ROLE_KEY in de omgeving. Zie docs/DEPLOY.md §2.2.',
     );
-    process.exit(0);
-  }
-
-  /** De migraties zoals ze in de repo staan: `0057_commitments_afwikkelen.sql`. */
-  function uitDeRepo() {
-    return readdirSync(join(WORTEL, 'supabase', 'migrations'))
-      .filter((naam) => naam.endsWith('.sql'))
-      .map((naam) => {
-        const stam = naam.slice(0, -4);
-        const scheiding = stam.indexOf('_');
-        return { versie: stam.slice(0, scheiding), naam: stam.slice(scheiding + 1), bestand: naam };
-      })
-      .sort((a, b) => a.versie.localeCompare(b.versie));
-  }
-
-  /**
-   * @param {string} functie
-   * @param {unknown} body
-   */
-  async function rpc(functie, body) {
-    const antwoord = await fetch(`${url}/rest/v1/rpc/${functie}`, {
-      method: 'POST',
-      headers: {
-        apikey: /** @type {string} */ (serviceRoleKey),
-        Authorization: `Bearer ${serviceRoleKey}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(body),
-      // ⚠️ Elke externe call heeft een timeout — CLAUDE.md, coderegel 14.
-      signal: AbortSignal.timeout(15_000),
-    });
-
-    if (!antwoord.ok) {
-      throw new Error(
-        `${functie} aanroepen lukte niet (${antwoord.status}). Staan migratie 0072 en ` +
-          '0081 al op dit project, en draai je met de service-role-key?',
-      );
-    }
-
-    return antwoord.json();
+    return 0;
   }
 
   const repo = uitDeRepo();
-  const voor = await rpc('migratieregister', {});
-
+  const voor = await rpc(url, serviceRoleKey, 'migratieregister', {});
   const { paren, waarschuwingen } = plan(repo, voor);
 
   for (const w of waarschuwingen) console.error(`  ⚠️  ${w}`);
@@ -98,13 +104,13 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
   if (paren.length === 0) {
     if (waarschuwingen.length > 0) {
       console.error('\nmigratieregister-uitlijnen: niets uit te lijnen, wel iets mis. Zie hierboven.');
-      process.exit(1);
+      return 1;
     }
     console.log(`migratieregister-uitlijnen: ${repo.length} migraties, alles droeg al een nummer.`);
-    process.exit(0);
+    return 0;
   }
 
-  const uitkomsten = await rpc('lijn_migratieregister_uit', { p_paren: paren });
+  const uitkomsten = await rpc(url, serviceRoleKey, 'lijn_migratieregister_uit', { p_paren: paren });
 
   for (const r of uitkomsten) {
     const pijl = r.van === null ? '' : `${r.van} → ${r.naar}  `;
@@ -113,15 +119,20 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
 
   // ⚠️ Nameten, niet aannemen. Een geweigerde rij komt hierboven netjes terug en
   //    zou anders wegvallen tegen de geslaagde rijen ernaast.
-  const na = await rpc('migratieregister', {});
+  const na = await rpc(url, serviceRoleKey, 'migratieregister', {});
   const klachten = vergelijk(repo, na);
 
   if (klachten.length > 0) {
     console.error(`\nmigratieregister-uitlijnen: ${klachten.length} verschil(len) blijven staan.\n`);
     for (const k of klachten) console.error(`  • ${k}`);
-    process.exit(1);
+    return 1;
   }
 
   const uitgelijnd = uitkomsten.filter((/** @type {{uitkomst: string}} */ r) => r.uitkomst === 'uitgelijnd').length;
   console.log(`\nmigratieregister-uitlijnen: ${uitgelijnd} uitgelijnd, repo en project zeggen hetzelfde.`);
+  return 0;
+}
+
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+  process.exitCode = await hoofd();
 }
