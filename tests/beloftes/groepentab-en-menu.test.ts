@@ -31,6 +31,9 @@ import { zonderCommentaar } from '../../scripts/zonder-commentaar.mjs';
  *      -> rood: 'het menu is een navigatielandmark met een label'
  *   F  `minHeight: 44` naar 30
  *      -> rood: 'elke menuknop is minstens 44 punten hoog'
+ *   G  de bestemming van de knop in `empty` naar een andere pagina (`/groep/deelnemen`)
+ *      -> rood: 'de lege staat draagt de knop naar /groep/nieuw' (📏 gemeten 19-11-2026;
+ *         daarvoor bleef hij groen: de zoekterm liep door tot de knop in `Groepsacties`)
  */
 
 const WORTEL = join(__dirname, '..', '..');
@@ -41,7 +44,12 @@ describe('de lege groepentab', () => {
   const tab = bron('app', '(tabs)', 'groep.tsx');
 
   it('de lege staat draagt de knop naar /groep/nieuw', () => {
-    expect(tab).toMatch(/empty=\{\{[\s\S]*?action:\s*\{[\s\S]*?t\('groepen\.aanmaken'\)[\s\S]*?\/groep\/nieuw/);
+    // ⚠️ Binnen het `action`-object blijven: `[\s\S]*?` liep door tot de tweede
+    //    `/groep/nieuw` in `Groepsacties`, dus een knop naar een verkeerde pagina
+    //    bleef groen (📏 gemeten door de code-critic).
+    expect(tab).toMatch(
+      /action:\s*\{[^}]*t\('groepen\.aanmaken'\)[^}]*router\.push\('\/groep\/nieuw'\)/,
+    );
   });
 
   it('AsyncView geeft de actie van de lege staat door', () => {
