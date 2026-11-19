@@ -32,6 +32,8 @@
 >
 > ⚠️ **Aanvulling van 18-11-2026 (batchsessie):** daarna landden #684 tot en met #691 (zelfde bestand, `docs/WERKVOORRAAD.md`); #683 en #685 zijn gesloten en #689 (het wisrecht) is draft en wacht op QS8-233 en QS8-643. Het vervolg is #689 hernummeren zodra die twee op `main` staan, en de deploys van Quinten (`notificaties` is gepauzeerd).
 >
+> ⚠️ **Aanvulling van 19-11-2026 (batchsessie):** #697 (QS8-708 en 712) en #696 (QS8-702, 703, 709 en 704) zijn gemerged; de stand staat in `docs/WERKVOORRAAD.md`. Twee valkuilen uit die ronde: (1) **een groene CI is pas bewijs op de exacte kop én de huidige base** — `main` verschoof tweemaal terwijl #696 op CI wachtte, en elke keer was de uitslag een base te oud; meet `git rev-list --count tak..origin/main` vlak vóór je "klaar" meldt. (2) **Een mutatie die twee grendels tegelijk breekt bewijst niets**: de eerste meting van de psql-grendel haalde regel 137 én 324 weg en zag één toets omvallen; alleen regel 137 weghalen liet alles groen. Het vervolg is QS8-720.
+>
 > ⚠️ **Die afkapping is met opzet een nummer en geen "alles".** Terwijl deze
 > bijwerking geschreven werd landden er drie PR's bij — de teller ging van
 > achttien naar negentien naar tweeëntwintig. Een tabel die zegt *alles van
