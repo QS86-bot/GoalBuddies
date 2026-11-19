@@ -1,0 +1,231 @@
+name: Deploy web
+
+# Handmatig startbare deploy van de webbundel — QS8-718.
+#
+# Bedoeld om vanaf de GitHub-app op een telefoon te starten wanneer
+# `npm run deploy` niet lokaal kan. Stappen en benodigde secrets staan in
+# `docs/DEPLOY.md` §3 ("Deployen vanuit GitHub Actions").
+#
+# ⚠️ **Dit is geen tweede deploypad.** De workflow bouwt niets zelf en praat niet
+#    met Hostinger: hij draait `npm run deploy:droog` en, alleen bij modus `echt`,
+#    `npm run deploy` — dezelfde `scripts/deploy-web.mjs` als lokaal, met dezelfde
+#    secret-scan vóór de upload. Wat er verandert is waar de waarden vandaan
+#    komen: uit `secrets.*` in plaats van uit `.env`.
+#
+# ⚠️ **Alleen `workflow_dispatch`.** Geen push, geen schedule, geen pull_request:
+#    een deploy die vanzelf gaat is precies wat deze workflow níet is.
+#    `tests/scripts/deploy-workflow.test.ts` leest dit bestand in en wordt rood
+#    zodra er een andere trigger bij komt.
+#
+# ⚠️ **Wat de workflow vóór de deploy toetst** (job `poort`, zonder enig geheim
+#    behalve het alleen-lezen GITHUB_TOKEN):
+#      1. dat hij gestart is vanaf `main`;
+#      2. dat de gevraagde commit op `main` staat (standaard de punt van `main`);
+#      3. dat `Alles groen` op die commit geslaagd is, en dat er geen rode naast
+#         een groene staat. De logica staat in `scripts/deploy-workflow.mjs`.
+#
+# ⚠️⚠️ **De stap "alleen vanaf main" beschermt niet tegen een gewijzigde
+#    workflow op een andere branch** — wie een branch kan pushen kan dit bestand
+#    daar aanpassen en die versie starten. Wat de geheimen werkelijk afschermt is
+#    de omgeving `productie`: zet daar bij *Deployment branches* alleen `main` op
+#    en zet de secrets daar neer en niet als repository-secret. Zie DEPLOY.md.
+#
+# ⚠️ **Nooit een geheim naar het log.** Secrets staan uitsluitend onder `env:`,
+#    nooit in een `run:`-blok; invoervelden idem (scriptinjectie). De test
+#    hierboven bewaakt dat, en GitHub maskeert secretwaarden daarbovenop.
+#
+# ⚠️ **De droge run krijgt geen enkel secret** en doet geen schrijfactie: hij
+#    bouwt met vaste, herkenbare nepwaarden. De source-map-upload naar Sentry is
+#    een neveneffect buiten `--droog` en blijft dus ook weg. Alleen modus `echt`
+#    eist de echte waarden, en meldt welke naam ontbreekt — nooit een waarde.
+#
+# ⚠️ **Wie mag `echt` starten**: iedereen met schrijfrechten, tenzij de omgeving
+#    `productie` *Required reviewers* heeft. Zet daar jezelf neer (DEPLOY.md).
+
+on:
+  workflow_dispatch:
+    inputs:
+      modus:
+        description: 'droog = bouwen en controleren, niets uploaden. echt = daarna ook uploaden en live zetten.'
+        type: choice
+        options:
+          - droog
+          - echt
+        default: droog
+        required: true
+      sha:
+        description: 'Commit op main die gedeployd wordt. Leeg of main = de nieuwste.'
+        type: string
+        default: main
+        required: false
+
+# Nooit twee deploys tegelijk, en een lopende deploy wordt niet afgebroken: een
+# halve upload naar de livesite is erger dan een wachtende.
+concurrency:
+  group: deploy-web
+  cancel-in-progress: false
+
+permissions: {}
+
+jobs:
+  poort:
+    name: Mag deze commit live?
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      checks: read
+    outputs:
+      sha: ${{ steps.sha.outputs.sha }}
+
+    steps:
+      - name: Alleen vanaf main
+        env:
+          REF: ${{ github.ref }}
+        run: |
+          if [ "$REF" != "refs/heads/main" ]; then
+            echo "Deze workflow deployt alleen vanaf main (gestart vanaf: $REF)."
+            echo "Kies bij 'Use workflow from' de branch main."
+            exit 1
+          fi
+
+      - uses: actions/checkout@v4
+        with:
+          # De volledige geschiedenis: "staat deze commit op main" vraagt de
+          # voorouders van `origin/main`, en een ondiepe kloon kent er één.
+          fetch-depth: 0
+          persist-credentials: false
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Welke commit, en staat hij op main
+        id: sha
+        env:
+          INVOER_SHA: ${{ inputs.sha }}
+        run: node scripts/deploy-workflow.mjs sha
+
+      - name: Is Alles groen geslaagd op die commit
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+          SHA: ${{ steps.sha.outputs.sha }}
+        run: node scripts/deploy-workflow.mjs groen
+
+  deploy:
+    name: Deploy (${{ inputs.modus }})
+    needs: poort
+    # ⚠️ **Windows, en dat is geen smaak.** `pakIn()` in `scripts/deploy-web.mjs`
+    #    pakt in met `powershell` en `Compress-Archive` over een pad met
+    #    backslashes. Op `ubuntu-latest` bestaat `powershell` niet: 📏 gemeten
+    #    op 19-11-2026 liep een droge run daar schoon door build, secret-scan en
+    #    DSN-controle en stopte op `Inpakken mislukte`. Het script aanpassen zou
+    #    het archief veranderen waarmee de laatste echte deploy slaagde; deze
+    #    runner geeft dezelfde Windows PowerShell als lokaal. De bash-blokken
+    #    hieronder draaien met Git Bash (`defaults.run.shell`).
+    runs-on: windows-latest
+    timeout-minutes: 40
+    defaults:
+      run:
+        shell: bash
+    # De omgeving waar de secrets in horen, beperkt tot main. Bestaat hij nog
+    # niet, dan maakt GitHub hem zonder regels en zonder secrets aan; modus
+    # `echt` stopt dan op de eerste ontbrekende naam.
+    environment: productie
+    permissions:
+      contents: read
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.poort.outputs.sha }}
+          persist-credentials: false
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+
+      - name: Afhankelijkheden installeren
+        run: npm ci
+
+      # Vóór het bouwen, zodat een echte deploy niet eerst minuten bouwt om dan
+      # op een ontbrekende naam te stoppen. Alleen namen, nooit waarden: `-n`
+      # test of er iets staat en print niets.
+      - name: Zijn alle secrets aanwezig (alleen echt)
+        if: inputs.modus == 'echt'
+        env:
+          EXPO_PUBLIC_SUPABASE_URL: ${{ secrets.EXPO_PUBLIC_SUPABASE_URL }}
+          EXPO_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.EXPO_PUBLIC_SUPABASE_ANON_KEY }}
+          HOSTINGER_API_TOKEN: ${{ secrets.HOSTINGER_API_TOKEN }}
+        run: |
+          ontbreekt=0
+          for naam in EXPO_PUBLIC_SUPABASE_URL EXPO_PUBLIC_SUPABASE_ANON_KEY HOSTINGER_API_TOKEN; do
+            if [ -z "${!naam}" ]; then
+              echo "Secret ontbreekt: $naam"
+              ontbreekt=1
+            fi
+          done
+          if [ "$ontbreekt" = "1" ]; then
+            echo "Voeg de ontbrekende secrets toe in de omgeving 'productie'; zie docs/DEPLOY.md."
+            exit 1
+          fi
+          echo "Alle verplichte secrets zijn aanwezig."
+
+      # Altijd eerst droog, ook bij modus echt: bouwt, schrijft de routing,
+      # scant de bundel en pakt in. ⚠️ **Zonder enig secret**: de hele
+      # Expo-build en al zijn dependencies draaien hier, en die hoeven het
+      # Hostinger-token niet te zien. De nepwaarden zijn vast en herkenbaar; de
+      # scan zoekt het nep-token in de bundel (de plumbing), de scan met de
+      # echte waarden doet de echte deploy vlak vóór de upload.
+      - name: Droge run
+        env:
+          EXPO_PUBLIC_SUPABASE_URL: https://droog.invalid
+          EXPO_PUBLIC_SUPABASE_ANON_KEY: droog-anon-sleutel-geen-echte-waarde
+          HOSTINGER_API_TOKEN: droog-token-geen-echte-waarde
+        run: |
+          echo "Let op: deze droge run bouwt met nepwaarden voor de Supabase-sleutels en het Hostinger-token. Groen zegt niets over of de echte secrets goed staan; dat toetst alleen modus echt."
+          npm run deploy:droog
+
+      - name: Echte deploy
+        if: inputs.modus == 'echt'
+        env:
+          EXPO_PUBLIC_SUPABASE_URL: ${{ secrets.EXPO_PUBLIC_SUPABASE_URL }}
+          EXPO_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.EXPO_PUBLIC_SUPABASE_ANON_KEY }}
+          HOSTINGER_API_TOKEN: ${{ secrets.HOSTINGER_API_TOKEN }}
+          EXPO_PUBLIC_SENTRY_DSN: ${{ secrets.EXPO_PUBLIC_SENTRY_DSN }}
+          EXPO_PUBLIC_SENTRY_ENVIRONMENT: ${{ secrets.EXPO_PUBLIC_SENTRY_ENVIRONMENT }}
+          EXPO_PUBLIC_APP_URL: ${{ secrets.EXPO_PUBLIC_APP_URL }}
+          EXPO_PUBLIC_VAPID_PUBLIC_KEY: ${{ secrets.EXPO_PUBLIC_VAPID_PUBLIC_KEY }}
+          SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
+          SENTRY_ORG: ${{ secrets.SENTRY_ORG }}
+          SENTRY_PROJECT: ${{ secrets.SENTRY_PROJECT }}
+        run: |
+          for naam in EXPO_PUBLIC_SENTRY_DSN EXPO_PUBLIC_SENTRY_ENVIRONMENT EXPO_PUBLIC_APP_URL EXPO_PUBLIC_VAPID_PUBLIC_KEY SENTRY_AUTH_TOKEN SENTRY_ORG SENTRY_PROJECT; do
+            [ -n "${!naam}" ] || unset "$naam"
+          done
+          # De droge run liet een bundel in dist/ achter; de echte bouwt opnieuw.
+          rm -rf dist
+          npm run deploy
+
+      - name: Samenvatting
+        if: always()
+        env:
+          MODUS: ${{ inputs.modus }}
+          SHA: ${{ needs.poort.outputs.sha }}
+          UITSLAG: ${{ job.status }}
+        run: |
+          {
+            echo "### Deploy web"
+            echo "- Modus: $MODUS"
+            echo "- Commit: $SHA"
+            echo "- Uitslag van de job tot hier: $UITSLAG"
+            if [ "$MODUS" = "echt" ] && [ "$UITSLAG" = "success" ]; then
+              echo "- De site is bijgewerkt en de PWA-paden zijn nagelopen."
+            elif [ "$MODUS" = "echt" ]; then
+              echo "- Mislukt in modus echt: de site kan al gedeeltelijk of geheel live staan. Lees het log."
+            else
+              echo "- Droge run: gebouwd met nepwaarden; er is niets live gezet. Dit zegt niets over de echte geheimen."
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"

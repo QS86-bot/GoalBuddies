@@ -910,6 +910,104 @@ npm run deploy:droog
 ⚠️ **Dit token hoort nóóit in de bundel.** Het begint niet met `EXPO_PUBLIC_`,
 dus de scan hieronder slaat erop aan zodra het er ooit in belandt.
 
+### Deployen vanuit GitHub Actions — QS8-718
+
+Kun je niet lokaal `npm run deploy` draaien, dan start je de workflow
+`.github/workflows/deploy-web.yml` vanuit GitHub, ook vanaf de telefoon. Het is
+**geen tweede deploypad**: hij draait `npm run deploy:droog` en, alleen bij modus
+*echt*, `npm run deploy`. Dezelfde `scripts/deploy-web.mjs`, dezelfde secret-scan
+vóór de upload, en dezelfde PWA-controle erna. Wat anders is: de waarden komen uit
+GitHub-secrets in plaats van uit `.env`.
+
+De deploy-job draait op een **Windows-runner**: `pakIn()` pakt in met PowerShell's
+`Compress-Archive`, en dat bestaat niet op de Linux-runner (📏 gemeten op
+19-11-2026: een droge run daar stopte op *Inpakken mislukte*, na een schone build
+en secret-scan). Dat kost meer minuten en een tragere `npm ci`; het script blijft
+daardoor ongewijzigd.
+
+**Eenmalig instellen (handelingen van jou; de sessie die dit bouwde heeft niets
+ingesteld en niets gedeployd):**
+
+1. Repository → *Settings* → *Environments* → *New environment*, naam
+   **`productie`**. Zet bij *Deployment branches and tags* alleen `main`.
+   ⚠️ Dit is de echte grendel op de secrets: de controle "alleen vanaf main" in
+   de workflow beschermt niet tegen een gewijzigde workflow op een andere branch,
+   een omgeving beperkt tot `main` wel.
+   ⚠️ Zet bij *Required reviewers* ook **jezelf**. Zonder dat kan iedereen met
+   schrijfrechten, een geautomatiseerde sessie met een GitHub-token inbegrepen,
+   modus *echt* starten en een oude commit live zetten; met reviewer wacht de job
+   tot jij op je telefoon goedkeurt. Ook de droge run vraagt dan om goedkeuring.
+2. In die omgeving, onder *Environment secrets*, deze namen (waarden zoals in je
+   `.env`; een secret in de omgeving en niet als repository-secret):
+
+   | Secret | Nodig voor |
+   |---|---|
+   | `EXPO_PUBLIC_SUPABASE_URL` | verplicht bij *echt* |
+   | `EXPO_PUBLIC_SUPABASE_ANON_KEY` | verplicht bij *echt* |
+   | `HOSTINGER_API_TOKEN` | verplicht bij *echt*; hpanel → Account → API |
+   | `EXPO_PUBLIC_VAPID_PUBLIC_KEY` | aanbevolen: zonder deze bouwt de bundel zonder webpush-sleutel |
+   | `EXPO_PUBLIC_APP_URL` | optioneel; leeg valt terug op het productieadres |
+   | `SENTRY_AUTH_TOKEN`, `SENTRY_ORG`, `SENTRY_PROJECT` | optioneel, alle drie of geen: de source-map-upload naar Sentry |
+   | `EXPO_PUBLIC_SENTRY_DSN`, `EXPO_PUBLIC_SENTRY_ENVIRONMENT` | alleen om af te wijken van de standaard in `src/lib/env.ts` |
+
+   ⚠️ **Maak een optioneel secret niet aan met een lege waarde.** De workflow zet
+   een leeg secret niet (voor de app is leeg iets anders dan niet gezet: een lege
+   DSN zet Sentry uit), maar laat hem liever helemaal weg.
+
+**Starten vanuit de GitHub-app:** repository → *Actions* → *Deploy web* → *Run
+workflow*. Kies bij *Use workflow from* de branch **main**, bij *modus* `droog` of
+`echt`, en laat *sha* op `main` staan (of vul de hash van een commit op `main` in,
+bijvoorbeeld om terug te gaan naar een eerdere uitrol). Eén run tegelijk: een
+tweede start wacht, en een lopende deploy wordt nooit afgebroken.
+
+**Wat de workflow doet, in volgorde:** (1) weigert alles wat niet vanaf `main`
+gestart is; (2) weigert een sha die niet op de hoofdlijn van `main` staat (de first-parent-keten:
+merge-commits en directe commits, geen tussencommits van een gemergde PR); (3) weigert als `Alles
+groen` op die commit niet geslaagd is, onvoltooid is, of een rode run heeft naast
+een groene; (4) bij *echt*: stopt vóór het bouwen als een verplicht secret
+ontbreekt, en noemt dan de naam, nooit de waarde; (5) bouwt, scant en pakt in als
+droge run; (6) alleen bij *echt*: bouwt opnieuw en uploadt en zet live.
+
+**Wat een droge run toont.** Hij krijgt **nooit** een secret, ook niet als ze er zijn: hij
+bouwt altijd met vaste, herkenbare nepwaarden (`droog.invalid`), zodat de hele
+Expo-build en zijn dependencies het Hostinger-token niet zien. Het log meldt dat
+niet apart. De secret-scan met de echte waarden doet de echte deploy. Je ziet in
+het log de stappen *Env controleren*, *Bouwen*, *SPA-routing schrijven*, *Bundel
+controleren op geheimen* (met het aantal gecontroleerde geheimen en bestanden),
+*Source maps naar Sentry* (overgeslagen, de droge run krijgt die secrets niet),
+*Source maps uit de bundel halen*, *De DSN in de bundel natrekken* en *Inpakken*
+met de grootte, en eindigt met *Droge run: de bundel is schoon en ingepakt*. Er is
+dan niets geüpload en niets live gezet. De Sentry-secrets krijgt de droge run niet,
+want het uploaden van source maps is een neveneffect buiten `--droog`.
+
+**Nooit een geheim in het log.** Secrets staan in de workflow alleen als waarde
+direct onder `env:` en worden in geen enkel `run:`-blok gelezen; GitHub maskeert ze
+daarbovenop (en dat is de echte vangrail voor een getransformeerde waarde).
+`tests/scripts/deploy-workflow.test.ts` leest het bestand in en wordt rood zodra er
+een andere trigger dan `workflow_dispatch` bij komt, een secret buiten `env:`, of
+een van de bekende manieren om een waarde te schrijven (`echo`, `set -x`,
+`printenv`, `$env:`, `process.env`, …). ⚠️ **Fail-closed, maar niet volledig:** een
+YAML-vorm die de controle niet leest (flow-mappings, gequote sleutels, `|2`) is zelf
+een bezwaar, maar een nieuwe manier om te schrijven die niet in de lijst staat kan
+erdoor. De controle is een regelparser en geen YAML-parser.
+
+⚠️ **Terugrollen deployt ook het deployscript van toen.** Geef je een oudere `sha`
+op, dan draait `npm run deploy` met `scripts/deploy-web.mjs` van die commit; de
+secret-scan van toen, en een commit van vóór de API-wijziging van 16-09-2026 (QS8-504)
+faalt pas bij de upload. Alleen commits op de hoofdlijn van `main` worden
+geaccepteerd. De concurrency-groep houdt één lopende en één wachtende run: een
+derde start annuleert de wachtende. Ook de droge run maakt een *deployment* aan in
+de omgeving `productie` en wacht dus op de goedkeuring van een required reviewer.
+De wekelijkse run van `ci.yml` levert ook een `Alles groen` op de punt van `main`;
+is die rood, dan blokkeert dat de deploy van die commit. De keuzes staan in
+`docs/decisions/2026-11-19-deploy-vanuit-github-actions.md`.
+
+⚠️ **Wat hier niet gemeten is.** De echte Hostinger-verbinding en de eerste run op
+GitHub zelf zijn niet gedraaid: een sessie heeft geen productiesleutel en start
+geen deploy. Lokaal zonder echte secrets gemeten tot en met de DSN-controle;
+*Inpakken* (PowerShell op de Windows-runner) en alles daarna is een aanname tot de
+eerste droge run op GitHub. Start daarom de eerste keer *droog*.
+
 ### ⚠️ De secret-scan is de belangrijkste stap, en hij staat vóór de upload
 
 Een statische webbundel is publiek: alles wat erin zit, kan iedereen lezen. Expo
