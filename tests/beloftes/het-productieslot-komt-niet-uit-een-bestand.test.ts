@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it } from 'vitest';
 
 import { overTeNemen, slotInDotenv } from '../../src/lib/test-env-slot';
-import { bestemmingFout, eisBestemming, psqlDoelFout, vergeetBestemming } from '../rls/psql-stack';
+import { bestemmingFout, brugAdressen, eisBestemming, psqlDoelFout, vergeetBestemming } from '../rls/psql-stack';
 
 /**
  * QS8-703 — het tweede productieslot van de RLS-suite, op onderdeelniveau.
@@ -90,7 +90,7 @@ describe('psqlDoelFout — het psql-pad praat alleen met een lokale database', (
 });
 
 describe('bestemmingFout — waar psql werkelijk uitkwam (QS8-715)', () => {
-  it.each(['127.0.0.1|goalbuddies_rls', '::1|goalbuddies_rls', 'unix-socket|goalbuddies_rls', ' 127.0.0.1|goalbuddies_rls\n'])(
+  it.each(['127.0.0.1|goalbuddies_rls|', '::1|goalbuddies_rls|', 'unix-socket|goalbuddies_rls|', ' 127.0.0.1|goalbuddies_rls|\n'])(
     '%j mag',
     (uitkomst) => {
       expect(bestemmingFout(uitkomst, 'goalbuddies_rls')).toBeNull();
@@ -98,10 +98,10 @@ describe('bestemmingFout — waar psql werkelijk uitkwam (QS8-715)', () => {
   );
 
   it.each([
-    ['10.0.0.5|goalbuddies_rls', /kwam uit op "10\.0\.0\.5"/],
-    ['52.47.1.2|postgres', /kwam uit op "52\.47\.1\.2"/],
-    ['127.0.0.1|postgres', /in database "postgres" en niet in "goalbuddies_rls"/],
-    ['', /kwam uit op ""/],
+    ['10.0.0.5|goalbuddies_rls|', /kwam uit op "10\.0\.0\.5"/],
+    ['52.47.1.2|postgres|', /kwam uit op "52\.47\.1\.2"/],
+    ['127.0.0.1|postgres|', /in database "postgres" en niet in "goalbuddies_rls"/],
+    ['', /4?1 velden|velden/],
   ])('%j wordt geweigerd', (uitkomst, melding) => {
     expect(bestemmingFout(uitkomst, 'goalbuddies_rls')).toMatch(melding);
   });
@@ -118,7 +118,7 @@ describe('bestemmingFout — de CI-servicecontainer op de eigen dockerbrug (QS8-
   it.each([
     // een tunnel: de server ziet ons NAT-adres, dat op geen eigen interface staat
     ['een privé-adres, client is niet van ons', '172.18.0.2|goalbuddies_rls|203.0.113.9'],
-    ['geen clientadres terug (oude vorm van de vraag)', '172.18.0.2|goalbuddies_rls'],
+    
     ['client in het net van de container maar niet van ons (172.18.0.5)', '172.18.0.2|goalbuddies_rls|172.18.0.5'],
     ['server en eigen client buiten 172.16/12', '10.1.2.4|goalbuddies_rls|10.1.2.3'],
     ['server net buiten 172.16/12 (172.32)', '172.32.0.2|goalbuddies_rls|172.32.0.1'],
@@ -134,11 +134,39 @@ describe('bestemmingFout — de CI-servicecontainer op de eigen dockerbrug (QS8-
   });
 });
 
+describe('bestemmingFout — vorm van de uitkomst en de interfaces (QS8-715, review)', () => {
+  it.each(['127.0.0.1|goalbuddies_rls|x|y', '127.0.0.1|goalbuddies_rls', '172.18.0.2|goalbuddies_rls'])(
+    '%j: niet precies drie velden wordt geweigerd',
+    (uitkomst) => {
+      // een socket/loopback heeft altijd een derde (lege) veld
+      expect(bestemmingFout(uitkomst, 'goalbuddies_rls', ['172.18.0.1'])).toMatch(/velden/);
+    },
+  );
+
+  it('brugAdressen: alleen docker0 en br-<12 hex>, alleen IPv4', () => {
+    const v4 = (address: string) => ({ address, family: 'IPv4' }) as never;
+    const v6 = (address: string) => ({ address, family: 'IPv6' }) as never;
+    const lijst = {
+      eth0: [v4('172.31.5.10')],
+      docker0: [v4('172.17.0.1'), v6('fe80::1')],
+      'br-0123456789ab': [v4('172.18.0.1')],
+      'br-xyz': [v4('172.19.0.1')],
+      tun0: [v4('172.20.0.1')],
+    };
+    expect(brugAdressen(lijst)).toEqual(['172.17.0.1', '172.18.0.1']);
+  });
+
+  it('een eigen eth0 in 172.16/12 (geen brug) is geen bewijs: geweigerd', () => {
+    const eigen = brugAdressen({ eth0: [{ address: '172.31.5.10', family: 'IPv4' } as never] });
+    expect(bestemmingFout('172.31.20.4|goalbuddies_rls|172.31.5.10', 'goalbuddies_rls', eigen)).toMatch(/kwam uit op/);
+  });
+});
+
 describe('eisBestemming — één keer per proces, en geen verbinding is geen fout', () => {
   afterEach(() => vergeetBestemming());
 
   it('een bestemming buiten loopback werpt, met een eigen melding en niet "geen database"', () => {
-    expect(() => eisBestemming(() => '10.0.0.5|goalbuddies_rls')).toThrow(/weigert te meten/);
+    expect(() => eisBestemming(() => '10.0.0.5|goalbuddies_rls|')).toThrow(/weigert te meten/);
   });
 
   it('geen verbinding (psql-exitcode 2): geeft dat terug, en meet de volgende keer opnieuw', () => {
@@ -166,7 +194,7 @@ describe('eisBestemming — één keer per proces, en geen verbinding is geen fo
     let keren = 0;
     const goed = () => {
       keren += 1;
-      return '127.0.0.1|goalbuddies_rls';
+      return '127.0.0.1|goalbuddies_rls|';
     };
     eisBestemming(goed);
     eisBestemming(goed);

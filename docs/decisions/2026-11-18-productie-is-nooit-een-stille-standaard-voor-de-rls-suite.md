@@ -293,8 +293,8 @@ aangeraakt).
 
 1. serveradres `127.0.0.1`, `::1` of een socket (de lokale stack, native Postgres), óf
 2. het **clientadres** ligt in `172.16.0.0/12`, is een adres van een
-   netwerkinterface van déze machine (`os.networkInterfaces()`, de bruggateway
-   `172.18.0.1`), en het serveradres ligt in hetzelfde /16-net.
+   **dockerbrug** van déze machine (`os.networkInterfaces()`, alleen `docker0` en
+   `br-<12 hex>`; de gateway `172.18.0.1`), en het serveradres ligt in hetzelfde /16-net.
 
 De server ziet bij een container achter de dockerbrug de gateway van díe brug als
 client; bij een tunnel naar een server aan de overkant ziet hij het NAT-adres of
@@ -331,3 +331,15 @@ Linear-comment voor die uitslag. Een echte Postgres draaide in de bouwsessie nie
 heet, komt door. **Wordt zwaarder als:** iemand productie of een andere gedeelde
 server bereikbaar maakt via zo'n adapter. Past bij de twee bestaande rijen
 (merkteken, REST-tunnel), die Quinten op 19-11 bewust niet bouwt.
+
+**Security-review van het tweede ontwerp (19-11):** geen pad naar productie
+gevonden; verwerkt: (M2) de eerste versie accepteerde elke eigen interface, en op
+een netwerk zonder NAT (AWS-VPC, kantoor-LAN) ziet een server aan de overkant ons
+eigen `eth0`-adres, dus dat bewees alleen "zelfde privénet": nu alleen
+`docker0`/`br-<12 hex>` (mutatie *interfacefilter weg* laat twee toetsen omvallen);
+(L2) precies drie velden, want een naam met een pipe mocht de velden verschuiven
+(mutatie *drie velden weg*: vier toetsen); (L1) commentaar over de clienttoets
+bij loopback rechtgezet; (L3) naadgeval met een brugadres dat niet van ons is. De
+drie ER-rijen (deze, het merkteken, de REST-tunnel) staan nu in
+`docs/ENGINEER-REVIEW.md`. Niet gedaan: (L4) één meting per proces tegenover een
+pooler met meerdere backends, bestond al en is geen onderdeel van dit issue.

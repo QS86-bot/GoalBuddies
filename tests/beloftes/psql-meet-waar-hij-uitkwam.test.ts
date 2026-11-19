@@ -15,7 +15,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
  */
 
 const antwoord = vi.hoisted(() => ({
-  bestemming: '127.0.0.1|goalbuddies_rls',
+  bestemming: '127.0.0.1|goalbuddies_rls|',
   verbinding: true,
   meetfout: false,
   vragen: [] as string[],
@@ -51,7 +51,7 @@ beforeEach(() => {
 
 afterEach(() => {
   vi.unstubAllEnvs();
-  antwoord.bestemming = '127.0.0.1|goalbuddies_rls';
+  antwoord.bestemming = '127.0.0.1|goalbuddies_rls|';
   antwoord.verbinding = true;
   antwoord.meetfout = false;
   antwoord.vragen = [];
@@ -63,22 +63,22 @@ describe('QS8-715 — psql meet waar hij uitkwam', () => {
   });
 
   it('een tunnel (adres buiten loopback): psql() weigert vóór de eigen vraag', () => {
-    antwoord.bestemming = '52.47.1.2|goalbuddies_rls';
+    antwoord.bestemming = '52.47.1.2|goalbuddies_rls|';
     expect(() => psql('select 1')).toThrow(/kwam uit op "52\.47\.1\.2"/);
   });
 
   it('een privé-adres op een dockerbrug waar wij geen interface hebben (een tunnel): psql() weigert', () => {
-    antwoord.bestemming = '172.18.0.2|goalbuddies_rls|203.0.113.9';
+    antwoord.bestemming = '172.18.0.2|goalbuddies_rls|172.18.0.77';
     expect(() => psql('select 1')).toThrow(/kwam uit op "172\.18\.0\.2"/);
   });
 
   it('een andere database op loopback: psql() weigert', () => {
-    antwoord.bestemming = '127.0.0.1|postgres';
+    antwoord.bestemming = '127.0.0.1|postgres|';
     expect(() => psql('select 1')).toThrow(/in database "postgres"/);
   });
 
   it('stackBeschikbaarOfFaal: een tunnel heet "weigert te meten" en niet "geen database"', () => {
-    antwoord.bestemming = '52.47.1.2|goalbuddies_rls';
+    antwoord.bestemming = '52.47.1.2|goalbuddies_rls|';
     let melding = '';
     try {
       stackBeschikbaarOfFaal('select 1', BRON);

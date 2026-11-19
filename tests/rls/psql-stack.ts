@@ -175,11 +175,12 @@ function eisLokaleDatabase(): void {
  *    hij op deze machine staat, dus een tweede getuige erbij — wat de server van
  *    *ons* ziet:
  *
- *    1. **loopback**: server én client op `127.0.0.1`/`::1` (of een socket,
- *       `unix-socket`): de lokale stack en een native Postgres.
+ *    1. **loopback**: het serveradres is `127.0.0.1`, `::1` of een socket
+ *       (`unix-socket`): de lokale stack en een native Postgres. Een clienttoets
+ *       voegt hier niets toe; een tunnel op loopback vangt alleen de databasenaam.
  *    2. **de eigen brug**: het serveradres ligt in `172.16.0.0/12` (de
  *       dockerbruggen), het clientadres — wat `inet_client_addr()` ziet — is een
- *       adres van een netwerkinterface van déze machine (de bruggateway,
+ *       adres van een dockerbrug van déze machine (`docker0`/`br-…`, de gateway,
  *       `172.18.0.1`), en beide liggen in hetzelfde /16-net. Een tunnel naar een
  *       server aan de overkant laat de server een ander adres als client zien
  *       (het NAT-adres, de tunneluitgang) dat hier op geen interface staat.
@@ -197,7 +198,12 @@ export function bestemmingFout(
   database: string,
   eigenAdressen: readonly string[] = eigenInterfaceAdressen(),
 ): string | null {
-  const [adres = '', echt = '', client = ''] = uitkomst.trim().split('|');
+  const delen = uitkomst.trim().split('|');
+  // ⚠️ Precies drie velden: een naam met een pipe mag de velden niet verschuiven.
+  if (delen.length !== 3) {
+    return `De RLS-suite weigert te meten: de bestemming had ${delen.length} velden in plaats van 3 (QS8-715).`;
+  }
+  const [adres = '', echt = '', client = ''] = delen;
 
   if (!isLoopback(adres) && !opEigenBrug(adres, client, eigenAdressen)) {
     return (
@@ -230,12 +236,25 @@ function opEigenBrug(server: string, client: string, eigenAdressen: readonly str
   return net(server) === net(client);
 }
 
-/** Alleen IPv4-adressen: de brug is IPv4, en een v6-adres telt hier niet mee. */
-export function eigenInterfaceAdressen(): string[] {
-  return Object.values(networkInterfaces())
-    .flatMap((lijst) => lijst ?? [])
+/**
+ * De adressen van de dockerbruggen van deze machine: alleen interfaces die
+ * `docker0` of `br-<12 hex>` heten, en alleen IPv4.
+ *
+ * ⚠️ **Niet elke interface** (security-review QS8-715, M2). Op een netwerk zonder
+ *    NAT — een AWS-VPC, een kantoor-LAN, een VPN — ziet een server aan de overkant
+ *    ons eigen `eth0`-adres, dus "is een eigen interface" bewees alleen "zelfde
+ *    privénet". Een bruggateway is wat een container-op-deze-machine oplevert.
+ */
+export function brugAdressen(interfaces: ReturnType<typeof networkInterfaces>): string[] {
+  return Object.entries(interfaces)
+    .filter(([naam]) => /^(docker0|br-[0-9a-f]{12})$/.test(naam))
+    .flatMap(([, lijst]) => lijst ?? [])
     .filter((i) => i.family === 'IPv4')
     .map((i) => i.address);
+}
+
+export function eigenInterfaceAdressen(): string[] {
+  return brugAdressen(networkInterfaces());
 }
 
 const BESTEMMING =
