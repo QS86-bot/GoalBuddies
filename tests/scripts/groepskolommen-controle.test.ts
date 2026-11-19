@@ -97,7 +97,7 @@ describe('ontleed', () => {
 });
 
 describe('de census zelf', () => {
-  it('draagt de drieënveertig relaties met een tabelbrede SELECT-grant', () => {
+  it('draagt de vierenveertig relaties met een tabelbrede SELECT-grant', () => {
     // 📏 Gemeten op 14-09-2026 tegen een verse opbouw (269 migraties): 40
     //    tabellen én 4 views. Die views ontbraken tot de security-ronde —
     //    `relkind in ('r','p')` sloot ze uit terwijl `pg_default_acl` objtype
@@ -127,7 +127,10 @@ describe('de census zelf', () => {
     //    `goal_match_queue_select` is `user_id = (select auth.uid())` en de drie
     //    schrijfpolicies staan op `false`. Rij 41 in
     //    `docs/decisions/002-domeinregel7-oppervlakken.md`.
-    expect(Object.keys(CENSUS)).toHaveLength(43);
+    // ⚠️ **44 sinds 0303, en dat was 43.** `gebruikersvoorkeuren` erbij (QS8-729): de
+    //    eigen uiterlijkvoorkeur, tabelbreed leesbaar voor de eigenaar en voor niemand
+    //    anders; rij 54 in `docs/decisions/002-domeinregel7-oppervlakken.md`.
+    expect(Object.keys(CENSUS)).toHaveLength(44);
   });
 
   it('heeft de vier views erin', () => {
