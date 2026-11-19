@@ -113,13 +113,11 @@ productie) en niet op een eigenschap van het onderdeel; daarom staat die toets
 in elk geval vooraan. M4 en M5 bewaken de vórm van twee commando's, niet het
 gedrag.
 
-⚠️⚠️ **Wat deze test níet sluit: ER-rij *"Geen test start vitest als kindproces
-met een echte `.env`"*.** Het incident liep via vitest: `src/lib/test-env.ts`
-laadt `.env`, daarna laadt de harness. Dit kindproces draait kaal `node`
-zonder `test-env.ts` en omzeilt precies die naad. Wat hij bewijst is dat de
-harness onder een gegeven omgeving niet naar productie praat; dát de `.env` die
-omgeving wordt, staat nog altijd alleen met de hand gemeten (code-critic,
-PR #690). De rij blijft open.
+⚠️⚠️ **Wat deze test níet sluit, en wat dat sinds QS8-703 wél doet.** Het
+incident liep via vitest: `src/lib/test-env.ts` laadt `.env`, daarna laadt de
+harness. Dit kindproces draait kaal `node` zonder `test-env.ts` en omzeilt
+precies die naad. De ER-rij *"Geen test start vitest als kindproces met een
+echte `.env`"* bleef daardoor open tot QS8-703; zie hieronder.
 
 ## Wat níet veranderd is
 
@@ -141,19 +139,72 @@ PR #690). De rij blijft open.
   draagt `Path`, `SystemRoot` en `windir` (niet `USERPROFILE`, `APPDATA`),
   maar gedraaid is hij alleen op Linux (Node 22.23).
 
-## Wat de security-review vond en hier níet gebouwd is
+## QS8-703 — het tweede slot, ook uit `.env` en ook voor psql
 
-Allebei staan ze al als rij in `docs/ENGINEER-REVIEW.md` (PR #690); deze ronde
-bevestigt ze en voegt een faalscenario toe:
+De security-review van PR #690 vond drie plekken waar het slot zwakker was dan
+de documenten zeiden. De eerste (het slot hing aan een hoofdlettergevoelige
+substring van de URL) is in QS8-702 zelf gesloten; de andere twee zijn
+QS8-703. Gebouwd op Quintens besluit van 18-11-2026, vóór QS8-692: het bouwen
+vraagt geen productierun.
 
-- **Het psql-pad** (`tests/rls/psql-stack.ts`): `stackOordeel()` meet zodra de
-  probe slaagt, ook zonder `RLS_DOEL`, tegen wat `PG*` aanwijst (ook uit `.env`).
-  Wijst `PG*` naar de pooler van productie, dan schrijven de psql-tests daar als
-  `postgres` — via `npx vitest` of `npm run test:watch`, niet via `npm test`.
-- **`.env` als keuze per run**: `test-env.ts` laadt ook `RLS_DOEL` en
-  `RLS_TEST_ALLOW_PROD`. "Per run, nooit in `.env`" is een afspraak, geen slot.
+| # | wat | waar | besluit |
+| -- | -- | -- | -- |
+| 1 | `RLS_DOEL` en `RLS_TEST_ALLOW_PROD` komen alleen uit de procesomgeving | `src/lib/test-env.ts`, `src/lib/test-env-slot.ts` | dotenv laadt `.env` in een eigen object. Zet dat het slot (`RLS_TEST_ALLOW_PROD` met een waarde, of `RLS_DOEL=productie`), dan **werpt** de setup en wordt elke test rood. Een onschuldige waarde (`RLS_DOEL=lokaal`, een lege vlag) wordt overgeslagen. `.env.example` biedt de vlag niet meer als invulveld aan. |
+| 2 | het psql-pad weigert een niet-lokale host | `psqlDoelFout()` in `tests/rls/psql-stack.ts` | een **allowlist**: loopback of een Unix-socket, en verder niets. `PGHOSTADDR` wordt ook getoetst (hij gaat in libpq voor), `PGSERVICE` wordt geweigerd (het bestand is hier niet te lezen). De grendel staat in `basisArgumenten()`, waar elke psql-aanroep in de testboom doorheen gaat, én vóór de `try` in `stackBeschikbaarOfFaal()`. |
+| 3 | de naad in vitest zelf | `tests/beloftes/dotenv-opent-het-slot-niet.test.ts` | start de echte vitest met de echte config, met een eigen `.env` via `GOALBUDDIES_DOTENV` — een test mag de `.env` van de machine nooit aanraken. Drie gevallen, alle drie exit 1: sleutels zonder doel (harness), het slot in `.env` (setup), en `PGHOST` naar de pooler met `RLS_DOEL=lokaal` per run (psql). |
 
-Beide raken `src/lib/test-env.ts` en het psql-pad buiten de REST-harness; ze
-horen bij een vervolgissue en niet in de samenvoeging van twee versies.
-- AC4 van QS8-702: of het aantal `rls-%@example.com`-accounts op productie na de
-  merge niet meer groeit. Twee tellingen met een uur ertussen, alleen lezen.
+⚠️ **Waarom werpen en niet stil overslaan.** Een slot dat zich laat negeren is
+geen slot: wie het in `.env` zet, bedoelde iets, en stil weglaten laat hem in de
+waan dat het werkt. Dat maakt de hele suite rood op een machine met de vlag in
+`.env` — op Quintens machine staat hij sinds 18-11 uitgecommentarieerd (QS8-700).
+
+⚠️ **Waarom de grendel vóór de `try` staat.** `stackBeschikbaarOfFaal()` vangt
+elke fout van de proef op en meldt hem als *"geen database"*. Een geweigerde
+host daarin laten verdwijnen is de klasse van QS8-268 (de verkeerde oorzaak).
+📏 Gemeten: met de grendel alleen in `basisArgumenten()` kwam de weigering wél in
+de uitvoer, maar achter *"psql zei:"* en onder de kop *"geen database op…"*. De
+toets eist nu dat die kop er niet staat.
+
+⚠️ **`src/lib/test-env.ts` staat in de uitzonderingslijst** van de regel tegen
+`process.env` in `src/` (`eslint.config.js`): hij is de vitest-setup en komt in
+geen bundel. Verhuizen naar `tests/` was zuiverder, maar het pad staat in vijf
+documenten en een verhuizing is hier de duurste beweging.
+
+**Geijkt per grendel; ervoor en erna 30/30 groen** (de twee nieuwe testbestanden):
+
+| mutatie | wat omviel |
+| -- | -- |
+| de setup werpt niet meer bij het slot in `.env` | *het slot in .env … de setup weigert* |
+| de setup neemt `.env` weer volledig over (de oude vorm) | idem |
+| de psql-grendel overal uit | *PGHOST in .env naar de pooler … psql wordt geweigerd* |
+| de grendel alleen nog in `basisArgumenten()`, niet vóór de `try` | idem, op *"geen database op"*. Bleef eerst groen; zie hierboven |
+| de allowlist hoofdlettergevoelig | *{"PGHOST":"LOCALHOST"} mag* |
+| `PGHOSTADDR` niet meer getoetst | *… "PGHOSTADDR":"3.14.15.92" wordt geweigerd* |
+| `doel.ts` weer de oude standaard (geen doel → productie) | *productiesleutels in .env, geen RLS_DOEL …* — de vitest-naad ziet hem ook |
+
+**De security-review van QS8-703 vond drie zijdeuren, en die zijn dicht**
+(elk geijkt; de toets die omviel staat tussen haakjes):
+
+- `PGDATABASE` gaat als `-d` mee, en daar leest psql ook een verbindingsstring,
+  een URI of `service=…`, met een eigen host. Alleen een kale naam mag nu
+  (*"…PGDATABASE is geen kale naam"*, drie vormen).
+- Een hostlijst met komma's die met een socketpad begint, kwam erdoor; libpq
+  probeert de hosts op volgorde. Elk deel wordt nu apart getoetst, ook in
+  `PGHOSTADDR` (*"/var/run/postgresql,db.… wordt geweigerd"*).
+- Op Windows is `process.env` hoofdletterongevoelig: `rls_test_allow_prod=1` in
+  `.env` opende het slot. `slotInDotenv()` en `overTeNemen()` vergelijken nu
+  zonder hoofdletters (*"{"rls_test_allow_prod":"1"} wordt geweigerd"*, *"ook
+  niet in kleine letters"*).
+
+**Wat hier niet gebouwd is.** Twee lage punten uit dezelfde review, als ER-rij:
+een controle ná het verbinden (`current_database()` en `inet_server_addr()`,
+zoals `scripts/rls-dekking.mjs` die doet), die ook een tunnel naar productie op
+loopback zou zien; en een allowlist op de host van `RLS_LOKAAL_URL` in plaats
+van de blocklist op de ref (schrijven vraagt daar ook het productiegeheim in
+`RLS_LOKAAL_JWT_SECRET`). `tests/rls/globaal.ts` draait in het hoofdproces
+van vitest en ziet `.env` niet (geen `setupFiles` daar); zijn psql-aanroepen
+gaan wel door dezelfde grendel. Een `PGHOST` in de **shell** van de gebruiker
+wordt net zo geweigerd als een in `.env`. Niet gemeten: de echte RLS-suite
+tegen een lokale stack met deze grendel (geen stack in de cloudsessie); de
+allowlist laat `127.0.0.1` op poort 5433 toe, dus de stack van
+`scripts/lokale-stack.sh` en de CI-job `rls` vallen erbinnen.

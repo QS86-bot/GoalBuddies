@@ -79,7 +79,62 @@ export function psqlBasisArgumenten(verbose = false): string[] {
   return basisArgumenten(verbose);
 }
 
+/**
+ * Wijst deze psql-omgeving naar een lokale database? Zo niet, de melding.
+ *
+ * ⚠️⚠️ **Het psql-pad had geen productieslot** (QS8-703, security-review van
+ *    PR #690). `PSQL_OMGEVING` neemt `PGHOST`, `PGUSER`, `PGPASSWORD` en
+ *    `PGDATABASE` over uit de omgeving, en `src/lib/test-env.ts` laadt `.env`.
+ *    Wees `PGHOST` naar de pooler van productie — wat voor een dump heel gewoon
+ *    is — dan schreven de psql-tests daar als `postgres`, met meer rechten dan
+ *    de service role, zonder dat iemand een doel koos.
+ *
+ *    **Een allowlist en geen blocklist**: loopback of een Unix-socket (een pad),
+ *    en verder niets — zelfde vorm als `magHierDraaien()` in
+ *    `scripts/rls-dekking.mjs`. Een blocklist op de projectref mist een eigen
+ *    domein en een hostnaam in hoofdletters; dat was de les van `guardProductie()`.
+ *    `PGHOSTADDR` overschrijft `PGHOST` in libpq en wordt dus ook getoetst,
+ *    `PGSERVICE` verwijst naar een bestand dat hier niet te lezen is (geweigerd),
+ *    en `PGDATABASE` moet een kale naam zijn: als `-d` leest psql er anders een
+ *    hele verbindingsstring in.
+ */
+const LOOPBACK = ['localhost', '127.0.0.1', '::1'];
+
+export function psqlDoelFout(omgeving: NodeJS.ProcessEnv): string | null {
+  const host = (omgeving.PGHOST ?? '').trim();
+  const adres = (omgeving.PGHOSTADDR ?? '').trim();
+  // ⚠️ Een lijst met komma's probeert libpq op volgorde: elk deel moet lokaal
+  //    zijn, anders valt hij door naar de volgende host als de eerste niet
+  //    antwoordt (security-review QS8-703).
+  const lokaal = (lijst: string) =>
+    lijst.split(',').every((h) => {
+      const deel = h.trim();
+      return deel.startsWith('/') || LOOPBACK.includes(deel.toLowerCase());
+    });
+  const db = (omgeving.PGDATABASE ?? 'goalbuddies_rls').trim();
+  const weiger = (wat: string) =>
+    `De RLS-suite weigert psql naar ${wat}: alleen een lokale database (loopback of ` +
+    'een Unix-socket) mag. Zet PGHOST niet in .env of in je sessie, of draai met ' +
+    '`npm run rls:lokaal` tegen de lokale stack (QS8-703).';
+
+  if ((omgeving.PGSERVICE ?? '').trim() !== '') return weiger(`de dienst "${omgeving.PGSERVICE}" (PGSERVICE)`);
+  if (!lokaal(host)) return weiger(`de host "${host}"`);
+  // ⚠️ `PGDATABASE` gaat als `-d` mee, en daar leest psql ook een
+  //    verbindingsstring, een URI of `service=…` — met een eigen host die de
+  //    toets hierboven nooit ziet. Alleen een kale naam mag.
+  if (!/^[A-Za-z0-9_]+$/.test(db)) return weiger(`de database "${db}" (PGDATABASE is geen kale naam)`);
+  if (adres !== '' && !lokaal(adres)) return weiger(`het adres "${adres}" (PGHOSTADDR)`);
+  return null;
+}
+
+/** Werpt vóór er een psql-proces start, als het doel niet lokaal is. */
+function eisLokaleDatabase(): void {
+  const fout = psqlDoelFout(PSQL_OMGEVING);
+  if (fout !== null) throw new Error(fout);
+}
+
 function basisArgumenten(verbose: boolean): string[] {
+  eisLokaleDatabase();
   return [
     '-U',
     PSQL_OMGEVING.PGUSER as string,
@@ -263,6 +318,11 @@ export function stackOordeel(uitkomst: string | null, rlsDoel: string | undefine
  *    `stackOordeel()` hierboven; hier staat alleen wat je er dan van merkt.
  */
 export function stackBeschikbaarOfFaal(proef: string, bron: string): boolean {
+  // ⚠️ Buiten de `try` hieronder, met opzet: die vangt elke fout en noemt hem
+  //    "geen database". Een geweigerde host is iets anders, en een melding met
+  //    de verkeerde oorzaak is de klasse van QS8-268 (QS8-703).
+  eisLokaleDatabase();
+
   let uitkomst: string | null = null;
   let fout: unknown = null;
   try {
