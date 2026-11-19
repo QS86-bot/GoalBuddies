@@ -143,6 +143,12 @@ export const BEKENDE_ONBEREIKBAAR = {
     '`leesLokaleStart()` vanaf een scherm of de provider bereikbaar zijn, zijn de andere acht ' +
     'dat via hen. Staat er daarna nog een, dan is dát de bevinding. ⚠️ De rest van deze elf ' +
     'verwijst naar deze rij.',
+  haalMijnXp:
+    'De fundering van XP (QS8-734, migratie 0304) landt vóór haar afnemer. `src/modules/xp` ' +
+    'leest `mijn_xp()`; het Prestatiescherm (QS8-735) en het eigen profiel zijn de afnemers ' +
+    'en bestaan nog niet. ⚠️ Alle vier verdwijnen bij QS8-735; staat er daarna nog een, ' +
+    'dan is dát de bevinding. ⚠️ Een groepscomponent als afnemer is een fout, geen afnemer.',
+  leesXpStand: 'Hoort bij de XP-fundering van QS8-734; zie de rij `haalMijnXp` hierboven. Verdwijnt bij QS8-735.',
   haalAccountVoorkeur:
     'Hoort bij de uiterlijkvoorkeur van QS8-729; zie de rij `bewaarAccountVoorkeur` hierboven. Verdwijnt bij QS8-731.',
   kiesVoorkeur:
@@ -173,7 +179,7 @@ export const BEKENDE_ONBEREIKBAAR = {
  *    verhoging in dezelfde wijziging als de rij en zijn reden — en dat is het
  *    hele verschil met een register dat stil kan groeien.
  */
-export const PLAFOND = 14;
+export const PLAFOND = 16;
 
 // ⚠️ Van 3 naar 14 op 19-11-2026, bij QS8-729: `src/modules/uiterlijk` landt vóór het
 //    scherm Uiterlijk (QS8-731). Verlagen naar 3 zodra die rijen eruit gaan.
