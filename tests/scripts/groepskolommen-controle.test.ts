@@ -130,7 +130,9 @@ describe('de census zelf', () => {
     // ⚠️ **44 sinds 0303, en dat was 43.** `gebruikersvoorkeuren` erbij (QS8-729): de
     //    eigen uiterlijkvoorkeur, tabelbreed leesbaar voor de eigenaar en voor niemand
     //    anders; rij 54 in `docs/decisions/002-domeinregel7-oppervlakken.md`.
-    expect(Object.keys(CENSUS)).toHaveLength(44);
+    // ⚠️ **45 sinds 0304, en dat was 44.** `xp_grootboek` erbij (QS8-734): eigenaar-only,
+    //    append-only; rij 55 in `docs/decisions/002-domeinregel7-oppervlakken.md`.
+    expect(Object.keys(CENSUS)).toHaveLength(45);
   });
 
   it('heeft de vier views erin', () => {
