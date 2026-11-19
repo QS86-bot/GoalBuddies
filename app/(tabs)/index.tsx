@@ -1503,3 +1503,7 @@ async function laadTips(
     }),
   );
 }
+
+// ⚠️ QS8-705: een renderfout op dit tabblad is een foutstaat met herstelknop en
+//    geen wit scherm. Zie `src/shared/ui/TabFout.tsx`.
+export { TabFout as ErrorBoundary } from '@/shared/ui';
