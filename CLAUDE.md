@@ -295,11 +295,19 @@ Voordat er één feature gebouwd wordt:
 - Hosting: **Hostinger** (testfase), later Vercel
 - Observability: Sentry
 - Werkvoorraad: Linear
-- Visuele richting: **het Q-Projects navy-stelsel**, gedeeld met de Status Tracker
-  (`tracker.q-projects.tech`), thema's `navy` en `navy-licht`. Navy is de
-  ondergrond, goud het accent. **Gebruik Q-Projects-kleurstellingen** — geen
-  zelfbedachte kleuren erbij. Volledige tokenset in Linear QS8-87.
-  *(Vervangt de emerald-richting uit PRD 10.1, gewijzigd 15-08-2026.)*
+- Visuele richting: **vervangen op 19-11-2026 (QS8-722, besluit Quinten).** De stand
+  in code is nog het Q-Projects navy-stelsel (`src/shared/theme/tokens.ts`, thema's
+  `navy` en `navy-licht`), maar de richting is een **eigen, kleurrijker stelsel van
+  zeven uiterlijken** die de gebruiker kiest, met een indeling zo dicht mogelijk bij
+  Habit Huddle en **eigen kleurwaarden, pictogrammen en teksten** (nooit overgenomen:
+  hun voorwaarden §7 verbieden hun trade dress). De Status Tracker en GoalBuddies
+  mogen uit elkaar lopen. Dit vervangt A55 en het productvoorstel *rustig
+  gereedschap*; uitleg, ToS-afweging en de twee nieuwe dependencies in
+  `docs/decisions/2026-11-19-de-nieuwe-huisstijl-vervangt-a55-en-rustig-gereedschap.md`.
+  *(Vervangt de navy-richting van 15-08-2026, QS8-87, die zelf de emerald-richting uit
+  PRD 10.1 verving.)* ⚠️ **Tot QS8-723 landt verandert er in de app niets; verzin dus
+  nog geen eigen kleur in een component** — nieuwe waarden komen in de tokens, niet in
+  een scherm.
 
   ⚠️ **Eén benoemde uitzondering sinds 14-09-2026 (QS8-470, besluit 4 van
   QS8-468): het heldenpalet.** De zes helden dragen elk een kleurenpaar uit
@@ -645,6 +653,11 @@ anders, en een schermlezer leest "gezicht met vreugdetranen" midden in een zin.
 
 **De gebruiker mag ze overal typen.** Eén uitzondering waar de app ze zelf wél
 gebruikt: reacties op een bericht (A24). Daar ís de emoji de boodschap.
+
+⚠️ **Een tweede benoemde uitzondering, besloten 19-11-2026 (QS8-722): het
+prestatiecomponent.** Emoji alleen op de prestatiekaarten (QS8-732), nooit in een
+knop, label, systeembericht of melding. `npm run emoji:controle` kent die
+uitzondering pas na QS8-732; tot dan blijft hij rood bij elke emoji in app-tekst.
 
 ⚠️ **Dit is sinds 23-08 een controle en geen zin meer:** `npm run emoji:controle`
 draait mee in `/audit` en wordt rood zodra er emoji in app-tekst staat.
