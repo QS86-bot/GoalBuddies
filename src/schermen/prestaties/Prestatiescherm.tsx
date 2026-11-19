@@ -1,12 +1,14 @@
-import { StyleSheet, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 
 import { opmaaktaal, t } from '@/shared/i18n';
 import { radius, space, useTheme } from '@/shared/theme';
 import { toonKlokDatum } from '@/shared/time';
 import { AsyncView, Body, Button, Caption, Card, Pictogram, Subheading } from '@/shared/ui';
 import { badgeLabels, badgeUitleg } from '@/modules/goals';
+import { useUiterlijk } from '@/modules/uiterlijk/react';
 import type { XpStand } from '@/modules/xp';
 
+import { emojiVoorPrestatie } from './prestatie-emoji';
 import { niveauVoortgang, type Categorie, type Prestatie } from './prestaties-vorm';
 import { usePrestaties } from './usePrestaties';
 
@@ -96,6 +98,8 @@ function Categoriekaart({ categorie, prestaties, tz }: { readonly categorie: Cat
 }
 
 function Prestatierij({ p, tz }: { readonly p: Prestatie; readonly tz: string }) {
+  const { voorkeur } = useUiterlijk();
+  const emoji = emojiVoorPrestatie(p.badge, p.behaaldOp !== null, voorkeur.emoji);
   const naam = badgeLabels()[p.badge];
   const behaald = p.behaaldOp !== null;
   const zeldzaamheid = t(`prestaties.zeldzaamheid_${p.zeldzaamheid}`);
@@ -110,6 +114,12 @@ function Prestatierij({ p, tz }: { readonly p: Prestatie; readonly tz: string })
       style={styles.rij}
     >
       <Pictogram naam={p.pictogram} betekenis="prestatie" grootte={44} vergrendeld={!behaald} decoratief />
+      {emoji === null ? null : (
+        // ⚠️ Een apart, decoratief veld: verborgen voor schermlezers, de tekstnaam staat in de rij zelf.
+        <Text aria-hidden importantForAccessibility="no-hide-descendants" style={styles.emoji}>
+          {emoji}
+        </Text>
+      )}
       <View style={styles.tekst}>
         <Body>{naam}</Body>
         <Caption>{badgeUitleg()[p.badge]}</Caption>
@@ -125,4 +135,5 @@ const styles = StyleSheet.create({
   vulling: { height: 10, borderRadius: radius.pill },
   rij: { flexDirection: 'row', alignItems: 'center', gap: 12 },
   tekst: { flex: 1, gap: 2 },
+  emoji: { fontSize: 24 },
 });
