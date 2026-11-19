@@ -93,7 +93,7 @@ describe('de aansluiting in Shell', () => {
     const begin = shell.indexOf('<View');
     const voor = shell
       .slice(begin, poort)
-      .replace(/<View[^>]*>\s*(?:\/\/[^\n]*\n\s*)*/, '')
+      .replace(/<View[^>]*>/, '')
       .replace(/<StatusBar[^>]*\/>/, '')
       .trim();
     expect(voor, 'vóór de poort mag niets staan wat tekst of inhoud tekent').toBe('');
