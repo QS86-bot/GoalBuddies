@@ -1547,6 +1547,9 @@ De prompt onder de streep is voor de sessie die de werkvoorraad in volgorde
 afwerkt. Draait die al, en wil je er een tweede naast zetten, gebruik dan het
 blok hieronder: het gaat uit van twee sessies en zet de claim vooraan.
 
+⚠️ **Lokaal maakt `npm run claim` een eigen worktree in `<repo>-werk/qs8-<n>`** en laat de
+map waar je staat met rust (sinds 19-11-2026, QS8-717); zie `docs/PROMPT-SESSIE.md` §1.
+
 ⚠️ **De bezet-lijst erin is een momentopname en de claim is de echte rem.**
 Ververs hem vóór je hem plakt met `git ls-remote --heads origin`. Hij staat er
 alleen omdat een sessie die meteen een bezet issue kiest, dat anders pas merkt
