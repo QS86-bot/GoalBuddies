@@ -35,6 +35,7 @@ import {
   fetchOpenVerzoekenVoorGroep,
   type DeadlineVerzoek,
 } from '@/modules/goals';
+import { DempGroep } from '@/schermen/groep';
 import { opmaaktaal, t } from '@/shared/i18n';
 import { toonDatum } from '@/shared/time';
 import { space } from '@/shared/theme';
@@ -350,6 +351,8 @@ export default function GroepDetail() {
                  archiefkaart daar onderaan staat: dit is de zwaarste knop op dit
                  scherm.
             */}
+            <DempGroep groupId={id ?? ''} userId={userId ?? ''} />
+
             <VerlaatGroep groupId={id ?? ''} userId={userId ?? ''} leden={s.overzicht.rijen} />
           </View>
         )}
