@@ -1,5 +1,5 @@
 /**
- * Het profiel van een groepsgenoot — QS8-750, migratie 0306.
+ * Het profiel van een groepsgenoot — QS8-750, migratie 0307.
  *
  * ⚠️⚠️ **De grens zit in `profiel_van_lid()`, `profiel_doelen_van_lid()` en
  *    `profiel_groepen_van_lid()` en niet hier.** Elke functie is `security

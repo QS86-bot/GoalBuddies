@@ -31,7 +31,7 @@ import {
 } from '@/shared/ui';
 
 /**
- * Het profiel van een groepsgenoot, met tabs — QS8-750, migratie 0306.
+ * Het profiel van een groepsgenoot, met tabs — QS8-750, migratie 0307.
  *
  * ⚠️⚠️ **Dit scherm beslist niets over wie wat mag zien.** De drie RPC's geven
  *    nul rijen aan wie geen groep met de persoon deelt, en nooit meer kolommen

@@ -1,4 +1,4 @@
--- 0306_een_profiel_van_een_ander_toont_alleen_wat_de_groep_al_zag.sql — het profiel van een groepsgenoot, met een leesgrens die in de database woont (QS8-750).
+-- 0307_een_profiel_van_een_ander_toont_alleen_wat_de_groep_al_zag.sql — het profiel van een groepsgenoot, met een leesgrens die in de database woont (QS8-750).
 --
 -- ROLLBACK-PAD:
 --   drop function if exists public.profiel_van_lid(uuid);

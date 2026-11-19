@@ -14,7 +14,7 @@ import { proefId } from './proefid';
 import { psql } from './psql-stack';
 
 /**
- * Het profiel van een groepsgenoot — QS8-750, migratie 0306.
+ * Het profiel van een groepsgenoot — QS8-750, migratie 0307.
  *
  * ⚠️ **De vraag is niet "werkt het profiel" maar: wat kan een groepsgenoot met
  *    één API-verzoek uitlezen, en kan daar een gemiste week uit volgen?** Elke
