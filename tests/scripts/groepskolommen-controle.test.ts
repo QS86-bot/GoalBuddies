@@ -97,7 +97,7 @@ describe('ontleed', () => {
 });
 
 describe('de census zelf', () => {
-  it('draagt de tweeënveertig relaties met een tabelbrede SELECT-grant', () => {
+  it('draagt de vierenveertig relaties met een tabelbrede SELECT-grant', () => {
     // 📏 Gemeten op 14-09-2026 tegen een verse opbouw (269 migraties): 40
     //    tabellen én 4 views. Die views ontbraken tot de security-ronde —
     //    `relkind in ('r','p')` sloot ze uit terwijl `pg_default_acl` objtype
@@ -118,7 +118,23 @@ describe('de census zelf', () => {
     //    één verzoek op te vragen. 0298 geeft het recht per kolom terug, zonder
     //    `reporter_id` en zonder `afgehandeld_door`. Beoordelen loopt
     //    uitsluitend via `openstaande_meldingen()`.
-    expect(Object.keys(CENSUS)).toHaveLength(42);
+    // ⚠️ **43 sinds 0299, en dat was 42.** `goal_match_queue` erbij — de
+    //    wachtrij voor buddy's die je niet kent (QS8-233). Hier mag de
+    //    tabelbrede grant juist wél, en dat is de omgekeerde afweging van de
+    //    twee hierboven: er is geen kolom die de eigenaar niet mag zien, want
+    //    het zijn zijn eigen velden. Wat over ánderen gaat komt niet uit de
+    //    tabel maar uit `buddyzoek_stand()`, als één verzadigd getal.
+    //    `goal_match_queue_select` is `user_id = (select auth.uid())` en de drie
+    //    schrijfpolicies staan op `false`. Rij 41 in
+    //    `docs/decisions/002-domeinregel7-oppervlakken.md`.
+    // ⚠️ **44 sinds 0303, en dat was 43.** `gebruikersvoorkeuren` erbij (QS8-729): de
+    //    eigen uiterlijkvoorkeur, tabelbreed leesbaar voor de eigenaar en voor niemand
+    //    anders; rij 54 in `docs/decisions/002-domeinregel7-oppervlakken.md`.
+    // ⚠️ **45 sinds 0304, en dat was 44.** `xp_grootboek` erbij (QS8-734): eigenaar-only,
+    //    append-only; rij 55 in `docs/decisions/002-domeinregel7-oppervlakken.md`.
+    // ⚠️ **46 sinds 0305, en dat was 45.** `groep_demping` erbij (QS8-752): de eigen demping,
+    //    eigenaar-only; rij 56 in `docs/decisions/002-domeinregel7-oppervlakken.md`.
+    expect(Object.keys(CENSUS)).toHaveLength(46);
   });
 
   it('heeft de vier views erin', () => {

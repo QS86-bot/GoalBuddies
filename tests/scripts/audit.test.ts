@@ -1,5 +1,5 @@
 import { execFileSync } from 'node:child_process';
-import { existsSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
@@ -14,6 +14,7 @@ import {
   modusUit,
   prOordeel,
   registerSchade,
+  registerVorm,
   slotwoord,
   NAGEKEKEN,
   hoofd,
@@ -504,8 +505,15 @@ describe('PR-modus', () => {
       ).toBe('pr');
     });
 
-    it('geeft strikt voor main, het schema, een tag, een lege omgeving en iets onbekends', () => {
-      expect(modusUit({ GITHUB_EVENT_NAME: 'push', GITHUB_REF: 'refs/heads/main' })).toBe('strikt');
+    it('geeft vorm voor een push naar main, en alleen voor die ene combinatie', () => {
+      expect(modusUit({ GITHUB_EVENT_NAME: 'push', GITHUB_REF: 'refs/heads/main' })).toBe('vorm');
+      expect(modusUit({ GITHUB_EVENT_NAME: 'push', GITHUB_REF: 'refs/heads/main2' })).toBe('pr');
+      expect(modusUit({ GITHUB_EVENT_NAME: 'schedule', GITHUB_REF: 'refs/heads/main' })).toBe('strikt');
+      expect(modusUit({ GITHUB_EVENT_NAME: 'workflow_dispatch', GITHUB_REF: 'refs/heads/main' })).toBe('strikt');
+      expect(modusUit({ GITHUB_REF: 'refs/heads/main' })).toBe('strikt');
+    });
+
+    it('geeft strikt voor het schema, een tag, een lege omgeving en iets onbekends', () => {
       expect(
         modusUit({
           GITHUB_EVENT_NAME: 'schedule',
@@ -615,7 +623,7 @@ describe('PR-modus', () => {
       expect(uit.uit).toContain('1 afwijking(en)'); // wat er speelt wordt wel gezegd
     });
 
-    it('blijft op main (strikt) rood op precies dezelfde situatie', () => {
+    it('blijft in de geplande run (strikt) rood op precies dezelfde situatie', () => {
       // De tegenproef: zonder deze toets kan "pr is groen" ook betekenen dat de
       // modus nooit rood meer wordt.
       const uit = draai('strikt', paar(alsRapport(WERELD), alsRapport(WERELD)), alsRapport(WERELD));
@@ -745,8 +753,12 @@ describe('PR-modus', () => {
       }
     };
 
-    it('blijft op main en in het schema strikt: een wereldverandering is daar rood', () => {
-      expect(draaiCli({ GITHUB_EVENT_NAME: 'push', GITHUB_REF: 'refs/heads/main' })).toBe(1);
+    it('is op main groen op een wereldverandering: daar meet hij alleen de vorm', () => {
+      expect(draaiCli({ GITHUB_EVENT_NAME: 'push', GITHUB_REF: 'refs/heads/main' })).toBe(0);
+    });
+
+    it('blijft in het schema, handmatig en lokaal strikt: een wereldverandering is daar rood', () => {
+      expect(draaiCli({ GITHUB_EVENT_NAME: 'workflow_dispatch', GITHUB_REF: 'refs/heads/main' })).toBe(1);
       expect(
         draaiCli({
           GITHUB_EVENT_NAME: 'schedule',
@@ -877,5 +889,106 @@ describe('PR-modus', () => {
       expect(uit.ok).toBe(false);
       expect(uit.reden).toContain('ontbreekt');
     });
+  });
+});
+
+/**
+ * QS8-707 — op `main` meet de controle de vorm van het register, niet de wereld.
+ *
+ * ⚠️ Beide richtingen van de aanleiding staan hieronder: een advisory erbij én een
+ *    rij die npm niet meer meldt. Elk is een rapport dat `main` rood maakte
+ *    zonder commit; in modus `vorm` wordt het rapport niet eens opgevraagd.
+ */
+describe('modus vorm — QS8-707', () => {
+  const rij = (over: Record<string, unknown> = {}) => ({
+    ernst: 'high',
+    advisories: [1, 2],
+    reparatie: 'gratis',
+    in_bundel: false,
+    marker: 'detectImageType',
+    reden: 'Een reden die lang genoeg is om iets te zeggen over de meting.',
+    ...over,
+  });
+  const meld = (register: Record<string, unknown>) => {
+    const [echtFout, echtUit] = [console.error, console.log];
+    const fout: string[] = [];
+    console.error = (t: string) => void fout.push(String(t));
+    console.log = () => undefined;
+    try {
+      const code = hoofd(
+        () => {
+          throw new Error('de vormtoets mag npm niet vragen');
+        },
+        { modus: 'vorm', register: register as never },
+      );
+      return { code, fout: fout.join('\n') };
+    } finally {
+      [console.error, console.log] = [echtFout, echtUit];
+    }
+  };
+
+  it('is groen op het echte register, zonder npm te vragen', () => {
+    expect(registerVorm()).toEqual([]);
+    expect(meld(NAGEKEKEN as never).code).toBe(0);
+  });
+
+  it('wordt niet rood om een advisory die erbij komt of een rij die npm niet meer meldt', () => {
+    // De leesfunctie gooit: gebeurt er één aanroep, dan faalt deze test.
+    expect(meld({ 'x-pakket': rij() }).code).toBe(0);
+  });
+
+  it.each([
+    ['een rij zonder marker', { marker: undefined }, 'marker'],
+    ['een te korte marker', { marker: 'ab' }, 'marker'],
+    ['een marker die de pakketnaam is', { marker: 'x-pakket' }, 'pakketnaam'],
+    ['een fout advisory-nummer', { advisories: [1, 'twee'] }, 'advisories'],
+    ['een lege advisorylijst', { advisories: [] }, 'advisories'],
+    ['ongesorteerde advisories', { advisories: [2, 1] }, 'gesorteerd'],
+    ['een onbekende ernst', { ernst: 'ernstig' }, 'ernst'],
+    ['een onbekende reparatie', { reparatie: 'misschien' }, 'reparatie'],
+    ['in_bundel als gok', { in_bundel: 'nee' }, 'in_bundel'],
+    ['een lege reden', { reden: '' }, 'reden'],
+  ])('is rood op %s', (_naam, over, woord) => {
+    const uit = meld({ 'x-pakket': rij(over) });
+    expect(uit.code).toBe(1);
+    expect(uit.fout).toContain("'x-pakket'");
+    expect(uit.fout).toContain(woord);
+  });
+});
+
+/**
+ * QS8-707 — de naad: `vorm` op `main` is alleen eerlijk als er ergens een strikte
+ * run bestaat. Zonder deze toets kan iemand `advisories.yml` leegmaken en blijft
+ * elke toets hierboven groen terwijl de vraag "staat er iets kwetsbaars dat
+ * niemand bekeken heeft" niemand meer bereikt.
+ */
+describe('de geplande run — QS8-707', () => {
+  const yml = readFileSync(
+    join(import.meta.dirname, '..', '..', '.github', 'workflows', 'advisories.yml'),
+    'utf8',
+  );
+  const ci = readFileSync(join(import.meta.dirname, '..', '..', '.github', 'workflows', 'ci.yml'), 'utf8');
+  const stappen = yml.split('\n').filter((r) => !r.trim().startsWith('#'));
+
+  it('draait dagelijks en handmatig, en nooit op een push', () => {
+    expect(stappen.some((r) => /^\s+- cron: '\d+ \d+ \* \* \*'$/.test(r))).toBe(true);
+    expect(stappen.some((r) => r.trim() === 'workflow_dispatch:')).toBe(true);
+    expect(stappen.some((r) => r.trim() === 'push:')).toBe(false);
+  });
+
+  it('draait audit-controle zelf, dus in de modus strikt', () => {
+    expect(stappen.some((r) => r.trim() === 'run: node scripts/audit-controle.mjs')).toBe(true);
+    expect(modusUit({ GITHUB_EVENT_NAME: 'schedule', GITHUB_REF: 'refs/heads/main' })).toBe('strikt');
+    expect(modusUit({ GITHUB_EVENT_NAME: 'workflow_dispatch', GITHUB_REF: 'refs/heads/main' })).toBe('strikt');
+  });
+
+  it('kan niet stil groen worden: geen continue-on-error, geen if, geen flow-stijl on', () => {
+    expect(stappen.some((r) => /continue-on-error|^\s*if:/.test(r))).toBe(false);
+    const aan = stappen.find((r) => /^on:/.test(r));
+    expect(aan, 'on: staat als blok, zodat de trigger regel voor regel te toetsen is').toBe('on:');
+  });
+
+  it('laat ci.yml geen tweede, wekelijkse strikte run dragen', () => {
+    expect(ci.split('\n').filter((r) => !r.trim().startsWith('#')).some((r) => r.includes('cron:'))).toBe(false);
   });
 });

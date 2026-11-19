@@ -7,9 +7,11 @@ import {
   claimBericht,
   claimNaam,
   claimVoor,
+  claimWijze,
   gelandVoor,
   isGelandeVorm,
   nummerUit,
+  werkboomPad,
 } from '../../scripts/claim.mjs';
 
 /**
@@ -346,3 +348,27 @@ describe('claimBericht', () => {
     expect(claimBericht(620, '07:26', false)[1]).not.toContain('Met --vervolg gezet');
   });
 });
+
+describe('claimWijze — waar de claim terechtkomt (QS8-717)', () => {
+  it.each([
+    [{ hier: true, cloud: false, inHoofdmap: true }, 'hier'],
+    [{ hier: true, cloud: true, inHoofdmap: true }, 'hier'],
+    [{ hier: false, cloud: false, inHoofdmap: true }, 'werkboom'],
+    [{ hier: false, cloud: true, inHoofdmap: true }, 'in-plaats'],
+    [{ hier: false, cloud: false, inHoofdmap: false }, 'in-plaats'],
+  ])('%j geeft %s', (stand, wijze) => {
+    expect(claimWijze(stand)).toBe(wijze);
+  });
+});
+
+describe('werkboomPad — naast de repo, nooit erin', () => {
+  it('zet de worktree in <repo>-werk/qs8-<nummer>', () => {
+    expect(werkboomPad('/home/q/GoalBuddies', 717)).toBe('/home/q/GoalBuddies-werk/qs8-717');
+    expect(werkboomPad('/home/q/GoalBuddies/', 717)).toBe('/home/q/GoalBuddies-werk/qs8-717');
+  });
+
+  it('valt nooit binnen de repo zelf', () => {
+    expect(werkboomPad('/home/q/GoalBuddies', 1).startsWith('/home/q/GoalBuddies/')).toBe(false);
+  });
+});
+

@@ -137,7 +137,12 @@ describe('het register in dit script', () => {
     }
   });
 
-  it('staat vandaag op de twee tabellen die door iets anders begrensd zijn', () => {
-    expect(Object.keys(ZONDER_REM).sort()).toEqual(['hero_profiles', 'week_reviews']);
+  it('staat vandaag op de vier tabellen die door iets anders begrensd zijn', () => {
+    expect(Object.keys(ZONDER_REM).sort()).toEqual([
+      'gebruikersvoorkeuren',
+      'groep_demping',
+      'hero_profiles',
+      'week_reviews',
+    ]);
   });
 });

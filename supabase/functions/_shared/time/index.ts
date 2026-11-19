@@ -29,6 +29,9 @@ export { freezeNow, now, ouderDan, unfreezeNow } from './clock.ts';
 
 export { eersteLuideUur, inStilteVenster, verschovenUur } from './stilte.ts';
 
+export type { Periodeband } from './periode.ts';
+export { doelperiodeBand } from './periode.ts';
+
 export {
   closableUserCycle,
   cyclesBetween,
@@ -63,6 +66,7 @@ export {
   isGeldigeTijdzone,
   localDateIn,
   localDateOf,
+  lokaalUur,
   toIsoDate,
   weekdagPeildatum,
   weekdayOf,

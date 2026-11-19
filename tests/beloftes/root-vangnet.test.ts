@@ -67,7 +67,7 @@ function klasse(): NonNullable<typeof geladen>['RootVangnet'] {
  *      -> rood: 'de foutstaat importeert niets wat zelf kan breken'
  *   F  `reportError` uit `componentDidCatch`
  *      -> rood: 'een gevangen fout wordt gemeld'
- *   G  `PadVangnet` binnen `<ThemeProvider>` in `_layout.tsx`
+ *   G  `PadVangnet` binnen `<UiterlijkProvider>` in `_layout.tsx`
  *      -> rood: 'het vangnet staat boven alle providers'
  *   H  `naPadwissel` reset nooit (en: altijd)
  *      -> rood: 'een ander pad haalt de foutstaat weg' (en: 'hetzelfde pad houdt …')
@@ -163,7 +163,7 @@ describe('de aansluiting', () => {
   it('het vangnet staat boven alle providers', () => {
     const vangnet = root.indexOf('<PadVangnet>');
     expect(vangnet).toBeGreaterThan(-1);
-    for (const provider of ['<SafeAreaProvider', '<ThemeProvider', '<SessionProvider', '<ProfielProvider']) {
+    for (const provider of ['<SafeAreaProvider', '<UiterlijkProvider', '<SessionProvider', '<ProfielProvider']) {
       expect(vangnet, `${provider} hoort binnen het vangnet te staan`).toBeLessThan(root.indexOf(provider));
     }
   });

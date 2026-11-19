@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { apparaatTijdzone, isGeldigeTijdzone, localDateIn, utcFromZoned } from './zoned';
+import { apparaatTijdzone, isGeldigeTijdzone, localDateIn, lokaalUur, utcFromZoned } from './zoned';
 
 /**
  * (De tests van `klokTijd` zijn op 03-09-2026 mee verhuisd naar
@@ -199,5 +199,22 @@ describe('utcFromZoned rond een klokverzetting', () => {
         '2026-06-15T12:00:00.000Z',
       );
     });
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Het uur op de wandklok — QS8-749
+// ---------------------------------------------------------------------------
+
+describe('lokaalUur', () => {
+  it('geeft het uur van de tijdzone en niet dat van het toestel', () => {
+    const at = new Date('2026-03-29T21:30:00Z'); // zomertijd is op 29-03 ingegaan: Amsterdam is UTC+2
+    expect(lokaalUur('Europe/Amsterdam', at)).toBe(23);
+    expect(lokaalUur('America/Los_Angeles', at)).toBe(14);
+  });
+
+  it('volgt de wissel naar zomertijd: hetzelfde UTC-uur schuift een uur', () => {
+    expect(lokaalUur('Europe/Amsterdam', new Date('2026-03-28T22:30:00Z'))).toBe(23); // CET
+    expect(lokaalUur('Europe/Amsterdam', new Date('2026-03-29T22:30:00Z'))).toBe(0); // CEST
   });
 });

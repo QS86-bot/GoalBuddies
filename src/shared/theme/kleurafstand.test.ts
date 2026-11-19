@@ -2,14 +2,8 @@ import { describe, expect, it } from 'vitest';
 
 import { contrastRatio, WCAG } from './contrast';
 import { kleinsteAfstand, kleurafstand, KLEURENBLINDHEID, MIN_AFSTAND, simuleer } from './kleurafstand';
-import {
-  categoriekleurenNavy,
-  categoriekleurenNavyLight,
-  navy,
-  navyLight,
-  type Categoriekleuren,
-  type Palette,
-} from './tokens';
+import { type Categoriekleuren, type Palette } from './tokens';
+import { allePaletten } from './uiterlijken';
 
 /**
  * Besluit A55: er passen precies drie categoriekleuren op navy.
@@ -26,12 +20,12 @@ import {
  *    de reden dat `contrast.test.ts` deze vraag niet kon beantwoorden.
  */
 
-const themas: [naam: string, palette: Palette, families: Categoriekleuren][] = [
-  ['navy (donker)', navy, categoriekleurenNavy],
-  ['navy-licht', navyLight, categoriekleurenNavyLight],
-];
+// ⚠️ Over élk palet van élk uiterlijk (QS8-723), met de 3:1 en het aantal van A55 voor élk uiterlijk.
+const themas: [naam: string, palette: Palette, families: Categoriekleuren, tinten: string[]][] = allePaletten().map(
+  ([naam, u]) => [naam, u.colors, u.families, u.verloop ? [...u.verloop.accent] : []],
+);
 
-describe.each(themas)('de categoriekleuren — %s', (_naam, p, families) => {
+describe.each(themas)('de categoriekleuren — %s', (_naam, p, families, tinten) => {
   const kleuren = Object.values(families);
 
   it('zijn met z’n drieën, want vier passen er niet', () => {
@@ -65,7 +59,8 @@ describe.each(themas)('de categoriekleuren — %s', (_naam, p, families) => {
    */
   it('vallen niet samen met een statuskleur', () => {
     for (const kleur of kleuren) {
-      for (const status of [p.green, p.orange, p.red, p.accent]) {
+      // ⚠️ Ook de tinten van het accentverloop (QS8-724): een knop die van amber naar roze loopt, draagt beide.
+      for (const status of [p.green, p.orange, p.red, p.accent, ...tinten]) {
         expect(kleurafstand(kleur, status), `${kleur} vs ${status}`).toBeGreaterThanOrEqual(
           MIN_AFSTAND,
         );

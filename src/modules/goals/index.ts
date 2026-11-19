@@ -18,6 +18,7 @@ export {
   type VerdiendeBadge,
 } from './badges';
 
+export { BADGE_WAARDE, ZELDZAAMHEDEN, type BadgeWaarde, type Zeldzaamheid } from './badge-zeldzaamheid';
 export { fetchBadges } from './badges-api';
 
 export { naEenNieuwDoel, SAMEN } from './doelroute';
@@ -134,6 +135,7 @@ export { weekdoelSchema, type AfrondInvoer, type WeekdoelInvoer } from './weekly
 
 export { verwijderDoel } from './api';
 export { fetchWeekpasStanden, type WeekpasStanden } from './weekpas';
+export { fetchPuntenDezeWeek } from './punten-week';
 
 export { fetchDoelStanden, type DoelStand, type Reeks } from './stand';
 export { doelIdsInBeeld } from './doelen-in-beeld';

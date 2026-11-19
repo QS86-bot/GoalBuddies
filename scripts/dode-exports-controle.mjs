@@ -131,6 +131,7 @@ export const BEKENDE_ONBEREIKBAAR = {
     '⚠️ De rest verdwijnt bij QS8-475, de laatste afnemer. Staat er daarna nóg ' +
     'een, dan is er een afnemer die de module níét gebruikt, en dát is de ' +
     'bevinding — niet deze rij.',
+
 };
 
 /**
@@ -142,6 +143,13 @@ export const BEKENDE_ONBEREIKBAAR = {
  *    hele verschil met een register dat stil kan groeien.
  */
 export const PLAFOND = 3;
+
+// ⚠️ Van 3 naar 14 op 19-11-2026, bij QS8-729: `src/modules/uiterlijk` landde vóór het
+//    scherm Uiterlijk. Weer naar 3 op dezelfde dag, bij QS8-731: het scherm en `UiterlijkProvider` zijn de
+//    aanroepers, en de elf rijen zijn eruit.
+
+// ⚠️ Van 5 naar 3 op 19-11-2026, bij QS8-735: `haalMijnXp()` en `leesXpStand()` hebben hun
+//    afnemer (het Prestatiescherm), en de twee rijen zijn eruit.
 
 // ⚠️ Van 5 naar 3 op 14-09-2026, bij QS8-475: `isTrigger()` bewaakt daar de
 //    triggerwaarde uit de database en `quoteSleutels()` levert de quote onder de

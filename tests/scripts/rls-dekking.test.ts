@@ -1,3 +1,5 @@
+import { readFileSync } from 'node:fs';
+
 import { describe, expect, it } from 'vitest';
 
 // ⚠️ Een `.mjs` zonder eigen typings — zelfde patroon als `letterversies.test.ts`.
@@ -1101,8 +1103,28 @@ describe('herstelWatOpenstond — het oordeel wordt ook uitgevoerd', () => {
       qual: 'true AND (status <> \'archived\'::text)',
       wcheck: '(owner_id = auth.uid()) AND (zichtbaarheid = \'open\'::text)',
     });
-    herstelWatOpenstond(io as never);
+    const code = herstelWatOpenstond({ ...io, stop: (c: number) => (io.stop(c), c) } as never);
     expect(gebeurd).toEqual(['lees', 'stop:1']);
+    // Sinds QS8-704 draagt de weigering de code terug naar `hoofd()`.
+    expect(code).toBe(1);
+  });
+
+  it('zonder weigering geeft hij niets terug, zodat hoofd() doorgaat', () => {
+    const { io } = nep(null);
+    expect(herstelWatOpenstond(io as never)).toBeUndefined();
+  });
+
+  it('hoofd keert terug op de stop, vóór de policies gelezen worden (QS8-704)', () => {
+    // ⚠️ Een brontoets, en dat is eerlijk opgeschreven: `hoofd()` vraagt een
+    //    database en is hier niet te draaien. Wat hij bewaakt is de naad die de
+    //    kop van `herstelWatOpenstond()` noemt: zonder deze `return` valt een
+    //    weigering door naar `psql(VRAAG)` en daarna naar het meten.
+    const bron = readFileSync('scripts/rls-dekking.mjs', 'utf8');
+    const hoofd = bron.slice(bron.indexOf('async function hoofd()'));
+    const stop = hoofd.indexOf('if (gestopt !== undefined) return gestopt;');
+    expect(hoofd).toMatch(/const gestopt = herstelWatOpenstond\(\);/);
+    expect(stop).toBeGreaterThan(-1);
+    expect(stop).toBeLessThan(hoofd.indexOf('psql(VRAAG)'));
   });
 
   it('MUST-FIND: terugzetten gebeurt vóór het weggooien, niet erna', () => {

@@ -50,7 +50,12 @@ module.exports = [
     files: ['src/**/*.ts', 'src/**/*.tsx', 'app/**/*.ts', 'app/**/*.tsx'],
     //    src/shared/time/clock.ts leest alleen NODE_ENV, om freezeNow() in
     //    productie te weigeren. Geen secret, wel process.env.
-    ignores: ['src/lib/env.ts', 'src/shared/time/clock.ts'],
+    //
+    //    src/lib/test-env.ts is de vitest-setup (`setupFiles`) en komt in geen
+    //    enkele bundel: niets onder app/ of src/ importeert hem. Sinds QS8-703
+    //    schrijft hij zelf in process.env, omdat hij het productieslot van de
+    //    RLS-suite uit .env moet weren in plaats van dotenv alles te laten zetten.
+    ignores: ['src/lib/env.ts', 'src/shared/time/clock.ts', 'src/lib/test-env.ts'],
     rules: {
       'no-restricted-properties': [
         'error',
@@ -227,6 +232,19 @@ module.exports = [
               target: './src/modules',
               from: './src/shared/ui',
               message: DATALAAG_GEEN_SHARED_UI,
+            },
+            {
+              // ⚠️ **`src/schermen` is de bovenste laag (QS8-748)** en niets eronder
+              //    mag hem importeren: `useVandaag` leunt op vijf modules, dus één
+              //    import terug is een cykel.
+              target: './src/modules',
+              from: './src/schermen',
+              message: 'src/schermen is de bovenste laag; modules mogen hem niet importeren.',
+            },
+            {
+              target: './src/shared',
+              from: './src/schermen',
+              message: 'src/schermen is de bovenste laag; shared mag hem niet importeren.',
             },
           ],
         },
