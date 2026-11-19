@@ -490,3 +490,43 @@ focusgebieden, minuten, het moment, de valkuil en de heldvragen; het splitsen is
 er bewust **niet** in: dat is een besluit voor Quinten zodra er een gevolg aan hangt.
 
 Totaal in Linear: epic **QS8-721** met **QS8-722 t/m QS8-733** (twaalf kinderen).
+
+## 14. Derde besluitronde (19-11-2026): gemeten feiten, besluiten en nieuwe issues
+
+### 14.1 Correcties op mijn eigen issues (gemeten in de repo)
+- Het type `ThemePreference` heeft de waarden **`systeem | navy | navy-licht`**, niet `donker | licht` zoals ik in QS8-723 en QS8-729 schreef. Gecorrigeerd in Linear.
+- Alleen `@expo/vector-icons` staat in `package.json`. **`expo-linear-gradient` en `react-native-svg` ontbreken**: het verloop van uiterlijk C en de meerkleurige pictogrammen vragen dus twee nieuwe dependencies.
+- `profiles_select` laat leden van een gedeelde groep andermans rij lezen; alleen een kolomgrant (0089) beperkt dat tot `id`, `display_name` en `avatar_url`.
+- Er is **geen Prestatiescherm**; er zijn 5 badges (`first_goal`, `first_milestone`, `first_review`, `streak_4`, `streak_12`), privé en nooit weg.
+
+### 14.2 Besluiten van Quinten
+| Vraag | Keuze | Mijn advies |
+|---|---|---|
+| Bibliotheken | **`expo-linear-gradient` en `react-native-svg` toevoegen** | zelfde |
+| Opslag voorkeur | **Aparte tabel, alleen eigenaar** | zelfde |
+| Prestaties | **Volledig Habit Huddle-achtig met zeldzaamheid en XP** | eigen scherm zonder zeldzaamheid en XP |
+| Scherm Uiterlijk | Stijl en kleurvariant, weergave, live voorvertoning **én dichtheid** | dichtheid weglaten |
+| Aantal badges | **Scherm op de 5, catalogus later** | zelfde |
+| XP-model | **Aparte teller die alleen optelt, privé** | zelfde |
+| Zichtbaarheid niveau/XP | **Alleen Prestatiescherm en eigen profiel** | zelfde |
+| Delen | **In de groep** | nu niet bouwen |
+| Delen: hoe | **Per prestatie, één groep naar eigen keuze** | zelfde |
+| Delen in teamgroepen | **Ook in teamgroepen** | niet |
+| XP-bedragen | **Plafond 20, vloer 10, gemist 0; badge naar zeldzaamheid (10 tot 200)** | zelfde |
+| Niveaus | **Genummerd, 10 niveaus** | zelfde |
+
+### 14.3 Nieuwe issues
+| Id | Titel | Wacht op |
+|---|---|---|
+| QS8-734 | 1.9 XP en niveau (datamodel, RLS, toekenning) | QS8-722 |
+| QS8-735 | 1.8 Prestatiescherm | QS8-723, QS8-730, QS8-734 |
+| QS8-736 | 1.10 Een prestatie delen in één groep | QS8-722, QS8-735 |
+
+QS8-722, QS8-724, QS8-729, QS8-730 en QS8-732 zijn aangevuld met de besluiten hierboven (dependencies, tabel, dichtheid, Prestatiescherm).
+
+### 14.4 Wat nog niet besloten is (open vragen in de issues, niet aangenomen)
+1. XP-drempels per niveau (1 t/m 10) — QS8-734.
+2. Krijgen bestaande gebruikers XP terugwerkend — QS8-734.
+3. Zeldzaamheid van de 5 bestaande badges — QS8-734, QS8-735.
+4. Verdwijnt een gedeeld prestatiebericht bij accountverwijdering — QS8-736.
+5. Delen in teamgroepen: staat uit tot QS8-649 geland is (een gevolg van Quintens keuze, niet van mijn aanname).
