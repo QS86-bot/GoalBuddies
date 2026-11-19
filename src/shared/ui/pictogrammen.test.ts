@@ -137,6 +137,17 @@ describe('vergrendeld is dezelfde vorm in grijs', () => {
   });
 });
 
+/**
+ * Waar `naam` geen letterlijke tekst is, met de reden en de plek die de naam dan toetst.
+ *
+ * ⚠️ Smal bedoeld: een niet-letterlijke `naam` buiten dit register blijft rood, en `betekenis`
+ *    moet altijd letterlijk zijn.
+ */
+export const DYNAMISCHE_NAAM: Readonly<Record<string, string>> = {
+  'src/schermen/prestaties/Prestatiescherm.tsx':
+    'QS8-735: de naam komt uit `BADGE_VORM`; `prestaties-vorm.test.ts` toetst dat elk pictogram daar `prestatie` mag dragen.',
+};
+
 describe('alleen bij positieve dingen — domeinregel 7', () => {
   it('kent geen negatieve betekenis', () => {
     for (const b of BETEKENISSEN) expect(b).not.toMatch(NEGATIEF);
@@ -164,8 +175,12 @@ describe('alleen bij positieve dingen — domeinregel 7', () => {
       for (const m of bron.matchAll(/<Pictogram\b[^>]*>/g)) {
         const naam = /naam=["{']+(\w+)/.exec(m[0])?.[1];
         const betekenis = /betekenis=["{']+(\w+)/.exec(m[0])?.[1];
-        expect(naam, `${f}: naam`).toBeTruthy();
         expect(betekenis, `${f}: betekenis`).toBeTruthy();
+        if (/naam=\{/.test(m[0]) && DYNAMISCHE_NAAM[f] !== undefined) {
+          expect(betekenis, `${f}: betekenis`).toBe('prestatie');
+          continue;
+        }
+        expect(naam, `${f}: naam`).toBeTruthy();
         expect(pictogramToegestaan(naam as never, betekenis as never), `${f}: ${naam}/${betekenis}`).toBe(true);
       }
     }
