@@ -3,7 +3,7 @@ import { Appearance, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { reportError } from '../../lib/observability';
 import { t } from '../i18n';
-import { fontSans, radius, space } from '../theme/tokens';
+import { radius, space } from '../theme/tokens';
 import { themeFor } from '../theme/themes';
 
 import { beginStand, naFout, naHerstel, naPadwissel, type VangnetStand } from './vangnet';
@@ -88,8 +88,8 @@ function RootFoutstaat({ onHerstel }: { readonly onHerstel: () => void }) {
 const styles = StyleSheet.create({
   scherm: { flex: 1, justifyContent: 'center', padding: space.shell },
   blok: { gap: space.blokGap, width: '100%', maxWidth: 620, alignSelf: 'center', alignItems: 'flex-start' },
-  kop: { fontFamily: fontSans, fontSize: 22, fontWeight: '700' },
-  tekst: { fontFamily: fontSans, fontSize: 15, lineHeight: 22 },
+  kop: { fontSize: 22, fontWeight: '700' },
+  tekst: { fontSize: 15, lineHeight: 22 },
   knop: {
     borderWidth: 1,
     borderRadius: radius.base,
@@ -98,5 +98,5 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     paddingHorizontal: space.shell,
   },
-  knopTekst: { fontFamily: fontSans, fontSize: 15, fontWeight: '600' },
+  knopTekst: { fontSize: 15, fontWeight: '600' },
 });

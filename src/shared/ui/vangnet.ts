@@ -2,10 +2,11 @@
  * De beslissingen van het vangnet in de wortel — QS8-710.
  *
  * ⚠️ **Een pure module en niet een stuk van de klasse.** Het vangnet zelf is een
- *    React-klasse (`RootVangnet.tsx`) en die importeert `react-native`, dat een
- *    unit-test in dit project niet kan laden. Wat hier staat is wát er beslist
- *    wordt: wanneer een fout een foutstaat wordt en wanneer die weer weggaat.
- *    De klasse tekent alleen.
+ *    React-klasse (`RootVangnet.tsx`). Wat hier staat is wát er beslist wordt:
+ *    wanneer een fout een foutstaat wordt en wanneer die weer weggaat. De klasse
+ *    verbindt dat met React en tekent. Beide staan onder toets: deze functies
+ *    direct, de klasse via `tests/beloftes/root-vangnet.test.ts` met een
+ *    `react-native`-stub (zoals `src/modules/auth/servermelding.test.ts`).
  *
  * ⚠️ **De belofte is "een fout laat nooit een wit scherm achter, en een
  *    padwissel haalt de foutstaat weer weg".** Het tweede deel is net zo
