@@ -3,6 +3,8 @@ import { join } from 'node:path';
 
 import { describe, expect, it } from 'vitest';
 
+import { zonderCommentaarSql } from '../../scripts/zonder-sql-commentaar.mjs';
+
 import { zonderCommentaar } from './roept-aan';
 
 /**
@@ -24,10 +26,7 @@ const ROOT = join(__dirname, '..', '..');
 const MIGRATIES = join(ROOT, 'supabase', 'migrations');
 
 function sql(naam: string): string {
-  return readFileSync(join(MIGRATIES, naam), 'utf8')
-    .split('\n')
-    .filter((regel) => !regel.trimStart().startsWith('--'))
-    .join('\n');
+  return zonderCommentaarSql(readFileSync(join(MIGRATIES, naam), 'utf8'));
 }
 
 const DEMPING = readdirSync(MIGRATIES).find((n) => n.startsWith('0305_'))!;

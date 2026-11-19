@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
@@ -313,7 +314,7 @@ describe.skipIf(!rlsTestsConfigured)('groep_demping', () => {
         const echt = await demping(carol.db).insert({ user_id: carol.id, group_id: groepA });
         const nep = await demping(carol.db).insert({
           user_id: carol.id,
-          group_id: '00000000-0000-4000-8000-000000000001',
+          group_id: randomUUID(),
         });
         // De insert-policy eist lidmaatschap en weigert vóór het schrijven.
         expect(echt.error?.code).toBe('42501');
