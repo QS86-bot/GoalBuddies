@@ -441,3 +441,44 @@ Strenger gemeten (**slechtste geval over drie soorten kleurenblindheid**, ook te
 - Alles achter de login is **niet te zien**: er is geen Docker-daemon voor de lokale Supabase-stack, en ik gebruik geen account van Quinten.
 - De beschrijving van de schermen uit de Linear-reacties (QS8-705) en de code geeft genoeg om de issues te schrijven; een **vóór-/ná-screenshot hoort bij
   elke bouwsessie** (die heeft de lokale stack wel), en niet bij mij.
+
+## 13. Besluiten van 19-11-2026 (tweede ronde) en de aangemaakte issues
+
+### 13.1 Besluiten
+| Vraag | Keuze van Quinten | Mijn advies |
+|---|---|---|
+| Menu en navigatie | **Eerst QS8-705 laten landen**; breakpoint blijft 900; mijn issue "zijnavigatie vanaf 1024" vervalt en wordt 1.4 (restylen, eventueel inklapbaar) | zelfde |
+| Kleurbotsingen | **Accent bijstellen** tot de bestaande toets (`MIN_AFSTAND` 10) gehaald wordt | zelfde |
+| Emerald naast statusgroen | **Blauwgroen accent** voor A en C-Baai | zelfde |
+| Onboarding (Fase 3) | **"De vragenlijst opnieuw doen"** | Uit het plan halen |
+
+⚠️ Het laatste besluit is **onduidelijk en tegenstrijdig**: de optie zei "het bestaande besluit A56 herzien en de vragenlijst voor de aanmelding
+zetten", terwijl Quinten eerder (vraag C, 19-11) koos voor *"plan bouwen pas ná het account"*. Er is daarom **geen onboarding-issue** aangemaakt
+en het epic noemt dat als open punt.
+
+### 13.2 Gemeten kandidaatwaarden voor de bijgestelde accenten (gewone afstand tot de families gezondheid / softskills / ambitie, drempel 10)
+| Voor | Kandidaat | Afstanden | Opmerking |
+|---|---|---|---|
+| A en C-Baai (blauwgroen) | `#22d3ee` | 23.5 / 34.3 / 27.4; tot `green` gewoon 13.1, slechtste geval 9.2 | haalt de toets; onder 10 alleen in het strengere geval |
+| C-Avondgloed (roze) | `#e879f9` | 44.5 / 14.0 / 37.9 | haalt; slechtste geval tot `goud` 8.5, tot `orange` 9.1 |
+Voorstellen om in 1.1a/1.1b te valideren, geen besluit.
+**Emerald** `#10b981` ligt op 3.2 van het statusgroen `#3fbf8f` (gewone afstand): daarom de bijstelling.
+
+### 13.3 Aangemaakte issues in Linear (project GoalBuddies, team QS8)
+| Id | Titel | Wacht op |
+|---|---|---|
+| **QS8-721** | EPIC Uiterlijk en indeling in de stijl van Habit Huddle | n.v.t. |
+| QS8-722 | 1.0 Besluiten en documenten | n.v.t. |
+| QS8-723 | 1.1a Palet-architectuur en A en B | QS8-722 |
+| QS8-724 | 1.1b C met Baai en Avondgloed | QS8-723 |
+| QS8-725 | 1.1c Bosrand, Pruim en Koraal | QS8-723 |
+| QS8-726 | 1.2 Paginakop | QS8-723, QS8-705 |
+| QS8-727 | 1.3 Actiekaart met afvinkcirkel | QS8-723 |
+| QS8-728 | 1.4 Menu restylen en inklapbaar | QS8-723, QS8-705 |
+| QS8-729 | 1.5a Uiterlijkvoorkeur op het account | QS8-722 |
+| QS8-730 | 1.6a Pictogrammen (`CategorieMerk` uitbreiden) | QS8-723 |
+| QS8-731 | 1.5b Scherm Uiterlijk | QS8-723, QS8-729 |
+| QS8-732 | 1.6b Emoji op prestaties | QS8-722, QS8-730 |
+
+Vóór het aanmaken is gezocht op duplicaten en zijn de reacties van QS8-705 en QS8-252 gelezen. Er is **niets geclaimd, niets gebouwd en geen
+bestaand issue gewijzigd**.
