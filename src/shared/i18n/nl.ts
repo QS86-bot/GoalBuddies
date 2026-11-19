@@ -2254,6 +2254,9 @@ export const nl = {
   //    niet welke weken je gemist hebt" lezen terwijl een pauze die je áchteraf
   //    aankondigt precies dat verraadt. Zie
   //    `docs/decisions/002-domeinregel7-oppervlakken.md` rij 21 en §4a.
+  // ⚠️ QS8-753: deze zin klopt na de RLS-wijziging (deel A) niet meer volledig, en
+  //    blijft op besluit van Quinten (19-11-2026) ongewijzigd staan. Pas hem niet
+  //    aan als bijvangst; dat is een eigen besluit.
   'adempauze.groep_ziet':
     'Je groep ziet dát je een adempauze hebt en van wanneer tot wanneer, ook als je hem over ' +
     'weken legt die al voorbij zijn. Ze zien niet welke weekdoelen je wel of niet gehaald ' +
@@ -2279,6 +2282,25 @@ export const nl = {
     'wordt teruggedraaid.',
   'adempauze.inplannen': 'Inplannen',
   'adempauze.inplannen_knop': 'Adempauze inplannen',
+  // ⚠️ QS8-753 (besluit Quinten 19-11-2026): bij het inplannen mag het lid zijn groep
+  //    laten weten dat hij rust neemt. Standaard uit, nooit voorgeselecteerd, de
+  //    tekst is aanpasbaar of te wissen, en het gaat pas weg na 'Inplannen'. Het is
+  //    een gewoon chatbericht van het lid; geen systeemtype en geen migratie.
+  'adempauze.bericht_vraag': 'Wil je je groep laten weten dat je even rust neemt?',
+  'adempauze.bericht_nee': 'Nee',
+  'adempauze.bericht_ja': 'Ja, stuur een bericht',
+  'adempauze.bericht_label': 'Je bericht',
+  'adempauze.bericht_hint':
+    'Pas het gerust aan of wis het. Het gaat als jouw bericht naar de groepschat, pas als je op Inplannen drukt. Laat je het leeg, dan gaat er niets naar de groep.',
+  'adempauze.bericht_voorstel': 'Ik neem even een adempauze. Ik ben er daarna weer bij.',
+  'adempauze.bericht_welke_groep': 'Naar welke groep?',
+  'adempauze.bericht_gaat_naar': 'Gaat naar {groep}.',
+  'adempauze.bericht_kies_eerst': 'Kies eerst naar welke groep je bericht gaat, of kies Nee.',
+  'adempauze.bericht_verstuurd': 'Je adempauze staat gepland en je bericht staat in de groep.',
+  'adempauze.bericht_mislukt':
+    'Je adempauze staat gepland, maar je bericht is niet verstuurd. {reden}',
+  'adempauze.bericht_opnieuw': 'Bericht opnieuw versturen',
+  'adempauze.bericht_laat_maar': 'Laat maar',
 
   'weggooien.label': 'Doel {titel} weggooien',
   'weggooien.knop': 'Per ongeluk aangemaakt? Weggooien',

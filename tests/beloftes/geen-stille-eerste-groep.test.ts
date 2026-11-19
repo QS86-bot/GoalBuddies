@@ -274,11 +274,12 @@ describe('het doelscherm', () => {
    *    (code-critic, 05-11-2026): `enigeOfGekozen(groepen.slice(0, 1), …)` is één
    *    kandidaat en dus altijd de eerste, en dat ziet een telling van bindingen
    *    niet. In de volgorde van het bestand: de vervangende getuige, de
-   *    begunstigde groep, de begunstigde persoon, de hulpvraag.
+   *    begunstigde groep, de begunstigde persoon, de hulpvraag, en sinds QS8-753 de
+   *    groep van het adempauzebericht (`useAdempauzeBericht`).
    */
   it('geeft enigeOfGekozen() de hele lijst en de rauwe keuze', () => {
-    expect(argumentenVan(inhoud, 'enigeOfGekozen', 0)).toEqual(['mensen', 'groepen', 'mensen', 'groepen']);
-    expect(argumentenVan(inhoud, 'enigeOfGekozen', 1)).toEqual(['gekozen', 'groepId', 'gekozenPersoon', 'groepId']);
+    expect(argumentenVan(inhoud, 'enigeOfGekozen', 0)).toEqual(['mensen', 'groepen', 'mensen', 'groepen', 'groepen']);
+    expect(argumentenVan(inhoud, 'enigeOfGekozen', 1)).toEqual(['gekozen', 'groepId', 'gekozenPersoon', 'groepId', 'groepId']);
   });
 
   it('bindt de ontvanger van de hulpvraag, de begunstigde van de straf en de vervangende getuige aan de keuze', () => {
@@ -289,7 +290,9 @@ describe('het doelscherm', () => {
   });
 
   it('stuurt de hulpvraag naar de gebonden groep', () => {
-    expect(argumentenVan(inhoud, 'stuurBericht', 0)).toEqual(['gekozenGroep.group_id']);
+    // De tweede aanroep is het adempauzebericht (QS8-753): `groupId` is daar de
+    // `keuze.groupId` die `useAdempauzeBericht` uit `enigeOfGekozen()` haalt.
+    expect(argumentenVan(inhoud, 'stuurBericht', 0)).toEqual(['gekozenGroep.group_id', 'groupId']);
   });
 
   /**

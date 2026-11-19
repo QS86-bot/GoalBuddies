@@ -1712,6 +1712,8 @@ export const en: Record<Sleutel, string> = {
     'Going on holiday, ill, or just a strange month? Then pause those weeks. They cost you no ' +
     'point and your streak stays where it is; it just does not grow. You pick how long, you may ' +
     'have several side by side, and a week that is already over is allowed too.',
+  // ⚠️ QS8-753: this sentence no longer fully holds after the RLS change (part A) and stays
+  //    unchanged by decision of Quinten (19-11-2026). Do not change it as a side effect.
   'adempauze.groep_ziet':
     'Your group sees that you have a breather and from when to when, including one you place ' +
     'over weeks that are already past. They do not see which weekly goals you did or did not ' +
@@ -1734,6 +1736,25 @@ export const en: Record<Sleutel, string> = {
     'minus point is reversed.',
   'adempauze.inplannen': 'Schedule',
   'adempauze.inplannen_knop': 'Schedule a breather',
+  // QS8-753 (decision Quinten 19-11-2026): when scheduling, the member may tell their
+  // group they are resting. Off by default, never preselected, the text can be edited
+  // or cleared, and nothing is sent until 'Schedule'. A plain chat message from the
+  // member; no system type and no migration.
+  'adempauze.bericht_vraag': 'Do you want to let your group know you are taking a rest?',
+  'adempauze.bericht_nee': 'No',
+  'adempauze.bericht_ja': 'Yes, send a message',
+  'adempauze.bericht_label': 'Your message',
+  'adempauze.bericht_hint':
+    'Feel free to change or clear it. It goes to the group chat as your own message, and only when you press Schedule. If you leave it empty, nothing goes to the group.',
+  'adempauze.bericht_voorstel': 'I am taking a short breather. I will be back with you after.',
+  'adempauze.bericht_welke_groep': 'To which group?',
+  'adempauze.bericht_gaat_naar': 'Goes to {groep}.',
+  'adempauze.bericht_kies_eerst': 'First choose which group your message goes to, or choose No.',
+  'adempauze.bericht_verstuurd': 'Your breather is scheduled and your message is in the group.',
+  'adempauze.bericht_mislukt':
+    'Your breather is scheduled, but your message was not sent. {reden}',
+  'adempauze.bericht_opnieuw': 'Send message again',
+  'adempauze.bericht_laat_maar': 'Never mind',
 
   'weggooien.label': 'Delete goal {titel}',
   'weggooien.knop': 'Created by accident? Delete it',

@@ -103,6 +103,9 @@ export {
 
 export { HULPVRAAG_MAX, hulpvraagVoorstel } from './hulpvraag';
 
+export { AdempauzeBericht, type AdempauzeGroep } from './AdempauzeBericht';
+export { adempauzeBerichtVoorstel } from './adempauze-bericht';
+
 export {
   risicoLabel,
   risicoTeken,

@@ -37,6 +37,7 @@ import {
 import {
   annuleerAdempauze,
   ARGUMENT_MAX,
+  berichtGroepen,
   ARGUMENT_MIN,
   categorieLabels,
   fetchAdempauzes,
@@ -54,6 +55,7 @@ import {
   leesRitme,
   maakMijlpaal,
   maakWeekdoel,
+  pauzeMetBericht,
   periodeUitDatums,
   planAdempauze,
   RITMES,
@@ -62,6 +64,7 @@ import {
   trekDeadlineVerzoekIn,
   stelWeekplanstapBij,
   startWeekplanstapNu,
+  stuurLos,
   verplaats,
   verwijderDoel,
   verwijderMijlpaal,
@@ -74,6 +77,8 @@ import {
   zetStreefdatum,
   type Adempauze,
   type AdempauzePeriode,
+  type BerichtGroep,
+  type BerichtUitkomst,
   type Categorie,
   type DeadlineVerzoek,
   type DoelMetVoortgang,
@@ -97,6 +102,8 @@ import {
   type Weekday,
 } from '@/shared/time';
 import {
+  AdempauzeBericht,
+  adempauzeBerichtVoorstel,
   AsyncView,
   bevestigingen,
   Bevestiging,
@@ -335,6 +342,8 @@ export default function DoelDetail() {
               doel={d}
               klok={klok}
               gedeeld={doelGroepen.length > 0}
+              berichtGroepen={userId ? berichtGroepen(doelGroepen, groepen) : []}
+              userId={userId}
               onKlaar={herlaad}
             />
 
@@ -2829,18 +2838,33 @@ function WeekdoelToevoegen({
  *    loopt via jou. De statuskolom per week is sinds migratie 0047 juist dicht.
  *    De copy zegt dat met zoveel woorden, want anders moet de gebruiker raden
  *    hoeveel hij deelt.
+ *
+ * ⚠️ **Sinds QS8-753 een optionele tweede stap: je groep laten weten dat je rust
+ *    neemt** (besluit Quinten 19-11-2026). Standaard uit en nooit voorgeselecteerd;
+ *    het bericht is een gewoon chatbericht van jou via `stuurBericht`, geen
+ *    systeemtype. De volgorde en de onafhankelijkheid zitten in `pauzeMetBericht()`:
+ *    eerst plannen, mislukt dat dan gaat er niets weg, en mislukt het bericht dan
+ *    blijft de pauze staan met een eigen melding en een knop die alléén het bericht
+ *    opnieuw verstuurt. `onKlaar()` (het herladen) volgt pas ná de berichtstap, en
+ *    de berichtfout staat in de state van dit component en niet in het formulier,
+ *    zodat hij een herlaad overleeft.
  */
 function Adempauzes({
   doel,
   klok,
   gedeeld,
+  berichtGroepen: groepen,
+  userId,
   onKlaar,
 }: {
   readonly doel: DoelMetVoortgang;
   readonly klok: UserClock | null;
   readonly gedeeld: boolean;
+  readonly berichtGroepen: readonly BerichtGroep[];
+  readonly userId: string | null;
   readonly onKlaar: () => void;
 }) {
+  const bericht = useAdempauzeBericht(groepen, userId);
   const [pauzes, setPauzes] = useState<readonly Adempauze[]>([]);
   const [open, setOpen] = useState(false);
   const [vanaf, setVanaf] = useState('');
@@ -2876,14 +2900,19 @@ function Adempauzes({
     setBezig(true);
     setFout(null);
 
-    const uitkomst = await planAdempauze(doel.id, periode.waarde.start, periode.waarde.eind);
+    const { start, eind } = periode.waarde;
+    const uitkomst = await pauzeMetBericht(
+      { plan: () => planAdempauze(doel.id, start, eind), stuur: bericht.stuur },
+      bericht.keuze,
+    );
 
-    if (!uitkomst.ok) {
-      setFout(uitkomst.melding);
+    if (!uitkomst.pauze.ok) {
+      setFout(uitkomst.pauze.melding);
       setBezig(false);
       return;
     }
 
+    bericht.verwerk(uitkomst.bericht);
     setBezig(false);
     setOpen(false);
     setVanaf('');
@@ -2956,6 +2985,8 @@ function Adempauzes({
 
       {fout === null ? null : <Caption danger>{fout}</Caption>}
 
+      <BerichtNa bericht={bericht} groepen={groepen} />
+
       {open ? (
         <View style={styles.pauzeForm}>
           <Field
@@ -2980,11 +3011,25 @@ function Adempauzes({
 
           <Afronding periode={periode} vanaf={vanaf} vandaag={vandaag} />
 
+          <AdempauzeBericht
+            aan={bericht.aan}
+            onAan={bericht.zetAan}
+            tekst={bericht.tekst}
+            onTekst={bericht.zetTekst}
+            groepen={groepen}
+            gekozen={bericht.keuze.groupId}
+            onKies={bericht.kies}
+            fout={null}
+            bezig={bezig}
+            onOpnieuw={bericht.opnieuw}
+            onSluit={bericht.sluit}
+          />
+
           <View style={styles.knoppen}>
             <Button
               variant="primair"
               busy={bezig}
-              disabled={!periode.ok}
+              disabled={!periode.ok || bericht.wachtOpGroep}
               onPress={() => void plan()}
             >
               {t('adempauze.inplannen')}
@@ -3005,6 +3050,93 @@ function Adempauzes({
         <Button onPress={() => setOpen(true)}>{t('adempauze.inplannen_knop')}</Button>
       )}
     </Card>
+  );
+}
+
+/**
+ * De berichtstap van de adempauze: wat de gebruiker koos en wat er na het plannen
+ * met dat bericht gebeurde — QS8-753.
+ *
+ * ⚠️ **`groepId` is `''` tot de gebruiker er een aanwijst, behalve bij precies één
+ *    groep** — `enigeOfGekozen()`, dezelfde regel als de hulpvraag. Bij twee of meer
+ *    is er geen standaard en blijft "Inplannen" uit zolang het bericht aan staat.
+ */
+function useAdempauzeBericht(groepen: readonly BerichtGroep[], userId: string | null) {
+  const [aan, setAan] = useState(false);
+  const [tekst, setTekst] = useState('');
+  const [groepId, setGroepId] = useState('');
+  const [bezig, setBezig] = useState(false);
+  const [open, setOpen] = useState<{
+    readonly groupId: string;
+    readonly tekst: string;
+    readonly uitkomst: BerichtUitkomst;
+  } | null>(null);
+
+  const gekozen = enigeOfGekozen(groepen, groepId, (g) => g.id)?.id ?? '';
+  const stuur = (groupId: string, bericht: string) =>
+    userId === null
+      ? Promise.resolve({ ok: false as const, melding: t('adempauze.inplannen_mislukt') })
+      : stuurBericht(groupId, userId, bericht);
+
+  return {
+    aan,
+    tekst,
+    stuur,
+    keuze: { aan, groupId: gekozen, tekst },
+    wachtOpGroep: aan && gekozen === '',
+    open,
+    bezig,
+    zetAan: (nieuw: boolean) => {
+      setAan(nieuw);
+      if (nieuw && tekst === '') setTekst(adempauzeBerichtVoorstel());
+    },
+    zetTekst: setTekst,
+    kies: setGroepId,
+    verwerk: (uitkomst: BerichtUitkomst) => {
+      setOpen(uitkomst === 'niet_gevraagd' ? null : { groupId: gekozen, tekst: tekst.trim(), uitkomst });
+      setAan(false);
+      setTekst('');
+      setGroepId('');
+    },
+    opnieuw: () => {
+      if (open === null) return;
+      setBezig(true);
+      void stuurLos({ stuur }, open).then((uitkomst) => {
+        setOpen({ ...open, uitkomst });
+        setBezig(false);
+      });
+    },
+    sluit: () => setOpen(null),
+  };
+}
+
+/** Wat er na het inplannen over het bericht te melden valt: gelukt, of mislukt mét knop. */
+function BerichtNa({
+  bericht,
+  groepen,
+}: {
+  readonly bericht: ReturnType<typeof useAdempauzeBericht>;
+  readonly groepen: readonly BerichtGroep[];
+}) {
+  const na = bericht.open?.uitkomst;
+
+  if (na === 'verstuurd') return <Caption>{t('adempauze.bericht_verstuurd')}</Caption>;
+  if (typeof na !== 'object') return null;
+
+  return (
+    <AdempauzeBericht
+      aan={false}
+      onAan={bericht.zetAan}
+      tekst=""
+      onTekst={bericht.zetTekst}
+      groepen={groepen}
+      gekozen=""
+      onKies={bericht.kies}
+      fout={t('adempauze.bericht_mislukt', { reden: na.mislukt })}
+      bezig={bericht.bezig}
+      onOpnieuw={bericht.opnieuw}
+      onSluit={bericht.sluit}
+    />
   );
 }
 
