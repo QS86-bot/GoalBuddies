@@ -42,6 +42,7 @@ export { Weekbalken, type WeekbalkRegel } from './Weekbalken';
 export { CATEGORIEMERKEN, categoriemerk, type Categoriemerk, type Familie } from './merken';
 export { GegroepeerdeKeuze, type Keuzegroep } from './GegroepeerdeKeuze';
 export { Deelknop } from './Deelknop';
+export { Groepskaart } from './Groepskaart';
 export { BEWIJSFOTO_TEKSTEN, CHATFOTO_TEKSTEN, Foto, type FotoProps } from './Foto';
 export { CHATDOC_TEKSTEN, Document, type DocumentProps } from './Document';
 export { DoelStandKaart } from './DoelStandKaart';
