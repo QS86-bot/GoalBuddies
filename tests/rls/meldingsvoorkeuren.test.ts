@@ -63,9 +63,10 @@ const beschikbaar = stackBeschikbaarOfFaal(
 describe.skipIf(!beschikbaar)('meldingsvoorkeuren', () => {
 
   it('heeft voor elke dempbare soort een kolom op `profiles`', () => {
-    // ⚠️ Vier kolommen voor vijf dempbare soorten, en dat verschil is de
-    //    gedeelde schakelaar van QS8-321 en geen ontbrekende kolom.
-    expect(NOTIFY_KOLOMMEN.length, 'het aantal kolommen, niet het aantal soorten').toBe(4);
+    // ⚠️ Vijf kolommen voor zes dempbare soorten, en dat verschil is de
+    //    gedeelde schakelaar van QS8-321 en geen ontbrekende kolom. De vijfde
+    //    kolom is `notify_group_digest` (QS8-755, opt-in, standaard false).
+    expect(NOTIFY_KOLOMMEN.length, 'het aantal kolommen, niet het aantal soorten').toBe(5);
     const kolommen = kolommenVan('profiles');
     for (const kolom of NOTIFY_KOLOMMEN) {
       expect(kolommen).toContain(kolom);
