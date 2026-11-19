@@ -81,6 +81,11 @@ export const ZONDER_CI = {
   'bundel:controle':
     'Vraagt het npm-register naar de gepubliceerde bundelgroottes. Een ' +
     'netwerkaanroep maakt de uitslag afhankelijk van bereikbaarheid.',
+  'prerender:controle':
+    'Leest de geëxporteerde HTML in `dist/` en CI bouwt niet: `expo export` kost ' +
+    'minuten. Zonder `dist/` meldt hij OVERGESLAGEN en telt de poort hem als ' +
+    'ongemeten. Een exportstap in `ci.yml` is een wijziging aan `.github/` en dus ' +
+    'een besluit van Quinten (QS8-742).',
   'realtime-identiteit:controle':
     'Leest `realtime_bewaking()` van het échte project om te zien of een ' +
     'realtime-tabel REPLICA IDENTITY FULL draagt. Vraagt de productiesleutel, ' +
