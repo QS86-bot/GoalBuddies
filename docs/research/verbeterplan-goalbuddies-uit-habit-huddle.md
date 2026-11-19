@@ -172,6 +172,10 @@ niet dezelfde bestanden raken.
 
 ## 9. Besluiten voor Quinten
 
+> **19-11-2026: Quinten koos A, B, C en D zoals geadviseerd.** Volgorde Fase 0, dan 1 en 2;
+> onze navy-tokens blijven; geen plan bouwen vóór aanmelden; de helden blijven merkdrager.
+> De tekst hieronder is de onderbouwing van die keuzes.
+
 **A. Volgorde.** *Advies:* Fase 0, dan 1 en 2. Dat levert het snelst het gevoel op dat je zoekt, zonder
 risico voor de domeinregels. Fase 3 en 4 daarna.
 
