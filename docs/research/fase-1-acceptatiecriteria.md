@@ -452,7 +452,7 @@ Strenger gemeten (**slechtste geval over drie soorten kleurenblindheid**, ook te
 | Emerald naast statusgroen | **Blauwgroen accent** voor A en C-Baai | zelfde |
 | Onboarding (Fase 3) | **"De vragenlijst opnieuw doen"** | Uit het plan halen |
 
-⚠️ Het laatste besluit is **onduidelijk en tegenstrijdig**: de optie zei "het bestaande besluit A56 herzien en de vragenlijst voor de aanmelding
+⚠️ *(Opgelost, zie §13.4.)* Het laatste besluit was **onduidelijk en tegenstrijdig**: de optie zei "het bestaande besluit A56 herzien en de vragenlijst voor de aanmelding
 zetten", terwijl Quinten eerder (vraag C, 19-11) koos voor *"plan bouwen pas ná het account"*. Er is daarom **geen onboarding-issue** aangemaakt
 en het epic noemt dat als open punt.
 
@@ -482,3 +482,11 @@ Voorstellen om in 1.1a/1.1b te valideren, geen besluit.
 
 Vóór het aanmaken is gezocht op duplicaten en zijn de reacties van QS8-705 en QS8-252 gelezen. Er is **niets geclaimd, niets gebouwd en geen
 bestaand issue gewijzigd**.
+
+### 13.4 Onboarding verduidelijkt (Quinten, 19-11-2026)
+Quinten koos na doorvragen: **vragenlijst herontwerpen, ná het account** (mijn advies). A56 blijft staan; vraag C (plan pas ná het account) ook.
+Aangemaakt: **QS8-733 (1.7)**, wacht op QS8-723, QS8-726 en QS8-727. Gelezen in de repo: `app/onboarding/vragenlijst.tsx` telt 795 regels en bevat de
+focusgebieden, minuten, het moment, de valkuil en de heldvragen; het splitsen is onderdeel van het issue (regel 15). Een **belofte ondertekenen** staat
+er bewust **niet** in: dat is een besluit voor Quinten zodra er een gevolg aan hangt.
+
+Totaal in Linear: epic **QS8-721** met **QS8-722 t/m QS8-733** (twaalf kinderen).
