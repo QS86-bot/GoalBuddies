@@ -74,6 +74,32 @@ const HUISSTIJL = new Set([
 ]);
 
 /**
+ * De benoemde uitzonderingen — QS8-732 (besluit QS8-722, 19-11-2026).
+ *
+ * ⚠️ **Een uitzondering is één bestand, met een reden en met de tekens die er mogen staan.** Nooit een map:
+ *    een map verruimt stilzwijgend elk bestand dat er later bij komt, en dat is hoe een standaard verschuift
+ *    zonder dat iemand het besloot. Een ander teken in het toegestane bestand is rood, een emoji in een ander
+ *    bestand is rood. De reacties (A24) komen uit gebruikerstekst en staan hier niet.
+ *
+ * @type {Readonly<Record<string, {reden: string, tekens: readonly string[]}>>}
+ */
+export const UITZONDERINGEN = {
+  'src/schermen/prestaties/prestatie-emoji.ts': {
+    reden: 'QS8-732: emoji op de prestatiekaart, alleen positieve tekens, uit te zetten in het scherm Uiterlijk',
+    tekens: ['🏅', '⭐', '🛡', '🔥', '🏆'],
+  },
+};
+
+/** Een uitzondering is een bestandspad, geen map en geen patroon. Anders werpt de controle. */
+export function controleerUitzonderingen(register = UITZONDERINGEN) {
+  for (const pad of Object.keys(register)) {
+    if (!/\.tsx?$/.test(pad) || /[*?]/.test(pad)) {
+      throw new Error(`emoji-controle: '${pad}' is geen bestand; een uitzondering geldt nooit voor een map.`);
+    }
+  }
+}
+
+/**
  * Een verse regex per aanroep.
  *
  * ⚠️ **Geen gedeelde `/g`-constante.** `lastIndex` is statefull tussen
@@ -108,13 +134,16 @@ export function teltMee(pad, regel) {
  * De treffers in een lijst bronnen. Los te voeden, zodat de controle te ijken is.
  *
  * @param {readonly {pad: string, bron: string}[]} bronnen
+ * @param {typeof UITZONDERINGEN} [register] de benoemde uitzonderingen; los te voeden voor de ijking
  */
-export function treffersIn(bronnen) {
+export function treffersIn(bronnen, register = UITZONDERINGEN) {
+  controleerUitzonderingen(register);
   const gevonden = [];
   for (const { pad, bron } of bronnen) {
+    const toegestaan = new Set(register[pad]?.tekens ?? []);
     bron.split('\n').forEach((regel, i) => {
       if (!teltMee(pad, regel)) return;
-      const tekens = zoekEmoji(regel);
+      const tekens = zoekEmoji(regel).filter((teken) => !toegestaan.has(teken));
       if (tekens.length > 0) gevonden.push({ pad, regel: i + 1, tekens, tekst: regel.trim() });
     });
   }
@@ -155,8 +184,8 @@ export function hoofd() {
   }
   console.error(
     '\nDe app gebruikt zelf geen emoji in tekst (CLAUDE.md, 22-08-2026). De gebruiker\n' +
-      'mag ze overal typen; reacties op een bericht zijn de enige plek waar de app ze\n' +
-      'zelf toont. Zie QS8-111.',
+      'mag ze overal typen; reacties op een bericht en de prestatiekaart (één bestand,\n' +
+      'zie UITZONDERINGEN) zijn de enige plekken waar de app ze zelf toont. Zie QS8-111 en QS8-732.',
   );
   return 1;
 }

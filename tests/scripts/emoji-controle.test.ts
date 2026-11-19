@@ -27,7 +27,7 @@
  */
 import { describe, expect, it } from 'vitest';
 
-import { teltMee, treffersIn, zoekEmoji } from '../../scripts/emoji-controle.mjs';
+import { controleerUitzonderingen, teltMee, treffersIn, UITZONDERINGEN, zoekEmoji } from '../../scripts/emoji-controle.mjs';
 
 const vindt = (teken: string): boolean => (zoekEmoji(teken) as string[]).length > 0;
 
@@ -160,5 +160,42 @@ describe('de twee grendels samen', () => {
     ]) as unknown[];
 
     expect(treffers).toEqual([]);
+  });
+});
+
+describe('G3 — de benoemde uitzondering van QS8-732', () => {
+  const TOEGESTAAN = 'src/schermen/prestaties/prestatie-emoji.ts';
+  const register = { [TOEGESTAAN]: { reden: 'test', tekens: ['🔥'] } };
+
+  it('laat het toegestane bestand met zijn eigen tekens met rust', () => {
+    expect(treffersIn([{ pad: TOEGESTAAN, bron: "a: '🔥',\n" }], register)).toEqual([]);
+  });
+
+  it('meldt dezelfde emoji in een ander bestand, ook in dezelfde map', () => {
+    const treffers = treffersIn(
+      [{ pad: 'src/schermen/prestaties/Prestatiescherm.tsx', bron: "const x = '🔥';\n" }],
+      register,
+    ) as unknown[];
+    expect(treffers).toHaveLength(1);
+  });
+
+  it('meldt een ánder teken in het toegestane bestand: de lijst groeit niet stilzwijgend', () => {
+    const treffers = treffersIn([{ pad: TOEGESTAAN, bron: "a: '🔥',\nb: '😀',\n" }], register) as {
+      tekens: string[];
+    }[];
+    expect(treffers).toHaveLength(1);
+    expect(treffers[0]?.tekens).toEqual(['😀']);
+  });
+
+  it('weigert een uitzondering voor een map of een patroon', () => {
+    expect(() => controleerUitzonderingen({ 'src/schermen/prestaties/': { reden: 'x', tekens: [] } })).toThrow();
+    expect(() => controleerUitzonderingen({ 'src/schermen/**/*.ts': { reden: 'x', tekens: [] } })).toThrow();
+    expect(() => treffersIn([], { 'src/schermen': { reden: 'x', tekens: [] } })).toThrow();
+  });
+
+  it('het echte register: één bestand, met reden, en alleen positieve tekens', () => {
+    expect(Object.keys(UITZONDERINGEN)).toEqual([TOEGESTAAN]);
+    expect(UITZONDERINGEN[TOEGESTAAN]?.reden).toMatch(/QS8-732/);
+    expect(UITZONDERINGEN[TOEGESTAAN]?.tekens).toEqual(['🏅', '⭐', '🛡', '🔥', '🏆']);
   });
 });
