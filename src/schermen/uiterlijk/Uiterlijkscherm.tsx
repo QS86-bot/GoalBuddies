@@ -72,6 +72,7 @@ function WeergaveKaart({ voorkeur, kies }: KaartProps) {
       />
       <Choice
         label={t('uiterlijk.dichtheid_kop')}
+        hint={t('uiterlijk.dichtheid_uitleg')}
         opties={dichtheidOpties()}
         waarde={voorkeur.dichtheid}
         onKies={(dichtheid) => kies({ dichtheid })}

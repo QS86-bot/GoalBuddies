@@ -49,3 +49,11 @@ export function emojiOpties(): readonly Optie<'aan' | 'uit'>[] {
     { waarde: 'uit', label: t('uiterlijk.emoji_uit') },
   ];
 }
+
+/** De naam die de gebruiker kent bij een uiterlijk: nooit het interne id. */
+export function uiterlijkNaam(id: string): string {
+  if (id === 'A') return t('uiterlijk.stijl_a');
+  if (id === 'B') return t('uiterlijk.stijl_b');
+  const variant = variantOpties().find((o) => `C-${o.waarde}` === id);
+  return variant ? `${t('uiterlijk.stijl_c')}, ${variant.label}` : t('uiterlijk.stijl_c');
+}

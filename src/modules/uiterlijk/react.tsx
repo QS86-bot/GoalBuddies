@@ -2,6 +2,7 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useRef, use
 
 import { ThemeProvider } from '../../shared/theme';
 
+import { loopKeten } from './keten';
 import { kiesVoorkeur, leesLokaleStart, verzoenMetAccount } from './opstarten';
 import { normaliseerVoorkeur, STANDAARD_VOORKEUR, type Uiterlijkvoorkeur } from './voorkeur';
 
@@ -78,16 +79,15 @@ function useLezingEnVerzoening({ zet, aantalKeuzes }: Toestand, userId: string |
   useEffect(() => {
     let levend = true;
     const teller = aantalKeuzes();
-    const nogGeldig = () => levend && aantalKeuzes() === teller;
-    const keten = async () => {
-      const start = await leesLokaleStart().catch(() => null);
-      if (nogGeldig() && start !== null) zet(start.voorkeur);
-      if (levend) setReady(true);
-      if (userId === null) return;
-      const uitslag = await verzoenMetAccount(userId);
-      if (nogGeldig()) zet(uitslag.voorkeur);
-    };
-    keten().catch(() => console.warn('Uiterlijkvoorkeur kon niet gelezen of verzoend worden.'));
+    loopKeten({
+      userId,
+      leesStart: leesLokaleStart,
+      verzoen: verzoenMetAccount,
+      zet,
+      nogGeldig: () => levend && aantalKeuzes() === teller,
+      levend: () => levend,
+      klaar: () => setReady(true),
+    }).catch(() => console.warn('Uiterlijkvoorkeur kon niet gelezen of verzoend worden.'));
     return () => {
       levend = false;
     };

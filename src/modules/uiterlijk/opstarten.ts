@@ -137,7 +137,12 @@ async function voerVerzoeningUit(userId: string): Promise<Verzoening> {
     return uitslag;
   }
 
-  const gedaan = await bewaarAccountVoorkeur(userId, uitslag.voorkeur, uitslag.basis);
+  const gedaan = await bewaarAccountVoorkeur(userId, uitslag.voorkeur, uitslag.basis).catch(
+    (fout: unknown) => {
+      reportError(fout, 'uiterlijk.opslag.account', {});
+      return { ok: false as const, reden: 'netwerk' as const };
+    },
+  );
   await bewaarLokaal({
     userId,
     voorkeur: uitslag.voorkeur,

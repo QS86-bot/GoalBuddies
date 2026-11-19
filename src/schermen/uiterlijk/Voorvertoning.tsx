@@ -5,6 +5,8 @@ import { radius, useTheme, type Theme } from '@/shared/theme';
 import { Caption, Subheading } from '@/shared/ui';
 import { Verloop } from '@/shared/ui/Verloop';
 
+import { uiterlijkNaam } from './keuzes';
+
 /**
  * De voorvertoning van het scherm Uiterlijk — QS8-731.
  *
@@ -35,7 +37,7 @@ export function Voorvertoning() {
       <View style={[styles.knop, { backgroundColor: c.knop, paddingVertical: a.s, paddingHorizontal: a.l }]}>
         <Text style={[styles.knopTekst, { color: c.knopTekst }]}>{t('uiterlijk.voorvertoning_knop')}</Text>
       </View>
-      <Caption>{t('uiterlijk.voorvertoning_stijl', { uiterlijk: theme.uiterlijk })}</Caption>
+      <Caption>{t('uiterlijk.voorvertoning_stijl', { naam: uiterlijkNaam(theme.uiterlijk) })}</Caption>
     </View>
   );
 }
