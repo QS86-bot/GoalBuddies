@@ -73,7 +73,7 @@ const WORTEL = join(dirname(fileURLToPath(import.meta.url)), '..');
  *    eigen kop voor waarschuwt. Zonder vlag is dit geen stijlkwestie maar een
  *    gegevenslek tussen twee accounts op één toestel.
  */
-export const PLAFOND = 22;
+export const PLAFOND = 21;
 
 /** Waar de vlag telt. `useAsync` zelf en zijn test horen er niet bij. */
 export const UITGEZONDERD = ['src/shared/ui/useAsync.ts', 'src/shared/ui/useAsync.test.ts'];

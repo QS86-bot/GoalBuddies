@@ -9,6 +9,7 @@ import {
   userClock,
   zetWeekStartdag,
   useProfiel,
+  useSession,
   verwijderMijnAccount,
   type Profiel as ProfielRij,
 } from '@/modules/auth';
@@ -42,6 +43,7 @@ import { telTekens } from '@/shared/tekst';
 import { space, useThemePreference, type ThemePreference } from '@/shared/theme';
 import { apparaatTijdzone, toonTijd, verschovenUur, type Weekday } from '@/shared/time';
 import {
+  Accountregel,
   AsyncView,
   Avatar,
   AvatarKeuze,
@@ -226,6 +228,7 @@ function Uitloggen() {
   return (
     <Card nested>
       <Subheading>{t('profiel.uitloggen_kop')}</Subheading>
+      <AccountVanProfiel />
       <Body muted>{t('profiel.uitloggen_uitleg')}</Body>
       {fout === null ? null : <Caption danger>{fout}</Caption>}
       <Button busy={bezig} onPress={() => void uitloggen()}>
@@ -1536,6 +1539,19 @@ function Avatarkaart({
       fout={keuze.fout}
       onKies={() => void keuze.kies()}
       onWeghalen={() => void keuze.weghalen()}
+    />
+  );
+}
+
+/** Het ingelogde account, in het blok bij Uitloggen — QS8-708. Eigen component, zodat het scherm erboven niet groeit. */
+function AccountVanProfiel() {
+  const { session } = useSession();
+  const { profiel } = useProfiel();
+  return (
+    <Accountregel
+      ingelogd={session !== null}
+      naam={profiel?.display_name ?? null}
+      adres={session?.user.email ?? null}
     />
   );
 }
