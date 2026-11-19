@@ -15,7 +15,7 @@ type Gegevens = ReturnType<typeof useVandaag>;
 /**
  * De twee meldingen boven de lijst: de coulanceperiode en het inschuiven.
  *
- * ⚠️ Het scherm hierboven is de enige plek waar de coulanceperiode zichtbaar
+ * ⚠️ Het Vandaag-scherm is de enige plek waar de coulanceperiode zichtbaar
  *    wordt (QS8-51). Zit je erin, dan sluit je nog de vórige week af, en dat moet
  *    er letterlijk staan — anders denkt iemand dat hij per ongeluk de verkeerde
  *    week aan het afronden is.
