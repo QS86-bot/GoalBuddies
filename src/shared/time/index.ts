@@ -23,6 +23,9 @@ export { freezeNow, now, ouderDan, unfreezeNow } from './clock';
 
 export { eersteLuideUur, inStilteVenster, verschovenUur } from './stilte';
 
+export type { Periodeband } from './periode';
+export { doelperiodeBand } from './periode';
+
 export {
   closableUserCycle,
   cyclesBetween,

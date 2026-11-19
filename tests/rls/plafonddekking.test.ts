@@ -138,6 +138,26 @@ const REGISTER: Readonly<Record<string, string>> = {
     'verschuldigd()`. Dat is precies de reden die 0083 destijds opschreef om ' +
     'géén trigger te kiezen.',
   deadline_requests: 'vraag_deadline_verschuiving() weigert vanaf 5 verzoeken in het laatste etmaal.',
+  goal_match_queue:
+    '⚠️ **Geen `_dagplafond`-trigger, en drie grenzen die het werk doen** ' +
+    '(QS8-233, 0299 en 0302). `goal_match_queue_insert` staat op `false`, dus ' +
+    '`authenticated` schrijft er niet rechtstreeks in; deze tabel komt hier ' +
+    'binnen via `zoek_buddies_aan()`, en dat is de énige route. Die weigert ' +
+    'boven 5 aanmeldingen per etmaal (`buddyzoekopdrachten_over()`), boven 3 ' +
+    'gelijktijdig `wachtend`, en de partiële unieke index ' +
+    '`goal_match_queue_een_wachtende_per_doel` laat hoogstens één wachtende rij ' +
+    'per doel toe. ' +
+    '📏 **En die drie waren te omzeilen tot 0302, dus de reden hier is gemeten ' +
+    'en niet afgeleid uit de code.** De tellingen zijn lees-dan-schrijf en ' +
+    'PostgREST geeft elk verzoek zijn eigen transactie: twaalf aanroepen op ' +
+    'twaalf doelen met een gedeeld startsignaal (werkelijke spreiding 9 ms) ' +
+    'gaven **10** rijen `wachtend`. 0302 zet er ' +
+    '`pg_advisory_xact_lock(hashtextextended(auth.uid()::text, 0))` vóór élke ' +
+    'telling; daarmee geeft dezelfde burst 3 rijen en negen keer ' +
+    '`too_many_queued`. ' +
+    '⚠️ Een eerdere burst gaf 3 in **beide** gevallen — daar startten de ' +
+    'processen niet samen en trad de race niet op. Een uitslag die zonder de ' +
+    'reparatie hetzelfde is, meet de reparatie niet.',
   group_join_requests: 'vraag_lidmaatschap_aan() weigert zodra lidmaatschapsverzoeken_over() op nul staat.',
   group_members:
     'PRIMARY KEY (group_id, user_id) — één rij per groep per lid; en de twee ' +
@@ -281,7 +301,14 @@ describe.skipIf(!beschikbaar)('elke groeibare tabel heeft een plafond of een red
     //    INSERT-kolomgrant op. Dat verschil is de hele opzet van die migratie —
     //    de ene tabel schrijf je zelf, de andere schrijft de server — en dat het
     //    hier als één in plaats van twee telt, is de meting die dat bevestigt.
-    expect(gevonden.length, 'het aantal groeibare tabellen is veranderd').toBe(32);
+    // ⚠️ En tweeëndertig werd drieëndertig met `goal_match_queue` (QS8-233,
+    //    0299). 📏 Hij komt hier binnen op `via_rpc` en niet op `direct`: de
+    //    INSERT-policy staat op `false` en `authenticated` heeft geen enkele
+    //    INSERT-kolomgrant, maar `zoek_buddies_aan()` is een definer die hij
+    //    mág uitvoeren en die erin schrijft. Dat is precies het geval waarvoor
+    //    de `via_rpc`-tak bestaat — een tabel die niemand kan schrijven en toch
+    //    groeit — en dat hij hier binnenkomt is de meting die die tak bewijst.
+    expect(gevonden.length, 'het aantal groeibare tabellen is veranderd').toBe(33);
     // ⚠️ En zeventien werd achttien met `user_blocks` (QS8-496, 0276). Die tabel
     //    stond hierboven in REGISTER met de reden *"begrensd door het aantal
     //    mensen dat je kunt noemen"* — en die reden verviel toen `zoek_mensen()`
