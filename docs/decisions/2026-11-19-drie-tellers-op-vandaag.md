@@ -31,6 +31,11 @@ op een tabel waar alleen de eigenaar bij kan, met het venster van `shared/time`.
    en deze teller staat nergens naast een balk).
    Gevolg dat bewust is aanvaard: een adempauze met terugwerkende kracht boekt een
    `correction` die meetelt terwijl het minpunt waar hij tegenover staat dat niet doet.
+   **Ook een goedkeuring telt op het boekmoment.** Keurt een buddy tijdens de
+   coulanceperiode de week van vorige week goed, dan staat dat +2 onder "deze week",
+   en een punt dat je vandaag verdient verschijnt pas als de buddy goedkeurt. Een
+   cyclus per weekdoel (via `ref_id`) is nauwkeuriger en een eigen besluit; `cycle_start_date`
+   is niet voor alle redenen gevuld. Doorgegeven als ER-rij.
 4. **Een week heeft hooguit een handvol boekingen** per persoon; de query is
    begrensd op 500 rijen (nieuwste eerst) en meldt zichzelf bij `reportError` als hij
    die grens raakt.

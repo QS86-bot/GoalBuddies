@@ -105,10 +105,15 @@ const SLEUTELS_VOOR_DE_SPLITSING: readonly string[] = [
   'tellers.punten',
   'tellers.punten_uitleg',
   'tellers.reeks',
-  'tellers.reeks_uitleg',
+  // ⚠️ `tellers.reeks_uitleg(_een)` en `tellers.vangnet_uitleg(_nul)` staan niet in
+  //    deze lijst: ze komen uit een voorwaarde (`t(n === 1 ? 'a' : 'b')`) en de zeef
+  //    hieronder ziet alleen een letterlijke sleutel direct na `t(`.
   'tellers.titel',
   'tellers.vangnet',
-  'tellers.vangnet_uitleg',
+  'tellers.punten_laden',
+  'tellers.label_vangnet_een',
+  'tellers.label_vangnet_nul',
+  'tellers.label_reeks_een',
 ];
 
 const WORTEL = join(__dirname, '..', '..');

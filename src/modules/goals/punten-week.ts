@@ -30,7 +30,7 @@ import type { Cycle } from '../../shared/time';
  */
 export const PUNTEN_WEEK_GRENS = 500;
 
-export const BUITEN_DEZE_WEEK = 'cycle_missed';
+const BUITEN_DEZE_WEEK = 'cycle_missed';
 
 export function somPunten(rijen: readonly { readonly delta: number }[]): number {
   return rijen.reduce((som, rij) => som + rij.delta, 0);

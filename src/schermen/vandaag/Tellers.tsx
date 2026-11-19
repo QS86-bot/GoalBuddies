@@ -43,27 +43,37 @@ export function TellersBlok({ v }: { readonly v: Gegevens }) {
       <View style={styles.rij}>
         <Teller
           titel={t('tellers.vangnet')}
-          uitleg={t('tellers.vangnet_uitleg')}
+          uitleg={(n) => t(n === 0 ? 'tellers.vangnet_uitleg_nul' : 'tellers.vangnet_uitleg')}
           waarde={stand === 'klaar' ? t3.vangnet : null}
           wacht={stand === 'laden'}
-          label={(n) => t('tellers.label_vangnet', { aantal: getal(n, 0) })}
+          label={(n) =>
+            n === 0
+              ? t('tellers.label_vangnet_nul')
+              : n === 1
+                ? t('tellers.label_vangnet_een')
+                : t('tellers.label_vangnet', { aantal: getal(n, 0) })
+          }
         />
         <Teller
           titel={t('tellers.reeks')}
-          uitleg={t('tellers.reeks_uitleg')}
+          uitleg={(n) => t(n === 1 ? 'tellers.reeks_uitleg_een' : 'tellers.reeks_uitleg')}
           waarde={stand === 'klaar' ? t3.reeks : null}
           wacht={stand === 'laden'}
-          label={(n) => t('tellers.label_reeks', { aantal: getal(n, 0) })}
+          label={(n) =>
+            n === 1 ? t('tellers.label_reeks_een') : t('tellers.label_reeks', { aantal: getal(n, 0) })
+          }
         />
         <Teller
           titel={t('tellers.punten')}
-          uitleg={t('tellers.punten_uitleg')}
+          uitleg={() => t('tellers.punten_uitleg')}
           waarde={v.puntenDezeWeek ?? null}
           wacht={puntenWacht && !puntenFout}
           label={(n) => t('tellers.label_punten', { aantal: getal(n, 0) })}
         />
       </View>
-      {fout ? <Caption>{t('tellers.fout')}</Caption> : null}
+      {fout ? (
+        <Caption>{stand !== 'fout' && puntenFout ? t('tellers.punten_laden') : t('tellers.fout')}</Caption>
+      ) : null}
     </View>
   );
 }
@@ -76,28 +86,33 @@ function Teller({
   label,
 }: {
   readonly titel: string;
-  readonly uitleg: string;
+  readonly uitleg: (n: number | null) => string;
   readonly waarde: number | null;
   readonly wacht: boolean;
   readonly label: (n: number) => string;
 }) {
   const theme = useTheme();
   const tekst = waarde === null ? t('tellers.onbekend') : getal(waarde, 0);
-  const a11y =
-    waarde === null ? (wacht ? t('algemeen.laden') : `${titel}: ${uitleg}`) : label(waarde);
+  const a11y = waarde === null ? (wacht ? t('algemeen.laden') : `${titel}: ${uitleg(null)}`) : label(waarde);
 
   return (
     <View
       accessible
       accessibilityRole="text"
       accessibilityLabel={a11y}
-      style={[styles.teller, { backgroundColor: theme.colors.panelDark, borderColor: theme.colors.border }]}
+      style={[
+        styles.teller,
+        {
+          backgroundColor: theme.colors.panelDark,
+          borderColor: theme.colors.border,
+        },
+      ]}
     >
       <Caption>{titel}</Caption>
       <View style={wacht ? styles.wacht : null}>
         <Subheading>{tekst}</Subheading>
       </View>
-      <Caption>{uitleg}</Caption>
+      <Caption>{uitleg(waarde)}</Caption>
     </View>
   );
 }
@@ -106,5 +121,11 @@ const styles = StyleSheet.create({
   blok: { gap: space.blokGap - 4 },
   rij: { flexDirection: 'row', gap: 8 },
   wacht: { opacity: 0.5 },
-  teller: { flex: 1, borderRadius: radius.md, borderWidth: 1, padding: 12, gap: 2 },
+  teller: {
+    flex: 1,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    padding: 12,
+    gap: 2,
+  },
 });

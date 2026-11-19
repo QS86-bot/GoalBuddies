@@ -46,7 +46,7 @@ import { laadTips } from './tips';
  *    apart laadde en apart faalde, blijft dat — zie de kop bij elk blok.
  */
 
-export type StandenStatus = 'laden' | 'klaar' | 'fout';
+type StandenStatus = 'laden' | 'klaar' | 'fout';
 
 type Profiel = ReturnType<typeof useProfiel>['profiel'];
 

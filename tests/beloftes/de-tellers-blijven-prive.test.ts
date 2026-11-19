@@ -23,6 +23,8 @@ function bestanden(map: string): string[] {
   });
 }
 
+const CATALOGUS = 18;
+
 const BLOK = ['Tellers.tsx', 'tellers-vorm.ts'].map((f) =>
   zonderCommentaar(readFileSync(join(ROOT, 'src/schermen/vandaag', f), 'utf8')),
 );
@@ -70,13 +72,13 @@ describe('de drie tellers blijven privé', () => {
     const en = readFileSync(join(ROOT, 'src/shared/i18n/en.ts'), 'utf8');
     for (const cat of [nl, en]) {
       const regels = cat.split('\n').filter((r) => r.includes("'tellers."));
-      expect(regels.length).toBe(13);
+      expect(regels.length).toBe(CATALOGUS);
       for (const r of regels) expect(r).not.toMatch(/gemist|missed|miss|mislukt|achter|behind|XP/i);
     }
   });
 
   it('zeggen dat een weekpas de reeks beschermt en niet de punten', () => {
     const nl = readFileSync(join(ROOT, 'src/shared/i18n/nl.ts'), 'utf8');
-    expect(nl).toMatch(/'tellers\.label_vangnet'.*beschermt je reeks, niet je punten/);
+    expect(zonderCommentaar(nl)).toMatch(/'tellers\.label_vangnet'.*beschermt je reeks, niet je punten/);
   });
 });

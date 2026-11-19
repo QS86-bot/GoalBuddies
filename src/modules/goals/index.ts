@@ -134,7 +134,7 @@ export { weekdoelSchema, type AfrondInvoer, type WeekdoelInvoer } from './weekly
 
 export { verwijderDoel } from './api';
 export { fetchWeekpasStanden, type WeekpasStanden } from './weekpas';
-export { fetchPuntenDezeWeek, somPunten } from './punten-week';
+export { fetchPuntenDezeWeek } from './punten-week';
 
 export { fetchDoelStanden, type DoelStand, type Reeks } from './stand';
 export { doelIdsInBeeld } from './doelen-in-beeld';
