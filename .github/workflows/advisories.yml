@@ -1,0 +1,50 @@
+name: Advisories
+
+# De vraag die `main` niet meer stelt — QS8-707.
+#
+# ⚠️ Waarom dit bestaat: `audit:controle` maakte `main` twee keer rood (17 en
+#    18-11-2026) zonder dat een commit iets veranderde, omdat de advisory-database
+#    van npm dagvers is. Sinds QS8-707 toetst een push naar `main` alleen de vorm
+#    van het register `NAGEKEKEN`. De vraag "staat er een kwetsbaarheid in de
+#    productieboom die niemand met een bouw heeft nagekeken?" wordt hier gesteld,
+#    in de strikte modus, dagelijks. Een rode run van een geplande workflow wordt
+#    door GitHub gemaild — hetzelfde signaal als `uurjobs.yml`.
+#
+# ⚠️ De prijs die Quinten accepteerde (besluit 18-11-2026, optie A): een nieuwe
+#    advisory valt hier op, niet bij de push. En `schedule:` is best-effort, zie
+#    `docs/decisions/2026-10-05-schedule-is-best-effort-en-de-hartslag-is-de-runlijst.md`;
+#    een niet-gelopen run is niet rood. Dat is een bekende rest, geen aanname dat
+#    het dicht is.
+#
+# Bewust `node scripts/audit-controle.mjs` en niet `npm run audit:controle`:
+# `cidekking:controle` (`handmatigGenoemd`) weigert een controle die met de hand
+# als stap in een workflow staat; de banen van `ci.yml` komen uit `package.json`.
+# Geen `npm ci`: `npm audit` leest alleen `package.json` en `package-lock.json`.
+# De modus is `strikt` omdat `GITHUB_EVENT_NAME` hier `schedule` of
+# `workflow_dispatch` is, en niet `push`.
+
+on:
+  schedule:
+    - cron: '23 5 * * *'
+  workflow_dispatch:
+
+concurrency:
+  group: advisories
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  advisories:
+    name: Zijn de advisories nog nagekeken?
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: audit-controle, strikt
+        run: node scripts/audit-controle.mjs
