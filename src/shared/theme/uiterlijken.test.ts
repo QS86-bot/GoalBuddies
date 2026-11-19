@@ -111,6 +111,18 @@ function monsters(van: string, naar: string, n = 10): string[] {
   });
 }
 
+/** Per tint van het accentverloop van C: de kleinste afstand tot groen, oranje en rood van dat palet. */
+function tintAfstanden(): { sleutel: string; afstand: number }[] {
+  return paletten
+    .filter(([naam]) => naam.startsWith('C-'))
+    .flatMap(([naam, u]) =>
+      u.verloop!.accent.map((tint) => ({
+        sleutel: `${naam.replace(/ \((donker|licht)\)/, ' $1')} ${tint}`,
+        afstand: Math.min(...[u.colors.green, u.colors.orange, u.colors.red].map((s) => kleurafstand(tint, s))),
+      })),
+    );
+}
+
 describe('uiterlijk C (QS8-724)', () => {
   // ⚠️ Het traject en niet alleen de uiteinden: de luminantie van een mengsel kan onder beide uiteinden zakken.
   it('houdt tekst leesbaar en de knoptekst 4,5:1 langs het héle verloop, niet alleen op de uiteinden', () => {
@@ -175,21 +187,14 @@ describe('uiterlijk C (QS8-724)', () => {
 
   it('houdt de tinten van het accentverloop op afstand van groen, oranje en rood, behalve het geaccepteerde amber', () => {
     const gebruikt = new Set<string>();
-    for (const id of cIds) {
-      for (const modus of ['donker', 'licht'] as const) {
-        const u = UITERLIJKEN[id][modus];
-        for (const tint of u.verloop!.accent) {
-          const sleutel = `${id} ${modus} ${tint}`;
-          const d = Math.min(...[u.colors.green, u.colors.orange, u.colors.red].map((s) => kleurafstand(tint, s)));
-          if (sleutel in AMBER_GEACCEPTEERD) {
-            gebruikt.add(sleutel);
-            expect(d, sleutel).toBeLessThan(MIN_AFSTAND); // een uitzondering die niets uitzondert is dood
-            expect(d, sleutel).toBeGreaterThanOrEqual(AMBER_GEACCEPTEERD[sleutel]!);
-          } else {
-            expect(d, sleutel).toBeGreaterThanOrEqual(MIN_AFSTAND);
-          }
-        }
+    for (const { sleutel, afstand } of tintAfstanden()) {
+      if (!(sleutel in AMBER_GEACCEPTEERD)) {
+        expect(afstand, sleutel).toBeGreaterThanOrEqual(MIN_AFSTAND);
+        continue;
       }
+      gebruikt.add(sleutel);
+      expect(afstand, sleutel).toBeLessThan(MIN_AFSTAND); // een uitzondering die niets uitzondert is dood
+      expect(afstand, sleutel).toBeGreaterThanOrEqual(AMBER_GEACCEPTEERD[sleutel]!);
     }
     expect([...gebruikt].sort()).toEqual(Object.keys(AMBER_GEACCEPTEERD).sort());
   });
