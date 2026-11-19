@@ -38,7 +38,7 @@ import {
 } from '@/lib/observability';
 import { apparaatVoorkeuren, t, zetTaalUitApparaat } from '@/shared/i18n';
 import { useTheme } from '@/shared/theme';
-import { RootVangnet } from '@/shared/ui';
+import { RootVangnet, useGehydrateerd } from '@/shared/ui';
 
 /**
  * De wortel van de app. Alles wat elk scherm nodig heeft, hangt hier.
@@ -84,6 +84,12 @@ function PadVangnet({ children }: { readonly children: ReactNode }) {
 
 function Shell() {
   const theme = useTheme();
+  // ⚠️ QS8-740: wat van de taal afhangt wordt pas getekend ná de hydratie. De
+  //    prerender (`expo export`) kent het apparaat niet en rendert in de taal van
+  //    de bouwmachine; elke client met een andere taal gaf daardoor React-fout
+  //    #418. Server en eerste clientronde tekenen nu hetzelfde: alleen de
+  //    achtergrond. Zie `useGehydrateerd`.
+  const klaar = useGehydrateerd();
 
   return (
     // De achtergrondkleur staat óók hier, niet alleen op elk scherm. Tijdens een
@@ -91,17 +97,21 @@ function Shell() {
     // wit te zijn in de donkere modus.
     <View style={{ flex: 1, backgroundColor: theme.colors.bg }}>
       <StatusBar style={theme.dark ? 'light' : 'dark'} />
-      <Routewacht />
-      <Uitnodigingswacht />
-      <Pushwacht />
-      <Tijdzonewacht />
-      <Uiterlijkwacht />
-      <Stack
-        screenOptions={{
-          headerShown: false,
-          contentStyle: { backgroundColor: theme.colors.bg },
-        }}
-      />
+      {klaar ? (
+        <>
+          <Routewacht />
+          <Uitnodigingswacht />
+          <Pushwacht />
+          <Tijdzonewacht />
+          <Uiterlijkwacht />
+          <Stack
+            screenOptions={{
+              headerShown: false,
+              contentStyle: { backgroundColor: theme.colors.bg },
+            }}
+          />
+        </>
+      ) : null}
     </View>
   );
 }
