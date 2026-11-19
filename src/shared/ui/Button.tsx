@@ -32,19 +32,13 @@ function kleuren(theme: Theme, variant: ButtonVariant) {
 
   switch (variant) {
     case 'primair':
-      // ⚠️ De twee modi gebruiken bewust een ándere goudtint, en dat is geen
-      //    slordigheid maar de enige combinatie die AA haalt.
-      //
-      //    Wit op het lichte goud (#a87a22) komt op 3,84 — onder de 4,5 die een
-      //    knoplabel nodig heeft. Op het dieper goud (`accentDim`) haalt wit
-      //    5,25. In de donkere modus is het omgekeerd: daar is het goud licht en
-      //    draagt het de donkere navy-tekst op 8,76.
-      //
-      //    Beide kleuren komen uit het Q-Projects-stelsel; er is hier niets
-      //    bijverzonnen. Vastgelegd in shared/theme/themes.test.ts.
-      return theme.dark
-        ? { achtergrond: c.accent, rand: c.accent, tekst: '#141e3c' }
-        : { achtergrond: c.accentDim, rand: c.accentDim, tekst: '#ffffff' };
+      // ⚠️ De combinatie vulling/tekst staat in het palet (`knop`, `knopTekst`) en
+      //    niet meer hier, want elk uiterlijk heeft een ander accent. Per palet
+      //    gemeten in `uiterlijken.test.ts`: tekst op vulling haalt 4,5. Bij het
+      //    oorspronkelijke goud was dat de reden voor twee tinten: wit op het lichte
+      //    goud (#a87a22) komt op 3,84, op het diepere goud op 5,25 (QS8-723 verhuisde
+      //    de keuze naar het palet; de waarden zijn ongewijzigd).
+      return { achtergrond: c.knop, rand: c.knop, tekst: c.knopTekst };
     case 'secundair':
       return { achtergrond: c.panel, rand: c.border, tekst: c.text };
     case 'stil':

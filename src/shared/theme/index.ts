@@ -14,12 +14,27 @@ export {
   fontSans,
   heldkleurenNavy,
   heldkleurenNavyLight,
+  afstand,
+  cijfer,
   HELDPALETSLEUTELS,
+  PALETSLEUTELS,
   radius,
   roles,
   space,
 } from './tokens';
 export { contrastRatio, WCAG } from './contrast';
+export {
+  allePaletten,
+  MODI,
+  schaduwVoor,
+  UITERLIJK_IDS,
+  UITERLIJKEN,
+  uiterlijk,
+  type Modus,
+  type Uiterlijk,
+  type UiterlijkId,
+  type UiterlijkPalet,
+} from './uiterlijken';
 
 export {
   navyLightTheme,
