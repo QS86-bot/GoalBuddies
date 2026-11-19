@@ -20,20 +20,22 @@ import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 
 import { zonderCommentaar } from '../../scripts/zonder-commentaar.mjs';
+import { navy } from '../../src/shared/theme/tokens';
 
 const WORTEL = fileURLToPath(new URL('../..', import.meta.url));
 
 /**
  * De bewuste uitzonderingen, mét reden. ⚠️ Een register van één rij; een tweede rij is een gesprek en geen toevoeging.
  */
-const TOEGESTAAN: Readonly<Record<string, string>> = {
-  'app/+html.tsx':
-    '`theme-color` wordt door het besturingssysteem gelezen voordat er JavaScript draait; er is hier geen thema-context (zie de kop van het bestand).',
+const TOEGESTAAN: Readonly<Record<string, readonly string[]>> = {
+  // `theme-color` wordt door het besturingssysteem gelezen voordat er JavaScript draait; er is hier geen thema-context
+  // (zie de kop van het bestand). Precies deze waarde, en hij moet gelijk zijn aan `navy.bg`.
+  'app/+html.tsx': ['#0e1730'],
 };
 
 /** Vindt kleurliteralen in code; commentaar is er al uit. */
 export function kleurliteralen(bron: string): readonly string[] {
-  return [...zonderCommentaar(bron).matchAll(/#[0-9a-fA-F]{8}\b|#[0-9a-fA-F]{6}\b|#[0-9a-fA-F]{3}\b|\brgba?\s*\(/g)].map(
+  return [...zonderCommentaar(bron).matchAll(/#[0-9a-fA-F]{8}\b|#[0-9a-fA-F]{6}\b|#[0-9a-fA-F]{4}\b|#[0-9a-fA-F]{3}\b|\b(?:rgba?|hsla?|hwb)\s*\(/g)].map(
     (m) => m[0],
   );
 }
@@ -45,9 +47,9 @@ function bronBestanden(map: string): string[] {
 }
 
 describe('kleurliteralen', () => {
-  it('vindt hex in elke lengte en rgb(a)', () => {
-    expect(kleurliteralen("const a = '#fff'; const b = '#1a2b3c'; const c = '#1a2b3c80';")).toHaveLength(3);
-    expect(kleurliteralen("x = 'rgba(0,0,0,0.5)'; y = 'rgb (1,2,3)';")).toHaveLength(2);
+  it('vindt hex in elke lengte en rgb(a), hsl(a) en hwb', () => {
+    expect(kleurliteralen("const a = '#fff'; const b = '#1a2b3c'; const c = '#1a2b3c80'; const d = '#0008';")).toHaveLength(4);
+    expect(kleurliteralen("x = 'rgba(0,0,0,0.5)'; y = 'rgb (1,2,3)'; z = 'hsl(1,2%,3%)'; w = 'hwb(1 2% 3%)';")).toHaveLength(4);
   });
 
   it('laat commentaar, issuenummers in commentaar en gewone tekst met rust', () => {
@@ -57,19 +59,27 @@ describe('kleurliteralen', () => {
 });
 
 describe('heel app/ en src/shared/ui/', () => {
-  const bestanden = [...bronBestanden('app'), ...bronBestanden('src/shared/ui')];
+  // ⚠️ Heel `src/` en niet alleen `shared/ui`: de belofte is "alle kleuren staan in `tokens.ts`", en `src/shared/theme/`
+  //    is de plek waar ze mogen staan.
+  const bestanden = [...bronBestanden('app'), ...bronBestanden('src')].filter(
+    (f) => !f.startsWith('src/shared/theme/'),
+  );
 
   it('kent geen kleurliteraal buiten het register', () => {
     const treffers = bestanden
-      .filter((f) => TOEGESTAAN[f] === undefined)
-      .map((f) => [f, kleurliteralen(readFileSync(join(WORTEL, f), 'utf8'))] as const)
+      .map((f) => [f, kleurliteralen(readFileSync(join(WORTEL, f), 'utf8')).filter((k) => !(TOEGESTAAN[f] ?? []).includes(k))] as const)
       .filter(([, k]) => k.length > 0);
     expect(treffers).toEqual([]);
   });
 
-  it('heeft elke geregistreerde plek ook echt', () => {
-    for (const [f] of Object.entries(TOEGESTAAN)) {
-      expect(kleurliteralen(readFileSync(join(WORTEL, f), 'utf8')).length, f).toBeGreaterThan(0);
+  it('heeft elke geregistreerde plek ook echt, en precies die ene waarde', () => {
+    for (const [f, waarden] of Object.entries(TOEGESTAAN)) {
+      expect(kleurliteralen(readFileSync(join(WORTEL, f), 'utf8')), f).toEqual(waarden);
     }
+  });
+
+  /** ⚠️ De uitzondering belooft dat de statische kleur gelijk is aan het thema; hier staat dat ze dat ook is. */
+  it('houdt de theme-color in +html.tsx gelijk aan navy.bg', () => {
+    expect(TOEGESTAAN['app/+html.tsx']).toEqual([navy.bg]);
   });
 });

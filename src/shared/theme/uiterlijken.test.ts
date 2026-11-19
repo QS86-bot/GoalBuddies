@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import { contrastRatio, WCAG } from './contrast';
 import { kleinsteAfstand, kleurafstand, MIN_AFSTAND } from './kleurafstand';
-import { navy, navyLight, PALETSLEUTELS, roles, type Palette } from './tokens';
+import { navy, navyLight, PALETSLEUTELS, roles } from './tokens';
 import { allePaletten, UITERLIJK_IDS, UITERLIJKEN, uiterlijk } from './uiterlijken';
 
 /**
@@ -19,7 +19,7 @@ describe.each(paletten)('palet %s', (_naam, u) => {
   const p = u.colors;
 
   it('draagt elke sleutel, en alleen die (criterium 1)', () => {
-    expect(Object.keys(p).sort()).toEqual([...PALETSLEUTELS].sort());
+    expect(afwijkendeSleutels(p)).toEqual({ ontbreekt: [], overbodig: [] });
     for (const sleutel of PALETSLEUTELS) expect(p[sleutel], sleutel).toMatch(/\S/);
   });
 
@@ -92,18 +92,30 @@ describe('de uiterlijken', () => {
   });
 });
 
-/** Een controle die je niet kunt voeden, kun je niet ijken: de volledigheidstoets krijgt hier een kapot palet. */
-describe('de volledigheidstoets ziet een kapot palet', () => {
-  const sleutelsVan = (p: Partial<Palette>) => Object.keys(p).sort();
+/** Welke sleutels mist of heeft een palet te veel? De toets hierboven en de ijking hieronder gebruiken dezelfde functie. */
+function afwijkendeSleutels(p: object): { ontbreekt: string[]; overbodig: string[] } {
+  const heeft = Object.keys(p);
+  return {
+    ontbreekt: PALETSLEUTELS.filter((s) => !heeft.includes(s)),
+    overbodig: heeft.filter((s) => !(PALETSLEUTELS as readonly string[]).includes(s)),
+  };
+}
 
+/** Een controle die je niet kunt voeden, kun je niet ijken: dezelfde functie krijgt hier een kapot palet. */
+describe('de volledigheidstoets ziet een kapot palet', () => {
   it('ziet een ontbrekende sleutel', () => {
     const { knop: _weg, ...zonder } = navy;
-    expect(sleutelsVan(zonder)).not.toEqual([...PALETSLEUTELS].sort());
+    expect(afwijkendeSleutels(zonder)).toEqual({ ontbreekt: ['knop'], overbodig: [] });
   });
 
   it('ziet een extra sleutel', () => {
-    expect(sleutelsVan({ ...navy, extra: '#000000' } as Partial<Palette>)).not.toEqual(
-      [...PALETSLEUTELS].sort(),
-    );
+    expect(afwijkendeSleutels({ ...navy, extra: '#000000' })).toEqual({
+      ontbreekt: [],
+      overbodig: ['extra'],
+    });
+  });
+
+  it('laat een volledig palet door', () => {
+    expect(afwijkendeSleutels(navyLight)).toEqual({ ontbreekt: [], overbodig: [] });
   });
 });

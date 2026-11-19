@@ -2,14 +2,8 @@ import { describe, expect, it } from 'vitest';
 
 import { contrastRatio, WCAG } from './contrast';
 import { kleinsteAfstand, kleurafstand, KLEURENBLINDHEID, MIN_AFSTAND, simuleer } from './kleurafstand';
-import {
-  categoriekleurenNavy,
-  categoriekleurenNavyLight,
-  navy,
-  navyLight,
-  type Categoriekleuren,
-  type Palette,
-} from './tokens';
+import { type Categoriekleuren, type Palette } from './tokens';
+import { allePaletten } from './uiterlijken';
 
 /**
  * Besluit A55: er passen precies drie categoriekleuren op navy.
@@ -26,10 +20,10 @@ import {
  *    de reden dat `contrast.test.ts` deze vraag niet kon beantwoorden.
  */
 
-const themas: [naam: string, palette: Palette, families: Categoriekleuren][] = [
-  ['navy (donker)', navy, categoriekleurenNavy],
-  ['navy-licht', navyLight, categoriekleurenNavyLight],
-];
+// ⚠️ Over élk palet van élk uiterlijk (QS8-723), met de 3:1 en het aantal van A55 voor élk uiterlijk.
+const themas: [naam: string, palette: Palette, families: Categoriekleuren][] = allePaletten().map(
+  ([naam, u]) => [naam, u.colors, u.families],
+);
 
 describe.each(themas)('de categoriekleuren — %s', (_naam, p, families) => {
   const kleuren = Object.values(families);
