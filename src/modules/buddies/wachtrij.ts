@@ -31,7 +31,7 @@ import { fetchOntdekteGroepen, type OntdekteGroep } from './ontdekken';
 /**
  * De stand van je eigen wachtopdracht.
  *
- * ⚠️ `verlopen` sinds QS8-643 (migratie 0303): veertien dagen tevergeefs gezocht.
+ * ⚠️ `verlopen` sinds QS8-643 (migratie 0305): veertien dagen tevergeefs gezocht.
  *    Tot dan viel het scherm na het verlopen terug op "je zoekt niet", en dat is
  *    de stilte die het criterium van QS8-233 uitsluit. Een tegenvaller, en dus
  *    alleen voor de eigenaar: de RPC filtert op `owner_id` (domeinregel 7).
@@ -194,7 +194,7 @@ export async function fetchBuddyzoekopdrachtenOver(): Promise<number | null> {
  *
  * ⚠️ **Twee wegen naar `verlopen`** (QS8-643, de naad uit de
  *    acceptatiecriteria). De database zegt `verlopen` zodra `expires_at` voorbij
- *    is, ook zonder dat de matcher draaide (0303). Een scherm dat de stand van
+ *    is, ook zonder dat de matcher draaide (0305). Een scherm dat de stand van
  *    vóór het verlopen vasthoudt, kijkt bij elke weergave ook zelf naar
  *    `verloopt` — via `ouderDan()` uit `shared/time`, want "is dit voorbij" is een
  *    tijdberekening (correctheidsregel 7).

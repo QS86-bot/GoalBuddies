@@ -2292,7 +2292,7 @@ export const en: Record<Sleutel, string> = {
   'buddyzoek.al_gekoppeld': 'You are already matched. To get out, leave the group.',
   'buddyzoek.mislukt': 'That did not work. Please try again in a moment.',
 
-  // After fourteen days without buddies — QS8-643, migration 0303.
+  // After fourteen days without buddies — QS8-643, migration 0305.
   'buddyzoek.verlopen': 'We looked until {datum} and have not found buddies for you yet.',
   'buddyzoek.alternatief_uitleg': 'These groups are looking for members. You can ask to join; the admin decides.',
   'buddyzoek.alternatief_geen_titel': 'Right now no group that fits this goal is looking for members.',

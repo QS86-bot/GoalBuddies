@@ -2848,7 +2848,7 @@ export const nl = {
   'buddyzoek.al_gekoppeld': 'Je bent al gekoppeld. Wil je eruit, dan verlaat je de groep.',
   'buddyzoek.mislukt': 'Dat lukte niet. Probeer het zo nog eens.',
 
-  // Na veertien dagen zonder buddy's — QS8-643, migratie 0303.
+  // Na veertien dagen zonder buddy's — QS8-643, migratie 0305.
   'buddyzoek.verlopen': 'We hebben tot {datum} gezocht en nog geen buddy\u2019s voor je gevonden.',
   'buddyzoek.alternatief_uitleg': 'Deze groepen zoeken leden. Je kunt lidmaatschap aanvragen; de beheerder beslist.',
   'buddyzoek.alternatief_geen_titel': 'Er is nu geen groep die bij dit doel past en leden zoekt.',

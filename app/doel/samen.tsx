@@ -676,7 +676,7 @@ function nogNodigTekst(nogNodig: number): string {
  *    terug op zijn lege staat. Hier staat wat er gebeurd is, met de datum, en
  *    daaronder een weg verder: een groep om aan te vragen, of de uitdrukkelijke
  *    zin dat er nu geen is. "Zoek opnieuw" staat eronder (`Aanmelden`, met
- *    dezelfde bevestiging als de eerste keer — zie migratie 0303 §2).
+ *    dezelfde bevestiging als de eerste keer — zie migratie 0305 §2).
  *
  * ⚠️ **Domeinregel 7.** Dit is een tegenvaller en hij is alleen voor jou: de
  *    stand komt uit een RPC die op `owner_id` filtert, en er gaat niets naar een

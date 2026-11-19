@@ -1,6 +1,6 @@
 # Na veertien dagen in de buddywachtrij: een weg verder en geen stilte
 
-**Datum:** 17-11-2026 · **Issue:** QS8-643 · **Migratie:** `0303` · **Status:** gebouwd en lokaal getoetst, niet uitgerold
+**Datum:** 17-11-2026 · **Issue:** QS8-643 · **Migratie:** `0305` · **Status:** gebouwd en lokaal getoetst, niet uitgerold
 
 ## Waar dit vandaan komt
 
@@ -46,7 +46,7 @@ gelezen in de code en daarna in een lokale stack bevestigd:
    ontdekscherm, die naar `src/shared/ui` is verhuisd. Daaronder staat een knop
    naar alle groepen. Zijn er geen, dan staat dat er in een zin.
    *Waarom geen nieuwe RPC:* die zou in `database.types.ts` moeten staan, en dat
-   bestand wordt uit productie gegenereerd. Zolang 0303 niet uitgerold is, zou dat
+   bestand wordt uit productie gegenereerd. Zolang 0305 niet uitgerold is, zou dat
    handwerk in een gegenereerd bestand zijn (QS8-569).
 5. **Een automatisch gevormde groep wordt nooit voorgesteld.** Dat is geen filter in
    de client maar `groups_automatisch_niet_ontdekbaar` (0300), en
@@ -94,7 +94,7 @@ pushmelding "we vonden niemand" is uitdrukkelijk buiten dit issue gehouden.
 
 ## Wat niet gemeten is
 
-- Productie: 0303 is niet toegepast. De migratie wacht op de batch, en op de volgorde
+- Productie: 0305 is niet toegepast. De migratie wacht op de batch, en op de volgorde
   QS8-233 → QS8-641 → QS8-643 (en die wacht op QS8-634).
 - Het scherm is niet in een browser doorlopen. De belofte over de kaart is een
   brontoets (`tests/beloftes/buddyzoek-ook-zonder-groep.test.ts`), geen renderproef.
@@ -104,7 +104,7 @@ pushmelding "we vonden niemand" is uitdrukkelijk buiten dit issue gehouden.
 
 ## Pad terug
 
-Migratie: de twee functies woordelijk terug uit 0301 en 0302 (kop van 0303). Rijen
+Migratie: de twee functies woordelijk terug uit 0301 en 0302 (kop van 0305). Rijen
 die `zoek_buddies_aan()` op `verlopen` zette, blijven `verlopen`; terugzetten naar
 `wachtend` zou een verstreken zoekopdracht weer laten koppelen. Scherm: `<Buddyzoek>`
 terug in `Inhoud`.
