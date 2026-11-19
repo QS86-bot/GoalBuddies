@@ -14,18 +14,29 @@ name: Koppelen
 #    `rollover.yml` (Quinten, 19-08-2026).
 
 on:
-  schedule:
-    # ⚠️ Op minuut 45, en dat is geen willekeur: `rollover` staat op :00 en
-    #    `notificaties` op :30. Drie jobs op hetzelfde moment delen dezelfde
-    #    gratis-tier-verbindingslimiet (`max_connections` is 60 voor de héle
-    #    database, zie CLAUDE.md), en een koppelpas die daarop stukloopt is een
-    #    wachtrij die stil blijft staan.
-    #
-    # ⚠️ Elk uur en niet dagelijks. Wie zich aanmeldt terwijl de bak al vol is,
-    #    hoort niet tot morgen te wachten — de wachtrij is het onderdeel van deze
-    #    feature dat het snelst "stuk" voelt, en dat staat met zoveel woorden in
-    #    het issue. De functie is idempotent, dus vaker draaien kost niets.
-    - cron: '45 * * * *'
+  # ⚠️⚠️ **De planning staat UIT, en dat is een besluit van Quinten (17-11-2026,
+  #    QS8-641) en geen vergissing.** De Edge Function `koppelen` staat niet op
+  #    productie: `list_edge_functions` geeft alleen `rollover`, `notificaties` en
+  #    `doelcoach`. Elk uur aanroepen betekent elk uur een rode run, en een alarm
+  #    dat dagenlang rood staat, leer je negeren. `koppelen` wordt pas gedeployd
+  #    ná de meldingstest van QS8-634.
+  #
+  #    **Aanzetten = `schedule:` en de `cron:`-regel hieronder uit het commentaar halen,
+  #    `BEWUST_NIET_GEPLAND` in `scripts/uurjobs-controle.mjs` leegmaken, en
+  #    `koppelen` eerst deployen.** Niet andersom.
+  #    Handmatig starten (`workflow_dispatch`) blijft kunnen.
+  # schedule:
+  #   # ⚠️ Op minuut 45, en dat is geen willekeur: `rollover` staat op :00 en
+  #   #    `notificaties` op :30. Drie jobs op hetzelfde moment delen dezelfde
+  #   #    gratis-tier-verbindingslimiet (`max_connections` is 60 voor de héle
+  #   #    database, zie CLAUDE.md), en een koppelpas die daarop stukloopt is een
+  #   #    wachtrij die stil blijft staan.
+  #   #
+  #   # ⚠️ Elk uur en niet dagelijks. Wie zich aanmeldt terwijl de bak al vol is,
+  #   #    hoort niet tot morgen te wachten — de wachtrij is het onderdeel van deze
+  #   #    feature dat het snelst "stuk" voelt, en dat staat met zoveel woorden in
+  #   #    het issue. De functie is idempotent, dus vaker draaien kost niets.
+  #   - cron: '45 * * * *'
   # Handmatig starten, om te testen en om een gemiste run in te halen.
   workflow_dispatch:
 
