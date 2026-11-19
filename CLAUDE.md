@@ -554,7 +554,7 @@ Voordat er één feature gebouwd wordt:
      Quinten, rechtstreeks op QS8-722 (reactie van 13:37); de afweging tegen 0247
      staat in
      `docs/decisions/2026-11-19-de-nieuwe-huisstijl-vervangt-a55-en-rustig-gereedschap.md`,
-     het oppervlak in rij 50 van `docs/decisions/002-domeinregel7-oppervlakken.md`.
+     het oppervlak in rij 53 van `docs/decisions/002-domeinregel7-oppervlakken.md`.
 
      *Waarom, en wat dat niet is:* ⚠️ **niet omdat er een naam achterblijft.** Sinds
      0213 bakt geen enkel bericht nog een naam in; na verwijdering staat er *"Een
