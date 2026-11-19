@@ -18,6 +18,7 @@ import {
   fetchDoelStanden,
   fetchDoorschuifbaar,
   fetchIngeschovenDezeCyclus,
+  fetchPuntenDezeWeek,
   fetchWeekdoelen,
   huidigeCyclus,
   inCoulanceperiode,
@@ -44,6 +45,8 @@ import { laadTips } from './tips';
  * ⚠️ Elke hook hieronder is één ophaalronde met zijn eigen faalgedrag. Wat
  *    apart laadde en apart faalde, blijft dat — zie de kop bij elk blok.
  */
+
+export type StandenStatus = 'laden' | 'klaar' | 'fout';
 
 type Profiel = ReturnType<typeof useProfiel>['profiel'];
 
@@ -156,6 +159,14 @@ function useStanden(userId: string | null, ronde: number, weekdoelen: readonly W
    *    onwrikbare regel 12 met naam noemt, en dat voor een regel tekst.
    */
   const [doelcategorieen, setDoelcategorieen] = useState<ReadonlyMap<string, string>>(new Map());
+  /**
+   * Of de standen binnen zijn — QS8-747, voor de drie tellers.
+   *
+   * ⚠️ Een lege Map is zowel "nog niet geladen" als "geen doelen" als "mislukt",
+   *    en de tellers moeten die drie uit elkaar houden. Het blok dat hier niets
+   *    van merkt (`StandBlok`) blijft zich gedragen als vóór dit veld.
+   */
+  const [standenStatus, setStandenStatus] = useState<StandenStatus>('laden');
 
   useEffect(() => {
     if (!userId) return;
@@ -183,6 +194,7 @@ function useStanden(userId: string | null, ronde: number, weekdoelen: readonly W
         setStanden(gevondenStanden);
         setDoeltitels(new Map([...namen].map(([id, n]) => [id, n.title])));
         setDoelcategorieen(new Map([...namen].map(([id, n]) => [id, n.category])));
+        setStandenStatus('klaar');
       })
       .catch(() => {
         // Bewust stil op het scherm, maar niet stil in de logboeken: de
@@ -192,6 +204,7 @@ function useStanden(userId: string | null, ronde: number, weekdoelen: readonly W
           setStanden(new Map());
           setDoeltitels(new Map());
           setDoelcategorieen(new Map());
+          setStandenStatus('fout');
         }
       });
 
@@ -200,7 +213,7 @@ function useStanden(userId: string | null, ronde: number, weekdoelen: readonly W
     };
   }, [userId, ronde, weekdoelen]);
 
-  return { standen, doeltitels, doelcategorieen };
+  return { standen, standenStatus, doeltitels, doelcategorieen };
 }
 
 /** De Doelcoach-tips bij de volgende mijlpaal — QS8-137, besluit A48 variant 2. */
@@ -353,6 +366,23 @@ function useKaartdata(tijd: Tijd, weekdoelen: readonly Weekdoel[], ronde: number
   return { ingeschoven, afvinkingen, bevestigingsstanden, vandaagAf };
 }
 
+/**
+ * De punten van deze week voor de teller — QS8-747.
+ *
+ * ⚠️ Apart geladen en apart falend: een storing hier laat het vangnet en de reeks
+ *    staan. De week komt van `huidigeCyclus()` en dus uit `shared/time`
+ *    (domeinregel 1); `cyclusStart` is de afhankelijkheid om dezelfde reden als
+ *    bij `useWeek` (een vers cyclusobject per render is een oneindige lus).
+ */
+function usePunten(userId: string | null, tijd: Tijd, ronde: number) {
+  const { cyclus, cyclusStart } = tijd;
+  const { data, loading, error } = useAsync(
+    userId && cyclus ? () => fetchPuntenDezeWeek(userId, cyclus) : null,
+    [userId, cyclusStart, ronde],
+  );
+  return { puntenDezeWeek: data, puntenLoading: loading, puntenError: error };
+}
+
 /** Alles wat het Vandaag-scherm laadt, op één plek. */
 export function useVandaag() {
   const { userId } = useSession();
@@ -373,5 +403,6 @@ export function useVandaag() {
     mijlpaaltips: useTips(userId, ronde, week.weekdoelen),
     ...useLosseBlokken(userId, tijd, ronde),
     ...useKaartdata(tijd, week.weekdoelen, ronde),
+    ...usePunten(userId, tijd, ronde),
   };
 }

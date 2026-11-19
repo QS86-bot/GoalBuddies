@@ -96,7 +96,19 @@ const SLEUTELS_VOOR_DE_SPLITSING: readonly string[] = [
   'weekstrook.dag_vandaag',
   'weekstrook.fout',
   'weekstrook.leeg',
-  'weekstrook.titel'
+  'weekstrook.titel',
+  'tellers.fout',
+  'tellers.label_punten',
+  'tellers.label_reeks',
+  'tellers.label_vangnet',
+  'tellers.onbekend',
+  'tellers.punten',
+  'tellers.punten_uitleg',
+  'tellers.reeks',
+  'tellers.reeks_uitleg',
+  'tellers.titel',
+  'tellers.vangnet',
+  'tellers.vangnet_uitleg',
 ];
 
 const WORTEL = join(__dirname, '..', '..');
