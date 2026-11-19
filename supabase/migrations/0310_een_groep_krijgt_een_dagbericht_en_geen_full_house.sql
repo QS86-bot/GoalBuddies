@@ -51,6 +51,9 @@
 --    wijst "voltallig deze week" al af (002 §2). "Bijna" en "nog X te gaan" zijn
 --    er nooit. Vraag voor Quinten: zie het beslisdocument.
 --
+-- ⚠️ **Opt-in en minimaal drie actieve leden zijn ook database-regels** (RPC én trigger),
+--    niet alleen job-regels: de toestemming van de gebruiker hangt niet aan één `!== true`.
+--
 -- ⚠️ **Standaard uit, tweemaal.** `groepsdigest_aan()` geeft `false`: de eerste
 --    uitgaande stroom naar echte mensen is grens 1 van de Beslisbevoegdheid, en
 --    de aanzet is een handeling (een migratie van één regel die die functie
@@ -183,6 +186,13 @@ as $$
     and gm.status = 'active'
     and g.status = 'active'
     and not public.is_teamgroep(g.id)
+    -- ⚠️ De opt-in staat óók hier en in de trigger, en niet alleen in de job (security-review M2).
+    and exists (select 1 from profiles p where p.id = p_user_id and p.notify_group_digest)
+    -- ⚠️ Vanaf drie actieve leden (security-review M3): in een groep van twee zou
+    --    "geen melding" betekenen dat de ander niets goedgekeurd kreeg — dezelfde reden
+    --    waarom full house niet bestaat. Besluit van Quinten nodig of dit mag zakken.
+    and (select count(*) from group_members x
+         where x.group_id = g.id and x.status = 'active') >= 3
     and not exists (select 1 from groep_demping d
                     where d.user_id = p_user_id and d.group_id = g.id)
     and not exists (select 1 from notifications_sent n
@@ -197,9 +207,10 @@ as $$
         and m.subject_id is distinct from p_user_id
         and m.created_at >= gm.joined_at
         and m.created_at <= now() - make_interval(mins => public.intrekvenster_minuten())
-        and m.created_at > coalesce(
-              (select max(n.sent_at) from notifications_sent n
+        and m.created_at > greatest(
+              coalesce((select max(n.sent_at) from notifications_sent n
                 where n.user_id = p_user_id and n.kind = 'group_digest' and n.ref_id = g.id),
+                now() - interval '24 hours'),
               now() - interval '24 hours')
               - make_interval(mins => public.intrekvenster_minuten())
     )
@@ -234,15 +245,21 @@ begin
   end if;
 
   if not exists (select 1 from group_members gm
+                 join groups g on g.id = gm.group_id
+                 join profiles p on p.id = gm.user_id
                  where gm.group_id = new.ref_id and gm.user_id = new.user_id
-                   and gm.status = 'active')
+                   and gm.status = 'active' and g.status = 'active'
+                   and p.notify_group_digest)
+     or public.is_teamgroep(new.ref_id)
+     or (select count(*) from group_members x
+         where x.group_id = new.ref_id and x.status = 'active') < 3
      or exists (select 1 from groep_demping d
                 where d.user_id = new.user_id and d.group_id = new.ref_id) then
     raise exception using errcode = 'P0001', message = 'group_digest_geweigerd';
   end if;
 
   if (select count(*) from notifications_sent n
-      where n.user_id = new.user_id and n.kind = 'group_digest'
+      where n.user_id = new.user_id and n.kind = 'group_digest' and n.id <> new.id
         and n.sent_at > now() - interval '24 hours') >= public.groepsdigest_dagmax() then
     raise exception using errcode = 'P0001', message = 'group_digest_geweigerd';
   end if;
@@ -255,7 +272,7 @@ revoke all on function public.notifications_sent_groepsdigest_grens() from publi
 
 drop trigger if exists notifications_sent_groepsdigest_grens on public.notifications_sent;
 create trigger notifications_sent_groepsdigest_grens
-  before insert on public.notifications_sent
+  before insert or update on public.notifications_sent
   for each row when (new.kind = 'group_digest')
   execute function public.notifications_sent_groepsdigest_grens();
 

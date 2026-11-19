@@ -37,8 +37,9 @@ const beschikbaar = stackBeschikbaarOfFaal(
   import.meta.url,
 );
 
-const VLAG_AAN =
-  'create or replace function public.groepsdigest_aan() returns boolean language sql stable as $$ select true $$;';
+const VLAG_AAN = `
+  create or replace function public.groepsdigest_aan() returns boolean language sql stable as $$ select true $$;
+  update public.profiles set notify_group_digest = true where id in (select id from w);`;
 
 /**
  * Een scenario: voorbereiding, daarna controles die in `r` landen, en een
@@ -61,6 +62,7 @@ begin
 end $f$;
 insert into w select 'bob', public.shim_maak_gebruiker('dd-bob-' || gen_random_uuid() || '@example.com', 'Bob');
 insert into w select 'carol', public.shim_maak_gebruiker('dd-carol-' || gen_random_uuid() || '@example.com', 'Carol');
+insert into w select 'dave', public.shim_maak_gebruiker('dd-dave-' || gen_random_uuid() || '@example.com', 'Dave');
 create function pg_temp.id(n text) returns uuid language sql as $f$ select id from w where naam = n $f$;
 create function pg_temp.bericht(g uuid, ev text, wie text, leeftijd interval) returns void language plpgsql as $f$
 begin
@@ -231,6 +233,51 @@ describe.skipIf(!beschikbaar)('de groepsdagmelding (0310)', () => {
         select pg_temp.zet('stil', pg_temp.voor('carol'));
       `);
       expect(u.stil).toBe('');
+    },
+    TEST_TIMEOUT,
+  );
+
+  it(
+    'vraagt de opt-in van de gebruiker, in de RPC én in de trigger',
+    () => {
+      const u = scenario(`
+        create or replace function public.groepsdigest_aan() returns boolean language sql stable as $$ select true $$;
+        select pg_temp.maak_groep('Optin');
+        select pg_temp.bericht((select id from groups where name='Optin'), 'completion_approved', 'bob', interval '2 hours');
+        select pg_temp.zet('zonder_optin', pg_temp.voor('carol'));
+        select pg_temp.zet('insert', pg_temp.poging(format($q$insert into notifications_sent (user_id, kind, local_date, ref_type, ref_id)
+          values (%L, 'group_digest', current_date, 'group', %L)$q$, pg_temp.id('carol'), (select id from groups where name='Optin'))));
+        update profiles set notify_group_digest = true where id = pg_temp.id('carol');
+        select pg_temp.zet('met_optin', (pg_temp.voor('carol') <> '')::text);
+      `);
+      expect(u.zonder_optin).toBe('');
+      expect(u.insert).toBe('P0001');
+      expect(u.met_optin).toBe('true');
+    },
+    TEST_TIMEOUT,
+  );
+
+  it(
+    'zwijgt in een groep van twee en voor berichten van vóór je lidmaatschap',
+    () => {
+      const u = scenario(`
+        ${VLAG_AAN}
+        insert into groups (name, invite_code) values ('Twee', 'twee000001');
+        insert into group_members (group_id, user_id, role, joined_at)
+          select (select id from groups where name='Twee'), id, 'member', now() - interval '3 days' from w where naam in ('bob','carol');
+        select pg_temp.bericht((select id from groups where name='Twee'), 'completion_approved', 'bob', interval '2 hours');
+        select pg_temp.zet('twee', pg_temp.voor('carol'));
+        select pg_temp.zet('twee_insert', pg_temp.poging(format($q$insert into notifications_sent (user_id, kind, local_date, ref_type, ref_id)
+          values (%L, 'group_digest', current_date, 'group', %L)$q$, pg_temp.id('carol'), (select id from groups where name='Twee'))));
+        select pg_temp.maak_groep('Laat');
+        update group_members set joined_at = now() - interval '1 hour'
+          where user_id = pg_temp.id('carol') and group_id = (select id from groups where name='Laat');
+        select pg_temp.bericht((select id from groups where name='Laat'), 'completion_approved', 'bob', interval '2 hours');
+        select pg_temp.zet('laat', pg_temp.voor('carol'));
+      `);
+      expect(u.twee).toBe('');
+      expect(u.twee_insert).toBe('P0001');
+      expect(u.laat).toBe('');
     },
     TEST_TIMEOUT,
   );

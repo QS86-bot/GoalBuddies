@@ -54,6 +54,18 @@ afhankelijkheid van wie ontbreekt — bijvoorbeeld bij elke afgeronde week van
 élk lid apart celebreren, wat deze dagmelding al doet. Zonder jouw besluit
 blijft het weg.
 
+## Security-review (verwerkt)
+
+- **Opt-in en groepsstatus ook in de database** (RPC én trigger), niet alleen in de job.
+- **Minstens drie actieve leden.** In een groep van twee zou "geen melding" betekenen
+  dat de ander niets goedgekeurd kreeg — het full-house-probleem in klein. **Vraag voor
+  Quinten:** accepteren voor groepen van twee (dan zakt de ondergrens naar 2) of laten
+  staan. Conservatief gekozen: laten staan.
+- Venster ondergrens is `greatest(vorige digest, nu − 24 u)`; trigger ook bij UPDATE.
+- **Uitrolvolgorde:** 0310 vóór de deploy van `notificaties` (DEPLOY.md §2.5a).
+- Open: de dagmelding kiest bij meer dan drie groepen altijd dezelfde (op id); de
+  groepsnaam staat op een vergrendeld scherm (opt-in).
+
 ## Restsignaal, benoemd
 
 In een groep van twee betekent "geen dagmelding" dat de ander die dag geen

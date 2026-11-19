@@ -537,6 +537,18 @@ noemt.
 
 ---
 
+### 2.5a De dagmelding per groep (QS8-755, migratie 0310) — volgorde en aanzetten
+
+⚠️ **Migratie 0310 vóór `functions deploy notificaties`.** De profielquery van de job
+leest `notify_group_digest`; bestaat die kolom nog niet, dan faalt élke profielpagina
+en staat het hele meldingenverkeer stil (de job geeft toch een 200). Gebruik
+`npm run uitrolstand:controle` voor de deploy.
+
+⚠️ **Aanzetten is een handeling van Quinten** (grens 1): een migratie die
+`public.groepsdigest_aan()` herdefinieert naar `select true`. Tot dan verstuurt niets.
+Ook dan krijgt alleen wie `profiles.notify_group_digest` aanzette iets, en alleen uit een
+groep met minstens drie actieve leden.
+
 ## 2.6a Storage — vier regels bij de eerste bucket
 
 Sinds migratie `0126` heeft dit project een bucket **`avatars`** (privé, 2 MB,
