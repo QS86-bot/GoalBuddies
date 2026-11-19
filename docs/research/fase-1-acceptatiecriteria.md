@@ -255,3 +255,96 @@ Review: één lichte controle. Model: licht. Hangt af van 1.1 (kleurtokens).
   opslag per apparaat genoeg is; dat vectorpictogrammen "leuk genoeg" zijn voor wat Quinten voor ogen heeft.
 - **Niet gemeten:** hoe de pictogrammen in React Native renderen (SVG is een eigen keuze daar); of gebruikers
   een Uiterlijk-scherm gebruiken; de contrastwaarden per palet.
+
+## 11. Besluiten E5, E6 en E7 (Quinten, 19-11-2026) en wat ze betekenen
+
+Quinten koos bij alle drie een andere route dan mijn advies. Het zijn zijn besluiten; hieronder staat wat ze
+**extra** vragen, zodat het in de issues terechtkomt en niet pas bij de bouw opduikt.
+
+| # | Keuze van Quinten | Mijn advies was | Wat het extra kost |
+|---|---|---|---|
+| E1 | Alle drie de stijlen (A, B, C) blijven bestaan | n.v.t. | Zie E7 |
+| E5 | **Eigen vectorpictogrammen én emoji, alleen op de prestaties** | Alleen vectoren | Een uitzondering op de emoji-regel (QS8-111) met besluitdocument en een aangepaste `emoji:controle` |
+| E6 | **Voorkeur op het account** | Per apparaat | Een migratie, RLS, grants, Zod, `security-reviewer` |
+| E7 | **Alle 7 uiterlijken in één keer** (14 paletten) | Vier uiterlijken | Meer contrastmeting; het heldenpalet moet op alle paletten leesbaar blijken |
+
+### 11.1 E5 — emoji op prestaties: wat de uitzondering moet zijn
+De regel beschermt tegen drie dingen: emoji vertalen slecht, ze renderen per toestel anders, en een schermlezer
+leest een beschrijving midden in een zin. Een uitzondering **alleen op prestaties** kan dat grotendeels
+afvangen. Acceptatiecriteria bij issue 1.6b:
+1. Een besluitdocument in `docs/decisions/` dat QS8-111 wijzigt tot een **benoemde uitzondering**: emoji staan
+   uitsluitend in het prestatiecomponent, nooit in knoppen, statuslabels, systeemberichten of meldingen.
+   De sectie *Emoji* in `CLAUDE.md` wordt in hetzelfde issue bijgewerkt (door een bouwsessie).
+2. De emoji staat in een **apart, decoratief veld** van het component, verborgen voor schermlezers
+   (`aria-hidden`), met de tekstnaam van de prestatie als label ernaast. Geen emoji midden in een zin.
+3. Elke emoji komt uit een **vaste, in de code benoemde lijst**; er is geen vrije invoer en dus geen
+   `telTekens()`-vraag.
+4. `emoji:controle` kent het ene toegestane bestand met reden. Een emoji in een ander bestand maakt hem **rood**;
+   de mutatietest staat in de PR (regel 18, vraag 3), en een uitzondering geldt niet stilzwijgend voor een map.
+5. Elke emoji is een **positief** teken (medaille, ster, trofee, vlam). Geen teken voor gemist, gebroken of
+   achterstand (regel 7), en een vergrendelde prestatie toont het gedimde vectorpictogram, niet een emoji.
+6. De weergave is niet gemeten op alle toestellen (aanname: systeem-emoji verschillen per platform en versie).
+   Wie dat storend vindt, valt terug op de vector; die blijft er altijd naast bestaan.
+
+### 11.2 E6 — voorkeur op het account (issue 1.5a, eerst de data)
+Dit is een **datamodelwijziging aan een bestaand object** (gebruikersinstellingen), een afweging die Quinten zelf
+beslist en in een besluitdocument verantwoordt (*Beslisbevoegdheid*). Bouwsessie leest eerst het schema:
+welke tabel er nu is voor profiel of instellingen is in dit onderzoek niet bekeken.
+
+Acceptatiecriteria:
+1. Migratie via `npm run migratie:nieuw`, idempotent, met rollback-pad in de kop en dump vooraf
+   (`pg_dump`, geen backups op de gratis tier). Een kolom toevoegen aan een gevulde tabel is geen onomkeerbare
+   handeling mits het rollback-pad klopt.
+2. Kolommen voor stijl, kleurvariant, weergave en dichtheid met **`NOT NULL` en een vaste standaard** en een
+   **CHECK met een allowlist**. Een nieuwe variant later vraagt dus een migratie; dat patroon bestaat al voor
+   `chat_messages_system_event_bekend` en is een bewuste keuze, geen omissie.
+3. **RLS** op de rij: alleen de eigenaar leest en schrijft zijn voorkeur (SELECT, INSERT, UPDATE, DELETE; regel 1).
+   Een **test met echte JWT's** toont dat een groepslid, ook uit dezelfde groep, de voorkeur **niet** kan lezen
+   (regel 4 en 7: de regel is pas afgedwongen als de database hem afdwingt).
+4. Geen functie die `authenticated` per ongeluk erft: `revoke … from public, anon, authenticated` met zoveel woorden
+   en `tests/rls/functiegrants.test.ts` groen (regel 4).
+5. Zod-validatie op de allowlist aan de clientkant en de serverkant (regel 3).
+6. `npm run types:db` hergenereren; geen handwerk in `database.types.ts`.
+7. **Eerst lokaal tonen, dan verzoenen:** de app leest bij het opstarten de lokale kopie (geen flits) en vervangt
+   die door de accountwaarde zodra die er is. Bij een mislukte lezing geldt de lokale kopie en de standaard.
+   Wint de laatste schrijver bij twee apparaten, dan staat dat in het besluit.
+8. `security-reviewer` **direct** (regel 19: een tabel met RLS raakt dit), `pg_get_functiondef()` is de waarheid.
+
+### 11.3 E7 — alle 7 uiterlijken: 14 paletten, in drie issues
+Een enkel issue 1.1 wordt te groot. Voorstel (elk eigen tak, eigen PR):
+- **1.1a Architectuur + A en B:** palet-opbouw, tests per palet, 4 paletten (A, B × donker, licht).
+- **1.1b C-Baai en C-Avondgloed:** 4 paletten.
+- **1.1c C-Bosrand, C-Pruim, C-Koraal:** 6 paletten.
+
+Aanvullende criteria voor alle drie:
+1. Elk palet haalt 4.5:1 en 3:1 (1.1.3), **per palet gemeten**; de meting staat in het besluit.
+2. **Het heldenpalet is niet gemeten op de nieuwe paletten.** Een test per palet toetst de leesbaarheid van de
+   zes helden op het heldenoppervlak. **Faalt een palet daarop, dan krijgt een held op dat palet een eigen neutraal
+   vlak** (een "bord") in plaats van de kleur van het palet te raken; de uitzondering uit `CLAUDE.md` (*Stack*) blijft
+   uitsluitend voor heldenoppervlakken (14-09-2026, QS8-470).
+3. Eén tabel `paletten` met 14 benoemde sleutels; een test faalt op een ontbrekende of dubbele sleutel.
+4. Een visueel verslag per palet (vóór-/ná-screenshot van Vandaag), zodat "ziet er goed uit" meetbaar is.
+
+### 11.4 De issuelijst na deze besluiten
+| # | Issue | Hangt af van | Review |
+|---|---|---|---|
+| 1.0 | Besluiten en documenten (huisstijl; emoji-uitzondering; account-voorkeur; tracker uiteen) | geen | Quinten |
+| 1.1a | Palet-architectuur + A en B | 1.0 | licht |
+| 1.1b | C-Baai en C-Avondgloed | 1.1a | licht |
+| 1.1c | C-Bosrand, C-Pruim, C-Koraal | 1.1a | licht |
+| 1.2 | Paginakop | 1.1a | licht |
+| 1.3 | Actiekaart en afvinkcirkel | 1.1a | licht |
+| 1.4 | Zijnavigatie vanaf 1024 | 1.1a | licht |
+| 1.5a | Uiterlijkvoorkeur op het account (migratie, RLS, grants) | 1.0 | **`security-reviewer`** |
+| 1.5b | Scherm *Uiterlijk* | 1.1a, 1.5a | licht |
+| 1.6a | Eigen vectorpictogrammen | 1.1a | licht |
+| 1.6b | Emoji op prestaties (benoemde uitzondering) | 1.0, 1.6a | licht + `emoji:controle` |
+
+### 11.5 Wat er nog openstaat voordat de issues in Linear kunnen
+- **0.2 Schermafbeeldingen van de huidige GoalBuddies-app** (jij).
+- **E8 Standaarduiterlijk voor nieuwe gebruikers:** welke van de zeven? *(Advies: C-Baai donker, het voorbeeld dat je
+  het mooist vond; vraag hem nog.)*
+- **De tabel voor de voorkeur:** de bouwsessie leest het schema en kiest; dat is geen besluit voor jou.
+- Jouw uitdrukkelijke "maak de issues aan"; ik controleer dan eerst op duplicaten en lees bestaande reacties (`CLAUDE.md`).
+- **Aanname die het meeste weegt:** dat elf issues in één Fase 1 niet te veel is voor een solo-ontwikkelaar. Mijn advies
+  is 1.0 en 1.1a eerst op te leveren en de rest daarna te plannen; dat is het besluit van Quinten.
