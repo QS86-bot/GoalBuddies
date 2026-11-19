@@ -127,6 +127,15 @@ Review: licht. Model: licht. 1.3 en 1.4 hangen af van 1.1 en mogen parallel als 
 
 ## 7. Wat nog onbekend is voordat er issues kunnen komen
 
+> **Stand 19-11-2026, antwoorden van Quinten:**
+> - **E2 licht thema:** mee omzetten.
+> - **E3 Status Tracker:** laten uiteenlopen, bewust vastgelegd in `docs/decisions/` (issue 1.0).
+> - **E4 breakpoint:** 1024 breed.
+> - **E1 kleur:** nog open. Quinten wil eerst een **visueel voorbeeld** en wil dat de app "heel visueel
+>   aantrekkelijk" wordt. Het voorbeeld staat in `docs/research/mockup-fase-1-kleurvarianten.html`
+>   (drie varianten: A emerald op navy, B goud met groen voor voortgang, C emerald met levendig verloop).
+>   De rijen hieronder voor E2 t/m E4 zijn daarmee beantwoord; E1 en 0.2 blijven open.
+
 Quinten vroeg om de issues "wanneer alles bekend is". Dit ontbreekt nog:
 
 | # | Wat | Waarom het uitmaakt | Wie |
