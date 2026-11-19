@@ -91,10 +91,13 @@
 -- ⚠️ **De foreign key loopt naar `group_members (group_id, user_id)` en niet
 --    naar `groups` en `profiles` apart.** Dat doet drie dingen tegelijk zonder
 --    dat een policy ze hoeft te kennen: je kunt alleen een groep dempen waar je
---    lid van bent (een vreemde krijgt 23503 en leert daarmee niet of de groep
+--    lid van bent (een vreemde krijgt 42501 van de insert-policy, en de FK is de tweede grendel; hij leert daarmee niet of de groep
 --    bestaat — dezelfde fout als een onbestaande groep), een demping verdwijnt
---    mee met je lidmaatschap (verlaat je de groep en kom je terug, dan begin je
---    ongedempt: de luide kant), en een verwijderd account of een verwijderde
+--    mee met je lidmaatschap (verlaat je de groep via `verlaat_groep()`, dan verdwijnt de
+--    lidmaatschapsrij en kom je ongedempt terug. ⚠️ `verwijder_lid()` zet de rij
+--    op `inactive` en laat hem staan: wordt zo iemand later weer toegelaten, dan
+--    is hij weer gedempt. Het is zijn eigen voorkeur en hij ziet de schakelaar,
+--    dus er lekt niets; het is een ER-rij en geen lek), en een verwijderd account of een verwijderde
 --    groep neemt de rij mee. De FK-controle leest `group_members` als
 --    tabeleigenaar en omzeilt dus de RLS van die tabel; er lekt niets.
 --

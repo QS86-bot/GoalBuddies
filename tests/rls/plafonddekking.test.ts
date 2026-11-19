@@ -180,9 +180,9 @@ const REGISTER: Readonly<Record<string, string>> = {
     'en dan is een dagplafond het antwoord, niet een regel hier.',
   groep_demping:
     'PRIMARY KEY (user_id, group_id) en een composite FK naar `group_members` — ' +
-    'hoogstens één rij per lidmaatschap, en een niet-lid krijgt 23503. 📏 Gemeten op ' +
+    'hoogstens één rij per lidmaatschap, en een niet-lid krijgt 42501 van de policy (de FK is de tweede grendel). 📏 Gemeten op ' +
     '19-11-2026 (QS8-752, 0305): een tweede insert van hetzelfde paar weigerde met 23505, ' +
-    'een insert namens een ander met de policy, een niet-lid met 23503. ⚠️ Verdwijnt de FK ' +
+    'een insert namens een ander met de policy, een niet-lid met 42501. ⚠️ Verdwijnt de FK ' +
     'of de PK, dan heeft deze tabel een dagplafond nodig.',
   gebruikersvoorkeuren:
     'PRIMARY KEY (user_id) én een insert-policy die `user_id` aan `auth.uid()` ' +

@@ -89,9 +89,9 @@ export const ZONDER_REM = {
     'Begrensd door de primaire sleutel (user_id, group_id) en de composite foreign key naar ' +
     '`group_members (group_id, user_id)`: hoogstens één rij per lidmaatschap, en twaalf ' +
     'leden per groep (de groepsgrens) maken dat plafond klein. Een vreemde schrijft nooit: de ' +
-    'insert-policy zet `user_id` aan `auth.uid()` vast en een niet-lid krijgt 23503 op de FK. ' +
+    'insert-policy zet `user_id` aan `auth.uid()` vast en een niet-lid wordt door die policy geweigerd (42501; de FK is de tweede grendel). ' +
     '📏 Gemeten 19-11-2026 (QS8-752, 0305): een tweede insert van hetzelfde paar weigert met ' +
-    '23505, een namens een ander met de policy, een niet-lid met 23503. ⚠️ Verdwijnt de ' +
+    '23505, een namens een ander met de policy, een niet-lid met 42501 (ook bij een groep die niet bestaat). ⚠️ Verdwijnt de ' +
     'composite FK of de PK, dan is dit de eerste tabel die een rem nodig heeft.',
   gebruikersvoorkeuren:
     'Begrensd door de vijf CHECK\'s op de keuzekolommen (`gebruikersvoorkeuren_stijl_bekend` ' +
