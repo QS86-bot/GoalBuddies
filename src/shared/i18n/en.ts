@@ -2159,9 +2159,9 @@ export const en: Record<Sleutel, string> = {
 
   'buddyzoek.bevestig_titel': 'Before we start looking',
   'buddyzoek.bevestig_onbekenden':
-    'You will join a group with people you do not know. They will see your name, your profile picture, the title and the notes of this goal, and the weekly goals under it.',
+    'You will join a group with people you do not know. They will see your name, your profile picture, the title and the notes of this goal, your target date and the weekly goals under it.',
   'buddyzoek.bevestig_bescherming':
-    'Such a group is always protected: a missed week, a broken streak or a setback of yours is never visible there.',
+    'Such a group is always protected: a missed week or a setback of yours is never visible there. The group does see your current streak, so it can also read zero.',
   'buddyzoek.bevestig_lopende_week':
     'Note: once you are matched, the week that is running now counts. If you do not make it, that costs a point \u2014 even if you were already halfway when you signed up.',
   'buddyzoek.bevestig_weekstart':

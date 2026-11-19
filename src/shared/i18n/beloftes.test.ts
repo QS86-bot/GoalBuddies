@@ -98,7 +98,9 @@ const TOEGESTAAN: Readonly<Record<string, string>> = {
     'derde pin in `guard_group_update()` houdt `automatisch` zelf vast. Daarom is ' +
     'hier géén `_open`-tegenhanger nodig — en daarom heet hij ook niet ' +
     '`_beschermd`: die naam betekent in dit project "het scherm kiest per groep", ' +
-    'en dat is precies wat hier niet gebeurt. 📏 Geijkt als `service_role`: ' +
+    'en dat is precies wat hier niet gebeurt. De zin belooft sinds 19-11-2026 ' +
+    'alleen een gemiste week en een achterstand: de huidige reeks is zichtbaar voor ' +
+    'de groep (A15, 002), en de tekst zegt dat nu. 📏 Geijkt als `service_role`: ' +
     '`zichtbaarheid = open` en `ontdekbaar = true` geven beide een 23514, en een ' +
     'beheerder die `automatisch` patcht krijgt de raise uit de guard.',
   'buddyzoek.bevestig_stoppen':
@@ -245,5 +247,21 @@ describe('onzichtbaarheidsbeloftes', () => {
       const open = sleutel.replace(/_beschermd$/, '_open');
       expect(nl[open as keyof typeof nl], sleutel).not.toBe(nl[sleutel as keyof typeof nl]);
     }
+  });
+});
+
+describe('de bevestiging bij het zoeken van buddy’s (QS8-233, security-review PR #700)', () => {
+  // De groep leest je streefdatum en je huidige reeks (A15, 002). Wat de tekst
+  // vóór de bevestigknop belooft, mag daar niet onder zitten.
+  it('noemt wat onbekenden wél lezen: de streefdatum en de reeks', () => {
+    expect(nl['buddyzoek.bevestig_onbekenden']).toMatch(/streefdatum/i);
+    expect(en['buddyzoek.bevestig_onbekenden']).toMatch(/target date/i);
+    expect(nl['buddyzoek.bevestig_bescherming']).toMatch(/huidige reeks ziet de groep wel/i);
+    expect(en['buddyzoek.bevestig_bescherming']).toMatch(/does see your current streak/i);
+  });
+
+  it('belooft niet dat een verbroken reeks onzichtbaar is', () => {
+    expect(nl['buddyzoek.bevestig_bescherming']).not.toMatch(/verbroken reeks/i);
+    expect(en['buddyzoek.bevestig_bescherming']).not.toMatch(/broken streak/i);
   });
 });

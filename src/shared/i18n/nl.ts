@@ -2715,9 +2715,9 @@ export const nl = {
 
   'buddyzoek.bevestig_titel': 'Voordat we gaan zoeken',
   'buddyzoek.bevestig_onbekenden':
-    'Je komt in een groep met mensen die je niet kent. Zij zien je naam, je profielfoto, de titel \u00e9n de notitie van dit doel, en de weekdoelen eronder.',
+    'Je komt in een groep met mensen die je niet kent. Zij zien je naam, je profielfoto, de titel \u00e9n de notitie van dit doel, je streefdatum en de weekdoelen eronder.',
   'buddyzoek.bevestig_bescherming':
-    'Zo\u2019n groep is altijd beschermd: een gemiste week, een verbroken reeks of een achterstand van jou is er nooit te zien.',
+    'Zo\u2019n groep is altijd beschermd: een gemiste week of een achterstand van jou is er nooit te zien. Je huidige reeks ziet de groep wel, en die kan dus ook op nul staan.',
   'buddyzoek.bevestig_lopende_week':
     'Let op: zodra je gekoppeld bent, telt de week die nu loopt mee. Haal je die niet, dan kost dat een punt \u2014 ook als je al halverwege was toen je je aanmeldde.',
   'buddyzoek.bevestig_weekstart':
