@@ -16,6 +16,24 @@ de string `'/* \'localtime\' */'`). In `src/` en `app/` is het verschil nul; het
 `tests/` (48). Controles en toetsen die deze bestanden lezen zien daarmee nu iets meer dan eerst (niet per controle
 geteld); alle niet-database-controles die vandaag groen zijn, bleven groen.
 
+**Meting per controle (📏, 19-11-2026, herhaald door een andere sessie op `origin/main`, oude knip = `4d2992f1^`).**
+Een instrument in de knip draaide oude en nieuwe versie op elke invoer en telde per aanroepende controle; daarna zijn de drie
+controles met een verschil kaal met elk van beide knippen gedraaid. Over 908 bestanden verschillen de knippen in **62**
+(`scripts/` 12, `tests/` 50, `src/` en `app/` nul).
+
+| controle | aanroepen | uitvoer anders | unieke invoeren | meldingen vóór → ná |
+|---|---|---|---|---|
+| `knip:controle` | 4015 | 160 | 27 | 0 → 0, uitvoer identiek |
+| `belofteknip:controle` | 228 | 33 | 11 | 0 → 0, uitvoer identiek |
+| `tellerbereik:controle` | 202 | 2 | 2 | 0 → 0, uitvoer identiek |
+| `aansluiting`, `avatar`, `catalogus`, `eenrij`, `foutsleutel`, `handtekening`, `levend`, `spiegeling` | 1 tot 697 | 0 | 0 | 0 → 0 |
+
+Voorbeeld: `scripts/auth-urls.mjs` r. 68, `` `${app}/**` `` — de oude knip las die `/**` als blokbegin. Geen controle gaf dus
+een andere uitslag; er werd meer bron gelezen. **Ongemeten:** `defaultnull`, `jobbereik` en `kolomrechten` (importeren de knip,
+vragen een lokale database) en `exports` en `regel15` (draaiden in de meetomgeving niet). De 50 testbestanden zijn als invoer
+geteld, niet per testbestand gedraaid. Het verschil 62 tegenover 60 komt doordat `main` bestanden erbij kreeg en alle
+`.js/.mjs/.ts/.tsx` zijn meegeteld.
+
 **Grens.** Een regex wordt herkend aan het teken ervoor (`( , = : [ ! & | ? { } ; + - * % < > ~ ^` of een
 sleutelwoord). Dat is een heuristiek. Gaat hij mis, dan is dat beperkt tot één regel (string en regex
 eindigen aan het regeleinde); een template eindigt pas bij zijn backtick.
