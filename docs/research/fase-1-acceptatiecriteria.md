@@ -530,3 +530,14 @@ QS8-722, QS8-724, QS8-729, QS8-730 en QS8-732 zijn aangevuld met de besluiten hi
 3. Zeldzaamheid van de 5 bestaande badges — QS8-734, QS8-735.
 4. Verdwijnt een gedeeld prestatiebericht bij accountverwijdering — QS8-736.
 5. Delen in teamgroepen: staat uit tot QS8-649 geland is (een gevolg van Quintens keuze, niet van mijn aanname).
+
+### 14.5 Vierde ronde: de open vragen beantwoord (Quinten, 19-11-2026; alle vier volgen mijn advies)
+| Vraag | Keuze |
+|---|---|
+| XP-drempels niveau 1 t/m 10 | **20, 50, 100, 180, 300, 480, 750, 1150, 1700, 2500** |
+| Terugwerkend XP voor bestaande gebruikers | **Ja, eenmalig uit de bestaande gegevens** (migratie op gevulde tabel, met rollback en dump) |
+| Zeldzaamheid van de 5 badges | **Drie gewoon (10 XP), `streak_4` ongewoon (25 XP), `streak_12` zeldzaam (50 XP)** |
+| Gedeeld prestatiebericht bij accountverwijdering | **Verdwijnt** (tweede benoemde uitzondering naast QS8-335) |
+
+QS8-734, QS8-735 en QS8-736 zijn aangevuld. Hiermee zijn alle open vragen uit §14.4 beantwoord, behalve één **aanname** in QS8-736: dat alle leden van de
+groep het bericht zien.
