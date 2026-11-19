@@ -38,6 +38,18 @@ export { beslissendeGroep, enigeOfGekozen, koppelbareGroepen, type DoelGroep } f
 export { beginfase, deelbareUitnodiging, type Beginfase } from './samen';
 
 export {
+  fetchProfielDoelen,
+  fetchProfielGroepen,
+  fetchProfielVanLid,
+  isEigenTab,
+  profielTabs,
+  type GedeeldeGroep,
+  type LidProfiel,
+  type ProfielDoel,
+  type ProfielTab,
+} from './profiel';
+
+export {
   BIJLAGE_BEWAARDAGEN,
   CHATFOTO_BUCKET,
   CHATFOTO_MAX_BYTES,
