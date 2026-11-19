@@ -25,6 +25,8 @@ interface Props {
   readonly block?: boolean;
   /** Verplicht zodra het label alleen niet genoeg zegt buiten zijn context. */
   readonly accessibilityLabel?: string;
+  /** Waarom de knop uit staat of wat hij doet, voor wie het scherm niet ziet. */
+  readonly accessibilityHint?: string | undefined;
 }
 
 function kleuren(theme: Theme, variant: ButtonVariant) {
@@ -54,6 +56,7 @@ export function Button({
   busy = false,
   block = false,
   accessibilityLabel,
+  accessibilityHint,
 }: Props) {
   const theme = useTheme();
   const [heeftFocus, setFocus] = useState(false);
@@ -70,6 +73,7 @@ export function Button({
       accessibilityRole="button"
       accessibilityState={{ disabled: uit, busy }}
       {...(accessibilityLabel === undefined ? {} : { accessibilityLabel })}
+      {...(accessibilityHint === undefined ? {} : { accessibilityHint })}
       style={({ pressed }) => [
         styles.knop,
         block && styles.block,

@@ -75,6 +75,16 @@ export {
 } from './adempauze';
 
 export {
+  berichtGroepen,
+  berichtMagBij,
+  pauzeMetBericht,
+  stuurLos,
+  stuurLosMetRem,
+  type BerichtGroep,
+  type BerichtUitkomst,
+} from './adempauze-bericht';
+
+export {
   MAX_ADEMPAUZE_CYCLI,
   periodeUitDatums,
   type AdempauzePeriode,

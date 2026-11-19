@@ -2,14 +2,14 @@
 
 | | |
 |---|---|
-| **Status** | Gebouwd 19-11-2026, QS8-750 (migratie 0307 wacht op Quintens backup) |
-| **Oppervlak** | Rij 57 in `docs/decisions/002-domeinregel7-oppervlakken.md` |
+| **Status** | Gebouwd 19-11-2026, QS8-750 (migratie 0308 wacht op Quintens backup) |
+| **Oppervlak** | Rij 58 in `docs/decisions/002-domeinregel7-oppervlakken.md` |
 
 ## Besluit
 
 Een profiel van een ander (`app/mensen/[id].tsx`) heeft twee tabs: voltooiingen en groepen. Op je eigen profiel komen statistieken en prestaties erbij, als ingang naar hun eigen schermen. Voor een ander bestaan die twee tabs niet: `profielTabs(false)` bevat ze niet, en de database geeft er niets over terug.
 
-Data komt uit drie functies (0307), alle `security invoker` met een vaste kolomlijst en een expliciete toets dat kijker en persoon samen in een actieve groep zitten.
+Data komt uit drie functies (0308), alle `security invoker` met een vaste kolomlijst en een expliciete toets dat kijker en persoon samen in een actieve groep zitten.
 
 ## Waarom invoker en niet definer
 

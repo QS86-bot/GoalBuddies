@@ -1,4 +1,4 @@
--- 0307_een_profiel_van_een_ander_toont_alleen_wat_de_groep_al_zag.sql — het profiel van een groepsgenoot, met een leesgrens die in de database woont (QS8-750).
+-- 0308_een_profiel_van_een_ander_toont_alleen_wat_de_groep_al_zag.sql — het profiel van een groepsgenoot, met een leesgrens die in de database woont (QS8-750).
 --
 -- ROLLBACK-PAD:
 --   drop function if exists public.profiel_van_lid(uuid);
@@ -12,7 +12,7 @@
 -- ---------------------------------------------------------------------------
 --
 -- Fase 4.2 van epic QS8-721: een profiel met tabs voor een ánder. Dit is een
--- nieuw groepszichtbaar oppervlak (rij 57 in
+-- nieuw groepszichtbaar oppervlak (rij 58 in
 -- `docs/decisions/002-domeinregel7-oppervlakken.md`), dus het antwoord is
 -- *beschermd*: de functies hieronder geven een groepsgenoot **niet meer dan
 -- `group_overview()` en de ledenlijst hem al geven**, in een ándere vorm.
@@ -54,7 +54,7 @@
 -- ⚠️ **Aandeeldoelen (QS8-649, rij 44) bestaan hier nog niet.** Zodra een
 --    aandeel aan een teamgroep hangt, hoort het uit `profiel_doelen_van_lid()`
 --    te blijven (besluit 21 van de zakelijke-organisatiebeslissing); dat is een
---    voorwaarde voor QS8-649 en staat bij rij 57.
+--    voorwaarde voor QS8-649 en staat bij rij 58.
 
 -- ---------------------------------------------------------------------------
 -- 1. Is deze persoon een groepsgenoot van de aanroeper? (of de aanroeper zelf)
