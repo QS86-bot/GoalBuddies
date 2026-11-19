@@ -37,8 +37,8 @@ function echteWorkflows(): Record<string, string> {
 }
 
 describe('uurjobsUit', () => {
-  it('vindt precies de twee uurjobs in de echte map', () => {
-    expect(uurjobsUit(echteWorkflows())).toEqual(['notificaties.yml', 'rollover.yml']);
+  it('vindt precies de drie uurjobs in de echte map', () => {
+    expect(uurjobsUit(echteWorkflows())).toEqual(['koppelen.yml', 'notificaties.yml', 'rollover.yml']);
   });
 
   it('vindt een derde uurjob vanzelf, ook met dubbele aanhalingstekens', () => {
@@ -250,7 +250,7 @@ describe('hoofd — de uitslag voor de echte workflows', () => {
   it('is groen als elke uurjob recent gelopen heeft', async () => {
     const code = await hoofd(echteWorkflows, vers, NU);
     expect(code).toBe(0);
-    expect(uit.join('\n')).toContain('2 uurjob(s) hebben binnen');
+    expect(uit.join('\n')).toContain('3 uurjob(s) hebben binnen');
     expect(fout).toEqual([]);
   });
 

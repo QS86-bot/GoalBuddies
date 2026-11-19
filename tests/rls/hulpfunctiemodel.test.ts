@@ -98,15 +98,29 @@ const REGISTER: Readonly<Record<string, Rij>> = {
       'vóór 0297: GEARCHIVEERD_BEHEERDER_ZIET=0 — het gat van QS8-586 langs de achterdeur.',
   },
   mag_melding_als_escalatie: {
-    nietInactief: 2,
+    nietInactief: 3,
     alleenActief: 0,
     archief: false,
     open: false,
     reden:
       'Route (b) (0297): het onderwerp is de énige actieve beheerder, dus de groep kan ' +
-      'het aantoonbaar niet zelf. Twee lidmaatschapstoetsen, en daarom nietInactief: 2 — ' +
-      'één op het onderwerp en één op "is er nog een ander". Die tweede is K2: zonder hem ' +
-      'las de platformbeheerder elke melding over elke oprichter.',
+      'het aantoonbaar niet zelf. Twee lidmaatschapstoetsen daarvoor — één op het ' +
+      'onderwerp en één op "is er nog een ander". Die tweede is K2: zonder hem las de ' +
+      'platformbeheerder elke melding over elke oprichter. ' +
+      '⚠️⚠️ **Sinds 0300 (QS8-233) is er een dérde, en daarom nietInactief: 3 — ' +
+      'route (c): een groep met helemaal géén actieve beheerder.** Dat is de ' +
+      'groepssoort die 0300 bestaanbaar maakte: een automatisch gevormde buddygroep ' +
+      'krijgt uitsluitend `member`-rollen, want er was niemand die er eerder was en ' +
+      'dus niemand die iemand binnenliet. 📏 Gemeten vóór die migratie: ' +
+      '`mag_melding_als_beheerder()` is onwaar voor elk lid (er is geen beheerder) en ' +
+      'route (b) eist dat het onderwerp beheerder is — ook onwaar. Een melding over ' +
+      'een lid van zo n groep kwam dus bij **niemand** aan: het gat dat 0296 net ' +
+      'gedicht had, heropend in de groepssoort waar het het zwaarst weegt. ' +
+      '⚠️ De derde toets is `not exists (admin in group)` en kijkt dus niet naar een ' +
+      'persoon maar naar de afwezigheid van een rol — daarom nog steeds ' +
+      'alleenActief: 0 en archief: false. Getoetst in ' +
+      '`tests/rls/melding-komt-aan.test.ts`, met een groep die de échte matcher vormt ' +
+      'en een fixture die zichzelf toetst op nul beheerders.',
   },
   moderatiepoort: {
     nietInactief: 1,
