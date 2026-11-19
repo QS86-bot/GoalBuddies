@@ -154,11 +154,13 @@
   },
   "devDependencies": {
     "@types/react": "~19.2.4",
+    "@types/react-dom": "~19.2.3",
     "cross-env": "7.0.3",
     "deno": "2.9.6",
     "dotenv": "^17.4.2",
     "eslint": "^9.39.5",
     "eslint-config-expo": "^57.0.1",
+    "jsdom": "^31.0.1",
     "typescript": "~6.0.3",
     "typescript-eslint": "^8.67.0",
     "vitest": "^4.1.10"
