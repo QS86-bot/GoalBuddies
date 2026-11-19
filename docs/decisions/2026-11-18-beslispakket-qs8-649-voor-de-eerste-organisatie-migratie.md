@@ -114,3 +114,17 @@ niet gelezen, dus ik doe er geen uitspraak over.
 ## Wat dit pakket niet doet
 
 Geen migratie, geen code, geen wijziging in `CLAUDE.md`, `docs/WERKVOORRAAD.md` of `docs/ENGINEER-REVIEW.md`.
+
+---
+
+## Besloten door Quinten — 19-11-2026 (antwoorden in de chat, vier keer de aanbeveling)
+
+| Vraag | Besluit | Wat er nu volgt |
+|---|---|---|
+| 1. Besluit 2 en 4 | **Herbevestigd als oordeel, niet getoetst.** | Die zin hoort woordelijk in het beslisdocument van 03-11-2026 (§ "Herbevestigen vóór"). De markt is voor twee van de vier bronnen niet gemeten en dat blijft zo staan. |
+| 2. Teamgroep als enige kandidaat | **Nee: de lijst verschijnt met één optie en de knop blijft uit tot er gekozen is.** | Een los klein issue: één filter per aanroeper (hulpvraag, vervangende getuige, deelknop van De Lijst) en een rij in `tests/beloftes/geen-stille-eerste-groep.test.ts`. QS8-698 dekt alleen de straf-kant. |
+| 3. `beginfase()` | **Beoordelen bij de review van QS8-658.** | Vaste voorwaarde bij die review: kan een doel aan beide soorten groep hangen? |
+| 4. Juridische toets | **Besluit laten staan, datum vastleggen.** | ⚠️ **De datum is nog niet genoemd.** Zonder datum is dit besluit hetzelfde als "laten staan zonder datum", dat Quinten juist niet koos. Wie legt hem vast: Quinten, uiterlijk vóór de eerste echte organisatie. |
+
+⚠️ **Niet gedaan door dit besluit:** het beslisdocument van 03-11-2026 is niet bijgewerkt (de nummering van besluiten loopt op de tak van de keten en is niet nagekeken), geen issue aangemaakt voor vraag 2, en QS8-649 niet op Done gezet. Done zet de sessie die de merge afrondt.
+
