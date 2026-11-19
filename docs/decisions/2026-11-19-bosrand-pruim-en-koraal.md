@@ -40,12 +40,12 @@ alternatief per palet staat hierboven.
 ⚠️ **Koraal licht is een andere kleur dan donker.** Binnen het toegestane gebied is er geen warm koraal meer: een lichter, oranjer begin viel op oranje of
 op het statusrood, en het enige dat overbleef (`#885868`) is een dof mauve. Daarom loopt het lichte Koraal van wijnrood (`#681030`) naar roze-rood (`#981840`),
 niet van perzik naar roze. Dat is **mijn aanname binnen Quintens besluit om Koraal te houden**; of dit nog Koraal is, is een oordeel over het uiterlijk dat een screenshot moet beantwoorden.
-⚠️ Koraal licht ligt op 11,0 afstand van het statusrood (14,7 van oranje), maar `#981840` is donker en rood-achtig; "rood is uitsluitend deadline-risico" rust hier op een gemeten afstand en niet op een kleurnaam.
+⚠️ Koraal licht ligt op 11,0 afstand van het statusrood (14,7 van oranje), maar `#981840` is donker en rood-achtig; "rood is uitsluitend deadline-risico" rust hier op een gemeten afstand (normaal zicht) en niet op een kleurnaam.
 Bosrand licht `#185818` is een donker bosgroen: 11,9 van het statusgroen, maar dezelfde kleurfamilie.
 
 ## Wat de toetsen sinds dit issue méér meten
 
-Niets nieuws in code: `uiterlijken.test.ts` en `kleurafstand.test.ts` lopen over `allePaletten()` en namen de zes paletten vanzelf op. De teller (zeven uiterlijken, veertien paletten)
+Één toets erbij (`statusrood.test.ts`, het Koraal-anker is gelijk aan het palet). Verder: `uiterlijken.test.ts` en `kleurafstand.test.ts` lopen over `allePaletten()` en namen de zes paletten vanzelf op. De teller (zeven uiterlijken, veertien paletten)
 en de lijst `cIds` zijn bijgewerkt.
 
 **Geijkt met de hand (elke keer rood op de bedoelde toets, daarna hersteld).** Bosrand terug op `#34d399` (afstand tot groen); Koraal licht met een oranje begin (statusrood- én accentverlooptoets);
@@ -57,5 +57,7 @@ het oude einde van Bosrand en het 7%-paneel van Koraal werden rood op `statusroo
 - **Geen vóór-/ná-screenshot per palet (criterium 6).** Niets kiest C en er is in een cloudsessie geen lokale stack; zelfde reden als bij QS8-724.
 - Dat Bosrand-limoen op het donkere achtergrondverloop goed leesbaar blijft: gemeten als contrast (`#a3e635` op `#0c4026` is 7,8:1), niet als oog.
 - Het heldenpalet haalt de toets op `bg` en `panel` van alle veertien paletten (`heldenbord.test.ts`); op het verloopeinde `bg2` is dat niet gemeten, zoals bij QS8-724.
+- **Afstand van accent en accenttinten tot de statuskleuren is gemeten bij normaal zicht en niet bij kleurenblindheid** (de bestaande toetsen doen dat ook niet, alleen de categoriekleuren onderling). De review mat het slechtste geval (deuteranopie, protanopie, tritanopie; MIN 10): Koraal donker `#fb7185` 2,2 van oranje (tritan) en 2,8 van groen (deutan); Bosrand licht `#185818` 4,1 van rood (protan) en tint `#006888` 3,1 van groen (tritan); Koraal licht `#981840` 7,2 van rood (protan) en 6,0 van groen (deutan); Pruim licht tint `#b808c0` 6,5 van oranje (tritan). Een gat dat al bestond (A licht 2,2, Baai licht 2,1 tegen rood), maar Koraal donker is nu het ergste geval. Beslissen vóór QS8-731 het palet kiesbaar maakt: dat is een besluit voor Quinten.
 - Dat het kleurenblindheidsmodel (`kleurafstand.ts`) de werkelijkheid goed genoeg volgt, en niet hoe het verloop op een toestel oogt.
+- De waarden heten "dichtstbijzijnde" uit een eenmalig zoekscript dat niet is ingecheckt; reproduceer ze niet, maar toets ze: de toetsen zijn het bewijs, de zoekopdracht niet.
 - Het id wordt een opgeslagen waarde bij QS8-729; zelfde open vraag als in het besluit van QS8-724 (aparte ids of één `C` met een variantveld).

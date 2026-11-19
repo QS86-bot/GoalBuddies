@@ -18,9 +18,9 @@ import { allePaletten, MODI, UITERLIJKEN, UITERLIJK_IDS, type Modus } from './ui
  */
 
 /**
- * De twee Koraal-kleuren uit de fase-1-acceptatiecriteria §12.3 op branch claude/habithuddle-app-ontleding (donker). Nog geen palet: QS8-725
- * bouwt ze. Ze staan hier als ankerpunt, zodat het rood er al ruimte voor houdt voordat Koraal bestaat.
- * Het lichte Koraal bestaat nog niet; zodra QS8-725 het kiest, toetst `uiterlijken.test.ts` het via de tabel.
+ * De twee Koraal-kleuren uit de fase-1-acceptatiecriteria §12.3 (donker). Sinds QS8-725 is Koraal een palet (`C-koraal`) en dekt `buren()` ze
+ * ook via `accent` en `accenttint`; de constante blijft als vastgelegd voorstel, en de toets onderaan houdt hem gelijk aan dat palet.
+ * Het lichte Koraal wijkt bewust af van het voorstel (zie het beslisdocument van QS8-725) en staat hier daarom niet.
  */
 const KORAAL_DONKER = ['#fb7185', '#fdba74'] as const;
 
@@ -160,5 +160,13 @@ describe('de scanner voor rode lezers ziet een nieuwe lezer', () => {
     expect(rodeLezers({ 'app/a.tsx': '// colors.red is hier verboden\nconst x = 1;' })).toEqual([]);
     expect(rodeLezers({ 'app/a.test.tsx': 'colors.red' })).toEqual([]);
     expect(rodeLezers({ 'src/shared/theme/tokens.ts': 'atRisk: p.red,' })).toEqual([]);
+  });
+});
+
+describe('het Koraal-anker (QS8-725)', () => {
+  it('is gelijk aan de kleuren van het donkere palet C-koraal', () => {
+    const k = UITERLIJKEN['C-koraal'].donker;
+    expect([...k.verloop!.accent].sort()).toEqual([...KORAAL_DONKER].sort());
+    expect(k.colors.accent).toBe('#fb7185');
   });
 });
