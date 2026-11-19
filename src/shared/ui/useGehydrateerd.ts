@@ -6,8 +6,10 @@ import { useSyncExternalStore } from 'react';
  * ⚠️ **Op de server en tijdens de hydratie is dit `false`, daarna `true`.** Dat
  *    is `useSyncExternalStore` met een server-snapshot: React gebruikt die bij
  *    het tekenen op de server én bij de eerste clientronde, dus beide zien
- *    hetzelfde, en pas daarná schakelt de client over. Er is geen effect en geen
- *    `setState` bij betrokken.
+ *    hetzelfde in tekst en structuur, en pas daarná schakelt de client over. In
+ *    onze code is er geen effect en geen `setState`; React doet de omschakeling
+ *    zelf, via een passief effect ná de hydratie (react-dom 19.2.3), dus de
+ *    app start een taak later dan de hydratie, niet in dezelfde tik.
  *
  * ⚠️ **Waarom de app dit nodig heeft.** De taal van de app is een
  *    procesbrede variabele (`src/shared/i18n`) en komt uit het apparaat. Tijdens
@@ -19,10 +21,14 @@ import { useSyncExternalStore } from 'react';
  *    zo af van waar `npm run deploy` draait. Door vóór de hydratie niets te
  *    tekenen wat van de taal afhangt, kan er niets verschillen.
  *
- * ⚠️ **Niet aanroepen op een plek waar de server-uitvoer ertoe doet voor
- *    zoekmachines of delen.** De prerender van deze app is een uitgelogd scherm
- *    dat een bezoeker toch nooit hoort te zien (de routewacht stuurt hem naar
- *    aanmelden); zie `docs/decisions/2026-11-19-de-prerender-is-neutraal-en-de-app-start-na-de-hydratie.md`.
+ * ⚠️ **De prijs, en hij is gemeten.** Voor `/` is de prerender een uitgelogd scherm
+ *    dat een bezoeker niet hoort te zien. Maar `/aanmelden` en `/uitnodiging/[code]`
+ *    zijn openbaar (`bestemmingVoor()` in `routewacht.ts`), en daar stond er vóór
+ *    deze wijziging meteen tekst. Nu is het een leeg vlak tot de bundel binnen
+ *    en gehydrateerd is: 📏 eerste tekst na ~60 ms vóór, ~280 ms na, en ~1780 ms
+ *    na met een bundel die 1500 ms te laat komt (lokaal, ongethrottled en
+ *    vertraagd). Zie
+ *    `docs/decisions/2026-11-19-de-prerender-is-neutraal-en-de-app-start-na-de-hydratie.md`.
  */
 const abonneer = (): (() => void) => () => undefined;
 const opClient = (): boolean => true;

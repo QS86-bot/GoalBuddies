@@ -28,14 +28,17 @@ import { useGehydrateerd } from '../../src/shared/ui/useGehydrateerd';
  *    aansluiting in `Shell`. Dat er geen tekst in de `<body>` van de export
  *    staat, is met de hand gemeten (`index.html`, beide bouwtalen).
  *
- * IJKING — met de hand, 19-11-2026, vooraf en achteraf 5 groen:
+ * IJKING — met de hand, 19-11-2026, vooraf en achteraf 6 groen:
  *
  *   A  `opServer` geeft `true`
  *      -> rood: 'op de server geeft de hook false, dus er wordt niets getekend'
  *   B  de poort in `Shell` weghalen (alles altijd tekenen)
  *      -> rood: 'Shell tekent de wachters en de Stack pas na de hydratie'
  *   C  `<Pushwacht />` buiten de poort zetten
- *      -> rood: 'Shell tekent de wachters en de Stack pas na de hydratie'
+ *      -> rood: 'Shell tekent de wachters en de Stack pas na de hydratie' en
+ *         'vóór de poort staat in Shell niets anders …'
+ *   D  een `<Text>{t('algemeen.laden')}</Text>` vóór de poort
+ *      -> rood: 'vóór de poort staat in Shell niets anders …' (de oude toetsen bleven groen)
  */
 
 // ⚠️ `react-dom/server` heeft in dit project geen typedeclaratie en `@types/react-dom`
@@ -79,6 +82,21 @@ describe('de aansluiting in Shell', () => {
       expect(plek, `${deel} hoort in Shell te staan`).toBeGreaterThan(-1);
       expect(plek, `${deel} hoort achter de poort te staan`).toBeGreaterThan(poort);
     }
+  });
+
+  it('vóór de poort staat in Shell niets anders dan de achtergrond en de StatusBar', () => {
+    // De eerdere versie van deze toets zocht alleen de poort en de delen erachter;
+    // een tekst of provider-element ernaast liet hem groen terwijl #418 terugkwam
+    // (code-critic, regel 18 vraag 3). Dit is de belofte: wat vóór de poort getekend
+    // wordt, mag niet van de taal afhangen.
+    const poort = shell.indexOf('{klaar ?');
+    const begin = shell.indexOf('<View');
+    const voor = shell
+      .slice(begin, poort)
+      .replace(/<View[^>]*>\s*(?:\/\/[^\n]*\n\s*)*/, '')
+      .replace(/<StatusBar[^>]*\/>/, '')
+      .trim();
+    expect(voor, 'vóór de poort mag niets staan wat tekst of inhoud tekent').toBe('');
   });
 
   it('de poort staat binnen de View en laat bij false niets tekenen', () => {
