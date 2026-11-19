@@ -140,7 +140,8 @@ export function treffersIn(bronnen, register = UITZONDERINGEN) {
   controleerUitzonderingen(register);
   const gevonden = [];
   for (const { pad, bron } of bronnen) {
-    const toegestaan = new Set(register[pad]?.tekens ?? []);
+    // ⚠️ Op Windows zijn padscheiders backslashes (CI-baan "Scripts op Windows"): vergelijk op `/`.
+    const toegestaan = new Set(register[pad.replaceAll('\\', '/')]?.tekens ?? []);
     bron.split('\n').forEach((regel, i) => {
       if (!teltMee(pad, regel)) return;
       const tekens = zoekEmoji(regel).filter((teken) => !toegestaan.has(teken));

@@ -171,6 +171,11 @@ describe('G3 — de benoemde uitzondering van QS8-732', () => {
     expect(treffersIn([{ pad: TOEGESTAAN, bron: "a: '🔥',\n" }], register)).toEqual([]);
   });
 
+  it('kent het toegestane bestand ook met Windows-padscheiders', () => {
+    const pad = TOEGESTAAN.replaceAll('/', '\\');
+    expect(treffersIn([{ pad, bron: "a: '🔥',\n" }], register)).toEqual([]);
+  });
+
   it('meldt dezelfde emoji in een ander bestand, ook in dezelfde map', () => {
     const treffers = treffersIn(
       [{ pad: 'src/schermen/prestaties/Prestatiescherm.tsx', bron: "const x = '🔥';\n" }],
