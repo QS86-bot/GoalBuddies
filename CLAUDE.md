@@ -110,6 +110,13 @@ het afsluiten van een issue of Linear en de documenten hetzelfde zeggen.
   meting in
   `docs/decisions/2026-10-05-de-claim-ziet-een-vaste-sessiebranch-nooit.md`.
 
+  ⚠️⚠️ **Lokaal claimt hij in een eigen `git worktree` — sinds 19-11-2026
+  (QS8-717).** In één gedeelde werkmap zette een claim van sessie B de tak van
+  sessie A om. Buiten de cloud maakt `npm run claim` daarom een worktree in
+  `<repo>-werk/qs8-<nummer>` en laat hij de map waar je staat met rust; in de
+  cloud (`CLAUDE_CODE_REMOTE=true`) blijft het de map zelf. De afspraak staat in
+  `docs/PROMPT-SESSIE.md` §1.
+
   ⚠️ **Het issue op In Progress zetten is géén claim gebleken.** Bij QS8-214 is
   dat gedáán, vóór de eerste regel code, en de andere sessie begon daarna
   alsnog. Wat wél gelezen wordt is de remote branchlijst, want daar leunen
