@@ -30,7 +30,17 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 
 const WORTEL = fileURLToPath(new URL('..', import.meta.url));
 
-/** De stappen, in de volgorde waarin ze het snelst iets zeggen. */
+/**
+ * De stappen, in de volgorde waarin ze het snelst iets zeggen.
+ *
+ * ⚠️ **`tests` is sinds QS8-702 alleen de `unit`-groep** (`npm test` =
+ *    `vitest run --project unit`) en raakt nooit een database; de RLS-bestanden
+ *    draaien uitsluitend in de stap `RLS-suite`, met `RLS_DOEL=lokaal`. Daarvóór
+ *    draaide `tests` een kaal `vitest run` — beide groepen — en dus de RLS-suite
+ *    tegen productie zodra `.env` de sleutels en `RLS_TEST_ALLOW_PROD=1` droeg.
+ *    `tests/beloftes/rls-doel-raakt-productie-niet-vanzelf.test.ts` wordt rood
+ *    als een van beide schakels terugschuift.
+ */
 export const STAPPEN = [
   { naam: 'typecheck', commando: 'typecheck', soort: 'basis' },
   { naam: 'lint', commando: 'lint', soort: 'basis' },
