@@ -109,7 +109,7 @@ describe('rood is nergens een lege dag, een gemiste week of een prestatie (domei
     }
   });
 
-  it('wordt buiten het thema alleen gelezen door de drie plekken die het register noemt', () => {
+  it('wordt buiten het thema direct alleen gelezen door de drie bestanden van het register (niet: wie `danger` meegeeft)', () => {
     expect(rodeLezers(bronnenIn(['src', 'app']))).toEqual(Object.keys(REGISTER).sort());
   });
 });

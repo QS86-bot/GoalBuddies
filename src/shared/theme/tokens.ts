@@ -98,7 +98,7 @@ export const navyLight: Palette = {
   accentDim: '#8a6620',
   green: '#1f7a56',
   orange: '#b3541c',
-  // ⚠️ QS8-743: licht. Was `#b8352f`. Dit rood haalt als enige kandidaat ook 4,5:1 voor tekst.
+  // ⚠️ QS8-743: licht. Was `#b8352f`. Haalt ook 4,5:1 voor tekst; waarom deze waarde staat in het beslisdocument.
   red: '#cd0034',
   grey: '#6b7793',
   text: '#141e3c',
