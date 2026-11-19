@@ -1084,6 +1084,16 @@ export const GEEN_SCHRIJFPAD = [
     reden: 'idem — zelfde grant, zelfde zin in 0057.',
   },
   {
+    tabel: 'profiles',
+    soort: 'UPDATE',
+    kolom: 'notify_group_digest',
+    reden:
+      'QS8-755: de opt-in voor de groepsdagmelding. De schakelaar in het scherm komt in een ' +
+      'vervolgissue, samen met het moment waarop Quinten `groepsdigest_aan()` aanzet; de functie ' +
+      'staat tot dan uit, dus een schakelaar zou liegen. `meldingsoortVelden()` is de ene ' +
+      'schrijver die dan komt.',
+  },
+  {
     tabel: 'groups',
     soort: 'UPDATE',
     kolom: 'icon',

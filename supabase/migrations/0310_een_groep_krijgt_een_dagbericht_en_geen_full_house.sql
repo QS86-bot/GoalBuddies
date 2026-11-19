@@ -104,7 +104,7 @@ returns boolean language sql stable set search_path = public, pg_temp
 as $$ select false $$;
 
 create or replace function public.groepsdigest_dagmax()
-returns integer language sql immutable set search_path = public, pg_temp
+returns integer language sql stable set search_path = public, pg_temp
 as $$ select 3 $$;
 
 -- ⚠️ Alleen gebeurtenissen die de groep al leest en die uitsluitend positief
@@ -112,7 +112,7 @@ as $$ select 3 $$;
 --    group_sleeping, member_joined, milestone_done, chain_milestone (de Ketting
 --    en de mijlpaalaankondiging blijven dicht), prestatie_gedeeld (0309).
 create or replace function public.groepsdigest_gebeurtenissen()
-returns text[] language sql immutable set search_path = public, pg_temp
+returns text[] language sql stable set search_path = public, pg_temp
 as $$ select array['completion_approved', 'goal_completed']::text[] $$;
 
 revoke all on function public.groepsdigest_aan() from public, anon, authenticated;
