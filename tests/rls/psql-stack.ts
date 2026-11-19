@@ -1,5 +1,5 @@
 import { execFile, execFileSync } from 'node:child_process';
-import { cpus } from 'node:os';
+import { cpus, networkInterfaces } from 'node:os';
 import { fileURLToPath } from 'node:url';
 import { promisify } from 'node:util';
 
@@ -168,15 +168,42 @@ function eisLokaleDatabase(): void {
  *    `kloptDeBestemming()` in `scripts/rls-dekking.mjs`, zonder de poort: CI
  *    draait op 5432 en de lokale stack op 5433.
  *
- * @param uitkomst de regel `adres|database` van de vraag in `BESTEMMING`
+ * ⚠️⚠️ **Twee soorten bewijs dat de server hier staat, en geen vlag.** CI draait
+ *    Postgres als servicecontainer: `inet_server_addr()` is daar het adres van
+ *    de container op de dockerbrug (`172.18.0.2`), en de eerste versie weigerde
+ *    dat als "geen loopback". Wat de server van zichzelf ziet bewijst niet dat
+ *    hij op deze machine staat, dus een tweede getuige erbij — wat de server van
+ *    *ons* ziet:
+ *
+ *    1. **loopback**: server én client op `127.0.0.1`/`::1` (of een socket,
+ *       `unix-socket`): de lokale stack en een native Postgres.
+ *    2. **de eigen brug**: het serveradres ligt in `172.16.0.0/12` (de
+ *       dockerbruggen), het clientadres — wat `inet_client_addr()` ziet — is een
+ *       adres van een netwerkinterface van déze machine (de bruggateway,
+ *       `172.18.0.1`), en beide liggen in hetzelfde /16-net. Een tunnel naar een
+ *       server aan de overkant laat de server een ander adres als client zien
+ *       (het NAT-adres, de tunneluitgang) dat hier op geen interface staat.
+ *
+ *    Er is geen omgevingsvariabele die dit opent: `CI=true` zet iedereen overal,
+ *    en dan is de grendel een instelling. Wat meetbaar is, staat hier; wat niet,
+ *    is een ER-rij (zie het beslisdocument).
+ *
+ * @param uitkomst de regel `adres|database|clientadres` van de vraag in `BESTEMMING`
  * @param database de database die we bedoelden (`PSQL_DB`)
+ * @param eigenAdressen de adressen van de netwerkinterfaces van deze machine
  */
-export function bestemmingFout(uitkomst: string, database: string): string | null {
-  const [adres = '', echt = ''] = uitkomst.trim().split('|');
-  const loopback = ['127.0.0.1', '::1', 'unix-socket'];
+export function bestemmingFout(
+  uitkomst: string,
+  database: string,
+  eigenAdressen: readonly string[] = eigenInterfaceAdressen(),
+): string | null {
+  const [adres = '', echt = '', client = ''] = uitkomst.trim().split('|');
 
-  if (!loopback.includes(adres)) {
-    return `De RLS-suite weigert te meten: psql kwam uit op "${adres}", en dat is geen loopback (QS8-715).`;
+  if (!isLoopback(adres) && !opEigenBrug(adres, client, eigenAdressen)) {
+    return (
+      `De RLS-suite weigert te meten: psql kwam uit op "${adres}", en dat is geen loopback ` +
+      'en ook geen container op de eigen dockerbrug (QS8-715).'
+    );
   }
   if (echt !== database) {
     return `De RLS-suite weigert te meten: psql kwam uit in database "${echt}" en niet in "${database}" (QS8-715).`;
@@ -184,7 +211,35 @@ export function bestemmingFout(uitkomst: string, database: string): string | nul
   return null;
 }
 
-const BESTEMMING = "select coalesce(host(inet_server_addr()), 'unix-socket') || '|' || current_database();";
+function isLoopback(adres: string): boolean {
+  return ['127.0.0.1', '::1', 'unix-socket'].includes(adres);
+}
+
+/** `172.16.0.0/12`: de ruimte waaruit Docker zijn bruggen uitdeelt. */
+function indockerRuimte(adres: string): boolean {
+  const m = /^172\.(\d{1,3})\.\d{1,3}\.\d{1,3}$/.exec(adres);
+  const tweede = m ? Number(m[1]) : -1;
+  return tweede >= 16 && tweede <= 31;
+}
+
+function opEigenBrug(server: string, client: string, eigenAdressen: readonly string[]): boolean {
+  // De serverkant volgt uit de clientkant plus hetzelfde /16-net.
+  if (!indockerRuimte(client)) return false;
+  if (!eigenAdressen.includes(client)) return false;
+  const net = (a: string) => a.split('.').slice(0, 2).join('.');
+  return net(server) === net(client);
+}
+
+/** Alleen IPv4-adressen: de brug is IPv4, en een v6-adres telt hier niet mee. */
+export function eigenInterfaceAdressen(): string[] {
+  return Object.values(networkInterfaces())
+    .flatMap((lijst) => lijst ?? [])
+    .filter((i) => i.family === 'IPv4')
+    .map((i) => i.address);
+}
+
+const BESTEMMING =
+  "select coalesce(host(inet_server_addr()), 'unix-socket') || '|' || current_database() || '|' || coalesce(host(inet_client_addr()), '');";
 
 /** Eén keer per proces, en pas als er een antwoord was. */
 let bestemmingGemeten = false;

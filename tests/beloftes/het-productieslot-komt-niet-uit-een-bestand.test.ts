@@ -107,6 +107,33 @@ describe('bestemmingFout — waar psql werkelijk uitkwam (QS8-715)', () => {
   });
 });
 
+describe('bestemmingFout — de CI-servicecontainer op de eigen dockerbrug (QS8-715)', () => {
+  const EIGEN = ['127.0.0.1', '172.18.0.1', '10.1.2.3', '172.32.0.1', '172.15.0.1'];
+  const db = 'goalbuddies_rls';
+
+  it('de servicecontainer: server 172.18.0.2, client de eigen bruggateway 172.18.0.1', () => {
+    expect(bestemmingFout('172.18.0.2|goalbuddies_rls|172.18.0.1', db, EIGEN)).toBeNull();
+  });
+
+  it.each([
+    // een tunnel: de server ziet ons NAT-adres, dat op geen eigen interface staat
+    ['een privé-adres, client is niet van ons', '172.18.0.2|goalbuddies_rls|203.0.113.9'],
+    ['geen clientadres terug (oude vorm van de vraag)', '172.18.0.2|goalbuddies_rls'],
+    ['client in het net van de container maar niet van ons (172.18.0.5)', '172.18.0.2|goalbuddies_rls|172.18.0.5'],
+    ['server en eigen client buiten 172.16/12', '10.1.2.4|goalbuddies_rls|10.1.2.3'],
+    ['server net buiten 172.16/12 (172.32)', '172.32.0.2|goalbuddies_rls|172.32.0.1'],
+    ['server net onder 172.16/12 (172.15)', '172.15.0.2|goalbuddies_rls|172.15.0.1'],
+    ['client in een ander /16 dan de server', '172.19.0.2|goalbuddies_rls|172.18.0.1'],
+    ['een publiek adres met een eigen client', '52.47.1.2|goalbuddies_rls|172.18.0.1'],
+  ])('%s wordt geweigerd', (_naam, uitkomst) => {
+    expect(bestemmingFout(uitkomst, db, EIGEN)).toMatch(/kwam uit op/);
+  });
+
+  it('de brug in de goede ruimte maar een andere database wordt óók geweigerd', () => {
+    expect(bestemmingFout('172.18.0.2|postgres|172.18.0.1', db, EIGEN)).toMatch(/in database "postgres"/);
+  });
+});
+
 describe('eisBestemming — één keer per proces, en geen verbinding is geen fout', () => {
   afterEach(() => vergeetBestemming());
 

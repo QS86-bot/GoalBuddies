@@ -67,6 +67,11 @@ describe('QS8-715 — psql meet waar hij uitkwam', () => {
     expect(() => psql('select 1')).toThrow(/kwam uit op "52\.47\.1\.2"/);
   });
 
+  it('een privé-adres op een dockerbrug waar wij geen interface hebben (een tunnel): psql() weigert', () => {
+    antwoord.bestemming = '172.18.0.2|goalbuddies_rls|203.0.113.9';
+    expect(() => psql('select 1')).toThrow(/kwam uit op "172\.18\.0\.2"/);
+  });
+
   it('een andere database op loopback: psql() weigert', () => {
     antwoord.bestemming = '127.0.0.1|postgres';
     expect(() => psql('select 1')).toThrow(/in database "postgres"/);

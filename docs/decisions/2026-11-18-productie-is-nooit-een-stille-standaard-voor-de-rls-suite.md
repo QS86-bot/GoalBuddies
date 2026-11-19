@@ -268,3 +268,66 @@ de lokale stack zet (een `current_setting` of een markeertabel uit
 verbinden: een HTTP-tunnel op `127.0.0.1:3010` naar productie-PostgREST, samen
 met het productiegeheim in `RLS_LOKAAL_JWT_SECRET`, gaat door `eisLoopback()`.
 
+### QS8-715, tweede ontwerp (19-11-2026): de CI-servicecontainer
+
+📏 **Gemeten in CI** (run 44525677655, job 135565480115): de eerste versie van
+`bestemmingFout()` weigerde elke RLS-test, want daar draait Postgres als
+servicecontainer en `inet_server_addr()` is `172.18.0.2`, het adres op de
+dockerbrug. "Loopback" is wat de server van zichzelf ziet; dat bewijst niet dat
+hij op deze machine staat. De afleverregel noemde dit zelf als ongemeten aanname.
+
+**Eisen:** (a) een lokaal doel blijft loopback eisen of gelijkwaardig bewijs
+leveren; (b) de servicecontainer werkt zonder een vlag die ook buiten CI gezet
+kan worden; (c) productie blijft dicht (de sloten van QS8-702/703 zijn niet
+aangeraakt).
+
+| optie | oordeel |
+| -- | -- |
+| `CI=true` / `GITHUB_ACTIONS=true` laat het containeradres toe | **afgewezen**: iedereen kan dat overal zetten, en dan is de grendel een instelling (eis b) |
+| elk privé-adres (RFC1918) toestaan | **afgewezen**: een VPN- of bastion-tunnel naar een server aan de overkant meldt zich ook zo |
+| een merkteken in de database (alleen `lokale-stack.sh`/CI zet het) | **niet gebouwd**: besluit Quinten 19-11, blijft een ER-rij |
+| **een tweede getuige: wat de server van *ons* ziet** | **gekozen** |
+
+**Gekozen.** De vraag geeft nu `adres|database|clientadres` terug
+(`inet_client_addr()`). Goed is:
+
+1. serveradres `127.0.0.1`, `::1` of een socket (de lokale stack, native Postgres), óf
+2. het **clientadres** ligt in `172.16.0.0/12`, is een adres van een
+   netwerkinterface van déze machine (`os.networkInterfaces()`, de bruggateway
+   `172.18.0.1`), en het serveradres ligt in hetzelfde /16-net.
+
+De server ziet bij een container achter de dockerbrug de gateway van díe brug als
+client; bij een tunnel naar een server aan de overkant ziet hij het NAT-adres of
+de tunneluitgang, en dat staat op geen interface van deze machine. De database
+moet in beide gevallen `goalbuddies_rls` heten. Een ontbrekend clientadres
+(oudere vorm) is geweigerd. Conservatiefste optie die eis a, b en c haalt: geen
+nieuwe omgevingsvariabele, geen nieuw geheim, en alles wat vroeger werd geweigerd
+blijft geweigerd behalve precies dit ene geval.
+
+**Geijkt per grendel** (`tests/beloftes/het-productieslot-komt-niet-uit-een-bestand.test.ts`,
+`tests/beloftes/psql-meet-waar-hij-uitkwam.test.ts`): ⚠️ de eerste ijking liet
+**vier van de vijf mutaties overleven**, want de grendels dekten elkaar; daarom
+is de serverkant-toets (volgt uit client-in-ruimte plus hetzelfde /16) weggehaald
+en zijn er gevallen bijgekomen die elke grendel alleen raken.
+
+| mutatie | wat omviel |
+| -- | -- |
+| de toets "clientadres is een eigen interface" weg | *client in het net van de container maar niet van ons (172.18.0.5)* |
+| hetzelfde /16 weg | *client in een ander /16* en *een publiek adres met een eigen client* |
+| de toets "client in 172.16/12" weg | *server en eigen client buiten 172.16/12* en *172.32* |
+| bovengrens `<= 31` te ruim | *server net buiten 172.16/12 (172.32)* |
+| ondergrens `>= 16` te ruim | *server net onder 172.16/12 (172.15)* |
+| databasetoets weg | drie gevallen op `postgres` |
+| loopbacktoets weg | acht gevallen, waaronder *lokaal en de goede database* |
+
+**Wat een aanname is, en niet gemeten:** (1) dat de server de gateway van de brug
+als `inet_client_addr()` ziet bij Docker's poortdoorsturen (docker-proxy of
+masquerade); (2) dat `os.networkInterfaces()` in de CI-runner dat gatewayadres
+toont. Beide kunnen alleen de CI-run op de exacte head-sha bevestigen; zie het
+Linear-comment voor die uitslag. Een echte Postgres draaide in de bouwsessie niet.
+
+**ER-rij (Laag) erbij:** een tunnel waarvan de uitgang op een eigen interface in
+`172.16.0.0/12` staat (een VPN-adapter) naar een server die `goalbuddies_rls`
+heet, komt door. **Wordt zwaarder als:** iemand productie of een andere gedeelde
+server bereikbaar maakt via zo'n adapter. Past bij de twee bestaande rijen
+(merkteken, REST-tunnel), die Quinten op 19-11 bewust niet bouwt.
