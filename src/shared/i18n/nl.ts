@@ -1548,6 +1548,19 @@ export const nl = {
   //    geen tekst. Zie de emoji-regel in CLAUDE.md.
   'nieuwdoel.categorie_hint': 'Waar gaat dit doel over? Eén gebied per doel.',
 
+  'pictogram.vlam': 'Vlam',
+  'pictogram.ster': 'Ster',
+  'pictogram.schild': 'Schild',
+  'pictogram.medaille': 'Medaille',
+  'pictogram.trofee': 'Trofee',
+  'pictogram.ketting': 'Ketting',
+  'pictogram.doel': 'Doel',
+  'pictogram.kroon': 'Kroon',
+  'pictogram.bliksem': 'Bliksem',
+  'pictogram.hart': 'Hart',
+  'pictogram.duim': 'Duim omhoog',
+  'pictogram.vergrendeld': '{naam}, nog te behalen',
+
   'categorie.fitness': 'Sport',
   'categorie.nutrition': 'Voeding',
   'categorie.self_care': 'Zelfzorg',
