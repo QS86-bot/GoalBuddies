@@ -341,3 +341,79 @@ describe('De Lijst', () => {
   });
 });
 
+// ---------------------------------------------------------------------------
+// QS8-719 — besluit 2 van QS8-649: een teamgroep is nooit de stille enige kandidaat
+// ---------------------------------------------------------------------------
+
+/**
+ * De wachtwacht voor het gat dat `isTeamgroep()` openlaat: de regel leest
+ * `organization_id` van de kandidaat, en een `select()` die die kolom niet noemt
+ * zet de regel stil uit (zelfde klasse als `invite_code` bij QS8-387).
+ *
+ * Op `main` bestaat de kolom nog niet; dan is er niets af te dwingen en geeft deze
+ * functie niets terug. Zodra `groups.Row` hem draagt, eist ze dat de twee bronnen
+ * van de keuzelijsten hem ook selecteren: `fetchMijnGroepen()` (de straf en De Lijst)
+ * en `fetchGroepenVanDoel()` (de hulpvraag).
+ *
+ * @returns wat er mist, leeg als alles klopt of als de kolom er nog niet is
+ */
+export function teamveldOntbreekt(typesBron: string, apiBron: string): readonly string[] {
+  const rij = /\n\s*groups: \{\s*Row: \{([\s\S]*?)\n\s*\}\s*Insert:/.exec(typesBron);
+  if (rij === null || !rij[1]?.includes('organization_id')) return [];
+
+  const mist: string[] = [];
+  const mijn = /fetchMijnGroepen\(\)[\s\S]*?\.select\('([^']*)'\)/.exec(apiBron);
+  if (!mijn?.[1]?.includes('organization_id')) mist.push('fetchMijnGroepen');
+  const doel = /fetchGroepenVanDoel[\s\S]*?\.select\('([^']*)'\)/.exec(apiBron);
+  if (!doel?.[1]?.includes('organization_id')) mist.push('fetchGroepenVanDoel');
+  return mist;
+}
+
+describe('teamveldOntbreekt', () => {
+  const kolom = '\n      groups: {\n        Row: {\n          organization_id: string | null\n        }\n        Insert: {';
+  const zonderKolom = '\n      groups: {\n        Row: {\n          name: string\n        }\n        Insert: {';
+  const api = (mijn: string, doel: string) =>
+    `export async function fetchMijnGroepen() { await x.from('groups').select('${mijn}') }\n` +
+    `export async function fetchGroepenVanDoel() { await x.from('goal_group_links').select('${doel}') }`;
+
+  it('zegt niets zolang de kolom er niet is', () => {
+    expect(teamveldOntbreekt(zonderKolom, api('id, name', 'group_id'))).toEqual([]);
+  });
+
+  it('eist het veld in beide bronnen zodra de kolom er is', () => {
+    expect(teamveldOntbreekt(kolom, api('id, name', 'group_id, groups(name)'))).toEqual([
+      'fetchMijnGroepen',
+      'fetchGroepenVanDoel',
+    ]);
+  });
+
+  it('meldt alleen de bron die hem mist', () => {
+    expect(teamveldOntbreekt(kolom, api('id, organization_id', 'group_id'))).toEqual([
+      'fetchGroepenVanDoel',
+    ]);
+  });
+
+  it('is stil als beide bronnen hem noemen', () => {
+    const ok = api('id, organization_id', 'group_id, groups(organization_id)');
+    expect(teamveldOntbreekt(kolom, ok)).toEqual([]);
+  });
+});
+
+describe('een teamgroep als enige kandidaat — de bronnen van de keuzelijsten', () => {
+  it('selecteren organization_id zodra de kolom op main bestaat', () => {
+    const types = readFileSync(join(WORTEL, 'src/lib/database.types.ts'), 'utf8');
+    const api = readFileSync(join(WORTEL, 'src/modules/buddies/api.ts'), 'utf8');
+
+    expect(teamveldOntbreekt(types, api)).toEqual([]);
+  });
+
+  it('laat de drie aanroepers hun lijst door enigeOfGekozen() halen, dus door de teamregel', () => {
+    // De hulpvraag (groepen), de straf (groepen) en De Lijst: allemaal al bewaakt door
+    // de bindingentelling hierboven. Hier alleen dat de regel niet in een scherm zelf
+    // is nagebouwd, want dan loopt hij uit de pas met `isTeamgroep()`.
+    for (const bestand of [DOEL, LIJST]) {
+      expect(zonderCommentaar(readFileSync(bestand, 'utf8'))).not.toMatch(/organization_id|isTeamgroep/);
+    }
+  });
+});
+

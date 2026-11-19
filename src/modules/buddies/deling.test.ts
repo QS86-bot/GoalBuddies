@@ -1,6 +1,12 @@
 import { describe, expect, it } from 'vitest';
 
-import { beslissendeGroep, enigeOfGekozen, koppelbareGroepen, type DoelGroep } from './deling';
+import {
+  beslissendeGroep,
+  enigeOfGekozen,
+  isTeamgroep,
+  koppelbareGroepen,
+  type DoelGroep,
+} from './deling';
 
 import type { Tables } from '../../lib/database.types';
 
@@ -212,6 +218,32 @@ describe('enigeOfGekozen', () => {
   });
 
   /**
+   * QS8-719, besluit 2 van QS8-649: een teamgroep is nooit de enige kandidaat.
+   * Zonder keuze geeft de functie niets, zodat het scherm de lijst met die ene
+   * optie toont en de knop uit blijft; mét keuze telt wat de gebruiker aanwees.
+   */
+  describe('een teamgroep als enige kandidaat', () => {
+    const team = { id: 't', organization_id: 'org-1' };
+    const vrienden = { id: 'v', organization_id: null };
+
+    it('kiest hem niet zonder dat de gebruiker hem aanwees', () => {
+      expect(enigeOfGekozen([team], '', id)).toBeUndefined();
+    });
+
+    it('kiest hem wel als de gebruiker hem aanwees', () => {
+      expect(enigeOfGekozen([team], 't', id)).toBe(team);
+    });
+
+    it('kiest een groep van vrienden nog steeds als enige, ook met het veld op null', () => {
+      expect(enigeOfGekozen([vrienden], '', id)).toBe(vrienden);
+    });
+
+    it('kiest bij een team en een vriendengroep niets tot de gebruiker kiest', () => {
+      expect(enigeOfGekozen([team, vrienden], '', id)).toBeUndefined();
+    });
+  });
+
+  /**
    * ⚠️ De sleutel is een parameter en geen vaste kolomnaam, want de vijf plekken
    *    lezen drie vormen: `group_id` op een gekoppelde groep, `id` op een
    *    `Lijstgroep` en `id` op een groepsgenoot. Eén regel die alleen `id` kent,
@@ -229,5 +261,26 @@ describe('enigeOfGekozen', () => {
     for (const keuze of ['', 'a', 'b', 'weg']) {
       expect(beslissendeGroep(groepen, keuze)).toBe(enigeOfGekozen(groepen, keuze, (g) => g.group_id));
     }
+  });
+});
+
+describe('isTeamgroep', () => {
+  it('herkent een organisatie aan een tekstwaarde', () => {
+    expect(isTeamgroep({ organization_id: 'org-1' })).toBe(true);
+  });
+
+  it.each([
+    ['null', { organization_id: null }],
+    ['undefined', { organization_id: undefined }],
+    ['een getal', { organization_id: 1 }],
+    ['het veld ontbreekt (een persoon)', { id: 'p' }],
+  ])('laat %s met rust', (_naam, kandidaat) => {
+    expect(isTeamgroep(kandidaat)).toBe(false);
+  });
+
+  it('laat een niet-object met rust', () => {
+    expect(isTeamgroep(null)).toBe(false);
+    expect(isTeamgroep('org-1')).toBe(false);
+    expect(isTeamgroep(undefined)).toBe(false);
   });
 });
