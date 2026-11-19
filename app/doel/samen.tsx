@@ -1,5 +1,5 @@
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 
 import { clientEnv } from '@/lib/env';
 import { useProfiel } from '@/modules/auth';
@@ -10,17 +10,26 @@ import {
   fetchGroepenVanDoel,
   fetchMijnGroepen,
   koppelbareGroepen,
+  fetchBuddyzoekAlternatieven,
   fetchBuddyzoekopdrachtenOver,
   fetchBuddyzoekStand,
+  groepsKaartVan,
+  isVerlopen,
+  kiesAlternatieven,
   koppelDoelAanGroep,
   stopBuddyZoeken,
+  verloopdatumTekst,
+  vraagLidmaatschapAan,
   zichtbaarheidLabels,
   zoekBuddies,
   type Buddyzoekstand,
   type DoelGroep,
+  type OntdekteGroep,
 } from '@/modules/buddies';
+import { categorieLabels, fetchDoel } from '@/modules/goals';
+import { type Categorie } from '@/shared/categorieen';
 import { opmaaktaal, t } from '@/shared/i18n';
-import { localDateIn, now, toonDatum } from '@/shared/time';
+import { localDateIn, now, type TimeZone } from '@/shared/time';
 import {
   AsyncView,
   Bevestiging,
@@ -29,6 +38,7 @@ import {
   Caption,
   Card,
   Deelknop,
+  OntdekGroepKaart,
   Screen,
   Subheading,
   useAsync,
@@ -81,6 +91,10 @@ export default function Samen() {
   //    heeft aangemaakt, levert bij een tweede druk een tweede doel op.
   const klaar = () => router.replace('/');
 
+  // ⚠️ Een `Set` die bij elke render nieuw is, start de `useAsync` eronder
+  //    elke render opnieuw. Vast zolang de geladen groepen dezelfde zijn.
+  const mijneGroepen = useMemo(() => new Set((data?.mijne ?? []).map((g) => g.id)), [data]);
+
   return (
     <Screen title={t('samen.titel')} eyebrow={t('samen.eyebrow')} terug={{ naar: '/' }}>
       <AsyncView
@@ -103,6 +117,15 @@ export default function Samen() {
           />
         )}
       </AsyncView>
+
+      {/*
+        ⚠️⚠️ **Ook buiten de `AsyncView`, sinds QS8-643.** Hij stond in `Inhoud`,
+           en die rendert alleen als je al een groep hebt of dit doel gekoppeld
+           is: een lege `AsyncView` toont alleen zijn lege staat. Wie nieuw is en
+           nog geen groep heeft — precies wie onbekenden zoekt — zag deze kaart
+           dus nooit. Elk onderdeel klopte, de keten liep niet (regel 18, vraag 5).
+      */}
+      {doelId === '' ? null : <Buddyzoek doelId={doelId} mijneGroepen={mijneGroepen} />}
 
       {/*
         ⚠️ Buiten de `AsyncView`, en dat is de belofte en geen opmaak. Zie de kop:
@@ -158,10 +181,9 @@ function Inhoud({
   const [zojuist, setZojuist] = useState<string | null>(null);
   const stand = beginfase(geladen.gekoppeld, zojuist ?? gevraagd);
 
-  // ⚠️ De buddyzoek-kaart staat in béide standen en niet alleen in `kiezen`. De
-  //    wachtrij hoort bij het dóel, niet bij de vraag of er al ergens gekoppeld
-  //    is: wie zijn doel met één vriend deelt, mag er nog steeds onbekenden bij
-  //    zoeken.
+  // ⚠️ De buddyzoek-kaart staat sinds QS8-643 in `Samen()`, buiten de
+  //    `AsyncView`: zie daar. Hij hoort bij het dóel en niet bij de vraag of er
+  //    al ergens gekoppeld is.
   return (
     <>
       {stand.fase === 'gedeeld' ? (
@@ -174,7 +196,6 @@ function Inhoud({
           onNieuweGroep={onNieuweGroep}
         />
       )}
-      <Buddyzoek doelId={doelId} />
     </>
   );
 }
@@ -394,7 +415,13 @@ function Koppellijst({
  *    déze gebruiker (domeinregel 2); een peildatum uit de serverklok zet iemand
  *    aan de rand van de dag in de verkeerde periodeband.
  */
-function Buddyzoek({ doelId }: { readonly doelId: string }) {
+function Buddyzoek({
+  doelId,
+  mijneGroepen,
+}: {
+  readonly doelId: string;
+  readonly mijneGroepen: ReadonlySet<string>;
+}) {
   const { profiel } = useProfiel();
   const vandaag = profiel ? localDateIn(profiel.tz, now()) : null;
 
@@ -409,7 +436,8 @@ function Buddyzoek({ doelId }: { readonly doelId: string }) {
   //    bij de overslaan-knop hierboven: juist in de foutstand — de stand laadt
   //    niet — is hij het makkelijkst kwijt, en dan kan de gebruiker niets meer.
   //    De database blijft de rem; een tweede aanmelding geeft `already_queued`.
-  const zoektNu = data?.status === 'wachtend' || data?.status === 'gekoppeld';
+  const verlopen = data !== undefined && data !== null && isVerlopen(data);
+  const zoektNu = !verlopen && (data?.status === 'wachtend' || data?.status === 'gekoppeld');
 
   return (
     <Card>
@@ -424,12 +452,18 @@ function Buddyzoek({ doelId }: { readonly doelId: string }) {
       >
         {(stand) =>
           stand === null ? null : (
-            <Gevonden stand={stand} doelId={doelId} onWijziging={herlaad} />
+            <Gevonden
+              stand={stand}
+              doelId={doelId}
+              tz={profiel.tz}
+              mijneGroepen={mijneGroepen}
+              onWijziging={herlaad}
+            />
           )
         }
       </AsyncView>
 
-      {zoektNu ? null : <Aanmelden doelId={doelId} onAangemeld={herlaad} />}
+      {zoektNu ? null : <Aanmelden doelId={doelId} opnieuw={verlopen} onAangemeld={herlaad} />}
     </Card>
   );
 }
@@ -445,10 +479,14 @@ function Buddyzoek({ doelId }: { readonly doelId: string }) {
 function Gevonden({
   stand,
   doelId,
+  tz,
+  mijneGroepen,
   onWijziging,
 }: {
   readonly stand: Buddyzoekstand;
   readonly doelId: string;
+  readonly tz: TimeZone;
+  readonly mijneGroepen: ReadonlySet<string>;
   readonly onWijziging: () => void;
 }) {
   const router = useRouter();
@@ -473,6 +511,14 @@ function Gevonden({
   // ⚠️ **De keten loopt door tot een knop** — onwrikbare regel 18, vraag 5.
   //    "Je hebt buddy's" zonder weg ernaartoe is precies de vorm waarin QS8-43
   //    en QS8-44 op Done stonden terwijl er geen scherm was.
+  // ⚠️ Vóór `gekoppeld` en `wachtend`: `isVerlopen()` kijkt bij elke weergave
+  //    ook naar de klok, zodat een stand van vóór het verlopen niet "we zoeken"
+  //    zegt over een zoekopdracht die al voorbij is. Geen timer: een scherm dat
+  //    open blijft zonder opnieuw te renderen, ziet het bij de volgende weergave.
+  if (isVerlopen(stand)) {
+    return <Verlopen stand={stand} doelId={doelId} tz={tz} mijneGroepen={mijneGroepen} />;
+  }
+
   if (stand.status === 'gekoppeld') {
     return (
       <>
@@ -490,7 +536,7 @@ function Gevonden({
     <>
       <Body>{t('buddyzoek.wachtend')}</Body>
       <Body>{nogNodigTekst(stand.nogNodig)}</Body>
-      <Caption>{t('buddyzoek.zoeken_tot', { datum: toonDatum(stand.verloopt, opmaaktaal()) })}</Caption>
+      <Caption>{t('buddyzoek.zoeken_tot', { datum: verloopdatumTekst(stand, tz, opmaaktaal()) })}</Caption>
       {fout === null ? null : <Caption>{fout}</Caption>}
       <Button variant="stil" block busy={bezig} onPress={() => void stop()}>
         {t('buddyzoek.stop_knop')}
@@ -516,9 +562,12 @@ function Gevonden({
  */
 function Aanmelden({
   doelId,
+  opnieuw,
   onAangemeld,
 }: {
   readonly doelId: string;
+  /** Na een verlopen zoekopdracht: dezelfde knop met een andere naam, en dezelfde bevestiging. */
+  readonly opnieuw: boolean;
   readonly onAangemeld: () => void;
 }) {
   const [bevestigen, setBevestigen] = useState(false);
@@ -544,7 +593,7 @@ function Aanmelden({
     return (
       <>
         <Button block onPress={() => setBevestigen(true)}>
-          {t('buddyzoek.knop')}
+          {opnieuw ? t('buddyzoek.opnieuw_knop') : t('buddyzoek.knop')}
         </Button>
         {/*
           ⚠️ `null` bij een storing en geen nul — dan laat het scherm de teller
@@ -617,4 +666,108 @@ function nogNodigTekst(nogNodig: number): string {
   if (nogNodig <= 0) return t('buddyzoek.nog_nodig_genoeg');
   if (nogNodig === 1) return t('buddyzoek.nog_nodig_een');
   return t('buddyzoek.nog_nodig_meer', { aantal: String(nogNodig) });
+}
+
+/**
+ * Na veertien dagen zonder buddy's — QS8-643.
+ *
+ * ⚠️⚠️ **Nooit een leeg scherm dat eruitziet als "je zoekt niet".** Dat was de
+ *    stand tot QS8-643: de rij verdween uit `buddyzoek_stand()` en de kaart viel
+ *    terug op zijn lege staat. Hier staat wat er gebeurd is, met de datum, en
+ *    daaronder een weg verder: een groep om aan te vragen, of de uitdrukkelijke
+ *    zin dat er nu geen is. "Zoek opnieuw" staat eronder (`Aanmelden`, met
+ *    dezelfde bevestiging als de eerste keer — zie migratie 0306 §2).
+ *
+ * ⚠️ **Domeinregel 7.** Dit is een tegenvaller en hij is alleen voor jou: de
+ *    stand komt uit een RPC die op `owner_id` filtert, en er gaat niets naar een
+ *    groep.
+ */
+function Verlopen({
+  stand,
+  doelId,
+  tz,
+  mijneGroepen,
+}: {
+  readonly stand: Buddyzoekstand;
+  readonly doelId: string;
+  readonly tz: TimeZone;
+  readonly mijneGroepen: ReadonlySet<string>;
+}) {
+  const router = useRouter();
+
+  return (
+    <>
+      <Body>{t('buddyzoek.verlopen', { datum: verloopdatumTekst(stand, tz, opmaaktaal()) })}</Body>
+      <Alternatieven doelId={doelId} mijneGroepen={mijneGroepen} />
+      <Button variant="stil" block onPress={() => router.push('/groep/ontdek')}>
+        {t('buddyzoek.ontdekken_knop')}
+      </Button>
+    </>
+  );
+}
+
+/**
+ * Hoogstens drie groepen in de categorie van dit doel, elk met de gedeelde kaart.
+ *
+ * ⚠️ **De lege staat is een zin en geen witruimte** — het tweede criterium van
+ *    QS8-643: "of een expliciete 'er is nu niets'". En de foutstand is een
+ *    foutstand: bij een storing beweren we niet dat er niets is.
+ *
+ * ⚠️ **`OntdekGroepKaart` uit `shared/ui`, en geen eigen kopie.** De eerste versie
+ *    verstuurde met één tik een aanvraag die niet in te trekken is; de kaart van
+ *    het ontdekscherm doet dat bewust in twee stappen (code-review op QS8-643).
+ *
+ * ⚠️ Het ophalen hangt alleen aan `doelId`; je eigen groepen worden er pas bij het
+ *    tonen uit gehaald. Anders start het ophalen opnieuw zodra die binnenkomen.
+ */
+function Alternatieven({
+  doelId,
+  mijneGroepen,
+}: {
+  readonly doelId: string;
+  readonly mijneGroepen: ReadonlySet<string>;
+}) {
+  const { data, loading, error, herlaad } = useAsync(() => laadKandidaten(doelId), [doelId]);
+  const gekozen = data === undefined ? undefined : kiesAlternatieven(data, mijneGroepen);
+
+  return (
+    <AsyncView
+      loading={loading}
+      error={error}
+      onRetry={herlaad}
+      data={gekozen}
+      isEmpty={(groepen) => groepen.length === 0}
+      empty={{ title: t('buddyzoek.alternatief_geen_titel'), body: t('buddyzoek.alternatief_geen_tekst') }}
+    >
+      {(groepen) => (
+        <>
+          <Caption>{t('buddyzoek.alternatief_uitleg')}</Caption>
+          {groepen.map((groep) => (
+            <OntdekGroepKaart
+              key={groep.groupId}
+              groep={groepsKaartVan(groep, categorieLabels()[groep.categorie as Categorie] ?? groep.categorie)}
+              aangevraagd={false}
+              geblokkeerd={false}
+              onVraagAan={(bericht) => vraagAan(groep.groupId, bericht)}
+            />
+          ))}
+        </>
+      )}
+    </AsyncView>
+  );
+}
+
+/**
+ * De categorie komt van het doel zelf, en een doel zonder categorie zoekt in
+ * alle groepen — `ontdek_groepen()` leest `null` als "alles".
+ */
+async function laadKandidaten(doelId: string): Promise<readonly OntdekteGroep[]> {
+  const doel = await fetchDoel(doelId);
+  return fetchBuddyzoekAlternatieven(doel?.category ?? null);
+}
+
+/** `null` bij succes, anders de melding — de vorm die `OntdekGroepKaart` verwacht. */
+async function vraagAan(groupId: string, bericht: string): Promise<string | null> {
+  const uitkomst = await vraagLidmaatschapAan(groupId, bericht);
+  return uitkomst.ok ? null : uitkomst.melding;
 }

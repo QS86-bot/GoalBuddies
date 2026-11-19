@@ -197,7 +197,8 @@ documenten en een verhuizing is hier de duurste beweging.
   zonder hoofdletters (*"{"rls_test_allow_prod":"1"} wordt geweigerd"*, *"ook
   niet in kleine letters"*).
 
-**Wat hier niet gebouwd is.** Twee lage punten uit dezelfde review, als ER-rij:
+**Wat hier niet gebouwd is** — en sinds QS8-715 wél (zie de sectie daaronder).
+Twee lage punten uit dezelfde review:
 een controle ná het verbinden (`current_database()` en `inet_server_addr()`,
 zoals `scripts/rls-dekking.mjs` die doet), die ook een tunnel naar productie op
 loopback zou zien; en een allowlist op de host van `RLS_LOKAAL_URL` in plaats
@@ -209,3 +210,137 @@ wordt net zo geweigerd als een in `.env`. Niet gemeten: de echte RLS-suite
 tegen een lokale stack met deze grendel (geen stack in de cloudsessie); de
 allowlist laat `127.0.0.1` op poort 5433 toe, dus de stack van
 `scripts/lokale-stack.sh` en de CI-job `rls` vallen erbinnen.
+
+## QS8-715 — nameten waar psql uitkwam, en loopback voor een lokaal doel
+
+Besluit van Quinten, 18-11-2026: de twee lage restpunten van de security-review
+van QS8-703 meteen bouwen. Gestapeld op QS8-703.
+
+| # | wat | waar |
+| -- | -- | -- |
+| 1 | één keer per proces, vóór de eerste psql-meting: `select coalesce(host(inet_server_addr()), 'unix-socket') \|\| '\|' \|\| current_database()`. Alleen loopback of een socket, en de gekozen database (`PSQL_DB`), zijn goed; anders werpt hij *"weigert te meten"*. Geen poort: CI draait op 5432, de lokale stack op 5433. | `bestemmingFout()`, `eisBestemming()` in `tests/rls/psql-stack.ts` |
+| 2 | bij `RLS_DOEL=lokaal` een loopback-allowlist op de host van `RLS_LOKAAL_URL` (`localhost`, `127.0.0.1`, `[::1]`), zonder vlag die hem opent. De stack van `scripts/lokale-stack.sh` en die van `supabase start` vallen erbinnen. | `eisLoopback()` in `tests/rls/harness.ts` |
+
+⚠️⚠️ **Niet kunnen meten is stoppen** (security-review van QS8-715). De eerste
+versie zweeg bij elke meetfout, en dan liep de eigenlijke aanroep ongemeten door:
+een tunnel die de meetverbinding één keer weigerde (*too many clients*), kreeg
+de volgende `psqlMetInvoer` met DML gewoon binnen. Nu:
+
+- alleen psql-exitcode **2** heet *"geen verbinding"*; elke andere fout, ook een
+  time-out (10 s), is *"niet vast te stellen"* en werpt;
+- *"geen verbinding"* is alleen in `stackBeschikbaarOfFaal()` een uitkomst — de
+  proef draait dan niet meer, en het oordeel meldt *"geen database"* of
+  *"overslaan"* zoals altijd; elke andere aanroep werpt en voert niets uit;
+- een verkeerde bestemming werpt buiten de `try` van `stackBeschikbaarOfFaal()`,
+  anders heet hij weer *"geen database"* (QS8-268).
+
+⚠️ **En de database heet `goalbuddies_rls`, hard** (dezelfde review). Achter een
+tunnel naar een pooler op de servermachine meldt ook productie zich als
+loopback, en `PGDATABASE=postgres` is voor een dump heel gewoon. De lokale stack
+en CI bouwen alleen die naam op (`scripts/lokale-stack.sh`).
+
+**Geijkt per grendel; ervoor en erna 80/80 groen** (de vier toetsbestanden van
+het slot):
+
+| mutatie | wat omviel |
+| -- | -- |
+| de loopback-toets op de bestemming weg | drie gevallen van `bestemmingFout`, `eisBestemming`, en in de naad *"een tunnel … psql() weigert"* en *"stackBeschikbaarOfFaal: een tunnel heet weigert te meten"* |
+| de databasetoets op de bestemming weg | *"een andere database op loopback"* en het `bestemmingFout`-geval |
+| `eisLokaleDatabase()` vraagt de bestemming niet | de drie naadtoetsen in `tests/beloftes/psql-meet-waar-hij-uitkwam.test.ts` |
+| de harness bij `lokaal` weer op de blocklist | de twee kindprocesgevallen *"RLS_LOKAAL_URL naar een IP-adres / eigen domein"* |
+| elke meetfout heet weer *"geen verbinding"* | *"een meting die mislukt met iets anders …: de echte vraag draait niet"* en de twee *"niet vast te stellen"*-gevallen |
+| *"geen verbinding"* laat een gewone aanroep door | *"geen verbinding bij een gewone aanroep: werpt, en er wordt niets uitgevoerd"* |
+| de database niet hard op `goalbuddies_rls` | `PGDATABASE=postgres` en `goalbuddies_rls_2` |
+
+De time-out op de meting staat onder geen toets: een verbinding die nooit
+antwoordt is zonder echte server niet na te bootsen.
+
+⚠️ **Niet gemeten: een echte database.** De naadtoets gebruikt een nagemaakte
+`psql` (`vi.mock` op `node:child_process`). Een tijdelijk Postgres-cluster in de
+cloudsessie was niet toegestaan. Dat `inet_server_addr()` bij een tunnel het
+adres van de server aan de overkant geeft en bij een socket `null`, is de
+documentatie van Postgres en hier niet nagemeten; `scripts/rls-dekking.mjs` leunt
+sinds QS8-497 op dezelfde vraag.
+
+**Wat open blijft (Laag, als ER-rij).** Een tunnel naar een server die óók een
+database `goalbuddies_rls` heeft, gaat door de nameting; een merkteken dat alleen
+de lokale stack zet (een `current_setting` of een markeertabel uit
+`scripts/lokale-stack.sh`) zou dat sluiten. En de REST-kant meet niet ná het
+verbinden: een HTTP-tunnel op `127.0.0.1:3010` naar productie-PostgREST, samen
+met het productiegeheim in `RLS_LOKAAL_JWT_SECRET`, gaat door `eisLoopback()`.
+
+### QS8-715, tweede ontwerp (19-11-2026): de CI-servicecontainer
+
+📏 **Gemeten in CI** (run 44525677655, job 135565480115): de eerste versie van
+`bestemmingFout()` weigerde elke RLS-test, want daar draait Postgres als
+servicecontainer en `inet_server_addr()` is `172.18.0.2`, het adres op de
+dockerbrug. "Loopback" is wat de server van zichzelf ziet; dat bewijst niet dat
+hij op deze machine staat. De afleverregel noemde dit zelf als ongemeten aanname.
+
+**Eisen:** (a) een lokaal doel blijft loopback eisen of gelijkwaardig bewijs
+leveren; (b) de servicecontainer werkt zonder een vlag die ook buiten CI gezet
+kan worden; (c) productie blijft dicht (de sloten van QS8-702/703 zijn niet
+aangeraakt).
+
+| optie | oordeel |
+| -- | -- |
+| `CI=true` / `GITHUB_ACTIONS=true` laat het containeradres toe | **afgewezen**: iedereen kan dat overal zetten, en dan is de grendel een instelling (eis b) |
+| elk privé-adres (RFC1918) toestaan | **afgewezen**: een VPN- of bastion-tunnel naar een server aan de overkant meldt zich ook zo |
+| een merkteken in de database (alleen `lokale-stack.sh`/CI zet het) | **niet gebouwd**: besluit Quinten 19-11, blijft een ER-rij |
+| **een tweede getuige: wat de server van *ons* ziet** | **gekozen** |
+
+**Gekozen.** De vraag geeft nu `adres|database|clientadres` terug
+(`inet_client_addr()`). Goed is:
+
+1. serveradres `127.0.0.1`, `::1` of een socket (de lokale stack, native Postgres), óf
+2. het **clientadres** ligt in `172.16.0.0/12`, is een adres van een
+   **dockerbrug** van déze machine (`os.networkInterfaces()`, alleen `docker0` en
+   `br-<12 hex>`; de gateway `172.18.0.1`), en het serveradres ligt in hetzelfde /16-net.
+
+De server ziet bij een container achter de dockerbrug de gateway van díe brug als
+client; bij een tunnel naar een server aan de overkant ziet hij het NAT-adres of
+de tunneluitgang, en dat staat op geen interface van deze machine. De database
+moet in beide gevallen `goalbuddies_rls` heten. Een ontbrekend clientadres
+(oudere vorm) is geweigerd. Conservatiefste optie die eis a, b en c haalt: geen
+nieuwe omgevingsvariabele, geen nieuw geheim, en alles wat vroeger werd geweigerd
+blijft geweigerd behalve precies dit ene geval.
+
+**Geijkt per grendel** (`tests/beloftes/het-productieslot-komt-niet-uit-een-bestand.test.ts`,
+`tests/beloftes/psql-meet-waar-hij-uitkwam.test.ts`): ⚠️ de eerste ijking liet
+**vier van de vijf mutaties overleven**, want de grendels dekten elkaar; daarom
+is de serverkant-toets (volgt uit client-in-ruimte plus hetzelfde /16) weggehaald
+en zijn er gevallen bijgekomen die elke grendel alleen raken.
+
+| mutatie | wat omviel |
+| -- | -- |
+| de toets "clientadres is een eigen interface" weg | *client in het net van de container maar niet van ons (172.18.0.5)* |
+| hetzelfde /16 weg | *client in een ander /16* en *een publiek adres met een eigen client* |
+| de toets "client in 172.16/12" weg | *server en eigen client buiten 172.16/12* en *172.32* |
+| bovengrens `<= 31` te ruim | *server net buiten 172.16/12 (172.32)* |
+| ondergrens `>= 16` te ruim | *server net onder 172.16/12 (172.15)* |
+| databasetoets weg | drie gevallen op `postgres` |
+| loopbacktoets weg | acht gevallen, waaronder *lokaal en de goede database* |
+
+**Wat een aanname is, en niet gemeten:** (1) dat de server de gateway van de brug
+als `inet_client_addr()` ziet bij Docker's poortdoorsturen (docker-proxy of
+masquerade); (2) dat `os.networkInterfaces()` in de CI-runner dat gatewayadres
+toont. Beide kunnen alleen de CI-run op de exacte head-sha bevestigen; zie het
+Linear-comment voor die uitslag. Een echte Postgres draaide in de bouwsessie niet.
+
+**ER-rij (Laag) erbij:** een tunnel waarvan de uitgang op een eigen interface in
+`172.16.0.0/12` staat (een VPN-adapter) naar een server die `goalbuddies_rls`
+heet, komt door. **Wordt zwaarder als:** iemand productie of een andere gedeelde
+server bereikbaar maakt via zo'n adapter. Past bij de twee bestaande rijen
+(merkteken, REST-tunnel), die Quinten op 19-11 bewust niet bouwt.
+
+**Security-review van het tweede ontwerp (19-11):** geen pad naar productie
+gevonden; verwerkt: (M2) de eerste versie accepteerde elke eigen interface, en op
+een netwerk zonder NAT (AWS-VPC, kantoor-LAN) ziet een server aan de overkant ons
+eigen `eth0`-adres, dus dat bewees alleen "zelfde privénet": nu alleen
+`docker0`/`br-<12 hex>` (mutatie *interfacefilter weg* laat twee toetsen omvallen);
+(L2) precies drie velden, want een naam met een pipe mocht de velden verschuiven
+(mutatie *drie velden weg*: vier toetsen); (L1) commentaar over de clienttoets
+bij loopback rechtgezet; (L3) naadgeval met een brugadres dat niet van ons is. De
+drie ER-rijen (deze, het merkteken, de REST-tunnel) staan nu in
+`docs/ENGINEER-REVIEW.md`. Niet gedaan: (L4) één meting per proces tegenover een
+pooler met meerdere backends, bestond al en is geen onderdeel van dit issue.
