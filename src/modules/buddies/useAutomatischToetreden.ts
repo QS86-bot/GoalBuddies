@@ -1,9 +1,12 @@
 import { useEffect, useRef } from 'react';
 
 import type { Resultaat } from '../../shared/api';
-import { t } from '../../shared/i18n';
 
-import { verwerkToetreding, type ToetredenUitvoer } from './uitnodiging-toetreden';
+import {
+  toetredenMetSlot,
+  type ToetredenSlot,
+  type ToetredenUitvoer,
+} from './uitnodiging-toetreden';
 
 /**
  * Verschijnt er een sessie terwijl het uitnodigingsscherm openstaat, dan kwam die
@@ -41,10 +44,12 @@ export function useAutomatischToetreden(invoer: {
    */
   readonly magToetreden: boolean;
   readonly uitvoer: ToetredenUitvoer;
+  /** Hetzelfde slot als de knop gebruikt; zie `maakToetredenSlot()`. */
+  readonly slot: ToetredenSlot;
   /** `neemDeel` uit `api.ts`; meegegeven zodat een test geen Supabase-client nodig heeft. */
   readonly toetreden: (code: string) => Promise<Resultaat<string>>;
 }): void {
-  const { sessieLaadt, ingelogd, code, magToetreden, uitvoer, toetreden } = invoer;
+  const { sessieLaadt, ingelogd, code, magToetreden, uitvoer, slot, toetreden } = invoer;
   const sessieBijBinnenkomst = useRef<boolean | null>(null);
   const geprobeerd = useRef(false);
 
@@ -57,12 +62,15 @@ export function useAutomatischToetreden(invoer: {
     if (sessieBijBinnenkomst.current !== false) return;
     if (geprobeerd.current) return;
 
+    // ⚠️ `geprobeerd` gaat vóór het slot, en dat is geen detail. Tikt de gebruiker op
+    //    de knop voordat dit effect loopt, dan treedt de knop toe. Slaagt dat zonder
+    //    profiel, dan blijft het scherm staan en blijft `magToetreden` waar. Bleef
+    //    `geprobeerd` dan onwaar, dan deed dit effect bij de eerstvolgende
+    //    depwissel (bijvoorbeeld `sessieLaadt` tijdens een token-verversing) alsnog
+    //    een tweede toetreding. Heeft één van beide routes geprobeerd, dan probeert
+    //    de hook het niet meer; mislukt de knop, dan tikt de gebruiker opnieuw.
     geprobeerd.current = true;
 
-    toetreden(code)
-      .then((uitkomst) => verwerkToetreding(uitkomst, uitvoer))
-      .catch(() => {
-        if (uitvoer.gemount()) uitvoer.zetFout(t('uitnodiging.deelnemen_mislukt'));
-      });
-  }, [sessieLaadt, ingelogd, code, magToetreden, uitvoer, toetreden]);
+    void toetredenMetSlot(code, { slot, uitvoer, toetreden });
+  }, [sessieLaadt, ingelogd, code, magToetreden, uitvoer, slot, toetreden]);
 }
