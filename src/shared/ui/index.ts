@@ -58,6 +58,7 @@ export {
 } from './tabbladen';
 export type { Tabblad } from './tabbladen';
 export { TabFout } from './TabFout';
+export { RootVangnet } from './RootVangnet';
 export { Screen, useTerug, type Terug } from './Screen';
 export { StreakCounter } from './StreakCounter';
 export { Weekpas } from './Weekpas';
