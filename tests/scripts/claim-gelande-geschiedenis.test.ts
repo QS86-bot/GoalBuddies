@@ -1,5 +1,5 @@
 import { execFileSync } from 'node:child_process';
-import { mkdirSync, mkdtempSync, rmSync } from 'node:fs';
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
@@ -78,13 +78,26 @@ function git(cwd: string, ...argumenten: string[]) {
   });
 }
 
-/** `node claim.mjs …` met de kloon als wortel — het script leidt die zelf af. */
+/**
+ * `node claim.mjs …` met de kloon als wortel — het script leidt die zelf af.
+ *
+ * ⚠️ **`CLAUDE_CODE_REMOTE` staat hier expliciet**, en niet geërfd (QS8-717).
+ *    Sinds dat issue claimt het script lokaal in een eigen worktree en in de
+ *    cloud in de map zelf. Geërfd liep deze suite in de cloud de ene weg en in
+ *    CI de andere. De gevallen hieronder toetsen de bronnen van de claim en
+ *    leggen de cloudweg vast (`true`); de lokale weg heeft een eigen blok
+ *    onderaan, met `lokaal` als argument.
+ */
 function claim(...argumenten: string[]): { uit: string; code: number } {
+  const lokaal = argumenten.includes('lokaal');
+  const rest = argumenten.filter((a) => a !== 'lokaal');
+  const omgeving: NodeJS.ProcessEnv = { ...process.env, CLAUDE_CODE_REMOTE: lokaal ? 'false' : 'true' };
   try {
-    const uit = execFileSync('node', [join(kloon, 'scripts', 'claim.mjs'), ...argumenten], {
+    const uit = execFileSync('node', [join(kloon, 'scripts', 'claim.mjs'), ...rest], {
       cwd: kloon,
       encoding: 'utf8',
       stdio: ['ignore', 'pipe', 'pipe'],
+      env: omgeving,
     });
     return { uit, code: 0 };
   } catch (fout) {
@@ -341,3 +354,50 @@ describe('claimen vanaf een vaste sessiebranch', () => {
     expect(uit).toContain('claude/eigen-sessie-abc');
   });
 });
+
+/**
+ * QS8-717 — lokaal krijgt elke claim een eigen worktree, en de map waar je
+ * staat blijft precies zoals hij was.
+ *
+ * 📏 De aanleiding (18-11-2026): een parallelle sessie zette de gedeelde
+ *    werkmap van een andere sessie om, en die verloor haar ongecommitte werk.
+ *    Dit blok bootst die stand na: een sessie met ongecommit werk in de
+ *    hoofdmap, en een tweede die claimt.
+ */
+describe('lokaal: de claim in een eigen worktree (QS8-717)', () => {
+  it('laat de tak én het ongecommitte werk van de hoofdmap staan, en maakt de worktree met de claim', () => {
+    git(kloon, 'checkout', '-q', '-B', 'quintenstrijdonk/qs8-798-werk-van-sessie-a', 'origin/main');
+    writeFileSync(join(kloon, 'half-af.txt'), 'nog niet gecommit\n');
+
+    const { uit, code } = claim('quintenstrijdonk/qs8-799-sessie-b', 'lokaal');
+    expect(code).toBe(0);
+
+    // De belofte: sessie A staat waar ze stond, met haar werk erbij.
+    expect(git(kloon, 'rev-parse', '--abbrev-ref', 'HEAD').trim()).toBe('quintenstrijdonk/qs8-798-werk-van-sessie-a');
+    expect(readFileSync(join(kloon, 'half-af.txt'), 'utf8')).toBe('nog niet gecommit\n');
+
+    // En sessie B heeft een eigen map, op een eigen tak, met de claim gepusht.
+    const pad = join(werkmap, 'kloon-werk', 'qs8-799');
+    expect(uit).toContain(`cd ${pad}`);
+    expect(git(pad, 'rev-parse', '--abbrev-ref', 'HEAD').trim()).toBe('quintenstrijdonk/qs8-799-sessie-b');
+    expect(git(pad, 'log', '-1', '--format=%s')).toContain('claim: QS8-799');
+    expect(branchesOpAfstand()).toContain('quintenstrijdonk/qs8-799-sessie-b');
+    expect(existsSync(join(pad, '.env'))).toBe(false);
+  });
+
+  it('in een worktree die al van één sessie is, blijft het de gewone weg in die map', () => {
+    const pad = join(werkmap, 'kloon-werk', 'qs8-799');
+    // De hulpscripts staan in de kloon los gekopieerd en niet gecommit.
+    kopieerHulpscripts(pad, ENTRIES);
+    const uit = execFileSync('node', [join(pad, 'scripts', 'claim.mjs'), 'quintenstrijdonk/qs8-800-vervolg-in-b'], {
+      cwd: pad,
+      encoding: 'utf8',
+      stdio: ['ignore', 'pipe', 'pipe'],
+      env: { ...process.env, CLAUDE_CODE_REMOTE: 'false' },
+    });
+    expect(uit).toContain('✓ claim: QS8-800');
+    expect(git(pad, 'rev-parse', '--abbrev-ref', 'HEAD').trim()).toBe('quintenstrijdonk/qs8-800-vervolg-in-b');
+    expect(existsSync(join(werkmap, 'kloon-werk-werk'))).toBe(false);
+  });
+});
+
