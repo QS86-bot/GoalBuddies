@@ -98,7 +98,10 @@ import { psqlArgumenten, verbindingsmelding } from './psql.mjs';
  *    `points_ledger` was dat in QS8-453 precies de vraag.
  *
  * 📏 Gemeten op 14-09-2026 tegen een verse opbouw (269 migraties): **40** tabellen,
- *    **305** kolommen, waarvan **21** tabellen groepszichtbaar. De 38 uit het
+ *    **305** kolommen, waarvan **21** tabellen groepszichtbaar.
+ *    (⚠️ Een momentopname, en sindsdien verschoven: `breathers` ging op 19-11-2026
+ *    van `true` naar `false` (0307). De actuele tellingen staan in
+ *    `tests/scripts/groepskolommen-controle.test.ts`, die ze bewaakt.) De 38 uit het
  *    issue waren er 38 vóór 0264; `hero_profiles` en `hero_appearances` kwamen
  *    daar bij, allebei niet groepszichtbaar.
  *
@@ -159,7 +162,11 @@ export const CENSUS = {
     kolommen: 'user_id, badge, earned_at',
   },
   breathers: {
-    groepszichtbaar: true,
+    // ⚠️ `false` sinds 0307 (besluit Quinten 19-11-2026): `breathers_select` is
+    //    eigenaar-only, de groepstak van A50/QS8-227 is ingetrokken. Hij stond op
+    //    `true` zolang de policy `shares_group_with_goal` droeg. Rij 21 in
+    //    `docs/decisions/002-domeinregel7-oppervlakken.md`.
+    groepszichtbaar: false,
     kolommen: 'id, user_id, goal_id, starts_cycle, ends_cycle, announced_at',
   },
   chain_links: {

@@ -1515,7 +1515,7 @@ describe.skipIf(!rlsTestsConfigured)('EPIC 8 — De Ketting', () => {
      *    sinds 0047, `excused` incluis). De pauze is zichtbaar, de weken niet.
      */
     it(
-      'is voor een groepsgenoot zichtbaar, begin en eind incluis',
+      'is voor de eigenaar zichtbaar en voor een groepsgenoot niet',
       async () => {
         // ⚠️ **Een eigen doel met een eigen koppeling, en niet die van de
         //    fixture.** De eerste versie pakte alice' gekoppelde doel en slaagde
@@ -1526,7 +1526,7 @@ describe.skipIf(!rlsTestsConfigured)('EPIC 8 — De Ketting', () => {
           .from('goals')
           .insert({
             owner_id: f.alice.id,
-            title: 'A50 adempauzedoel',
+            title: 'Adempauzedoel, eigenaar-only',
             target_date: addDays(cyclusOverWeken(0), 120),
           })
           .select('id')
@@ -1567,35 +1567,32 @@ describe.skipIf(!rlsTestsConfigured)('EPIC 8 — De Ketting', () => {
         expect(id, `de adempauze is niet aangemaakt: ${JSON.stringify(gezet.data)}`).toBeDefined();
 
         try {
+          // Tegentest: de eigenaar ziet de rij, dus 0 voor bob is geen lege fixture.
+          const eigen = await f.alice.db
+            .from('breathers')
+            .select('id, goal_id, starts_cycle, ends_cycle, announced_at')
+            .eq('id', id ?? '');
+          expect(eigen.error).toBeNull();
+          expect(eigen.data ?? [], 'de eigenaar ziet zijn eigen adempauze').toHaveLength(1);
+          expect((eigen.data ?? [])[0]?.starts_cycle).toBe(start);
+          expect((eigen.data ?? [])[0]?.ends_cycle).toBe(start);
+
           const gezien = await f.bob.db
             .from('breathers')
             .select('id, goal_id, starts_cycle, ends_cycle, announced_at')
             .eq('id', id ?? '');
-
           expect(gezien.error).toBeNull();
 
-          // ⚠️ De diagnose in de melding: valt deze test ooit om, dan wil je in
-          //    één oogopslag zien of het de policy is of de fixture.
           const lid = await adminDb()
             .from('group_members')
             .select('status')
             .eq('group_id', f.groupId)
             .eq('user_id', f.bob.id)
             .maybeSingle();
-          const links = await adminDb()
-            .from('goal_group_links')
-            .select('group_id')
-            .eq('goal_id', doelId);
-
           expect(
             gezien.data ?? [],
-            `de groepsgenoot ziet de adempauze niet — bob: ${JSON.stringify(lid.data)}, ` +
-              `koppelingen: ${JSON.stringify(links.data)}, groep: ${f.groupId}`,
-          ).toHaveLength(1);
-
-          const rij = (gezien.data ?? [])[0];
-          expect(rij?.starts_cycle, 'het begin is afgeschermd').toBe(start);
-          expect(rij?.ends_cycle, 'het eind is afgeschermd').toBe(start);
+            `een groepsgenoot hoort de adempauze niet te zien — bob: ${JSON.stringify(lid.data)}`,
+          ).toHaveLength(0);
         } finally {
           await adminDb().from('breathers').delete().eq('id', id ?? '');
           await adminDb().from('goals').delete().eq('id', doelId);
@@ -1605,24 +1602,21 @@ describe.skipIf(!rlsTestsConfigured)('EPIC 8 — De Ketting', () => {
     );
 
     it(
-      'is voor een groepsgenoot ook zichtbaar met terugwerkende kracht',
+      'is ook met terugwerkende kracht alleen voor de eigenaar zichtbaar',
       async () => {
-        // ⚠️ **Acceptatiecriterium van QS8-227, en het is een naad.** Sinds dit
-        //    issue mag een adempauze over een week liggen die al voorbij is. De
-        //    aankondiging aan de groep is de énige rem die op zo'n pauze
-        //    overblijft — het besluit geeft de andere drie bewust op — dus een
-        //    pauze achteraf die de groep níét bereikt, is niet een half gebouwde
-        //    feature maar de rem die eraf valt.
+        // ⚠️ **Dit was een acceptatiecriterium van QS8-227 en is op 19-11-2026
+        //    omgedraaid (0307).** De aankondiging aan de groep was de enige rem op
+        //    een pauze achteraf; die rem is bewust opgegeven (B2 in
+        //    `docs/decisions/2026-11-19-de-adempauze-is-van-jou-alleen.md`). Wat
+        //    blijft is dat de richting in de tijd er niet toe doet: ook een pauze
+        //    met terugwerkende kracht is voor de groep onleesbaar.
         //
-        // ⚠️ Deze test staat er los van de test hierboven en niet als tweede
-        //    assertie erin. Ze toetsen twee beloftes: die hierboven dat de rij
-        //    niet afgeschermd is, deze dat de richting in de tijd er niet toe
-        //    doet. In één test zou de eerste de tweede kunnen dragen.
+        // ⚠️ Deze test staat los van de vorige: ze toetsen twee beloftes.
         const doel = await adminDb()
           .from('goals')
           .insert({
             owner_id: f.alice.id,
-            title: 'Adempauze achteraf, gedeeld',
+            title: 'Adempauze achteraf, eigenaar-only',
             target_date: addDays(cyclusOverWeken(0), 120),
           })
           .select('id')
@@ -1657,21 +1651,24 @@ describe.skipIf(!rlsTestsConfigured)('EPIC 8 — De Ketting', () => {
         expect(id, `de adempauze is niet aangemaakt: ${JSON.stringify(gezet.data)}`).toBeDefined();
 
         try {
+          const eigen = await f.alice.db
+            .from('breathers')
+            .select('id, starts_cycle, ends_cycle, announced_at')
+            .eq('id', id ?? '');
+          expect(eigen.error).toBeNull();
+          expect(eigen.data ?? [], 'de eigenaar ziet zijn eigen adempauze').toHaveLength(1);
+          expect((eigen.data ?? [])[0]?.starts_cycle).toBe(start);
+          expect((eigen.data ?? [])[0]?.ends_cycle).toBe(eind);
+
           const gezien = await f.bob.db
             .from('breathers')
             .select('id, starts_cycle, ends_cycle, announced_at')
             .eq('id', id ?? '');
-
           expect(gezien.error).toBeNull();
           expect(
             gezien.data ?? [],
-            'een adempauze met terugwerkende kracht hoort net zo aangekondigd te zijn',
-          ).toHaveLength(1);
-
-          const rij = (gezien.data ?? [])[0];
-          expect(rij?.starts_cycle).toBe(start);
-          expect(rij?.ends_cycle).toBe(eind);
-          expect(rij?.announced_at, 'zonder aankondigingsmoment is er niets aangekondigd').not.toBeNull();
+            'een adempauze met terugwerkende kracht is voor de groep onleesbaar',
+          ).toHaveLength(0);
         } finally {
           await adminDb().from('breathers').delete().eq('id', id ?? '');
           await adminDb().from('goals').delete().eq('id', doelId);

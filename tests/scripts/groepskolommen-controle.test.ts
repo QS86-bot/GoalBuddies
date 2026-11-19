@@ -145,7 +145,7 @@ describe('de census zelf', () => {
     }
   });
 
-  it('merkt er drieëntwintig als groepszichtbaar', () => {
+  it('merkt er tweeëntwintig als groepszichtbaar', () => {
     // ⚠️ `groups` is makkelijk te missen: `groups_select` is
     //    `mag_groep_lezen(id)` en delegeert naar een functie.
     const groeps = Object.entries(CENSUS)
@@ -157,7 +157,9 @@ describe('de census zelf', () => {
     //    wat verdween is de tabelbrede grant waar deze census over gaat.
     // ⚠️ 23 sinds 0298: `reports` stond als groepszichtbaar in de census en
     //    heeft geen tabelbrede grant meer. Zie de toets hierboven.
-    expect(groeps).toHaveLength(23);
+    // ⚠️ 22 sinds 0307: `breathers_select` is eigenaar-only (besluit 19-11-2026).
+    expect(groeps).toHaveLength(22);
+    expect(groeps).not.toContain('breathers');
     expect(groeps).toContain('groups');
     expect(groeps).toContain('weekly_goals');
     expect(groeps).not.toContain('points_ledger');
