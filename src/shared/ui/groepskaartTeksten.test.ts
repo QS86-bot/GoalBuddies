@@ -2,7 +2,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 
 import { STANDAARDTAAL, zetTaal } from '../i18n';
 
-import { groepskaartTeksten } from './groepskaart';
+import { groepskaartTeksten } from './groepskaartTeksten';
 
 /**
  * De Groepskaart — QS8-751.

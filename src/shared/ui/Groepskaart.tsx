@@ -5,7 +5,7 @@ import { t } from '../i18n';
 import { Button } from './Button';
 import { Card } from './Card';
 import { Deelknop } from './Deelknop';
-import { groepskaartTeksten } from './groepskaart';
+import { groepskaartTeksten } from './groepskaartTeksten';
 import { Body, Caption, Subheading } from './Text';
 
 /**
