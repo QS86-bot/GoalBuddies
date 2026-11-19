@@ -72,6 +72,7 @@ export {
 } from './uitnodiging-stand';
 
 export { verwerkToetreding, type ToetredenUitvoer } from './uitnodiging-toetreden';
+export { useAutomatischToetreden } from './useAutomatischToetreden';
 
 export {
   bewaarOpenstaandeUitnodiging,

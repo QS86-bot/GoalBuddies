@@ -1,9 +1,9 @@
 /**
  * Wat de uitnodigingspagina een bezoeker laat doen — QS8-708.
  *
- * ⚠️ Waarom dit een eigen functie is en geen `if` in het scherm. Er is in dit
- *    project geen componenttest (vitest draait in node), dus alles wat in
- *    `app/uitnodiging/[code].tsx` beslist, is onbewaakt. De beslissing hoort hier,
+ * ⚠️ Waarom dit een eigen functie is en geen `if` in het scherm. Een scherm is hier
+ *    niet te renderen (de renderopstelling van QS8-714 draait voor één hook, niet voor
+ *    schermen), dus alles wat in `app/uitnodiging/[code].tsx` beslist, is onbewaakt. De beslissing hoort hier,
  *    waar de vier gevallen van het issue elk een test hebben.
  *
  * ⚠️ De aanleiding. `join_group_with_code()` geeft voor wie al actief lid is
