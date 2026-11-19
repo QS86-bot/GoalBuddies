@@ -23,7 +23,7 @@ import {
   type Klassementsrij,
   type Pagina,
   type Zichtbaarheid,
-  uitnodigingsLink,
+  deelbareUitnodiging,
   verlaatGroep,
   zichtbaarheidLabels,
 } from '@/modules/buddies';
@@ -48,7 +48,7 @@ import {
   Caption,
   Card,
   Choice,
-  Deelknop,
+  Groepskaart,
   Field,
   Ketting,
   MemberRow,
@@ -205,7 +205,21 @@ export default function GroepDetail() {
                  zonder namen. Hij staat in béide zichtbaarheidstanden — dat is
                  de vorm die besluit A42 zelf al toestond.
             */}
-            <SamenKaart uitkomst={s.teller} onOpnieuw={herlaad} />
+            {s.groep === null ? null : (
+              <Groepskaart
+                teller={
+                  s.teller.staat === 'ok'
+                    ? s.teller.teller
+                    : s.teller.staat === 'fout'
+                      ? 'fout'
+                      : { weken: 0, mijlpalen: 0 }
+                }
+                onOpnieuw={herlaad}
+                leden={s.overzicht.totaal}
+                uitnodigingsLink={deelbareUitnodiging(s.groep, clientEnv().appUrl)}
+                groepsnaam={s.groep.name}
+              />
+            )}
 
             <Card>
               <Subheading>{t('groepscherm.wie_meedoen')}</Subheading>
@@ -300,18 +314,6 @@ export default function GroepDetail() {
                 {t('groepdetail.naar_chat')}
               </Button>
             </Card>
-
-            {s.groep === null ? null : (
-              <Card>
-                <Subheading>{t('groepdetail.uitnodigen')}</Subheading>
-                <Body muted>{t('groepdetail.link_uitleg')}</Body>
-                <Deelknop
-                  label={t('groepdetail.deel')}
-                  titel={t('groepdetail.deel_titel', { groep: s.groep.name })}
-                  tekst={uitnodigingsLink(clientEnv().appUrl, s.groep.invite_code)}
-                />
-              </Card>
-            )}
 
             {userId ? (
               <DeadlineVerzoeken groupId={id ?? ''} userId={userId} onBeslist={herlaad} />
@@ -892,57 +894,6 @@ function KoppelDoel({
       ) : null}
 
       {fout === null ? null : <Caption danger>{fout}</Caption>}
-    </Card>
-  );
-}
-
-/**
- * De twee optellende groepstotalen — QS8-254.
- *
- * ⚠️ **Bij nul zwijgt hij.** "Samen 0 weken afgerond" is een tegenslagbericht met
- *    een vrolijke kop erop; dezelfde afweging die de seizoensrecap in 0112
- *    maakte, en om precies dezelfde reden. In plaats daarvan staat er waar de
- *    teller straks komt te staan.
- */
-function SamenKaart({
-  uitkomst,
-  onOpnieuw,
-}: {
-  readonly uitkomst: TellerUitkomst;
-  readonly onOpnieuw: () => void;
-}) {
-  if (uitkomst.staat === 'geen-lid') return null;
-
-  if (uitkomst.staat === 'fout') {
-    return (
-      <Card nested>
-        <Body muted>{t('klassement.teller_mislukt')}</Body>
-        <Button variant="stil" onPress={onOpnieuw}>
-          {t('klassement.opnieuw')}
-        </Button>
-      </Card>
-    );
-  }
-
-  const { weken, mijlpalen } = uitkomst.teller;
-
-  return (
-    <Card>
-      <Subheading>{t('teller.kop')}</Subheading>
-      {weken === 0 && mijlpalen === 0 ? (
-        <Body muted>{t('teller.nog_niets')}</Body>
-      ) : (
-        <>
-          <Body>{weken === 1 ? t('teller.weken_een') : t('teller.weken_meer', { n: weken })}</Body>
-          {mijlpalen === 0 ? null : (
-            <Caption>
-              {mijlpalen === 1
-                ? t('teller.mijlpalen_een')
-                : t('teller.mijlpalen_meer', { n: mijlpalen })}
-            </Caption>
-          )}
-        </>
-      )}
     </Card>
   );
 }

@@ -474,6 +474,45 @@ describe.skipIf(!rlsTestsConfigured)('het klassement van een groep', () => {
   // De teller — in béide standen
   // -------------------------------------------------------------------------
 
+  /**
+   * ⚠️ **QS8-751, acceptatiecriterium 2: een gemiste week laat de teller niet
+   *    dalen.** De Groepskaart toont `groep_teller()` zonder eigen berekening, dus
+   *    deze belofte leeft in de database. Gemeten in CI; in een cloudsessie zonder
+   *    stack is hij ongemeten.
+   */
+  it(
+    'laat de optelteller niet dalen van een gemiste week',
+    async () => {
+      const voorOpen = await teller(f.bram, f.open.id);
+      const voorDicht = await teller(f.bram, f.dicht.id);
+
+      const gemist = await adminDb()
+        .from('weekly_goals')
+        .insert({
+          goal_id: f.doelId,
+          title: 'KLASSEMENT gemiste week',
+          floor_text: 'Eén keer',
+          ceiling_text: 'Drie keer',
+          cycle_start_date: addDays(HUIDIGE_CYCLUS, -14),
+          status: 'missed',
+        });
+      if (gemist.error) throw new Error(`gemiste week: ${gemist.error.message}`);
+
+      const naOpen = await teller(f.bram, f.open.id);
+      const naDicht = await teller(f.bram, f.dicht.id);
+
+      expect(naOpen?.weken, 'de teller daalde in de open groep').toBeGreaterThanOrEqual(
+        voorOpen?.weken ?? 0,
+      );
+      expect(naDicht?.weken, 'de teller daalde in de beschermde groep').toBeGreaterThanOrEqual(
+        voorDicht?.weken ?? 0,
+      );
+      expect(naOpen?.weken).toBe(voorOpen?.weken);
+      expect(naDicht?.weken).toBe(voorDicht?.weken);
+    },
+    TEST_TIMEOUT,
+  );
+
   it(
     'geeft de optelteller in béide zichtbaarheidstanden',
     async () => {
