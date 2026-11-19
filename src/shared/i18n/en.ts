@@ -39,6 +39,9 @@ export const en: Record<Sleutel, string> = {
   'systeembericht.huddle_day_changed':
     '{naam} moved the huddle day. The week that is running moved along with it; anything already closed stays closed.',
 
+  'systeembericht.prestatie_gedeeld': '{naam} shares an achievement: {prestatie}.',
+  'systeembericht.prestatie_gedeeld_zonder_prestatie': '{naam} shares an achievement.',
+
   'algemeen.oud_lid': 'A former member',
   'algemeen.en': 'and',
 
@@ -630,7 +633,20 @@ export const en: Record<Sleutel, string> = {
   'prestaties.rij_label': '{naam}. {zeldzaamheid}, {xp} XP. {status}.',
   'prestaties.leeg_titel': 'No achievements yet',
   'prestaties.leeg_tekst': 'Your achievements will show up here. The ones marked "Still to earn" are what you can still earn; your first comes sooner than you think.',
-  'prestaties.privacy': 'Only you can see your achievements, level and XP. What you earned stays.',
+  'prestaties.privacy': 'Only you can see your achievements, level and XP, except an achievement you share yourself. What you earned stays.',
+  'prestaties.deel_knop': 'Share with your group',
+  'prestaties.deel_knop_label': '{naam}: share with your group',
+  'prestaties.deel_uitleg': 'Pick one group. Everyone in that group will then see in the chat that you have this achievement: only its name, no XP or level. You share one achievement at a time, per group, and you can only share a limited number a day.',
+  'prestaties.deel_groep': 'Share with {groep}',
+  'prestaties.deel_geen_groep': 'You are not in a group to share with yet.',
+  'prestaties.deel_sluiten': 'Close',
+  'prestaties.deel_gelukt': 'Shared with {groep}.',
+  'prestaties.deel_al': 'You already shared this achievement in {groep}.',
+  'prestaties.deel_limiet': 'You have reached today’s maximum of shared achievements. Tomorrow you can share more.',
+  'prestaties.deel_team_uit': 'Sharing is not available in this group yet.',
+  'prestaties.deel_niet_mogelijk': 'Sharing did not work: you are no longer a member of this group, or you have not earned this achievement yet.',
+  'prestaties.deel_fout': 'Sharing did not work. Please try again in a moment.',
+  'prestaties.deel_groepen_laden_mislukt': 'Your groups could not be loaded.',
   'statistiek.ingang_titel': 'Your statistics',
   'statistiek.ingang_uitleg': 'Your weeks and the time of day you submit.',
   'statistiek.ingang_knop': 'View statistics',

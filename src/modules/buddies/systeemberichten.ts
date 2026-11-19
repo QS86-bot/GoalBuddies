@@ -70,7 +70,34 @@ export interface SysteembericthInvoer {
    *    hoeveel schakels de groep samen heeft, en niet wie welke week deed.
    */
   readonly aantal: number | null;
+  /**
+   * De badgesleutel van een gedeelde prestatie — QS8-736, alleen bij
+   * `prestatie_gedeeld`. `null` bij elke andere gebeurtenis.
+   *
+   * ⚠️ **Het zevende veld, en de afweging is gemaakt:** het is een sleutel en geen
+   *    titel, notitie of niveau, en het bericht bestaat alleen op een
+   *    uitdrukkelijke handeling van de gebruiker zelf. Het draagt nooit XP,
+   *    zeldzaamheid of een datum; die komen uit `modules/goals` en daar mag dit
+   *    bestand niet naar verwijzen (`tests/beloftes/prestaties-blijven-voor-jezelf`).
+   */
+  readonly prestatie: string | null;
 }
+
+/**
+ * De prestaties die een bericht bij naam mag noemen — de sleutels van `badges_bekend`.
+ *
+ * ⚠️ Een eigen kopie en geen import uit `modules/goals`: dat bestand is het bezit van
+ *    het Prestatiescherm en blijft buiten elk groepsoppervlak. `systeemberichten.test.ts`
+ *    legt deze lijst naast `BADGES`, zodat een nieuwe badge een rode test is en geen
+ *    stille terugval. Een onbekende sleutel geeft de zin zonder prestatienaam.
+ */
+export const GEDEELDE_PRESTATIES: ReadonlySet<string> = new Set([
+  'first_goal',
+  'first_milestone',
+  'first_review',
+  'streak_4',
+  'streak_12',
+]);
 
 /**
  * Gebeurtenissen waarvan de zin een getal nodig heeft.
@@ -134,6 +161,8 @@ export function systeemberichtTekst(invoer: SysteembericthInvoer): string {
     }
   }
 
+  if (invoer.system_event === 'prestatie_gedeeld') return prestatieZin(invoer);
+
   return t(`systeembericht.${invoer.system_event}` as Sleutel, {
     naam: naam(invoer.subject_name),
     actor: naam(invoer.actor_name),
@@ -146,6 +175,18 @@ export function systeemberichtTekst(invoer: SysteembericthInvoer): string {
     ...Object.fromEntries(
       (vereist ?? []).map((sleutel) => [sleutel, getal(invoer.getallen?.[sleutel] ?? 0, 0)]),
     ),
+  });
+}
+
+/** De zin van een gedeelde prestatie: met de naam van de prestatie als we hem kennen, anders zonder. */
+function prestatieZin(invoer: SysteembericthInvoer): string {
+  const sleutel = invoer.prestatie;
+  if (sleutel === null || !GEDEELDE_PRESTATIES.has(sleutel)) {
+    return t('systeembericht.prestatie_gedeeld_zonder_prestatie', { naam: naam(invoer.subject_name) });
+  }
+  return t('systeembericht.prestatie_gedeeld', {
+    naam: naam(invoer.subject_name),
+    prestatie: t(`badge.${sleutel}` as Sleutel),
   });
 }
 

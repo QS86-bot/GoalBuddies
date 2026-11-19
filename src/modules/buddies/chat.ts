@@ -120,6 +120,21 @@ function getallenUit(payload: unknown): Readonly<Record<string, number>> | null 
   return Object.keys(uit).length === 0 ? null : uit;
 }
 
+/**
+ * De badgesleutel uit `payload`, of `null` — QS8-736.
+ *
+ * ⚠️ Vertrouwt er niets van, net als de twee hierboven: alleen een korte tekst van
+ *    kleine letters, cijfers en een liggend streepje komt erdoor. De zin zoekt er
+ *    daarna zelf de naam bij (`systeemberichten.ts`); een onbekende sleutel valt
+ *    daar terug op een zin zonder prestatienaam.
+ */
+function prestatieUit(payload: unknown): string | null {
+  if (payload === null || typeof payload !== 'object' || Array.isArray(payload)) return null;
+
+  const waarde = (payload as Record<string, unknown>).badge;
+  return typeof waarde === 'string' && /^[a-z0-9_]{1,40}$/.test(waarde) ? waarde : null;
+}
+
 function naarBericht(rij: ChatRij): ChatBericht | null {
   if (typeof rij.id !== 'string' || typeof rij.created_at !== 'string') {
     reportError(new Error('Rij uit groepschat zonder id of tijd'), 'chat.parse');
@@ -146,6 +161,7 @@ function naarBericht(rij: ChatRij): ChatBericht | null {
     actor_name: rij.actor_name ?? null,
     aantal: drempelUit(rij.payload),
     getallen: getallenUit(rij.payload),
+    prestatie: prestatieUit(rij.payload),
     created_at: rij.created_at,
   };
 }

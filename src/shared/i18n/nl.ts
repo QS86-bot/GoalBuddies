@@ -105,6 +105,13 @@ export const nl = {
   'systeembericht.huddle_day_changed':
     '{naam} heeft de huddledag verzet. De week die nu loopt is meeverhuisd; wat er al afgesloten was blijft afgesloten.',
 
+  /**
+   * Een prestatie die iemand zelf in deze groep deelde — QS8-736. Positief, en nooit een
+   * titel, niveau of XP. De tweede zin is voor een prestatie die deze app niet bij naam kent.
+   */
+  'systeembericht.prestatie_gedeeld': '{naam} deelt een prestatie: {prestatie}.',
+  'systeembericht.prestatie_gedeeld_zonder_prestatie': '{naam} deelt een prestatie.',
+
   /** Iemand die er niet meer is. Zie oppervlak 18 in beslisdocument 002. */
   'algemeen.oud_lid': 'Een oud-lid',
   // Het voegwoord van een opsomming. Staat hier omdat het per taal verschilt.
@@ -947,7 +954,20 @@ export const nl = {
   'prestaties.rij_label': '{naam}. {zeldzaamheid}, {xp} XP. {status}.',
   'prestaties.leeg_titel': 'Nog geen prestaties',
   'prestaties.leeg_tekst': 'Hier komen je prestaties te staan. De vakken met "Nog te behalen" zijn wat je nog kunt verdienen; je eerste komt sneller dan je denkt.',
-  'prestaties.privacy': 'Alleen jij ziet je prestaties, je niveau en je XP. Wat je verdiend hebt, blijft staan.',
+  'prestaties.privacy': 'Alleen jij ziet je prestaties, je niveau en je XP, behalve een prestatie die je zelf deelt. Wat je verdiend hebt, blijft staan.',
+  'prestaties.deel_knop': 'Deel met je groep',
+  'prestaties.deel_knop_label': '{naam}: deel met je groep',
+  'prestaties.deel_uitleg': 'Kies één groep. Alle leden van die groep zien dan in de chat dat jij deze prestatie hebt: alleen de naam ervan, geen XP of niveau. Je deelt per prestatie en per groep, en per dag kun je er een beperkt aantal delen.',
+  'prestaties.deel_groep': 'Deel met {groep}',
+  'prestaties.deel_geen_groep': 'Je zit nog in geen groep om mee te delen.',
+  'prestaties.deel_sluiten': 'Sluiten',
+  'prestaties.deel_gelukt': 'Gedeeld met {groep}.',
+  'prestaties.deel_al': 'Je deelde deze prestatie al in {groep}.',
+  'prestaties.deel_limiet': 'Je hebt vandaag het maximum aan gedeelde prestaties bereikt. Morgen kan weer.',
+  'prestaties.deel_team_uit': 'Delen kan in deze groep nog niet.',
+  'prestaties.deel_niet_mogelijk': 'Delen lukt niet: je bent geen lid meer van deze groep, of je hebt deze prestatie nog niet behaald.',
+  'prestaties.deel_fout': 'Delen is niet gelukt. Probeer het zo nog eens.',
+  'prestaties.deel_groepen_laden_mislukt': 'Je groepen konden niet geladen worden.',
   'statistiek.ingang_titel': 'Je statistieken',
   'statistiek.ingang_uitleg': 'Je weken en het moment van de dag waarop je indient.',
   'statistiek.ingang_knop': 'Statistieken bekijken',

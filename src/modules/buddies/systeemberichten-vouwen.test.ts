@@ -44,6 +44,7 @@ function systeembericht(
     aantal: null,
     created_at,
     getallen: null,
+    prestatie: null,
   };
 }
 
@@ -63,6 +64,7 @@ function mensbericht(id: string, created_at: string): ChatBericht {
     aantal: null,
     created_at,
     getallen: null,
+    prestatie: null,
   };
 }
 

@@ -8,6 +8,7 @@ import { badgeLabels, badgeUitleg } from '@/modules/goals';
 import { useUiterlijk } from '@/modules/uiterlijk/react';
 import type { XpStand } from '@/modules/xp';
 
+import { DeelMetGroep } from './DeelMetGroep';
 import { emojiVoorPrestatie } from './prestatie-emoji';
 import { niveauVoortgang, type Categorie, type Prestatie } from './prestaties-vorm';
 import { usePrestaties } from './usePrestaties';
@@ -125,6 +126,7 @@ function Prestatierij({ p, tz }: { readonly p: Prestatie; readonly tz: string })
         <Caption>{badgeUitleg()[p.badge]}</Caption>
         <Caption>{t('prestaties.zeldzaamheid_xp', { zeldzaamheid, xp: p.xp })}</Caption>
         <Caption>{status}</Caption>
+        {behaald ? <DeelMetGroep badge={p.badge} naam={naam} /> : null}
       </View>
     </View>
   );

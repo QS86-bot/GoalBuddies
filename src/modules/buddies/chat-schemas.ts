@@ -141,6 +141,19 @@ export const SYSTEEM_GEBEURTENISSEN = [
    *    want de gebeurtenis zelf is geen tegenslag.
    */
   'huddle_day_changed',
+  /**
+   * ⚠️ **Toegevoegd in migratie 0309 (QS8-736).** Een gebruiker deelt zelf een
+   *    behaalde prestatie in één groep naar keuze. Het bericht noemt de persoon en
+   *    de prestatie (de badgesleutel in `payload.badge`), **nooit** een titel,
+   *    notitie, niveau, XP of datum.
+   *
+   *    ⚠️ **Het is er alleen op een uitdrukkelijke handeling van de gebruiker**
+   *       (nooit voorgeselecteerd, nooit een vraag per badge) en alleen via
+   *       `deel_prestatie()`; wie niets deelt, zegt niets. Wie zijn account
+   *       opzegt neemt dit type mee: de tweede benoemde uitzondering naast
+   *       QS8-335 (CLAUDE.md, domeinregel 7). Alleen dit type.
+   */
+  'prestatie_gedeeld',
 ] as const;
 
 export type SysteemGebeurtenis = (typeof SYSTEEM_GEBEURTENISSEN)[number];
@@ -229,6 +242,11 @@ export interface ChatBericht {
    * draagt — QS8-79, vandaag alleen `season_recap`. `null` bij alle andere.
    */
   readonly getallen: Readonly<Record<string, number>> | null;
+  /**
+   * De badgesleutel uit `payload.badge`, alleen bij `prestatie_gedeeld` — QS8-736.
+   * `null` bij elke andere gebeurtenis en bij een payload die niets bruikbaars draagt.
+   */
+  readonly prestatie: string | null;
 }
 
 /** Waar "ouder laden" verder gaat: het oudste bericht dat je al hebt. */

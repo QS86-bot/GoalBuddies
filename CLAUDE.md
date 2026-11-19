@@ -566,9 +566,11 @@ Voordat er één feature gebouwd wordt:
      *Waarom, en wat dat niet is:* ⚠️ **niet omdat er een naam achterblijft.** Sinds
      0213 bakt geen enkel bericht nog een naam in; na verwijdering staat er *"Een
      oud-lid"*. De uitzondering is een keuze van Quinten voor wat een wisverzoek
-     meeneemt, en een derde type kan zich er niet op beroepen. **Het bouwen van het
-     delen is QS8-736 en nog niet gedaan** (`security-reviewer` direct; nieuw type
-     systeembericht vraagt een migratie), en voor een teamgroep staat het uit tot
+     meeneemt, en een derde type kan zich er niet op beroepen. **Het delen is gebouwd in
+     QS8-736 (migratie 0309, wacht op Quintens backup): `deel_prestatie()` wist
+     bij accountverwijdering in `verwijder_mijn_account()` precies dit type, en
+     een expliciete deelbaar-lijst (`prestatie_deelbaar()`) bepaalt welke
+     prestaties gedeeld kunnen worden.** Voor een teamgroep staat het uit tot
      QS8-649 geland is én zijn eigen besluit er ruimte voor maakt. **Verleg ook deze
      grens niet als bijvangst.**
 
