@@ -1,5 +1,5 @@
 import Constants from 'expo-constants';
-import { Stack, useRouter, useSegments } from 'expo-router';
+import { Stack, usePathname, useRouter, useSegments } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect, useRef } from 'react';
 import { ActivityIndicator, Platform, View } from 'react-native';
@@ -37,6 +37,7 @@ import {
 } from '@/lib/observability';
 import { apparaatVoorkeuren, t, zetTaalUitApparaat } from '@/shared/i18n';
 import { ThemeProvider, useTheme } from '@/shared/theme';
+import { RootVangnet } from '@/shared/ui';
 
 /**
  * De wortel van de app. Alles wat elk scherm nodig heeft, hangt hier.
@@ -47,16 +48,24 @@ import { ThemeProvider, useTheme } from '@/shared/theme';
  *    sessie is er geen profiel om te laden.
  */
 export default function RootLayout() {
+  // ⚠️ QS8-710: het vangnet staat BOVEN alle providers en niet erbinnen. Een fout
+  //    in `ThemeProvider`, `Screen` of `Taakbalk` valt dan in een foutstaat die
+  //    geen van die dingen gebruikt (`RootVangnet`). `usePathname()` is de
+  //    resetsleutel: een padwissel haalt de foutstaat weer weg.
+  const pad = usePathname();
+
   return (
-    <SafeAreaProvider>
-      <ThemeProvider>
-        <SessionProvider>
-          <ProfielProvider>
-            <Shell />
-          </ProfielProvider>
-        </SessionProvider>
-      </ThemeProvider>
-    </SafeAreaProvider>
+    <RootVangnet resetSleutel={pad}>
+      <SafeAreaProvider>
+        <ThemeProvider>
+          <SessionProvider>
+            <ProfielProvider>
+              <Shell />
+            </ProfielProvider>
+          </SessionProvider>
+        </ThemeProvider>
+      </SafeAreaProvider>
+    </RootVangnet>
   );
 }
 
