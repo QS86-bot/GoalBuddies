@@ -1121,6 +1121,19 @@ export const en: Record<Sleutel, string> = {
 
   'nieuwdoel.categorie_hint': 'What is this goal about? One area per goal.',
 
+  'pictogram.vlam': 'Flame',
+  'pictogram.ster': 'Star',
+  'pictogram.schild': 'Shield',
+  'pictogram.medaille': 'Medal',
+  'pictogram.trofee': 'Trophy',
+  'pictogram.ketting': 'Chain',
+  'pictogram.doel': 'Goal',
+  'pictogram.kroon': 'Crown',
+  'pictogram.bliksem': 'Lightning bolt',
+  'pictogram.hart': 'Heart',
+  'pictogram.duim': 'Thumbs up',
+  'pictogram.vergrendeld': '{naam}, still to earn',
+
   'categorie.fitness': 'Sport',
   'categorie.nutrition': 'Nutrition',
   'categorie.self_care': 'Self-care',
