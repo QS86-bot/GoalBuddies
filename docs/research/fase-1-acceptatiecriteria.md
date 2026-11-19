@@ -366,3 +366,78 @@ Gevolg voor de criteria (aanvulling op 1.5a en 1.5b):
 ### 11.7 Wat er nu nog openstaat
 Nog twee dingen vóór de issues in Linear kunnen: **0.2** (schermafbeeldingen van de huidige GoalBuddies-app, door Quinten)
 en Quintens uitdrukkelijke opdracht om de issues aan te maken. Alle andere besluiten (E1–E9) zijn genomen.
+
+## 12. Wat Linear en de repo al hadden (19-11-2026) — de duplicaatcontrole
+
+Voordat er issues komen is in Linear gezocht en zijn de reacties gelezen (`CLAUDE.md`: *lees het issue én zijn
+reacties*). Er zijn **nog geen issues aangemaakt**, want dit vond ik, en het verandert de lijst.
+
+### 12.1 Wat ik zag in Linear (GEMETEN, bron: de issues zelf)
+| Issue | Wat het zegt | Raakt |
+|---|---|---|
+| **QS8-705** (Urgent, *In Review*, tak klaar, batch-PR #693 draft) | Navigatie als **knoppen in een kolom**: links vanaf **900** breed, op een telefoon **gestapeld bovenaan** (Quinten bevestigde dat). 44 punten hoog, `aria-current`. Volgende stap, als het te veel hoogte kost: een **inklapbaar menu** | Issue 1.4 en 1.2 |
+| **QS8-255** (Done, besluit A55, 31-08) | Kleur alleen waar hij iets codeert; drie **families** (`gezondheid`, `softskills`, `ambitie`) gemeten op onderscheid, **15 categoriepictogrammen** met `@expo/vector-icons`, en de regel *"een pictogram naast een label is iets anders dan een emoji in een label"* | Issues 1.1 en 1.6a |
+| **QS8-252** (Done, epic *"Een app die je wilt openen: ritme, kleur en een dashboard"*) | Dit is **al eens** uit een Habit Huddle-ronde gekomen (31-08). A56: de vragenlijst komt **ná** de aanmeldmuur | Fase 3 |
+| **QS8-257** (Done) | De korte vragenlijst bestaat al (vier vragen, `app/onboarding/vragenlijst.tsx`) | Fase 3 |
+| **QS8-15** (Done, epic *Design system*) | Navy en wit, gedeeld met de Status Tracker, "geen zelfbedachte kleuren" | Issue 1.0 |
+| **QS8-649** (Backlog, `wacht-op-Quinten`) | Besluit van 03-11 om de app naar **zakelijk gebruik** met organisaties toe te spitsen; het productvoorstel koos bewust voor *rustig gereedschap* | Issue 1.0 |
+| **CRE-175** (Status Tracker, Done) | *"Voorkeuren horen bij een gebruiker, niet bij een apparaat"* | Steunt E6 (account) |
+
+### 12.2 Correcties op mijn eigen plan
+1. **Issue 1.4 (zijnavigatie vanaf 1024) dubbelt QS8-705**, en E4 (1024) botst met de bestaande 900. Mijn aanname van
+   een **onderbalk** op telefoon klopte niet: het menu staat bovenaan als kolom. 1.4 wordt daarom: *wachten tot
+   QS8-705 geland is*, daarna alleen het menu restylen per palet en eventueel inklapbaar maken.
+2. **Issue 1.6a (eigen pictogrammen)** moet voortbouwen op `CategorieMerk` en `@expo/vector-icons` uit QS8-255 in plaats van een tweede set. De
+   keuze voor **emoji op prestaties (E5)** staat daarnaast en blijft een aparte uitzondering.
+3. **Fase 3 (onboarding)** is grotendeels gebouwd (QS8-257, A56). Alleen de herinneringsvoorvertoning en de belofte zijn nieuw; dat is
+   een los, later issue.
+4. Issues die `Taakbalk`, `Screen` of de kop raken (1.2, 1.4) horen **na** de merge van QS8-705 en krijgen een blokkeerrelatie.
+5. Het besluit van A55 (*kleur alleen waar hij iets codeert*) en het productvoorstel (*rustig gereedschap*) worden door Quintens
+   nieuwe richting **vervangen**. Dat is zijn besluit, maar het hoort in 1.0 met een verwijzing naar QS8-255, QS8-252 en QS8-649.
+
+### 12.3 De kleurmeting (GEMETEN, met `src/shared/theme/kleurafstand.ts` en `MIN_AFSTAND = 10`)
+De bestaande toets (`kleurafstand.test.ts`) eist dat een **categoriekleur** minstens 10 afstand heeft tot `green`, `orange`, `red` én `accent`
+(gewone afstand). Dat zijn: gezondheid `#22cc22`, softskills `#dd4fa0`, ambitie `#ffe14d`. De drie families zijn dus **niet vrij**
+zodra het accent per uiterlijk verandert.
+
+Gewone afstand van de voorgestelde accenten tot de drie families (drempel 10):
+| Uiterlijk | Accent | gezondheid / softskills / ambitie | Uitslag |
+|---|---|---|---|
+| A | `#10b981` | 11.7 / 34.7 / 27.2 | haalt, maar krap bij gezondheid |
+| B (huidig) | `#e8b648` | 21.5 / 29.5 / 11.6 | haalt |
+| C-Baai | `#10b981` en `#22d3ee` | 11.7 / 34.7 / 27.2 en 23.5 / 34.3 / 27.4 | haalt |
+| C-Avondgloed | `#f59e0b` en `#f472b6` | 24.8 / 26.7 / 16.1 en 40.2 / **8.5** / 32.9 | **roze faalt** (softskills `#dd4fa0`) |
+| C-Bosrand | `#a3e635` en `#34d399` | 12.9 / 43.1 / 12.4 en 11.5 / 37.1 / 22.0 | haalt, krap |
+| C-Pruim | `#c084fc` en `#f0abfc` | 41.0 / 15.9 / 37.9 en 38.3 / 21.4 / 28.4 | haalt |
+| C-Koraal | `#fb7185` en `#fdba74` | 36.9 / 11.2 / 29.3 en 26.0 / 28.1 / 11.4 | haalt, krap |
+
+Strenger gemeten (**slechtste geval over drie soorten kleurenblindheid**, ook tegen de statuskleuren; de afbeelding bij dit besluit):
+- Een **emerald accent** (A, C-Baai) is bijna gelijk aan de statuskleur `green` (1.8). Dat is geen testfout (het accent staat niet tegen `green` in de
+  toets), maar **semantisch een risico**: "gehaald" en "merkkleur" worden dezelfde kleur.
+- **Koraal** ligt dicht bij `orange` (2.2), `green` (2.8) en `red` (5.7); `red` betekent uitsluitend deadline-risico (regel 7). Dat is **precies de
+  verwarring waar QS8-255 al eens voor corrigeerde** (roze tegen rood, 8.9).
+- **Avondgloed** (amber) ligt dicht bij `goud` en bij `orange`.
+- Aanname: de bestaande toets meet alleen de gewone afstand; deze strengere meting volgt uit mijn eigen script en is **niet** wat het project afdwingt.
+
+### 12.4 Herziene issuelijst (nog niet aangemaakt)
+| # | Issue | Verandering t.o.v. §11.4 |
+|---|---|---|
+| epic | EPIC Uiterlijk en indeling in de stijl van Habit Huddle | nieuw, hoort bij het project GoalBuddies |
+| 1.0 | Besluiten en documenten | + verwijzing naar QS8-255, QS8-252, QS8-649; A55 wordt vervangen |
+| 1.1a | Palet-architectuur + A en B | + `kleurafstand.test.ts` per palet; families per palet vastgelegd |
+| 1.1b | C-Baai en C-Avondgloed | + Avondgloed-roze aanpassen of de families verschuiven |
+| 1.1c | C-Bosrand, C-Pruim, C-Koraal | + Koraal getoetst tegen `red` en `orange` |
+| 1.2 | Paginakop | wacht op QS8-705 |
+| 1.3 | Actiekaart en afvinkcirkel | ongewijzigd |
+| ~~1.4~~ | ~~Zijnavigatie vanaf 1024~~ | **vervalt**; wordt *Menu restylen en inklapbaar* na QS8-705 |
+| 1.5a | Uiterlijkvoorkeur op het account | + steun van CRE-175 |
+| 1.5b | Scherm Uiterlijk | ongewijzigd |
+| 1.6a | Pictogrammen: `CategorieMerk` uitbreiden | herschreven |
+| 1.6b | Emoji op prestaties | ongewijzigd |
+
+### 12.5 Wat er over de ingelogde schermen (0.2) kon, en wat niet
+- Ik heb de app hier **gebouwd en gestart** (`expo export`, een lokale statische server, een Playwright-browser, geen verbinding met een echte
+  backend). Gezien: alleen het **aanmeldscherm** (licht thema, kaartopbouw, een gouden knop, Engelse tekst door de browsertaal).
+- Alles achter de login is **niet te zien**: er is geen Docker-daemon voor de lokale Supabase-stack, en ik gebruik geen account van Quinten.
+- De beschrijving van de schermen uit de Linear-reacties (QS8-705) en de code geeft genoeg om de issues te schrijven; een **vóór-/ná-screenshot hoort bij
+  elke bouwsessie** (die heeft de lokale stack wel), en niet bij mij.
