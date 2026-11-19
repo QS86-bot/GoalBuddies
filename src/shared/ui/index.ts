@@ -26,6 +26,8 @@ export { Avatar } from './Avatar';
 export { AvatarKeuze } from './AvatarKeuze';
 export { initialen } from './naming';
 export { Button, type ButtonVariant } from './Button';
+export { Actiekaart } from './Actiekaart';
+export { Afvinkcirkel } from './Afvinkcirkel';
 export { Card } from './Card';
 export { ChatRegel, type Chatbijlage } from './ChatRegel';
 export { Choice, type Optie } from './Choice';
