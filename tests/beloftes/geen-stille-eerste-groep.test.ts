@@ -323,6 +323,46 @@ describe('het doelscherm', () => {
   });
 });
 
+/**
+ * Het blok van `useAdempauzeBericht` (QS8-753) — de functie van het adempauzebericht.
+ *
+ * ⚠️ Hier telt ook `.find(` als stille eerste: in dit blok is er geen predicaat dat
+ *    iets anders mag vragen dan `enigeOfGekozen()`, en `groepId || (groepen.find(Boolean)
+ *    ?.id ?? '')` is `[0]` met een omweg die de sweep hierboven niet ziet.
+ */
+export function adempauzeBlok(inhoud: string): string {
+  const begin = inhoud.indexOf('function useAdempauzeBericht(');
+  const eind = inhoud.indexOf('\nfunction ', begin + 1);
+  return begin < 0 ? '' : inhoud.slice(begin, eind < 0 ? undefined : eind);
+}
+
+export function stilleEersteInBlok(blok: string): readonly string[] {
+  return [...stilleEerste(blok), ...(blok.match(/\.find\(/g) ?? [])];
+}
+
+describe('het adempauzebericht', () => {
+  const blok = adempauzeBlok(zonderCommentaar(readFileSync(DOEL, 'utf8')));
+
+  it('leest zijn groep uit enigeOfGekozen() en geeft precies die door als keuze.groupId', () => {
+    expect(blok).not.toBe('');
+    expect(bindingen(blok, 'gekozen')).toBe(1);
+    expect(argumentenVan(blok, 'enigeOfGekozen', 0)).toEqual(['groepen']);
+    expect(argumentenVan(blok, 'enigeOfGekozen', 1)).toEqual(['groepId']);
+    expect(blok).toMatch(/groupId:\s*gekozen\b/);
+  });
+
+  it('kent geen stille eerste, ook niet als find', () => {
+    expect(stilleEersteInBlok(blok)).toEqual([]);
+  });
+
+  it('ijking: ziet de vormen die het moet zien en laat de rest met rust', () => {
+    expect(stilleEersteInBlok("groepId || (groepen.find(Boolean)?.id ?? '')")).toEqual(['.find(']);
+    expect(stilleEersteInBlok("groepen[0]?.id ?? ''")).toEqual(['groepen[0]']);
+    expect(stilleEersteInBlok("enigeOfGekozen(groepen, groepId, (g) => g.id)?.id ?? ''")).toEqual([]);
+    expect(adempauzeBlok('function andere() {}')).toBe('');
+  });
+});
+
 describe('De Lijst', () => {
   const inhoud = zonderCommentaar(readFileSync(LIJST, 'utf8'));
 

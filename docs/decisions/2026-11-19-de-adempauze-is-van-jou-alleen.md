@@ -1,6 +1,6 @@
 # De adempauze is van jou alleen
 
-**Datum:** 19-11-2026 · **Migratie:** 0306 · **Issue:** QS8-753 (deel A: de database; deel B, het bouwen van het bericht en de copy, is een andere sessie)
+**Datum:** 19-11-2026 · **Migratie:** 0306 · **Issue:** QS8-753 (deel A: de database; deel B, het bericht zelf, is in dezelfde branch gebouwd; de copy `adempauze.groep_ziet` is bewust niet vervangen, zie B3)
 **Besluit van:** Quinten, 19-11-2026 · **Raakt:** domeinregel 7, domeinregel 10, A50, QS8-227
 **Status:** gebouwd, migratie wacht op Quintens "backup gedaan" (`docs/PROMPT-SESSIE.md` §12d).
 
@@ -44,8 +44,8 @@ Een **gewoon chatbericht** dat het lid zelf plaatst, in een groep naar keuze. Wa
 - Geen koppeling met `breathers`: het bericht bestaat los van de rij, en de rij is er geen bron van.
 - Geen voorgeselecteerd bericht en geen prompt per pauze: het is een eigen handeling van het lid.
 
-Het oppervlak staat als rij 57 in `002`. Het bouwen van dit bericht is deel B (`app/doel/[id].tsx`,
-de copy, `src/modules/goals/index.ts`) en is hier niet gedaan.
+Het oppervlak staat als rij 57 in `002`. Het bericht is deel B (`app/doel/[id].tsx`,
+`src/modules/goals/adempauze-bericht.ts`) en is in dezelfde branch gebouwd.
 
 ## 5. Punten
 
@@ -66,7 +66,7 @@ streakmodel, en dat is een eigen besluit. Het is een benoemd restant en geen ver
 
 ⚠️ Het restant is kleiner dan wat A50 gaf: een getal zonder datum en zonder cyclus, en geen rij
 die op id te lezen is. Maar het bestaat, en een bericht dat zegt dat de groep niets over een pauze
-te weten kan komen is onwaar zolang deze functie het getal geeft. Dat hoort in de copy van deel B.
+te weten kan komen is onwaar zolang deze functie het getal geeft. Dat had in de copy van deel B gemoeten en staat er niet in (zie B3).
 
 ### B2. De rem op een pauze met terugwerkende kracht valt weg
 
@@ -87,12 +87,33 @@ weken).
 ### B3. `adempauze.groep_ziet` is na de migratie onwaar
 
 De copy `adempauze.groep_ziet` (`src/shared/i18n`) belooft de gebruiker wat de groep ziet en is op
-besluit van Quinten **ongewijzigd gelaten**; ze is na deze migratie onwaar. Dat is een bekende
-tegenspraak tot deel B de tekst vervangt, en dit document is de plek waar ze genoemd staat.
+besluit van Quinten (19-11-2026, antwoord op de vraag in QS8-753) **ongewijzigd gelaten**; ze is na
+deze migratie onwaar en staat in het formulier direct boven de nieuwe vraag 'laat je groep weten'.
+Deel B (QS8-753) heeft haar dus **niet** vervangen. Advies uit de reviews: vervang haar vóór de
+migratie op productie staat, door een zin die klopt en het Ketting-restant (B1) eerlijk noemt.
+
+### B4. In een open groep is de weekstatus `excused` leesbaar
+
+`weekly_goals_select` heeft een tak `deelt_open_groep_met_doel(goal_id)` zonder statusfilter
+(0077, ongewijzigd in 0122). Een lid van een **open** groep ziet dus per week dat een weekdoel
+vrijgesteld is, en bij een pauze achteraf een week van gemist naar vrijgesteld omslaan. Dat is de
+bedoelde werking van een open groep (A41: de groep ziet ook tegenslag) en dit besluit verandert
+het niet. Het betekent wel dat 'de adempauze is van jou alleen' voor een open groep alleen voor de
+tabel `breathers` geldt. In een beschermde groep blijft `excused` dicht (0047). Wie dit ook voor
+open groepen dicht wil, sluit `excused` uit in die tak: een eigen besluit.
+
+### B1 is scherper dan hierboven staat
+
+Het aantal bolletjes in `src/shared/ui/Ketting.tsx` is `in_aanmerking`; zakt dat, dan pauzeert er
+iemand. In een duo is dat de ander. Combineer je het met de leesbare `chain_links` (wie heeft een
+schakel), dan is bij naam te raden wie pauzeert, want `ketting_stand().schakels` telt alleen
+schakels van leden die meedoen. Dit staat bewust ongewijzigd (een wijziging raakt De Ketting en is
+een productkeuze), maar het is meer dan 'een getal zonder persoon'. Voorstel: pauzerende leden
+tellen mee in `in_aanmerking`; dan kan De Ketting in een pauzeweek niet voltallig worden.
 
 ## 7. Wat dit bestand toetst
 
-`tests/rls/adempauze-eigenaar-only.test.ts` toetst de belofte als geheel en niet de policytekst alleen:
+`tests/rls/adempauze-eigenaar-only.test.ts` toetst de tabel `breathers` als geheel en niet de policytekst alleen (afgeleide oppervlakken als `weekly_goals.excused` in een open groep en `ketting_stand()` vallen er bewust buiten, zie B1 en B4):
 
 1. de tabel, met een eigen JWT per gebruiker: de eigenaar ziet zijn rijen (tegentest), een
    groepsgenoot ziet er nul in een beschermde én een open groep, vooruit en 8 weken terug, ook

@@ -3015,7 +3015,7 @@ function Adempauzes({
 
           <Afronding periode={periode} vanaf={vanaf} vandaag={vandaag} />
 
-          {berichtMag ? (
+          {berichtMag && !bericht.heeftFout ? (
           <AdempauzeBericht
             aan={bericht.aan}
             onAan={bericht.zetAan}
@@ -3035,9 +3035,9 @@ function Adempauzes({
             <Button
               variant="primair"
               busy={bezig}
-              disabled={!periode.ok || (berichtMag && bericht.wachtOpGroep)}
+              disabled={!periode.ok || (berichtMag && !bericht.heeftFout && bericht.wachtOpGroep)}
               accessibilityHint={
-                berichtMag && bericht.wachtOpGroep ? t('adempauze.bericht_kies_eerst') : undefined
+                berichtMag && !bericht.heeftFout && bericht.wachtOpGroep ? t('adempauze.bericht_kies_eerst') : undefined
               }
               onPress={() => void plan()}
             >
@@ -3102,6 +3102,7 @@ function useAdempauzeBericht(groepen: readonly BerichtGroep[], userId: string | 
     // Lege tekst is "geen bericht" en heeft dus geen ontvanger nodig.
     wachtOpGroep: aan && gekozen === '' && tekst.trim() !== '',
     open,
+    heeftFout: typeof open?.uitkomst === 'object',
     bezig,
     zetAan: (nieuw: boolean) => {
       setAan(nieuw);
@@ -3110,18 +3111,20 @@ function useAdempauzeBericht(groepen: readonly BerichtGroep[], userId: string | 
     zetTekst: setTekst,
     kies: setGroepId,
     verwerk: (uitkomst: BerichtUitkomst) => {
-      setOpen(uitkomst === 'niet_gevraagd' ? null : { groupId: gekozen, tekst: tekst.trim(), uitkomst });
+      // Geen bericht gevraagd laat een openstaande berichtfout van een eerdere pauze staan.
+      if (uitkomst !== 'niet_gevraagd') setOpen({ groupId: gekozen, tekst: tekst.trim(), uitkomst });
       reset();
     },
     reset,
     opnieuw: () => {
       if (open === null) return;
       setBezig(true);
-      void stuurLosMetRem(slot, { stuur }, open).then((uitkomst) => {
-        if (uitkomst === null) return;
-        setOpen({ ...open, uitkomst });
-        setBezig(false);
-      });
+      stuurLosMetRem(slot, { stuur }, open)
+        .then((uitkomst) => {
+          if (uitkomst !== null) setOpen({ ...open, uitkomst });
+        })
+        .catch(() => setOpen({ ...open, uitkomst: { mislukt: t('chat.versturen_mislukt') } }))
+        .finally(() => setBezig(false));
     },
     sluit: () => setOpen(null),
   };

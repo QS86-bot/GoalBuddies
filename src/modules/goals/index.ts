@@ -77,16 +77,11 @@ export {
 export {
   berichtGroepen,
   berichtMagBij,
-  berichtOmTeSturen,
   pauzeMetBericht,
   stuurLos,
   stuurLosMetRem,
   type BerichtGroep,
-  type BerichtKeuze,
   type BerichtUitkomst,
-  type PauzeMetBerichtDeps,
-  type PauzeMetBerichtUitkomst,
-  type Slot as BerichtSlot,
 } from './adempauze-bericht';
 
 export {
