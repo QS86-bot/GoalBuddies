@@ -590,6 +590,14 @@ Voordat er één feature gebouwd wordt:
     - **Score en voortgang zijn twee dingen.** Voortgang is mijlpaalgebaseerd en loopt
       alleen omhoog; de score kan dalen. Nooit in één balk tonen.
 
+    ⚠️ **XP is een tweede, aparte teller (besloten 19-11-2026, QS8-722 en QS8-734):
+    hij raakt het puntenmodel hierboven niet.** Hij telt alleen op en daalt nooit
+    (een gemiste week en een adempauze boeken geen negatieve rij), is alleen voor de
+    eigenaar leesbaar, en staat alleen op het Prestatiescherm en je eigen profiel:
+    nooit in het menu, nooit voor een groepslid, nooit in één element met je punten.
+    Bedragen, drempels en de terugwerkende migratie staan in
+    `docs/decisions/2026-11-19-de-nieuwe-huisstijl-vervangt-a55-en-rustig-gereedschap.md`.
+
     ⚠️ **De teambonus (besluit 28, 30 en 35, 04-11-2026): een uitzondering op
     "missen is niet gratis".** Bij een afgerond teamdoel (een lid rondt af, een
     teamgenoot keurt goed, nooit jezelf) krijgt iedereen die een aandeel had
@@ -656,8 +664,9 @@ gebruikt: reacties op een bericht (A24). Daar ís de emoji de boodschap.
 
 ⚠️ **Een tweede benoemde uitzondering, besloten 19-11-2026 (QS8-722): het
 prestatiecomponent.** Emoji alleen op de prestatiekaarten (QS8-732), nooit in een
-knop, label, systeembericht of melding. `npm run emoji:controle` kent die
-uitzondering pas na QS8-732; tot dan blijft hij rood bij elke emoji in app-tekst.
+knop, label, systeembericht of melding. De gebruiker mag emoji uitzetten met een
+schakelaar in het scherm Uiterlijk (vijfde voorkeur, QS8-731). `npm run emoji:controle`
+kent die uitzondering pas na QS8-732; tot dan blijft hij rood bij elke emoji in app-tekst.
 
 ⚠️ **Dit is sinds 23-08 een controle en geen zin meer:** `npm run emoji:controle`
 draait mee in `/audit` en wordt rood zodra er emoji in app-tekst staat.
