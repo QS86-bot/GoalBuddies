@@ -145,7 +145,7 @@ describe('uiterlijk C (QS8-724)', () => {
     expect(m[10]).toBe('#00ff00');
   });
 
-  const cIds = ['C-baai', 'C-avondgloed'] as const;
+  const cIds = ['C-baai', 'C-avondgloed', 'C-bosrand', 'C-pruim', 'C-koraal'] as const;
 
   it('draagt een verloop; A en B blijven vlak', () => {
     for (const modus of ['donker', 'licht'] as const) {
@@ -243,9 +243,9 @@ describe('de uiterlijken', () => {
     }
   });
 
-  it('kent vier uiterlijken in twee modi: acht paletten', () => {
-    expect([...UITERLIJK_IDS].sort()).toEqual(['A', 'B', 'C-avondgloed', 'C-baai']);
-    expect(paletten).toHaveLength(8);
+  it('kent zeven uiterlijken in twee modi: veertien paletten', () => {
+    expect([...UITERLIJK_IDS].sort()).toEqual(['A', 'B', 'C-avondgloed', 'C-baai', 'C-bosrand', 'C-koraal', 'C-pruim']);
+    expect(paletten).toHaveLength(14);
   });
 
   it('heeft in elk uiterlijk dezelfde helden en categoriekleuren per modus (A en B delen ze)', () => {
