@@ -41,10 +41,8 @@ interface RpcAntwoord {
   readonly error: { readonly message: string; readonly code?: string } | null;
 }
 
-function rpc(): (naam: string, args: object) => PromiseLike<RpcAntwoord> {
-  return (supabase() as unknown as { rpc(n: string, a: object): PromiseLike<RpcAntwoord> }).rpc.bind(
-    supabase(),
-  );
+function client(): { rpc(naam: string, args: object): PromiseLike<RpcAntwoord> } {
+  return supabase() as unknown as { rpc(naam: string, args: object): PromiseLike<RpcAntwoord> };
 }
 
 /** De uitslag uit het JSON-antwoord van de functie; alles wat we niet kennen is een fout. */
@@ -60,7 +58,7 @@ export function leesDeelUitslag(data: unknown): DeelUitslag | null {
 
 /** Deel één behaalde prestatie in één groep. Werpt alleen bij een fout die geen uitslag is. */
 export async function deelPrestatie(groupId: string, badge: string): Promise<DeelUitslag> {
-  const { data, error } = await rpc()('deel_prestatie', { p_group_id: groupId, p_badge: badge });
+  const { data, error } = await client().rpc('deel_prestatie', { p_group_id: groupId, p_badge: badge });
 
   if (error) {
     reportError(new Error('Een prestatie delen mislukte'), 'buddies.deelPrestatie', {

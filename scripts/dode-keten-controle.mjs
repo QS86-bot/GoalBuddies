@@ -680,6 +680,9 @@ export function zonderChecks(sql) {
  */
 export const GEDEELDE_WAARDEN = {
   active: ['goals', 'group_members', 'groups'],
+  // QS8-736: `badge` is de sleutel in `xp_grootboek` (xp_na_badge) en in de payload van
+  // `prestatie_gedeeld`; allebei worden geschreven (deel_prestatie() en de XP-trigger).
+  badge: ['chat_messages', 'xp_grootboek'],
   approved: ['completion_approvals', 'deadline_requests', 'weekly_goals'],
   archived: ['goal_events', 'goals', 'groups'],
   building: ['goals', 'groups', 'profiles'],

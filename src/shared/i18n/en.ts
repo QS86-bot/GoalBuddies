@@ -646,7 +646,6 @@ export const en: Record<Sleutel, string> = {
   'prestaties.deel_team_uit': 'Sharing is not available in this group yet.',
   'prestaties.deel_niet_mogelijk': 'Sharing did not work: you are no longer a member of this group, or you have not earned this achievement yet.',
   'prestaties.deel_fout': 'Sharing did not work. Please try again in a moment.',
-  'prestaties.deel_groepen_laden_mislukt': 'Your groups could not be loaded.',
   'statistiek.ingang_titel': 'Your statistics',
   'statistiek.ingang_uitleg': 'Your weeks and the time of day you submit.',
   'statistiek.ingang_knop': 'View statistics',

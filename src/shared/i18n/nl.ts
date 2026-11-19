@@ -967,7 +967,6 @@ export const nl = {
   'prestaties.deel_team_uit': 'Delen kan in deze groep nog niet.',
   'prestaties.deel_niet_mogelijk': 'Delen lukt niet: je bent geen lid meer van deze groep, of je hebt deze prestatie nog niet behaald.',
   'prestaties.deel_fout': 'Delen is niet gelukt. Probeer het zo nog eens.',
-  'prestaties.deel_groepen_laden_mislukt': 'Je groepen konden niet geladen worden.',
   'statistiek.ingang_titel': 'Je statistieken',
   'statistiek.ingang_uitleg': 'Je weken en het moment van de dag waarop je indient.',
   'statistiek.ingang_knop': 'Statistieken bekijken',
