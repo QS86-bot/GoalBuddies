@@ -2,7 +2,6 @@ import { StyleSheet, View } from 'react-native';
 
 import { opmaaktaal, t } from '@/shared/i18n';
 import { radius, space, useTheme } from '@/shared/theme';
-import type { TimeZone } from '@/shared/time';
 import { toonKlokDatum } from '@/shared/time';
 import { AsyncView, Body, Button, Caption, Card, Pictogram, Subheading } from '@/shared/ui';
 import { badgeLabels, badgeUitleg } from '@/modules/goals';
@@ -22,14 +21,14 @@ export function Prestatiescherm() {
     <View style={{ gap: space.blokGap }}>
       <XpKaart laden={xp.loading} fout={xp.error} stand={xp.data} opnieuw={xp.herlaad} />
       <AsyncView
-        loading={badges.loading}
+        loading={badges.loading || tz === null}
         error={badges.error}
         data={badges.data}
         isEmpty={() => false}
         onRetry={badges.herlaad}
         empty={{ title: t('prestaties.leeg_titel'), body: t('prestaties.leeg_tekst') }}
       >
-        {(groepen) => (
+        {(groepen) => tz === null ? null : (
           <>
             {groepen.every((g) => g.prestaties.every((p) => p.behaaldOp === null)) ? (
               <Card>
@@ -62,7 +61,9 @@ function XpKaart({ laden, fout, stand, opnieuw }: { readonly laden: boolean; rea
   const deel = niveauVoortgang(stand.totaal, stand.drempelHuidig, stand.drempelVolgende);
   const percentage = Math.round(deel * 100);
   const label =
-    stand.drempelVolgende === null
+    stand.niveau === 0 && stand.drempelVolgende !== null
+      ? t('prestaties.xp_begin', { xp: stand.totaal, volgende: stand.drempelVolgende })
+      : stand.drempelVolgende === null
       ? t('prestaties.xp_hoogste', { niveau: stand.niveau, xp: stand.totaal })
       : t('prestaties.xp_voortgang', { niveau: stand.niveau, xp: stand.totaal, volgende: stand.drempelVolgende });
   return (
@@ -81,7 +82,7 @@ function XpKaart({ laden, fout, stand, opnieuw }: { readonly laden: boolean; rea
   );
 }
 
-function Categoriekaart({ categorie, prestaties, tz }: { readonly categorie: Categorie; readonly prestaties: readonly Prestatie[]; readonly tz: TimeZone }) {
+function Categoriekaart({ categorie, prestaties, tz }: { readonly categorie: Categorie; readonly prestaties: readonly Prestatie[]; readonly tz: string }) {
   return (
     <Card>
       <Subheading>{t(`prestaties.categorie_${categorie}`)}</Subheading>
@@ -94,7 +95,7 @@ function Categoriekaart({ categorie, prestaties, tz }: { readonly categorie: Cat
   );
 }
 
-function Prestatierij({ p, tz }: { readonly p: Prestatie; readonly tz: TimeZone }) {
+function Prestatierij({ p, tz }: { readonly p: Prestatie; readonly tz: string }) {
   const naam = badgeLabels()[p.badge];
   const behaald = p.behaaldOp !== null;
   const zeldzaamheid = t(`prestaties.zeldzaamheid_${p.zeldzaamheid}`);
@@ -108,7 +109,7 @@ function Prestatierij({ p, tz }: { readonly p: Prestatie; readonly tz: TimeZone 
       accessibilityLabel={t('prestaties.rij_label', { naam, zeldzaamheid, xp: p.xp, status })}
       style={styles.rij}
     >
-      <Pictogram naam={p.pictogram} betekenis="prestatie" grootte={44} vergrendeld={!behaald} label={naam} decoratief />
+      <Pictogram naam={p.pictogram} betekenis="prestatie" grootte={44} vergrendeld={!behaald} decoratief />
       <View style={styles.tekst}>
         <Body>{naam}</Body>
         <Caption>{badgeUitleg()[p.badge]}</Caption>

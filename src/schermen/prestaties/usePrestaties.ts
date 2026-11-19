@@ -1,7 +1,6 @@
 import { useProfiel, useSession, userClock } from '@/modules/auth';
 import { BADGE_WAARDE, BADGES, fetchBadges } from '@/modules/goals';
 import { haalMijnXp } from '@/modules/xp';
-import type { TimeZone } from '@/shared/time';
 import { useAsync } from '@/shared/ui';
 
 import { prestatiesPerCategorie } from './prestaties-vorm';
@@ -17,11 +16,12 @@ import { prestatiesPerCategorie } from './prestaties-vorm';
 export function usePrestaties() {
   const { userId } = useSession();
   const { profiel } = useProfiel();
+  // ⚠️ Zonder klok geen datum: de UTC-dag als terugval is een dag te vroeg of te laat voor jou.
   const badges = useAsync(
-    userId ? async () => prestatiesPerCategorie(await fetchBadges(), BADGES, BADGE_WAARDE) : null,
-    [userId],
+    userId && profiel ? async () => prestatiesPerCategorie(await fetchBadges(), BADGES, BADGE_WAARDE) : null,
+    [userId, Boolean(profiel)],
   );
   const xp = useAsync(userId ? () => haalMijnXp() : null, [userId]);
   // ⚠️ De dag van een datum is de dag in jouw tijdzone, nooit de UTC-dag (domeinregel 2).
-  return { badges, xp, tz: profiel ? userClock(profiel).tz : ('UTC' as TimeZone) };
+  return { badges, xp, tz: profiel ? userClock(profiel).tz : null };
 }
