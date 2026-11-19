@@ -2488,7 +2488,7 @@ export const nl = {
   'tellers.onbekend': '–',
   'tellers.fout': 'Je tellers konden niet geladen worden. Open Vandaag opnieuw om het nog eens te proberen.',
   'tellers.punten_laden': 'Je punten van deze week konden niet geladen worden.',
-  'afvinkcirkel.staat_leeg': 'Nog geen niveau gehaald.',
+  'afvinkcirkel.staat_leeg': 'Vloer nog niet gehaald.',
   'afvinkcirkel.staat_vloer': 'Vloer gehaald: je week telt.',
   'afvinkcirkel.staat_plafond': 'Plafond gehaald.',
   'afvinkcirkel.staat_uitgeschakeld': 'Niet beschikbaar.',

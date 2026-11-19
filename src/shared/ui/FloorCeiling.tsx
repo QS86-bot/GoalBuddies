@@ -36,8 +36,8 @@ interface Props {
    */
   readonly bevestigingen?: { readonly gedaan: number; readonly nodig: number } | undefined;
   /**
-   * De titel staat al elders op de kaart (een `Actiekaart`) — QS8-727. Alleen het
-   * zichtbare element vervalt; het toegankelijkheidslabel noemt de titel nog.
+   * De titel staat al elders op de kaart (een `Actiekaart`) — QS8-727. De titel
+   * vervalt zichtbaar én uit het label, zodat een schermlezer hem niet driemaal hoort.
    */
   readonly zonderTitel?: boolean;
 }
@@ -79,7 +79,7 @@ export function FloorCeiling({
     <View
       style={styles.blok}
       accessibilityRole="progressbar"
-      accessibilityLabel={`${title}. ${state.label}`}
+      accessibilityLabel={zonderTitel ? state.label : `${title}. ${state.label}`}
       accessibilityValue={{ min: 0, max: 100, now: Math.round(state.fill * 100) }}
     >
       {zonderTitel ? null : <Body>{title}</Body>}

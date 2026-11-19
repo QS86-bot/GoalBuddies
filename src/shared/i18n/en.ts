@@ -1984,7 +1984,7 @@ export const en: Record<Sleutel, string> = {
   'tellers.onbekend': '–',
   'tellers.fout': 'Your counters could not be loaded. Reopen Today to try again.',
   'tellers.punten_laden': 'Your points for this week could not be loaded.',
-  'afvinkcirkel.staat_leeg': 'No level reached yet.',
+  'afvinkcirkel.staat_leeg': 'Floor not reached yet.',
   'afvinkcirkel.staat_vloer': 'Floor reached: your week counts.',
   'afvinkcirkel.staat_plafond': 'Ceiling reached.',
   'afvinkcirkel.staat_uitgeschakeld': 'Not available.',

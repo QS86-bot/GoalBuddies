@@ -355,6 +355,7 @@ function KaartKop({ p, k }: { readonly p: KaartProps; readonly k: Kaart }) {
       }
     >
       {bereik}
+      {k.fout !== null && !k.open ? <Caption>{k.fout}</Caption> : null}
     </Actiekaart>
   );
 }

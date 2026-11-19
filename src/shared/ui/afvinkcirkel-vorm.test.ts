@@ -38,8 +38,20 @@ describe('afvinkcirkel — vorm zonder kleur (QS8-727)', () => {
     expect(vormSleutel(v)).not.toBe(vormSleutel(afvinkcirkel({ niveau: null, vandaagAfgevinkt: false })));
   });
 
+  it('het vinkje volgt vandaag op elk niveau, de vulling volgt de week', () => {
+    for (const niveau of [null, 'floor', 'ceiling'] as const) {
+      const aan = afvinkcirkel({ niveau, vandaagAfgevinkt: true });
+      const uit = afvinkcirkel({ niveau, vandaagAfgevinkt: false });
+      expect(aan.vinkje).toBe(true);
+      expect(uit.vinkje).toBe(false);
+      expect(aan.vulling).toBe(uit.vulling);
+      expect(vormSleutel(aan)).not.toBe(vormSleutel(uit));
+    }
+  });
+
   it('een vloer telt volledig: dezelfde toestand ongeacht of vandaag is afgevinkt', () => {
     expect(afvinkcirkel({ niveau: 'floor', vandaagAfgevinkt: true }).toestand).toBe('vloer');
+    expect(afvinkcirkel({ niveau: 'floor', vandaagAfgevinkt: false }).toestand).toBe('vloer');
   });
 
   it('elk aanraakdoel is minstens 44 bij 44', () => {

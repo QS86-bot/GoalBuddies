@@ -36,6 +36,8 @@ function Tekening({ vorm, grootte, dik }: { readonly vorm: CirkelVorm; readonly 
   const m = grootte / 2;
   const r = m - dik * 2;
   const voortgang = theme.roles.progress;
+  // Bij de halve vulling staat het vinkje in de lege bovenhelft.
+  const dy = vorm.vulling === 'half' ? -r / 2 : 0;
   const rand = vorm.toestand === 'uitgeschakeld' ? theme.colors.grey : theme.colors.textSecondary;
 
   return (
@@ -54,7 +56,7 @@ function Tekening({ vorm, grootte, dik }: { readonly vorm: CirkelVorm; readonly 
       />
       {vorm.vinkje ? (
         <Polyline
-          points={`${m - r / 2},${m} ${m - r / 6},${m + r / 3} ${m + r / 2},${m - r / 3}`}
+          points={`${m - r / 2},${m + dy} ${m - r / 6},${m + r / 3 + dy} ${m + r / 2},${m - r / 3 + dy}`}
           fill="none"
           stroke={vorm.vulling === 'vol' ? theme.colors.panel : voortgang}
           strokeWidth={dik + 1}
@@ -69,18 +71,19 @@ function Tekening({ vorm, grootte, dik }: { readonly vorm: CirkelVorm; readonly 
 export function Afvinkcirkel({ label, niveau, vandaagAfgevinkt, busy = false, uitgeschakeld = false, onPress }: Props) {
   const theme = useTheme();
   const [heeftFocus, setFocus] = useState(false);
-  const vorm = afvinkcirkel({ niveau, vandaagAfgevinkt, uitgeschakeld: uitgeschakeld || busy });
+  const vorm = afvinkcirkel({ niveau, vandaagAfgevinkt, uitgeschakeld });
   const uit = vorm.toestand === 'uitgeschakeld';
+  // Bezig blokkeert de tik maar verandert de vorm niet: "bezig" is niet "niet beschikbaar".
 
   return (
     <Pressable
       onPress={onPress}
-      disabled={uit}
+      disabled={uit || busy}
       onFocus={() => setFocus(true)}
       onBlur={() => setFocus(false)}
       accessibilityRole="checkbox"
       accessibilityLabel={`${label}. ${t(CIRKEL_STAAT_SLEUTEL[vorm.toestand])}`}
-      accessibilityState={{ disabled: uit, busy, checked: vandaagAfgevinkt }}
+      accessibilityState={{ disabled: uit || busy, busy, checked: vandaagAfgevinkt }}
       style={[styles.raak, { width: vorm.aanraak, height: vorm.aanraak, borderColor: theme.colors.panel }, focusRing(theme, heeftFocus)]}
     >
       <Tekening vorm={vorm} grootte={vorm.grootte} dik={3} />

@@ -11,8 +11,11 @@ import type { Sleutel } from '../i18n';
  *    Een vloer telt volledig (domeinregel 8): hij is de helft van de cirkel en
  *    geen "bijna", en zijn tekst zegt dat ook.
  *
- * ⚠️ **Het vloerniveau draagt geen vinkje:** een vinkje over een half gevulde
- *    cirkel is op geen enkele ondergrond leesbaar. De halve vulling is het signaal.
+ * ⚠️ **Twee assen, elk met een eigen teken:** de vulling is de week (niveau), het
+ *    vinkje is vandaag. De tik gaat over vandaag, dus het vinkje volgt
+ *    `vandaagAfgevinkt` op élk niveau; anders ziet niemand of de volgende tik
+ *    afvinkt of ongedaan maakt. Bij de halve vulling staat het vinkje in de lege
+ *    bovenhelft, waar het leesbaar is.
  *
  * ⚠️ **Er zit geen enkele toestand in voor "gemist".** Leeg en uitgeschakeld zijn
  *    neutraal (domeinregel 7): geen rood, geen kruis, geen waarschuwing.
@@ -57,13 +60,13 @@ export function afvinkcirkel({ niveau, vandaagAfgevinkt, uitgeschakeld = false }
     return { ...basis, toestand: 'uitgeschakeld', vulling: 'geen', buitenring: false, streepjes: true, vinkje: false };
   }
   if (niveau === 'ceiling') {
-    return { ...basis, toestand: 'plafond', vulling: 'vol', buitenring: true, streepjes: false, vinkje: true };
+    return { ...basis, toestand: 'plafond', vulling: 'vol', buitenring: true, streepjes: false, vinkje: vandaagAfgevinkt };
   }
   if (niveau === 'floor') {
-    return { ...basis, toestand: 'vloer', vulling: 'half', buitenring: false, streepjes: false, vinkje: false };
+    return { ...basis, toestand: 'vloer', vulling: 'half', buitenring: false, streepjes: false, vinkje: vandaagAfgevinkt };
   }
-  // Leeg, maar vandaag al afgevinkt: de open ring draagt dan een vinkje, zodat je
-  // druk gezien wordt voordat de vloer er is. Geen vierde "bijna"-toestand.
+  // Leeg: de open ring draagt een vinkje zodra vandaag is afgevinkt. Geen vierde
+  // "bijna"-toestand: de vulling is de week, het vinkje is vandaag.
   return { ...basis, toestand: 'leeg', vulling: 'geen', buitenring: false, streepjes: false, vinkje: vandaagAfgevinkt };
 }
 
