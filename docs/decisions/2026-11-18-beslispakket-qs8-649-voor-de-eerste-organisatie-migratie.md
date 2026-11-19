@@ -128,3 +128,22 @@ Geen migratie, geen code, geen wijziging in `CLAUDE.md`, `docs/WERKVOORRAAD.md` 
 
 ⚠️ **Niet gedaan door dit besluit:** het beslisdocument van 03-11-2026 is niet bijgewerkt (de nummering van besluiten loopt op de tak van de keten en is niet nagekeken), geen issue aangemaakt voor vraag 2, en QS8-649 niet op Done gezet. Done zet de sessie die de merge afrondt.
 
+## Aanvulling 19-11-2026 — twee antwoorden die de orchestrator doorgaf
+
+⚠️ **Bron:** de orchestrator-sessie (`session_01DCbTvHDXPBensNUv1D6QLe`) meldt dat Quinten deze twee via een vraag in háár sessie heeft beantwoord.
+Ik heb ze niet rechtstreeks van Quinten gelezen; wie twijfelt, vraagt het hem na.
+
+1. **Besluit 2 geldt alleen voor teamgroepen, niet voor personen.** Een persoon die de gebruiker zelf aanwijst is een bewuste keuze.
+   Dat beantwoordt de vraag die QS8-719 openliet (een collega als enige kandidaat voor een vervangende getuige of een straf-persoon):
+   die blijft zoals hij is, en `isTeamgroep()` hoeft voor personen niets te doen. Het beslisdocument
+   `docs/decisions/2026-11-05-de-eerste-groep-is-geen-keuze.md` noemt dat nog als open punt; dat is een regel die daar bij te werken valt.
+   Het issue voor besluit 2 is **QS8-719** (aangemaakt door de orchestrator); er komt geen tweede.
+2. **Besluit 4, de juridische toets, krijgt geen kalenderdatum maar een voorwaarde:**
+
+   > ⚠️ **Herbevestigen vóór de eerste organisatie live gaat.** De juridische toets (arbeids- en privacyrecht: instemmingsrecht van een
+   > ondernemingsraad, art. 27 WOR, en de AVG-rolverdeling; de vragenlijst staat in `docs/research/vragen-voor-de-jurist-organisaties-en-teamdoelen.md`)
+   > moet zijn uitgevoerd en bevestigd vóór een echte organisatie GoalBuddies gebruikt. Zolang dat niet is gebeurd, is bouwen toegestaan en verkopen niet (besluit 33).
+
+   Dat is de vorm van CLAUDE.md (*"herbevestigen vóór X"*): het noemt wat er moet gebeuren en vóór welke gebeurtenis, en het hangt niet aan een datum
+   die verstrijkt zonder dat iemand het merkt. Het vervangt de open vraag *"noem een uiterlijke datum"* hierboven bij vraag 4.
+
