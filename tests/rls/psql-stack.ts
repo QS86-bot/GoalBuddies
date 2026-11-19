@@ -123,18 +123,133 @@ export function psqlDoelFout(omgeving: NodeJS.ProcessEnv): string | null {
   //    verbindingsstring, een URI of `service=…` — met een eigen host die de
   //    toets hierboven nooit ziet. Alleen een kale naam mag.
   if (!/^[A-Za-z0-9_]+$/.test(db)) return weiger(`de database "${db}" (PGDATABASE is geen kale naam)`);
+  // ⚠️ En alleen de naam die de lokale stack en CI opbouwen (QS8-715). Achter
+  //    een tunnel naar een pooler op de servermachine meldt ook productie zich
+  //    als loopback, en `PGDATABASE=postgres` is voor een dump heel gewoon;
+  //    de naam is dan het enige wat het verschil maakt.
+  if (db !== 'goalbuddies_rls') return weiger(`de database "${db}" (alleen goalbuddies_rls)`);
   if (adres !== '' && !lokaal(adres)) return weiger(`het adres "${adres}" (PGHOSTADDR)`);
   return null;
 }
 
-/** Werpt vóór er een psql-proces start, als het doel niet lokaal is. */
-function eisLokaleDatabase(): void {
+/** Werpt als het doel niet lokaal is — vóór het verbinden. */
+function eisLokaalDoel(): void {
   const fout = psqlDoelFout(PSQL_OMGEVING);
   if (fout !== null) throw new Error(fout);
 }
 
+/**
+ * Werpt vóór er een psql-proces start, als het doel niet lokaal is of de
+ * bestemming niet gemeten kon worden.
+ *
+ * ⚠️ **Niet kunnen meten is stoppen** (security-review QS8-715). Hier stond
+ *    eerst "geen verbinding: zwijgen", en dan liep de eigenlijke aanroep daarna
+ *    ongemeten door — een tunnel die de meetverbinding één keer weigerde, kreeg
+ *    de volgende `psqlMetInvoer` met DML gewoon binnen. Alleen
+ *    `stackBeschikbaarOfFaal()` mag "geen verbinding" als uitkomst behandelen,
+ *    en die draait dan zijn proef niet meer.
+ */
+function eisLokaleDatabase(): void {
+  eisLokaalDoel();
+  if (eisBestemming() === 'geen-verbinding') {
+    throw new Error(
+      `psql: geen verbinding met ${PSQL_OMGEVING.PGHOST}:${PSQL_OMGEVING.PGPORT}/${PSQL_DB} ` +
+        '— de bestemming is niet gemeten en er wordt niets uitgevoerd (QS8-715).',
+    );
+  }
+}
+
+/**
+ * Waar kwam psql werkelijk uit? — QS8-715.
+ *
+ * ⚠️ **`psqlDoelFout()` toetst wat we van plan zijn; dit toetst waar we
+ *    uitkwamen.** Een tunnel of lokale proxy naar productie op `127.0.0.1` gaat
+ *    door elke lijst die je van tevoren kunt opschrijven. Zelfde vorm als
+ *    `kloptDeBestemming()` in `scripts/rls-dekking.mjs`, zonder de poort: CI
+ *    draait op 5432 en de lokale stack op 5433.
+ *
+ * @param uitkomst de regel `adres|database` van de vraag in `BESTEMMING`
+ * @param database de database die we bedoelden (`PSQL_DB`)
+ */
+export function bestemmingFout(uitkomst: string, database: string): string | null {
+  const [adres = '', echt = ''] = uitkomst.trim().split('|');
+  const loopback = ['127.0.0.1', '::1', 'unix-socket'];
+
+  if (!loopback.includes(adres)) {
+    return `De RLS-suite weigert te meten: psql kwam uit op "${adres}", en dat is geen loopback (QS8-715).`;
+  }
+  if (echt !== database) {
+    return `De RLS-suite weigert te meten: psql kwam uit in database "${echt}" en niet in "${database}" (QS8-715).`;
+  }
+  return null;
+}
+
+const BESTEMMING = "select coalesce(host(inet_server_addr()), 'unix-socket') || '|' || current_database();";
+
+/** Eén keer per proces, en pas als er een antwoord was. */
+let bestemmingGemeten = false;
+
+export type Meting = 'gemeten' | 'geen-verbinding';
+
+/** psql eindigt met 2 als de verbinding niet tot stand kwam. */
+function geenVerbinding(fout: unknown): boolean {
+  return typeof fout === 'object' && fout !== null && (fout as { status?: unknown }).status === 2;
+}
+
+/**
+ * Meet de bestemming één keer en werpt als hij niet lokaal is.
+ *
+ * ⚠️ **Alleen psql-exitcode 2 heet "geen verbinding"**, en dan zegt
+ *    `eisLokaleDatabase()` of `stackBeschikbaarOfFaal()` wat er moet gebeuren.
+ *    Elke andere fout — een vraag die de server niet kent, een time-out — is
+ *    "niet vast te stellen", en dat werpt. Een proxy die `inet_server_addr()`
+ *    niet beantwoordt is geen reden om ongemeten door te gaan.
+ *
+ * @param voerUit de psql-aanroep; de toets geeft een nep
+ */
+export function eisBestemming(voerUit: (sql: string) => string = bestemmingVragen): Meting {
+  if (bestemmingGemeten) return 'gemeten';
+
+  let uitkomst: string;
+  try {
+    uitkomst = voerUit(BESTEMMING);
+  } catch (fout) {
+    if (geenVerbinding(fout)) return 'geen-verbinding';
+    const reden = fout instanceof Error ? (fout.message.split('\n')[0] ?? '') : String(fout);
+    throw new Error(
+      `De RLS-suite weigert te meten: de bestemming van psql was niet vast te stellen (${reden}) (QS8-715).`,
+    );
+  }
+
+  const fout = bestemmingFout(uitkomst, PSQL_DB);
+  if (fout !== null) throw new Error(fout);
+  bestemmingGemeten = true;
+  return 'gemeten';
+}
+
+/** Alleen voor de toets: vergeet dat de bestemming gemeten is. */
+export function vergeetBestemming(): void {
+  bestemmingGemeten = false;
+}
+
+/** De vraag zelf, buiten `basisArgumenten()` om — anders roept hij zichzelf aan. */
+function bestemmingVragen(sql: string): string {
+  return execFileSync('psql', [...kaleArgumenten(false), '-c', sql], {
+    env: PSQL_OMGEVING,
+    encoding: 'utf8',
+    stdio: ['ignore', 'pipe', 'pipe'],
+    // ⚠️ Een verbinding die aangenomen wordt en nooit antwoordt, hangt anders
+    //    eeuwig (CLAUDE.md, regel 14). Een time-out is "niet vast te stellen".
+    timeout: 10_000,
+  }).trim();
+}
+
 function basisArgumenten(verbose: boolean): string[] {
   eisLokaleDatabase();
+  return kaleArgumenten(verbose);
+}
+
+function kaleArgumenten(verbose: boolean): string[] {
   return [
     '-U',
     PSQL_OMGEVING.PGUSER as string,
@@ -321,14 +436,21 @@ export function stackBeschikbaarOfFaal(proef: string, bron: string): boolean {
   // ⚠️ Buiten de `try` hieronder, met opzet: die vangt elke fout en noemt hem
   //    "geen database". Een geweigerde host is iets anders, en een melding met
   //    de verkeerde oorzaak is de klasse van QS8-268 (QS8-703).
-  eisLokaleDatabase();
+  //    En "geen verbinding" bij het meten is hier de enige plek waar dat een
+  //    uitkomst is: dan draait de proef niet meer, en meldt het oordeel hieronder
+  //    "geen database" of "overslaan" (QS8-715).
+  eisLokaalDoel();
+  const meting = eisBestemming();
 
   let uitkomst: string | null = null;
-  let fout: unknown = null;
-  try {
-    uitkomst = psql(proef);
-  } catch (opgevangen) {
-    fout = opgevangen;
+  let fout: unknown = new Error('psql: geen verbinding (exitcode 2 bij het meten van de bestemming)');
+  if (meting === 'gemeten') {
+    fout = null;
+    try {
+      uitkomst = psql(proef);
+    } catch (opgevangen) {
+      fout = opgevangen;
+    }
   }
 
   const oordeel = stackOordeel(uitkomst, process.env.RLS_DOEL);

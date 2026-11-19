@@ -203,6 +203,26 @@ function hostnaam(target: string): string {
   }
 }
 
+/**
+ * Een lokaal doel is loopback — QS8-715.
+ *
+ * ⚠️ **Een allowlist en geen blocklist**, zelfde regel als `psqlDoelFout()` in
+ *    `tests/rls/psql-stack.ts`. Er is geen vlag die dit opent: wie tegen een
+ *    andere host wil meten, kiest `RLS_DOEL=productie` en krijgt daar het
+ *    tweede slot. De stack van `scripts/lokale-stack.sh` (`127.0.0.1:3010`) en
+ *    die van `supabase start` (`127.0.0.1:54321`) vallen er allebei binnen.
+ */
+function eisLoopback(target: string): void {
+  if (['localhost', '127.0.0.1', '[::1]', '::1'].includes(hostnaam(target))) return;
+
+  throw new Error(
+    `RLS_DOEL=lokaal is geblokkeerd voor ${target}: dat is geen loopback-adres. ` +
+      'Een lokaal doel draait op deze machine (npm run rls:stack, of supabase start). ' +
+      'Wil je bewust tegen een ander project meten, kies dan RLS_DOEL=productie met ' +
+      'RLS_TEST_ALLOW_PROD=1 (QS8-715).',
+  );
+}
+
 function requireEnv(): {
   url: string;
   anonKey: string;
@@ -216,9 +236,10 @@ function requireEnv(): {
     );
   }
   if (doelsoort === 'lokaal') {
-    // QS8-702: ook een 'lokaal' doel mag niet stilletjes naar het echte project
-    // wijzen (RLS_LOKAAL_URL op *.supabase.co met het projectsecret).
-    if (url) guardProductie(url);
+    // QS8-702 en QS8-715: een 'lokaal' doel wijst naar loopback, en verder
+    // nergens heen. Tot QS8-715 stond hier een blocklist op de projectref, en die
+    // mist een eigen domein of een IP-adres van het project.
+    if (url) eisLoopback(url);
     if (!url || !jwtSecret) {
       throw new Error(
         'RLS_DOEL=lokaal vraagt een draaiende PostgREST. Start hem met ' +

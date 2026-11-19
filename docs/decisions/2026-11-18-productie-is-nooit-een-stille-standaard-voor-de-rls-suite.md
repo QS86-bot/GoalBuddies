@@ -196,7 +196,8 @@ documenten en een verhuizing is hier de duurste beweging.
   zonder hoofdletters (*"{"rls_test_allow_prod":"1"} wordt geweigerd"*, *"ook
   niet in kleine letters"*).
 
-**Wat hier niet gebouwd is.** Twee lage punten uit dezelfde review, als ER-rij:
+**Wat hier niet gebouwd is** — en sinds QS8-715 wél (zie de sectie daaronder).
+Twee lage punten uit dezelfde review:
 een controle ná het verbinden (`current_database()` en `inet_server_addr()`,
 zoals `scripts/rls-dekking.mjs` die doet), die ook een tunnel naar productie op
 loopback zou zien; en een allowlist op de host van `RLS_LOKAAL_URL` in plaats
@@ -208,3 +209,62 @@ wordt net zo geweigerd als een in `.env`. Niet gemeten: de echte RLS-suite
 tegen een lokale stack met deze grendel (geen stack in de cloudsessie); de
 allowlist laat `127.0.0.1` op poort 5433 toe, dus de stack van
 `scripts/lokale-stack.sh` en de CI-job `rls` vallen erbinnen.
+
+## QS8-715 — nameten waar psql uitkwam, en loopback voor een lokaal doel
+
+Besluit van Quinten, 18-11-2026: de twee lage restpunten van de security-review
+van QS8-703 meteen bouwen. Gestapeld op QS8-703.
+
+| # | wat | waar |
+| -- | -- | -- |
+| 1 | één keer per proces, vóór de eerste psql-meting: `select coalesce(host(inet_server_addr()), 'unix-socket') \|\| '\|' \|\| current_database()`. Alleen loopback of een socket, en de gekozen database (`PSQL_DB`), zijn goed; anders werpt hij *"weigert te meten"*. Geen poort: CI draait op 5432, de lokale stack op 5433. | `bestemmingFout()`, `eisBestemming()` in `tests/rls/psql-stack.ts` |
+| 2 | bij `RLS_DOEL=lokaal` een loopback-allowlist op de host van `RLS_LOKAAL_URL` (`localhost`, `127.0.0.1`, `[::1]`), zonder vlag die hem opent. De stack van `scripts/lokale-stack.sh` en die van `supabase start` vallen erbinnen. | `eisLoopback()` in `tests/rls/harness.ts` |
+
+⚠️⚠️ **Niet kunnen meten is stoppen** (security-review van QS8-715). De eerste
+versie zweeg bij elke meetfout, en dan liep de eigenlijke aanroep ongemeten door:
+een tunnel die de meetverbinding één keer weigerde (*too many clients*), kreeg
+de volgende `psqlMetInvoer` met DML gewoon binnen. Nu:
+
+- alleen psql-exitcode **2** heet *"geen verbinding"*; elke andere fout, ook een
+  time-out (10 s), is *"niet vast te stellen"* en werpt;
+- *"geen verbinding"* is alleen in `stackBeschikbaarOfFaal()` een uitkomst — de
+  proef draait dan niet meer, en het oordeel meldt *"geen database"* of
+  *"overslaan"* zoals altijd; elke andere aanroep werpt en voert niets uit;
+- een verkeerde bestemming werpt buiten de `try` van `stackBeschikbaarOfFaal()`,
+  anders heet hij weer *"geen database"* (QS8-268).
+
+⚠️ **En de database heet `goalbuddies_rls`, hard** (dezelfde review). Achter een
+tunnel naar een pooler op de servermachine meldt ook productie zich als
+loopback, en `PGDATABASE=postgres` is voor een dump heel gewoon. De lokale stack
+en CI bouwen alleen die naam op (`scripts/lokale-stack.sh`).
+
+**Geijkt per grendel; ervoor en erna 80/80 groen** (de vier toetsbestanden van
+het slot):
+
+| mutatie | wat omviel |
+| -- | -- |
+| de loopback-toets op de bestemming weg | drie gevallen van `bestemmingFout`, `eisBestemming`, en in de naad *"een tunnel … psql() weigert"* en *"stackBeschikbaarOfFaal: een tunnel heet weigert te meten"* |
+| de databasetoets op de bestemming weg | *"een andere database op loopback"* en het `bestemmingFout`-geval |
+| `eisLokaleDatabase()` vraagt de bestemming niet | de drie naadtoetsen in `tests/beloftes/psql-meet-waar-hij-uitkwam.test.ts` |
+| de harness bij `lokaal` weer op de blocklist | de twee kindprocesgevallen *"RLS_LOKAAL_URL naar een IP-adres / eigen domein"* |
+| elke meetfout heet weer *"geen verbinding"* | *"een meting die mislukt met iets anders …: de echte vraag draait niet"* en de twee *"niet vast te stellen"*-gevallen |
+| *"geen verbinding"* laat een gewone aanroep door | *"geen verbinding bij een gewone aanroep: werpt, en er wordt niets uitgevoerd"* |
+| de database niet hard op `goalbuddies_rls` | `PGDATABASE=postgres` en `goalbuddies_rls_2` |
+
+De time-out op de meting staat onder geen toets: een verbinding die nooit
+antwoordt is zonder echte server niet na te bootsen.
+
+⚠️ **Niet gemeten: een echte database.** De naadtoets gebruikt een nagemaakte
+`psql` (`vi.mock` op `node:child_process`). Een tijdelijk Postgres-cluster in de
+cloudsessie was niet toegestaan. Dat `inet_server_addr()` bij een tunnel het
+adres van de server aan de overkant geeft en bij een socket `null`, is de
+documentatie van Postgres en hier niet nagemeten; `scripts/rls-dekking.mjs` leunt
+sinds QS8-497 op dezelfde vraag.
+
+**Wat open blijft (Laag, als ER-rij).** Een tunnel naar een server die óók een
+database `goalbuddies_rls` heeft, gaat door de nameting; een merkteken dat alleen
+de lokale stack zet (een `current_setting` of een markeertabel uit
+`scripts/lokale-stack.sh`) zou dat sluiten. En de REST-kant meet niet ná het
+verbinden: een HTTP-tunnel op `127.0.0.1:3010` naar productie-PostgREST, samen
+met het productiegeheim in `RLS_LOKAAL_JWT_SECRET`, gaat door `eisLoopback()`.
+
