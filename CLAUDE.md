@@ -302,11 +302,19 @@ Voordat er één feature gebouwd wordt:
 - Hosting: **Hostinger** (testfase), later Vercel
 - Observability: Sentry
 - Werkvoorraad: Linear
-- Visuele richting: **het Q-Projects navy-stelsel**, gedeeld met de Status Tracker
-  (`tracker.q-projects.tech`), thema's `navy` en `navy-licht`. Navy is de
-  ondergrond, goud het accent. **Gebruik Q-Projects-kleurstellingen** — geen
-  zelfbedachte kleuren erbij. Volledige tokenset in Linear QS8-87.
-  *(Vervangt de emerald-richting uit PRD 10.1, gewijzigd 15-08-2026.)*
+- Visuele richting: **vervangen op 19-11-2026 (QS8-722, besluit Quinten).** De stand
+  in code is nog het Q-Projects navy-stelsel (`src/shared/theme/tokens.ts`, thema's
+  `navy` en `navy-licht`), maar de richting is een **eigen, kleurrijker stelsel van
+  zeven uiterlijken** die de gebruiker kiest, met een indeling zo dicht mogelijk bij
+  Habit Huddle en **eigen kleurwaarden, pictogrammen en teksten** (nooit overgenomen:
+  hun voorwaarden §7 verbieden hun trade dress). De Status Tracker en GoalBuddies
+  mogen uit elkaar lopen. Dit vervangt A55 en het productvoorstel *rustig
+  gereedschap*; uitleg, ToS-afweging en de twee nieuwe dependencies in
+  `docs/decisions/2026-11-19-de-nieuwe-huisstijl-vervangt-a55-en-rustig-gereedschap.md`.
+  *(Vervangt de navy-richting van 15-08-2026, QS8-87, die zelf de emerald-richting uit
+  PRD 10.1 verving.)* ⚠️ **Tot QS8-723 landt verandert er in de app niets; verzin dus
+  nog geen eigen kleur in een component** — nieuwe waarden komen in de tokens, niet in
+  een scherm.
 
   ⚠️ **Eén benoemde uitzondering sinds 14-09-2026 (QS8-470, besluit 4 van
   QS8-468): het heldenpalet.** De zes helden dragen elk een kleurenpaar uit
@@ -523,7 +531,7 @@ Voordat er één feature gebouwd wordt:
      autorisatie overleeft waaronder hij gemaakt is; ontkoppelen trekt de
      toestemming in, maar wist geen chat. Uitleg in beslisdocument 002 §3.
 
-     ⚠️ **Eén benoemde uitzondering sinds 08-09-2026 (QS8-335, migratie 0221):
+     ⚠️ **Eén benoemde uitzondering sinds 08-09-2026 (QS8-335, migratie 0247):
      accountverwijdering.** Wie zijn account opzegt, neemt de systeemberichten
      over zijn eigen **commitments** mee — `commitment_due` en
      `commitment_unlocked` waarvan hij het onderwerp is. Verder niets: zijn
@@ -540,6 +548,30 @@ Voordat er één feature gebouwd wordt:
      **Verleg die grens niet als bijvangst.** Elk ander systeembericht valt
      onverkort onder de regel hierboven, en er weer een uit halen is een besluit
      met dezelfde zwaarte als dit.
+
+     ⚠️ **Een tweede benoemde uitzondering, besloten 19-11-2026 (QS8-722 en
+     QS8-736): het gedeelde prestatiebericht.** Wie zijn account opzegt, neemt de
+     `prestatie_gedeeld`-berichten mee waarvan hij het **onderwerp** (`subject_id`)
+     is, gewist vóór de accountdelete en in dezelfde transactie. **Alleen dat type**;
+     verder niets, en de eerste uitzondering blijft zoals ze is. Het bericht noemt de
+     persoon en de prestatie (de badgesleutel), **nooit een titel, notitie, niveau,
+     XP of datum**, en wordt alleen geplaatst op een uitdrukkelijke handeling van de
+     gebruiker (nooit voorgeselecteerd, nooit een prompt per badge), in één groep
+     naar keuze en alleen voor een prestatie op een deelbaar-lijst. Besluit van
+     Quinten, rechtstreeks op QS8-722 (reactie van 13:37); de afweging tegen 0247
+     staat in
+     `docs/decisions/2026-11-19-de-nieuwe-huisstijl-vervangt-a55-en-rustig-gereedschap.md`,
+     het oppervlak in rij 53 van `docs/decisions/002-domeinregel7-oppervlakken.md`.
+
+     *Waarom, en wat dat niet is:* ⚠️ **niet omdat er een naam achterblijft.** Sinds
+     0213 bakt geen enkel bericht nog een naam in; na verwijdering staat er *"Een
+     oud-lid"*. De uitzondering is een keuze van Quinten voor wat een wisverzoek
+     meeneemt, en een derde type kan zich er niet op beroepen. **Het bouwen van het
+     delen is QS8-736 en nog niet gedaan** (`security-reviewer` direct; nieuw type
+     systeembericht vraagt een migratie), en voor een teamgroep staat het uit tot
+     QS8-649 geland is én zijn eigen besluit er ruimte voor maakt. **Verleg ook deze
+     grens niet als bijvangst.**
+
    - **⚠️ Nooit `REPLICA IDENTITY FULL` op een tabel in de realtime-publicatie**
      (`completions`, `weekly_goals`, `chat_messages`). Supabase past RLS toe op
      INSERT en UPDATE, maar **niet op DELETE**: met `FULL` gaat bij een
@@ -588,6 +620,14 @@ Voordat er één feature gebouwd wordt:
 
     - **Score en voortgang zijn twee dingen.** Voortgang is mijlpaalgebaseerd en loopt
       alleen omhoog; de score kan dalen. Nooit in één balk tonen.
+
+    ⚠️ **XP is een tweede, aparte teller (besloten 19-11-2026, QS8-722 en QS8-734):
+    hij raakt het puntenmodel hierboven niet.** Hij telt alleen op en daalt nooit
+    (een gemiste week en een adempauze boeken geen negatieve rij), is alleen voor de
+    eigenaar leesbaar, en staat alleen op het Prestatiescherm en je eigen profiel:
+    nooit in het menu, nooit voor een groepslid, nooit in één element met je punten.
+    Bedragen, drempels en de terugwerkende migratie staan in
+    `docs/decisions/2026-11-19-de-nieuwe-huisstijl-vervangt-a55-en-rustig-gereedschap.md`.
 
     ⚠️ **De teambonus (besluit 28, 30 en 35, 04-11-2026): een uitzondering op
     "missen is niet gratis".** Bij een afgerond teamdoel (een lid rondt af, een
@@ -652,6 +692,12 @@ anders, en een schermlezer leest "gezicht met vreugdetranen" midden in een zin.
 
 **De gebruiker mag ze overal typen.** Eén uitzondering waar de app ze zelf wél
 gebruikt: reacties op een bericht (A24). Daar ís de emoji de boodschap.
+
+⚠️ **Een tweede benoemde uitzondering, besloten 19-11-2026 (QS8-722): het
+prestatiecomponent.** Emoji alleen op de prestatiekaarten (QS8-732), nooit in een
+knop, label, systeembericht of melding. De gebruiker mag emoji uitzetten met een
+schakelaar in het scherm Uiterlijk (vijfde voorkeur, QS8-731). `npm run emoji:controle`
+kent die uitzondering pas na QS8-732; tot dan blijft hij rood bij elke emoji in app-tekst.
 
 ⚠️ **Dit is sinds 23-08 een controle en geen zin meer:** `npm run emoji:controle`
 draait mee in `/audit` en wordt rood zodra er emoji in app-tekst staat.

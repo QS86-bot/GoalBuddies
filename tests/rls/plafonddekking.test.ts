@@ -178,6 +178,13 @@ const REGISTER: Readonly<Record<string, string>> = {
     'Hij groeit wél, maar alleen onder `service_role`. Komt er ooit een ' +
     'clientroute bij, dan meldt de test hierboven hem vanzelf als bevinding — ' +
     'en dan is een dagplafond het antwoord, niet een regel hier.',
+  gebruikersvoorkeuren:
+    'PRIMARY KEY (user_id) én een insert-policy die `user_id` aan `auth.uid()` ' +
+    'vastzet — samen hoogstens één rij per gebruiker. 📏 Gemeten op 19-11-2026 ' +
+    '(QS8-729, 0303): 5000 rijen op eigen naam weigerden op de tweede met 23505, ' +
+    '5000 rijen op andermans naam op de eerste met de policy, en de tabel bleef op ' +
+    '32 kB met nul rijen. ⚠️ Zelfde vorm als `hero_profiles`: de sleutel alléén ' +
+    'is niet genoeg, het zijn de twee samen.',
   invite_events: 'join_group_with_code() weigert vanaf 20 pogingen in het laatste etmaal.',
   invite_preview_limits:
     'PRIMARY KEY (group_id) — één rij per groep, en invite_preview() werkt hem ' +
@@ -301,6 +308,9 @@ describe.skipIf(!beschikbaar)('elke groeibare tabel heeft een plafond of een red
     //    INSERT-kolomgrant op. Dat verschil is de hele opzet van die migratie —
     //    de ene tabel schrijf je zelf, de andere schrijft de server — en dat het
     //    hier als één in plaats van twee telt, is de meting die dat bevestigt.
+    // ⚠️ En drieëndertig werd vierendertig met `gebruikersvoorkeuren` (QS8-729,
+    //    0303): primaire sleutel plus een insert-policy op `auth.uid()`, de vorm
+    //    van `hero_profiles`.
     // ⚠️ En tweeëndertig werd drieëndertig met `goal_match_queue` (QS8-233,
     //    0299). 📏 Hij komt hier binnen op `via_rpc` en niet op `direct`: de
     //    INSERT-policy staat op `false` en `authenticated` heeft geen enkele
@@ -308,7 +318,7 @@ describe.skipIf(!beschikbaar)('elke groeibare tabel heeft een plafond of een red
     //    mág uitvoeren en die erin schrijft. Dat is precies het geval waarvoor
     //    de `via_rpc`-tak bestaat — een tabel die niemand kan schrijven en toch
     //    groeit — en dat hij hier binnenkomt is de meting die die tak bewijst.
-    expect(gevonden.length, 'het aantal groeibare tabellen is veranderd').toBe(33);
+    expect(gevonden.length, 'het aantal groeibare tabellen is veranderd').toBe(34);
     // ⚠️ En zeventien werd achttien met `user_blocks` (QS8-496, 0276). Die tabel
     //    stond hierboven in REGISTER met de reden *"begrensd door het aantal
     //    mensen dat je kunt noemen"* — en die reden verviel toen `zoek_mensen()`

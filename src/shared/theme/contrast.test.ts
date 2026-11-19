@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import { contrastRatio, WCAG } from './contrast';
 import { navy, navyLight, type Palette } from './tokens';
+import { allePaletten } from './uiterlijken';
 
 /**
  * Het design system belooft WCAG AA in beide modi. Deze test legt die belofte
@@ -9,10 +10,9 @@ import { navy, navyLight, type Palette } from './tokens';
  * in plaats van pas bij een gebruiker met slechte ogen op een fel scherm.
  */
 
-const themes: [naam: string, palette: Palette][] = [
-  ['navy (donker)', navy],
-  ['navy-licht', navyLight],
-];
+// ⚠️ Over élk palet van élk uiterlijk (QS8-723): een nieuw uiterlijk krijgt zo dezelfde, strenge lat als B,
+//    en niet de lagere 4,5 die `uiterlijken.test.ts` voor een nieuw palet eist.
+const themes: [naam: string, palette: Palette][] = allePaletten().map(([naam, u]) => [naam, u.colors]);
 
 describe.each(themes)('contrast — %s', (_naam, p) => {
   it('lopende tekst haalt AAA op de achtergrond', () => {
