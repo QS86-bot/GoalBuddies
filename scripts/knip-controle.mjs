@@ -273,6 +273,12 @@ export const MET_REDEN = {
     'knipt SQL-commentaar (`--`) uit een migratie; JS-commentaar komt er niet in voor',
   'scripts/pinuitzonderingen-controle.mjs:zonderCommentaar':
     'knipt SQL-commentaar (`--`) uit een functiedefinitie; JS-commentaar komt er niet in voor',
+  'scripts/deploy-workflow.mjs:zonderCommentaar':
+    'knipt YAML-commentaar (alleen hele `#`-regels) uit een workflow, niet JS — een ' +
+    'andere taal en dus een andere knip. Bewust géén `#` midden in een regel: in een ' +
+    '`run:`-blok is dat bash-inhoud, en `echo "t #$GEHEIM"` mag niet onzichtbaar ' +
+    'worden. 📏 Gemeten bij QS8-718: een knip op ` #` liet dat lek door ' +
+    '(`tests/scripts/deploy-workflow.test.ts`, mutatie "# binnen een run-blok")',
   'scripts/zonder-sql-commentaar.mjs:zonderCommentaarSql':
     'de **gedeelde SQL-knip**, de tegenhanger van de gedeelde JS-knip: `--` én ' +
     'geneste `/* */`, om enkele quotes én dollar-quotes heen, met de literalen ' +
