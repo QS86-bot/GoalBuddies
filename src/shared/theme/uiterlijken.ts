@@ -157,11 +157,11 @@ export const UITERLIJKEN: Readonly<Record<UiterlijkId, Uiterlijk>> = {
   'C-baai': {
     donker: palet(baaiDonker, categoriekleurenNavy, heldkleurenNavy, {
       achtergrond: ['#0a1230', '#0a4152'],
-      accent: ['#10b981', '#22d3ee'],
+      accent: ['#60a5fa', '#22d3ee'],
     }),
     licht: palet(baaiLicht, categoriekleurenNavyLight, heldkleurenNavyLight, {
       achtergrond: ['#eef8fb', '#d5edf3'],
-      accent: ['#047857', '#0a6e94'],
+      accent: ['#2563eb', '#0a6e94'],
     }),
   },
   'C-avondgloed': {
@@ -171,7 +171,7 @@ export const UITERLIJKEN: Readonly<Record<UiterlijkId, Uiterlijk>> = {
     }),
     licht: palet(avondLicht, categoriekleurenNavyLight, heldkleurenNavyLight, {
       achtergrond: ['#fbf3fa', '#f6dff2'],
-      accent: ['#b45309', '#8e24aa'],
+      accent: ['#9a3412', '#8e24aa'],
     }),
   },
   // B is het huidige stelsel (goud met groen voor voortgang): ongewijzigd.

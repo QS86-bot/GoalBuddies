@@ -10,9 +10,9 @@ compatibiliteitsdata niet op (de cloudsessie sluit `api.expo.dev` af), dus de ve
 Het gebruikt alleen palet-tokens. Niet gemeten: de native bouw (alleen typecheck en unit-tests hier; de web-export draait in CI).
 
 **Waarden en wat er gemeten is.**
-- **Baai.** Donker: accent `#22d3ee`, verloop emerald `#10b981` naar `#22d3ee` (de tweede tint mag emerald zijn); achtergrond `#0a1230` naar `#0a4152`. Licht: accent `#0a6e94`,
-  verloop `#047857` naar `#0a6e94`. Proefwaarde `#0a7a8c` voor licht zakte op **8,5** van het statusgroen (drempel 10) en is verlaten; `#0a6e94` haalt hem.
-- **Avondgloed.** Donker: accent `#e879f9`, verloop amber `#f59e0b` naar `#e879f9`; achtergrond `#1a0b33` naar `#3b1a4f`. Licht: accent `#8e24aa`, verloop `#b45309` naar `#8e24aa`.
+- **Baai.** Donker: accent `#22d3ee`, verloop `#60a5fa` naar `#22d3ee`; achtergrond `#0a1230` naar `#0a4152`. Licht: accent `#0a6e94`,
+  verloop `#2563eb` naar `#0a6e94`. Proefwaarde `#0a7a8c` voor licht zakte op **8,5** van het statusgroen (drempel 10) en is verlaten; `#0a6e94` haalt hem.
+- **Avondgloed.** Donker: accent `#e879f9`, verloop amber `#f59e0b` naar `#e879f9`; achtergrond `#1a0b33` naar `#3b1a4f`. Licht: accent `#8e24aa`, verloop `#9a3412` naar `#8e24aa`.
   Het roze uit het voorbeeld, `#f472b6`, staat op **8,5** van softskills en faalt; `#e879f9` haalt de toets (14,0). 📏 Terug op `#f472b6` zetten maakt
   `kleurafstand.test.ts` rood, op de categoriekleur softskills.
 - **Statusrood.** C gebruikt het rood van B. Eén rood voor de hele app is besloten (QS8-743) en wordt daar vastgesteld; deze branch stelt het niet vast.
@@ -23,11 +23,18 @@ draagt beide. En de contrasttoetsen lopen langs het héle verloop (elf monsters 
 zelf is geijkt met rood naar groen.
 
 **Geijkt met de hand (elke keer rood op de bedoelde toets, daarna hersteld).** Roze terug op `#f472b6`; Baai-accent op `#10b981`; een te lichte `bg2`; knoptekst die het verloop niet haalt;
-een verloop op B; een ander rood in C.
+een verloop op B; een ander rood in C; emerald of het oude lichte amber als begin van het verloop.
 
-**Het risico dat Quinten accepteerde (criterium 5, vervangen).** Avondgloed-amber (`#f59e0b`) ligt in het slechtste geval op 3,8 van goud en 6,2 van oranje (meting uit het issue, niet opnieuw
-gemeten met een kleurenblindheidsscript). Quinten liet het amber staan; het wordt hier gemeld en niet opnieuw voorgelegd. ⚠️ In de lichte modus is het amber donkerder (`#b45309`) en ligt dat
-bij het lichte statusoranje `#b3541c`; dat is nu **niet gemeten** met een afstandsmaat en geen toets vangt het (de toets meet categoriekleuren, niet accent tegen oranje). Een aanname, geen bewijs.
+**Wat de review vond en wat ik deed.** De `critical-user`-ronde mat met `kleurafstand()` dat een verloop dat in de statuskleuren begint leest als "gehaald" of "dreigt mis te gaan",
+en dat de eerste versie van de toets alleen de tweede tint tegen de statuskleuren legde. 📏 Gemeten: emerald `#10b981` op 3,2 van het statusgroen (donker) en `#047857` op 1,2 (licht);
+het lichte amber `#b45309` op **0,8** van het statusoranje. Daarom: de eerste tint van Baai is nu een blauw (`#60a5fa` donker 19,6 van groen; `#2563eb` licht 25,6), en het lichte amber is `#9a3412`
+(6,7 van de dichtstbijzijnde statuskleur). Een nieuwe toets legt **beide** tinten tegen groen, oranje en rood (minstens 10) en tegen de tweede achtergrondtint (3:1).
+Terug op emerald of op `#b45309` maakt hem rood (met de hand gemeten).
+
+**Het risico dat Quinten accepteerde (criterium 5, vervangen).** Avondgloed-amber (`#f59e0b`) ligt op 8,1 van het statusoranje in donker (normaal zicht, `kleurafstand()`; de 3,8 en 6,2 uit het issue
+zijn de slechtste-geval-maat over kleurenblindheid en dus niet dezelfde grootheid). Quinten liet het amber staan. Het lichte amber `#9a3412` is een eigen aanpassing aan de lichte modus en ligt
+onder 10: beide staan in `AMBER_GEACCEPTEERD` in `uiterlijken.test.ts` met hun gemeten bodem (8 en 6,5), zodat ze niet slechter kunnen worden. ⚠️ Dat het lichte amber onder 10 blijft is **mijn aanname binnen
+Quintens besluit**, geen uitdrukkelijk besluit over de lichte modus; een amber dat 3:1 haalt op een lichte achtergrond komt niet verder van oranje (`#d97706` haalt 11,5 maar slechts 2,9 op `bg`).
 
 **Wat nog niet is gedaan.**
 - **Niets kiest C.** De voorkeur per account is QS8-729, het scherm QS8-731. `Verloop` is dus niet aangesloten op `Button`, `Screen` of `MilestoneProgress`; dat is code die nu niet draait en hoort bij QS8-731.

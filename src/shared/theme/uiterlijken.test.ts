@@ -163,6 +163,45 @@ describe('uiterlijk C (QS8-724)', () => {
     }
   });
 
+  /**
+   * ⚠️ Beide tinten van het accentverloop tegen de statuskleuren (QS8-724, review). Een knop of streep die in
+   *    het groen of oranje begint, leest als "gehaald" of "dreigt mis te gaan". Avondgloed-amber is door Quinten
+   *    geaccepteerd (19-11-2026, vijfde ronde); die twee tinten staan hier met hun gemeten bodem en mogen niet slechter.
+   */
+  const AMBER_GEACCEPTEERD: Readonly<Record<string, number>> = {
+    'C-avondgloed donker #f59e0b': 8,
+    'C-avondgloed licht #9a3412': 6.5,
+  };
+
+  it('houdt de tinten van het accentverloop op afstand van groen, oranje en rood, behalve het geaccepteerde amber', () => {
+    const gebruikt = new Set<string>();
+    for (const id of cIds) {
+      for (const modus of ['donker', 'licht'] as const) {
+        const u = UITERLIJKEN[id][modus];
+        for (const tint of u.verloop!.accent) {
+          const sleutel = `${id} ${modus} ${tint}`;
+          const d = Math.min(...[u.colors.green, u.colors.orange, u.colors.red].map((s) => kleurafstand(tint, s)));
+          if (sleutel in AMBER_GEACCEPTEERD) {
+            gebruikt.add(sleutel);
+            expect(d, sleutel).toBeLessThan(MIN_AFSTAND); // een uitzondering die niets uitzondert is dood
+            expect(d, sleutel).toBeGreaterThanOrEqual(AMBER_GEACCEPTEERD[sleutel]!);
+          } else {
+            expect(d, sleutel).toBeGreaterThanOrEqual(MIN_AFSTAND);
+          }
+        }
+      }
+    }
+    expect([...gebruikt].sort()).toEqual(Object.keys(AMBER_GEACCEPTEERD).sort());
+  });
+
+  it('haalt 3:1 voor de tinten van het accentverloop ook op de tweede achtergrondtint', () => {
+    for (const [naam, u] of paletten.filter(([n]) => n.startsWith('C-'))) {
+      for (const tint of u.verloop!.accent) {
+        expect(contrastRatio(tint, u.verloop!.achtergrond[1]), `${naam} ${tint}`).toBeGreaterThanOrEqual(WCAG.AA_LARGE);
+      }
+    }
+  });
+
   it('gebruikt in C het statusrood van navy: één rood voor de hele app (QS8-743)', () => {
     for (const modus of ['donker', 'licht'] as const) {
       for (const id of cIds) expect(UITERLIJKEN[id][modus].colors.red).toBe(UITERLIJKEN.B[modus].colors.red);
