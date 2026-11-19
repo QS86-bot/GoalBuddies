@@ -48,6 +48,7 @@ export { CHATDOC_TEKSTEN, Document, type DocumentProps } from './Document';
 export { DoelStandKaart } from './DoelStandKaart';
 export { EmptyState } from './EmptyState';
 export { Field } from './Field';
+export { OntdekGroepKaart, type OntdekGroepKaartGegevens } from './OntdekGroepKaart';
 export { Ketting } from './Ketting';
 export { FloorCeiling } from './FloorCeiling';
 export { Meldpaneel, type MeldpaneelProps } from './Meldpaneel';

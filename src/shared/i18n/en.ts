@@ -2354,6 +2354,14 @@ export const en: Record<Sleutel, string> = {
   'buddyzoek.al_gekoppeld': 'You are already matched. To get out, leave the group.',
   'buddyzoek.mislukt': 'That did not work. Please try again in a moment.',
 
+  // After fourteen days without buddies — QS8-643, migration 0306.
+  'buddyzoek.verlopen': 'We looked until {datum} and have not found buddies for you yet.',
+  'buddyzoek.alternatief_uitleg': 'These groups are looking for members. You can ask to join; the admin decides.',
+  'buddyzoek.alternatief_geen_titel': 'Right now no group that fits this goal is looking for members.',
+  'buddyzoek.alternatief_geen_tekst': 'You can search again, or browse all groups yourself.',
+  'buddyzoek.ontdekken_knop': 'Browse all groups',
+  'buddyzoek.opnieuw_knop': 'Search again',
+
   'voertaal.nl': 'Dutch',
   'voertaal.en': 'English',
 

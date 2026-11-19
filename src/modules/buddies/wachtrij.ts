@@ -2,6 +2,9 @@ import { reportError } from '../../lib/observability';
 import { supabase } from '../../lib/supabase';
 import { type Resultaat, type RpcRij } from '../../shared/api';
 import { t } from '../../shared/i18n';
+import { ouderDan, toonKlokDatum, type TimeZone } from '../../shared/time';
+
+import { fetchOntdekteGroepen, type OntdekteGroep } from './ontdekken';
 
 /**
  * De wachtrij voor koppeling aan onbekenden met een gelijkend doel — QS8-233,
@@ -25,9 +28,16 @@ import { t } from '../../shared/i18n';
  *    genomen voor groepen van vrienden.
  */
 
-/** De stand van je eigen wachtopdracht. */
+/**
+ * De stand van je eigen wachtopdracht.
+ *
+ * ⚠️ `verlopen` sinds QS8-643 (migratie 0305): veertien dagen tevergeefs gezocht.
+ *    Tot dan viel het scherm na het verlopen terug op "je zoekt niet", en dat is
+ *    de stilte die het criterium van QS8-233 uitsluit. Een tegenvaller, en dus
+ *    alleen voor de eigenaar: de RPC filtert op `owner_id` (domeinregel 7).
+ */
 export interface Buddyzoekstand {
-  readonly status: 'wachtend' | 'gekoppeld';
+  readonly status: 'wachtend' | 'gekoppeld' | 'verlopen';
   /** Hoeveel mensen er nog bij moeten. Nooit hoger dan 2 — zie de kop. */
   readonly nogNodig: number;
   readonly sinds: string;
@@ -45,7 +55,7 @@ type RpcStand = RpcRij<{
 }>;
 
 function naarStand(rij: RpcStand): Buddyzoekstand | null {
-  if (rij.status !== 'wachtend' && rij.status !== 'gekoppeld') return null;
+  if (rij.status !== 'wachtend' && rij.status !== 'gekoppeld' && rij.status !== 'verlopen') return null;
   if (typeof rij.sinds !== 'string' || typeof rij.verloopt !== 'string') return null;
 
   const nog = typeof rij.nog_nodig === 'number' ? rij.nog_nodig : 0;
@@ -124,9 +134,10 @@ export async function stopBuddyZoeken(goalId: string): Promise<Resultaat<true>> 
  * De stand van je eigen wachtopdracht, of `null` als je niet zoekt.
  *
  * ⚠️ `null` betekent hier twee dingen die het scherm hetzelfde mag tonen: je
- *    zoekt niet, of je zocht en bent eruit gestapt. Een verlopen of vertrokken
- *    rij komt niet terug — `buddyzoek_stand()` geeft alleen `wachtend` en
- *    `gekoppeld`.
+ *    zoekt niet, of je zocht en bent eruit gestapt. Een vertrokken rij komt niet
+ *    terug; een verlopen rij wél, sinds QS8-643 — want "je zocht veertien dagen
+ *    en er was niemand" is iets anders dan "je zoekt niet", en het scherm hoort
+ *    dat verschil te laten zien.
  */
 export async function fetchBuddyzoekStand(
   goalId: string,
@@ -176,4 +187,76 @@ export async function fetchBuddyzoekopdrachtenOver(): Promise<number | null> {
   }
 
   return typeof data === 'number' ? data : null;
+}
+
+/**
+ * Of deze stand verlopen is — ook als de database hem nog `wachtend` noemde.
+ *
+ * ⚠️ **Twee wegen naar `verlopen`** (QS8-643, de naad uit de
+ *    acceptatiecriteria). De database zegt `verlopen` zodra `expires_at` voorbij
+ *    is, ook zonder dat de matcher draaide (0305). Een scherm dat de stand van
+ *    vóór het verlopen vasthoudt, kijkt bij elke weergave ook zelf naar
+ *    `verloopt` — via `ouderDan()` uit `shared/time`, want "is dit voorbij" is een
+ *    tijdberekening (correctheidsregel 7).
+ *
+ * ⚠️ **Bij elke weergave, niet op het moment zelf.** Er is geen timer: een scherm
+ *    dat open blijft staan zonder dat iets het opnieuw rendert, toont het
+ *    verlopen pas bij de eerstvolgende weergave (code-review op QS8-643).
+ */
+export function isVerlopen(stand: Buddyzoekstand): boolean {
+  if (stand.status === 'verlopen') return true;
+  return stand.status === 'wachtend' && ouderDan(0, stand.verloopt);
+}
+
+/**
+ * De datum waarop de zoekopdracht afliep of afloopt, als tekst voor de gebruiker.
+ *
+ * ⚠️ **`verloopt` is een `timestamptz` en geen `YYYY-MM-DD`**, en `toonDatum()`
+ *    accepteert alleen dat laatste: hij gaf de ruwe tijdstempel terug, en het
+ *    scherm zei "we zoeken tot 2026-11-15T12:34:56.789+00:00" (📏 code-review op
+ *    QS8-643; zo stond het sinds QS8-233 ook in de wachtende stand). Hier de
+ *    kalenderdag in de zone van de lezer, via `toonKlokDatum()`.
+ */
+export function verloopdatumTekst(stand: Buddyzoekstand, tz: TimeZone, taal: string): string {
+  return toonKlokDatum(stand.verloopt, tz, taal);
+}
+
+/** Hoeveel alternatieven het scherm na een verlopen zoekopdracht hoogstens toont. */
+export const ALTERNATIEVEN_MAX = 3;
+
+/**
+ * De groepen die we na een verlopen zoekopdracht voorstellen.
+ *
+ * ⚠️ **Een groep waar je al in zit, is geen alternatief.** `ontdek_groepen()`
+ *    laat die niet weg — op het ontdekscherm is dat geen bezwaar, daar zie je
+ *    hem en weet je het. Hier staat er "probeer deze", en dan is je eigen groep
+ *    een voorstel dat nergens heen leidt (`already_member`).
+ *
+ * ⚠️ **Een automatisch gevormde groep komt hier nooit langs**, en dat is geen
+ *    filter in deze functie maar een eigenschap van de database:
+ *    `groups_automatisch_niet_ontdekbaar` (0300) en `ontdek_groepen()` geeft
+ *    alleen `ontdekbaar`. Een tweede filter hier zou suggereren dat de eerste
+ *    niet volstaat; de toets staat in `tests/rls/buddywachtrij-verlopen.test.ts`.
+ */
+export function kiesAlternatieven(
+  groepen: readonly OntdekteGroep[],
+  mijneGroepen: ReadonlySet<string>,
+): readonly OntdekteGroep[] {
+  return groepen.filter((g) => !mijneGroepen.has(g.groupId)).slice(0, ALTERNATIEVEN_MAX);
+}
+
+/**
+ * De kandidaten voor een verlopen zoekopdracht: ontdekbare groepen in de
+ * categorie van het doel. Het scherm kiest eruit met `kiesAlternatieven()`.
+ *
+ * ⚠️ **Zonder je eigen groepen als argument**, zodat het ophalen niet opnieuw
+ *    start zodra die later binnenkomen (code-review op QS8-643). Het kiezen
+ *    gebeurt bij het tonen.
+ *
+ * @throws bij een storing, zodat het scherm zijn foutstand toont (regel 16) en
+ *   niet "er is nu niets" beweert op grond van een mislukte aanroep.
+ */
+export async function fetchBuddyzoekAlternatieven(categorie: string | null): Promise<readonly OntdekteGroep[]> {
+  const pagina = await fetchOntdekteGroepen(categorie, null);
+  return pagina.rijen;
 }
