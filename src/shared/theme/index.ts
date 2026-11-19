@@ -23,6 +23,7 @@ export {
   space,
 } from './tokens';
 export { contrastRatio, WCAG } from './contrast';
+export { pictogramkleurenDonker, pictogramkleurenLicht, type Pictogramkleuren } from './pictogramkleuren';
 export { heldVlak, type HeldVlak } from './heldenbord';
 export {
   allePaletten,

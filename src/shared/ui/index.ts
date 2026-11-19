@@ -30,6 +30,8 @@ export { Card } from './Card';
 export { ChatRegel, type Chatbijlage } from './ChatRegel';
 export { Choice, type Optie } from './Choice';
 export { CategorieMerk } from './CategorieMerk';
+export { Pictogram } from './Pictogram';
+export { BETEKENISSEN, PICTOGRAMMEN, PICTOGRAM_BETEKENISSEN, type Betekenis, type PictogramNaam } from './pictogrammen';
 export { DatumKeuze } from './DatumKeuze';
 export { Kalender, type KalenderDag } from './Kalender';
 export { Ritmestrook } from './Ritmestrook';
