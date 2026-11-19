@@ -541,3 +541,33 @@ QS8-722, QS8-724, QS8-729, QS8-730 en QS8-732 zijn aangevuld met de besluiten hi
 
 QS8-734, QS8-735 en QS8-736 zijn aangevuld. Hiermee zijn alle open vragen uit §14.4 beantwoord, behalve één **aanname** in QS8-736: dat alle leden van de
 groep het bericht zien.
+
+## 15. Vijfde en zesde ronde (19-11-2026): alle openstaande vragen beantwoord
+
+| Vraag | Keuze van Quinten | Mijn advies |
+|---|---|---|
+| Koraal naast statusrood | **Koraal houden en het statusrood meeverschuiven** (nieuw issue QS8-743) | Koraal laten vervallen als hij niet te redden is |
+| Avondgloed-amber | **Houden en het risico accepteren** | verschuiven |
+| Pictogrammen | **De zes houden, plus doel, kroon of bliksem, hart of duim** (bouwsessie tekent beide van elk paar; Quinten kiest in de PR) | de zes houden |
+| Emoji uitzetten | **Ja, schakelaar in het scherm Uiterlijk** (vijfde voorkeur) | nee |
+| Limiet delen | **5 per dag** | zelfde |
+| Wie ziet het gedeelde bericht | **Alle leden van die groep** | zelfde |
+| Nieuwe vraag in de vragenlijst | **'Hoe wil je je voelen'** | geen nieuwe vragen |
+| Wat doet dat antwoord | **Alleen de herinneringsteksten aanpassen** | privé opslaan en tonen |
+| Bouwvolgorde | **1.0, dan 1.1a, dan de rest** | zelfde |
+| Twee apparaten | **De laatste keuze wint** | zelfde |
+| Helden op een onleesbaar palet | **Eigen neutraal bord** | zelfde |
+| Belofte | **Gekoppeld aan een commitment, aangeboden pas wanneer er een groep of getuige is** (poort-issue QS8-744) | nu niet |
+
+Nieuw in Linear: **QS8-743** (1.1d statusrood) en **QS8-744** (1.11 poort belofte). Het epic QS8-721 noemt nu zestien kinderen.
+
+### Nog open (bewust niet aangenomen)
+1. **De lijst van gevoelens** voor de vraag 'hoe wil je je voelen' (QS8-733): aantal en woorden.
+2. **Eén statusrood voor de hele app of een eigen rood per uiterlijk** (QS8-743).
+3. **Alles in de poort QS8-744** (gevolg, week-eenheid, begunstigde, bevestiging, hergebruik van het bestaande commitment, accountverwijdering).
+4. **Het inklapbare menu** (QS8-728): Quinten beoordeelt dat zelf op zijn telefoon na de deploy van QS8-705.
+
+### Een waarschuwing over de lopende bouw
+QS8-722 en QS8-723 staan in Linear inmiddels op **In Review**: een bouwsessie is dus al begonnen, vóór deze laatste besluiten erin stonden. Die sessie moet
+de aanvullingen onderaan beide issues lezen (de aanvulling op QS8-722 noemt acht punten; QS8-723 het neutrale bord). Dit is precies het geval dat `CLAUDE.md`
+beschrijft bij QS8-411: een besluit in een reactie of aanvulling is de nieuwste tekst, de beschrijving de oudste.
