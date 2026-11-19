@@ -132,12 +132,6 @@ export const BEKENDE_ONBEREIKBAAR = {
     'een, dan is er een afnemer die de module níét gebruikt, en dát is de ' +
     'bevinding — niet deze rij.',
 
-  haalMijnXp:
-    'De fundering van XP (QS8-734, migratie 0304) landt vóór haar afnemer. `src/modules/xp` ' +
-    'leest `mijn_xp()`; het Prestatiescherm (QS8-735) en het eigen profiel zijn de afnemers ' +
-    'en bestaan nog niet. ⚠️ Alle vier verdwijnen bij QS8-735; staat er daarna nog een, ' +
-    'dan is dát de bevinding. ⚠️ Een groepscomponent als afnemer is een fout, geen afnemer.',
-  leesXpStand: 'Hoort bij de XP-fundering van QS8-734; zie de rij `haalMijnXp` hierboven. Verdwijnt bij QS8-735.',
 };
 
 /**
@@ -148,11 +142,14 @@ export const BEKENDE_ONBEREIKBAAR = {
  *    verhoging in dezelfde wijziging als de rij en zijn reden — en dat is het
  *    hele verschil met een register dat stil kan groeien.
  */
-export const PLAFOND = 5;
+export const PLAFOND = 3;
 
 // ⚠️ Van 3 naar 14 op 19-11-2026, bij QS8-729: `src/modules/uiterlijk` landde vóór het
 //    scherm Uiterlijk. Weer naar 3 op dezelfde dag, bij QS8-731: het scherm en `UiterlijkProvider` zijn de
 //    aanroepers, en de elf rijen zijn eruit.
+
+// ⚠️ Van 5 naar 3 op 19-11-2026, bij QS8-735: `haalMijnXp()` en `leesXpStand()` hebben hun
+//    afnemer (het Prestatiescherm), en de twee rijen zijn eruit.
 
 // ⚠️ Van 5 naar 3 op 14-09-2026, bij QS8-475: `isTrigger()` bewaakt daar de
 //    triggerwaarde uit de database en `quoteSleutels()` levert de quote onder de
