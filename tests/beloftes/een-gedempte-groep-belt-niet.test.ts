@@ -95,6 +95,7 @@ describe('de tabel is van de ontvanger en van niemand anders', () => {
       const voorwaarden = [...p.matchAll(/(?:using|with check)\s*\(([\s\S]*?)\)\s*(?:with check|;|$)/gi)];
       expect(voorwaarden.length).toBeGreaterThan(0);
       expect(p).toMatch(/user_id\s*=\s*\(\s*select\s+auth\.uid\(\)\s*\)/i);
+      if (!/for\s+select/i.test(p)) expect(p).toMatch(/is_group_member\(\s*group_id\s*\)/i);
       expect(p).not.toMatch(/group_members|shares_group|groups\b/i);
     }
   });

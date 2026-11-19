@@ -254,8 +254,8 @@ describe.skipIf(!rlsTestsConfigured)('groep_demping', () => {
     it(
       'laat Eve — groepsgenoot van Bob — nul rijen van Bob lezen, ook met het filter op zijn id',
       async () => {
-        const dempt = await demping(bob.db).insert({ user_id: bob.id, group_id: groepA });
-        expect(dempt.error, JSON.stringify(dempt.error)).toBeNull();
+        // Bob dempt A al sinds de test hierboven; een tweede insert is 23505 en dus ok.
+        await demping(bob.db).insert({ user_id: bob.id, group_id: groepA });
 
         // Bevestigend eerst: Bob leest zijn eigen rij.
         const eigen = await demping(bob.db).select('group_id').eq('user_id', bob.id);

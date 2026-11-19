@@ -122,6 +122,13 @@ create index if not exists groep_demping_groep_idx
 
 alter table public.groep_demping enable row level security;
 
+-- ⚠️ **Alle schrijfpolicies dragen `is_group_member()`**, ook update en delete:
+--    `archiefleesgat()` (0153) eist van elke schrijvende policy op een tabel met
+--    een `group_id` een archieftoets, en CI werd rood zonder. Gevolg: in een
+--    gearchiveerde groep, of als je er geen actief lid meer van bent, kun je je
+--    demping niet opheffen tot je weer actief lid bent. Onschadelijk: zo'n groep
+--    belt niet (`te_beoordelen_voor()` eist `active` en een actieve groep).
+--
 -- ⚠️ **Elke policy is `user_id = (select auth.uid())`; de insert eist daarbij
 --    lidmaatschap van déze groep (`is_group_member()`).** Dat is geen groepstak
 --    die iets zichtbaar maakt maar een schrijfvoorwaarde: een foreign key wordt
@@ -144,13 +151,13 @@ create policy groep_demping_insert on public.groep_demping
 drop policy if exists groep_demping_update on public.groep_demping;
 create policy groep_demping_update on public.groep_demping
   for update to authenticated
-  using (user_id = (select auth.uid()))
-  with check (user_id = (select auth.uid()));
+  using (user_id = (select auth.uid()) and public.is_group_member(group_id))
+  with check (user_id = (select auth.uid()) and public.is_group_member(group_id));
 
 drop policy if exists groep_demping_delete on public.groep_demping;
 create policy groep_demping_delete on public.groep_demping
   for delete to authenticated
-  using (user_id = (select auth.uid()));
+  using (user_id = (select auth.uid()) and public.is_group_member(group_id));
 
 -- ⚠️ **`from public, anon, authenticated` en niet `from public, anon`.** Zie
 --    docs/decisions/2026-08-28-revoke-from-public-is-niet-van-iedereen.md.
