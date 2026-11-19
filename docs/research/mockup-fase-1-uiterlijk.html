@@ -1,0 +1,123 @@
+<!doctype html>
+<html lang="nl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>GoalBuddies — Uiterlijk-instelling (voorbeeld)</title>
+<style>
+*{box-sizing:border-box;margin:0}
+body{font-family:Inter,Segoe UI,system-ui,sans-serif;background:#070c1c;color:#eaf0ff;padding:20px}
+h1{font-size:19px;margin-bottom:4px}p.n{color:#9fb0d4;font-size:13px;margin-bottom:14px;max-width:980px;line-height:1.5}
+.wrap{display:grid;grid-template-columns:330px 1fr;gap:16px;max-width:1260px}
+@media(max-width:980px){.wrap{grid-template-columns:1fr}}
+.set{background:#0f1733;border:1px solid rgba(255,255,255,.1);border-radius:20px;padding:18px;align-self:start}
+.set h2{font-size:18px;margin-bottom:14px}.set h4{font-size:12px;letter-spacing:.8px;text-transform:uppercase;color:#9fb0d4;margin:16px 0 8px}
+.opts{display:grid;gap:8px}.opts.g2{grid-template-columns:1fr 1fr}.opts.g3{grid-template-columns:repeat(3,1fr)}
+.o{border:2px solid rgba(255,255,255,.1);background:#15224a;border-radius:14px;padding:10px;cursor:pointer;color:#eaf0ff;text-align:left;font-size:13px}
+.o[aria-pressed=true]{border-color:#34d399;background:#12304a}
+.o b{display:block;margin-bottom:6px;font-size:14px}
+.sw{display:flex;height:18px;border-radius:9px;overflow:hidden}.sw i{flex:1}
+.app{--bg:#0b1430;--bg2:#0f2a44;--panel:#15224a;--panel2:#101a3a;--line:rgba(255,255,255,.09);--acc:#10b981;--acc2:#10b981;--accT:#04261c;--txt:#eaf0ff;--sub:#9fb0d4;--pad:20px;
+ border-radius:22px;overflow:hidden;border:1px solid rgba(255,255,255,.1);background:linear-gradient(160deg,var(--bg),var(--bg2));color:var(--txt);display:grid;grid-template-columns:200px 1fr;min-height:640px}
+.app[data-dens=compact]{--pad:12px}
+/* stijlen */
+.app[data-s=b]{--acc:#e8b648;--acc2:#e8b648;--accT:#2a1d00;--bg2:#121b3b}
+.app[data-s=c]{--bg:#0a1230;--bg2:#0a4152;--panel:rgba(255,255,255,.07);--panel2:rgba(255,255,255,.05);--line:rgba(255,255,255,.14);--acc:#10b981;--acc2:#22d3ee}
+.app[data-s=c][data-k=avond]{--bg:#1a0f33;--bg2:#5b1f4a;--acc:#f59e0b;--acc2:#f472b6;--accT:#2a1200}
+.app[data-s=c][data-k=bos]{--bg:#06180f;--bg2:#0e4a2a;--acc:#a3e635;--acc2:#34d399;--accT:#142400}
+.app[data-s=c][data-k=pruim]{--bg:#150b30;--bg2:#3b1a6e;--acc:#c084fc;--acc2:#f0abfc;--accT:#1d0538}
+.app[data-s=c][data-k=koraal]{--bg:#2a0f1c;--bg2:#6b2230;--acc:#fb7185;--acc2:#fdba74;--accT:#340a10}
+/* licht */
+.app[data-m=licht]{--bg:#f3f7ff;--bg2:#e6f0ff;--panel:#fff;--panel2:#f0f4ff;--line:rgba(15,27,61,.12);--txt:#0f1b3d;--sub:#4b5b85;--acc:#047857;--acc2:#047857;--accT:#fff}
+.app[data-m=licht][data-s=b]{--acc:#9a6a00;--acc2:#9a6a00;--accT:#fff}
+.app[data-m=licht][data-s=c]{--bg:#eef7ff;--bg2:#d9f3f2;--panel:rgba(255,255,255,.8);--acc:#0f766e;--acc2:#0e7490;--accT:#fff}
+.app[data-m=licht][data-s=c][data-k=avond]{--bg:#fff1f6;--bg2:#fde4d3;--acc:#b45309;--acc2:#be185d}
+.app[data-m=licht][data-s=c][data-k=bos]{--bg:#f2fbe9;--bg2:#d9f5e3;--acc:#3f6212;--acc2:#047857}
+.app[data-m=licht][data-s=c][data-k=pruim]{--bg:#f7f0ff;--bg2:#efe1ff;--acc:#7e22ce;--acc2:#a21caf}
+.app[data-m=licht][data-s=c][data-k=koraal]{--bg:#fff3f3;--bg2:#ffe4dc;--acc:#be123c;--acc2:#c2410c}
+aside{background:rgba(0,0,0,.18);padding:16px 10px;display:flex;flex-direction:column;gap:4px;border-right:1px solid var(--line)}
+.app[data-m=licht] aside{background:rgba(255,255,255,.5)}
+.logo{font-weight:800;font-size:17px;padding:4px 10px 14px}.logo i{color:var(--acc);font-style:normal}
+.nav{display:flex;align-items:center;gap:10px;padding:10px;border-radius:12px;color:var(--sub);font-size:14px}
+.nav svg{width:19px;height:19px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.nav.on{background:var(--panel);color:var(--txt);box-shadow:inset 3px 0 0 var(--acc)}
+main{padding:var(--pad) 22px 24px}
+.head{display:flex;align-items:center;justify-content:space-between;padding-bottom:10px;position:relative}
+.head h2{font-size:26px}
+.head::before{content:"";position:absolute;left:0;bottom:0;height:3px;width:100%;border-radius:3px;background:var(--line)}
+.head::after{content:"";position:absolute;left:0;bottom:0;height:3px;width:38%;border-radius:3px;background:linear-gradient(90deg,var(--acc),var(--acc2))}
+.pill{display:flex;gap:6px;align-items:center;background:var(--panel);padding:5px 12px 5px 8px;border-radius:999px;font-weight:700;font-size:14px}
+.ic{width:22px;height:22px;display:inline-block;vertical-align:middle}
+.week{display:grid;grid-template-columns:repeat(7,1fr);gap:8px;margin:18px auto 14px;max-width:560px}
+.d{text-align:center;padding:6px 0;border-radius:14px;font-size:11px;color:var(--sub)}
+.d .c{width:34px;height:34px;border-radius:50%;margin:5px auto 0;display:grid;place-items:center;font-size:13px;font-weight:700;color:var(--txt);border:2px solid var(--line)}
+.d.done .c{background:var(--acc);border-color:var(--acc);color:var(--accT)}.d.today{background:var(--panel)}.d.today .c{border-color:var(--acc)}
+.tiles{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;max-width:560px;margin:0 auto 16px}
+.t{background:var(--panel);border-radius:16px;padding:var(--pad) 14px;border:1px solid var(--line);display:flex;gap:10px;align-items:center}
+.t b{font-size:24px;display:block;line-height:1}.t span{color:var(--sub);font-size:12px}
+.card{max-width:560px;margin:0 auto 12px;background:var(--panel);border:1px solid var(--line);border-radius:20px;overflow:hidden}
+.act{display:flex;align-items:center;gap:14px;padding:var(--pad)}
+.act+.act{border-top:1px solid var(--line)}
+.tx{flex:1}.tx b{font-size:16px;display:block;margin-bottom:2px}.tx span{color:var(--sub);font-size:12px}
+.chk{width:54px;height:54px;border-radius:50%;border:3px solid var(--line);display:grid;place-items:center;flex:none}
+.chk.floor{border-color:var(--acc);background:linear-gradient(90deg,var(--acc) 50%,transparent 50%)}
+.chk.ceil{border-color:var(--acc);background:var(--acc);box-shadow:0 0 0 5px color-mix(in srgb,var(--acc) 22%,transparent)}
+.chk svg{width:24px;height:24px;stroke:var(--txt);fill:none;stroke-width:3;stroke-linecap:round;stroke-linejoin:round}.chk.ceil svg{stroke:var(--accT)}
+.sec{max-width:560px;margin:14px auto 8px;font-size:15px;font-weight:700;display:flex;justify-content:space-between}
+.med{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;padding:var(--pad)}
+.m{text-align:center;font-size:11px;color:var(--sub)}.m .ic{width:46px;height:46px;display:block;margin:0 auto 6px}.m.lock .ic{filter:grayscale(1) opacity(.35)}
+.viering{max-width:560px;margin:0 auto;padding:12px 16px;border-radius:16px;background:linear-gradient(90deg,color-mix(in srgb,var(--acc) 22%,transparent),color-mix(in srgb,var(--acc2) 22%,transparent));display:flex;gap:12px;align-items:center;font-size:14px;font-weight:600}
+</style></head><body>
+<svg width="0" height="0" style="position:absolute"><defs>
+<linearGradient id="gf" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fde047"/><stop offset=".5" stop-color="#fb923c"/><stop offset="1" stop-color="#ef4444"/></linearGradient>
+<linearGradient id="gg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fef08a"/><stop offset="1" stop-color="#d9a21b"/></linearGradient>
+<linearGradient id="gb" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#a7f3d0"/><stop offset="1" stop-color="#059669"/></linearGradient>
+<symbol id="flame" viewBox="0 0 32 32"><path d="M16 2c1 6 8 8 8 16a8 8 0 0 1-16 0c0-3 1.5-5 3-6 0 3 1 4 2 4 0-5 1-9 3-14z" fill="url(#gf)"/><path d="M16 15c1 3 4 4 4 8a4 4 0 0 1-8 0c0-2 1-3 2-4 0 1 .5 1.5 1 1.5 0-2 .5-3.5 1-5.5z" fill="#fff6" /></symbol>
+<symbol id="star" viewBox="0 0 32 32"><path d="M16 2.5l4 8.6 9.4 1.1-7 6.4 1.9 9.3L16 23.2 7.7 27.9l1.9-9.3-7-6.4 9.4-1.1z" fill="url(#gg)" stroke="#b7791f" stroke-width="1.2" stroke-linejoin="round"/></symbol>
+<symbol id="shield" viewBox="0 0 32 32"><path d="M16 2l11 4v9c0 7-5 12-11 15C10 27 5 22 5 15V6z" fill="url(#gb)" stroke="#047857" stroke-width="1.2"/><path d="M11 16l4 4 7-8" fill="none" stroke="#fff" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+<symbol id="medal" viewBox="0 0 32 32"><path d="M9 2h5l3 9h-5zM23 2h-5l-3 9h5z" fill="#3b82f6"/><path d="M14 2h4l-1.5 5z" fill="#ef4444"/><circle cx="16" cy="20" r="9" fill="url(#gg)" stroke="#b7791f" stroke-width="1.4"/><path d="M16 14.5l1.6 3.3 3.6.5-2.6 2.5.6 3.6-3.2-1.7-3.2 1.7.6-3.6-2.6-2.5 3.6-.5z" fill="#fff8" /></symbol>
+<symbol id="trophy" viewBox="0 0 32 32"><path d="M9 4h14v7a7 7 0 0 1-14 0zM9 6H4c0 5 2 8 5 8M23 6h5c0 5-2 8-5 8" fill="url(#gg)" stroke="#b7791f" stroke-width="1.4" stroke-linejoin="round"/><path d="M13 19h6v4h-6zM10 27h12v-3H10z" fill="#d9a21b" stroke="#b7791f" stroke-width="1.2"/></symbol>
+<symbol id="chain" viewBox="0 0 32 32"><rect x="3" y="11" width="14" height="10" rx="5" fill="none" stroke="#22d3ee" stroke-width="3"/><rect x="15" y="11" width="14" height="10" rx="5" fill="none" stroke="#10b981" stroke-width="3"/></symbol>
+</defs></svg>
+<h1>Voorbeeld: Uiterlijk-instelling voor de gebruiker</h1>
+<p class="n">Links het instelscherm, rechts de voorvertoning. Kies een <b>stijl</b> (A, B of C), bij C een <b>kleurvariant</b>, de <b>weergave</b> (donker of licht) en de <b>dichtheid</b>. Dit is een <b>voorbeeld</b> om te beoordelen, geen gebouwd scherm. Pictogrammen zijn <b>eigen vectortekeningen</b> (vlam, ster, schild, medaille, trofee, ketting) en geen emoji-tekens; ze staan alleen bij positieve dingen. Alle kleurwaarden en namen zijn eigen.</p>
+<div class="wrap">
+<div class="set" role="group" aria-label="Uiterlijk">
+<h2>Uiterlijk</h2>
+<h4>Stijl</h4><div class="opts" data-g="s">
+<button class="o" data-v="a" aria-pressed="false"><b>A · Emerald op navy</b><div class="sw"><i style="background:#0b1430"></i><i style="background:#15224a"></i><i style="background:#10b981"></i></div></button>
+<button class="o" data-v="b" aria-pressed="false"><b>B · Goud met groen</b><div class="sw"><i style="background:#0b1430"></i><i style="background:#15224a"></i><i style="background:#e8b648"></i></div></button>
+<button class="o" data-v="c" aria-pressed="true"><b>C · Levendig verloop</b><div class="sw"><i style="background:#0a1230"></i><i style="background:#0a4152"></i><i style="background:linear-gradient(90deg,#10b981,#22d3ee)"></i></div></button></div>
+<div id="kleur"><h4>Kleurvariant (voor C)</h4><div class="opts g3" data-g="k">
+<button class="o" data-v="baai" aria-pressed="true"><b>Baai</b><div class="sw"><i style="background:#0a4152"></i><i style="background:#10b981"></i><i style="background:#22d3ee"></i></div></button>
+<button class="o" data-v="avond" aria-pressed="false"><b>Avondgloed</b><div class="sw"><i style="background:#5b1f4a"></i><i style="background:#f59e0b"></i><i style="background:#f472b6"></i></div></button>
+<button class="o" data-v="bos" aria-pressed="false"><b>Bosrand</b><div class="sw"><i style="background:#0e4a2a"></i><i style="background:#a3e635"></i><i style="background:#34d399"></i></div></button>
+<button class="o" data-v="pruim" aria-pressed="false"><b>Pruim</b><div class="sw"><i style="background:#3b1a6e"></i><i style="background:#c084fc"></i><i style="background:#f0abfc"></i></div></button>
+<button class="o" data-v="koraal" aria-pressed="false"><b>Koraal</b><div class="sw"><i style="background:#6b2230"></i><i style="background:#fb7185"></i><i style="background:#fdba74"></i></div></button></div></div>
+<h4>Weergave</h4><div class="opts g2" data-g="m">
+<button class="o" data-v="donker" aria-pressed="true"><b>Donker</b></button><button class="o" data-v="licht" aria-pressed="false"><b>Licht</b></button></div>
+<h4>Dichtheid</h4><div class="opts g2" data-g="d">
+<button class="o" data-v="ruim" aria-pressed="true"><b>Ruim</b></button><button class="o" data-v="compact" aria-pressed="false"><b>Compact</b></button></div>
+</div>
+<div class="app" id="app" data-s="c" data-k="baai" data-m="donker" data-dens="ruim">
+<aside><div class="logo">Goal<i>Buddies</i></div>
+<div class="nav on"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M8 12.5l3 3 5-6"/></svg>Vandaag</div>
+<div class="nav"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="4.5"/></svg>Doelen</div>
+<div class="nav"><svg viewBox="0 0 24 24"><circle cx="9" cy="9" r="3"/><circle cx="17" cy="10" r="2.5"/><path d="M3 19c0-3 2.7-5 6-5s6 2 6 5M15 15c3 0 6 1.4 6 4"/></svg>Groep</div>
+<div class="nav"><svg viewBox="0 0 24 24"><path d="M8 6h12M8 12h12M8 18h12M4 6h.01M4 12h.01M4 18h.01"/></svg>Lijst</div>
+<div class="nav"><svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 20c1-4 4-6 8-6s7 2 8 6"/></svg>Profiel</div></aside>
+<main>
+<div class="head"><h2>Vandaag</h2><span class="pill"><svg class="ic"><use href="#flame"/></svg>4 weken</span></div>
+<div class="week"><div class="d done">ma<div class="c">10</div></div><div class="d done">di<div class="c">11</div></div><div class="d">wo<div class="c">12</div></div><div class="d done">do<div class="c">13</div></div><div class="d">vr<div class="c">14</div></div><div class="d">za<div class="c">15</div></div><div class="d today">zo<div class="c">16</div></div></div>
+<div class="tiles"><div class="t"><svg class="ic" style="width:30px;height:30px"><use href="#shield"/></svg><div><b>1</b><span>weekpas</span></div></div><div class="t"><svg class="ic" style="width:30px;height:30px"><use href="#flame"/></svg><div><b>4</b><span>weken op rij</span></div></div><div class="t"><svg class="ic" style="width:30px;height:30px"><use href="#star"/></svg><div><b>38%</b><span>voortgang</span></div></div></div>
+<div class="card">
+<div class="act"><div class="tx"><b>Ga hardlopen</b><span>Vloer 1 keer · Plafond 3 keer</span></div><div class="chk floor" aria-label="Vloer gehaald"><svg viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></div></div>
+<div class="act"><div class="tx"><b>Schrijf 20 minuten</b><span>Vloer 1 keer · Plafond 4 keer</span></div><div class="chk ceil" aria-label="Plafond gehaald"><svg viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></div></div></div>
+<div class="viering"><svg class="ic" style="width:34px;height:34px"><use href="#trophy"/></svg>Plafond gehaald. Mooi gedaan.</div>
+<div class="sec">Prestaties<span style="color:var(--acc);font-size:12px">Alles</span></div>
+<div class="card"><div class="med">
+<div class="m"><svg class="ic"><use href="#medal"/></svg>Eerste week</div><div class="m"><svg class="ic"><use href="#star"/></svg>Vier weken</div><div class="m lock"><svg class="ic"><use href="#trophy"/></svg>Acht weken</div><div class="m lock"><svg class="ic"><use href="#chain"/></svg>Eerste ketting</div></div></div>
+</main></div></div>
+<script>
+var app=document.getElementById('app');
+function bind(g,fn){document.querySelectorAll('[data-g='+g+'] .o').forEach(function(b){b.addEventListener('click',function(){document.querySelectorAll('[data-g='+g+'] .o').forEach(function(x){x.setAttribute('aria-pressed','false')});b.setAttribute('aria-pressed','true');fn(b.dataset.v)})})}
+bind('s',function(v){app.dataset.s=v;document.getElementById('kleur').style.opacity=v==='c'?1:.35});
+bind('k',function(v){app.dataset.k=v});bind('m',function(v){app.dataset.m=v});bind('d',function(v){app.dataset.dens=v});
+</script></body></html>

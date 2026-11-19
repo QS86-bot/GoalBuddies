@@ -168,3 +168,90 @@ Pas als E1 t/m E4 en 0.2 er zijn, zijn de issues 1.0–1.4 af te schrijven met a
   de ToS-lezing van Quinten voldoende ontwijkt.
 - **Niet gemeten:** hoe de app er nu uitziet op een scherm; hoeveel werk 1.1 is (het kan groter zijn dan "licht"
   als schermen veel losse kleuren bevatten).
+
+## 10. Aanvulling 19-11-2026: alle drie de stijlen, een Uiterlijk-instelling, meer C-varianten en pictogrammen
+
+Wat Quinten erbij vroeg, en hoe het in de criteria landt. Voorbeeld: `docs/research/mockup-fase-1-uiterlijk.html`.
+
+- **A, B én C worden alle drie gebruikt.** De gebruiker kiest zelf, in een nieuw scherm *Uiterlijk*.
+  Dat is ook de bedoeling achter Habit Huddle's Style Studio, maar hier **gratis voor iedereen**:
+  er is geen betaald niveau, dus geen `// TODO(paid-tier)` en geen geld (domeinregel 5).
+- **C krijgt meer kleurvarianten.** Voorstel in het voorbeeld, met eigen namen: *Baai*, *Avondgloed*,
+  *Bosrand*, *Pruim*, *Koraal*. Ik heb **hun namen en hun combinaties niet overgenomen**.
+- **Kleurrijke pictogrammen** (medailles, sterren, vlammen, trofeeën). Dit botst met de emoji-regel; zie 10.3.
+
+### 10.1 Gevolg voor issue 1.1 (tokens)
+De thema-opbouw groeit: 3 stijlen, bij C vijf varianten, elk in donker en licht (E2). Dat is
+**7 uiterlijken × 2 weergaven = 14 paletten** (aanname: A en B krijgen geen varianten).
+Aanvullende criteria:
+1. Een palet is een **benoemde, volledige** set tokens. Een test controleert dat elk palet **alle** sleutels heeft
+   en dat er geen sleutel in één palet ontbreekt.
+2. **Elk palet** haalt de contrasteisen uit 1.1.3 (4.5:1 tekst, 3:1 grote cijfers en bedieningselementen),
+   gemeten per palet en niet voor het eerste.
+3. `red` blijft op elk palet uitsluitend voor deadline-risico (regel 7).
+4. Het heldenpalet (`heldkleurenNavy`, `heldkleurenNavyLight`) is ontworpen voor twee ondergronden. **Het is niet
+   gemeten of het op alle 14 paletten leesbaar blijft**; een test per palet toetst dat, en de uitkomst bepaalt of
+   een variant erbij mag (zie `heldkleuren.test.ts` en `CLAUDE.md`, *Stack*).
+5. Eerst ondersteunen we een **kleine startset** (E7 hieronder); de rest is een vervolg zonder codewijziging buiten de tokens.
+
+### 10.2 Nieuw issue 1.5 — Uiterlijk-instelling
+**Doel:** de gebruiker kiest stijl, kleurvariant, weergave en dichtheid in één scherm.
+
+Acceptatiecriteria:
+1. Een scherm *Uiterlijk* bereikbaar vanuit Profiel (een ingang is verplicht: `schermingang:controle`).
+2. Keuzes: **stijl** (A, B, C), bij C een **kleurvariant**, **weergave** (donker, licht, systeem) en **dichtheid** (ruim, compact).
+3. De keuze geldt **direct** en blijft bewaard na herstart. Zonder opgeslagen keuze geldt een vaste standaard.
+4. Is de opslag onleesbaar, dan volgt de app de systeeminstelling en de standaard; dat mislukt **niet stil**
+   (zoals `ThemeProvider.tsx` nu al doet: `console.warn` en doorgaan).
+5. De voorkeur is **privé**: geen ander lid ziet iemands stijl (geen nieuw groepsoppervlak; regel 7 en 4).
+6. Bestaande voorkeur (`goalbuddies.thema`, drie standen) blijft werken; een bestaande gebruiker ziet na de update
+   geen onverwachte verandering.
+7. Alle teksten via de catalogus, beide talen. Elke keuze is met toetsenbord en schermlezer te bedienen en toont de gekozen staat.
+8. Een test legt vast dat **elke** stijl × kleurvariant × weergave een bestaand palet oplevert (geen ongedefinieerde combinatie).
+9. Regel 15: geen nieuwe functie boven de vijftig regels.
+
+Review: één lichte controle (UI). **Een migratie is niet nodig** als de opslag per apparaat blijft (E6, advies);
+kiest Quinten voor een accountvoorkeur, dan is het een nieuwe kolom met RLS, grants (`revoke … authenticated`),
+een rollback-pad en `security-reviewer`.
+
+### 10.3 Nieuw issue 1.6 — Pictogrammen
+**Het conflict dat Quinten moet beslissen (E5).** `CLAUDE.md`, sectie *Emoji* (QS8-111): *"De app zelf gebruikt
+geen emoji in tekst. Niet in knoppen, statuslabels, systeemberichten, meldingen of UI-componenten."* Dat is een
+besluit van Quinten zelf, met redenen: emoji vertalen slecht, renderen per platform anders, en een schermlezer leest
+een beschrijving midden in een zin. Er is een controle, `npm run emoji:controle`, die rood wordt zodra er een in
+app-tekst staat. De enige uitzondering is een reactie op een bericht (A24).
+
+Wat Quinten vraagt (kleurrijk, leuk, medailles, sterretjes, "zoals WhatsApp of Messenger") en wat de regel
+beschermt, zijn te combineren met **eigen vectorpictogrammen**: ze zijn even kleurrijk, zien er overal hetzelfde
+uit, en een schermlezer krijgt een eigen label. Het voorbeeld toont ze. Wat **niet** kan: de emoji-afbeeldingen van
+WhatsApp of Messenger zelf gebruiken. Dat is hun artwork (Meta, Apple, Google) en niet vrij te hergebruiken.
+
+Acceptatiecriteria (bij de keuze "eigen vectorpictogrammen", advies):
+1. Een kleine set eigen pictogrammen in `src/shared/ui/` (vlam, ster, schild, medaille, trofee, ketting), als component
+   met een verplicht toegankelijkheidslabel uit de catalogus. Geen emoji-teken in de bron.
+2. Elk pictogram heeft een kleurvariant per palet **of** werkt op elk palet zonder contrastprobleem.
+3. **Alleen bij positieve dingen:** voltooiing, mijlpaal, reeks, weekpas, ketting, viering. **Nooit** een pictogram dat
+   een gemiste week, een lege dag, een verbroken reeks of achterstand aanduidt (regel 7). Een test faalt als zo'n
+   pictogram in een groepsoppervlak voor een negatieve toestand wordt gebruikt.
+4. Vergrendelde prestaties zijn een **grijze, gedimde** versie van hetzelfde pictogram, geen kruis of treurig teken.
+5. Geen pictogram-tekst-in-afbeelding; labels staan als echte tekst.
+6. `npm run emoji:controle` blijft groen. Is de keuze anders (zie E5), dan hoort een besluitdocument en een aangepaste
+   controle bij het issue, en niet een wegwerp-uitzondering.
+7. Eigen tekeningen: geen overgenomen vormen van hun mascotte of hun pictogrammen.
+
+Review: één lichte controle. Model: licht. Hangt af van 1.1 (kleurtokens).
+
+### 10.4 Nieuwe openstaande besluiten
+| # | Wat | Mijn advies |
+|---|---|---|
+| E5 | Emoji-regel en pictogrammen | Eigen vectorpictogrammen; regel blijft; emoji alleen door gebruikers en in reacties |
+| E6 | Waar de uiterlijkvoorkeur bewaard wordt | Per apparaat, zoals de bestaande themavoorkeur; account later als gebruikers het vragen |
+| E7 | Hoeveel varianten bij de eerste oplevering | A, B en C met twee kleurvarianten (Baai en Avondgloed); de rest in een vervolg |
+
+### 10.5 Gemeten en niet gemeten (aanvulling)
+- **Gemeten:** het voorbeeld rendert in een headless browser (stijl C met Avondgloed en stijl A in licht bekeken); de bestaande
+  themavoorkeur en de opslagsleutel staan in `src/shared/theme/ThemeProvider.tsx`.
+- **Aannames:** 14 paletten; dat het heldenpalet op de nieuwe paletten leesbaar is (niet gemeten); dat de
+  opslag per apparaat genoeg is; dat vectorpictogrammen "leuk genoeg" zijn voor wat Quinten voor ogen heeft.
+- **Niet gemeten:** hoe de pictogrammen in React Native renderen (SVG is een eigen keuze daar); of gebruikers
+  een Uiterlijk-scherm gebruiken; de contrastwaarden per palet.
