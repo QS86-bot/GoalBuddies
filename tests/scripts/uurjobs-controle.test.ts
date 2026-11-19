@@ -4,6 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import {
   BEWAKER,
+  BEWUST_NIET_GEPLAND,
   GETOLEREERDE_VERTRAGING_UUR,
   beoordeelRuns,
   hoofd,
@@ -39,6 +40,20 @@ function echteWorkflows(): Record<string, string> {
 describe('uurjobsUit', () => {
   it('vindt precies de twee uurjobs in de echte map', () => {
     expect(uurjobsUit(echteWorkflows())).toEqual(['notificaties.yml', 'rollover.yml']);
+  });
+
+  // De naad: `koppelen.yml` is af, maar de Edge Function staat niet op productie
+  // (QS8-641, besluit van Quinten 17-11-2026). Zet iemand de planning aan zonder
+  // het register leeg te maken, dan is dit rood; maakt iemand het register leeg
+  // zonder de planning aan te zetten, dan ook.
+  it('houdt een bewust niet geplande workflow uit de uurjobs, met de reden in het bestand', () => {
+    const alle = echteWorkflows();
+    for (const [naam, reden] of Object.entries(BEWUST_NIET_GEPLAND)) {
+      expect(alle[naam], `${naam} moet bestaan`).toBeDefined();
+      expect(uurjobsUit(alle), `${naam} staat bewust niet op de planning`).not.toContain(naam);
+      expect(alle[naam]).toMatch(/planning staat UIT/);
+      expect(reden.length).toBeGreaterThan(10);
+    }
   });
 
   it('vindt een derde uurjob vanzelf, ook met dubbele aanhalingstekens', () => {

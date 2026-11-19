@@ -73,7 +73,8 @@ export function Body({ children, muted, doorgestreept = false, ...rest }: Props)
 /**
  * Kleine bijtekst: datums, aantallen, toelichting.
  *
- * ⚠️ `danger` is uitsluitend voor een invoerfout — "dit veld klopt niet". Niet
+ * ⚠️ `danger` is bedoeld voor een invoerfout — "dit veld klopt niet" — en staat vandaag ook op een
+ *    waarschuwing of stand (QS8-743 telde ze na; zie het beslisdocument). Niet
  *    voor een gemiste week, niet voor een achterstand, niet voor iets van een
  *    ander. Rood is in dit stelsel deadline-risico en formulierfout, meer niet
  *    (domeinregel 7).

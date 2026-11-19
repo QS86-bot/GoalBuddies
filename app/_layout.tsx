@@ -27,6 +27,7 @@ import {
   registreerPushToken,
   zetPushBron,
 } from '@/modules/notifications';
+import { UiterlijkProvider, useKoppelUiterlijk } from '@/modules/uiterlijk/react';
 import { clientEnv } from '@/lib/env';
 import {
   koppelGlobaleFouten,
@@ -36,13 +37,13 @@ import {
   setErrorSink,
 } from '@/lib/observability';
 import { apparaatVoorkeuren, t, zetTaalUitApparaat } from '@/shared/i18n';
-import { ThemeProvider, useTheme } from '@/shared/theme';
+import { useTheme } from '@/shared/theme';
 import { useGehydrateerd } from '@/shared/ui';
 
 /**
  * De wortel van de app. Alles wat elk scherm nodig heeft, hangt hier.
  *
- * ⚠️ De volgorde van de providers is niet vrij. `ThemeProvider` staat bóven de
+ * ⚠️ De volgorde van de providers is niet vrij. `UiterlijkProvider` (die het `ThemeProvider` draagt) staat bóven de
  *    navigatie, anders valt hij bij elke routewissel weg en flitst het verkeerde
  *    thema. En `ProfielProvider` staat ónder `SessionProvider`, want zonder
  *    sessie is er geen profiel om te laden.
@@ -50,13 +51,13 @@ import { useGehydrateerd } from '@/shared/ui';
 export default function RootLayout() {
   return (
     <SafeAreaProvider>
-      <ThemeProvider>
+      <UiterlijkProvider>
         <SessionProvider>
           <ProfielProvider>
             <Shell />
           </ProfielProvider>
         </SessionProvider>
-      </ThemeProvider>
+      </UiterlijkProvider>
     </SafeAreaProvider>
   );
 }
@@ -82,6 +83,7 @@ function Shell() {
           <Uitnodigingswacht />
           <Pushwacht />
           <Tijdzonewacht />
+          <Uiterlijkwacht />
           <Stack
             screenOptions={{
               headerShown: false,
@@ -92,6 +94,19 @@ function Shell() {
       ) : null}
     </View>
   );
+}
+
+/**
+ * Verzoent de uiterlijkvoorkeur met de account zodra er een sessie is — QS8-731.
+ *
+ * ⚠️ **Een wacht en geen scherm**, om dezelfde reden als `Tijdzonewacht`: de provider staat bóven de sessie
+ *    (anders flitst het thema bij elke routewissel) en kent dus zelf geen gebruiker. Zonder deze wacht blijft
+ *    de keuze op het apparaat en reist ze nooit mee.
+ */
+function Uiterlijkwacht() {
+  const { userId } = useSession();
+  useKoppelUiterlijk(userId);
+  return null;
 }
 
 /**

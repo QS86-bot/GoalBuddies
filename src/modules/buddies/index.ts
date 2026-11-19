@@ -71,7 +71,12 @@ export {
   type UitnodigingsStand,
 } from './uitnodiging-stand';
 
-export { verwerkToetreding, type ToetredenUitvoer } from './uitnodiging-toetreden';
+export {
+  maakToetredenSlot,
+  toetredenMetSlot,
+  type ToetredenUitvoer,
+} from './uitnodiging-toetreden';
+export { useAutomatischToetreden } from './useAutomatischToetreden';
 
 export {
   bewaarOpenstaandeUitnodiging,
@@ -96,6 +101,14 @@ export {
   type Verledensoort,
   type OntdekteGroep,
 } from './ontdekken';
+
+export type { Buddyzoekstand } from './wachtrij';
+export {
+  fetchBuddyzoekopdrachtenOver,
+  fetchBuddyzoekStand,
+  stopBuddyZoeken,
+  zoekBuddies,
+} from './wachtrij';
 
 export {
   blokkeer,
@@ -252,3 +265,5 @@ export {
   zoekMensen,
 } from './zoeken';
 export type { GevondenPersoon } from './zoeken';
+
+export { fetchGroepGedempt, zetGroepGedempt } from './demping';

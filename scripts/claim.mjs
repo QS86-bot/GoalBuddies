@@ -107,6 +107,7 @@
  * Uitleg in `docs/decisions/2026-10-05-de-claim-ziet-een-vaste-sessiebranch-nooit.md`.
  */
 import { execFileSync } from 'node:child_process';
+import { basename, dirname, join } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import process from 'node:process';
 
@@ -448,6 +449,80 @@ function nuInUtc() {
   return new Date().toISOString().slice(11, 16);
 }
 
+/**
+ * Waar komt de claim terecht? — QS8-717.
+ *
+ * ⚠️⚠️ **Lokaal krijgt elke sessie een eigen `git worktree`** (besluit Quinten,
+ *    19-11-2026). Op 18-11 zette een parallelle sessie de gedeelde werkmap van
+ *    een andere sessie om naar een andere tak, en die verloor haar ongecommitte
+ *    werk; `zetClaim()` doet `checkout -b`, en in één gedeelde map zet een claim
+ *    van sessie B dus de tak van sessie A om. Een eigen worktree per issue laat
+ *    de map waar je staat met rust.
+ *
+ *    - `hier`: de claim op de branch waar je staat (`--hier`, QS8-620).
+ *    - `werkboom`: lokaal — een nieuwe worktree naast de repo, zie `werkboomPad()`.
+ *    - `in-plaats`: de oude weg, `checkout -b` in deze map. Alleen in de cloud
+ *      (`CLAUDE_CODE_REMOTE=true`), waar elke sessie al een eigen container
+ *      heeft en een map buiten de werkmap voor de app niet te openen is; en in
+ *      een worktree die al van één sessie is.
+ *
+ * @param {{ hier: boolean, cloud: boolean, inHoofdmap: boolean }} stand
+ * @returns {'hier' | 'werkboom' | 'in-plaats'}
+ */
+export function claimWijze({ hier, cloud, inHoofdmap }) {
+  if (hier) return 'hier';
+  if (cloud || !inHoofdmap) return 'in-plaats';
+  return 'werkboom';
+}
+
+/**
+ * De vaste plek van een worktree: naast de repo, in `<repo>-werk/qs8-<nummer>`.
+ *
+ * ⚠️ Buiten de repo en niet erin: een worktree ín de werkmap zou door elke
+ *    `git status`, linter en testglob van de hoofdmap meegeteld worden.
+ */
+export function werkboomPad(wortel, nummer) {
+  const repo = wortel.replace(/[\\/]+$/, '');
+  return join(dirname(repo), `${basename(repo)}-werk`, `${TEAM}-${nummer}`);
+}
+
+/** Staat dit proces in de hoofdmap van de repo, en niet in een gekoppelde worktree? */
+function inHoofdmap() {
+  const eigen = git(['rev-parse', '--absolute-git-dir']).trim();
+  const gedeeld = git(['rev-parse', '--path-format=absolute', '--git-common-dir']).trim();
+  return eigen === gedeeld;
+}
+
+/**
+ * De claim in een nieuwe worktree: branch vanaf `origin/main`, lege
+ * claim-commit, push. De map waar je staat blijft precies zoals hij was.
+ *
+ * ⚠️ **De `.env` gaat niet mee.** Sinds QS8-702 heeft `npm test` geen
+ *    productiesleutels nodig, en een gekopieerde `.env` is precies hoe het
+ *    productieslot in werkbomen terechtkwam (QS8-700).
+ *
+ * @param {{ wortel: string, pad: string }} plek
+ */
+export function zetClaimInWerkboom(naam, nummer, vervolg, { wortel, pad }) {
+  const [onderwerp, body] = claimBericht(nummer, nuInUtc(), vervolg);
+  const gitIn = (map, argumenten) => execFileSync('git', argumenten, { cwd: map, encoding: 'utf8' });
+
+  gitIn(wortel, ['worktree', 'add', '-b', naam, pad, 'origin/main']);
+  gitIn(pad, ['commit', '--allow-empty', '-m', onderwerp, '-m', body]);
+  gitIn(pad, ['push', '-u', 'origin', naam]);
+}
+
+/** Wat een sessie na een claim in een worktree moet doen, en hoe ze opruimt. */
+function meldWerkboom(pad) {
+  console.log(
+    `\n  Je werk staat in een eigen worktree; de map waar je stond is niet aangeraakt:\n` +
+      `    cd ${pad} && npm ci\n` +
+      '  (geen .env kopiëren — npm test heeft sinds QS8-702 geen sleutels nodig)\n' +
+      '  Opruimen na de merge, vanuit de hoofdmap:\n' +
+      `    git worktree remove ${pad}`,
+  );
+}
+
 function zetClaim(naam, nummer, vervolg) {
   const [onderwerp, body] = claimBericht(nummer, nuInUtc(), vervolg);
 
@@ -479,6 +554,35 @@ function zetClaimHier(nummer, vervolg) {
   return naam;
 }
 
+/**
+ * De drie bronnen van de claim (QS8-294, QS8-449, QS8-620): een branch op de
+ * remote, een claim-commit op een naamloze tak, en geland werk op `main`.
+ *
+ * @returns de gelande regels, of `null` als het issue bezet is (en gemeld)
+ */
+function gelandOfBezet(nummer, vervolg) {
+  for (const regel of versheidsmelding(haalRemoteOp())) console.log(regel);
+
+  const botsingen = botsendeBranches(nummer, remoteRefs());
+  if (botsingen.length > 0) {
+    meldBezet(nummer, botsingen);
+    return null;
+  }
+
+  const naamloos = bezetteNaamlozeBranches(nummer, takkenMetClaims());
+  if (naamloos.length > 0) {
+    meldNaamlozeBezetting(nummer, naamloos);
+    return null;
+  }
+
+  const gelande = gelandVoor(nummer, onderwerpenOpMain());
+  if (gelande.length > 0 && !vervolg) {
+    meldGeland(nummer, gelande);
+    return null;
+  }
+  return gelande;
+}
+
 function hoofd() {
   const argumenten = process.argv.slice(2);
   const vervolg = argumenten.includes('--vervolg');
@@ -495,28 +599,24 @@ function hoofd() {
     process.exit(1);
   }
 
-  for (const regel of versheidsmelding(haalRemoteOp())) console.log(regel);
-
-  const botsingen = botsendeBranches(nummer, remoteRefs());
-  if (botsingen.length > 0) {
-    meldBezet(nummer, botsingen);
-    process.exit(1);
-  }
-
-  const naamloos = bezetteNaamlozeBranches(nummer, takkenMetClaims());
-  if (naamloos.length > 0) {
-    meldNaamlozeBezetting(nummer, naamloos);
-    process.exit(1);
-  }
-
-  const gelande = gelandVoor(nummer, onderwerpenOpMain());
-  if (gelande.length > 0 && !vervolg) {
-    meldGeland(nummer, gelande);
-    process.exit(1);
+  const gelande = gelandOfBezet(nummer, vervolg);
+  if (gelande === null) {
+    process.exitCode = 1;
+    return;
   }
 
   if (hier) {
     meldGeslaagd(nummer, zetClaimHier(nummer, gelande.length > 0), gelande.length, true);
+    return;
+  }
+
+  const wijze = claimWijze({ hier, cloud: process.env.CLAUDE_CODE_REMOTE === 'true', inHoofdmap: inHoofdmap() });
+  const { naam, vanLinear } = claimNaam(argument, nummer);
+  if (wijze === 'werkboom') {
+    const pad = werkboomPad(WORTEL, nummer);
+    zetClaimInWerkboom(naam, nummer, gelande.length > 0, { wortel: WORTEL, pad });
+    meldGeslaagd(nummer, naam, gelande.length, vanLinear);
+    meldWerkboom(pad);
     return;
   }
 
@@ -526,7 +626,6 @@ function hoofd() {
     process.exit(1);
   }
 
-  const { naam, vanLinear } = claimNaam(argument, nummer);
   zetClaim(naam, nummer, gelande.length > 0);
   meldGeslaagd(nummer, naam, gelande.length, vanLinear);
 }

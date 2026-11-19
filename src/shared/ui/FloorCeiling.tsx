@@ -35,6 +35,11 @@ interface Props {
    * en `rangeState()` dwingt dat af in plaats van dit scherm.
    */
   readonly bevestigingen?: { readonly gedaan: number; readonly nodig: number } | undefined;
+  /**
+   * De titel staat al elders op de kaart (een `Actiekaart`) — QS8-727. De titel
+   * vervalt zichtbaar én uit het label, zodat een schermlezer hem niet driemaal hoort.
+   */
+  readonly zonderTitel?: boolean;
 }
 
 function toneColor(theme: Theme, tone: Tone): string {
@@ -56,6 +61,7 @@ export function FloorCeiling({
   achieved,
   viewer,
   bevestigingen,
+  zonderTitel = false,
 }: Props) {
   const theme = useTheme();
   const reduced = useReducedMotion();
@@ -73,10 +79,10 @@ export function FloorCeiling({
     <View
       style={styles.blok}
       accessibilityRole="progressbar"
-      accessibilityLabel={`${title}. ${state.label}`}
+      accessibilityLabel={zonderTitel ? state.label : `${title}. ${state.label}`}
       accessibilityValue={{ min: 0, max: 100, now: Math.round(state.fill * 100) }}
     >
-      <Body>{title}</Body>
+      {zonderTitel ? null : <Body>{title}</Body>}
 
       <View style={[styles.spoor, { backgroundColor: theme.colors.panelDark }]}>
         <View

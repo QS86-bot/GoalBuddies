@@ -39,6 +39,16 @@ import { useGehydrateerd } from '../../src/shared/ui/useGehydrateerd';
  *         'vóór de poort staat in Shell niets anders …'
  *   D  een `<Text>{t('algemeen.laden')}</Text>` vóór de poort
  *      -> rood: 'vóór de poort staat in Shell niets anders …' (de oude toetsen bleven groen)
+ *
+ * De naad met de uiterlijkvoorkeur (QS8-731 op main, samengevoegd in QS8-740), ijking met de hand
+ * op 19-11-2026, vooraf en achteraf 8 groen:
+ *
+ *   E  `<Uiterlijkwacht />` buiten de poort (naast `<StatusBar />`)
+ *      -> rood: 'Shell tekent de wachters …' en 'vóór de poort staat in Shell niets anders …'
+ *   F  de beginwaarde van `useToestand` in `react.tsx` een andere voorkeur dan `STANDAARD_VOORKEUR`
+ *      -> rood: 'de eerste render van de provider is de standaard en niet ready'
+ *   G  `ready` in `useLezingEnVerzoening` met `useState(true)` beginnen
+ *      -> rood: 'de eerste render van de provider is de standaard en niet ready'
  */
 
 // ⚠️ `react-dom/server` heeft in dit project geen typedeclaratie en `@types/react-dom`
@@ -77,7 +87,7 @@ describe('de aansluiting in Shell', () => {
   it('Shell tekent de wachters en de Stack pas na de hydratie', () => {
     const poort = shell.indexOf('{klaar ?');
     expect(poort).toBeGreaterThan(-1);
-    for (const deel of ['<Routewacht />', '<Uitnodigingswacht />', '<Pushwacht />', '<Tijdzonewacht />', '<Stack']) {
+    for (const deel of ['<Routewacht />', '<Uitnodigingswacht />', '<Pushwacht />', '<Tijdzonewacht />', '<Uiterlijkwacht />', '<Stack']) {
       const plek = shell.indexOf(deel);
       expect(plek, `${deel} hoort in Shell te staan`).toBeGreaterThan(-1);
       expect(plek, `${deel} hoort achter de poort te staan`).toBeGreaterThan(poort);
@@ -101,5 +111,35 @@ describe('de aansluiting in Shell', () => {
 
   it('de poort staat binnen de View en laat bij false niets tekenen', () => {
     expect(shell).toMatch(/\) : null\}/);
+  });
+});
+
+describe('de naad met de uiterlijkvoorkeur (QS8-731)', () => {
+  // ⚠️ **Wat hier bewaakt wordt is de volgorde, niet een eigenschap van één onderdeel.** De hydratie zegt
+  //    "tot het klaar is staat er alleen een achtergrond"; de uiterlijkvoorkeur zegt "eerst lokaal, dan de
+  //    account". Lezen beide in de eerste render van een apparaat (opslag, systeemthema) dan wijkt de
+  //    clientronde af van de server, en die is dan een tweede bron van #418 of van een stijlflits. De provider
+  //    staat bóven de poort en moet dus zelf neutraal beginnen: standaard, niet ready, en de lokale lezing
+  //    pas in een effect.
+  // ⚠️ Een bronlezing en geen render: `react.tsx` laadt `react-native` via de themalaag en dat draait niet
+  //    onder vitest in node (gemeten: 'Flow is not supported'). Dat is dezelfde grens als bij `_layout.tsx`.
+  const provider = zonderCommentaar(
+    readFileSync(join(__dirname, '..', '..', 'src', 'modules', 'uiterlijk', 'react.tsx'), 'utf8'),
+  );
+
+  it('de eerste render van de provider is de standaard en niet ready', () => {
+    expect(provider).toMatch(/useState<Uiterlijkvoorkeur>\(STANDAARD_VOORKEUR\)/);
+    expect(provider).toMatch(/const \[ready, setReady\] = useState\(false\)/);
+  });
+
+  it('de lokale lezing gebeurt in een effect en niet in een beginwaarde', () => {
+    const effect = provider.indexOf('useEffect(');
+    expect(effect).toBeGreaterThan(-1);
+    for (const aanroep of ['leesStart: leesLokaleStart,', 'verzoen: verzoenMetAccount,']) {
+      expect(provider.indexOf(aanroep), `${aanroep} hoort in het effect te staan`).toBeGreaterThan(effect);
+    }
+    // Geen lezing van het apparaat tijdens het renderen van de provider.
+    expect(provider).not.toMatch(/useState\(\(\) =>/);
+    expect(provider).not.toMatch(/Appearance\.|localStorage|AsyncStorage\./);
   });
 });
