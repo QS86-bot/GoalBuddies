@@ -41,6 +41,7 @@ let dirk: TestUser; // deelt alleen G2 met Anna
 let G: Groep;
 let G2: Groep;
 let O: Groep;
+let Z: Groep;
 const doelen: Record<string, string> = {};
 
 async function maakGroep(eigenaar: TestUser, naam: string, zicht: string): Promise<Groep> {
@@ -104,9 +105,11 @@ describe.skipIf(!rlsTestsConfigured)('het profiel van een groepsgenoot', () => {
     G = await maakGroep(anna, 'Profiel-G', 'beschermd');
     G2 = await maakGroep(anna, 'Profiel-G2', 'beschermd');
     O = await maakGroep(anna, 'Profiel-O', 'open');
+    Z = await maakGroep(anna, 'Profiel-Z', 'beschermd');
     await laatMeedoen(bram, G);
     await laatMeedoen(bram, O);
     await laatMeedoen(dirk, G2);
+    await laatMeedoen(bram, Z);
 
     const x = await maakDoel('PROFIEL actief gedeeld', [G]);
     await maakDoel('PROFIEL afgerond gedeeld', [G], 'completed');
@@ -114,6 +117,11 @@ describe.skipIf(!rlsTestsConfigured)('het profiel van een groepsgenoot', () => {
     await maakDoel('PROFIEL alleen G2', [G2]);
     await maakDoel('PROFIEL zonder groep', []);
     await maakDoel('PROFIEL open', [O]);
+    await maakDoel('PROFIEL gedeeld en niet-gedeeld', [G, G2]);
+    await maakDoel('PROFIEL alleen gearchiveerde groep', [Z]);
+
+    // Pas na het koppelen: in een gearchiveerde groep kun je niets meer koppelen.
+    psql(`update groups set status = 'archived' where id = '${Z.id}'`);
 
     // Mijlpalen worden niet door een client geschreven; psql, met de status direct.
     for (const [i, status] of ['done', 'todo', 'dropped'].entries()) {
@@ -131,7 +139,12 @@ describe.skipIf(!rlsTestsConfigured)('het profiel van een groepsgenoot', () => {
   it('een groepsgenoot ziet alleen actieve en afgeronde doelen in een gedeelde groep', async () => {
     const rijen = await doelenVan(bram, anna);
     expect(titels(rijen)).toEqual(
-      ['PROFIEL actief gedeeld', 'PROFIEL afgerond gedeeld', 'PROFIEL open'].sort(),
+      [
+        'PROFIEL actief gedeeld',
+        'PROFIEL afgerond gedeeld',
+        'PROFIEL gedeeld en niet-gedeeld',
+        'PROFIEL open',
+      ].sort(),
     );
   }, TEST_TIMEOUT);
 
@@ -160,11 +173,11 @@ describe.skipIf(!rlsTestsConfigured)('het profiel van een groepsgenoot', () => {
   }, TEST_TIMEOUT);
 
   it('geeft een groepsgenoot van een andere groep alleen die gedeelde groep', async () => {
-    expect(titels(await doelenVan(dirk, anna))).toEqual(['PROFIEL alleen G2']);
+    expect(titels(await doelenVan(dirk, anna))).toEqual(['PROFIEL alleen G2', 'PROFIEL gedeeld en niet-gedeeld'].sort());
     const groepen = await rpc(dirk, 'profiel_groepen_van_lid', { p_user: anna.id });
     expect(groepen.map((g) => g.naam)).toEqual(['Profiel-G2']);
     const bramGroepen = await rpc(bram, 'profiel_groepen_van_lid', { p_user: anna.id });
-    expect(bramGroepen.map((g) => g.naam).sort()).toEqual(['Profiel-G', 'Profiel-O']);
+    expect(bramGroepen.map((g) => g.naam).sort()).toEqual(['Profiel-G', 'Profiel-O']); // niet G2, niet de gearchiveerde Z
   }, TEST_TIMEOUT);
 
   it('geeft jezelf dezelfde projectie, niet rijker ("zo ziet je groep je")', async () => {
@@ -186,7 +199,7 @@ describe.skipIf(!rlsTestsConfigured)('het profiel van een groepsgenoot', () => {
     const b = await doelenVan(bram, anna, { p_limit: 2, p_offset: 2 });
     const alles = titels([...a, ...b]);
     expect(new Set(alles).size).toBe(alles.length);
-    expect(alles).toHaveLength(3);
+    expect(alles).toHaveLength(4);
   }, TEST_TIMEOUT);
 
   it('verandert niet door een gemiste week, ook niet in een open groep', async () => {
@@ -205,7 +218,8 @@ describe.skipIf(!rlsTestsConfigured)('het profiel van een groepsgenoot', () => {
         cycle_start_date: '2026-01-05',
         status: 'missed',
       });
-    await week;
+    const gemist = await week;
+    if (gemist.error) throw new Error(`gemiste week: ${gemist.error.message}`);
     psql(`update user_streaks set current_streak = 0 where user_id = '${anna.id}'`);
 
     expect(JSON.stringify(await doelenVan(bram, anna))).toBe(voor);
