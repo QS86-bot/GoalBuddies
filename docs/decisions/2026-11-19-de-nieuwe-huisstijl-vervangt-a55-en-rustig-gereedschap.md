@@ -3,7 +3,7 @@
 **Wie besloot en wanneer.** Quinten, 19-11-2026, in vier rondes. ⚠️ **De besluiten staan hier zoals ze in Linear (QS8-721 en QS8-722)
 en in het bestand fase-1-acceptatiecriteria.md in docs/research (§1, §11, §13 en §14) staan** (dat bestand staat op de tak
 `claude/habithuddle-app-ontleding`, niet op `main`). Ik heb ze niet rechtstreeks van Quinten gelezen en niet nagemeten tegen een scherm.
-**Zonder zijn aftekening blijven QS8-723 (1.1a) en QS8-729 (1.5a) geblokkeerd** (acceptatiecriterium 4 van QS8-722).
+**Afgetekend op 19-11-2026, behalve XP** (zie hieronder; de aftekening kwam via de orchestrator-sessie, niet rechtstreeks naar mij). QS8-723 (1.1a) is daarmee vrij; QS8-729 (1.5a) wacht op een migratie en dus op de nummerketen.
 
 ## Wat het vervangt
 
@@ -51,14 +51,18 @@ werk van QS8-723 en QS8-729, niet van dit besluit.
 staat nu in `package.json`. Installeren met `npx expo install` zodat de versies bij de Expo-SDK passen, en toetsen dat web-export én native
 bouwen. Hostinger-regel: geen Vercel-specifieke packages. **Dit is een afweging onder de Beslisbevoegdheid en geen gate; het is hier verantwoord.**
 
-## Prestaties, XP en niveau: besloten, nog niet gebouwd
+## XP en niveau: nog niet besloten, en dus niet in de app
 
-Een aparte XP-teller die alleen optelt, privé voor de eigenaar, naast het puntentotaal van domeinregel 10 (QS8-734); zichtbaar in het
-Prestatiescherm en het eigen profiel, nergens anders. Een XP-concept naast het privé puntentotaal is **een nieuw feit voor domeinregel 10**; de
-regels staan in QS8-734 en horen daar in `CLAUDE.md` te landen op het moment dat die migratie landt, niet nu. Delen van een prestatie in één
-groep naar eigen keuze (QS8-736), ook in teamgroepen, is een nieuw groepszichtbaar oppervlak met `security-reviewer`; het staat **uit tot QS8-649
-geland is** voor teamgroepen. Een gedeeld prestatiebericht verdwijnt bij accountverwijdering: dat is een **tweede benoemde uitzondering naast
-QS8-335** op de regel dat een systeembericht blijft staan.
+⚠️ **Aftekening (19-11-2026, via de orchestrator uit een vraag aan Quinten): dit besluit is afgetekend, behalve XP.** Er komt **geen XP in de
+app tot een eigen besluit**: geen XP-scherm, geen XP-kolom, geen XP-teller. Reden: een XP-concept naast het privé puntentotaal raakt domeinregel 10
+(*je persoonlijke puntentotaal is privé*; een teller mag alleen optellen) en is daarom een besluit met die zwaarte, niet iets dat meekomt met
+een uiterlijk. De eerdere ronde-uitkomsten over XP (drempels, bedragen, terugwerkende kracht, zeldzaamheid per badge) zijn dus **niet besloten
+als geldend** en staan alleen in de onderzoekstak; QS8-734 (XP en niveau) en het XP-deel van QS8-735 (Prestatiescherm) wachten op dat besluit.
+
+**Wat nog wel in dit besluit staat:** het delen van een prestatie in één groep naar eigen keuze (QS8-736) is een nieuw groepszichtbaar oppervlak
+met `security-reviewer` en blijft voor teamgroepen uit tot QS8-649 geland is. ⚠️ Of dat delen nog zin heeft zonder het Prestatiescherm
+(QS8-735) en zonder XP, en of een gedeeld prestatiebericht bij accountverwijdering verdwijnt (een tweede benoemde uitzondering naast QS8-335),
+is bij deze aftekening niet opnieuw voorgelegd; ik laat het als open punt staan en neem het niet aan.
 
 ## Verhouding tot QS8-649 (zakelijk gebruik)
 
