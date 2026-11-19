@@ -39,7 +39,10 @@ begint.
 ## Stap 3 — Bouw
 
 - Branch aanmaken met de naam die Linear zelf voorstelt (`gitBranchName` op het
-  issue). Dan koppelen branch, PR en issue automatisch.
+  issue), via `npm run claim -- <naam>`. Dan koppelen branch, PR en issue
+  automatisch. Lokaal maakt de claim een eigen `git worktree` en laat hij de map
+  waar je staat met rust: ga daarna naar het pad dat hij noemt (geen `.env`
+  meekopiëren). Zie `docs/PROMPT-SESSIE.md` §1 en QS8-717.
 - Zet het issue in Linear op **In Progress**.
 - Bouw het af tegen de acceptatiecriteria die in het issue staan. Die criteria
   zijn de opdracht, niet een suggestie.
