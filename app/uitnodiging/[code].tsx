@@ -14,7 +14,8 @@ import {
   lidmaatschapStand,
   titelIsVerlopen,
   uitnodigingsStand,
-  verwerkToetreding,
+  toetredenMetSlot,
+  maakToetredenSlot,
   type ToetredenUitvoer,
   useAutomatischToetreden,
   vergeetOpenstaandeUitnodiging,
@@ -143,15 +144,17 @@ export default function UitnodigingScherm() {
     [router],
   );
 
-  const deelnemen = useCallback(async () => {
-    if (!code) return;
-    setBezig(true);
-    setFout(null);
+  // ⚠️ QS8-716. Eén slot voor de knop én het vanzelf toetreden; `bezig` volgt eruit.
+  //    `useState` en niet `useMemo`: dit slot is een correctheidsgrendel, en React
+  //    mag een memo weggooien (Fast Refresh doet dat altijd). Een nieuw slot
+  //    midden in een toetreding laat een tweede toe.
+  const [slot] = useState(() => maakToetredenSlot(setBezig));
 
-    const uitkomst = await neemDeel(code);
-    setBezig(false);
-    verwerkToetreding(uitkomst, uitvoer);
-  }, [code, uitvoer]);
+  const deelnemen = useCallback(() => {
+    if (!code) return;
+    setFout(null);
+    void toetredenMetSlot(code, { slot, uitvoer, toetreden: neemDeel });
+  }, [code, slot, uitvoer]);
 
   useAutomatischToetreden({
     sessieLaadt,
@@ -159,6 +162,7 @@ export default function UitnodigingScherm() {
     code,
     magToetreden,
     uitvoer,
+    slot,
     toetreden: neemDeel,
   });
 
@@ -289,7 +293,7 @@ export default function UitnodigingScherm() {
             ) : null}
 
             {actie === 'deelnemen' ? (
-              <Button variant="primair" block busy={bezig} onPress={() => void deelnemen()}>
+              <Button variant="primair" block busy={bezig} onPress={deelnemen}>
                 {t('uitnodiging.deelnemen')}
               </Button>
             ) : null}

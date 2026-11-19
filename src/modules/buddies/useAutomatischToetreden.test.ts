@@ -5,7 +5,11 @@ import { afterAll, afterEach, beforeEach, describe, expect, it, vi } from 'vites
 
 import type { Resultaat } from '../../shared/api';
 
-import type { ToetredenUitvoer } from './uitnodiging-toetreden';
+import {
+  maakToetredenSlot,
+  type ToetredenSlot,
+  type ToetredenUitvoer,
+} from './uitnodiging-toetreden';
 import { useAutomatischToetreden } from './useAutomatischToetreden';
 
 /**
@@ -16,6 +20,7 @@ import { useAutomatischToetreden } from './useAutomatischToetreden';
  */
 
 type Props = Parameters<typeof useAutomatischToetreden>[0];
+type Invoer = Omit<Props, 'slot'> & { readonly slot?: ToetredenSlot };
 
 function Probe(props: Props) {
   useAutomatischToetreden(props);
@@ -50,10 +55,14 @@ afterAll(() => {
 });
 
 let container: HTMLDivElement;
+let slot: ToetredenSlot;
+let bezigGezet: boolean[];
 let root: Root;
 
 beforeEach(() => {
   (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
+  bezigGezet = [];
+  slot = maakToetredenSlot((b) => bezigGezet.push(b));
   container = document.createElement('div');
   root = createRoot(container);
 });
@@ -62,8 +71,8 @@ afterEach(() => {
   act(() => root.unmount());
 });
 
-function render(props: Props) {
-  act(() => root.render(createElement(Probe, props)));
+function render(props: Invoer) {
+  act(() => root.render(createElement(Probe, { slot, ...props })));
 }
 
 const basis = { sessieLaadt: false, code: 'ABC123', magToetreden: true };
@@ -88,7 +97,7 @@ describe('useAutomatischToetreden', () => {
   //    gehaald. `uitvoer` is in het scherm bovendien stabiel (`useMemo` op `[router]`).
   //    `magToetreden` wordt onwaar zodra het lidmaatschap binnen is, `sessieLaadt`
   //    kan tijdens een token-verversing weer even waar zijn, en `code` kan wisselen.
-  const wissels: readonly [string, (p: Props, u: ToetredenUitvoer) => Props][] = [
+  const wissels: readonly [string, (p: Invoer, u: ToetredenUitvoer) => Invoer][] = [
     ['uitvoer', (p, u) => ({ ...p, uitvoer: u })],
     ['magToetreden', (p) => ({ ...p, magToetreden: false })],
     ['sessieLaadt', (p) => ({ ...p, sessieLaadt: true })],
@@ -103,7 +112,7 @@ describe('useAutomatischToetreden', () => {
       const tweede = nieuweUitvoer();
       const wacht = uitgesteld();
       const toetreden = vi.fn().mockReturnValue(wacht.belofte);
-      const begin: Props = { ...basis, ingelogd: true, uitvoer: eerste.uit, toetreden };
+      const begin: Invoer = { ...basis, ingelogd: true, uitvoer: eerste.uit, toetreden };
 
       render({ ...begin, ingelogd: false, magToetreden: false });
       render(begin);
@@ -199,5 +208,66 @@ describe('useAutomatischToetreden', () => {
     render({ ...basis, ingelogd: true, uitvoer: weg2, toetreden: toetreden2 });
     await act(async () => wacht2.af(new Error('netwerk')));
     expect(weg.gebeurd).toEqual([]);
+  });
+
+  // ⚠️ QS8-716: de knop en dit effect delen één slot.
+  it('een slot dat al bezet is (de knop loopt) houdt het vanzelf toetreden tegen', async () => {
+    const { uit, gebeurd } = nieuweUitvoer();
+    const toetreden = vi.fn().mockResolvedValue({ ok: true, waarde: 'g-1' });
+    expect(slot.begin()).toBe(true); // de knop was eerst
+
+    render({ ...basis, ingelogd: false, magToetreden: false, uitvoer: uit, toetreden });
+    render({ ...basis, ingelogd: true, uitvoer: uit, toetreden });
+    await act(async () => {});
+
+    expect(toetreden).not.toHaveBeenCalled();
+    expect(gebeurd).toEqual([]);
+  });
+
+  it('tijdens het vanzelf toetreden is het slot bezet, zodat de knop niets kan starten', async () => {
+    const { uit } = nieuweUitvoer();
+    const wacht = uitgesteld();
+    const toetreden = vi.fn().mockReturnValue(wacht.belofte);
+
+    render({ ...basis, ingelogd: false, magToetreden: false, uitvoer: uit, toetreden });
+    render({ ...basis, ingelogd: true, uitvoer: uit, toetreden });
+
+    expect(bezigGezet).toEqual([true]);
+    expect(slot.begin()).toBe(false); // een tik op de knop in dit venster
+
+    await act(async () => wacht.los({ ok: true, waarde: 'g-1' }));
+    expect(bezigGezet).toEqual([true, false]);
+    expect(slot.begin()).toBe(true);
+  });
+
+  it('het slot is ook na een mislukte aanroep weer vrij', async () => {
+    const { uit } = nieuweUitvoer();
+    const wacht = uitgesteld();
+    const toetreden = vi.fn().mockReturnValue(wacht.belofte);
+
+    render({ ...basis, ingelogd: false, magToetreden: false, uitvoer: uit, toetreden });
+    render({ ...basis, ingelogd: true, uitvoer: uit, toetreden });
+    await act(async () => wacht.af(new Error('netwerk')));
+
+    expect(bezigGezet).toEqual([true, false]);
+    expect(slot.begin()).toBe(true);
+  });
+
+  it('als de knop eerst toetrad, doet een latere depwissel niet nog een toetreding', async () => {
+    // De knop slaagt zonder profiel: het scherm blijft staan en `magToetreden` blijft
+    // waar. Een token-verversing (sessieLaadt waar en weer onwaar) draait het effect
+    // opnieuw; dat mag niet tot een tweede `neemDeel` leiden.
+    const { uit } = nieuweUitvoer();
+    const toetreden = vi.fn().mockResolvedValue({ ok: true, waarde: 'g-1' });
+    expect(slot.begin()).toBe(true); // de knop loopt
+
+    render({ ...basis, ingelogd: false, magToetreden: false, uitvoer: uit, toetreden });
+    render({ ...basis, ingelogd: true, uitvoer: uit, toetreden }); // effect: slot bezet
+    slot.einde(); // de knop is klaar
+    render({ ...basis, ingelogd: true, sessieLaadt: true, uitvoer: uit, toetreden });
+    render({ ...basis, ingelogd: true, sessieLaadt: false, uitvoer: uit, toetreden });
+    await act(async () => {});
+
+    expect(toetreden).not.toHaveBeenCalled();
   });
 });
