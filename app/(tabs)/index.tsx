@@ -13,6 +13,7 @@ import {
   Meldingen,
   OpenstaandBlok,
   StandBlok,
+  TellersBlok,
   ToevoegKnoppen,
   useVandaag,
   WeekstrookBlok,
@@ -65,6 +66,8 @@ export default function Vandaag() {
       <TeBeoordelenKaart stand={teBeoordelen} onOpen={() => router.push('/beoordelen')} />
 
       <WeekstrookBlok v={v} />
+
+      <TellersBlok v={v} />
 
       <Meldingen v={v} />
 
