@@ -11,7 +11,7 @@ import type { StyleProp, ViewStyle } from 'react-native';
  *    via de aanroeper; dit component wordt dan niet gebruikt.
  *
  * ⚠️ **Nog niets in de app kiest uiterlijk C.** De schakelaar is QS8-729 en QS8-731; tot dan staat dit component
- *    klaar en rendert hij nergens. Niet gemeten: hoe het verloop op een echt toestel oogt (alleen web-export en typecheck).
+ *    klaar en rendert hij nergens. Niet gemeten: hoe het verloop op een echt toestel oogt (hier alleen typecheck en unit-tests; de web-export draait in CI).
  */
 interface Props {
   /** Uit `uiterlijk(...).verloop` (`achtergrond` of `accent`); nooit een eigen kleur. */
