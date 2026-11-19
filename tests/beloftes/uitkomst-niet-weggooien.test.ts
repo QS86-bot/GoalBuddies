@@ -346,7 +346,7 @@ describe('uitloggen staat vóór de instellingen', () => {
     '<TijdzoneInstelling',
     '<Meldingen',
     '<HerinneringInstelling',
-    '<ThemaKeuze',
+    '<UiterlijkIngang',
     '<VieringKeuze',
   ];
 

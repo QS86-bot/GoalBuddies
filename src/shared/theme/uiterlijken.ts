@@ -286,24 +286,13 @@ export const UITERLIJKEN: Readonly<Record<UiterlijkId, Uiterlijk>> = {
 };
 
 /**
- * De standaard voor een nieuwe gebruiker: uiterlijk B, donker (E8 en E9, QS8-721; QS8-729 bouwt de opslag).
+ * De standaard voor een nieuwe gebruiker: uiterlijk B, donker (E8 en E9, QS8-721).
  *
- * ⚠️ **Dit zijn constanten en nog geen gedrag.** `ThemeProvider` valt vandaag terug op `systeem` en een
- *    bestaande voorkeur (`systeem | navy | navy-licht`, sleutel `goalbuddies.thema`) blijft zoals ze is.
- *    `uiterlijkVoorVoorkeur()` is de brug: elke bestaande waarde wijst op B en een modus, zodat het
- *    nieuwe stelsel de oude voorkeur kan lezen zonder haar te herschrijven.
+ * De keuze van de gebruiker leeft in `modules/uiterlijk` (QS8-729) en komt via `ThemeProvider` binnen (QS8-731).
+ * De brug van de oude voorkeur (`systeem | navy | navy-licht`) naar een weergave is `legacyWeergave()` daar.
  */
 export const STANDAARD_UITERLIJK: UiterlijkId = 'B';
 export const STANDAARD_MODUS: Modus = 'donker';
-
-export function uiterlijkVoorVoorkeur(
-  voorkeur: 'systeem' | 'navy' | 'navy-licht',
-  scheme: 'light' | 'dark' | 'unspecified' | null | undefined,
-): { readonly id: UiterlijkId; readonly modus: Modus } {
-  if (voorkeur === 'navy') return { id: 'B', modus: 'donker' };
-  if (voorkeur === 'navy-licht') return { id: 'B', modus: 'licht' };
-  return { id: 'B', modus: scheme === 'light' ? 'licht' : 'donker' };
-}
 
 export const UITERLIJK_IDS = Object.keys(UITERLIJKEN) as readonly UiterlijkId[];
 export const MODI: readonly Modus[] = ['donker', 'licht'];

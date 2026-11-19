@@ -40,7 +40,7 @@ import { opmaaktaal, t, taal, zetTaal, type Taal,
   type Sleutel,
 } from '@/shared/i18n';
 import { telTekens } from '@/shared/tekst';
-import { space, useThemePreference, type ThemePreference } from '@/shared/theme';
+import { space } from '@/shared/theme';
 import { apparaatTijdzone, toonTijd, verschovenUur, type Weekday } from '@/shared/time';
 import {
   Accountregel,
@@ -179,7 +179,7 @@ export default function Profiel() {
 
             <StilleUrenInstelling profiel={p} userId={p.id} onOpgeslagen={zetProfiel} />
 
-            <ThemaKeuze />
+            <UiterlijkIngang />
 
             <VieringKeuze />
 
@@ -598,38 +598,16 @@ function WeekStartInstelling({
 }
 
 /**
- * ⚠️ Een functie en geen constante: een module-constante met `t()` erin bevriest
- *    de taal op importtijd, vóórdat het profiel geladen is. Zie QS8-115.
+ * De ingang naar het scherm Uiterlijk — QS8-731. De keuzes zelf staan daar; hier één kaart, zodat Profiel
+ * niet vol raakt en het scherm een eigen voorvertoning kan tonen.
  */
-function themaOpties(): readonly { readonly waarde: ThemePreference; readonly label: string }[] {
-  return [
-    { waarde: 'systeem', label: t('profiel.thema_systeem') },
-    { waarde: 'navy', label: t('profiel.thema_donker') },
-    { waarde: 'navy-licht', label: t('profiel.thema_licht') },
-  ];
-}
-
-function ThemaKeuze() {
-  const { preference, setPreference, ready } = useThemePreference();
-
+function UiterlijkIngang() {
+  const router = useRouter();
   return (
     <Card>
-      <Subheading>{t('profiel.weergave')}</Subheading>
-      <Body muted>{t('profiel.weergave_uitleg')}</Body>
-
-      <View style={styles.keuzes}>
-        {themaOpties().map(({ waarde, label }) => (
-          <Button
-            key={waarde}
-            variant={preference === waarde ? 'primair' : 'secundair'}
-            disabled={!ready}
-            onPress={() => setPreference(waarde)}
-            accessibilityLabel={t('profiel.weergave_label', { stand: label })}
-          >
-            {label}
-          </Button>
-        ))}
-      </View>
+      <Subheading>{t('uiterlijk.ingang_titel')}</Subheading>
+      <Body muted>{t('uiterlijk.ingang_uitleg')}</Body>
+      <Button onPress={() => router.push('/uiterlijk')}>{t('uiterlijk.ingang_knop')}</Button>
     </Card>
   );
 }
