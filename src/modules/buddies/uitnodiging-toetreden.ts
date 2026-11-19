@@ -17,12 +17,14 @@
  */
 
 import type { Resultaat } from '../../shared/api';
+import { reportError } from '../../lib/observability';
 import { t } from '../../shared/i18n';
 
 export interface ToetredenUitvoer {
   /** Staat het scherm er nog? Alleen `false` na het verlaten ervan. */
   readonly gemount: () => boolean;
   readonly onboarded: () => boolean;
+  /** ⚠️ Werpt nooit: vangt zelf en meldt. `verwerkToetreding` rekent erop (zie daar). */
   readonly vergeetCode: () => void;
   readonly zetFout: (melding: string) => void;
   readonly zetBinnen: (groupId: string) => void;
@@ -84,14 +86,41 @@ export async function toetredenMetSlot(
   if (!deel.slot.begin()) return false;
 
   try {
-    verwerkToetreding(await deel.toetreden(code), deel.uitvoer);
-  } catch {
+    verwerkVeilig(await deel.toetreden(code), deel.uitvoer);
+  } catch (fout) {
+    // Alleen een fout van `neemDeel` zelf: de toetreding is dan niet gebeurd. Melden
+    // en niet alleen tonen: `neemDeel` meldt alleen wat de RPC teruggeeft, niet wat
+    // hij werpt, en anders ziet Sentry een mislukte toetreding nooit.
+    reportError(fout, 'invite.join');
     if (deel.uitvoer.gemount()) deel.uitvoer.zetFout(t('uitnodiging.deelnemen_mislukt'));
   } finally {
     deel.slot.einde();
   }
 
   return true;
+}
+
+/**
+ * De verwerking van een uitkomst, los van de aanroep die hem opleverde — QS8-737.
+ *
+ * ⚠️ Een fout hier is geen mislukte toetreding: de gebruiker is lid. Het voorbeeld
+ *    waar dit voor bestaat is `router.replace` in `naarGroep`, dat als laatste stap
+ *    komt; dan zijn `vergeetCode` en `zetBinnen` al gebeurd en staat de kaart met de
+ *    knop naar de groep er. Zat dit in dezelfde `try` als `neemDeel`, dan zei het
+ *    scherm tegelijk "je zit in de groep" en "deelnemen lukte niet". De fout wordt
+ *    gemeld, niet getoond.
+ *
+ * ⚠️ Dat geldt alleen voor een fout uit de láátste stap. Werpt een eerdere stap
+ *    (`vergeetCode` hoort dat nooit te doen, zie `ToetredenUitvoer`), dan blijven de
+ *    stappen erna achterwege. Dat pad bestaat vandaag niet en is daarom niet
+ *    opgesplitst in drie `try`'s.
+ */
+function verwerkVeilig(uitkomst: Resultaat<string>, uit: ToetredenUitvoer): void {
+  try {
+    verwerkToetreding(uitkomst, uit);
+  } catch (fout) {
+    reportError(fout, 'invite.process', uitkomst.ok ? { group_id: uitkomst.waarde } : {});
+  }
 }
 
 export function verwerkToetreding(uitkomst: Resultaat<string>, uit: ToetredenUitvoer): void {
