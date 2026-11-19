@@ -152,10 +152,10 @@ function DoelKaart({ doel }: { readonly doel: ProfielDoel }) {
     <Card>
       <Subheading>{doel.titel}</Subheading>
       {doel.voltooid ? <Caption muted={false}>{t('profiel_ander.voltooid')}</Caption> : null}
-      <MilestoneProgress done={doel.mijlpalenKlaar} total={doel.mijlpalenTotaal} />
-      <Caption>
-        {t('profiel_ander.mijlpalen', { klaar: doel.mijlpalenKlaar, totaal: doel.mijlpalenTotaal })}
-      </Caption>
+      <MilestoneProgress
+        done={doel.voltooid ? doel.mijlpalenTotaal : doel.mijlpalenKlaar}
+        total={doel.mijlpalenTotaal}
+      />
     </Card>
   );
 }

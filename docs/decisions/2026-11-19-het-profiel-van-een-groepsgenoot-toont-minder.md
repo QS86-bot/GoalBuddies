@@ -26,7 +26,8 @@ Toont niet, ook niet in een open groep: punten, XP, niveau, badges, reeks, `best
 1. Geen variatie op `groups.zichtbaarheid`: een open groep krijgt hier niets extra's. Beschermd is het antwoord voor een nieuw oppervlak.
 2. Blokkades veranderen niets aan wat je ziet; een blokkade werkt stil, en nul rijen voor de geblokkeerde zou haar verraden. Engineer-review mag dit herbevestigen.
 3. Niet meer dan 50 doelen per profiel zichtbaar (één pagina).
-4. Voor jezelf is de projectie dezelfde ("zo ziet je groep je"), niet rijker.
+4. Voor jezelf is de projectie dezelfde, niet rijker, maar over alle groepen samen: elke groep ziet alleen zijn eigen deel. De titel zegt dat ("Wat je groepen van je zien"); critical-user vond de eerdere titel misleidend.
+6. Niet gedaan, bewust: "meer laden" bij meer dan 50 doelen; de eigen tabs openen via een tweede tik.
 5. Aandeeldoelen (QS8-649) bestaan nog niet; zodra ze er zijn hoort `profiel_doelen_van_lid()` ze uit te sluiten (rij 44).
 
 ## Types
