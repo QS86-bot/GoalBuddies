@@ -3064,6 +3064,34 @@ function Adempauzes({
 }
 
 /**
+ * Wat er na het inplannen met het bericht gebeurde, en de knop die alleen dat bericht
+ * opnieuw verstuurt. `bezig` hangt nooit vast (`finally`), en `stuurLosMetRem()` weigert
+ * een tweede tik zolang de eerste loopt.
+ */
+function useBerichtUitkomst(stuur: (groupId: string, bericht: string) => Promise<Resultaat<string>>) {
+  const [bezig, setBezig] = useState(false);
+  const slot = useRef(false);
+  const [open, setOpen] = useState<{
+    readonly groupId: string;
+    readonly tekst: string;
+    readonly uitkomst: BerichtUitkomst;
+  } | null>(null);
+
+  const opnieuw = () => {
+    if (open === null || slot.current) return;
+    setBezig(true);
+    stuurLosMetRem(slot, { stuur }, open)
+      .then((uitkomst) => {
+        if (uitkomst !== null) setOpen({ ...open, uitkomst });
+      })
+      .catch(() => setOpen({ ...open, uitkomst: { mislukt: t('chat.versturen_mislukt') } }))
+      .finally(() => setBezig(false));
+  };
+
+  return { open, setOpen, bezig, opnieuw, sluit: () => setOpen(null) };
+}
+
+/**
  * De berichtstap van de adempauze: wat de gebruiker koos en wat er na het plannen
  * met dat bericht gebeurde — QS8-753.
  *
@@ -3075,14 +3103,6 @@ function useAdempauzeBericht(groepen: readonly BerichtGroep[], userId: string | 
   const [aan, setAan] = useState(false);
   const [tekst, setTekst] = useState('');
   const [groepId, setGroepId] = useState('');
-  const [bezig, setBezig] = useState(false);
-  const slot = useRef(false);
-  const [open, setOpen] = useState<{
-    readonly groupId: string;
-    readonly tekst: string;
-    readonly uitkomst: BerichtUitkomst;
-  } | null>(null);
-
   const gekozen = enigeOfGekozen(groepen, groepId, (g) => g.id)?.id ?? '';
   const reset = () => {
     setAan(false);
@@ -3093,6 +3113,7 @@ function useAdempauzeBericht(groepen: readonly BerichtGroep[], userId: string | 
     userId === null
       ? Promise.resolve({ ok: false as const, melding: t('adempauze.bericht_niet_ingelogd') })
       : stuurBericht(groupId, userId, bericht);
+  const { open, setOpen, bezig, opnieuw, sluit } = useBerichtUitkomst(stuur);
 
   return {
     aan,
@@ -3116,17 +3137,8 @@ function useAdempauzeBericht(groepen: readonly BerichtGroep[], userId: string | 
       reset();
     },
     reset,
-    opnieuw: () => {
-      if (open === null) return;
-      setBezig(true);
-      stuurLosMetRem(slot, { stuur }, open)
-        .then((uitkomst) => {
-          if (uitkomst !== null) setOpen({ ...open, uitkomst });
-        })
-        .catch(() => setOpen({ ...open, uitkomst: { mislukt: t('chat.versturen_mislukt') } }))
-        .finally(() => setBezig(false));
-    },
-    sluit: () => setOpen(null),
+    opnieuw,
+    sluit,
   };
 }
 

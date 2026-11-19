@@ -348,7 +348,7 @@ describe('het adempauzebericht', () => {
     expect(bindingen(blok, 'gekozen')).toBe(1);
     expect(argumentenVan(blok, 'enigeOfGekozen', 0)).toEqual(['groepen']);
     expect(argumentenVan(blok, 'enigeOfGekozen', 1)).toEqual(['groepId']);
-    expect(blok).toMatch(/groupId:\s*gekozen\b/);
+    expect(blok).toMatch(/keuze:\s*\{[^}]*groupId:\s*gekozen\b/);
   });
 
   it('kent geen stille eerste, ook niet als find', () => {

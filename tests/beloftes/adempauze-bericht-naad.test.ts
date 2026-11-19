@@ -151,4 +151,16 @@ describe('het scherm knoopt de wrappers zo aan elkaar', () => {
   it('zet het bericht nooit standaard aan', () => {
     expect(bron).toMatch(/const \[aan, setAan\] = useState\(false\)/);
   });
+
+  it('plant een pauze die helemaal voorbij is nooit met bericht', () => {
+    const plan = bron.slice(bron.indexOf('async function plan()'));
+    expect(plan).toMatch(/aan:\s*bericht\.keuze\.aan\s*&&\s*berichtMagBij\(periode\.waarde,/);
+    // En de stap zelf wordt dan ook niet getoond.
+    expect(bron).toMatch(/\{berichtMag\s*&&\s*!bericht\.heeftFout\s*\?\s*\(\s*<AdempauzeBericht/);
+  });
+
+  it('laat lege tekst de groepseis vallen en blokkeert Inplannen met een hint', () => {
+    expect(bron).toMatch(/wachtOpGroep:\s*aan\s*&&\s*gekozen === ''\s*&&\s*tekst\.trim\(\) !== ''/);
+    expect(bron).toMatch(/accessibilityHint=\{[^}]*adempauze\.bericht_kies_eerst/);
+  });
 });
