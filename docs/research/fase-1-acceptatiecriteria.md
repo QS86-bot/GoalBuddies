@@ -348,3 +348,21 @@ Aanvullende criteria voor alle drie:
 - Jouw uitdrukkelijke "maak de issues aan"; ik controleer dan eerst op duplicaten en lees bestaande reacties (`CLAUDE.md`).
 - **Aanname die het meeste weegt:** dat elf issues in één Fase 1 niet te veel is voor een solo-ontwikkelaar. Mijn advies
   is 1.0 en 1.1a eerst op te leveren en de rest daarna te plannen; dat is het besluit van Quinten.
+
+### 11.6 Besluiten E8 en E9 (Quinten, 19-11-2026)
+- **E8 standaarduiterlijk voor nieuwe gebruikers: B, goud met groen.** Dicht bij de huidige huisstijl; mijn advies was C-Baai.
+- **E9 standaardweergave: altijd donker.** Mijn advies was het toestel volgen (zoals de huidige voorkeur `systeem`).
+
+Gevolg voor de criteria (aanvulling op 1.5a en 1.5b):
+1. De kolomstandaarden in de migratie zijn stijl `b` en weergave `donker`; de lokale terugval bij een onleesbare opslag is
+   hetzelfde, in plaats van "de systeeminstelling volgen" (dat stond in criterium 1.5.4).
+2. **Een bestaande gebruiker verandert niet.** Wie nu al de voorkeur `systeem`, `donker` of `licht` heeft bewaard
+   (`goalbuddies.thema`), behoudt die; alleen nieuwe gebruikers krijgen de nieuwe standaard. Een test legt dat vast.
+3. Bij een nieuw account zonder lokale of accountwaarde geldt dus donker, ook als het toestel op licht staat. "Volg het
+   toestel" blijft als **keuze** in het scherm *Uiterlijk* (donker, licht, systeem).
+4. Aanname: een nieuwe gebruiker op een toestel met lichte stand ziet de app donker. Dat is niet getest en kan als
+   storend gelden voor wie een lichte telefoon verwacht; het blijft een besluit van Quinten.
+
+### 11.7 Wat er nu nog openstaat
+Nog twee dingen vóór de issues in Linear kunnen: **0.2** (schermafbeeldingen van de huidige GoalBuddies-app, door Quinten)
+en Quintens uitdrukkelijke opdracht om de issues aan te maken. Alle andere besluiten (E1–E9) zijn genomen.
