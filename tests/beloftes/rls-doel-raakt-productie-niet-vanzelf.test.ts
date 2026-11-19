@@ -136,6 +136,26 @@ describe('QS8-702 — de harness praat alleen met productie als je het zegt (kin
     expect(r.clientFout).toMatch(/geblokkeerd/);
   });
 
+  it.each([
+    ['een IP-adres buiten loopback', 'http://10.0.0.5:3010'],
+    ['een eigen domein', 'https://api.voorbeeld.invalid'],
+  ])('RLS_DOEL=lokaal met RLS_LOKAAL_URL naar %s, óók met de vlag: geblokkeerd, geen enkel verzoek (QS8-715)', (_naam, adres) => {
+    const r = laadHarness({ RLS_DOEL: 'lokaal', RLS_LOKAAL_URL: adres, RLS_TEST_ALLOW_PROD: '1' });
+
+    // Elk verzoek telt: dit adres draagt de projectref niet.
+    expect(r.verzoeken).toEqual([]);
+
+    expect(r.clientGebouwd).toBe(false);
+    expect(r.clientFout).toMatch(/geen loopback-adres/);
+  });
+
+  it('RLS_DOEL=lokaal met RLS_LOKAAL_URL op [::1] mag', () => {
+    const r = laadHarness({ RLS_DOEL: 'lokaal', RLS_LOKAAL_URL: 'http://[::1]:3010' });
+
+    expect(r.clientGebouwd).toBe(true);
+    expect(r.verzoeken.every((host) => host.startsWith('[::1]'))).toBe(true);
+  });
+
   it('ijkpunt: RLS_DOEL=productie mét RLS_TEST_ALLOW_PROD=1 wordt wél gezien als verzoek naar productie', () => {
     // ⚠️ De tegenhelft, en de reden dat de drie toetsen hierboven iets zeggen:
     //    als de spion een verzoek naar de productieref níet zou zien, waren
