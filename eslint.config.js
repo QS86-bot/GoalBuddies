@@ -233,6 +233,19 @@ module.exports = [
               from: './src/shared/ui',
               message: DATALAAG_GEEN_SHARED_UI,
             },
+            {
+              // ⚠️ **`src/schermen` is de bovenste laag (QS8-748)** en niets eronder
+              //    mag hem importeren: `useVandaag` leunt op vijf modules, dus één
+              //    import terug is een cykel.
+              target: './src/modules',
+              from: './src/schermen',
+              message: 'src/schermen is de bovenste laag; modules mogen hem niet importeren.',
+            },
+            {
+              target: './src/shared',
+              from: './src/schermen',
+              message: 'src/schermen is de bovenste laag; shared mag hem niet importeren.',
+            },
           ],
         },
       ],

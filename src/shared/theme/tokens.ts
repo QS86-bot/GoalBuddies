@@ -1,10 +1,16 @@
 /**
- * Het Q-Projects navy-stelsel, gedeeld met de Status Tracker.
+ * Het Q-Projects navy-stelsel: de huidige stand, en niet meer de richting.
  *
- * ⚠️ Waarden zijn letterlijk overgenomen uit `tracker.q-projects.tech`, thema's
- *    `navy` en `navy-licht`. **Verzin hier nooit een kleur bij.** Heb je een
- *    tint nodig die er niet in zit, neem hem dan eerst op in het Q-Projects-
- *    stelsel — anders lopen de twee apps uit elkaar.
+ * ⚠️ **Sinds 19-11-2026 (QS8-722) is dit stelsel niet meer gedeeld met de Status
+ *    Tracker en niet meer het eindpunt.** De app krijgt zeven uiterlijken met eigen
+ *    kleurwaarden (QS8-723, QS8-724); de twee apps mogen uit elkaar lopen. Zie
+ *    `docs/decisions/2026-11-19-de-nieuwe-huisstijl-vervangt-a55-en-rustig-gereedschap.md`.
+ *
+ * ⚠️ De waarden hieronder komen letterlijk uit `tracker.q-projects.tech`, thema's
+ *    `navy` en `navy-licht`, en veranderen pas in QS8-723. **Verzin hier tot dan
+ *    geen kleur bij**: een nieuwe tint komt als token in dit bestand, niet als
+ *    losse waarde in een component, en hij hoeft niet meer eerst in de tracker te
+ *    bestaan.
  *
  * Navy is de ondergrond. Het accent is goud.
  */
@@ -30,7 +36,38 @@ export interface Palette {
   readonly text: string;
   readonly textSecondary: string;
   readonly gridLine: string;
+  /**
+   * De vulling van de primaire knop (QS8-723). Staat in het palet en niet in
+   * `Button`, want een ander uiterlijk heeft een ander accent en dus een andere
+   * combinatie die de contrastdrempel haalt.
+   */
+  readonly knop: string;
+  /** De tekst op `knop`; moet 4,5 tegen `knop` halen. */
+  readonly knopTekst: string;
 }
+
+/**
+ * Alle sleutels die een palet moet dragen. Eén lijst, zodat een test kan zeggen
+ * *"dit palet mist `knop`"* in plaats van dat TypeScript het alleen bij de
+ * letterlijke definitie ziet (QS8-723, criterium 1).
+ */
+export const PALETSLEUTELS = [
+  'bg',
+  'panel',
+  'panelDark',
+  'border',
+  'accent',
+  'accentDim',
+  'green',
+  'orange',
+  'red',
+  'grey',
+  'text',
+  'textSecondary',
+  'gridLine',
+  'knop',
+  'knopTekst',
+] as const satisfies readonly (keyof Palette)[];
 
 export const navy: Palette = {
   bg: '#0e1730',
@@ -41,11 +78,15 @@ export const navy: Palette = {
   accentDim: '#cd9d34',
   green: '#3fbf8f',
   orange: '#f0803c',
-  red: '#f05a54',
+  // ⚠️ QS8-743: het ene statusrood van de hele app, donker. Was `#f05a54`; de reden en de metingen staan in
+  //    `docs/decisions/2026-11-19-een-statusrood-voor-de-hele-app.md`. Wijzig deze twee waarden nooit zonder `statusrood.test.ts`.
+  red: '#ff3f1e',
   grey: '#6e7fa8',
   text: '#ffffff',
   textSecondary: 'rgba(255,255,255,0.68)',
   gridLine: 'rgba(232,182,72,0.028)',
+  knop: '#e8b648',
+  knopTekst: '#141e3c',
 };
 
 export const navyLight: Palette = {
@@ -57,11 +98,14 @@ export const navyLight: Palette = {
   accentDim: '#8a6620',
   green: '#1f7a56',
   orange: '#b3541c',
-  red: '#b8352f',
+  // ⚠️ QS8-743: licht. Was `#b8352f`. Haalt ook 4,5:1 voor tekst; waarom deze waarde staat in het beslisdocument.
+  red: '#cd0034',
   grey: '#6b7793',
   text: '#141e3c',
   textSecondary: '#55607a',
   gridLine: 'rgba(20,30,60,0.035)',
+  knop: '#8a6620',
+  knopTekst: '#ffffff',
 };
 
 /**
@@ -271,7 +315,52 @@ export const radius = {
   sm: 4,
   base: 8,
   md: 14,
+  /** De grote ronde vlakken van een kaart met één hoofdhandeling (QS8-723). */
+  lg: 22,
   pill: 999,
+} as const;
+
+/**
+ * Een vaste afstandsschaal (QS8-723). Naast `space`, dat de Q-Projects-maten per
+ * onderdeel draagt: dit is de schaal voor nieuw werk, zodat een nieuw scherm niet
+ * opnieuw getallen verzint.
+ */
+export const afstand = {
+  xs: 4,
+  s: 8,
+  m: 12,
+  l: 16,
+  xl: 24,
+} as const;
+
+export type Afstandsschaal = { readonly [K in keyof typeof afstand]: number };
+
+/**
+ * De afstandsschaal bij een dichtheid (QS8-731). **Ruim is de schaal hierboven, ongewijzigd**; compact is
+ * driekwart ervan, naar boven afgerond zodat de kleinste stap nooit onder 3 zakt.
+ *
+ * ⚠️ Dit is de enige plek waar de dichtheid een getal wordt. De factor is geen besluit van Quinten maar de
+ *    aanname van deze bouwsessie (niet gemeten op een toestel); een andere factor is een regel in `COMPACT_FACTOR`.
+ */
+export const COMPACT_FACTOR = 0.75;
+
+export function afstandVoor(dichtheid: 'ruim' | 'compact'): Afstandsschaal {
+  if (dichtheid === 'ruim') return afstand;
+  const schaal = (n: number): number => Math.max(3, Math.round(n * COMPACT_FACTOR));
+  return {
+    xs: schaal(afstand.xs),
+    s: schaal(afstand.s),
+    m: schaal(afstand.m),
+    l: schaal(afstand.l),
+    xl: schaal(afstand.xl),
+  };
+}
+
+/** De grootte van een teller of ander groot cijfer (QS8-723). */
+export const cijfer = {
+  klein: 20,
+  middel: 28,
+  groot: 40,
 } as const;
 
 /** Ruimte in `[verticaal, horizontaal]`, exact zoals in het Q-Projects-stelsel. */

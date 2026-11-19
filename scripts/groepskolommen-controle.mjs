@@ -269,6 +269,10 @@ export const CENSUS = {
     groepszichtbaar: false,
     kolommen: 'id, user_id, hero_key, trigger, shown_at',
   },
+  gebruikersvoorkeuren: {
+    groepszichtbaar: false,
+    kolommen: 'user_id, stijl, kleurvariant, weergave, dichtheid, emoji, bijgewerkt_op',
+  },
   hero_profiles: {
     groepszichtbaar: false,
     kolommen: 'user_id, hero_key, source, chosen_at',
