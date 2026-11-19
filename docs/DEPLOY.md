@@ -945,7 +945,7 @@ ingesteld en niets gedeployd):**
    | `EXPO_PUBLIC_SUPABASE_URL` | verplicht bij *echt* |
    | `EXPO_PUBLIC_SUPABASE_ANON_KEY` | verplicht bij *echt* |
    | `HOSTINGER_API_TOKEN` | verplicht bij *echt*; hpanel → Account → API |
-   | `EXPO_PUBLIC_VAPID_PUBLIC_KEY` | aanbevolen: zonder deze bouwt de bundel zonder webpush-sleutel |
+   | `EXPO_PUBLIC_VAPID_PUBLIC_KEY` | verplicht bij *echt*: zonder deze bouwt de bundel zonder webpush-sleutel en staan meldingen voor iedereen stil uit, zonder dat een stap rood wordt |
    | `EXPO_PUBLIC_APP_URL` | optioneel; leeg valt terug op het productieadres |
    | `SENTRY_AUTH_TOKEN`, `SENTRY_ORG`, `SENTRY_PROJECT` | optioneel, alle drie of geen: de source-map-upload naar Sentry |
    | `EXPO_PUBLIC_SENTRY_DSN`, `EXPO_PUBLIC_SENTRY_ENVIRONMENT` | alleen om af te wijken van de standaard in `src/lib/env.ts` |
@@ -970,8 +970,8 @@ droge run; (6) alleen bij *echt*: bouwt opnieuw en uploadt en zet live.
 
 **Wat een droge run toont.** Hij krijgt **nooit** een secret, ook niet als ze er zijn: hij
 bouwt altijd met vaste, herkenbare nepwaarden (`droog.invalid`), zodat de hele
-Expo-build en zijn dependencies het Hostinger-token niet zien. Het log meldt dat
-niet apart. De secret-scan met de echte waarden doet de echte deploy. Je ziet in
+Expo-build en zijn dependencies het Hostinger-token niet zien. Het log opent
+met een regel "Let op: … nepwaarden" en de samenvatting zegt het ook. De secret-scan met de echte waarden doet de echte deploy. Je ziet in
 het log de stappen *Env controleren*, *Bouwen*, *SPA-routing schrijven*, *Bundel
 controleren op geheimen* (met het aantal gecontroleerde geheimen en bestanden),
 *Source maps naar Sentry* (overgeslagen, de droge run krijgt die secrets niet),
@@ -998,8 +998,9 @@ faalt pas bij de upload. Alleen commits op de hoofdlijn van `main` worden
 geaccepteerd. De concurrency-groep houdt één lopende en één wachtende run: een
 derde start annuleert de wachtende. Ook de droge run maakt een *deployment* aan in
 de omgeving `productie` en wacht dus op de goedkeuring van een required reviewer.
-De wekelijkse run van `ci.yml` levert ook een `Alles groen` op de punt van `main`;
-is die rood, dan blokkeert dat de deploy van die commit. De keuzes staan in
+De Actions-logs en de samenvatting van een run zijn bij een publieke repository voor
+iedereen leesbaar; de workflow schrijft er alleen namen, de modus en de sha in. De
+keuzes staan in
 `docs/decisions/2026-11-19-deploy-vanuit-github-actions.md`.
 
 ⚠️ **Wat hier niet gemeten is.** De echte Hostinger-verbinding en de eerste run op

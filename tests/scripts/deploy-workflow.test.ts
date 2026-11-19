@@ -278,7 +278,10 @@ describe('de sha-stap tegen een echte git-repo', () => {
   }
 
   function draai(dir: string, invoer: string) {
-    return spawnSync('node', [script, 'sha'], { cwd: dir, env: { ...process.env, INVOER_SHA: invoer }, encoding: 'utf8' });
+    // ⚠️ Zonder `GITHUB_OUTPUT`: in CI wijst die naar de uitvoer van de échte stap.
+    const rest = { ...process.env };
+    delete rest.GITHUB_OUTPUT;
+    return spawnSync('node', [script, 'sha'], { cwd: dir, env: { ...rest, INVOER_SHA: invoer }, encoding: 'utf8' });
   }
 
   it('neemt main en de merge-commit, weigert een tussencommit van de PR', () => {
