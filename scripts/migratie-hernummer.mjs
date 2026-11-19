@@ -635,7 +635,7 @@ async function hoofd() {
         '  <van> is een viercijferig nummer, of een bestandsnaam wanneer er twee\n' +
         '  migraties met hetzelfde nummer in de map staan.',
     );
-    process.exit(1);
+    return 1;
   }
 
   // ⚠️ Ook dit script deelt een nummer uit — `doel_bezet_elders` is alleen zoveel
@@ -655,7 +655,7 @@ async function hoofd() {
   const bron = kiesBron(van, bestanden);
   if (!bron.ok) {
     console.error(`✗ ${van} → ${naar} kan niet: ${bron.reden}\n  ${bron.uitleg}`);
-    process.exit(1);
+    return 1;
   }
 
   if (bron.gedeeld === true) {
@@ -678,7 +678,7 @@ async function hoofd() {
 
   if (!oordeel.ok) {
     console.error(`✗ ${bron.nummer} → ${naar} kan niet: ${oordeel.reden}\n  ${oordeel.uitleg}`);
-    process.exit(1);
+    return 1;
   }
 
   const oud = bron.bestand;
@@ -701,7 +701,7 @@ async function hoofd() {
         '  Verwacht NNNN[a-z]_kleine_letters.sql. Hernoem hem eerst met de hand,\n' +
         '  kopregel mee — dit script verzet het nummer, niet de vorm.',
     );
-    process.exit(1);
+    return 1;
   }
 
   const nieuweBasis = `${naar}${oudeBasis.slice(4)}`;
@@ -764,7 +764,7 @@ async function hoofd() {
 
   if (droog) {
     console.log('\n(droog — er is niets gewijzigd)');
-    return;
+    return 0;
   }
 
   writeFileSync(oudPad, nieuweInhoud);
@@ -777,6 +777,7 @@ async function hoofd() {
         'hierboven niet aangeraakt'
       : '';
   console.log(`\n✓ hernummerd${rest}. Draai \`npm run poort\` voordat je pusht.`);
+  return 0;
 }
 
 // ⚠️ Alleen draaien als script, niet bij het importeren vanuit een test.
@@ -787,8 +788,15 @@ async function hoofd() {
 //    script nooit. `tests/scripts/padvormen.test.ts` bewaakt dat — en ving deze
 //    versie ook daadwerkelijk.
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
-  hoofd().catch((fout) => {
-    console.error(fout.message);
-    process.exit(1);
-  });
+  // ⚠️ `process.exitCode` en geen proces-exit: `hoofd()` leest het register
+  //    met `await fetch`, en daarna crasht een exit op Windows (QS8-684, QS8-704).
+  hoofd().then(
+    (code) => {
+      process.exitCode = code;
+    },
+    (fout) => {
+      console.error(fout.message);
+      process.exitCode = 1;
+    },
+  );
 }

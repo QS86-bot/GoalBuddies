@@ -243,6 +243,13 @@ export const MET_REDEN = {
     '`tests/scripts/edge-tijd.test.ts` om op `const a = 1; // uitleg`. Hij draagt ' +
     'sinds datzelfde issue wél de `(^|[^:])`-wacht van QS8-412 — zonder die wacht ' +
     'verklaarde hij twee uiteenlopende kopieën gelijk zodra er een URL in stond',
+  'scripts/netwerkexit-controle.mjs:zonderCommentaar':
+    'eist dat een blokcommentaar aan het begin van een regel begint. De gedeelde ' +
+    'knip vervangt elke `/* … */` en leest dan de glob `${app}/**` in een ' +
+    'template-string als commentaar; de code tot de volgende `*/` verdwijnt. ' +
+    '📏 Gemeten op 18-11-2026 (QS8-704): met de gedeelde knip viel de toets op ' +
+    'die vorm om — de vorm van PR #688. Faalt de andere kant op: een blok midden ' +
+    'in een regel blijft code en kan hoogstens te veel melden',
   'scripts/registerdrift-controle.mjs:registersIn':
     'knipt SQL (`--`) uit een functielichaam om de registerrijen te tellen; een ' +
     'JS-knip haalt daar niets weg',
