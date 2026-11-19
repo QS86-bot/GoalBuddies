@@ -77,6 +77,7 @@ export {
   type TipSet,
 } from './tips';
 export { WeekStartKeuze } from './WeekStartKeuze';
+export { Accountregel } from './Accountregel';
 export { Body, Caption, Eyebrow, Heading, Subheading } from './Text';
 
 export {

@@ -61,6 +61,14 @@ export {
 } from './chatdoc';
 
 export {
+  lidmaatschapStand,
+  magAutomatischToetreden,
+  uitnodigingsStand,
+  type LidmaatschapStand,
+  type UitnodigingsStand,
+} from './uitnodiging-stand';
+
+export {
   bewaarOpenstaandeUitnodiging,
   openstaandeUitnodiging,
   routeVoorUitnodiging,
