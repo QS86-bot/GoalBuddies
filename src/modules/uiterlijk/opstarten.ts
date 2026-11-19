@@ -19,10 +19,8 @@ import { normaliseerVoorkeur, type Uiterlijkvoorkeur } from './voorkeur';
  * criterium 7. De regels zelf staan in `verzoenen.ts`; dit bestand praat met
  * AsyncStorage en de datalaag.
  *
- * ⚠️ **Nog niet aangesloten op `ThemeProvider`.** Die map is van QS8-725 en dit
- *    issue raakt hem niet. Het aansluiten (en het scherm Uiterlijk, QS8-731)
- *    gebruikt `leesLokaleStart()` voor de eerste render zonder flits en
- *    `verzoenMetAccount()` zodra de sessie er is.
+ * Aangesloten in QS8-731: `UiterlijkProvider` (`react.tsx`) gebruikt `leesLokaleStart()` voor de eerste
+ * render zonder flits en `verzoenMetAccount()` zodra de sessie er is.
  */
 
 async function leesRauw(sleutel: string): Promise<string | null> {
@@ -65,6 +63,12 @@ async function bewaarLokaal(kopie: LokaleKopie): Promise<void> {
 //    wachtende tweede. Security-review QS8-729: de keuze ging stil verloren.
 let keuzeRij: Promise<unknown> = Promise.resolve();
 
+export interface Keuzeuitkomst {
+  readonly voorkeur: Uiterlijkvoorkeur;
+  /** Staat de keuze ook op de account? `false` = alleen op dit apparaat, en de volgende start probeert het opnieuw. */
+  readonly opgeslagen: boolean;
+}
+
 /**
  * Een keuze van de gebruiker: eerst lokaal (met `wacht`), dan de account. De UI wacht op geen van
  * beide.
@@ -74,28 +78,40 @@ let keuzeRij: Promise<unknown> = Promise.resolve();
  *    volgende keuze loopt dan vast op een conflict en verliest bij de volgende
  *    start van de app tegen de account.
  */
-export function kiesVoorkeur(userId: string, keuze: Uiterlijkvoorkeur): Promise<Uiterlijkvoorkeur> {
+export function kiesVoorkeur(userId: string, keuze: Uiterlijkvoorkeur): Promise<Keuzeuitkomst> {
   const taak = keuzeRij.then(() => voerKeuzeUit(userId, keuze));
   keuzeRij = taak.catch(() => undefined);
   return taak;
 }
 
-async function voerKeuzeUit(userId: string, keuze: Uiterlijkvoorkeur): Promise<Uiterlijkvoorkeur> {
+async function voerKeuzeUit(userId: string, keuze: Uiterlijkvoorkeur): Promise<Keuzeuitkomst> {
   const voorkeur = normaliseerVoorkeur(keuze);
   const vorige = vanDezeGebruiker(parseLokaleKopie(await leesRauw(LOKALE_SLEUTEL)), userId);
   const basis = vorige?.basis ?? null;
   await bewaarLokaal({ userId, voorkeur, basis, wacht: true });
-  const uitkomst = await bewaarAccountVoorkeur(userId, voorkeur, basis);
+  const uitkomst = await bewaarAccountVoorkeur(userId, voorkeur, basis).catch((fout: unknown) => {
+    // De keuze staat lokaal en geldt; een account die niet bereikbaar is, is geen reden voor een fout.
+    reportError(fout, 'uiterlijk.opslag.account', {});
+    return { ok: false as const, reden: 'netwerk' as const };
+  });
   // Bij een `conflict` blijft de keuze met `wacht` staan; de volgende
   // `verzoenMetAccount()` ziet dat de account verder is en laat hem winnen.
   if (uitkomst.ok) {
     await bewaarLokaal({ userId, voorkeur, basis: uitkomst.bijgewerktOp, wacht: false });
   }
-  return voorkeur;
+  return { voorkeur, opgeslagen: uitkomst.ok };
 }
 
 /** Zodra de sessie er is: de account lezen, verzoenen en zo nodig een wachtende keuze doorsturen. */
-export async function verzoenMetAccount(userId: string): Promise<Verzoening> {
+export function verzoenMetAccount(userId: string): Promise<Verzoening> {
+  // ⚠️ In dezelfde rij als de keuzes: een verzoening die tussen twee keuzes door schrijft, zet lokaal een
+  //    oudere stand terug (review QS8-731).
+  const taak = keuzeRij.then(() => voerVerzoeningUit(userId));
+  keuzeRij = taak.catch(() => undefined);
+  return taak;
+}
+
+async function voerVerzoeningUit(userId: string): Promise<Verzoening> {
   const [kopie, legacy] = await Promise.all([
     leesRauw(LOKALE_SLEUTEL),
     leesRauw(LEGACY_THEMASLEUTEL),
@@ -121,7 +137,12 @@ export async function verzoenMetAccount(userId: string): Promise<Verzoening> {
     return uitslag;
   }
 
-  const gedaan = await bewaarAccountVoorkeur(userId, uitslag.voorkeur, uitslag.basis);
+  const gedaan = await bewaarAccountVoorkeur(userId, uitslag.voorkeur, uitslag.basis).catch(
+    (fout: unknown) => {
+      reportError(fout, 'uiterlijk.opslag.account', {});
+      return { ok: false as const, reden: 'netwerk' as const };
+    },
+  );
   await bewaarLokaal({
     userId,
     voorkeur: uitslag.voorkeur,

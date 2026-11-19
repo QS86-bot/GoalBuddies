@@ -131,38 +131,6 @@ export const BEKENDE_ONBEREIKBAAR = {
     '⚠️ De rest verdwijnt bij QS8-475, de laatste afnemer. Staat er daarna nóg ' +
     'een, dan is er een afnemer die de module níét gebruikt, en dát is de ' +
     'bevinding — niet deze rij.',
-
-  // ⚠️ QS8-729: elf rijen voor één gat, de uiterlijkvoorkeur. Zelfde vorm als het
-  //    heldenepic hierboven; de reden staat bij de eerste.
-  bewaarAccountVoorkeur:
-    'De fundering van de uiterlijkvoorkeur (QS8-729) landde vóór haar afnemer. ' +
-    '`src/modules/uiterlijk` leest en schrijft `gebruikersvoorkeuren` (migratie 0303) en ' +
-    'verzoent de lokale keuze met de account; het scherm Uiterlijk (QS8-731) en de ' +
-    'aansluiting op `ThemeProvider` (na QS8-725) zijn de afnemers en bestaan nog niet. ' +
-    '⚠️ Alle elf verdwijnen bij QS8-731: zodra `kiesVoorkeur()`, `verzoenMetAccount()` en ' +
-    '`leesLokaleStart()` vanaf een scherm of de provider bereikbaar zijn, zijn de andere acht ' +
-    'dat via hen. Staat er daarna nog een, dan is dát de bevinding. ⚠️ De rest van deze elf ' +
-    'verwijst naar deze rij.',
-  haalAccountVoorkeur:
-    'Hoort bij de uiterlijkvoorkeur van QS8-729; zie de rij `bewaarAccountVoorkeur` hierboven. Verdwijnt bij QS8-731.',
-  kiesVoorkeur:
-    'Hoort bij de uiterlijkvoorkeur van QS8-729; zie de rij `bewaarAccountVoorkeur` hierboven. Verdwijnt bij QS8-731.',
-  leesLokaleStart:
-    'Hoort bij de uiterlijkvoorkeur van QS8-729; zie de rij `bewaarAccountVoorkeur` hierboven. Verdwijnt bij QS8-731.',
-  leesVoorkeur:
-    'Hoort bij de uiterlijkvoorkeur van QS8-729; zie de rij `bewaarAccountVoorkeur` hierboven. Verdwijnt bij QS8-731.',
-  legacyWeergave:
-    'Hoort bij de uiterlijkvoorkeur van QS8-729; zie de rij `bewaarAccountVoorkeur` hierboven. Verdwijnt bij QS8-731.',
-  normaliseerVoorkeur:
-    'Hoort bij de uiterlijkvoorkeur van QS8-729; zie de rij `bewaarAccountVoorkeur` hierboven. Verdwijnt bij QS8-731.',
-  parseLokaleKopie:
-    'Hoort bij de uiterlijkvoorkeur van QS8-729; zie de rij `bewaarAccountVoorkeur` hierboven. Verdwijnt bij QS8-731.',
-  serialiseerLokaleKopie:
-    'Hoort bij de uiterlijkvoorkeur van QS8-729; zie de rij `bewaarAccountVoorkeur` hierboven. Verdwijnt bij QS8-731.',
-  verzoenMetAccount:
-    'Hoort bij de uiterlijkvoorkeur van QS8-729; zie de rij `bewaarAccountVoorkeur` hierboven. Verdwijnt bij QS8-731.',
-  verzoenVoorkeur:
-    'Hoort bij de uiterlijkvoorkeur van QS8-729; zie de rij `bewaarAccountVoorkeur` hierboven. Verdwijnt bij QS8-731.',
 };
 
 /**
@@ -173,10 +141,11 @@ export const BEKENDE_ONBEREIKBAAR = {
  *    verhoging in dezelfde wijziging als de rij en zijn reden — en dat is het
  *    hele verschil met een register dat stil kan groeien.
  */
-export const PLAFOND = 14;
+export const PLAFOND = 3;
 
-// ⚠️ Van 3 naar 14 op 19-11-2026, bij QS8-729: `src/modules/uiterlijk` landt vóór het
-//    scherm Uiterlijk (QS8-731). Verlagen naar 3 zodra die rijen eruit gaan.
+// ⚠️ Van 3 naar 14 op 19-11-2026, bij QS8-729: `src/modules/uiterlijk` landde vóór het
+//    scherm Uiterlijk. Weer naar 3 op dezelfde dag, bij QS8-731: het scherm en `UiterlijkProvider` zijn de
+//    aanroepers, en de elf rijen zijn eruit.
 
 // ⚠️ Van 5 naar 3 op 14-09-2026, bij QS8-475: `isTrigger()` bewaakt daar de
 //    triggerwaarde uit de database en `quoteSleutels()` levert de quote onder de

@@ -1,13 +1,21 @@
 import type { ColorSchemeName } from 'react-native';
 
 import {
+  afstandVoor,
   roles,
   shadow,
+  type Afstandsschaal,
   type Categoriekleuren,
   type Heldpalet,
   type Palette,
 } from './tokens';
-import { schaduwVoor, UITERLIJKEN, type Modus } from './uiterlijken';
+import {
+  schaduwVoor,
+  UITERLIJKEN,
+  type Modus,
+  type UiterlijkId,
+  type Verloop,
+} from './uiterlijken';
 
 /** De twee thema's van het Q-Projects navy-stelsel. */
 
@@ -33,29 +41,43 @@ export interface Theme {
    */
   readonly helden: Heldpalet;
   readonly shadow: (typeof shadow)['navy'] | (typeof shadow)['navyLight'];
+  /** Welk uiterlijk dit is (QS8-731): `B` voor het huidige stelsel, `C-baai` enzovoort voor de kleurvarianten. */
+  readonly uiterlijk: UiterlijkId;
+  /** Het verloop van uiterlijk C; `null` voor A en B, die vlak blijven. */
+  readonly verloop: Verloop | null;
+  /** De afstandsschaal bij de gekozen dichtheid. Ruim is de schaal uit `tokens.ts`, compact is kleiner. */
+  readonly afstand: Afstandsschaal;
+  /** Mogen prestatiekaarten emoji tonen? Alleen die; nooit de emoji die een gebruiker zelf typt (QS8-732). */
+  readonly emoji: boolean;
 }
 
 /**
- * ⚠️ Afgeleid van `UITERLIJKEN.B` en niet nog eens samengesteld (QS8-723): zo bestaat het
- *    huidige uiterlijk op één plek, en kan een wijziging aan B niet ongemerkt afwijken van wat de
- *    app toont.
+ * ⚠️ Afgeleid van `UITERLIJKEN` en niet nog eens samengesteld (QS8-723): zo bestaat elk uiterlijk op één
+ *    plek, en kan een wijziging aan een palet niet ongemerkt afwijken van wat de app toont.
+ *
+ * `name` is het oude modusetiket (`navy` = donker, `navy-licht` = licht) en zegt niets over de stijl; wie het
+ * uiterlijk wil weten leest `uiterlijk`.
  */
-function themaVan(name: Theme['name'], modus: Modus): Theme {
-  const u = UITERLIJKEN.B[modus];
+function themaVan(id: UiterlijkId, modus: Modus, dichtheid: Dichtheid, emoji: boolean): Theme {
+  const u = UITERLIJKEN[id][modus];
   return {
-    name,
+    name: modus === 'donker' ? 'navy' : 'navy-licht',
     dark: modus === 'donker',
     colors: u.colors,
     roles: u.roles,
     families: u.families,
     helden: u.helden,
     shadow: schaduwVoor(modus),
+    uiterlijk: id,
+    verloop: u.verloop,
+    afstand: afstandVoor(dichtheid),
+    emoji,
   };
 }
 
-export const navyTheme: Theme = themaVan('navy', 'donker');
+export const navyTheme: Theme = themaVan('B', 'donker', 'ruim', true);
 
-export const navyLightTheme: Theme = themaVan('navy-licht', 'licht');
+export const navyLightTheme: Theme = themaVan('B', 'licht', 'ruim', true);
 
 /**
  * Het thema dat bij een systeemvoorkeur hoort.
@@ -67,22 +89,45 @@ export function themeFor(scheme: ColorSchemeName): Theme {
   return scheme === 'light' ? navyLightTheme : navyTheme;
 }
 
-/**
- * Wat de gebruiker heeft gekozen. `systeem` is de standaard en betekent: volg de
- * instelling van het toestel.
- */
-export type ThemePreference = 'systeem' | 'navy' | 'navy-licht';
+export type Dichtheid = 'ruim' | 'compact';
 
-export function themeForPreference(
-  preference: ThemePreference,
-  scheme: ColorSchemeName,
-): Theme {
-  if (preference === 'navy') return navyTheme;
-  if (preference === 'navy-licht') return navyLightTheme;
-  return themeFor(scheme);
+/**
+ * Wat de gebruiker kiest, in de vorm die het thema kent (QS8-731).
+ *
+ * ⚠️ **Een eigen type en geen import uit `modules/uiterlijk`**: de gedeelde laag importeert niets uit de
+ *    datalaag. `Uiterlijkvoorkeur` is hieraan toewijsbaar, en `UiterlijkProvider` geeft hem door als prop; krijgt
+ *    de module een waarde erbij, dan is dat daar een typefout en geen stille terugval.
+ */
+export interface Themakeuze {
+  readonly stijl: 'a' | 'b' | 'c';
+  readonly kleurvariant: 'geen' | 'baai' | 'avondgloed' | 'bosrand' | 'pruim' | 'koraal';
+  readonly weergave: 'donker' | 'licht' | 'systeem';
+  readonly dichtheid: Dichtheid;
+  readonly emoji: boolean;
 }
 
-/** Herkent een opgeslagen waarde; alles anders valt terug op `systeem`. */
-export function parsePreference(raw: string | null): ThemePreference {
-  return raw === 'navy' || raw === 'navy-licht' || raw === 'systeem' ? raw : 'systeem';
+/** B, donker, ruim, emoji aan: wat een gebruiker krijgt die nooit iets koos. Kopie van `STANDAARD_VOORKEUR`. */
+export const STANDAARD_THEMAKEUZE: Themakeuze = {
+  stijl: 'b',
+  kleurvariant: 'geen',
+  weergave: 'donker',
+  dichtheid: 'ruim',
+  emoji: true,
+};
+
+/**
+ * Het uiterlijk bij een stijl en een variant. Stijl C zonder variant (of met een onbekende) is Baai, de
+ * terugval van de module; A en B kennen geen variant en negeren hem.
+ */
+export function uiterlijkIdVoor(stijl: Themakeuze['stijl'], variant: Themakeuze['kleurvariant']): UiterlijkId {
+  if (stijl === 'a') return 'A';
+  if (stijl === 'b') return 'B';
+  const id: UiterlijkId = `C-${variant === 'geen' ? 'baai' : variant}`;
+  return id in UITERLIJKEN ? id : 'C-baai';
+}
+
+export function themeVoorKeuze(keuze: Themakeuze, scheme: ColorSchemeName): Theme {
+  const modus: Modus =
+    keuze.weergave === 'systeem' ? (scheme === 'light' ? 'licht' : 'donker') : keuze.weergave;
+  return themaVan(uiterlijkIdVoor(keuze.stijl, keuze.kleurvariant), modus, keuze.dichtheid, keuze.emoji);
 }
