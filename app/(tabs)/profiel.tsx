@@ -618,7 +618,20 @@ function Ingangen() {
     <>
       <UiterlijkIngang />
       <StatistiekIngang />
+      <PrestatiesIngang />
     </>
+  );
+}
+
+/** De ingang naar je prestaties — QS8-735. Alleen voor jezelf; de inhoud staat bij de route. */
+function PrestatiesIngang() {
+  const router = useRouter();
+  return (
+    <Card>
+      <Subheading>{t('prestaties.ingang_titel')}</Subheading>
+      <Body muted>{t('prestaties.ingang_uitleg')}</Body>
+      <Button onPress={() => router.push('/prestaties')}>{t('prestaties.ingang_knop')}</Button>
+    </Card>
   );
 }
 
