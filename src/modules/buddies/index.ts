@@ -111,14 +111,20 @@ export {
   type Lidmaatschapsverzoek,
   type Verleden,
   type Verledensoort,
+  groepsKaartVan,
   type OntdekteGroep,
 } from './ontdekken';
 
 export type { Buddyzoekstand } from './wachtrij';
 export {
+  ALTERNATIEVEN_MAX,
+  fetchBuddyzoekAlternatieven,
   fetchBuddyzoekopdrachtenOver,
   fetchBuddyzoekStand,
+  isVerlopen,
+  kiesAlternatieven,
   stopBuddyZoeken,
+  verloopdatumTekst,
   zoekBuddies,
 } from './wachtrij';
 
