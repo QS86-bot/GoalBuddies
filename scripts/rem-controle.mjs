@@ -85,6 +85,13 @@ export const ZONDER_REM = {
     'onsamendrukbare tekens liet de tabel van 88 kB naar 144 kB groeien — twee rijen, ' +
     'geen vijfduizend — en eindigde op 23505. ⚠️ Verdwijnt die unieke sleutel ' +
     '(meerdere terugblikken per periode), dan is dit de eerste tabel die een rem nodig heeft.',
+  gebruikersvoorkeuren:
+    'Begrensd door de vijf CHECK\'s op de keuzekolommen (`gebruikersvoorkeuren_stijl_bekend` ' +
+    'en de vier andere) en de primaire sleutel op `user_id` — één rij per gebruiker, en ' +
+    'de insert-policy zet `user_id` aan `auth.uid()` vast. 📏 Gemeten 19-11-2026 (QS8-729, ' +
+    '0303): een poging van 5000 rijen op eigen naam weigerde op de tweede met 23505 en ' +
+    'een poging op andermans naam op de eerste met de policy; de tabel bleef op 32 kB. ' +
+    '⚠️ Een tekstkolom zonder CHECK erbij, en dit is niet meer begrensd.',
   hero_profiles:
     'Begrensd door `hero_profiles_source_geldig` (CHECK op `source`) en de primaire ' +
     'sleutel op `user_id` — één rij per gebruiker. 📏 Gemeten 17-09-2026: een poging ' +
