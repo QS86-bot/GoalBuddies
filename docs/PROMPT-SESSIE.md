@@ -173,6 +173,25 @@ done | awk '{n++; if($1>0&&$2>0)o++; else if($1>0)b++; else if($2>0)a++; else z+
 # Verwacht: n=144 beide=21 alleenB=41 alleenA=32 geen=50
 ```
 
+⚠️⚠️ **Een baan is een boom, en lokaal ook een eigen map — sinds 19-11-2026
+(QS8-717).** Op 18-11 zette een parallelle sessie de gedeelde werkmap van een
+andere sessie om naar een andere tak, en die verloor haar ongecommitte werk. De
+banen hierboven delen het werk over bomen; ze zeiden niets over de map. **Lokaal
+krijgt elke sessie een eigen `git worktree`**, en `npm run claim` maakt die zelf
+aan, in `<repo>-werk/qs8-<nummer>` naast de repo. De map waar je stond blijft
+zoals hij was. Daarna: `cd` naar die map en `npm ci`, **zonder** `.env` mee te
+kopiëren (`npm test` heeft sinds QS8-702 geen sleutels nodig). Opruimen na de
+merge, vanuit de hoofdmap: `git worktree remove <pad>`.
+
+- **Cloud** (`CLAUDE_CODE_REMOTE=true`): de claim blijft in de map zelf; elke
+  cloudsessie heeft al een eigen container.
+- **`--hier`** blijft overal de uitweg voor een vaste sessietak.
+- In een worktree die al van één sessie is, claimt `npm run claim` in die map.
+
+📏 Het mechanisme van 18-11 is nog niet gemeten: de `git reflog` van Quintens
+werkmap staat als open punt op QS8-717. Uitleg in
+`docs/decisions/2026-11-19-elke-lokale-sessie-een-eigen-worktree.md`.
+
 ### 1a. Waarom niet drie, en waarom niet vijf
 
 📏 `docs/ENGINEER-REVIEW.md` wordt geraakt door **79%** van alle merges (114 van

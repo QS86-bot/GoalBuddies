@@ -34,7 +34,7 @@ git merge-tree --write-tree HEAD origin/<tak>     # exitcode 0, anders melden en
 git merge --no-ff origin/<tak> -m "Merge QS8-nnn: <titel>"
 ```
 
-Het onderwerp draagt het issuenummer: `npm run claim` herkent daaraan dat het werk gelaand is (§2). Los een conflict niet op buiten de conflictzone en maak er een reactie van in het issue van de bouwsessie. Is de batchtak gemaakt, draai dan één keer lokaal wat bij de inhoud hoort uit `npm run poort`, en noem wat ongemeten bleef.
+Het onderwerp draagt het issuenummer: `npm run claim` herkent daaraan dat het werk gelaand is (§2). Werk je lokaal, bouw de batchtak dan in een eigen `git worktree` en niet in de gedeelde map (PROMPT-SESSIE §1, QS8-717). Los een conflict niet op buiten de conflictzone en maak er een reactie van in het issue van de bouwsessie. Is de batchtak gemaakt, draai dan één keer lokaal wat bij de inhoud hoort uit `npm run poort`, en noem wat ongemeten bleef.
 
 ## Stap 3 — PR
 
