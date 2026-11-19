@@ -178,6 +178,7 @@ documenten en een verhuizing is hier de duurste beweging.
 | de setup neemt `.env` weer volledig over (de oude vorm) | idem |
 | de psql-grendel overal uit | *PGHOST in .env naar de pooler … psql wordt geweigerd* |
 | de grendel alleen nog in `basisArgumenten()`, niet vóór de `try` | idem, op *"geen database op"*. Bleef eerst groen; zie hierboven |
+| de grendel alleen nog vóór de `try`, niet in `basisArgumenten()` (QS8-720) | alleen de vier toetsen van `tests/beloftes/de-psql-grendel-in-basisargumenten.test.ts`: `psql()`, `psqlMetInvoer()` en `psqlParallel()` op de vanger (*er mocht geen proces starten*), `psqlBasisArgumenten()` op *to throw*. De rest van `tests/beloftes/` bleef groen (73 bestanden). 📏 Vóór die toets bleef deze mutatie groen op de hele unit-groep — 195 bestanden, 3.688 tests |
 | de allowlist hoofdlettergevoelig | *{"PGHOST":"LOCALHOST"} mag* |
 | `PGHOSTADDR` niet meer getoetst | *… "PGHOSTADDR":"3.14.15.92" wordt geweigerd* |
 | `doel.ts` weer de oude standaard (geen doel → productie) | *productiesleutels in .env, geen RLS_DOEL …* — de vitest-naad ziet hem ook |
