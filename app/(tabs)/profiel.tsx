@@ -619,7 +619,24 @@ function Ingangen() {
       <UiterlijkIngang />
       <StatistiekIngang />
       <PrestatiesIngang />
+      <GroepsProfielIngang />
     </>
+  );
+}
+
+/** De ingang naar "zo ziet je groep je" — QS8-750. Het profiel zelf staat bij de route. */
+function GroepsProfielIngang() {
+  const router = useRouter();
+  const { userId } = useSession();
+  if (!userId) return null;
+  return (
+    <Card>
+      <Subheading>{t('profiel_ander.titel_zelf')}</Subheading>
+      <Body muted>{t('profiel_ander.uitleg_zelf')}</Body>
+      <Button variant="stil" onPress={() => router.push(`/mensen/${userId}`)}>
+        {t('profiel_ander.ingang_zelf')}
+      </Button>
+    </Card>
   );
 }
 

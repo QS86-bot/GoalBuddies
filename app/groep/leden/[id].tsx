@@ -1,4 +1,4 @@
-import { useLocalSearchParams } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 
@@ -232,6 +232,7 @@ function LidKaart({
   onBlokkeer,
   onZetEruit,
 }: KaartProps) {
+  const router = useRouter();
   return (
     <Card>
       <View style={styles.kop}>
@@ -240,6 +241,11 @@ function LidKaart({
       </View>
 
       {lid.role === 'admin' ? <Caption>{t('leden.beheerder')}</Caption> : null}
+
+      {/* QS8-750: het profiel; de database beslist wat erop staat. */}
+      <Button variant="stil" block onPress={() => router.push(`/mensen/${lid.user_id}`)}>
+        {ikZelf ? t('profiel_ander.ingang_zelf') : t('profiel_ander.ingang_knop')}
+      </Button>
 
       {/*
         ⚠️ **Op je eigen rij staat geen enkele knop**, en dat is geen weggelaten
