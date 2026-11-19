@@ -734,7 +734,7 @@ describe('group_digest — QS8-755', () => {
         expect(`${b.titel} ${b.body}`.replace('De Vrijdagers', '')).not.toMatch(TEGENSLAG);
       }
       expect(metNaam.body).toContain('De Vrijdagers');
-      expect(metNaam.pad).toBe('/groep/g-1');
+      expect(metNaam.pad).toBe('/groep/chat/g-1');
     }
   });
 

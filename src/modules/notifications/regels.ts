@@ -316,7 +316,7 @@ const SOORTEN: Readonly<Record<Taalcode, Readonly<Record<Tekstsleutel, SoortTeks
     //    andermans blikveld houdt. "De streefdatum is verschoven" zou hier dus
     //    niet mogen staan, ook al is het de aanleiding.
     group_digest: {
-      titel: 'Er is iets te vieren',
+      titel: 'Goed nieuws',
       metNaam: (naam) => `Er is iets te vieren in ${naam}.`,
       zonderNaam: 'Er is iets te vieren in een van je groepen.',
       pad: '/',
@@ -360,7 +360,7 @@ const SOORTEN: Readonly<Record<Taalcode, Readonly<Record<Tekstsleutel, SoortTeks
       pad: '/',
     },
     group_digest: {
-      titel: 'Something to celebrate',
+      titel: 'Good news',
       metNaam: (naam) => `There is something to celebrate in ${naam}.`,
       zonderNaam: 'There is something to celebrate in one of your groups.',
       pad: '/',
@@ -474,7 +474,7 @@ export function berichtVoor(
   return {
     titel: tekst.titel,
     body: input.naam ? tekst.metNaam(input.naam) : tekst.zonderNaam,
-    pad: soort === 'group_digest' && input.groepId ? `/groep/${input.groepId}` : tekst.pad,
+    pad: soort === 'group_digest' && input.groepId ? `/groep/chat/${input.groepId}` : tekst.pad,
   };
 }
 

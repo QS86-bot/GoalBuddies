@@ -66,6 +66,18 @@ blijft het weg.
 - Open: de dagmelding kiest bij meer dan drie groepen altijd dezelfde (op id); de
   groepsnaam staat op een vergrendeld scherm (opt-in).
 
+## Critical-user (verwerkt en open)
+
+Verwerkt: de melding opent de chat (`/groep/chat/{id}`), de goedkeurder krijgt niets over
+zijn eigen klik (`actor_id`), 5 minuten marge boven het intrekvenster, titel "Goed nieuws".
+
+**Open — moet opgelost zijn vóórdat Quinten de vlag aanzet** (de functie staat uit):
+1. Geen UI-schakelaar voor `notify_group_digest`; aanzetten zonder levert nul meldingen.
+2. `public/sw.js` vervangt webmeldingen van dezelfde soort (`tag: soort`): bij meerdere
+   groepen blijft er één over. Bundelen of de groep in de tag.
+3. Plafond telt per 24 uur en kiest groepen op id; per lokale dag en bundelen is beter.
+4. Stille uren tot middernacht geven een melding om 00:30; een eindtijd ontbreekt.
+
 ## Restsignaal, benoemd
 
 In een groep van twee betekent "geen dagmelding" dat de ander die dag geen

@@ -283,6 +283,25 @@ describe.skipIf(!beschikbaar)('de groepsdagmelding (0310)', () => {
   );
 
   it(
+    'meldt de goedkeurder niets over zijn eigen goedkeuring',
+    () => {
+      const u = scenario(`
+        ${VLAG_AAN}
+        select pg_temp.maak_groep('Eigen klik');
+        set local session_replication_role = replica;
+        insert into chat_messages (group_id, type, body, system_event, subject_id, actor_id, created_at)
+          select (select id from groups where name='Eigen klik'), 'system', 'x', 'completion_approved', pg_temp.id('bob'), pg_temp.id('carol'), now() - interval '2 hours';
+        set local session_replication_role = origin;
+        select pg_temp.zet('goedkeurder', pg_temp.voor('carol'));
+        select pg_temp.zet('derde', (pg_temp.voor('dave') <> '')::text);
+      `);
+      expect(u.goedkeurder).toBe('');
+      expect(u.derde).toBe('true');
+    },
+    TEST_TIMEOUT,
+  );
+
+  it(
     'wacht tot het intrekvenster voorbij is: een jonge goedkeuring belt niet',
     () => {
       const u = scenario(`

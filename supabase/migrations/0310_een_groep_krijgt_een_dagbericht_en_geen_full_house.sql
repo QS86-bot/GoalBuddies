@@ -205,14 +205,16 @@ as $$
         and m.sender_id is null
         and m.system_event = any (public.groepsdigest_gebeurtenissen())
         and m.subject_id is distinct from p_user_id
+        -- De goedkeurder weet het al: een eigen klik is geen nieuws (critical-user).
+        and m.actor_id is distinct from p_user_id
         and m.created_at >= gm.joined_at
-        and m.created_at <= now() - make_interval(mins => public.intrekvenster_minuten())
+        and m.created_at <= now() - make_interval(mins => public.intrekvenster_minuten() + 5)
         and m.created_at > greatest(
               coalesce((select max(n.sent_at) from notifications_sent n
                 where n.user_id = p_user_id and n.kind = 'group_digest' and n.ref_id = g.id),
                 now() - interval '24 hours'),
               now() - interval '24 hours')
-              - make_interval(mins => public.intrekvenster_minuten())
+              - make_interval(mins => public.intrekvenster_minuten() + 5)
     )
   order by g.id
   limit greatest(0, public.groepsdigest_dagmax() - (
