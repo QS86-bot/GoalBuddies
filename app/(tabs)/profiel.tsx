@@ -930,7 +930,15 @@ function HerinneringInstelling({
  *    zesde soort erbij kwam. Die klacht was terecht en dit is het antwoord
  *    erop — niet een rij erbij.
  */
-type Zichtbaar = Exclude<Melding, 'nudge' | 'commitment_reverted'>;
+/**
+ * ⚠️ `group_digest` (QS8-755) staat hier met opzet nog níét in: de functie staat
+ *    uit (`groepsdigest_aan()` geeft false, 0310), en een schakelaar voor iets dat
+ *    nooit komt liegt tegen de gebruiker (regel 18, vraag 5). De schakelaar landt
+ *    in een vervolgissue, samen met het moment waarop Quinten de vlag aanzet. Let
+ *    op: die kolom staat standaard UIT, en `!== false` hieronder zou een
+ *    ontbrekend veld als aan tonen.
+ */
+type Zichtbaar = Exclude<Melding, 'nudge' | 'commitment_reverted' | 'group_digest'>;
 
 const MELDINGSOORT_TEKST: Readonly<Record<Zichtbaar, Sleutel>> = {
   approval_request: 'meldingsoort.approval_request',
@@ -1084,8 +1092,13 @@ function MeldingsoortenInstelling({
           `commitment_witness`, en twee schakelaars voor één kolom overschrijven
           elkaar (QS8-321). De uitsluiting staat in `Zichtbaar` hierboven, zodat
           `tsc` klaagt zodra iemand hem tóch als eigen soort wil tonen. */}
-      {MELDINGSOORTEN.filter((s): s is Zichtbaar => s !== 'nudge' && s !== 'commitment_reverted').map((soort) => {
-        const kolom = VOORKEUR_PER_SOORT[soort];
+      {MELDINGSOORTEN.filter((s): s is Zichtbaar =>
+        s !== 'nudge' && s !== 'commitment_reverted' && s !== 'group_digest').map((soort) => {
+        // `Zichtbaar` sluit group_digest uit; de kolom ontbreekt in de types tot 0310 is uitgerold.
+        const kolom = VOORKEUR_PER_SOORT[soort] as Exclude<
+          (typeof VOORKEUR_PER_SOORT)[Melding],
+          'notify_group_digest'
+        >;
         return (
           <MeldingsoortRij
             key={soort}

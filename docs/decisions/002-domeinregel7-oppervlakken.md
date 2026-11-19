@@ -451,6 +451,7 @@ oppervlak. Deze tabel is de beoordeling van alle twintig, met de stand van
 | 56 | De demping van een groep | Niets. Geen groepstak, geen bericht; wie dempt wordt de groep nooit getoond. Gebouwd in QS8-752 | ✅ **Dicht** (migratie wacht op Quintens backup) |
 | 57 | Het adempauzebericht | Niets. Een gewoon chatbericht dat het lid zelf plaatst — oppervlak 8 en niet 3 — dus beschermd en open geven hetzelfde en er valt niets extra's te openen. In lijn met 32, 35 en 41. ⚠️ Er is geen systeemtype en dus geen oppervlak dat varieert | ✅ n.v.t. |
 | 58 | Het profiel van een groepsgenoot | Niets extra. Eén projectie, gelijk in beide standen; geen reeks, datum, punt of weekstatus. Gebouwd in QS8-750 | ✅ **Dicht** (migratie wacht op Quintens backup) |
+| 59 | De dagmelding per groep (`group_digest`, push) | Alleen de groepsnaam, en alleen als er een positief bericht (`completion_approved`, `goal_completed`) van een ánder lid is dat de ontvanger via de chat toch al kan lezen. Geen persoon, aantal, titel of niveau; identiek in beschermd en open (geen verwijzing naar `groups.zichtbaarheid`); gedempte, slapende en teamgroepen zwijgen; standaard uit (databasevlag `groepsdigest_aan()` én opt-in per gebruiker). **Full house is niet gebouwd:** de afwezigheid ervan zou een gemiste week of een privé adempauze verraden. Gebouwd in QS8-755 | ✅ **Dicht** (migratie wacht op Quintens backup; flag uit) |
 
 **Zes oppervlakken staan bewust dicht, ook in een open groep.** Dat is geen
 halfheid maar de kern van het besluit: "open" betekent dat de groep jouw

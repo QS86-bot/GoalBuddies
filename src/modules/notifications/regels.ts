@@ -48,7 +48,9 @@ export type Melding =
   | 'approval_received'
   | 'cycle_summary'
   | 'commitment_witness'
-  | 'commitment_reverted';
+  | 'commitment_reverted'
+  /** QS8-755: één positieve dagmelding per groep. Standaard uit (0310). */
+  | 'group_digest';
 
 /**
  * De soorten, als waarde — zodat een test ze kan opsommen zonder ze over te
@@ -62,6 +64,7 @@ export const MELDINGSOORTEN: readonly Melding[] = [
   'cycle_summary',
   'commitment_witness',
   'commitment_reverted',
+  'group_digest',
 ] as const;
 
 /** Zoals `profiles.reminder_tone`. */
@@ -312,6 +315,12 @@ const SOORTEN: Readonly<Record<Taalcode, Readonly<Record<Tekstsleutel, SoortTeks
     //    uitstelverzoek, en dát is precies de tegenslag die domeinregel 7 uit
     //    andermans blikveld houdt. "De streefdatum is verschoven" zou hier dus
     //    niet mogen staan, ook al is het de aanleiding.
+    group_digest: {
+      titel: 'Er is iets te vieren',
+      metNaam: (naam) => `Er is iets te vieren in ${naam}.`,
+      zonderNaam: 'Er is iets te vieren in een van je groepen.',
+      pad: '/',
+    },
     commitment_reverted: {
       titel: 'Die inzet staat weer open',
       metNaam: (naam) => `De inzet van ${naam} waarvan jij getuige bent, is niet meer verschuldigd.`,
@@ -348,6 +357,12 @@ const SOORTEN: Readonly<Record<Taalcode, Readonly<Record<Tekstsleutel, SoortTeks
       titel: 'You are a witness',
       metNaam: (naam) => `The stake ${naam} set for themselves has come due.`,
       zonderNaam: 'A stake you are a witness to has come due.',
+      pad: '/',
+    },
+    group_digest: {
+      titel: 'Something to celebrate',
+      metNaam: (naam) => `There is something to celebrate in ${naam}.`,
+      zonderNaam: 'There is something to celebrate in one of your groups.',
       pad: '/',
     },
     commitment_reverted: {
@@ -459,7 +474,7 @@ export function berichtVoor(
   return {
     titel: tekst.titel,
     body: input.naam ? tekst.metNaam(input.naam) : tekst.zonderNaam,
-    pad: tekst.pad,
+    pad: soort === 'group_digest' && input.groepId ? `/groep/${input.groepId}` : tekst.pad,
   };
 }
 
@@ -597,6 +612,8 @@ export interface Meldingsvoorkeuren {
   readonly notify_approval_received: boolean;
   readonly notify_cycle_summary: boolean;
   readonly notify_commitment_witness: boolean;
+  /** Opt-in (default false) en bovendien uit zolang `groepsdigest_aan()` false geeft. */
+  readonly notify_group_digest: boolean;
 }
 
 /**
@@ -626,6 +643,7 @@ export const VOORKEUR_PER_SOORT: Readonly<Record<Melding, keyof Meldingsvoorkeur
   //    het niet meer zo is — de helft van een verhaal, en juist de helft die
   //    hem geruststelt. Wie de ene wil, wil de andere.
   commitment_reverted: 'notify_commitment_witness',
+  group_digest: 'notify_group_digest',
 } as const;
 
 /**
@@ -692,6 +710,8 @@ export function meldingsoortVelden(
     //    het niet meer zo is, houdt de helft van een verhaal over.
     case 'commitment_reverted':
       return { notify_commitment_witness: aan };
+    case 'group_digest':
+      return { notify_group_digest: aan };
   }
 }
 
@@ -724,3 +744,15 @@ export function stilleUrenVelden(keuze: {
     quiet_to: keuze.aan ? keuze.tot : null,
   };
 }
+
+/**
+ * Het uur waarop de groepsdagmelding mag vallen — QS8-755. Eén vast uur, zodat
+ * "per dag" geen kalenderrekenwerk is (correctheidsregel 7).
+ */
+export const GROEPSDIGEST_UUR = 19;
+
+/** De allowlist van `groepsdigest_gebeurtenissen()` (0310); een test legt ze naast elkaar. */
+export const GROEPSDIGEST_GEBEURTENISSEN: readonly string[] = [
+  'completion_approved',
+  'goal_completed',
+] as const;

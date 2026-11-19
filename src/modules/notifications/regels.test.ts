@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import {
   berichtVoor,
+  GROEPSDIGEST_UUR,
   herinneringStandaard,
   herinneringVelden,
   nudgeBericht,
@@ -12,6 +13,7 @@ import {
   tijdVoorInvoer,
   uurUit,
   meldingPoortReden,
+  meldingsoortVelden,
   stilleUrenVelden,
   VOORKEUR_PER_SOORT,
   MELDINGSOORTEN,
@@ -210,7 +212,7 @@ describe('de teksten', () => {
    *    nieuwe soort vanzelf meegroeit, en dan meldt hij niets meer. Wie er een
    *    toevoegt, komt hier langs — en dat is de bedoeling.
    */
-  it('kent precies zes soorten, en twee ervan gaan over een ander', () => {
+  it('kent precies zeven soorten, en twee ervan gaan over een ander', () => {
     // ⚠️ **Vijf werd zes met QS8-321**, en deze test deed precies waarvoor hij
     //    bestaat: hij werd rood en dwong de toevoeger hierlangs.
     //
@@ -220,7 +222,11 @@ describe('de teksten', () => {
     //    Hij meldt bovendien alleen aan wie de heenweg al gehoord heeft; die
     //    grendel staat in `teruggedraaide_straffen_voor()` (0293) en onder toets
     //    in `tests/rls/straf-niet-meer-verschuldigd.test.ts`.
-    expect(MELDINGSOORTEN).toHaveLength(6);
+    // ⚠️ **Zes werd zeven met QS8-755: `group_digest`.** Die gaat niet over een
+    //    ander maar over de groep, zonder persoon, aantal of titel, en alleen
+    //    uit positieve berichten die je al kunt lezen. Hij staat dus niet in
+    //    `overEenAnder`; een soort die dat wel nodig had, kwam er niet in.
+    expect(MELDINGSOORTEN).toHaveLength(7);
 
     const overEenAnder: Melding[] = ['commitment_witness', 'commitment_reverted'];
     expect(overEenAnder).toHaveLength(2);
@@ -568,6 +574,7 @@ const ALLES_AAN: Meldingsvoorkeuren = {
   notify_approval_received: true,
   notify_cycle_summary: true,
   notify_commitment_witness: true,
+  notify_group_digest: true,
 };
 
 describe('VOORKEUR_PER_SOORT — de vorm', () => {
@@ -706,5 +713,37 @@ describe('stilleUrenVelden', () => {
       quiet_from: null,
       quiet_to: null,
     });
+  });
+});
+
+describe('group_digest — QS8-755', () => {
+  const TEGENSLAG = /gemist|missed|achter|behind|nog \d|bijna|almost|iedereen|everyone|\d/i;
+
+  it('is een soort met een eigen opt-in-kolom, standaard niet aan in de poort van een uitgezette voorkeur', () => {
+    expect(VOORKEUR_PER_SOORT.group_digest).toBe('notify_group_digest');
+    expect(meldingPoortReden('group_digest', { ...ALLES_AAN, notify_group_digest: false })).not.toBeNull();
+    expect(meldingPoortReden('group_digest', ALLES_AAN)).toBeNull();
+    expect(meldingPoortReden('group_digest', ALLES_AAN, true)).toBe('stille uren');
+  });
+
+  it('noemt alleen de groep en zegt in beide talen niets over tegenslag, aantallen of "iedereen"', () => {
+    for (const taal of ['nl', 'en'] as const) {
+      const metNaam = berichtVoor('group_digest', { naam: 'De Vrijdagers', groepId: 'g-1' }, taal);
+      const zonder = berichtVoor('group_digest', {}, taal);
+      for (const b of [metNaam, zonder]) {
+        expect(`${b.titel} ${b.body}`.replace('De Vrijdagers', '')).not.toMatch(TEGENSLAG);
+      }
+      expect(metNaam.body).toContain('De Vrijdagers');
+      expect(metNaam.pad).toBe('/groep/g-1');
+    }
+  });
+
+  it('heeft geen full-house-soort: de soortenlijst kent er geen', () => {
+    expect(MELDINGSOORTEN.filter((s) => /full|house|voltallig/i.test(s))).toEqual([]);
+  });
+
+  it('draait op één vast uur en zijn schakelaar schrijft één kolom', () => {
+    expect(GROEPSDIGEST_UUR).toBe(19);
+    expect(meldingsoortVelden('group_digest', true)).toEqual({ notify_group_digest: true });
   });
 });
