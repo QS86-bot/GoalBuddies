@@ -72,6 +72,17 @@ const EIGENAAR = 'QS86-bot';
 const REPO = 'GoalBuddies';
 const WERKSTROOM = 'ci.yml';
 
+/** De geplande run van `audit:controle` — QS8-707. */
+const ADVISORIES = 'advisories.yml';
+
+/**
+ * Hoe oud de laatste afgeronde advisories-run mag zijn, in uren. De workflow
+ * draait dagelijks; 26 uur laat één uur GitHub-vertraging toe. `schedule:` is
+ * best-effort en een workflow kan in de UI uitgezet zijn: beide zien we hier
+ * als "te oud", en dat is precies de rest die QS8-707 benoemde.
+ */
+export const ADVISORIES_MAX_UUR = 26;
+
 /** Hoe lang we op de API wachten voordat we hem opgeven. */
 const TIJDSLIMIET_MS = 15000;
 
@@ -121,8 +132,14 @@ export function beoordeel(run) {
  * Exitcode die bij een stand hoort. Alleen groen is nul — en groen met een
  * commit zonder uitslag erachter is geen groen.
  */
-export function exitcode(stand, verloren = []) {
-  return stand === 'groen' && verloren.length === 0 ? 0 : 1;
+/**
+ * @param {string} stand
+ * @param {unknown[]} [verloren]
+ * @param {{ stand: string } | undefined} [advisories]
+ */
+export function exitcode(stand, verloren = [], advisories = undefined) {
+  const advisoriesGroen = advisories === undefined || advisories.stand === 'groen';
+  return stand === 'groen' && verloren.length === 0 && advisoriesGroen ? 0 : 1;
 }
 
 /**
@@ -140,6 +157,59 @@ function isUitslag(run) {
 
 function looptNog(run) {
   return run?.status !== undefined && run.status !== 'completed';
+}
+
+/**
+ * De stand van de geplande advisories-run — QS8-707.
+ *
+ * ⚠️ **Sinds QS8-707 meet `main` alleen de vorm van het register; de vraag
+ *    "staat er iets kwetsbaars dat niemand bekeken heeft" wordt in
+ *    `advisories.yml` gesteld.** Zonder dit stuk las niemand die run: een PR die
+ *    rood gemerged werd liet `main` groen, en de mail van GitHub was het enige
+ *    kanaal. Drie uitkomsten, en alleen `groen` is nul:
+ *    `rood` (de nieuwste afgeronde run faalde), `verlopen` (de nieuwste afgeronde
+ *    run is ouder dan `ADVISORIES_MAX_UUR`, of er is er geen — de workflow draait
+ *    niet) en `groen`.
+ *
+ * @param {Array<{status?: string, conclusion?: string|null, html_url?: string,
+ *                updated_at?: string, run_started_at?: string}>} runs nieuwste eerst
+ * @param {number} nu milliseconden sinds epoch
+ */
+export function advisoriesStand(runs, nu = Date.now()) {
+  const laatste = (runs ?? []).find(isUitslag);
+  if (laatste === undefined) {
+    return { stand: 'verlopen', reden: 'geen afgeronde run van advisories.yml gevonden' };
+  }
+  const url = laatste.html_url ?? '';
+  if (laatste.conclusion !== 'success') return { stand: 'rood', url };
+  const wanneer = Date.parse(laatste.updated_at ?? laatste.run_started_at ?? '');
+  const uren = (nu - wanneer) / 3_600_000;
+  if (!Number.isFinite(uren) || uren > ADVISORIES_MAX_UUR) {
+    return {
+      stand: 'verlopen',
+      reden: Number.isFinite(uren)
+        ? `de laatste groene run is ${Math.floor(uren)} uur oud (grens ${ADVISORIES_MAX_UUR})`
+        : 'de tijd van de laatste run is onleesbaar',
+      url,
+    };
+  }
+  return { stand: 'groen', url };
+}
+
+/** De regels over `advisories.yml`; leeg als hij groen is. */
+export function advisoriesRegels(a) {
+  if (a === undefined || a.stand === 'groen') return [];
+  const kop =
+    a.stand === 'rood'
+      ? '✗ `advisories.yml` is ROOD: `audit:controle` (strikt) vindt een afwijking van NAGEKEKEN.'
+      : '· ONGEMETEN: `advisories.yml` heeft recent niet groen gedraaid' + (a.reden ? ` (${a.reden}).` : '.');
+  return [
+    '',
+    kop,
+    ...(a.url ? [`    ${a.url}`] : []),
+    '    Draai `npm run audit:controle` en lees `docs/decisions/2026-11-19-de-advisory-database-is-geen-eigenschap-van-main.md`.',
+    '    Een run die niet draait is niet rood: check ook of de workflow aanstaat (QS8-707).',
+  ];
 }
 
 /**
@@ -208,10 +278,10 @@ export function commitsZonderUitslag(runs) {
  *    machine zonder die proxy en zonder token geeft dit script eerlijk "ik weet
  *    het niet" — dat is de enige uitkomst die hier niet mag liegen.
  */
-async function haalRuns() {
+async function haalRuns(werkstroom = WERKSTROOM, zoek = `branch=main&per_page=${VENSTER}`) {
   const url =
-    `https://api.github.com/repos/${EIGENAAR}/${REPO}/actions/workflows/${WERKSTROOM}` +
-    `/runs?branch=main&per_page=${VENSTER}`;
+    `https://api.github.com/repos/${EIGENAAR}/${REPO}/actions/workflows/${werkstroom}` +
+    `/runs?${zoek}`;
 
   // ⚠️ Elke externe call heeft een timeout (onwrikbare regel 14) — hier die van
   //    `curl` zelf plus een harde grens op het proces eromheen.
@@ -276,7 +346,9 @@ export function melding(uitslag) {
     regels.push('', 'Draai dit commando zo nog een keer. Je bent klaar als het groen zegt.');
   }
 
-  return regels.concat(verlorenRegels(uitslag.verloren ?? [])).join('\n');
+  return regels
+    .concat(verlorenRegels(uitslag.verloren ?? []), advisoriesRegels(uitslag.advisories))
+    .join('\n');
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
@@ -285,11 +357,20 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
   try {
     const runs = await haalRuns();
     uitslag = { ...beoordeel(runs[0] ?? null), verloren: commitsZonderUitslag(runs) };
+    try {
+      uitslag.advisories = advisoriesStand(await haalRuns(ADVISORIES, 'per_page=5'));
+    } catch (fout) {
+      // ⚠️ Niet te lezen is ongemeten en geen groen.
+      uitslag.advisories = {
+        stand: 'verlopen',
+        reden: `de runlijst was niet te lezen: ${fout instanceof Error ? fout.message : String(fout)}`,
+      };
+    }
   } catch (fout) {
     uitslag = { stand: 'ongemeten', reden: fout instanceof Error ? fout.message : String(fout) };
   }
 
-  const code = exitcode(uitslag.stand, uitslag.verloren ?? []);
+  const code = exitcode(uitslag.stand, uitslag.verloren ?? [], uitslag.advisories);
   const uit = melding(uitslag);
   if (code === 0) process.stdout.write(`${uit}\n`);
   else process.stderr.write(`${uit}\n`);

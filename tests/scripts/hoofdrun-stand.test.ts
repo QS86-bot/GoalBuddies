@@ -2,6 +2,9 @@ import { describe, expect, it } from 'vitest';
 
 // ⚠️ Een `.mjs` zonder eigen typings — zelfde patroon als `migratieregister.test.ts`.
 import {
+  ADVISORIES_MAX_UUR,
+  advisoriesRegels,
+  advisoriesStand,
   beoordeel,
   commitsZonderUitslag,
   exitcode,
@@ -192,5 +195,68 @@ describe('commits op main zonder uitslag', () => {
 
   it('zwijgt in de melding zolang er niets verloren is', () => {
     expect(melding({ ...beoordeel(RUN), verloren: [] })).not.toContain('zonder uitslag');
+  });
+});
+
+/**
+ * QS8-707 — `hoofdrun:stand` leest ook de geplande advisories-run.
+ *
+ * ⚠️ De belofte is niet "hij kent advisories.yml" maar: een rode, verlopen of
+ *    ontbrekende run is nooit groen, en een groene run van vandaag zegt niets.
+ */
+describe('advisories.yml — QS8-707', () => {
+  const NU = Date.parse('2026-11-19T12:00:00Z');
+  const run = (over: Record<string, unknown> = {}) => ({
+    status: 'completed',
+    conclusion: 'success',
+    html_url: 'https://github.com/QS86-bot/GoalBuddies/actions/runs/9',
+    updated_at: '2026-11-19T05:30:00Z',
+    ...over,
+  });
+
+  it('is groen bij een verse, geslaagde run', () => {
+    expect(advisoriesStand([run()], NU).stand).toBe('groen');
+  });
+
+  it('is rood bij een gefaalde nieuwste afgeronde run, ook als een oudere groen was', () => {
+    const uit = advisoriesStand([run({ conclusion: 'failure' }), run()], NU);
+    expect(uit.stand).toBe('rood');
+  });
+
+  it('slaat een run die nog draait of is afgebroken over en leest de eerstvolgende', () => {
+    const lopend = run({ status: 'in_progress', conclusion: null });
+    const afgebroken = run({ conclusion: 'cancelled' });
+    expect(advisoriesStand([lopend, afgebroken, run()], NU).stand).toBe('groen');
+    expect(advisoriesStand([lopend, afgebroken], NU).stand).toBe('verlopen');
+  });
+
+  it('is verlopen als de laatste groene run te oud is, en groen er net onder', () => {
+    const oud = new Date(NU - (ADVISORIES_MAX_UUR + 1) * 3_600_000).toISOString();
+    const net = new Date(NU - (ADVISORIES_MAX_UUR - 1) * 3_600_000).toISOString();
+    expect(advisoriesStand([run({ updated_at: oud })], NU).stand).toBe('verlopen');
+    expect(advisoriesStand([run({ updated_at: net })], NU).stand).toBe('groen');
+  });
+
+  it('is verlopen zonder runs of met een onleesbare tijd, en nooit groen', () => {
+    expect(advisoriesStand([], NU).stand).toBe('verlopen');
+    expect(advisoriesStand(undefined as never, NU).stand).toBe('verlopen');
+    expect(advisoriesStand([run({ updated_at: 'nu', run_started_at: undefined })], NU).stand).toBe('verlopen');
+  });
+
+  it('maakt de exitcode niet nul zolang advisories niet groen is, ook niet bij groene main', () => {
+    expect(exitcode('groen', [], { stand: 'rood' })).toBe(1);
+    expect(exitcode('groen', [], { stand: 'verlopen' })).toBe(1);
+    expect(exitcode('groen', [], { stand: 'groen' })).toBe(0);
+    expect(exitcode('groen', [])).toBe(0);
+  });
+
+  it('zegt in de melding wat er speelt, en zwijgt als alles groen is', () => {
+    expect(advisoriesRegels({ stand: 'groen' })).toEqual([]);
+    const rood = melding({ stand: 'groen', advisories: { stand: 'rood', url: 'https://x/9' } });
+    expect(rood).toContain('advisories.yml');
+    expect(rood).toContain('ROOD');
+    const oud = melding({ stand: 'groen', advisories: { stand: 'verlopen', reden: 'geen run' } });
+    expect(oud).toContain('ONGEMETEN');
+    expect(melding({ stand: 'groen' })).not.toContain('advisories.yml');
   });
 });
