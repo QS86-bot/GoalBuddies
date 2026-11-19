@@ -230,6 +230,7 @@ declare
   mij        uuid := (select auth.uid());
   v_vandaag  date;
   v_aantal   integer;
+  v_etmaal   integer;
   v_geplaatst integer;
 begin
   if mij is null then
@@ -277,7 +278,19 @@ begin
     and m.created_at > now() - interval '2 days'
     and (m.created_at at time zone p.tz)::date = v_vandaag;
 
-  if v_aantal >= public.prestatie_delen_dagmax() then
+  -- ⚠️ **Een vangnet dat niet van de tijdzone afhangt** (security-review): `profiles.tz` mag de
+  --    gebruiker zelf wijzigen, dus wie vijf deelde en van zone wisselde kreeg een nieuwe "dag"
+  --    (gemeten: rate_limited werd ok). De kalenderdag blijft de regel; daarnaast staan er in elke
+  --    24 uur nooit meer dan twee keer het dagmaximum (een zonewissel verschuift een dag hooguit
+  --    zo ver).
+  select count(*)::integer into v_etmaal
+  from chat_messages m
+  where m.subject_id = mij
+    and m.system_event = 'prestatie_gedeeld'
+    and m.created_at > now() - interval '24 hours';
+
+  if v_aantal >= public.prestatie_delen_dagmax()
+     or v_etmaal >= 2 * public.prestatie_delen_dagmax() then
     return jsonb_build_object('ok', false, 'reason', 'rate_limited');
   end if;
 

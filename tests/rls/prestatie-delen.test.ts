@@ -204,6 +204,26 @@ describe.skipIf(!rlsTestsConfigured)('QS8-736 — een prestatie delen', () => {
     }, TEST_TIMEOUT);
   });
 
+  describe('4b. de tijdzone is geen sleutel naar een nieuwe dag', () => {
+    it('na een zonewissel blijft het etmaalplafond staan (tweemaal het dagmaximum)', async () => {
+      const gus = await createTestUser('delen-gus');
+      const tz = 'Pacific/Kiritimati';
+      expect((await adminDb().from('profiles').update({ tz }).eq('id', gus.id)).error).toBeNull();
+      const groepen = [await maakGroep(gus, 'Etmaal één'), await maakGroep(gus, 'Etmaal twee'), await maakGroep(gus, 'Etmaal drie')];
+      await geefBadges(gus, BADGES);
+      const gisteren = () =>
+        psqlMetInvoer(`set session_replication_role = replica;
+          update chat_messages set created_at = ((date_trunc('day', now() at time zone '${tz}') - interval '1 minute') at time zone '${tz}')
+           where subject_id = '${gus.id}' and system_event = 'prestatie_gedeeld';`);
+      for (const b of BADGES) expect(await deel(gus, groepen[0]!.id, b)).toEqual({ ok: true });
+      gisteren();
+      for (const b of BADGES) expect(await deel(gus, groepen[1]!.id, b)).toEqual({ ok: true });
+      gisteren();
+      // Tien berichten staan op "gisteren" in zijn zone, maar binnen 24 uur: de elfde kan niet.
+      expect(await deel(gus, groepen[2]!.id, 'first_goal')).toEqual({ ok: false, reason: 'rate_limited' });
+    }, TEST_TIMEOUT);
+  });
+
   describe('5. teamgroepen: geschreven voor elk type, uit tot QS8-649', () => {
     it('een groep die als team telt weigert met team_off (de stub in een transactie omgezet)', async () => {
       const fia = await createTestUser('delen-fia');

@@ -12,7 +12,9 @@ vast die de bouwsessie zelf maakte, en de aannames.
    naast elkaar en de unit-test legt de kopie naast `BADGES`, met een lijst "bewust niet deelbaar".
 2. **De limiet is een kalenderdag in de tijdzone van de gebruiker** (`eigenaarsdatum()`), geen 24-uursvenster zoals
    `tel_dagteller()`. Dat volgt de tekst van het issue. De telling is begrensd tot twee dagen terug (indexbereik) en staat
-   onder een advisory lock per gebruiker.
+   onder een advisory lock per gebruiker. ⚠️ **Vangnet (security-review, gemeten):** `profiles.tz` mag de gebruiker zelf
+   wijzigen, dus alleen de kalenderdag liet zich omzeilen met een zonewissel. Daarom staan er in elke 24 uur nooit meer dan
+   tweemaal het dagmaximum.
 3. **De payload is de sleutel en verder niets, in de database**: een CHECK (`chat_messages_prestatie_payload_is_een_sleutel`)
    die ook voor `service_role` geldt.
 4. **Geen intrekken.** Het bericht heeft `sender_id` null en `chat_messages_delete` eist de afzender, dus een misklik
