@@ -179,7 +179,7 @@ export default function Profiel() {
 
             <StilleUrenInstelling profiel={p} userId={p.id} onOpgeslagen={zetProfiel} />
 
-            <UiterlijkIngang />
+            <Ingangen />
 
             <VieringKeuze />
 
@@ -608,6 +608,28 @@ function UiterlijkIngang() {
       <Subheading>{t('uiterlijk.ingang_titel')}</Subheading>
       <Body muted>{t('uiterlijk.ingang_uitleg')}</Body>
       <Button onPress={() => router.push('/uiterlijk')}>{t('uiterlijk.ingang_knop')}</Button>
+    </Card>
+  );
+}
+
+/** De ingangen naar de schermen Uiterlijk en Statistieken, in één regel van Profiel zodat dat scherm niet groeit. */
+function Ingangen() {
+  return (
+    <>
+      <UiterlijkIngang />
+      <StatistiekIngang />
+    </>
+  );
+}
+
+/** De ingang naar je statistieken — QS8-749. Alleen voor jezelf; de inhoud staat bij de route. */
+function StatistiekIngang() {
+  const router = useRouter();
+  return (
+    <Card>
+      <Subheading>{t('statistiek.ingang_titel')}</Subheading>
+      <Body muted>{t('statistiek.ingang_uitleg')}</Body>
+      <Button onPress={() => router.push('/statistiek')}>{t('statistiek.ingang_knop')}</Button>
     </Card>
   );
 }
