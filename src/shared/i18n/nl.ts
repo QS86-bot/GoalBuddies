@@ -2325,7 +2325,8 @@ export const nl = {
   'adempauze.bericht_ja': 'Ja, stuur een bericht',
   'adempauze.bericht_label': 'Je bericht',
   'adempauze.bericht_hint':
-    'Pas het gerust aan of wis het. Het gaat als jouw bericht naar de groepschat, pas als je op Inplannen drukt. Laat je het leeg, dan gaat er niets naar de groep.',
+    'Pas het gerust aan of wis het. Je mag er zelf bij typen voor welk doel of hoe lang. Het gaat als jouw bericht naar de groepschat, pas als je op Inplannen drukt. Laat je het leeg, dan wordt er niets verstuurd.',
+  'adempauze.bericht_niet_ingelogd': 'Je bent niet ingelogd, dus je bericht kon niet worden verstuurd.',
   'adempauze.bericht_voorstel': 'Ik neem even een adempauze. Ik ben er daarna weer bij.',
   'adempauze.bericht_welke_groep': 'Naar welke groep?',
   'adempauze.bericht_gaat_naar': 'Gaat naar {groep}.',

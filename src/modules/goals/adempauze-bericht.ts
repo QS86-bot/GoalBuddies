@@ -111,3 +111,42 @@ export function berichtGroepen(
     .filter((g) => levend.has(g.group_id))
     .map((g) => ({ id: g.group_id, name: g.name }));
 }
+
+/**
+ * Mag er bij deze periode een bericht aan de groep? Niet als ze helemaal voorbij is.
+ *
+ * ⚠️ **Conservatief, en dat is domeinregel 7.** Een pauze die je achteraf aankondigt
+ *    legt weken bloot die je niet gehaald hebt, en de berichtstap nodigt dan uit
+ *    om dat te delen. Zo'n uitnodiging bestaat niet; typ je het zelf in de
+ *    groepschat, dan is dat jouw keuze. De datum komt van de cyclus die
+ *    `periodeUitDatums()` uit de klok haalde (`endDate` is de laatste dag, inclusief);
+ *    hier wordt alleen vergeleken, nooit gerekend.
+ */
+export function berichtMagBij(periode: { readonly eind: { readonly endDate: string } }, vandaag: string): boolean {
+  return periode.eind.endDate >= vandaag;
+}
+
+/** Een slot dat een tweede verzending afwijst zolang de eerste loopt (een `useRef` past erop). */
+export interface Slot {
+  current: boolean;
+}
+
+/**
+ * "Bericht opnieuw versturen" met een rem tegen dubbel tikken — `null` als er al
+ * een verzending loopt. Twee tikken voor de eerste klaar is zijn twee berichten in
+ * de groepschat, en dat haal je niet terug (de afzender mag wel verwijderen, maar
+ * de groep heeft het dan al gezien).
+ */
+export async function stuurLosMetRem(
+  slot: Slot,
+  deps: Pick<PauzeMetBerichtDeps, 'stuur'>,
+  bericht: { readonly groupId: string; readonly tekst: string },
+): Promise<BerichtUitkomst | null> {
+  if (slot.current) return null;
+  slot.current = true;
+  try {
+    return await stuurLos(deps, bericht);
+  } finally {
+    slot.current = false;
+  }
+}

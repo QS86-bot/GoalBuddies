@@ -1,5 +1,5 @@
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 
 import { useProfiel, useSession, userClock } from '@/modules/auth';
@@ -38,6 +38,7 @@ import {
   annuleerAdempauze,
   ARGUMENT_MAX,
   berichtGroepen,
+  berichtMagBij,
   ARGUMENT_MIN,
   categorieLabels,
   fetchAdempauzes,
@@ -64,7 +65,7 @@ import {
   trekDeadlineVerzoekIn,
   stelWeekplanstapBij,
   startWeekplanstapNu,
-  stuurLos,
+  stuurLosMetRem,
   verplaats,
   verwijderDoel,
   verwijderMijlpaal,
@@ -2894,6 +2895,7 @@ function Adempauzes({
   //    bijgehouden. Twee plekken die hetzelfde weten, gaan uit de pas lopen, en
   //    dan toont het scherm een andere week dan het verstuurt.
   const periode = periodeUitDatums(klok, vanaf, tot);
+  const vandaagNu = localDateIn(klok.tz, now());
 
   async function plan() {
     if (!klok || !periode.ok) return;
@@ -2903,7 +2905,8 @@ function Adempauzes({
     const { start, eind } = periode.waarde;
     const uitkomst = await pauzeMetBericht(
       { plan: () => planAdempauze(doel.id, start, eind), stuur: bericht.stuur },
-      bericht.keuze,
+      // Een pauze die helemaal voorbij is, kondigt het scherm niet aan (domeinregel 7).
+      { ...bericht.keuze, aan: bericht.keuze.aan && berichtMagBij(periode.waarde, vandaagNu) },
     );
 
     if (!uitkomst.pauze.ok) {
@@ -2932,6 +2935,7 @@ function Adempauzes({
   }
 
   const vandaag = localDateIn(klok.tz, now());
+  const berichtMag = !periode.ok || berichtMagBij(periode.waarde, vandaag);
 
   return (
     <Card nested>
@@ -3011,6 +3015,7 @@ function Adempauzes({
 
           <Afronding periode={periode} vanaf={vanaf} vandaag={vandaag} />
 
+          {berichtMag ? (
           <AdempauzeBericht
             aan={bericht.aan}
             onAan={bericht.zetAan}
@@ -3024,12 +3029,16 @@ function Adempauzes({
             onOpnieuw={bericht.opnieuw}
             onSluit={bericht.sluit}
           />
+          ) : null}
 
           <View style={styles.knoppen}>
             <Button
               variant="primair"
               busy={bezig}
-              disabled={!periode.ok || bericht.wachtOpGroep}
+              disabled={!periode.ok || (berichtMag && bericht.wachtOpGroep)}
+              accessibilityHint={
+                berichtMag && bericht.wachtOpGroep ? t('adempauze.bericht_kies_eerst') : undefined
+              }
               onPress={() => void plan()}
             >
               {t('adempauze.inplannen')}
@@ -3040,6 +3049,7 @@ function Adempauzes({
               onPress={() => {
                 setOpen(false);
                 setFout(null);
+                bericht.reset();
               }}
             >
               {t('adempauze.annuleren')}
@@ -3066,6 +3076,7 @@ function useAdempauzeBericht(groepen: readonly BerichtGroep[], userId: string | 
   const [tekst, setTekst] = useState('');
   const [groepId, setGroepId] = useState('');
   const [bezig, setBezig] = useState(false);
+  const slot = useRef(false);
   const [open, setOpen] = useState<{
     readonly groupId: string;
     readonly tekst: string;
@@ -3073,9 +3084,14 @@ function useAdempauzeBericht(groepen: readonly BerichtGroep[], userId: string | 
   } | null>(null);
 
   const gekozen = enigeOfGekozen(groepen, groepId, (g) => g.id)?.id ?? '';
+  const reset = () => {
+    setAan(false);
+    setTekst('');
+    setGroepId('');
+  };
   const stuur = (groupId: string, bericht: string) =>
     userId === null
-      ? Promise.resolve({ ok: false as const, melding: t('adempauze.inplannen_mislukt') })
+      ? Promise.resolve({ ok: false as const, melding: t('adempauze.bericht_niet_ingelogd') })
       : stuurBericht(groupId, userId, bericht);
 
   return {
@@ -3083,7 +3099,8 @@ function useAdempauzeBericht(groepen: readonly BerichtGroep[], userId: string | 
     tekst,
     stuur,
     keuze: { aan, groupId: gekozen, tekst },
-    wachtOpGroep: aan && gekozen === '',
+    // Lege tekst is "geen bericht" en heeft dus geen ontvanger nodig.
+    wachtOpGroep: aan && gekozen === '' && tekst.trim() !== '',
     open,
     bezig,
     zetAan: (nieuw: boolean) => {
@@ -3094,14 +3111,14 @@ function useAdempauzeBericht(groepen: readonly BerichtGroep[], userId: string | 
     kies: setGroepId,
     verwerk: (uitkomst: BerichtUitkomst) => {
       setOpen(uitkomst === 'niet_gevraagd' ? null : { groupId: gekozen, tekst: tekst.trim(), uitkomst });
-      setAan(false);
-      setTekst('');
-      setGroepId('');
+      reset();
     },
+    reset,
     opnieuw: () => {
       if (open === null) return;
       setBezig(true);
-      void stuurLos({ stuur }, open).then((uitkomst) => {
+      void stuurLosMetRem(slot, { stuur }, open).then((uitkomst) => {
+        if (uitkomst === null) return;
         setOpen({ ...open, uitkomst });
         setBezig(false);
       });
@@ -3120,7 +3137,9 @@ function BerichtNa({
 }) {
   const na = bericht.open?.uitkomst;
 
-  if (na === 'verstuurd') return <Caption>{t('adempauze.bericht_verstuurd')}</Caption>;
+  if (na === 'verstuurd') {
+    return <Caption accessibilityLiveRegion="polite">{t('adempauze.bericht_verstuurd')}</Caption>;
+  }
   if (typeof na !== 'object') return null;
 
   return (

@@ -1779,8 +1779,9 @@ export const en: Record<Sleutel, string> = {
   'adempauze.bericht_ja': 'Yes, send a message',
   'adempauze.bericht_label': 'Your message',
   'adempauze.bericht_hint':
-    'Feel free to change or clear it. It goes to the group chat as your own message, and only when you press Schedule. If you leave it empty, nothing goes to the group.',
-  'adempauze.bericht_voorstel': 'I am taking a short breather. I will be back with you after.',
+    'Feel free to change or clear it. You can add which goal or for how long yourself. It goes to the group chat as your own message, and only when you press Schedule. If you leave it empty, nothing is sent.',
+  'adempauze.bericht_niet_ingelogd': 'You are not signed in, so your message could not be sent.',
+  'adempauze.bericht_voorstel': "I'm taking a short breather. I'll be back after that.",
   'adempauze.bericht_welke_groep': 'To which group?',
   'adempauze.bericht_gaat_naar': 'Goes to {groep}.',
   'adempauze.bericht_kies_eerst': 'First choose which group your message goes to, or choose No.',

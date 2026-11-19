@@ -2,9 +2,11 @@ import { describe, expect, it } from 'vitest';
 
 import {
   berichtGroepen,
+  berichtMagBij,
   berichtOmTeSturen,
   pauzeMetBericht,
   stuurLos,
+  stuurLosMetRem,
   type PauzeMetBerichtDeps,
 } from './adempauze-bericht';
 
@@ -144,5 +146,46 @@ describe('berichtGroepen', () => {
 
   it('geeft niets als het lid van geen van de gekoppelde groepen is', () => {
     expect(berichtGroepen(doel, [{ id: 'q', status: 'active' }])).toEqual([]);
+  });
+});
+
+describe('berichtMagBij', () => {
+  const eindigt = (endDate: string) => ({ eind: { endDate } });
+
+  it('staat een lopende en een toekomstige pauze toe, ook op de laatste dag', () => {
+    expect(berichtMagBij(eindigt('2026-12-20'), '2026-12-20')).toBe(true);
+    expect(berichtMagBij(eindigt('2026-12-27'), '2026-12-20')).toBe(true);
+  });
+
+  it('staat een pauze die helemaal voorbij is niet toe', () => {
+    expect(berichtMagBij(eindigt('2026-12-19'), '2026-12-20')).toBe(false);
+  });
+});
+
+describe('stuurLosMetRem', () => {
+  it('stuurt bij dubbel tikken één keer en laat daarna weer toe', async () => {
+    const { d, log } = deps();
+    const slot = { current: false };
+    const bericht = { groupId: 'g1', tekst: 'Hoi' };
+
+    const [eerste, tweede] = await Promise.all([
+      stuurLosMetRem(slot, d, bericht),
+      stuurLosMetRem(slot, d, bericht),
+    ]);
+
+    expect(log).toEqual(['stuur']);
+    expect(eerste).toBe('verstuurd');
+    expect(tweede).toBeNull();
+
+    await stuurLosMetRem(slot, d, bericht);
+    expect(log).toEqual(['stuur', 'stuur']);
+  });
+
+  it('geeft het slot ook vrij als het versturen mislukt of werpt', async () => {
+    const slot = { current: false };
+    const werpt = { stuur: async () => { throw new Error('net'); } };
+
+    await expect(stuurLosMetRem(slot, werpt, { groupId: 'g', tekst: 't' })).rejects.toThrow();
+    expect(slot.current).toBe(false);
   });
 });

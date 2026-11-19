@@ -60,7 +60,9 @@ export function AdempauzeBericht(props: Props) {
   if (fout !== null) {
     return (
       <View style={styles.blok}>
-        <Caption danger>{fout}</Caption>
+        <Caption danger accessibilityRole="alert">
+          {fout}
+        </Caption>
         <View style={styles.knoppen}>
           <Button variant="primair" busy={bezig} onPress={onOpnieuw}>
             {t('adempauze.bericht_opnieuw')}
@@ -115,7 +117,7 @@ function Keuze({ aan, onAan, tekst, onTekst, groepen, gekozen, onKies, bezig }: 
               opties={groepen.map((g) => ({ waarde: g.id, label: g.name }))}
               waarde={gekozen}
               onKies={onKies}
-              hint={gekozen === '' ? t('adempauze.bericht_kies_eerst') : undefined}
+              hint={gekozen === '' && tekst.trim() !== '' ? t('adempauze.bericht_kies_eerst') : undefined}
               disabled={bezig}
             />
           )}
