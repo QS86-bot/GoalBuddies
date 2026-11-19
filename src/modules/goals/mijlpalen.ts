@@ -213,7 +213,7 @@ export interface Mijlpaaltip {
  * ⚠️ **Eén verzoek voor alle mijlpalen samen, en niet één per weekdoelkaart.**
  *    Dat laatste is de N+1 die onwrikbare regel 12 met naam noemt, en dan voor
  *    één regel tekst — precies de reden die ook boven `doelcategorieen` in
- *    `app/(tabs)/index.tsx` staat.
+ *    `src/schermen/vandaag/useVandaag.ts` staat.
  *
  * ⚠️ **Een ontbrekende tip is een normale uitkomst en geen storing.** Het scherm
  *    valt terug op `weektip()`, de vaste set uit variant 3 — die blijft het
@@ -261,7 +261,7 @@ export async function fetchVolgendeMijlpalen(
 ): Promise<ReadonlyMap<string, Mijlpaal>> {
   // ⚠️⚠️ **De grens staat hier en niet bij de aanroeper, en dat is een correctie
   //    uit de security-review op QS8-368.** Hij stond eerst als aantekening: de
-  //    enige aanroeper is `app/(tabs)/index.tsx`, die voedt de doelen met een
+  //    enige aanroeper is `src/schermen/vandaag/useVandaag.ts`, die voedt de doelen met een
   //    goedgekeurde week uit `fetchWeekdoelen()`, en die draagt `.limit(100)`.
   //    Dat klopt en het is geen grens: deze functie is publiek geëxporteerd
   //    (`modules/goals/index.ts`), en een tweede scherm dat hem voedt — `doelen.tsx`

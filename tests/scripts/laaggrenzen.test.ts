@@ -203,7 +203,7 @@ describe('de grendels overleven de opgeloste config', () => {
     expect((regel?.[1].patterns ?? []).flatMap((pat) => [...pat.group])).toEqual(['**/modules/**']);
   });
 
-  it('alle drie de zones staan er, en niet alleen de regelnaam', async () => {
+  it('alle vijf de zones staan er, en niet alleen de regelnaam', async () => {
     const regel = (await regelsVoor(IN_MODULES))[GRENS_SHARED] as
       | [unknown, { zones: readonly { target: string; from: string }[] }]
       | undefined;
@@ -212,6 +212,9 @@ describe('de grendels overleven de opgeloste config', () => {
       './src/shared <- ./src/modules',
       './src/shared <- ./src/lib/supabase.ts',
       './src/modules <- ./src/shared/ui',
+      // QS8-748: `src/schermen` is de bovenste laag; niets eronder importeert hem.
+      './src/modules <- ./src/schermen',
+      './src/shared <- ./src/schermen',
     ]);
   });
 
