@@ -34,11 +34,13 @@ name: Deploy web
 #    nooit in een `run:`-blok; invoervelden idem (scriptinjectie). De test
 #    hierboven bewaakt dat, en GitHub maskeert secretwaarden daarbovenop.
 #
-# ⚠️ **De droge run doet geen enkele schrijfactie.** Hij krijgt de Sentry-secrets
-#    niet (de source-map-upload is een neveneffect buiten `--droog`), en mag
-#    zonder echte secrets draaien: ontbreken ze, dan bouwt hij met herkenbare
-#    nepwaarden. Alleen modus `echt` eist ze, en meldt welke naam ontbreekt —
-#    nooit een waarde.
+# ⚠️ **De droge run krijgt geen enkel secret** en doet geen schrijfactie: hij
+#    bouwt met vaste, herkenbare nepwaarden. De source-map-upload naar Sentry is
+#    een neveneffect buiten `--droog` en blijft dus ook weg. Alleen modus `echt`
+#    eist de echte waarden, en meldt welke naam ontbreekt — nooit een waarde.
+#
+# ⚠️ **Wie mag `echt` starten**: iedereen met schrijfrechten, tenzij de omgeving
+#    `productie` *Required reviewers* heeft. Zet daar jezelf neer (DEPLOY.md).
 
 on:
   workflow_dispatch:
@@ -128,8 +130,8 @@ jobs:
       run:
         shell: bash
     # De omgeving waar de secrets in horen, beperkt tot main. Bestaat hij nog
-    # niet, dan maakt GitHub hem zonder secrets aan en werkt de droge run met
-    # nepwaarden; modus `echt` stopt dan op de eerste ontbrekende naam.
+    # niet, dan maakt GitHub hem zonder regels en zonder secrets aan; modus
+    # `echt` stopt dan op de eerste ontbrekende naam.
     environment: productie
     permissions:
       contents: read
@@ -172,22 +174,18 @@ jobs:
           echo "Alle verplichte secrets zijn aanwezig."
 
       # Altijd eerst droog, ook bij modus echt: bouwt, schrijft de routing,
-      # scant de bundel op geheimen en pakt in. Geen Sentry-secrets hier.
+      # scant de bundel en pakt in. ⚠️ **Zonder enig secret**: de hele
+      # Expo-build en al zijn dependencies draaien hier, en die hoeven het
+      # Hostinger-token niet te zien. De nepwaarden zijn vast en herkenbaar; de
+      # scan zoekt het nep-token in de bundel (de plumbing), de scan met de
+      # echte waarden doet de echte deploy vlak vóór de upload.
       - name: Droge run
         env:
-          EXPO_PUBLIC_SUPABASE_URL: ${{ secrets.EXPO_PUBLIC_SUPABASE_URL || 'https://droog.invalid' }}
-          EXPO_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.EXPO_PUBLIC_SUPABASE_ANON_KEY || 'droog-anon-sleutel-geen-echte-waarde' }}
-          HOSTINGER_API_TOKEN: ${{ secrets.HOSTINGER_API_TOKEN || 'droog-token-geen-echte-waarde' }}
-          EXPO_PUBLIC_SENTRY_DSN: ${{ secrets.EXPO_PUBLIC_SENTRY_DSN }}
-          EXPO_PUBLIC_SENTRY_ENVIRONMENT: ${{ secrets.EXPO_PUBLIC_SENTRY_ENVIRONMENT }}
-          EXPO_PUBLIC_APP_URL: ${{ secrets.EXPO_PUBLIC_APP_URL }}
-          EXPO_PUBLIC_VAPID_PUBLIC_KEY: ${{ secrets.EXPO_PUBLIC_VAPID_PUBLIC_KEY }}
+          EXPO_PUBLIC_SUPABASE_URL: https://droog.invalid
+          EXPO_PUBLIC_SUPABASE_ANON_KEY: droog-anon-sleutel-geen-echte-waarde
+          HOSTINGER_API_TOKEN: droog-token-geen-echte-waarde
         run: |
-          # Een leeg secret is voor de app iets anders dan een niet-gezette
-          # variabele (een lege DSN zet Sentry uit): leeg wordt niet gezet.
-          for naam in EXPO_PUBLIC_SENTRY_DSN EXPO_PUBLIC_SENTRY_ENVIRONMENT EXPO_PUBLIC_APP_URL EXPO_PUBLIC_VAPID_PUBLIC_KEY; do
-            [ -n "${!naam}" ] || unset "$naam"
-          done
+          echo "Let op: deze droge run bouwt met nepwaarden voor de Supabase-sleutels en het Hostinger-token. Groen zegt niets over of de echte secrets goed staan; dat toetst alleen modus echt."
           npm run deploy:droog
 
       - name: Echte deploy
@@ -225,7 +223,9 @@ jobs:
             echo "- Uitslag van de job tot hier: $UITSLAG"
             if [ "$MODUS" = "echt" ] && [ "$UITSLAG" = "success" ]; then
               echo "- De site is bijgewerkt en de PWA-paden zijn nagelopen."
+            elif [ "$MODUS" = "echt" ]; then
+              echo "- Mislukt in modus echt: de site kan al gedeeltelijk of geheel live staan. Lees het log."
             else
-              echo "- Er is niets live gezet door deze run, of de run is niet geslaagd."
+              echo "- Droge run: gebouwd met nepwaarden; er is niets live gezet. Dit zegt niets over de echte geheimen."
             fi
           } >> "$GITHUB_STEP_SUMMARY"

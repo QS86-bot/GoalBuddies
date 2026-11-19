@@ -12,7 +12,9 @@
  * ⚠️ De mutaties zijn per grendel, niet één voor het geheel: een mutatie die
  *    twee grendels tegelijk raakt, bewijst niet welke van de twee werkt.
  */
-import { readFileSync } from 'node:fs';
+import { execFileSync, spawnSync } from 'node:child_process';
+import { mkdtempSync, readFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
 import { describe, expect, it } from 'vitest';
@@ -76,7 +78,12 @@ describe('het echte bestand', () => {
     expect(deploy).toMatch(/runs-on:\s*windows-latest/);
   });
 
-  it('draait voor de deploy zelf alleen npm-scripts uit package.json', () => {
+  it('geeft de droge run geen enkel secret', () => {
+    const stap = ECHT.slice(ECHT.indexOf('- name: Droge run'), ECHT.indexOf('- name: Echte deploy'));
+    expect(stap).not.toMatch(/secrets\./);
+  });
+
+  it('heeft in package.json de twee scripts die de workflow aanroept', () => {
     const scripts = JSON.parse(readFileSync(join(__dirname, '../../package.json'), 'utf8')).scripts;
     expect(scripts.deploy).toContain('deploy-web.mjs');
     expect(scripts['deploy:droog']).toContain('--droog');
@@ -121,6 +128,28 @@ describe('IJking — elke mutatie van het echte bestand wordt gevonden', () => {
     ['een invoerveld in een run-blok', DROOG_REGEL, '$1echo ${{ inputs.sha }}\n$1npm run deploy:droog', /scriptinjectie/],
     ['debuglogging', 'permissions: {}', 'permissions: {}\nenv:\n  ACTIONS_STEP_DEBUG: true', /debuglogging/],
     ['een artefact', DROOG_REGEL, '$1npm run deploy:droog\n      - uses: actions/upload-artifact@v4', /artefact/],
+    ['set -ex', DROOG_REGEL, '$1set -ex\n$1npm run deploy:droog', /log/],
+    ['bash -x als shell-opdracht', DROOG_REGEL, '$1bash -x -c "npm run deploy:droog"', /log/],
+    ['kale set', DROOG_REGEL, '$1set\n$1npm run deploy:droog', /log/],
+    ['export -p', DROOG_REGEL, '$1export -p\n$1npm run deploy:droog', /log/],
+    ['/proc/self/environ', DROOG_REGEL, '$1cat /proc/self/environ\n$1npm run deploy:droog', /log/],
+    ['node die process.env leest', DROOG_REGEL, "$1node -e \"console.log(process.env.X)\"\n$1npm run deploy:droog", /log/],
+    ['$env:NAAM (PowerShell)', DROOG_REGEL, '$1Write-Output $env:HOSTINGER_API_TOKEN\n$1npm run deploy:droog', /HOSTINGER_API_TOKEN wordt in een run-blok gelezen/],
+    ['%NAAM% (cmd)', DROOG_REGEL, '$1echo %HOSTINGER_API_TOKEN%\n$1npm run deploy:droog', /HOSTINGER_API_TOKEN wordt in een run-blok gelezen/],
+    ['een geheim achter een # in een run-regel', DROOG_REGEL, '$1echo "tok #$HOSTINGER_API_TOKEN"\n$1npm run deploy:droog', /HOSTINGER_API_TOKEN wordt in een run-blok gelezen/],
+    ['een secret in with: van een actie', /          node-version: '22'\n          cache: npm/, "          node-version: '22'\n          token: ${{ secrets.HOSTINGER_API_TOKEN }}\n          cache: npm", /niet direct als waarde onder env/],
+    ['een andere shell dan bash', /shell: bash/, 'shell: pwsh', /shell is niet precies/],
+    ['gequote push-sleutel', /on:\n  workflow_dispatch:/, 'on:\n  "push":\n  workflow_dispatch:', /trigger/],
+    ['gequote schedule-sleutel', /on:\n  workflow_dispatch:/, "on:\n  'schedule':\n  workflow_dispatch:", /trigger/],
+    ['# binnen een run-blok', DROOG_REGEL, '$1echo "t #1: $HOSTINGER_API_TOKEN"\n$1npm run deploy:droog', /gelezen/],
+    ['een gequote env-waarde', /HOSTINGER_API_TOKEN: \$\{\{ secrets\.HOSTINGER_API_TOKEN \}\}/, 'HOSTINGER_API_TOKEN: "${{ secrets.HOSTINGER_API_TOKEN }}"', /niet direct als waarde/],
+    ['een flow-step', DROOG_REGEL, '$1- { name: x, run: "echo ${{ secrets.HOSTINGER_API_TOKEN }}" }\n$1npm run deploy:droog', /flow-mapping/],
+    ['een run met block-indicator |2', /run: \|\n          echo "Let op/, 'run: |2\n          echo "Let op', /block-indicator/],
+    ['format() om een secret', DROOG_REGEL, "$1echo ${{ format('{0}', secrets.HOSTINGER_API_TOKEN) }}\n$1npm run deploy:droog", /secret/],
+    ['v="${!naam}" en dan echo', DROOG_REGEL, '$1v="${!naam}"\n$1echo "$v"\n$1npm run deploy:droog', /indirecte variabele/],
+    ['env > bestand', DROOG_REGEL, '$1env > e.txt\n$1npm run deploy:droog', /log/],
+    ['een tweede echte deploy zonder voorwaarde', /(\n      - name: Samenvatting)/, '\n      - run: npm run deploy$1', /exact/],
+    ['de voorwaarde met || true', /if: inputs\.modus == 'echt'\n        env:\n          EXPO_PUBLIC_SUPABASE_URL: \$\{\{ secrets\.EXPO_PUBLIC_SUPABASE_URL \}\}\n          EXPO_PUBLIC_SUPABASE_ANON_KEY: \$\{\{ secrets\.EXPO_PUBLIC_SUPABASE_ANON_KEY \}\}\n          HOSTINGER_API_TOKEN: \$\{\{ secrets\.HOSTINGER_API_TOKEN \}\}\n          EXPO_PUBLIC_SENTRY_DSN/, "if: inputs.modus == 'echt' || true\n        env:\n          EXPO_PUBLIC_SUPABASE_URL: ${{ secrets.EXPO_PUBLIC_SUPABASE_URL }}\n          EXPO_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.EXPO_PUBLIC_SUPABASE_ANON_KEY }}\n          HOSTINGER_API_TOKEN: ${{ secrets.HOSTINGER_API_TOKEN }}\n          EXPO_PUBLIC_SENTRY_DSN", /exact/],
     ['toJSON(secrets)', DROOG_REGEL, '$1echo ${{ toJSON(secrets) }}\n$1npm run deploy:droog', /toJSON/],
   ])('%s', (_naam, van, naar, verwacht) => {
     expect(bezwaren(muteer(ECHT, van, naar)).join('\n')).toMatch(verwacht);
@@ -132,7 +161,7 @@ describe('IJking — elke mutatie van het echte bestand wordt gevonden', () => {
     ['een tweede deploypad via curl', DROOG_REGEL, '$1curl -X POST https://example.invalid\n$1npm run deploy:droog', /tweede deploypad/],
     ['de echte deploy zonder modus-voorwaarde', /- name: Echte deploy\n        if: inputs\.modus == 'echt'/, '- name: Echte deploy', /modus == 'echt'/],
     ['geen refcontrole op main', /refs\/heads\/main/g, 'refs/heads/dev', /main niet/],
-    ['geen environment', /    environment: productie\n/, '', /environment/],
+    ['geen environment op deploy', /    environment: productie\n/, '', /environment/],
   ])('%s', (_naam, van, naar, verwacht) => {
     expect(bezwaren(muteer(ECHT, van, naar)).join('\n')).toMatch(verwacht);
   });
@@ -157,7 +186,11 @@ describe('IJking — wat met rust gelaten moet worden', () => {
 
   it('GITHUB_TOKEN in env is geen bezwaar', () => {
     expect(geheimeNamen(ECHT)).toContain('GITHUB_TOKEN');
-    expect(bezwaren(ECHT)).toEqual([]);
+  });
+
+  it('een nepwaarde-melding met de naam erin is geen lek', () => {
+    const met = muteer(ECHT, DROOG_REGEL, '$1echo "nepwaarde voor $naam"\n$1npm run deploy:droog');
+    expect(bezwaren(met)).toEqual([]);
   });
 });
 
@@ -222,5 +255,43 @@ describe('beoordeelAllesGroen', () => {
   it('weigert een check met deze naam die niet van GitHub Actions komt', () => {
     expect(beoordeelAllesGroen([run('success', { app: { slug: 'iets-anders' } })]).ok).toBe(false);
     expect(beoordeelAllesGroen([run('success', { app: null })]).ok).toBe(false);
+  });
+});
+
+describe('de sha-stap tegen een echte git-repo', () => {
+  const script = join(__dirname, '../../scripts/deploy-workflow.mjs');
+
+  function repo() {
+    const dir = mkdtempSync(join(tmpdir(), 'deploy-sha-'));
+    const g = (...a: string[]) =>
+      execFileSync('git', ['-c', 'user.email=t@t', '-c', 'user.name=t', ...a], { cwd: dir, encoding: 'utf8' }).trim();
+    g('init', '-q', '-b', 'main');
+    g('commit', '-q', '--allow-empty', '-m', 'a');
+    g('checkout', '-q', '-b', 'pr');
+    g('commit', '-q', '--allow-empty', '-m', 'tussencommit');
+    const tussen = g('rev-parse', 'HEAD');
+    g('checkout', '-q', 'main');
+    g('merge', '-q', '--no-ff', '-m', 'merge', 'pr');
+    const merge = g('rev-parse', 'HEAD');
+    g('update-ref', 'refs/remotes/origin/main', merge);
+    return { dir, tussen, merge };
+  }
+
+  function draai(dir: string, invoer: string) {
+    return spawnSync('node', [script, 'sha'], { cwd: dir, env: { ...process.env, INVOER_SHA: invoer }, encoding: 'utf8' });
+  }
+
+  it('neemt main en de merge-commit, weigert een tussencommit van de PR', () => {
+    const { dir, tussen, merge } = repo();
+    expect(draai(dir, 'main').status).toBe(0);
+    expect(draai(dir, merge).status).toBe(0);
+    const uit = draai(dir, tussen);
+    expect(uit.status).toBe(1);
+    expect(uit.stderr).toMatch(/hoofdlijn/);
+  });
+
+  it('weigert een hash die geen commit is', () => {
+    const { dir } = repo();
+    expect(draai(dir, 'deadbeef').status).toBe(1);
   });
 });

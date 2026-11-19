@@ -26,7 +26,7 @@
  *   REPO=… SHA=… GITHUB_TOKEN=… node scripts/deploy-workflow.mjs groen
  */
 import { execFileSync } from 'node:child_process';
-import { appendFileSync, readFileSync } from 'node:fs';
+import { appendFileSync } from 'node:fs';
 import process from 'node:process';
 import { pathToFileURL } from 'node:url';
 
@@ -109,11 +109,16 @@ export function beoordeelAllesGroen(runs) {
 // De workflow inlezen
 // ---------------------------------------------------------------------------
 
-/** Commentaar eraf, zodat een uitgelegd `push:` geen trigger lijkt. */
+/**
+ * Commentaarregels eraf, zodat een uitgelegd `push:` geen trigger lijkt.
+ *
+ * ⚠️ **Alleen hele regels.** Een ` #` midden in een regel kan in een run-blok
+ *    bash zijn (`echo "tok #$GEHEIM"`), en een knip daar maakt het lek onzichtbaar.
+ */
 export function zonderCommentaar(yml) {
   return yml
     .split(/\r?\n/)
-    .map((regel) => regel.replace(/(^|\s)#.*$/, ''))
+    .filter((regel) => !/^\s*#/.test(regel))
     .join('\n');
 }
 
@@ -130,7 +135,9 @@ const inspringing = (regel) => regel.length - regel.trimStart().length;
  * @returns {string[]}
  */
 export function triggersUit(yml) {
-  const regels = zonderCommentaar(yml).split('\n');
+  const regels = zonderCommentaar(yml)
+    .split('\n')
+    .map((r) => r.replace(/\s+#.*$/, ''));
   const start = regels.findIndex((r) => /^["']?on["']?\s*:/.test(r));
   if (start === -1) return [];
 
@@ -143,8 +150,11 @@ export function triggersUit(yml) {
     if (regel.trim() === '') continue;
     if (inspringing(regel) === 0) break;
     if (diepte === -1) diepte = inspringing(regel);
-    const sleutel = inspringing(regel) === diepte ? /^\s*([\w-]+)\s*:/.exec(regel) : null;
-    if (sleutel?.[1]) uit.push(sleutel[1]);
+    if (inspringing(regel) !== diepte) continue;
+    // ⚠️ Fail-closed: een sleutel in een vorm die we niet lezen (`"push":`) telt
+    //    als trigger met een naam die nooit `workflow_dispatch` is.
+    const sleutel = /^\s*([\w-]+)\s*:/.exec(regel);
+    uit.push(sleutel?.[1] ?? `onleesbaar(${regel.trim()})`);
   }
   return uit;
 }
@@ -212,15 +222,67 @@ function lekBezwaren(yml) {
       uit.push(`${waar}: een invoerveld staat in een run-blok (scriptinjectie); geef hem door via env:`);
     }
     for (const naam of namen) {
-      if (new RegExp(`\\$\\{?${naam}\\b`).test(tekst)) uit.push(`${waar}: het geheim ${naam} wordt in een run-blok gelezen`);
+      if (new RegExp(`\\$\\{?${naam}\\b|\\$env:${naam}\\b|%${naam}%`, 'i').test(tekst)) {
+        uit.push(`${waar}: het geheim ${naam} wordt in een run-blok gelezen`);
+      }
     }
-    if (/\$\{!/.test(tekst) && /\b(echo|printf|cat|tee)\b|>/.test(tekst)) {
-      uit.push(`${waar}: een indirecte variabele wordt geschreven; dat kan een geheim zijn`);
-    }
-    if (/\b(printenv|set\s+-x|bash\s+-x)\b|^\s*env\s*($|\|)/.test(tekst)) {
+    if (/\b(printenv|bash\s+-\w*x)\b|\bset\s+-\w*x|^\s*(env|set|export\s+-p|declare\s+-p)\s*($|\||>)|\/proc\/[^\s]*environ|process\.env|\bos\.environ/.test(tekst)) {
       uit.push(`${waar}: dit schrijft de omgeving of elke opdracht naar het log`);
     }
   }
+  return uit;
+}
+
+/**
+ * Waar een secret mag staan: als waarde direct onder `env:`, optioneel met een
+ * nepwaarde als terugval. Nergens in `with:`, `name:`, `if:` of een actie van
+ * een ander — daar is de waarde niet meer te volgen. Alleen `bash` als shell:
+ * een andere shell leest `$env:NAAM` of `%NAAM%` en dat ziet de run-controle niet.
+ */
+function plaatsBezwaren(yml) {
+  const uit = [];
+  const toegestaan = /^\s*[A-Z][A-Z0-9_]*:\s*\$\{\{\s*secrets\.\w+(\s*\|\|\s*'[^']*')?\s*\}\}\s*$/;
+
+  zonderCommentaar(yml)
+    .split('\n')
+    .forEach((regel, i) => {
+      if (/secrets\./.test(regel) && !toegestaan.test(regel)) {
+        uit.push(`regel ${i + 1}: een secret staat niet direct als waarde onder env:`);
+      }
+      const shell = /^\s*shell:\s*(.*)$/.exec(regel);
+      if (shell && (shell[1] ?? '').trim() !== 'bash') uit.push(`regel ${i + 1}: shell is niet precies \`bash\``);
+    });
+  return uit;
+}
+
+/**
+ * Vormen van YAML die deze controle niet leest — en dus afkeurt.
+ *
+ * ⚠️ **Fail-closed.** Een parser op regels ziet geen flow-mappings, gequote
+ *    sleutels of een `run:` over meerdere regels; zulke vormen zijn geldig YAML
+ *    en onzichtbaar voor de rest. Wie ze nodig heeft, past eerst de controle aan.
+ */
+function vormBezwaren(yml) {
+  const uit = [];
+  const regels = zonderCommentaar(yml).split('\n');
+
+  regels.forEach((regel, i) => {
+    const waar = `regel ${i + 1}`;
+    if (/^\s*-\s*\{/.test(regel) || /^\s*[\w-]+:\s*\{.*\}\s*$/.test(regel) && !/:\s*\{\s*\}\s*$/.test(regel)) {
+      uit.push(`${waar}: een flow-mapping ({ … }) wordt niet gelezen`);
+    }
+    if (/^\s*(-\s+)?["'][\w-]+["']\s*:/.test(regel) && !/^\s*["']?on["']?\s*:/.test(regel)) {
+      uit.push(`${waar}: een gequote sleutel wordt niet gelezen`);
+    }
+    if (/^\s*(-\s+)?run:\s*[|>][-+]?\d/.test(regel)) uit.push(`${waar}: een block-indicator met inspringing wordt niet gelezen`);
+    const inline = /^(\s*)(?:-\s+)?run:\s*([^|>\s].*)$/.exec(regel);
+    if (inline && inspringing(regels[i + 1] ?? '') > (inline[1] ?? '').length && (regels[i + 1] ?? '').trim() !== '') {
+      uit.push(`${waar}: een run over meerdere regels zonder | of > wordt niet gelezen`);
+    }
+    if (/\$\{!/.test(regel) && !/^\s*(if\s+)?\[\s+-[zn]\s+"\$\{![A-Za-z_]+\}"\s+\]/.test(regel)) {
+      uit.push(`${waar}: een indirecte variabele buiten een -z/-n-toets kan een geheim schrijven`);
+    }
+  });
   return uit;
 }
 
@@ -239,13 +301,16 @@ function verbodenBezwaren(yml) {
   return regels.filter(([patroon]) => patroon.test(kaal)).map(([, reden]) => `verboden: ${reden}`);
 }
 
-/** De stap die om `regelnummer` heen zit, als tekst. */
+/** De stap rond regel `index`, als tekst. */
 function stapRond(regels, index) {
-  let begin = index;
-  while (begin > 0 && !/^\s*-\s+(name|uses|id|run|if):/.test(regels[begin] ?? '')) begin -= 1;
+  const begin = (van, stap) => {
+    let i = van;
+    while (i > 0 && i < regels.length && !/^\s*-\s+(name|uses|id|run|if):/.test(regels[i] ?? '')) i += stap;
+    return i;
+  };
   let eind = index + 1;
   while (eind < regels.length && !/^\s*-\s+(name|uses|id|run|if):/.test(regels[eind] ?? '')) eind += 1;
-  return regels.slice(begin, eind).join('\n');
+  return regels.slice(begin(index, -1), eind).join('\n');
 }
 
 /** De volgorde en de grenzen van de deploy zelf. */
@@ -253,13 +318,16 @@ function deployBezwaren(yml) {
   const uit = [];
   const regels = zonderCommentaar(yml).split('\n');
   const droog = regels.findIndex((r) => /\bnpm run deploy:droog\b/.test(r));
-  const echt = regels.findIndex((r) => /\bnpm run deploy(?![:\w-])/.test(r));
+  const echte = regels.flatMap((r, i) => (/\bnpm run deploy(?![:\w-])/.test(r) ? [i] : []));
 
   if (droog === -1) uit.push('de workflow draait `npm run deploy:droog` niet');
-  if (echt === -1) uit.push('de workflow draait `npm run deploy` niet');
-  if (droog !== -1 && echt !== -1 && droog > echt) uit.push('de droge run staat ná de echte deploy');
-  if (echt !== -1 && !/\bif:[^\n]*inputs\.modus\s*==\s*'echt'/.test(stapRond(regels, echt))) {
-    uit.push("de echte deploy staat niet achter `if: inputs.modus == 'echt'`");
+  if (echte.length === 0) uit.push('de workflow draait `npm run deploy` niet');
+  if (droog !== -1 && echte.some((i) => i < droog)) uit.push('de droge run staat ná de echte deploy');
+  for (const i of echte) {
+    // ⚠️ Elke aanroep, en de voorwaarde exact: `… || true` is geen voorwaarde.
+    if (!/^\s*(-\s+)?if:\s*(\$\{\{\s*)?inputs\.modus\s*==\s*'echt'(\s*\}\})?\s*$/m.test(stapRond(regels, i))) {
+      uit.push("een echte deploy staat niet achter exact `if: inputs.modus == 'echt'`");
+    }
   }
   return uit;
 }
@@ -279,8 +347,11 @@ function kaderBezwaren(yml) {
   if (!/^concurrency:/m.test(kaal) || !/cancel-in-progress:\s*false/.test(kaal)) {
     uit.push('geen `concurrency:` met `cancel-in-progress: false`');
   }
-  if (!/refs\/heads\/main/.test(kaal)) uit.push('de workflow weigert een andere ref dan main niet');
-  if (!/^\s+environment:\s*\S+/m.test(kaal)) uit.push('de deploy-job draait niet in een `environment:`');
+  if (!/if \[ "\$REF" != "refs\/heads\/main" \]; then[\s\S]*?exit 1/.test(kaal)) {
+    uit.push('de workflow weigert een andere ref dan main niet (stap met `exit 1`)');
+  }
+  const deploy = kaal.slice(kaal.search(/^  deploy:/m));
+  if (!/^    environment:\s*\S+/m.test(deploy)) uit.push('de job `deploy` draait niet in een `environment:`');
   return uit;
 }
 
@@ -294,7 +365,7 @@ function kaderBezwaren(yml) {
  * @returns {string[]}
  */
 export function bezwaren(yml) {
-  return [...kaderBezwaren(yml), ...lekBezwaren(yml), ...verbodenBezwaren(yml), ...deployBezwaren(yml)];
+  return [...kaderBezwaren(yml), ...lekBezwaren(yml), ...plaatsBezwaren(yml), ...vormBezwaren(yml), ...verbodenBezwaren(yml), ...deployBezwaren(yml)];
 }
 
 // ---------------------------------------------------------------------------
@@ -310,6 +381,23 @@ function stop(bericht) {
   return 1;
 }
 
+/**
+ * Of een commit op de first-parent-keten van `origin/main` ligt.
+ *
+ * ⚠️ **Voorouder is te ruim.** Een PR landt met een merge-commit, dus álle
+ *    tussencommits van die PR zijn voorouder van `main` — ook een commit waarin
+ *    `ci.yml` zijn eigen groene `Alles groen` vervalste en die later is teruggedraaid.
+ *    Alleen wat `main` zelf als stand heeft gehad, is een toestand die gereviewd is.
+ */
+function opHoofdlijn(sha) {
+  const keten = execFileSync('git', ['rev-list', '--first-parent', 'refs/remotes/origin/main'], {
+    encoding: 'utf8',
+    timeout: 30_000,
+    maxBuffer: 64 * 1024 * 1024,
+  });
+  return keten.split('\n').includes(sha);
+}
+
 /** Vertaalt de invoer naar één commit op `main` en schrijft hem als stap-uitvoer. */
 function opSha() {
   const invoer = beoordeelShaInvoer(process.env.INVOER_SHA);
@@ -319,9 +407,11 @@ function opSha() {
   let sha;
   try {
     sha = git('rev-parse', '--verify', '--end-of-options', `${doel}^{commit}`);
-    git('merge-base', '--is-ancestor', sha, 'refs/remotes/origin/main');
-  } catch {
-    return stop(`${invoer.waarde} is geen commit die op main staat.`);
+  } catch (fout) {
+    return stop(`${invoer.waarde} is geen commit (${fout instanceof Error ? fout.message.split('\n')[0] : 'git faalde'}).`);
+  }
+  if (!opHoofdlijn(sha)) {
+    return stop(`${sha} staat niet op de hoofdlijn van main (alleen merge-commits en directe commits, geen tussencommits van een PR).`);
   }
 
   console.log(`Gedeployd wordt ${sha}.`);
@@ -360,12 +450,7 @@ async function hoofd() {
   const opdracht = process.argv[2];
   if (opdracht === 'sha') return opSha();
   if (opdracht === 'groen') return opGroen();
-  if (opdracht === 'bezwaren') {
-    const gevonden = bezwaren(readFileSync(process.argv[3] ?? '', 'utf8'));
-    for (const b of gevonden) console.error(`  - ${b}`);
-    return gevonden.length === 0 ? 0 : 1;
-  }
-  return stop('Gebruik: sha | groen | bezwaren <bestand>');
+  return stop('Gebruik: sha | groen');
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
