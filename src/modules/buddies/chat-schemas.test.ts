@@ -37,6 +37,7 @@ function bericht(over: Partial<ChatBericht> & { id: string; created_at: string }
     attachment_name: null,
     system_event: null,
     getallen: null,
+    prestatie: null,
     subject_name: null,
     actor_name: null,
     aantal: null,
@@ -149,6 +150,8 @@ describe('domeinregel 7: falen is nooit publiek', () => {
       //    verhuisd, en uit dat getal is af te leiden wie er nog niet had
       //    afgesloten. Het bericht draagt het daarom niet.
       'huddle_day_changed',
+      // QS8-736 (0309): een prestatie die iemand zelf deelt; nooit een titel, niveau of XP.
+      'prestatie_gedeeld',
     ]);
   });
 

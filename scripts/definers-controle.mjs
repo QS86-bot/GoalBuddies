@@ -579,6 +579,7 @@ const LEESREGISTER = new Map([
   //    en kan iemand dat met één API-verzoek uitlezen buiten de UI om?
   ['groep_teller', 'Lidmaatschapspoort: `where is_group_member(p_group_id)` — geen lid, nul rijen. Telt alleen omhoog (domeinregel 7).'],
   ['ketting_stand', 'Lidmaatschapspoort: `where is_group_member(p_group_id)`. Geeft `{schakels, in_aanmerking, voltallig}` en nooit een naam.'],
+  ['deel_prestatie', 'Poort op `badges.user_id = auth.uid()` (alleen een prestatie die je zelf hebt) en op `is_group_member(p_group_id)`; schrijft één systeembericht zonder naam, titel of niveau. Getoetst door tests/rls/prestatie-delen.test.ts met echte JWT\'s.'],
   ['groep_klassement', 'Poort op `lid_van_open_groep(p_group_id)`: in een beschermde groep nul rijen (A54). Geen delta en geen datum, dus geen gemiste week af te leiden.'],
   // ⚠️ **De enige rij in dit register waar het antwoord op de eerste vraag "ja"
   //    is, en dat is geen bezwaar maar het oppervlak zelf** (0268, QS8-477).

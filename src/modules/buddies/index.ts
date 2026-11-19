@@ -285,3 +285,4 @@ export {
 export type { GevondenPersoon } from './zoeken';
 
 export { fetchGroepGedempt, zetGroepGedempt } from './demping';
+export { deelPrestatie, leesDeelUitslag, type DeelUitslag } from './prestatie-delen';

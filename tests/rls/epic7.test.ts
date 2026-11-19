@@ -903,6 +903,8 @@ describe.skipIf(!rlsTestsConfigured)('EPIC 7 — chat, systeemberichten, weekafs
               type: 'system',
               system_event: toegestaan,
               body: `allowlist ${toegestaan}`,
+              // ⚠️ QS8-736: dit type draagt een CHECK op zijn payload (alleen de badgesleutel).
+              ...(toegestaan === 'prestatie_gedeeld' ? { payload: { badge: 'first_goal' } } : {}),
             })
             .select('id')
             .single();

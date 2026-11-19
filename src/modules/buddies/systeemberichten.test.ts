@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import { SYSTEEM_GEBEURTENISSEN } from './chat-schemas';
-import { kentGebeurtenis, oudLid, systeemberichtTekst } from './systeemberichten';
+import { GEDEELDE_PRESTATIES, kentGebeurtenis, oudLid, systeemberichtTekst } from './systeemberichten';
 
 /**
  * QS8-107 stap 2.
@@ -25,6 +25,9 @@ function invoer(over: Partial<Parameters<typeof systeemberichtTekst>[0]> = {}) {
     //    blijft toetsen wat hij belooft. Zonder deze zou `season_recap` op zijn
     //    `body` terugvallen en de test groen blijven om de verkeerde reden.
     getallen: { weken: 47, mijlpalen: 12, schakels: 63 } as Readonly<Record<string, number>> | null,
+    // ⚠️ Een bekende sleutel, zodat `prestatie_gedeeld` in de eerste test zijn eigen zin haalt
+    //    en niet op de zin zonder prestatienaam terugvalt.
+    prestatie: 'first_goal' as string | null,
     ...over,
   };
 }
@@ -114,12 +117,20 @@ describe('de zinnen zelf', () => {
     //       van wie onderaan staat, en een dalend getal is een gemiste week met
     //       een omweg. Wie hier een zevende veld bij zet, maakt die afweging
     //       opnieuw en schrijft hem hier op.
+    //    ⚠️ **`prestatie` is dat zevende veld, QS8-736, en de afweging is gemaakt.**
+    //       Het draagt de badgesleutel van een prestatie die iemand **zelf** in deze
+    //       groep deelde. Het is een sleutel en geen titel, notitie of niveau; het
+    //       bericht bestaat alleen op een uitdrukkelijke handeling van die persoon, dus
+    //       het ontbreken ervan zegt niets. Wat er bewust níét in mag: XP, zeldzaamheid,
+    //       een datum of de vraag wie een prestatie *niet* heeft gedeeld. Een achtste
+    //       veld vraagt dezelfde afweging opnieuw.
     const velden = Object.keys(invoer());
     expect(velden.sort()).toEqual([
       'aantal',
       'actor_name',
       'body',
       'getallen',
+      'prestatie',
       'subject_name',
       'system_event',
     ]);
@@ -190,5 +201,38 @@ describe('een gebeurtenis die deze app niet kent', () => {
   it('toont niets als er ook geen opgeslagen zin is', () => {
     // Geen "onbekend bericht": dat is ruis in een gesprek.
     expect(systeemberichtTekst(invoer({ system_event: null, body: '' }))).toBe('');
+  });
+});
+
+describe('een gedeelde prestatie — QS8-736', () => {
+  it('noemt de persoon en de prestatie, en verder niets', () => {
+    const tekst = systeemberichtTekst(invoer({ system_event: 'prestatie_gedeeld', prestatie: 'streak_4' }));
+    expect(tekst).toBe('Sanne deelt een prestatie: Vier weken op rij.');
+    // Geen XP, geen zeldzaamheid, geen niveau en geen datum in de zin.
+    expect(tekst).not.toMatch(/\bXP\b|niveau|zeldzaam|ongewoon|\d/i);
+  });
+
+  it('valt voor een onbekende of ontbrekende sleutel terug op een zin zonder prestatienaam', () => {
+    for (const prestatie of [null, 'bestaat_niet']) {
+      expect(systeemberichtTekst(invoer({ system_event: 'prestatie_gedeeld', prestatie }))).toBe(
+        'Sanne deelt een prestatie.',
+      );
+    }
+  });
+
+  it('toont na een accountverwijdering een oud-lid en niet de opgeslagen zin', () => {
+    const tekst = systeemberichtTekst(
+      invoer({ system_event: 'prestatie_gedeeld', subject_name: null, prestatie: 'first_goal' }),
+    );
+    expect(tekst).toBe('Een oud-lid deelt een prestatie: Eerste doel af.');
+  });
+
+  it('deelbaar of bewust niet: elke badge staat in precies één lijst (een nieuwe badge is een rode test)', async () => {
+    const { BADGES } = await import('../goals/badges');
+    // ⚠️ Een nieuwe badge is niet vanzelf deelbaar: hij moet langs de twee vragen van domeinregel 7
+    //    en dan hier óf in `GEDEELDE_PRESTATIES` (en in `prestatie_deelbaar()`, migratie 0309) óf hieronder.
+    const NIET_DEELBAAR: readonly string[] = [];
+    const ingedeeld = [...GEDEELDE_PRESTATIES, ...NIET_DEELBAAR].sort();
+    expect(ingedeeld).toEqual([...BADGES].sort());
   });
 });
