@@ -175,6 +175,11 @@ niet dezelfde bestanden raken.
 > **19-11-2026: Quinten koos A, B, C en D zoals geadviseerd.** Volgorde Fase 0, dan 1 en 2;
 > onze navy-tokens blijven; geen plan bouwen vóór aanmelden; de helden blijven merkdrager.
 > De tekst hieronder is de onderbouwing van die keuzes.
+>
+> **Aangepast later op 19-11-2026:** Quinten komt terug op besluit **B**: de huisstijl en de indeling
+> moeten zeer vergelijkbaar worden met Habit Huddle. Zie `docs/research/fase-1-acceptatiecriteria.md` §1
+> voor hoe dat is vertaald (indeling zo dicht mogelijk, eigen kleurwaarden en eigen pictogrammen,
+> vanwege ToS §7). A, C en D blijven staan.
 
 **A. Volgorde.** *Advies:* Fase 0, dan 1 en 2. Dat levert het snelst het gevoel op dat je zoekt, zonder
 risico voor de domeinregels. Fase 3 en 4 daarna.
