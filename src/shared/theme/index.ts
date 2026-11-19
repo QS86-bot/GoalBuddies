@@ -38,6 +38,7 @@ export {
   type Uiterlijk,
   type UiterlijkId,
   type UiterlijkPalet,
+  type Verloop,
 } from './uiterlijken';
 
 export {
