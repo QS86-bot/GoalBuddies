@@ -487,7 +487,7 @@ function meldOvergeslagen(rapport, wat = '`npm audit`') {
 
 /**
  * Het volledige register-oordeel: elke afwijking van NAGEKEKEN is rood.
- * Dit is het oordeel op `main`, het wekelijkse schema en lokaal — ongewijzigd
+ * Dit is het oordeel van de geplande run (`advisories.yml`), handmatig en lokaal — ongewijzigd
  * sinds QS8-191.
  */
 function strikt(rapport) {
@@ -523,7 +523,7 @@ function strikt(rapport) {
  *
  * ⚠️ **`pr` is de uitzondering en `strikt` de standaard.** Alleen een
  *    `pull_request`-run en een `push` naar een andere branch dan `main` krijgen
- *    het lichte oordeel; `main`, het wekelijkse `schedule`, een tag, een lege
+ *    het lichte oordeel; `main` krijgt sinds QS8-707 `vorm`; het `schedule`, een tag, een lege
  *    omgeving (lokaal) en elke onbekende waarde krijgen het volledige
  *    register-oordeel. Een onbekende gebeurtenis valt dus naar de strenge kant.
  *

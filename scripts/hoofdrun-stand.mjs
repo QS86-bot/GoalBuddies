@@ -146,8 +146,8 @@ function looptNog(run) {
  * De commits in dit venster die geen afgeronde uitslag (meer) hebben.
  *
  * ⚠️ **Per commit en niet per run, want een sha kan meerdere runs hebben** — een
- *    herstart is een tweede poging op hetzelfde run-id, maar een `push` en de
- *    wekelijkse `schedule` zijn twee runs op dezelfde sha. Eén afgeronde uitslag
+ *    herstart is een tweede poging op hetzelfde run-id, maar een `push` en een
+ *    `pull_request`-run zijn twee runs op dezelfde sha. Eén afgeronde uitslag
  *    is genoeg; dan is die toestand gemeten.
  *
  * ⚠️ Een commit waarvan nog een run **draait**, telt hier niet mee: die kan zijn

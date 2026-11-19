@@ -982,6 +982,12 @@ describe('de geplande run — QS8-707', () => {
     expect(modusUit({ GITHUB_EVENT_NAME: 'workflow_dispatch', GITHUB_REF: 'refs/heads/main' })).toBe('strikt');
   });
 
+  it('kan niet stil groen worden: geen continue-on-error, geen if, geen flow-stijl on', () => {
+    expect(stappen.some((r) => /continue-on-error|^\s*if:/.test(r))).toBe(false);
+    const aan = stappen.find((r) => /^on:/.test(r));
+    expect(aan, 'on: staat als blok, zodat de trigger regel voor regel te toetsen is').toBe('on:');
+  });
+
   it('laat ci.yml geen tweede, wekelijkse strikte run dragen', () => {
     expect(ci.split('\n').filter((r) => !r.trim().startsWith('#')).some((r) => r.includes('cron:'))).toBe(false);
   });

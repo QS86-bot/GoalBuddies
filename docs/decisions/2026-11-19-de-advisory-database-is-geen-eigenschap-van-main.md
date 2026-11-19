@@ -51,6 +51,10 @@ Elke grendel met de hand gebroken in `scripts/audit-controle.mjs`, telkens `test
 5. **Een PR die het register in `vorm` correct maar inhoudelijk onjuist laat** (verkeerde `in_bundel`) is review-gebied, zoals bij QS8-674 punt 4.
 6. **Lokaal blijft de poort strikt**: een verse advisory kan `npm run poort` rood maken. Dat is bewust: lokaal is de enige plek waar iemand het meteen leest, en het raakt `main` niet. Wil Quinten dat ook weg, dan is dat een één-regelwijziging in `modusUit()`.
 
+7. **Een PR die rood gemerged wordt, laat `main` groen.** `Alles groen` is geen verplichte check (PR #583 deed het al eens). Voor QS8-707 werd `main` dan strikt rood en wees de regel "rood op `main` is van wie als laatste merde" iemand aan; nu doet dat alleen de mail van de volgende ochtend. Dit is een gevolg van optie A en door de code-critic gevonden, niet door Quinten afgewogen.
+8. **Niemand leest de geplande run.** `hoofdrun:stand`, `uurjobs:controle` en `/audit` kijken niet naar `advisories.yml`, en de ontvanger van de mail (wie de cron als laatste wijzigde, of de repo-eigenaar) is niet gemeten. Wie een rode advisories-run oppakt: tot Quinten anders bepaalt, de sessie die hem ziet, met dezelfde afspraak als bij rood op `main`. **Voorgesteld vervolg (Quinten beslist):** `hoofdrun:stand` of een hartslag met een venster van ~26 uur laat `advisories.yml` meetellen. Controleer eerst met een `workflow_dispatch` dat een rode run bij Quinten in de inbox landt.
+9. **De workflow kan in de GitHub-UI uitgezet worden**, wat in de repo niet te toetsen is. Een geplande workflow wordt bovendien door GitHub na zestig dagen zonder repo-activiteit uitgezet; de repo is actief, maar dat is een aanname.
+
 ## Terugdraaien
 
 De `vorm`-regel in `modusUit()` weghalen zet `main` weer strikt. `advisories.yml` verwijderen en het `schedule:` terugzetten in `ci.yml` (te vinden in de git-geschiedenis van QS8-191) herstelt de wekelijkse run. Geen migratie, geen data.
