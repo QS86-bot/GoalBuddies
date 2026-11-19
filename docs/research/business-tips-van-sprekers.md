@@ -10,13 +10,14 @@
 
 ## 0. De stand in tien regels
 
-1. **Eén van de drie sprekers is vastgesteld: Daniel Priestley** (door Quinten
-   bevestigd; "Daniel Christ" in de vraag was dus Daniel Priestley).
-2. **"Daan Smit" en "Veronique Prins" zijn niet geïdentificeerd.** Een zoekronde
-   gaf geen businessspreker onder die namen. Er is niets over hen onderzocht en
-   dus ook niets verzonnen. Zie §2.
-3. **Priestleys kaders zijn te destilleren tot vijf bruikbare tactieken** voor
-   een gebruiker met een business-doel (§3).
+1. **Alle drie de sprekers zijn bevestigd door Quinten** (19-11-2026):
+   Daniel Priestley ("Daniel Christ"), **Daan Schmidt** ("Daan Smit", StoryBrand
+   Nederland) en **Véronique Prins** (Kick Ass Business Coach).
+2. **Per spreker een ander soort bron.** Priestley en Prins hebben eigen kaders;
+   bij Schmidt is het kader StoryBrand van Donald Miller, en zijn eigen sites
+   verkopen vooral zijn diensten (§2).
+3. **Priestleys kaders zijn te destilleren tot vijf bruikbare tactieken** (§3),
+   Prins levert er vijf (§3a), Schmidt twee die iets toevoegen (§3b).
 4. **Letterlijke tekst hergebruiken mag niet zomaar.** De gebruiksvoorwaarden
    van Dent Global (§7 *Intellectual Property*) verbieden kopiëren, aanpassen,
    verspreiden en exploiteren van onder meer "text, video, audio, slides,
@@ -29,12 +30,12 @@
    geen nieuw systeem (§5).
 7. **Geen AI-call per gebruiker.** Een vaste set blijft het antwoord
    (onwrikbare regel 6, besluit A48).
-8. **Acht conceptteksten staan klaar** in §6, alle acht door de
+8. **Vijftien conceptteksten staan klaar** in §6, alle vijftien door de
    tegenvaller-zeef gehaald.
 9. **Wat niet gemeten is**: Priestleys eigen boeken zijn niet gelezen, alleen
    zijn sites en samenvattingen van anderen (§1).
-10. **Wat ik van Quinten nodig heb**: wie Smit en Prins zijn, en of er PDF's
-    zijn (§8).
+10. **Wat ik nog nodig heb**: Quintens notulen van de live sessies (§8).
+    Boeken van een piratensite zijn geweigerd (§1).
 
 ## 1. Wat gedaan is en wat dat waard is
 
@@ -45,7 +46,10 @@
 | ManageMagazine, *How to Become a Key Person of Influence According to Daniel Priestley* | Artikel van een derde | Ja, volledig | **Secundair**: interpretatie, niet de bron |
 | Samenvattingen van *Oversubscribed* en *24 Assets* (Blinkist, Shortform, blogs) | Commerciële samenvattingen | Alleen de zoekresultaten, niet de pagina's | **Zwak** |
 | Podcastomschrijvingen (Diary of a CEO e.a.) | Titels en blurbs | Alleen de blurbs | **Zwak** |
-| Zijn boeken zelf | | **Nee** | Ontbreekt |
+| `veroniqueprins.nl` (home) | Eigen site van Prins | Ja, via `curl` | Primair, maar verkooppagina |
+| Managementboek.nl, boekbespreking *Dé Kick Ass Code* | Door Prins zelf geschreven bespreking | Ja | Primair voor haar stappen; het boek zelf niet |
+| `buzzlytics.eu`, drie artikelen van Schmidts bedrijf | Verkoopartikelen over StoryBrand-implementatie | Ja | Primair, maar weinig eigen tactiek |
+| De boeken van alle drie | | **Nee** | Ontbreekt |
 
 ⚠️ **De grootste beperking:** het onderzoek rust op secundaire bronnen. Een
 specifiek getal in een secundaire bron kan van de samenvatter komen en niet van
@@ -54,24 +58,34 @@ leest meer dan er gemeten is.
 
 📏 **Praktisch:** `WebFetch` kon de sites in deze sessie niet bereiken
 (`getaddrinfo ENOTFOUND`), `curl` via de proxy wel. De paginatekst is daarom
-met `curl` opgehaald. Vijf hosts moesten bovendien op de allowlist van de
-omgeving `goalbuddies-marktbronnen`: `www.dent.global`, `www.danielpriestley.com`,
-`www.managemagazine.com`, en na een redirect ook `dent.global` en
-`danielpriestley.com`. Dat is een persoonlijke omgeving en alleen leesverkeer.
+met `curl` opgehaald. Tien hosts moesten bovendien op de allowlist van de
+omgeving `goalbuddies-marktbronnen`: de sites van Priestley, Dent en
+ManageMagazine (met en zonder `www`, want ze sturen door), `veroniqueprins.nl`,
+`buzzlytics.eu` en Managementboek.nl. Dat is een persoonlijke omgeving en
+alleen leesverkeer.
 
-## 2. De twee sprekers die niet gevonden zijn
+⚠️ **Bronnen die ik bewust niet gebruikt heb.** Quinten wees op oceanofpdf.com als
+plek voor de boeken van StoryBrand en van andere businesscoaches. Dat is een site
+met illegale kopieën. Daar komen geen bronnen vandaan: het zou de rechtenkant
+van §4 ondergraven, en een tip die uit een gepirateerd boek komt is een
+tip waarvan de herkomst niet te verdedigen is. De legale routes zijn Quintens eigen
+notulen, openbare uitingen van de sprekers en boeken die Quinten zelf gekocht
+heeft.
 
-Gezocht op *"Daan Smit spreker ondernemer business tips"* en *"Veronique Prins
-spreker ondernemer"*. Er kwam geen spreker onder die namen uit. De
-dichtstbijzijnde treffers waren andere mensen:
+## 2. De twee andere sprekers, nu gevonden
 
-- **Meiny Prins** (CEO Priva), geen Veronique.
-- **Kenneth Smit**, **Piet Hein Smit**, **Daan Schmidt** (StoryBrand-podcast).
+Een eerste zoekronde op de namen uit de vraag vond niets. Een tweede ronde op
+andere spellingen gaf twee kandidaten, en **Quinten heeft beide bevestigd**:
 
-Niets hiervan is bevestigd als de bedoelde persoon, en ik heb er niets over
-opgeschreven. De spelling kan afwijken, of het gaat om sprekers met weinig
-publiek vindbaar materiaal. Dat laatste is voor dit onderzoek een probleem op
-zich: **zonder een leesbaar bronnenpakket is er geen tactiek te destilleren.**
+| Genoemd | Bedoeld | Wat het is | Bron |
+|---|---|---|---|
+| Daan Smit | **Daan Schmidt** | Oprichter StoryBrand Nederland, host van de Nederlandse StoryBrand-podcast, mede-eigenaar van Buzzlytics (voorheen Schmidt Communicatie) | impactplus.com, podcastlijsten, `buzzlytics.eu` |
+| Veronique Prins | **Véronique Prins** | "Kick Ass Business Coach" voor coaches en therapeuten, auteur van *Dé Kick Ass code voor succesvol ondernemen* (2019), podcast | `veroniqueprins.nl`, Managementboek.nl |
+
+📏 **Een verschil dat de aanpak bepaalt:** StoryBrand is het kader van **Donald
+Miller**. Daan Schmidt is gecertificeerd gids en introduceerde het in Nederland;
+hij is er dus een uitlegger van en geen bedenker. Wat hij zelf toevoegt staat in
+§3b en is dunner dan bij de andere twee.
 
 ## 3. Daniel Priestley: kaders en tactieken
 
@@ -100,6 +114,65 @@ geholpen. Dat is een marketingbewering op zijn eigen site, niet getoetst.
 zijn in dit onderzoek net degene die het minst zeker zijn. Een tip die
 *"schrijf er twaalf"* zegt en die aan Priestley toeschrijft, belooft iets wat
 alleen een artikel van een derde zegt.
+
+## 3a. Véronique Prins: kaders en tactieken
+
+Bron: haar eigen boekbespreking op Managementboek.nl (door haarzelf geschreven,
+met een korte lijst uit het boek) en de homepage van `veroniqueprins.nl`. Het
+boek zelf is niet gelezen. Het bestaat uit tien stappen die volgens haar
+onafhankelijk van elkaar te volgen zijn. Zichtbaar zijn alleen de stappen die zij
+in die bespreking uitlicht.
+
+| # | Tactiek | Kern | Zekerheid |
+|---|---|---|---|
+| 1 | **Zelfleiderschap** | Gedraag je als de eigenaar van je bedrijf, niet als werknemer ervan; ook bij tegenslag. | Eigen bespreking |
+| 2 | **Stap 3: all-in of all-out** | Succes kan niet met "een beetje"; commitment, geen aantal uren. | Eigen bespreking |
+| 3 | **Stap 4: kop boven het maaiveld** | Wie zich presenteert als een van de vele, blijft gemiddeld. Een visie die schuurt, laat klanten kiezen. | Eigen bespreking |
+| 4 | **Actie boven plan** | Een plan op papier doet niets zonder doen; angst overwin je door in actie te komen. | Eigen bespreking |
+| 5 | **Stap 8: doelen met buikpijn** | Een doel geeft focus; baseer het op wat je nodig hebt, niet op wat "reëel" is. | Eigen bespreking |
+| 6 | **Simpel stappenplan** | Een eenvoudig, gevolgd stappenplan maakt omzet stabiel; ingewikkeld maakt het niet beter. | Homepage |
+
+⚠️ **Haar cijfers zijn marketing, niet bewijs.** Haar site noemt een omzet die
+van € 10.000 in het eerste jaar naar vele malen meer ging, en *"duizenden"*
+klanten. Dat zijn beweringen op een verkooppagina, door haar zelf geschreven.
+Ze staan er om te laten zien waar de tactiek vandaan komt, niet als toets dat ze
+werkt.
+
+⚠️⚠️ **Ze botst op twee plekken met de app, en dat is geen smaakkwestie.**
+
+1. **Toon.** Haar kracht is directheid: *"allergisch voor excuses"*, *"ik vertel je
+   niet altijd wat je wilt horen"*. De app draait op het tegendeel: falen is
+   nooit publiek (domeinregel 7), de tipregels bevatten geen tegenvaller, en de
+   weektip zegt wat je wél deed. **Haar tactiek is bruikbaar, haar toon niet.**
+   De tips hieronder nemen het idee over en laten de scherpte weg.
+2. **Doelfilosofie.** *"Baseer je doel niet op wat reëel is"* en *"all-in of
+   all-out"* staan haaks op de vloer (domeinregel 8): de versie die je op je
+   slechtste week nog haalt, met de reeks die dan doorloopt. De app zegt
+   uitdrukkelijk dat de reeks de gebruiker dient. Tip T11 neemt daarom alleen de
+   helft over die past (een ambitieus doel) en laat de all-or-nothing weg.
+
+## 3b. Daan Schmidt: wat hij toevoegt aan StoryBrand
+
+Bron: drie artikelen op `buzzlytics.eu` van zijn bedrijf. Het zijn
+verkoopartikelen voor zijn workshops. Ze beschrijven het kader van Miller en
+zijn eigen implementatietraject, en geven weinig eigen tactiek.
+
+| # | Tactiek | Kern | Zekerheid |
+|---|---|---|---|
+| 1 | **Eénzinsboodschap** | Eén alinea zegt welk probleem je oplost, wat de oplossing is en welk resultaat je levert. | Eigen artikel; sluit aan op Priestleys Pitch (P1) |
+| 2 | **Voortgang boven perfectie** | Verlies je niet in perfectie; wacht niet op het perfecte moment. | Eigen artikel |
+| 3 | **Nulmeting en doelen vooraf** | Leg vast wat je wanneer klaar wilt hebben, voordat je begint. Dat zijn geen omzetdoelen. | Eigen artikel |
+| 4 | **Ritme houden** | Te lang tussen twee stappen laten gaan, schaadt het resultaat. | Eigen artikel |
+
+📏 **Eén convergentie die telt:** Priestleys *Pitch* en Schmidts *eénzinsboodschap*
+zijn verschillende formuleringen van hetzelfde: zeg voor wie, welk probleem en
+welk resultaat. Twee onafhankelijke bronnen op één idee is het sterkste signaal
+in dit onderzoek, en T1 profiteert ervan.
+
+⚠️ **Wat ik niet gebruik:** *"kun je StoryBrand zelf doen met de boeken?"* is
+een verkoopvraag van zijn bedrijf (professionele begeleiding verkoopt hij), en
+de rest gaat over wireframes en websites, wat voor een doelen-app geen tip
+oplevert.
 
 ## 4. Rechten: wat mag en wat niet
 
@@ -185,9 +258,9 @@ getoond"), dan is dat een eigen issue met de vragen van onwrikbare regel 17.
 
 ## 6. Conceptteksten
 
-Alle acht in eigen woorden, positief van toon, zonder tegenvaller, zonder
-emoji, en **getoetst tegen `TEGENVALLER_WOORDEN`**: geen treffer. Lengte 94 tot
-140 tekens. Ze zijn een startpunt voor Quinten, geen definitieve tekst.
+Alle vijftien in eigen woorden, positief van toon, zonder tegenvaller, zonder
+emoji, en **getoetst tegen `TEGENVALLER_WOORDEN`**: geen treffer. Lengte 90 tot
+141 tekens. Ze zijn een startpunt voor Quinten, geen definitieve tekst.
 
 | # | Tekst | Past bij | Gebaseerd op | Zekerheid van de bron |
 |---|---|---|---|---|
@@ -199,6 +272,16 @@ emoji, en **getoetst tegen `TEGENVALLER_WOORDEN`**: geen treffer. Lengte 94 tot
 | T6 | Laat vraag ontstaan voordat je levert. Een lijst met mensen die willen, is meer waard dan een product dat nog niemand kent. | Weektip | Oversubscribed | **Zwak**: alleen samenvattingen |
 | T7 | Verkoop je alleen je uren, dan heeft je inkomen een plafond. Pak je werkwijze en maak er iets van dat zonder jou kan worden afgenomen. | Mijlpaal aanbod | Product | Kader bevestigd |
 | T8 | Een korte vragenlijst laat zien wie klaar is voor jouw aanbod. Stel er drie en volg degene op die het hoogst scoort. | Mijlpaal aanbod | Scorecard-marketing | Primair, als productbeschrijving |
+| T9 | Wie zich presenteert als een van de vele, blijft gemiddeld. Kies een standpunt waar niet iedereen het mee eens is; daar kiest een klant voor. | Doel aanmaken | Prins, stap 4 | Eigen bespreking |
+| T10 | Een plan op papier doet niets. Kies één ding dat je vandaag al kunt doen en doe dat eerst. | Weektip | Prins, actie boven plan | Eigen bespreking |
+| T11 | Een doel maakt keuzes makkelijker: wat helpt je erheen, wat niet. Kies er een dat je net iets groter vindt dan prettig is. | Doel aanmaken | Prins, stap 8 | Eigen bespreking; **alleen de ambitie, niet de all-or-nothing** (zie §3a) |
+| T12 | Gedraag je als de eigenaar van je bedrijf. Een eigenaar beslist, ook als nog niet alles zeker is. | Weektip | Prins, zelfleiderschap | Eigen bespreking |
+| T13 | Een simpel stappenplan dat je volgt, wint van een slim plan dat je laat liggen. Houd het zo eenvoudig dat je het morgen nog doet. | Mijlpaal | Prins, homepage | Homepage |
+| T14 | Wacht niet op het perfecte moment. Een eerste versie die staat, geeft je meer om mee te werken dan een perfecte die nog moet komen. | Weektip | Schmidt, voortgang boven perfectie | Eigen artikel |
+| T15 | Leg vast waar je nu staat voordat je iets verandert. Dan zie je later precies wat het opleverde. | Doel aanmaken | Schmidt, nulmeting | Eigen artikel |
+
+📏 **T1 is nu het best onderbouwde van de set:** Priestleys *Pitch* en Schmidts
+eénzinsboodschap komen onafhankelijk op hetzelfde uit (§3b).
 
 ⚠️ **T6 rust op samenvattingen en staat er daarom met een waarschuwing.** Lees
 het boek of laat hem weg. **Er staat geen tip in die een getal of formule uit
@@ -207,9 +290,13 @@ partners"), juist omdat die getallen niet bij Priestley vandaan zijn te halen.
 
 ## 7. Wat dit nog niet is
 
-- **Geen tweede en derde spreker.** Zonder namen of bronnen is er niets te
-  destilleren (§2).
-- **Geen boeken gelezen.** Twee van de zes kaders rusten op samenvattingen.
+- **Geen boeken gelezen, van geen van de drie.** Twee van Priestleys zes kaders
+  rusten op samenvattingen, Prins' stappen komen uit haar eigen bespreking, en bij
+  Schmidt is het kader (StoryBrand) van Donald Miller en dus alleen indirect gezien.
+- **Geen notulen verwerkt.** Quinten levert die zelf aan (§8); tot dan rust alles
+  op openbaar materiaal.
+- **Ongelijke bronnen.** Priestley is het zwaarst onderzocht, Schmidt het lichtst.
+  Dat zegt iets over wat openbaar te vinden is, niet over wie de beste tips heeft.
 - **Geen toets op "werkt dit?"** Of een tip een gebruiker echt aanzet om door te
   gaan, is niet te weten zonder meting met echte gebruikers. Het PRD zegt
   over positionering en voorbeelden dat die pas na meting met echte gebruikers
@@ -218,18 +305,24 @@ partners"), juist omdat die getallen niet bij Priestley vandaan zijn te halen.
 
 ## 8. Wat ik nodig heb, en wat de volgende stap is
 
-**Vragen aan Quinten:**
+**Besloten door Quinten op 19-11-2026:**
 
-1. **Wie zijn "Daan Smit" en "Veronique Prins"?** Een link naar hun website,
-   LinkedIn, podcast of boek volstaat.
-2. **Bronnenpakket.** Zet de PDF's in een nieuwe map `docs/research/bronnen/` in de
-   repo (die map bestaat nog niet). Ik kan ze lezen zodra ze er staan. Een aparte PDF-app is niet nodig.
-3. **Noemen we namen in de app?** (Zie §4, punt 2.) De veilige route is
-   geen naam, alleen de tip. Wil je de naam wel, dan is toestemming van de
-   spreker de schone weg. Dat is jouw beslissing en geen technische.
-4. **T6 en T8: houden of schrappen?** T6 rust op zwakke bronnen.
+1. Alle drie de sprekers zijn bevestigd (zie §2).
+2. **Geen naam in de app**, alleen de tip. De namen staan in de bronnenlijst.
+3. **T6 blijft concept** tot het boek *Oversubscribed* is nagelezen.
+4. **Boeken alleen via openbare samenvattingen**; de notulen van live sessies
+   komen in deze sessie.
 
-**Volgende afgebakende stap**, zodra 1 en 2 beantwoord zijn: een uitwerking
+**Nog open:**
+
+1. **De notulen.** Per spreker en per sessie, ruw is prima. Ik destilleer er
+   tactieken uit, in eigen woorden, en zet ze in een bronnenlijst met sessie en
+   datum.
+2. **Wat telt hier zwaarder: de toon van Prins of de regels van de app?**
+   Het voorstel is de regels van de app (§3a, punt 1 en 2).
+3. **Doorgaan naar een bouwissue?** Pas als de notulen erin verwerkt zijn.
+
+**Volgende afgebakende stap**, zodra de notulen binnen zijn: een uitwerking
 van de vaste set in `tips.ts` met een eigen Linear-issue (claimen met
 `npm run claim`), een spec van `spec-planner`, en de vragen van onwrikbare
 regel 18 voor de naad tussen tip en moment.
@@ -242,3 +335,6 @@ regel 18 voor de naad tussen tip en moment.
 - Samenvattingen van *Oversubscribed* en *24 Assets* (Blinkist, Shortform, blogs):
   alleen gezien als zoekresultaat, niet gelezen
 - Podcastblurbs rond Priestleys Diary of a CEO-aflevering: alleen als blurb gezien
+- `https://veroniqueprins.nl/` en de boekbespreking *Dé Kick Ass Code voor succesvol ondernemen* op Managementboek.nl (door Prins zelf geschreven)
+- `https://buzzlytics.eu/` (artikelen over StoryBrand-implementatie, Daan Schmidt)
+- Impactplus.com, profiel van Daan Schmidt (alleen gezien als zoekresultaat)
