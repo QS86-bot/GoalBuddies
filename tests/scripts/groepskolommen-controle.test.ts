@@ -132,7 +132,9 @@ describe('de census zelf', () => {
     //    anders; rij 54 in `docs/decisions/002-domeinregel7-oppervlakken.md`.
     // ⚠️ **45 sinds 0304, en dat was 44.** `xp_grootboek` erbij (QS8-734): eigenaar-only,
     //    append-only; rij 55 in `docs/decisions/002-domeinregel7-oppervlakken.md`.
-    expect(Object.keys(CENSUS)).toHaveLength(45);
+    // ⚠️ **46 sinds 0305, en dat was 45.** `groep_demping` erbij (QS8-752): de eigen demping,
+    //    eigenaar-only; rij 56 in `docs/decisions/002-domeinregel7-oppervlakken.md`.
+    expect(Object.keys(CENSUS)).toHaveLength(46);
   });
 
   it('heeft de vier views erin', () => {
