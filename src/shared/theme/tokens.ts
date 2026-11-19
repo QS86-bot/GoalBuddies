@@ -1,10 +1,16 @@
 /**
- * Het Q-Projects navy-stelsel, gedeeld met de Status Tracker.
+ * Het Q-Projects navy-stelsel: de huidige stand, en niet meer de richting.
  *
- * ⚠️ Waarden zijn letterlijk overgenomen uit `tracker.q-projects.tech`, thema's
- *    `navy` en `navy-licht`. **Verzin hier nooit een kleur bij.** Heb je een
- *    tint nodig die er niet in zit, neem hem dan eerst op in het Q-Projects-
- *    stelsel — anders lopen de twee apps uit elkaar.
+ * ⚠️ **Sinds 19-11-2026 (QS8-722) is dit stelsel niet meer gedeeld met de Status
+ *    Tracker en niet meer het eindpunt.** De app krijgt zeven uiterlijken met eigen
+ *    kleurwaarden (QS8-723, QS8-724); de twee apps mogen uit elkaar lopen. Zie
+ *    `docs/decisions/2026-11-19-de-nieuwe-huisstijl-vervangt-a55-en-rustig-gereedschap.md`.
+ *
+ * ⚠️ De waarden hieronder komen letterlijk uit `tracker.q-projects.tech`, thema's
+ *    `navy` en `navy-licht`, en veranderen pas in QS8-723. **Verzin hier tot dan
+ *    geen kleur bij**: een nieuwe tint komt als token in dit bestand, niet als
+ *    losse waarde in een component, en hij hoeft niet meer eerst in de tracker te
+ *    bestaan.
  *
  * Navy is de ondergrond. Het accent is goud.
  */
