@@ -571,3 +571,20 @@ Nieuw in Linear: **QS8-743** (1.1d statusrood) en **QS8-744** (1.11 poort beloft
 QS8-722 en QS8-723 staan in Linear inmiddels op **In Review**: een bouwsessie is dus al begonnen, vóór deze laatste besluiten erin stonden. Die sessie moet
 de aanvullingen onderaan beide issues lezen (de aanvulling op QS8-722 noemt acht punten; QS8-723 het neutrale bord). Dit is precies het geval dat `CLAUDE.md`
 beschrijft bij QS8-411: een besluit in een reactie of aanvulling is de nieuwste tekst, de beschrijving de oudste.
+
+## 16. Zevende ronde (19-11-2026): de drie open punten besloten
+
+| Onderdeel | Keuze van Quinten | Mijn advies |
+|---|---|---|
+| Statusrood (QS8-743) | **Eén rood voor de hele app** | zelfde |
+| Gevoelens (QS8-733) | **Zes voorstellen** (rustig, gemotiveerd, trots, gesteund, energiek, gefocust) plus een eigen omschrijving | vier voorstellen |
+| Eigen omschrijving | **Alleen op het eigen scherm**, nooit letterlijk in een melding, nooit zichtbaar voor de groep | zelfde |
+| Belofte, gevolg (QS8-744) | **Vrije tekst**, nooit geld | zelfde |
+| Belofte, systeem | **Hergebruik van het bestaande commitment** | zelfde |
+| Belofte, periode | **Eigen week van de gebruiker** | zelfde |
+| Belofte, wie | **Groep of één getuige, door de gebruiker gekozen**; leesrecht pas bij verschuldigd (regel 11) | zelfde |
+| Belofte, bevestiging | **Aparte stap** met gevolg, periode en zichtbaarheid, in het auditspoor | zelfde |
+| Belofte, terugdraaien | **Tot het gevolg verschuldigd wordt** | zelfde |
+| Belofte, accountverwijdering | **Dezelfde regel als QS8-335**, geen tweede uitzondering | zelfde |
+
+**Gevolg voor de issues.** QS8-733 en QS8-743 zijn nu bouwklaar. QS8-744 is besloten, het label `wacht-op-Quinten` is eraf. Het bouwt nog niets: criteria 1 (besluitdocument in `docs/decisions/`) en 3 (spec-planner-ronde met `security-reviewer`) van dat issue moeten nog gebeuren in een bouwsessie. Dit onderzoeksbestand is daarvoor niet het besluitdocument.
