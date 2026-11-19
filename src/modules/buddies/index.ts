@@ -97,6 +97,14 @@ export {
   type OntdekteGroep,
 } from './ontdekken';
 
+export type { Buddyzoekstand } from './wachtrij';
+export {
+  fetchBuddyzoekopdrachtenOver,
+  fetchBuddyzoekStand,
+  stopBuddyZoeken,
+  zoekBuddies,
+} from './wachtrij';
+
 export {
   blokkeer,
   deblokkeer,

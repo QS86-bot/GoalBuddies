@@ -344,6 +344,20 @@ const REGISTER = new Map([
       'begrensd is. Staat met dezelfde reden in `scripts/pinuitzonderingen-controle.mjs`.',
   ],
   ['wek_groep_via_review', 'Idem, op `week_review_replies`.'],
+  [
+    'vorm_een_buddygroep',
+    'Schrijft `groups`, `group_members` en `goal_group_links` voor een automatisch ' +
+      'gevormde buddygroep (0300, QS8-233). ⚠️ **Geen eigen poort, en dat kan hier omdat ' +
+      'er geen aanroeper is die hem kan bereiken:** `authenticated` heeft geen ' +
+      '`grant execute` — 0302 herhaalt de `revoke ... from public, anon, authenticated` — ' +
+      'en de enige route is `vorm_buddygroepen()`, die als `service_role` uit de ' +
+      'Edge Function `koppelen` draait. ⚠️⚠️ **En sinds 0302 verdedigt hij zijn eigen ' +
+      'eisen wél**: in 0300 zaten dezelfde persoon tweemaal, een gemengde categorie en ' +
+      'een gemengde week-startdag uitsluitend in de bakquery van de aanroeper, dus ' +
+      'elke andere lijst vormde een groep die domeinregel 1 brak. Drie `continue when`-' +
+      'takken, elk afzonderlijk geijkt (📏 05-10-2026). De poort die hier ontbreekt is ' +
+      'dus de grant en niet de controle op de invoer.',
+  ],
 ]);
 
 /**
@@ -639,6 +653,25 @@ const LEESREGISTER = new Map([
     '⚠️ **Geen poort.** Geeft de datum van vandaag in de tijdzone van een groep, voor elk uuid. Wat eruit lekt is de ' +
       'tijdzone van de groep en niets anders. Staat in `chain_links_select`, dus `authenticated` móet hem kunnen ' +
       'aanroepen.',
+  ],
+  [
+    'buddyzoek_stand',
+    'Eigenaarspoort, en een harde: de `mijn`-CTE eist `g.owner_id = (select auth.uid())`, dus een vreemde ' +
+      'krijgt nul rijen en niet een lege kolom (📏 getoetst in `tests/rls/buddywachtrij.test.ts`). ' +
+      '⚠️⚠️ **Wat hij daarbuiten over ánderen geeft is één verzadigd getal:** `nog_nodig` is ' +
+      '`least(2, greatest(0, 3 - count(distinct user_id)))` over de wachtenden in jouw categorie, ' +
+      'periodeband en week-startdag. Zonder die `least` is het een bevolkingsmeter op een bak waar je ' +
+      'zelf in zit, met één verzoek te herhalen terwijl je de categorie varieert; mét is `0` niet van ' +
+      '`1` te onderscheiden. Rij 41 in `docs/decisions/002-domeinregel7-oppervlakken.md`.',
+  ],
+  [
+    'zoek_buddies_aan',
+    'Eigenaarspoort op het doel, plus twee remmen die de rij erna leest: 5 aanmeldingen per dag en ' +
+      '3 gelijktijdig. ⚠️ **Sinds 0302 staat er een `pg_advisory_xact_lock(hashtextextended(auth.uid()' +
+      '::text, 0))` vóór beide tellingen**, dezelfde vorm die `vraag_ai_job()` sinds 0182 voor deze ' +
+      'klasse gebruikt — zonder die lock lazen gelijktijdige aanroepen allemaal dezelfde teller en ' +
+      'schreven er allemaal langs (📏 gemeten met een burst van twaalf op één startsignaal: 10 rijen ' +
+      'waar het plafond 3 is).',
   ],
 ]);
 
