@@ -15,6 +15,7 @@ import {
   StandBlok,
   ToevoegKnoppen,
   useVandaag,
+  WeekstrookBlok,
 } from '@/schermen/vandaag';
 
 /**
@@ -62,6 +63,8 @@ export default function Vandaag() {
            week — en nooit een gemiste.
       */}
       <TeBeoordelenKaart stand={teBeoordelen} onOpen={() => router.push('/beoordelen')} />
+
+      <WeekstrookBlok v={v} />
 
       <Meldingen v={v} />
 

@@ -24,6 +24,7 @@ import { zonderCommentaar } from './roept-aan';
  *    aan in dezelfde commit — dat is de handeling die het besluit zichtbaar maakt.
  */
 const SLEUTELS_VOOR_DE_SPLITSING: readonly string[] = [
+  'algemeen.laden',
   'badge.blijven_staan',
   'badge.kop',
   'badge.nog_geen',
@@ -88,7 +89,13 @@ const SLEUTELS_VOOR_DE_SPLITSING: readonly string[] = [
   'vandaag.weggooien',
   'vandaag.weggooien_label',
   'weekplan.ingeschoven_kop',
-  'weekplan.ingeschoven_tekst'
+  'weekplan.ingeschoven_tekst',
+  'weekstrook.dag',
+  'weekstrook.dag_actief',
+  'weekstrook.dag_rustig',
+  'weekstrook.dag_vandaag',
+  'weekstrook.fout',
+  'weekstrook.leeg'
 ];
 
 const WORTEL = join(__dirname, '..', '..');
