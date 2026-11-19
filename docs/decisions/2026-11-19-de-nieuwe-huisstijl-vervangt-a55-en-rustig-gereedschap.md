@@ -2,8 +2,8 @@
 
 **Wie besloot en wanneer.** Quinten, 19-11-2026, in zeven rondes. ⚠️ **De besluiten staan hier zoals ze in Linear (QS8-721 en QS8-722)
 en in het bestand fase-1-acceptatiecriteria.md in docs/research (§1, §11, §13 en §14) staan** (dat bestand staat op de tak
-`claude/habithuddle-app-ontleding`, niet op `main`). Ik heb ze niet rechtstreeks van Quinten gelezen en niet nagemeten tegen een scherm.
-**Afgetekend op 19-11-2026 behalve XP en het delen van prestaties** (de aftekening kwam via de orchestrator-sessie, niet rechtstreeks naar mij); XP is daarna besloten in QS8-734, het delen is OPEN (zie de secties hieronder). QS8-723 (1.1a) is vrij; QS8-729 (1.5a) wacht op een migratie en dus op de nummerketen.
+`claude/habithuddle-app-ontleding`, niet op `main`). Ik las de reacties van Quinten op QS8-722 (tot en met 13:37), QS8-743 en QS8-744 op 19-11-2026 zelf in Linear; de rest komt uit de beschrijvingen en het onderzoeksbestand. Niet nagemeten tegen een scherm.
+**Afgetekend op 19-11-2026, inclusief XP, het delen van prestaties en de tweede uitzondering bij accountverwijdering.** De eerste aftekening (12:21 en 12:31) liet XP open en de reactie van 12:43 het delen en het wissen; de reactie van Quinten op QS8-722 van **13:37** vervangt die drie en is de nieuwste tekst. Er staat in dit document niets meer open dat Quinten nog moet beslissen. QS8-723 (1.1a) is vrij; QS8-729 (1.5a) wacht op een migratie en dus op de nummerketen.
 
 ## Wat het vervangt
 
@@ -53,10 +53,10 @@ bouwen. Hostinger-regel: geen Vercel-specifieke packages. **Dit is een afweging 
 
 ## XP en niveau: besloten, in een eigen teller
 
-**Bron en volgorde.** Eerst tekende Quinten dit document af *behalve XP* (Linear QS8-722, reacties van 12:21 en 12:31). Daarna kwam het
-XP-besluit: QS8-734, sectie *Besluiten (Quinten, 19-11-2026, vierde ronde)*, en het bestand fase-1-acceptatiecriteria.md in docs/research (§14.2 en §14.5,
-op de tak `claude/habithuddle-app-ontleding`). Het epic QS8-721 noemt XP sindsdien niet meer als open. ⚠️ Dat is geen reactie van Quinten op
-QS8-722 zelf; de tekst staat in de beschrijving van QS8-734, en die is hier de bron.
+**Bron en volgorde.** Eerst tekende Quinten dit document af *behalve XP* (Linear QS8-722, reacties van 12:21 en 12:31; de reactie van 13:37 vervangt ze). Daarna besloot hij XP, en
+bevestigde hij dat **rechtstreeks op QS8-722, reactie van 13:37** (*"onze vragenrondes gelden; dit vervangt de twee reacties van 12:21 en 12:43"*, punt 1; de reactie van 12:31 is daarmee ook achterhaald, want ze zegt hetzelfde als die van 12:21).
+De getallen komen uit QS8-734, sectie *Besluiten (Quinten, 19-11-2026, vierde ronde)*, en uit het bestand fase-1-acceptatiecriteria.md in docs/research
+(§14.2 en §14.5, op de tak `claude/habithuddle-app-ontleding`).
 
 **Wat besloten is.**
 
@@ -90,9 +90,9 @@ Bron: fase-1-acceptatiecriteria.md in docs/research, §15 en §16 (Quinten, 19-1
 | Voorkeur | Eigenaar-only tabel (hierboven). Bij twee apparaten **wint de laatste keuze** | QS8-722 aanvulling punt 4; §15 |
 | Helden | Maakt een palet een held onleesbaar, dan staat die op een **eigen neutraal bord**; de uitzondering van QS8-470 blijft | QS8-722 aanvulling punt 5; §15 |
 
-⚠️ **Statusrood: geen Linear-reactie gevonden.** QS8-743 zelf (beschrijving en reacties) noemt *één rood of per uiterlijk* nog als open vraag met mijn
-advies *één rood*; het besluit staat alleen in §16 van het onderzoeksbestand en in de opdracht aan deze sessie. Dat is traceerbaar maar niet
-rechtstreeks. Wie QS8-743 bouwt, leest de reacties daar eerst.
+**Statusrood: bron is de reactie van Quinten op QS8-743 van 12:49** (*"Besluit Quinten 19-11-2026: één statusrood voor de hele app"*: geen eigen rood
+per uiterlijk; één nieuwe waarde die op alle uiterlijken en paletten, donker en licht, Koraal inbegrepen, de contrast- en kleurenblindheidstoets haalt en
+deadline-risico blijft betekenen). De beschrijving van QS8-743 noemt het nog als open vraag; de reactie is nieuwer. QS8-725 (Koraal) blijft geblokkeerd tot QS8-743 af is.
 
 ## Poort QS8-744: de belofte als commitment (besloten, niets gebouwd)
 
@@ -110,28 +110,57 @@ Bron: Linear QS8-744, reactie van Quinten van 12:58 (*Besluiten Quinten 19-11-20
 Wat hierna moet: een `spec-planner`-ronde en bouwissues met `security-reviewer` direct. De belofte uit de vragenlijst is een nieuwe route naar een
 commitment; de naad tussen vragenlijst en commitment krijgt een eigen test (regel 18).
 
-## Delen van een prestatie (QS8-736): OPEN, niet afgetekend
+## Delen van een prestatie (QS8-736) en wissen bij accountverwijdering: besloten
 
-**Quinten schreef op 19-11-2026 om 12:43 op QS8-722: het delen van een prestatie met de groep en het verwijderen van een gedeeld bericht bij
-accountverwijdering zijn *niet* afgetekend**; elk vraagt een eigen besluit met de twee vragen van domeinregel 7 (kan hieruit een gemiste week
-worden afgeleid; kan iemand dat met één API-verzoek uitlezen) en, voor het wissen, een afweging tegen de uitzondering van 0221. Tot die
-besluiten er zijn: niet bouwen.
+⚠️ **Correctie na de review van 19-11-2026, en ze raakt de onderbouwing, niet het besluit.** Een eerdere versie van deze sectie (en van `CLAUDE.md`) zei dat een gedeeld bericht de naam "als platte tekst" in andermans chat achterlaat. **Dat is sinds migratie 0213 (QS8-372) niet waar:** geen enkele functie bakt nog een naam in `body`, bestaande bodies zijn herschreven naar *"Een lid …"*, en de persoon zit alleen in `subject_id` en `actor_id`, die bij accountverwijdering door `on delete set null` leeg worden (het scherm toont dan *"Een oud-lid"*). Die premisse stond ook in QS8-736 zelf. Wat overblijft is een product- en privacykeuze van Quinten: wie zijn account opzegt, neemt ook de prestatieberichten mee die hij deelde. **Quinten kan dit besluit herbevestigen met de juiste feiten; tot die tijd geldt zijn besluit van 13:37 zoals het staat.**
 
-Wat in QS8-736 en §14.5 al als keuze staat, is hier **voorstel en geen besluit**, omdat de reactie van 12:43 nieuwer is dan de beschrijving:
+**Bron.** Quinten op QS8-722, reactie van 13:37 op 19-11-2026, punt 2 en 3 (die de reactie van 12:43 vervangt), met de uitwerking in QS8-736
+(vierde en vijfde ronde) en §14.5 van het onderzoeksbestand. ⚠️ De reactie van 12:43 zei *niet afgetekend*; de reactie van 13:37 is nieuwer en wint.
 
-- Delen per prestatie, in één groep naar eigen keuze, 5 per dag, alle leden van die groep zien het bericht (QS8-736, vijfde ronde).
-- **Voorgestelde uitzondering bij accountverwijdering:** een gedeeld `prestatie_gedeeld`-bericht verdwijnt mee met het account, naast die van QS8-335
-  (alleen `commitment_due` en `commitment_unlocked`). Eisen als het besloten wordt: gewist in dezelfde transactie; alleen dit type; een test
-  die toont dat andere typen blijven staan; lichaam van de bestaande verwijderfunctie uit `main` en niet uit een oude migratie.
-- Delen in teamgroepen blijft uit tot QS8-649 geland is.
+**Het besluit.**
 
-⚠️ **`CLAUDE.md` bij domeinregel 7 is daarom niet aangepast** en `docs/decisions/002-domeinregel7-oppervlakken.md` ook niet: een uitzondering die
-nog niet besloten is, hoort daar niet als regel te staan. Zodra Quinten besluit, komt ze op beide plekken, met rij en reden.
+- Delen is een handeling van de gebruiker, **per prestatie, in één groep naar keuze**; er gaat niets automatisch en er is geen "deel met alle groepen".
+- **Limiet:** vijf gedeelde prestaties per gebruiker per dag (QS8-736 schrijft: de dag volgens de tijdzone van de gebruiker). Bijstelbaar. ⚠️ `tel_dagteller()` (0234) telt een glijdend venster vanaf `now()` en geen kalenderdag; welke van de twee de bouw wordt, kiest en meldt QS8-736.
+- **Zichtbaarheid:** alle leden van die groep, zoals elk systeembericht.
+- **Teamgroepen:** het delen wordt voor elk groepstype geschreven, maar staat voor een teamgroep **uit; aanzetten kan pas nadat QS8-649 geland is én zijn eigen besluit er expliciet ruimte voor maakt** (zo staat het in QS8-736). Dat is dus geen automatische schakelaar. Dit verruimt het besluit van
+  QS8-649 (teamgroepen zijn zwaarder beschermd) en is door Quinten bewust gekozen; teamgroepen bestaan nog niet in de code.
+- **Een tweede benoemde uitzondering bij accountverwijdering:** het gedeelde prestatiebericht (`prestatie_gedeeld`) verdwijnt mee met het account, naast
+  die van QS8-335 (wissing in migratie 0247). Alleen dit type, en alleen de berichten waarvan hij het **onderwerp** (`subject_id`) is; geen ander systeembericht.
+
+**De inhoud van het bericht.** Het noemt de persoon en de prestatie (de badgesleutel), **nooit een titel, notitie, niveau, XP of datum van behalen (`earned_at`).** De payload is de badgesleutel en verder niets. Alleen een prestatie
+die de gebruiker echt heeft behaald kan gedeeld worden, afgedwongen in de RPC (`badges` voor `auth.uid()`), niet alleen in de UI.
+
+**De twee vragen van domeinregel 7.** *Kan hieruit een gemiste week worden afgeleid?* Nee: het bericht is positief, noemt geen niveau en geen XP, en een
+persoon die niets deelt zegt daarmee niets (delen is vrijwillig; `badges.ts`: *"de badge die er níét staat, is het signaal"* wordt juist door vrijwilligheid
+tegengehouden). *Kan iemand het met één API-verzoek buiten de UI om uitlezen?* Alleen de leden van die ene groep, via de bestaande leesregel van
+`chat_messages`; de badges zelf blijven eigenaar-only.
+
+⚠️ **Twee voorwaarden waaraan dat "nee" hangt, voor de bouw.** (1) Delen is altijd een uitdrukkelijke handeling: geen voorgeselecteerd vinkje en geen "deel nu"-prompt per verdiende badge, want dan wordt *niet delen* een patroon waaruit iets af te leiden valt. (2) **Alleen een expliciete deelbaar-lijst**: elke nieuwe badge krijgt de twee vragen van domeinregel 7 voordat hij erop komt. Voor de vijf huidige badges is het "nee" gemeten; een toekomstige badge die alleen na tegenslag te verdienen is (een herstart- of vloerbadge), zou het breken via de sleutel zelf. Realtime: geen `REPLICA IDENTITY FULL`, geen abonnement op DELETE.
+
+**De afweging tegen de uitzondering van QS8-335 (0247).**
+
+| | QS8-335 (0247): `commitment_due`, `commitment_unlocked` | Dit besluit: `prestatie_gedeeld` |
+|---|---|---|
+| Wat bleef er zonder uitzondering staan | Een bewering over een straf, **terwijl de administratie die haar staaft** (commitment en auditspoor) wel gewist werd. (Bij het besluit van 08-09 stond daar ook de naam als platte tekst; sinds 0213 niet meer) | Een bericht *"Een oud-lid heeft een prestatie behaald"* zonder persoonsgegevens: de verwijzing is leeg. Dat is geen privacylek maar een achtergebleven spoor van iemand die weg wil |
+| Wat gaat er verloren voor de groep | Een bewering zonder bewijs | Een positief bericht. Er is geen administratie die erachter gewist wordt, en er verdwijnt geen tegenslag. Wel de **onveranderlijkheid** van systeemberichten, voor een tweede type |
+| Wissen of anonimiseren | Wissen (anonimiseren laat een zin over een straf staan die niemand kan navragen) | Wissen, zoals Quinten besloot. Anonimiseren is al wat 0213 en `on delete set null` doen; het besluit gaat verder dan dat |
+| Reikwijdte | Alleen twee typen, met de vertrekker als onderwerp | **Alleen één type**; `goal_completed` en gewone berichten blijven staan |
+
+**Wat het kost.** Domeinregel 7 zegt dat een systeembericht een onveranderlijke kopie is die de autorisatie overleeft waaronder hij gemaakt is. Dat
+krijgt nu een tweede uitzondering, opgeschreven op de plek waar de regel staat (`CLAUDE.md`, domeinregel 7). De prijs: de groepsgeschiedenis
+kan achteraf een positief moment kwijt zijn, en een volgend berichttype heeft een precedent om zich op te beroepen. **Dat precedent is geen argument:** de uitzondering rust op Quintens keuze voor dit type en niet op een lek dat er niet is.
+**Verleg die grens niet als bijvangst**: elk ander systeembericht blijft onder de regel vallen, en er weer een uit halen is een besluit met dezelfde zwaarte.
+
+**Eisen aan de bouw (QS8-736, niet in dit issue).** Wissen van de berichten waarvan de gebruiker het **onderwerp (`subject_id`)** is, **vóór** `delete from auth.users` (daarna is `subject_id` leeg en is het wissen een no-op, zie 0247) en in dezelfde transactie; een test dat er daarna geen
+`prestatie_gedeeld`-bericht van die gebruiker meer bestaat en dat andere typen blijven staan; het lichaam van de bestaande verwijderfunctie komt uit
+`main` (`pg_get_functiondef()` is de waarheid, een register in een functielichaam botst zonder conflict); een nieuw type systeembericht vraagt een migratie
+(CHECK `chat_messages_system_event_bekend` en `chat-schemas.ts` in dezelfde wijziging); `security-reviewer` direct. **Het bouwen van het delen blijft een
+eigen issue (QS8-736); dit document bouwt niets.** Rij 50 in `docs/decisions/002-domeinregel7-oppervlakken.md` is voor dit oppervlak toegevoegd.
 
 ## Verhouding tot QS8-649 (zakelijk gebruik)
 
 Beide richtingen kunnen naast elkaar: het uiterlijk is een per-gebruiker-voorkeur en raakt de organisatielaag niet. Het enige snijpunt is het
-delen van een prestatie in een teamgroep (open, en uit tot QS8-649 geland is). Een teamgroep blijft onder domeinregel 7 zwaarder, niet lichter.
+delen van een prestatie in een teamgroep (besloten, en uit tot QS8-649 geland is). Een teamgroep blijft onder domeinregel 7 zwaarder, niet lichter.
 
 ## Wat dit besluit niet doet
 

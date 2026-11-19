@@ -524,7 +524,7 @@ Voordat er één feature gebouwd wordt:
      autorisatie overleeft waaronder hij gemaakt is; ontkoppelen trekt de
      toestemming in, maar wist geen chat. Uitleg in beslisdocument 002 §3.
 
-     ⚠️ **Eén benoemde uitzondering sinds 08-09-2026 (QS8-335, migratie 0221):
+     ⚠️ **Eén benoemde uitzondering sinds 08-09-2026 (QS8-335, migratie 0247):
      accountverwijdering.** Wie zijn account opzegt, neemt de systeemberichten
      over zijn eigen **commitments** mee — `commitment_due` en
      `commitment_unlocked` waarvan hij het onderwerp is. Verder niets: zijn
@@ -541,6 +541,30 @@ Voordat er één feature gebouwd wordt:
      **Verleg die grens niet als bijvangst.** Elk ander systeembericht valt
      onverkort onder de regel hierboven, en er weer een uit halen is een besluit
      met dezelfde zwaarte als dit.
+
+     ⚠️ **Een tweede benoemde uitzondering, besloten 19-11-2026 (QS8-722 en
+     QS8-736): het gedeelde prestatiebericht.** Wie zijn account opzegt, neemt de
+     `prestatie_gedeeld`-berichten mee waarvan hij het **onderwerp** (`subject_id`)
+     is, gewist vóór de accountdelete en in dezelfde transactie. **Alleen dat type**;
+     verder niets, en de eerste uitzondering blijft zoals ze is. Het bericht noemt de
+     persoon en de prestatie (de badgesleutel), **nooit een titel, notitie, niveau,
+     XP of datum**, en wordt alleen geplaatst op een uitdrukkelijke handeling van de
+     gebruiker (nooit voorgeselecteerd, nooit een prompt per badge), in één groep
+     naar keuze en alleen voor een prestatie op een deelbaar-lijst. Besluit van
+     Quinten, rechtstreeks op QS8-722 (reactie van 13:37); de afweging tegen 0247
+     staat in
+     `docs/decisions/2026-11-19-de-nieuwe-huisstijl-vervangt-a55-en-rustig-gereedschap.md`,
+     het oppervlak in rij 50 van `docs/decisions/002-domeinregel7-oppervlakken.md`.
+
+     *Waarom, en wat dat niet is:* ⚠️ **niet omdat er een naam achterblijft.** Sinds
+     0213 bakt geen enkel bericht nog een naam in; na verwijdering staat er *"Een
+     oud-lid"*. De uitzondering is een keuze van Quinten voor wat een wisverzoek
+     meeneemt, en een derde type kan zich er niet op beroepen. **Het bouwen van het
+     delen is QS8-736 en nog niet gedaan** (`security-reviewer` direct; nieuw type
+     systeembericht vraagt een migratie), en voor een teamgroep staat het uit tot
+     QS8-649 geland is én zijn eigen besluit er ruimte voor maakt. **Verleg ook deze
+     grens niet als bijvangst.**
+
    - **⚠️ Nooit `REPLICA IDENTITY FULL` op een tabel in de realtime-publicatie**
      (`completions`, `weekly_goals`, `chat_messages`). Supabase past RLS toe op
      INSERT en UPDATE, maar **niet op DELETE**: met `FULL` gaat bij een
