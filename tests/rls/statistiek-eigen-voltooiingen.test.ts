@@ -1,13 +1,10 @@
 /**
  * De statistiekpagina leest alleen jouw eigen voltooiingen — QS8-749.
  *
- * ⚠️ **Dit is geen "RLS verbergt het"-test, en dat verschil is het punt.** `completions_select` laat
- *    een groepsgenoot de rijen van een lid óók lezen (hij moet kunnen goedkeuren). Wat de pagina
- *    privé houdt, is (a) het `user_id`-filter met een id uit de sessie en (b) dat de database
- *    afdwingt dat `user_id` van een voltooiing de indiener is, zodat niemand zich onder jouw id kan
- *    indienen. Deze test legt beide vast én legt vast dat een groepsgenoot zónder filter de rijen wel
- *    ziet: het filter is dus geen decoratie. Echte afscherming per kolom vraagt een RPC en een
- *    migratie; dat staat als ER-rij in het PR-verslag.
+ * ⚠️ **RLS is de grens en het `user_id`-filter kiest de eigen rijen.** `completions_select` laat een
+ *    groepsgenoot de rijen van een lid óók lezen (hij moet kunnen goedkeuren), dus de test hieronder die
+ *    dat vastlegt is een gedocumenteerd feit en geen lek. Wat de statistiek zuiver houdt is dat de
+ *    insert-policy `user_id = auth.uid()` eist, óók op een eigen weekdoel.
  *
  * ⚠️ De vraag is dezelfde als die de pagina stelt (`fetchEigenVoltooiingsmomenten`): drie kolommen,
  *    `user_id` gelijk aan de eigen sessie, nieuwste eerst.
@@ -24,6 +21,7 @@ describe.skipIf(!rlsTestsConfigured)('QS8-749 — de statistiek leest alleen eig
   let bram: TestUser;
   let carla: TestUser;
   let weekdoelId: string;
+  let doelId: string;
 
   const pagina = (wie: TestUser, van: string) =>
     wie.db
@@ -55,6 +53,7 @@ describe.skipIf(!rlsTestsConfigured)('QS8-749 — de statistiek leest alleen eig
       .select('id')
       .single();
     if (doel.error || doel.data === null) throw new Error(`doel: ${doel.error?.message}`);
+    doelId = doel.data.id;
     const koppel = await anna.db.from('goal_group_links').insert({ goal_id: doel.data.id, group_id: uit.group.id });
     if (koppel.error) throw new Error(`koppeling: ${koppel.error.message}`);
 
@@ -104,26 +103,49 @@ describe.skipIf(!rlsTestsConfigured)('QS8-749 — de statistiek leest alleen eig
     expect(data).toHaveLength(1);
   });
 
-  it('niemand kan zich onder andermans id indienen: user_id is de indiener', async () => {
+  it('niemand kan zich onder andermans id indienen, ook niet op een eigen weekdoel', async () => {
+    // ⚠️ Op Anna's weekdoel strandt dit al op de eigenaarstak; de grendel zelf (`user_id = auth.uid()`)
+    //    toets je alleen met Brams eigen weekdoel en Anna's id.
+    const cyclus = userCycle({ weekStartDay: 1, tz: 'Europe/Amsterdam' }, new Date());
+    const doel = await bram.db
+      .from('goals')
+      .insert({ owner_id: bram.id, title: 'Brams doel', target_date: cyclus.endDate })
+      .select('id')
+      .single();
+    const week = await bram.db
+      .from('weekly_goals')
+      .insert({ goal_id: doel.data?.id ?? '', title: 'Brams week', cycle_start_date: cyclus.startDate })
+      .select('id')
+      .single();
+    expect(week.error).toBeNull();
     const { error } = await bram.db.from('completions').insert({
-      weekly_goal_id: weekdoelId,
+      weekly_goal_id: week.data?.id ?? '',
       user_id: anna.id,
       achieved_level: 'ceiling',
       note: 'vervalst',
-      cycle_start_date: '2026-01-05',
+      cycle_start_date: cyclus.startDate,
     });
-    expect(error?.code, JSON.stringify(error)).toBeTruthy();
+    expect(error?.code, JSON.stringify(error)).toBe('42501');
   });
 
   it('een client kan het indientijdstip niet zelf zetten (geen insert-recht op submitted_at)', async () => {
+    // ⚠️ Een vers weekdoel zonder actieve voltooiing: op Annas eerste weekdoel weigert `completions_active_uniq`
+    //    (23505) elke tweede indiening al, en dan zegt deze test niets over de kolomgrant.
+    const cyclus = userCycle({ weekStartDay: 1, tz: 'Europe/Amsterdam' }, new Date());
+    const week = await anna.db
+      .from('weekly_goals')
+      .insert({ goal_id: doelId, title: 'Tijdreizigersweek', cycle_start_date: cyclus.startDate })
+      .select('id')
+      .single();
+    expect(week.error).toBeNull();
     const { error } = await anna.db.from('completions').insert({
-      weekly_goal_id: weekdoelId,
+      weekly_goal_id: week.data?.id ?? '',
       user_id: anna.id,
       achieved_level: 'ceiling',
       note: 'tijdreiziger',
-      cycle_start_date: '2026-01-05',
+      cycle_start_date: cyclus.startDate,
       submitted_at: '2020-01-01T00:00:00Z',
     });
-    expect(error, 'een client mag submitted_at niet kiezen').not.toBeNull();
+    expect(error?.code, JSON.stringify(error)).toBe('42501');
   });
 });

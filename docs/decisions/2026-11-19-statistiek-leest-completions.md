@@ -16,13 +16,16 @@ Eén query: drie kolommen, `.eq('user_id', <sessie>)`, `.gte('submitted_at', <be
 eerst, pagina's van 500 via `shared/bladeren`, maximaal 10 pagina's. Index: `completions_vers_idx
 (user_id, submitted_at desc)` (0203). Geen N+1: één query per tab.
 
-## ⚠️ Wat het privé houdt is een filter, geen RLS
+## ⚠️ RLS is de grens; het filter kiest de eigen rijen
 
-`completions_select` laat ook een groepsgenoot de rijen van een lid lezen (hij moet kunnen goedkeuren).
-De pagina is dus alleen van jezelf doordat (a) `userId` uit de sessie komt, nooit uit een route, en (b)
-de insert-policy afdwingt dat `user_id` de indiener is. `tests/rls/statistiek-eigen-voltooiingen.test.ts`
-legt beide vast, en legt vast dat een groepsgenoot zónder filter de rijen wél ziet. Echte afscherming per
-kolom vraagt een eigenaar-only RPC of view en dus een migratie. Doorgegeven als ER-rij.
+`completions_select` laat ook een groepsgenoot de rijen van een lid lezen (hij moet kunnen goedkeuren),
+met het statusfilter van `weekly_goals_select` erbij. Dat was al zo en deze pagina verandert het niet: de
+drie kolommen die ze leest (`cycle_start_date`, `submitted_at`, `superseded_by`) kon een groepsgenoot al
+ophalen. Het `user_id`-filter in de client bepaalt dus wat de pagina vraagt en is **geen beveiliging**; wie het
+weghaalt krijgt niets wat RLS hem niet al gaf. Wat de eigen rijen zuiver houdt is dat de insert-policy
+afdwingt dat `user_id` de indiener is, en dat `userId` uit de sessie komt. `tests/rls/statistiek-eigen-voltooiingen.test.ts`
+legt dat vast. Een pagina die per kolom afgeschermd moet zijn, vraagt een eigenaar-only RPC of view en dus een
+migratie; daar is nu geen reden voor (de rijen zijn al leesbaar voor de groep). Geen open risico op deze pagina; wel een observatie voor de engineer-review, doorgegeven als regel `ER-rij:` in het PR-verslag (niet in `docs/ENGINEER-REVIEW.md`, dat is hier niet van deze baan): een groepsgenoot kan via de API al je indientijdstippen lezen, en deze pagina maakt dat patroon zichtbaar voor jezelf.
 
 ## Aannames (omkeerbaar)
 
@@ -50,5 +53,4 @@ nieuwe rij in `002-domeinregel7-oppervlakken.md`.
 
 `tests/beloftes/de-statistiekpagina-blijft-van-jezelf.test.ts`, `src/schermen/statistiek/*.test.ts`,
 `src/modules/completions/statistiek.test.ts`, `tests/rls/statistiek-eigen-voltooiingen.test.ts` (databasebaan van CI).
-Elke grendel met de hand gebroken: groepsimport, "gemist" in de catalogus, `user_id`-filter weg, kalender op ruwe datum,
-vervangen indiening tellen mee: allemaal rood.
+Elke grendel met de hand gebroken (unit en belofte): groepsimport, "gemist" in de catalogus, `user_id`-filter weg, kalender op ruwe datum, vervangen indiening telt mee: allemaal rood. De RLS-test is ongemeten in de cloudsessie; CI is de meting.

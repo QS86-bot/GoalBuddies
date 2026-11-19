@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import type { UserClock } from '@/shared/time';
 
-import { eersteWeek, PERIODES } from './periode-vorm';
+import { eersteWeek } from './periode-vorm';
 import { weekkalender, oudsteWeek, MAX_WEKEN } from './weekkalender-vorm';
 import { userCycle } from '@/shared/time';
 
@@ -33,20 +33,15 @@ describe('eersteWeek', () => {
     expect(eersteWeek('alles', maandag, NU)).toBeNull();
   });
 
-  it('kent precies de vier periodes', () => {
-    expect(PERIODES).toEqual(['30', '90', 'jaar', 'alles']);
-  });
-
   it('rond middernacht telt de tijdzone van de gebruiker, niet UTC', () => {
-    // 23:30 UTC op zaterdag 17-10 is al zondag 18-10 in Amsterdam (UTC+2), dus 30 dagen terug is 18-09
-    // zonder tijdzone, maar vandaag is nog niet verschoven: kies een moment net voor en na de wissel.
+    // Dezelfde dag, 22:30 en 23:30 UTC: in Amsterdam (UTC+1) is dat 23:30 en 00:30 lokaal.
     const voor = eersteWeek('30', maandag, new Date('2026-11-18T22:30:00Z'));
     const na = eersteWeek('30', maandag, new Date('2026-11-18T23:30:00Z')); // 19-11 00:30 lokaal
     expect(voor?.startDate).toBe('2026-10-19');
     expect(na?.startDate).toBe('2026-10-19'); // 20-10 valt nog steeds in de week van 19-10
-    // en een wissel die de week wél verschuift: 25-10 -> 26-10 lokaal
-    const voorWissel = eersteWeek('30', maandag, new Date('2026-11-24T22:30:00Z')); // 24-11 23:30 lokaal => 25-10
-    const naWissel = eersteWeek('30', maandag, new Date('2026-11-24T23:30:00Z')); // 25-11 00:30 lokaal => 26-10
+    // Een lokale dagwisseling die de eerste week wél verschuift: 24-11 23:30 -> 25-11 00:30, dertig dagen terug is 25-10 -> 26-10.
+    const voorWissel = eersteWeek('30', maandag, new Date('2026-11-24T22:30:00Z'));
+    const naWissel = eersteWeek('30', maandag, new Date('2026-11-24T23:30:00Z'));
     expect(voorWissel?.startDate).toBe('2026-10-19');
     expect(naWissel?.startDate).toBe('2026-10-26');
   });

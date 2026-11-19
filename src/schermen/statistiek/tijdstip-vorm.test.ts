@@ -16,13 +16,13 @@ describe('dagdeelVanUur', () => {
 
 describe('tijdstippen', () => {
   it('rekent in de tijdzone van de gebruiker, niet van het toestel', () => {
-    const r = [rij('2026-03-28T21:30:00Z')]; // 22:30 CET in Amsterdam, 13:30 PDT... 14:30 in Los Angeles
+    const r = [rij('2026-03-28T21:30:00Z')]; // 22:30 in Amsterdam (CET), 14:30 in Los Angeles (PST)
     expect(telling('Europe/Amsterdam', r)).toEqual({ nacht: 0, ochtend: 0, middag: 0, avond: 1 });
     expect(telling('America/Los_Angeles', r)).toEqual({ nacht: 0, ochtend: 0, middag: 1, avond: 0 });
   });
 
   it('volgt de wissel naar zomertijd: hetzelfde UTC-uur valt na de wissel in een ander dagdeel', () => {
-    // 21:30 UTC: 22:30 CET (avond) voor de wissel, 23:30 CEST (avond) erna; 22:30 UTC wordt 23:30 -> 00:30
+    // 22:30 UTC is 23:30 lokaal vóór de wissel naar zomertijd (29-03) en 00:30 lokaal erna.
     expect(telling('Europe/Amsterdam', [rij('2026-03-28T22:30:00Z')]).avond).toBe(1);
     expect(telling('Europe/Amsterdam', [rij('2026-03-29T22:30:00Z')]).nacht).toBe(1);
   });

@@ -34,10 +34,10 @@ export function Statistiekscherm() {
         />
       </Card>
       <AsyncView
-        loading={loading}
+        loading={loading || data?.periode !== periode}
         error={error}
-        data={data}
-        isEmpty={(s) => s.aantalVoltooiingen === 0}
+        data={data?.periode === periode ? data : undefined}
+        isEmpty={(s) => !s.weken.some((w) => w.actief)}
         onRetry={herlaad}
         empty={{
           title: t('statistiek.leeg_titel'),
@@ -85,9 +85,7 @@ function Week({ week }: { readonly week: Weekcel }) {
   const theme = useTheme();
   const datum = toonDatumLang(week.start, opmaaktaal());
   const staat = week.actief ? t('statistiek.week_actief') : t('statistiek.week_rustig');
-  const label = week.isHuidig
-    ? t('statistiek.week_huidig', { datum, staat })
-    : t('statistiek.week', { datum, staat });
+  const label = weekLabel(week, datum, staat);
 
   // ⚠️ Vorm en niet alleen kleur: een week met een voltooiing is een gevuld vlak, een rustige week
   //    een kleine open cirkel. De huidige week heeft een dikke rand.
@@ -107,6 +105,11 @@ function Week({ week }: { readonly week: Weekcel }) {
   );
 }
 
+function weekLabel(week: Weekcel, datum: string, staat: string): string {
+  if (!week.isHuidig) return t('statistiek.week', { datum, staat });
+  return week.actief ? t('statistiek.week_huidig', { datum, staat }) : t('statistiek.week_loopt', { datum });
+}
+
 function Legenda() {
   return (
     <View style={styles.legenda}>
@@ -122,7 +125,7 @@ function Tijdstippen({ stand }: { readonly stand: readonly Dagdeelstand[] }) {
   return (
     <View style={styles.tijdstippen}>
       {DAGDELEN.map((dagdeel) => {
-        const aantal = stand.find((d) => d.dagdeel === dagdeel)?.aantal ?? 0;
+        const aantal = stand.find((d) => d.dagdeel === dagdeel)?.aantal ?? 0; // vast: vier dagdelen
         const naam = t(`statistiek.dagdeel_${dagdeel}`);
         return (
           <View

@@ -6,12 +6,10 @@ import { t } from '../../shared/i18n';
 /**
  * De voltooiingsmomenten van jezelf, voor de statistiekpagina — QS8-749.
  *
- * ⚠️ **Alleen eigen rijen, en de grendel is `user_id`, niet RLS.** `completions_select`
- *    laat ook een groepsgenoot de rijen van een lid lezen (hij moet kunnen goedkeuren).
- *    Wat dit privé houdt is dat de database afdwingt dat `user_id` de indiener is
- *    (insert-policy) en dat `userId` hier uit de sessie komt en nooit uit een route.
- *    `tests/rls/statistiek-eigen-voltooiingen.test.ts` legt dat vast, ook dat een
- *    groepsgenoot ze zonder filter wél zou zien — het filter is dus geen decoratie.
+ * ⚠️ **Alleen eigen rijen, maar de grens is RLS en niet dit filter.** `completions_select` laat ook een
+ *    groepsgenoot deze rijen lezen (hij moet kunnen goedkeuren); het `user_id`-filter kiest wat de pagina vraagt
+ *    en `userId` komt uit de sessie, nooit uit een route. Dat `user_id` van een rij de indiener is, dwingt de
+ *    insert-policy af. `tests/rls/statistiek-eigen-voltooiingen.test.ts` legt beide vast.
  *
  * ⚠️ Alleen drie kolommen: geen notitie, geen bewijs, geen oordeel. De Dagzet is geen bron
  *    (domeinregel 9).

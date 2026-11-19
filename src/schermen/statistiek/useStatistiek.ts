@@ -11,7 +11,7 @@ import { tijdstippen, type Dagdeelstand } from './tijdstip-vorm';
 export interface Statistiek {
   readonly weken: readonly Weekcel[];
   readonly tijdstippen: readonly Dagdeelstand[];
-  readonly aantalVoltooiingen: number;
+  readonly periode: Periode;
   readonly afgekapt: boolean;
 }
 
@@ -27,7 +27,7 @@ function bouw(
   return {
     weken: weekkalender(klok, eerste, huidige, datums),
     tijdstippen: tijdstippen(klok.tz, data.rijen),
-    aantalVoltooiingen: data.rijen.length,
+    periode,
     afgekapt: data.afgekapt,
   };
 }

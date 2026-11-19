@@ -27,7 +27,9 @@ const BRON = SCHERM.map((p) => zonderCommentaar(readFileSync(p, 'utf8')));
 
 describe('de statistiekpagina blijft van jezelf', () => {
   it('staat alleen op eigen routes en nergens in een groepsscherm', () => {
-    const gebruikers = bestanden(join(ROOT, 'app'))
+    // ⚠️ Ook `src/` (minus de map zelf en de module): een groepscomponent die de pagina importeert telt mee.
+    const gebruikers = [...bestanden(join(ROOT, 'app')), ...bestanden(join(ROOT, 'src'))]
+      .filter((p) => !p.includes('.test.') && !p.includes('src/schermen/statistiek/') && !p.includes('modules/completions/'))
       .filter((p) => /schermen\/statistiek|fetchEigenVoltooiingsmomenten/.test(readFileSync(p, 'utf8')))
       .map((p) => p.slice(ROOT.length + 1));
     expect(gebruikers).toEqual(['app/statistiek.tsx']);
