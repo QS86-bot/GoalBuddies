@@ -17,9 +17,12 @@ export function deelMelding(uitslag: DeelUitslag, groepsnaam: string): string {
     case 'team_off':
       return t('prestaties.deel_team_uit');
     case 'not_earned':
+      return t('prestaties.deel_niet_behaald');
     case 'not_shareable':
+      return t('prestaties.deel_niet_deelbaar');
     case 'not_member':
-    case 'not_signed_in':
       return t('prestaties.deel_niet_mogelijk');
+    case 'not_signed_in':
+      return t('prestaties.deel_log_in');
   }
 }

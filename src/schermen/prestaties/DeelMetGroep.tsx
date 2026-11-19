@@ -32,13 +32,14 @@ export function DeelMetGroep({ badge, naam }: { readonly badge: string; readonly
         >
           {t('prestaties.deel_knop')}
         </Button>
-        {melding === null ? null : <Caption>{melding}</Caption>}
+        <View accessibilityLiveRegion="polite">{melding === null ? null : <Caption>{melding}</Caption>}</View>
       </View>
     );
   }
   return (
     <GroepKeuze
       badge={badge}
+      naam={naam}
       sluit={() => setOpen(false)}
       klaar={(tekst) => {
         setMelding(tekst);
@@ -69,10 +70,12 @@ function useDeel(badge: string, klaar: (tekst: string) => void) {
 
 function GroepKeuze({
   badge,
+  naam,
   sluit,
   klaar,
 }: {
   readonly badge: string;
+  readonly naam: string;
   readonly sluit: () => void;
   readonly klaar: (tekst: string) => void;
 }) {
@@ -88,7 +91,7 @@ function GroepKeuze({
         data={groepen.data}
         isEmpty={(lijst) => lijst.length === 0}
         onRetry={groepen.herlaad}
-        empty={{ title: t('prestaties.deel_geen_groep'), body: '' }}
+        empty={{ title: t('prestaties.deel_geen_groep'), body: t('prestaties.deel_geen_groep_uitleg') }}
       >
         {(lijst) => (
           <View style={{ gap: space.blokGap }}>
@@ -98,6 +101,7 @@ function GroepKeuze({
                 variant="primair"
                 busy={bezig === g.id}
                 disabled={bezig !== null}
+                accessibilityLabel={t('prestaties.deel_groep_label', { naam, groep: g.name })}
                 onPress={() => void kies(g)}
               >
                 {t('prestaties.deel_groep', { groep: g.name })}
@@ -106,7 +110,7 @@ function GroepKeuze({
           </View>
         )}
       </AsyncView>
-      {fout === null ? null : <Caption>{fout}</Caption>}
+      <View accessibilityLiveRegion="polite">{fout === null ? null : <Caption>{fout}</Caption>}</View>
       <Button variant="secundair" onPress={sluit} disabled={bezig !== null}>
         {t('prestaties.deel_sluiten')}
       </Button>
