@@ -693,11 +693,22 @@ anders, en een schermlezer leest "gezicht met vreugdetranen" midden in een zin.
 **De gebruiker mag ze overal typen.** Eén uitzondering waar de app ze zelf wél
 gebruikt: reacties op een bericht (A24). Daar ís de emoji de boodschap.
 
-⚠️ **Een tweede benoemde uitzondering, besloten 19-11-2026 (QS8-722): het
-prestatiecomponent.** Emoji alleen op de prestatiekaarten (QS8-732), nooit in een
-knop, label, systeembericht of melding. De gebruiker mag emoji uitzetten met een
-schakelaar in het scherm Uiterlijk (vijfde voorkeur, QS8-731). `npm run emoji:controle`
-kent die uitzondering pas na QS8-732; tot dan blijft hij rood bij elke emoji in app-tekst.
+⚠️ **Een tweede benoemde uitzondering, besloten 19-11-2026 (QS8-722), gebouwd in
+QS8-732: het prestatiecomponent.** Emoji uitsluitend op de prestatiekaarten van het
+Prestatiescherm, nooit in een knop, label, systeembericht of melding. Ze komen uit
+één vaste lijst in één bestand, `src/schermen/prestaties/prestatie-emoji.ts`
+(geen vrije invoer), staan in een apart veld dat voor schermlezers verborgen is met
+de tekstnaam ernaast, zijn alleen positief (medaille, ster, schild, vlam, trofee) en
+verschijnen alleen bij een **behaalde** prestatie. De gebruiker kan ze uitzetten met
+de schakelaar in het scherm Uiterlijk (vijfde voorkeur, QS8-731); uit is geen emoji-teken
+in de kaart, en de vector blijft altijd staan.
+
+⚠️ **De uitzondering is één bestand met een reden en met zijn tekens, nooit een map.**
+`npm run emoji:controle` kent hem via `UITZONDERINGEN` in `scripts/emoji-controle.mjs`:
+een emoji in een ander bestand is rood, een zesde teken in dit bestand is rood, en een
+register-ingang die een map of patroon is laat de controle werpen. Een nieuwe prestatie
+met een emoji vraagt dus een bewuste wijziging op twee plekken. Uitleg in
+`docs/decisions/2026-11-19-emoji-op-de-prestatiekaart-een-bestand-met-reden.md`.
 
 ⚠️ **Dit is sinds 23-08 een controle en geen zin meer:** `npm run emoji:controle`
 draait mee in `/audit` en wordt rood zodra er emoji in app-tekst staat.

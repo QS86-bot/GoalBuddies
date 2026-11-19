@@ -271,3 +271,5 @@ export {
   zoekMensen,
 } from './zoeken';
 export type { GevondenPersoon } from './zoeken';
+
+export { fetchGroepGedempt, zetGroepGedempt } from './demping';

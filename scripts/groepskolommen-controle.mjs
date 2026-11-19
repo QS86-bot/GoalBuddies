@@ -273,6 +273,10 @@ export const CENSUS = {
     groepszichtbaar: false,
     kolommen: 'user_id, stijl, kleurvariant, weergave, dichtheid, emoji, bijgewerkt_op',
   },
+  groep_demping: {
+    groepszichtbaar: false,
+    kolommen: 'user_id, group_id, gedempt_op',
+  },
   xp_grootboek: {
     groepszichtbaar: false,
     kolommen: 'id, user_id, bron, weekdoel_id, badge, bedrag, verdiend_op, terugwerkend',

@@ -33,7 +33,9 @@ import { styles } from './stijlen';
  *    Geef dit component dus nooit een `viewer`-prop en zet het nooit op een
  *    groepsscherm. Dezelfde afspraak als bij `Weekpas` en `DoelStandKaart`.
  *
- * ⚠️ **Alleen verdiende badges, geen grijze vakjes voor wat je nog niet hebt.**
+ * ⚠️ **Op Vandaag alleen verdiende badges, geen grijze vakjes voor wat je nog niet hebt.**
+ *    (Sinds 19-11-2026, QS8-735, toont het eigen Prestatiescherm ze wél: besluit van Quinten,
+ *    alleen voor jezelf; zie `docs/decisions/2026-11-19-het-prestatiescherm-toont-ook-wat-je-nog-niet-hebt.md`.)
  *    Een lijst met vijf slots waarvan er één gevuld is, is een lijst van wat je
  *    níét gehaald hebt — met een vrolijk randje eromheen. Dat is precies het
  *    beeld dat dit product bij de groep verbiedt, en er is geen reden om het bij

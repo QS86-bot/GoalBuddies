@@ -18,6 +18,7 @@ export {
   type VerdiendeBadge,
 } from './badges';
 
+export { BADGE_WAARDE, ZELDZAAMHEDEN, type BadgeWaarde, type Zeldzaamheid } from './badge-zeldzaamheid';
 export { fetchBadges } from './badges-api';
 
 export { naEenNieuwDoel, SAMEN } from './doelroute';

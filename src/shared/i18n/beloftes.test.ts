@@ -92,6 +92,24 @@ const ONZICHTBAARHEID = [
  *    dan moet het scherm dat ook echt afdwingen.
  */
 const TOEGESTAAN: Readonly<Record<string, string>> = {
+  'prestaties.ingang_uitleg':
+    'QS8-735. De zin gaat over het eigen Prestatiescherm en is onvoorwaardelijk waar, ook in een ' +
+    'open groep: `badges_select` en `xp_grootboek` zijn eigenaar-only (`user_id = auth.uid()`, ' +
+    'geen groepstak), en geen groepscomponent kan het scherm importeren ' +
+    '(`tests/beloftes/prestaties-blijven-voor-jezelf.test.ts`). Er is geen `_open`-tegenhanger ' +
+    'nodig, want er is geen groepsoppervlak dat varieert.',
+  'prestaties.privacy':
+    'QS8-735. De zin gaat over het eigen Prestatiescherm en is onvoorwaardelijk waar, ook in een ' +
+    'open groep: `badges_select` en `xp_grootboek` zijn eigenaar-only (`user_id = auth.uid()`, ' +
+    'geen groepstak), en geen groepscomponent kan het scherm importeren ' +
+    '(`tests/beloftes/prestaties-blijven-voor-jezelf.test.ts`). Er is geen `_open`-tegenhanger ' +
+    'nodig, want er is geen groepsoppervlak dat varieert.',
+  'demping.privacy':
+    'QS8-752. De zin gaat over de eigen demping en is onvoorwaardelijk waar, ook in een open ' +
+    'groep: `groep_demping` heeft vier policies op `user_id = (select auth.uid())` zonder ' +
+    'groepstak, er komt geen systeembericht en geen kolom op `group_members` ' +
+    '(`tests/beloftes/een-gedempte-groep-belt-niet.test.ts`, `tests/rls/groep-demping.test.ts`). ' +
+    'Er is geen `_open`-tegenhanger nodig, want geen groepsoppervlak varieert.',
   'buddyzoek.bevestig_bescherming':
     'QS8-233. De zin geldt onvoorwaardelijk omdat een automatisch gevormde groep ' +
     'niet open kán worden: `groups_automatisch_is_beschermd` is een CHECK, en de ' +

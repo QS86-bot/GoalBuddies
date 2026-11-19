@@ -34,8 +34,8 @@ kop van dat bestand zegt dat nu zo.
 ## Een benoemde uitzondering op de emoji-regel (QS8-111)
 
 **Emoji uitsluitend in het prestatiecomponent** (QS8-732, 1.6b), naast de reacties (A24). **Niet** in knoppen, labels, systeemberichten of
-meldingen. Reden: op een prestatiekaart ís de emoji de boodschap, zoals bij een reactie. ⚠️ `npm run emoji:controle` wordt pas aangepast in
-QS8-732; tot dan blijft hij rood bij elke emoji in app-tekst, en de uitzondering is een besluit zonder uitvoering.
+meldingen. Reden: op een prestatiekaart ís de emoji de boodschap, zoals bij een reactie. ⚠️ `npm run emoji:controle` is aangepast in QS8-732 en kent de uitzondering als één bestand met reden; zie
+`2026-11-19-emoji-op-de-prestatiekaart-een-bestand-met-reden.md`.
 
 ## Voorkeur op het account, in een aparte tabel
 
