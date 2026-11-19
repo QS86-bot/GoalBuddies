@@ -588,3 +588,29 @@ beschrijft bij QS8-411: een besluit in een reactie of aanvulling is de nieuwste 
 | Belofte, accountverwijdering | **Dezelfde regel als QS8-335**, geen tweede uitzondering | zelfde |
 
 **Gevolg voor de issues.** QS8-733 en QS8-743 zijn nu bouwklaar. QS8-744 is besloten, het label `wacht-op-Quinten` is eraf. Het bouwt nog niets: criteria 1 (besluitdocument in `docs/decisions/`) en 3 (spec-planner-ronde met `security-reviewer`) van dat issue moeten nog gebeuren in een bouwsessie. Dit onderzoeksbestand is daarvoor niet het besluitdocument.
+
+## 17. Issues voor Fase 0.3 en Fase 2 tot en met 6 (19-11-2026)
+
+Alle onder epic QS8-721. De nummering van de titels wijkt op twee plekken af van het verbeterplan, omdat het plan en de Fase 1-issues elkaar overlappen.
+
+| Issue | Inhoud | Opmerking |
+|---|---|---|
+| QS8-745 | Fase 0.3: het gat in de bescherming nameten | alleen lezen op productie |
+| QS8-748 | Fase 2.3: Vandaag-scherm splitsen (plan 2.4) | gaat vóór 2.1 en 2.2 |
+| QS8-746 | Fase 2.1: weekstrook | blokkeert op 748 |
+| QS8-747 | Fase 2.2: drie tellers | blokkeert op 748 |
+| QS8-749 | Fase 4.1: statistiekpagina | alleen jezelf |
+| QS8-750 | Fase 4.2: profiel met tabs (plan 4.3) | `security-reviewer` direct; blokkeert op QS8-735 |
+| QS8-751 | Fase 5.1: groepskaart | |
+| QS8-752 | Fase 5.2: groep dempen | `security-reviewer` direct |
+| QS8-753 | Fase 5.3: pauze los van weggaan | poort, `wacht-op-Quinten` |
+| QS8-754 | Fase 5.4: instellingen als lijst met paneel | blokkeert op QS8-731 |
+| QS8-755 | Fase 5.5: meldingen, full house | standaard uit tot Quinten; blokkeert op 752 |
+| QS8-756 | Fase 6.1: achteraf-venster | voorwaardelijk, blokkeert op QS8-745 |
+
+**Bewust geen eigen issue** omdat er al een issue voor bestaat of besloten is:
+- plan 2.3 (vloer en plafond op de kaart): QS8-727;
+- plan 3.1 en 3.2 (vragenvolgorde, herinneringsvoorbeeld): QS8-733 en het bestaande QS8-257 (af);
+- plan 3.3 (plan bouwen vóór aanmelden): besloten **nee** tot er een kostenrem op AI-calls is;
+- plan 3.4 (belofte): QS8-744;
+- plan 4.2 (prestaties): QS8-735.
