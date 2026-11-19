@@ -1,0 +1,56 @@
+# De advisory-database is geen eigenschap van `main` — 19-11-2026 (QS8-707)
+
+**Beslist door:** Quinten, 18-11-2026 (optie A, reactie op QS8-707). Uitgewerkt door een bouwsessie. De vorm is geen commitment device, kost geen geld en is niet onomkeerbaar; ze verzwakt wel een supply-chain-grendel op `main`, en daarom staat hier wat er niet meer gezien wordt.
+
+## Het probleem
+
+`audit:controle` werd op `main` rood zonder dat een commit iets veranderde: 17-11 (nieuwe wortel `picomatch`) en 18-11 (npm meldde `picomatch` niet meer). Een controle die rood wordt door iets dat buiten de repo verandert, is geen eigenschap van de commit; de poort hield dat niet uit elkaar en wie als laatste mergde kreeg de melding. Eerdere gevallen met dezelfde bron: QS8-616, 618, 625, 648, 669, 674.
+
+## De gekozen vorm (optie A)
+
+`audit:controle` kent nu drie modi, afgeleid uit `GITHUB_EVENT_NAME` en `GITHUB_REF`:
+
+| Omgeving | Modus | Oordeel |
+| --- | --- | --- |
+| `push` naar precies `refs/heads/main` | **`vorm`** | alleen de vorm van `NAGEKEKEN`: ernst, advisory-nummers (getallen, oplopend, niet leeg), reparatiesoort, `in_bundel` boolean, marker (geen pakketnaam, > 3 tekens), reden. **Geen `npm audit`, geen netwerk.** |
+| `pull_request`, `push` naar een andere branch | `pr` | ongewijzigd (QS8-674): rood om wat de wijziging toevoegt |
+| `schedule`, `workflow_dispatch`, tag, lokaal, onbekend | `strikt` | ongewijzigd (QS8-191): het volledige register-oordeel |
+
+De strikte vraag *"staat er iets kwetsbaars in de productieboom dat niemand met een bouw heeft nagekeken?"* verhuist naar een eigen workflow, `.github/workflows/advisories.yml`: dagelijks (`23 5 * * *`) plus `workflow_dispatch`, één stap (`node scripts/audit-controle.mjs`), geen `npm ci` (`npm audit` leest alleen `package.json` en lock). Het signaal is een **rode geplande run, die GitHub mailt** — dezelfde vorm als `uurjobs.yml`. Geen Sentry en geen automatisch issue: dat is een nieuwe afhankelijkheid en een schrijfrecht (`issues: write`) waar dit besluit niet om vroeg.
+
+Het wekelijkse `schedule:` in `ci.yml` (QS8-191) is **verplaatst**, niet verdubbeld: het draaide de hele suite en de RLS-baan om één advisory-database te lezen. Een test legt vast dat `ci.yml` geen `cron:` meer draagt.
+
+Waarom een nieuwe modus en niet een vierde pad in `strikt`: de acceptatie "een advisory die verschijnt of verdwijnt zonder commit maakt `main` niet rood" gaat over één combinatie (push naar `main`). Elke andere omgeving behoudt zijn oordeel en dus zijn tests.
+
+## Gemeten
+
+Lokaal, `npm audit` bereikbaar: modus `vorm` op het echte register groen (12 rijen, zonder `npm audit`); modus `strikt` op de huidige boom groen (12 wortels, 1 in de bundel). Op `main` is dus pas bij de eerste geplande run echt te zien dat de workflow draait; dat is **ongemeten** (zie onder).
+
+Elke grendel met de hand gebroken in `scripts/audit-controle.mjs`, telkens `tests/scripts/audit.test.ts`, daarna hersteld:
+
+| Mutatie | Wat omvalt |
+| --- | --- |
+| `main`-tak uit `modusUit()` | `modusUit › geeft vorm voor een push naar main…`; `cli › is op main groen…` |
+| `vorm`-tak uit `hoofd()` | `cli › is op main groen…` en de hele reeks `modus vorm` (o.a. de test die npm niet mag aanroepen) |
+| `schedule` ook `vorm` | `modusUit › …alleen voor die ene combinatie`, `modusUit › geeft strikt voor het schema…`, `cli › blijft in het schema… strikt` |
+| marker=pakketnaam-toets weg | `is rood op een marker die de pakketnaam is` |
+| marker-ontbreekt-toets weg | `…zonder marker`, `…te korte marker` |
+| sorteertoets op advisories weg | `…ongesorteerde advisories` |
+| getal-toets op advisories weg | `…fout advisory-nummer` |
+| **strikt:** rij-zonder-melding (`verdwenen`) uit `verschil()` | vijf toetsen, o.a. `meldt een register dat achterloopt`, `…verdwenen wortels bij een écht leeg rapport` |
+| **strikt:** advisory-vergelijking uit `verschil()` | `meldt een advisory die erbij komt…`, `…door een ándere… vervangen`, `stuurt een veranderd pakket ook naar de bouw` |
+| `run:` van `advisories.yml` vervangen door `echo` | `draait audit-controle zelf, dus in de modus strikt` |
+| `cron` van dagelijks naar wekelijks | `draait dagelijks en handmatig…` |
+
+## Wat het niet meer ziet
+
+1. **Een nieuwe advisory valt pas bij de volgende geplande run op**, tot ~24 uur later, niet bij de push. Dat is de prijs die Quinten accepteerde.
+2. **`schedule:` is best-effort** (`docs/decisions/2026-10-05-schedule-is-best-effort-en-de-hartslag-is-de-runlijst.md`): een run die niet draait is niet rood. `uurjobs-controle` bewaakt `advisories.yml` **niet**. Dat is een bekende rest en een voorgesteld vervolg, geen aanname dat het dicht is.
+3. **Het signaal is een mail aan wie GitHub als eigenaar van de geplande workflow aanmerkt**; hoe dat bij Quinten aankomt is een accountinstelling die hier niet te meten is.
+4. **Een rij waarvoor npm niets meer meldt blijft op `main` staan** tot de geplande run rood wordt. Daar verandert het *gevolg* van: de reparatie is geen haastklus op een rode `main` meer, maar een gewone PR.
+5. **Een PR die het register in `vorm` correct maar inhoudelijk onjuist laat** (verkeerde `in_bundel`) is review-gebied, zoals bij QS8-674 punt 4.
+6. **Lokaal blijft de poort strikt**: een verse advisory kan `npm run poort` rood maken. Dat is bewust: lokaal is de enige plek waar iemand het meteen leest, en het raakt `main` niet. Wil Quinten dat ook weg, dan is dat een één-regelwijziging in `modusUit()`.
+
+## Terugdraaien
+
+De `vorm`-regel in `modusUit()` weghalen zet `main` weer strikt. `advisories.yml` verwijderen en het `schedule:` terugzetten in `ci.yml` (te vinden in de git-geschiedenis van QS8-191) herstelt de wekelijkse run. Geen migratie, geen data.
