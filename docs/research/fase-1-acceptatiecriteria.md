@@ -603,7 +603,7 @@ Alle onder epic QS8-721. De nummering van de titels wijkt op twee plekken af van
 | QS8-750 | Fase 4.2: profiel met tabs (plan 4.3) | `security-reviewer` direct; blokkeert op QS8-735 |
 | QS8-751 | Fase 5.1: groepskaart | |
 | QS8-752 | Fase 5.2: groep dempen | `security-reviewer` direct |
-| QS8-753 | Fase 5.3: pauze los van weggaan | poort, `wacht-op-Quinten` |
+| QS8-753 | Fase 5.3: pauze los van weggaan, optioneel een eigen chatbericht | was een poort, nu besloten en een bouwissue (zie §18) |
 | QS8-754 | Fase 5.4: instellingen als lijst met paneel | blokkeert op QS8-731 |
 | QS8-755 | Fase 5.5: meldingen, full house | standaard uit tot Quinten; blokkeert op 752 |
 | QS8-756 | Fase 6.1: achteraf-venster | voorwaardelijk, blokkeert op QS8-745 |
@@ -614,3 +614,26 @@ Alle onder epic QS8-721. De nummering van de titels wijkt op twee plekken af van
 - plan 3.3 (plan bouwen vóór aanmelden): besloten **nee** tot er een kostenrem op AI-calls is;
 - plan 3.4 (belofte): QS8-744;
 - plan 4.2 (prestaties): QS8-735.
+
+## 18. Besluit QS8-753 (19-11-2026): wat de groep van een adempauze ziet
+
+| Vraag | Keuze van Quinten | Mijn advies |
+|---|---|---|
+| Wat ziet de groep van een pauze? | **Alleen een bericht dat het lid zelf plaatst** | de groep ziet niets |
+| Vorm van dat bericht | **Gewoon chatbericht van het lid**, geen nieuw type systeembericht, geen migratie | zelfde |
+
+QS8-753 is daarmee geen poort meer maar een bouwissue; het label `wacht-op-Quinten` is eraf.
+
+**Acceptatiecriteria (staan ook in de laatste reactie op het issue)**
+1. Bij het inplannen van een adempauze een optionele stap "laat je groep weten dat je even rust neemt", standaard uit, met een voorgestelde tekst die het lid kan aanpassen of wissen. Het bericht wordt pas geplaatst na een uitdrukkelijke handeling.
+2. Zonder die handeling ziet de groep niets: geen markering en geen status. Een test met een tweede JWT en een direct API-verzoek bevestigt dat een ander lid de pauze niet kan uitlezen.
+3. Het bericht gaat door het bestaande chatpad met zijn RLS, alleen naar de groep(en) die het lid kiest.
+4. Een pauze kost en levert geen punten op en verandert geen reeks (domeinregel 10).
+5. Pauze en bericht zijn onafhankelijk van elkaar: het bericht wissen heft de pauze niet op en andersom.
+6. Test op de naad (regel 18): pauzeplanning en chatpad samen.
+7. Loading-, error- en lege staat; teksten in beide talen; a11y.
+8. Komt er toch een migratie of nieuw type systeembericht bij, dan stopt de bouwsessie en vraagt Quinten.
+
+**Review:** `security-reviewer` direct, `critical-user` voor de toon van de voorgestelde tekst.
+
+**Aanname, niet gemeten:** dat een gewoon chatbericht geen nieuw oppervlak is voor domeinregel 7. De bouwsessie toetst dat en voegt zo nodig een rij toe aan `docs/decisions/002-domeinregel7-oppervlakken.md`.
