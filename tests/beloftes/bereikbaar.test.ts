@@ -118,7 +118,14 @@ const MOET_EEN_SCHERM_HEBBEN: Readonly<Record<string, string>> = {
  *    belofte per functie, en dat is deze lijst.
  */
 describe('een datalaagfunctie met een belofte heeft een scherm', () => {
-  const schermen = schermbestanden(join(WORTEL, 'app'));
+  // ⚠️ `src/schermen/` telt mee sinds QS8-748: het Vandaag-scherm is daarheen
+  //    verhuisd, en een test die alleen `app/` leest zag zijn aanroepen van
+  //    `fetchGetuigenissen()` niet meer. Dat is de verhuizing waar CLAUDE.md voor
+  //    waarschuwt: de test verhuist niet mee en bewaakt dan iets anders.
+  const schermen = [
+    ...schermbestanden(join(WORTEL, 'app')),
+    ...schermbestanden(join(WORTEL, 'src', 'schermen')),
+  ];
 
   it('vindt de schermen, anders toetst de rest niets', () => {
     // Ondergrens en geen exact getal: `app/` groeit, en dan hoort deze test niet
