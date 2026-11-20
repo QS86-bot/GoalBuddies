@@ -129,8 +129,8 @@ export const ALLOWLIST = [
       'waren het er 76, en het plafond van 47 was met 29 overschreden voordat ' +
       'iemand het zag. De vijf erbij zijn de buddywachtrij van QS8-233: ' +
       '`buddyzoekopdrachten_over()`, `zoek_buddies_aan()`, `zoek_buddies_uit()` ' +
-      'en `buddyzoek_stand()` in twee handtekeningen. Ze staan op productie en ' +
-      'nog niet op `main`, en hun migratienummers volgen QS8-641. Elk is per ' +
+      'en `buddyzoek_stand()` in twee handtekeningen. Hun migraties staan op ' +
+      '`main` (0299, 0301, 0302 en 0306), en productie stond op 18-11 op 0302. Elk is per ' +
       'functie nagelopen: een `grant` die een migratie met zoveel woorden geeft, ' +
       'een toets op `auth.uid()`, alleen eigen rijen, en geen tegenslag van een ' +
       'ander. ⚠️ Dat precies deze vijf het verschil met 76 zijn is afgeleid uit ' +

@@ -30,9 +30,11 @@ een aanname.
 
 📏 Wat wél gemeten is: de 81 uit `get_advisors` (productie, alleen lezen, 18-11
 20:15 UTC) naast de `grant`-regels van de buddywachtrij van QS8-233. Productie
-staat op **0302**, `origin/main` op **0298**; de wachtrij staat op productie en
-niet op `main`, en zijn nummers (0299 en 0301) worden op andere takken voor iets
-anders gebruikt — de hernummering volgt QS8-641. Die wachtrij geeft `authenticated`
+staat op **0302**, `origin/main` stond op 18-11 op **0298**; de wachtrij stond op
+productie en nog niet op `main`. ⚠️ **Bijgewerkt 20-11-2026 (batch INT, op last van de
+security-review):** `origin/main` bevat inmiddels 0299 t/m 0314, en de wachtrij zit erin
+als 0299, 0301, 0302 en 0306; de hernummering van QS8-641 is dus niet meer aan de orde.
+De vijf functies zijn daarmee in de code te vinden. Die wachtrij geeft `authenticated`
 precies **vijf** lintregels, allemaal in de lijst van 81.
 
 ⚠️ **Wat dit niet bewijst.** De lijst van 24-09 zelf is er niet meer, dus "76
@@ -50,9 +52,9 @@ niet geërfd, wat `tests/rls/functiegrants.test.ts` vraagt.
 | functie | migratie | toets op `auth.uid()` | wat de aanroeper ziet of kan | groepsgrens, domeinregel 7 | oordeel |
 | --- | --- | --- | --- | --- | --- |
 | `buddyzoekopdrachten_over()` | wachtrij, eerste migratie | `null` geeft 0 (faalt dicht) | alleen het eigen aantal vrije aanvragen vandaag, een getal | niets groepszichtbaars | bedoeld |
-| `zoek_buddies_aan(uuid, boolean)` | 0299, herzien in 0301 en 0302 | `null` geeft een uitzondering | alleen een eigen doel (`owner_id = auth.uid()`), schrijft één eigen wachtrijrij; "bestaat niet" en "is niet van jou" geven één antwoord | niets groepszichtbaars; de plafonds (3 wachtend, 10 groepen, 5 per dag) staan onder een advisory-lock per gebruiker | bedoeld |
+| `zoek_buddies_aan(uuid, boolean)` | 0299, herzien in 0301, 0302 en 0306 | `null` geeft een uitzondering | alleen een eigen doel (`owner_id = auth.uid()`), schrijft één eigen wachtrijrij; "bestaat niet" en "is niet van jou" geven één antwoord | niets groepszichtbaars; de plafonds (3 wachtend, 10 groepen, 5 per dag) staan onder een advisory-lock per gebruiker | bedoeld |
 | `zoek_buddies_uit(uuid)` | 0299 | `null` geeft een uitzondering | alleen de eigen rij van het eigen doel, `for update`; een al gekoppelde rij wordt niet geraakt (`already_matched`) | niets groepszichtbaars | bedoeld |
-| `buddyzoek_stand(uuid)` | 0301 | via `eigenaarsdatum(auth.uid())` en `g.owner_id = auth.uid()` | status, "nog nodig" (afgekapt op 0 tot 2), tijdstempels en `group_id` van het eigen verzoek | geen identiteit van wachtende anderen, alleen een afgekapt getal | bedoeld |
+| `buddyzoek_stand(uuid)` | 0301, herzien in 0306 | via `eigenaarsdatum(auth.uid())` en `g.owner_id = auth.uid()` | status, "nog nodig" (afgekapt op 0 tot 2), tijdstempels en `group_id` van het eigen verzoek | geen identiteit van wachtende anderen, alleen een afgekapt getal | bedoeld |
 | `buddyzoek_stand(uuid, date)` | 0301 (wrapper) | idem, via de eenargumentige versie | idem; `p_vandaag` wordt weggegooid, dus de client kan de bandberekening niet meer sturen | idem | bedoeld; wrapper mag weg zodra de client de eenargumentige versie aanroept |
 
 Eén ding is hier **grens 1** van de Beslisbevoegdheid en dat staat al onder
