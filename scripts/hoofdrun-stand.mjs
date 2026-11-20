@@ -64,6 +64,8 @@
  */
 import { execFile } from 'node:child_process';
 import { pathToFileURL } from 'node:url';
+
+import { GETOLEREERDE_VERTRAGING_UUR } from './uurjobs-controle.mjs';
 import { promisify } from 'node:util';
 
 const voerUit = promisify(execFile);
@@ -76,12 +78,14 @@ const WERKSTROOM = 'ci.yml';
 const ADVISORIES = 'advisories.yml';
 
 /**
- * Hoe oud de laatste afgeronde advisories-run mag zijn, in uren. De workflow
- * draait dagelijks; 26 uur laat één uur GitHub-vertraging toe. `schedule:` is
- * best-effort en een workflow kan in de UI uitgezet zijn: beide zien we hier
- * als "te oud", en dat is precies de rest die QS8-707 benoemde.
+ * Hoe oud de laatste afgeronde advisories-run mag zijn, in uren: dezelfde grens als
+ * de uurjobs (`GETOLEREERDE_VERTRAGING_UUR`, QS8-637). `advisories.yml` draait elk
+ * uur en GitHub slaat de meeste ticks over (📏 ~18,5% van het ritme, grootste gat
+ * 9 uur), dus een dagelijkse cron met een grens van 26 uur zou structureel
+ * ONGEMETEN melden. Eén bron en niet een tweede getal dat kan uiteenlopen.
+ * Een uitgezette workflow of een schedule dat niet vuurt valt hier ook onder.
  */
-export const ADVISORIES_MAX_UUR = 26;
+export const ADVISORIES_MAX_UUR = GETOLEREERDE_VERTRAGING_UUR;
 
 /** Hoe lang we op de API wachten voordat we hem opgeven. */
 const TIJDSLIMIET_MS = 15000;

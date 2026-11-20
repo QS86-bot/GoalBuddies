@@ -5,7 +5,7 @@ import { clientEnv } from '@/lib/env';
 import { useProfiel } from '@/modules/auth';
 import {
   beginfase,
-  deelbareUitnodiging,
+  deelbaarBericht,
   fetchGroep,
   fetchGroepenVanDoel,
   fetchMijnGroepen,
@@ -284,6 +284,7 @@ function KiesGroep({
  */
 function Gedeeld({ groupId, onKlaar }: { readonly groupId: string; readonly onKlaar: () => void }) {
   const { data: groep, loading, error, herlaad } = useAsync(() => fetchGroep(groupId), [groupId]);
+  const { profiel } = useProfiel();
 
   return (
     <>
@@ -295,7 +296,7 @@ function Gedeeld({ groupId, onKlaar }: { readonly groupId: string; readonly onKl
         empty={{ title: t('samen.groep_weg_titel'), body: t('samen.groep_weg_tekst') }}
         isEmpty={() => false}
       >
-        {(g) => <Uitnodiging naam={g.name} link={deelbareUitnodiging(g, clientEnv().appUrl)} />}
+        {(g) => <Uitnodiging naam={g.name} bericht={deelbaarBericht(g, clientEnv().appUrl, profiel?.display_name)} />}
       </AsyncView>
 
       <Button variant="stil" block onPress={onKlaar}>
@@ -305,19 +306,25 @@ function Gedeeld({ groupId, onKlaar }: { readonly groupId: string; readonly onKl
   );
 }
 
-function Uitnodiging({ naam, link }: { readonly naam: string; readonly link: string | null }) {
+function Uitnodiging({
+  naam,
+  bericht,
+}: {
+  readonly naam: string;
+  readonly bericht: { readonly tekst: string; readonly onderwerp: string } | null;
+}) {
   return (
     <Card>
       <Subheading>{t('samen.gekoppeld', { naam })}</Subheading>
       <Body muted>{t('samen.gekoppeld_tekst')}</Body>
 
-      {link === null ? (
+      {bericht === null ? (
         <Caption>{t('samen.link_gesloten')}</Caption>
       ) : (
         <Deelknop
           label={t('samen.deel')}
-          titel={t('samen.deel_titel', { groep: naam })}
-          tekst={link}
+          titel={bericht.onderwerp}
+          tekst={bericht.tekst}
         />
       )}
     </Card>

@@ -75,6 +75,30 @@ export function taakbalkVorm(breedte: number): Taakbalkvorm {
   return breedte >= BREED_VANAF ? 'zijkant' : 'bovenrand';
 }
 
+/**
+ * Of het menu op een telefoon open begint — QS8-728, besluit van Quinten 20-11-2026.
+ *
+ * ⚠️ **Dicht, en niet onthouden.** Het besluit zegt "start dicht"; er is geen
+ *    opslag en geen voorkeur. `Screen` tekent de balk per scherm, dus elke
+ *    navigatie begint weer dicht: je kiest een pagina en het menu ruimt zichzelf
+ *    op. Wil iemand ooit dat het menu zijn keuze onthoudt, dan is dat een eigen
+ *    besluit en een eigen voorkeur, geen bijvangst hier.
+ *
+ * ⚠️ Een export en geen letterlijke `false` in het component, zodat de test de
+ *    beginstand leest uit de bron die ook het component gebruikt.
+ */
+export const MENU_BEGINSTAND_OPEN = false;
+
+/** Alleen de gestapelde vorm klapt in; de kolom op een breed scherm nooit. */
+export function menuKlaptIn(vorm: Taakbalkvorm): boolean {
+  return vorm === 'bovenrand';
+}
+
+/** Of de vijf knoppen getekend worden bij deze vorm en stand. */
+export function toonMenuknoppen(vorm: Taakbalkvorm, open: boolean): boolean {
+  return !menuKlaptIn(vorm) || open;
+}
+
 /** Een scherm dat de balk met reden niet krijgt. */
 interface Uitzondering {
   /** Het pad zelf, of een prefix met een `/` erachter. */
@@ -184,4 +208,15 @@ const ONDER: Readonly<Record<string, string>> = {
 function afgeleid(pad: string): string | null {
   const wortel = `/${pad.split('/')[1] ?? ''}`;
   return ONDER[wortel] ?? null;
+}
+
+/**
+ * De sleutel van de tekst op de ingeklapte kop: de huidige pagina, of — op een
+ * scherm dat bij geen tabblad hoort — de naam van het menu zelf.
+ *
+ * ⚠️ De actieve pagina blijft zichtbaar in de dichte stand (criterium 4 van
+ *    QS8-728); `null` is geen reden om de kop leeg te laten.
+ */
+export function kopSleutel(actief: string | null): Sleutel {
+  return TABBLADEN.find((tab) => tab.pad === actief)?.sleutel ?? 'tab.navigatie';
 }
