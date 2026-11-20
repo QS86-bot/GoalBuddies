@@ -357,6 +357,10 @@ export const WACHT_OP_EEN_BESLUIT = {
     'Schrijfpad van een teamdoel (0319, QS8-654). Het scherm is QS8-658. ' +
     '**Vraag:** krijgt hij daar een aanroeper? Zo ja, dan gaat deze rij weg zodra die er is; ' +
     'zo nee, dan hoort de RPC weg.',
+  teambalk:
+    'Leespad van de teambalk (0320, QS8-655). Het scherm is QS8-658. ' +
+    '**Vraag:** krijgt hij daar een aanroeper? Zo ja, dan gaat deze rij weg zodra die er is; ' +
+    'zo nee, dan hoort de RPC weg.',
   neem_aandeel:
     'Schrijfpad van een aandeel (0319, QS8-654). Het scherm is QS8-658. ' +
     '**Vraag:** krijgt hij daar een aanroeper? Zo ja, dan gaat deze rij weg zodra die er is; ' +
