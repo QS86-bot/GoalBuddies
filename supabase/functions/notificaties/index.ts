@@ -172,6 +172,8 @@ interface Profiel {
   reminder_enabled: boolean;
   reminder_time: string | null;
   reminder_tone: string | null;
+  /** Een van de zes voorstellen uit de vragenlijst (0311), of `null`. Nooit de eigen omschrijving. */
+  feeling: string | null;
   /** De taalkeuze van de ontvanger. `null` = nog niet gekozen (migratie 0061). */
   locale: string | null;
   /**
@@ -510,7 +512,7 @@ async function profielenPagina(
     //    QS8-688, Laag 4: *wordt zwaarder als er tussen het lezen van de tokens
     //    en het versturen langer gewacht wordt*).
     // deno-fmt-ignore
-    .select('id, tz, week_start_day, reminder_enabled, reminder_time, reminder_tone, locale, notify_approval_request, notify_approval_received, notify_cycle_summary, notify_commitment_witness, notify_group_digest, quiet_from, quiet_to, push_tokens!inner(user_id)');
+    .select('id, tz, week_start_day, reminder_enabled, reminder_time, reminder_tone, feeling, locale, notify_approval_request, notify_approval_received, notify_cycle_summary, notify_commitment_witness, notify_group_digest, quiet_from, quiet_to, push_tokens!inner(user_id)');
 
   if (laatste !== null) vraag = vraag.gt('id', laatste);
   else if (grens.vanaf !== null) vraag = vraag.gte('id', grens.vanaf);
@@ -726,7 +728,7 @@ async function stuurNudge(ronde: Meldronde): Promise<void> {
       const trigger: Trigger =
         laatste === null ? 'misser' : tegenslagtrigger(laatste as never, lokaleDatum as never);
 
-      return metHeldenstem(ronde, 'nudge', nudgeBericht(toon, taalVan(profiel)), trigger);
+      return metHeldenstem(ronde, 'nudge', nudgeBericht(toon, taalVan(profiel), profiel.feeling), trigger);
     };
 
     const stand = await stuur(db, {

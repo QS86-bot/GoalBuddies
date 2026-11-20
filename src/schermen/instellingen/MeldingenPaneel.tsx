@@ -132,10 +132,23 @@ function HerinneringBewaren({
   );
 }
 
+/** Titel en uitleg van de herinnering, met je eigen woorden uit de vragenlijst als die er zijn. */
+function HerinneringKop({ motto }: { readonly motto: string | null }) {
+  return (
+    <>
+      <Subheading>{t('profiel.herinnering_titel')}</Subheading>
+      <Body muted>{t('profiel.herinnering_uitleg')}</Body>
+      {motto === null ? null : <Body>{t('profiel.motto', { tekst: motto })}</Body>}
+    </>
+  );
+}
+
 interface HerinneringProps {
   readonly aan: boolean;
   readonly tijd: string | null;
   readonly toon: Toon;
+  /** Je eigen woorden uit de vragenlijst (QS8-733): alleen hier, nooit in een melding. */
+  readonly motto: string | null;
   readonly userId: string;
   readonly onOpgeslagen: (profiel: ProfielRij) => void;
 }
@@ -166,7 +179,14 @@ interface HerinneringProps {
  *    belofte geldt in het onboardingscherm, en twee kopieën van één belofte is
  *    precies de naad die regel 18 beschrijft.
  */
-export function HerinneringInstelling({ aan, tijd, toon, userId, onOpgeslagen }: HerinneringProps) {
+export function HerinneringInstelling({
+  aan,
+  tijd,
+  toon,
+  motto,
+  userId,
+  onOpgeslagen,
+}: HerinneringProps) {
   const [wilAan, setWilAan] = useState(aan);
   const [wilTijd, setWilTijd] = useState(() => tijdVoorInvoer(tijd));
   const [wilToon, setWilToon] = useState<Toon>(toon);
@@ -179,8 +199,7 @@ export function HerinneringInstelling({ aan, tijd, toon, userId, onOpgeslagen }:
 
   return (
     <Card>
-      <Subheading>{t('profiel.herinnering_titel')}</Subheading>
-      <Body muted>{t('profiel.herinnering_uitleg')}</Body>
+      <HerinneringKop motto={motto} />
 
       <Choice
         label={t('profiel.herinnering_label')}

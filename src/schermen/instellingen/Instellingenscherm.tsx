@@ -64,6 +64,7 @@ function MeldingenPaneel({ p, zet }: PaneelProps) {
         aan={p.reminder_enabled}
         tijd={p.reminder_time}
         toon={p.reminder_tone === 'firm' ? 'firm' : 'gentle'}
+        motto={p.feeling_own ?? null}
         userId={p.id}
         onOpgeslagen={zet}
       />

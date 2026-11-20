@@ -244,6 +244,24 @@ export const profielSchema = z.object({
   minutes_per_day: z.number().int().positive().nullable(),
   when_i_do_it: z.string().nullable(),
   what_breaks_it: z.array(z.string()),
+  /**
+   * Hoe iemand zich wil voelen — QS8-733, migratie 0311. Alleen voor de eigenaar
+   * leesbaar (`mijn_profiel`), nooit voor de groep.
+   *
+   * ⚠️ Zelfde vorm als de vier hierboven: de allowlist is de CHECK
+   *    `profiles_feeling_bekend` en de grens van `feeling_own` is
+   *    `profiles_feeling_own_len`; beide worden aan de doelenkant getoetst
+   *    (`GEVOELENS` en `MAX_EIGEN_GEVOEL` in `vragenlijst-schemas.ts`). Alleen de
+   *    lengte staat hier óók, in codepunten, want een lege of te lange tekst hoort
+   *    niet eerst naar de server om daar te falen.
+   */
+  feeling: z.string().nullable(),
+  feeling_own: z
+    .string()
+    .refine((tekst) => telTekens(tekst) >= 1 && telTekens(tekst) <= 60, {
+      error: () => t('vragenlijst.gevoel.eigen_te_lang', { max: 60 }),
+    })
+    .nullable(),
 });
 
 export type ProfielInvoer = z.infer<typeof profielSchema>;

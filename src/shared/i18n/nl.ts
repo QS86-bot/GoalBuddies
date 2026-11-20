@@ -2765,9 +2765,9 @@ export const nl = {
   //    het onderwerp is de gewoonte en niet de persoon. Domeinregel 7 gaat over
   //    wat de groep ziet; deze zin ziet alleen de gebruiker zelf, en juist daar
   //    telt de toon.
-  'vragenlijst.titel': 'Vier korte vragen',
+  'vragenlijst.titel': 'Een paar korte vragen',
   'vragenlijst.eyebrow': 'ZODAT DE APP JE KENT',
-  'vragenlijst.overslaan': 'Sla over',
+  'vragenlijst.overslaan': 'Naar het overzicht',
   'vragenlijst.volgende': 'Volgende',
   'vragenlijst.vorige': 'Terug',
   'vragenlijst.alles_overslaan': 'Alles overslaan kan ook. Je verliest er niets mee en je kunt het later invullen.',
@@ -2794,7 +2794,7 @@ export const nl = {
   'vragenlijst.valkuil.vraag': 'Wat laat jouw gewoontes normaal gesproken stuklopen?',
   'vragenlijst.valkuil.toelichting': 'Vink er zoveel aan als kloppen. Hier is de app voor gebouwd.',
   'valkuil.forget': 'Ik vergeet het gewoon',
-  'valkuil.forget.antwoord': 'Straks krijg je een herinnering op de dag van je groep. Die is er nog niet, en dan zeggen we ook niet dat hij er is.',
+  'valkuil.forget.antwoord': 'Daar is de dagelijkse herinnering voor: één rustig zetje, alleen als je die dag nog niets deed. Je zet hem aan op je profiel.',
   'valkuil.motivation_drops': 'Motivatie zakt na week één',
   'valkuil.motivation_drops.antwoord': 'Daar is de weekpas voor: een gemiste week kost je je reeks niet. En je vloer zorgt dat een matige week nog steeds telt.',
   'valkuil.all_or_nothing': 'Alles of niets: één dag mis en ik stop',
@@ -3315,6 +3315,29 @@ export const nl = {
     'Je huidige held kon niet opgehaald worden. Beantwoord de vier vragen om er een te kiezen.',
   'vragenlijst.held.kies_een': 'Kies er een',
   'vragenlijst.held.opslaan_mislukt': 'Je held kon niet bewaard worden. Probeer het zo nog eens.',
+  // Hoe wil je je voelen — QS8-733. Alleen voor jezelf; zie migratie 0311.
+  'vragenlijst.stap_van': 'Vraag {stap} van {totaal}',
+  'vragenlijst.gevoel.vraag': 'Hoe wil je je voelen?',
+  'vragenlijst.gevoel.toelichting':
+    'Kies wat het beste past, of omschrijf het zelf. Dit blijft van jou: je groep ziet het nooit.',
+  'vragenlijst.gevoel.calm': 'Rustig',
+  'vragenlijst.gevoel.motivated': 'Gemotiveerd',
+  'vragenlijst.gevoel.proud': 'Trots',
+  'vragenlijst.gevoel.supported': 'Gesteund',
+  'vragenlijst.gevoel.energetic': 'Energiek',
+  'vragenlijst.gevoel.focused': 'Gefocust',
+  'vragenlijst.gevoel.eigen_label': 'Of in je eigen woorden',
+  'vragenlijst.gevoel.eigen_hint':
+    'Alleen jij ziet dit, op je profiel bij Dagelijkse herinnering. Het komt nooit in een melding.',
+  'vragenlijst.gevoel.eigen_plaatshouder': 'Bijvoorbeeld: stap voor stap',
+  'vragenlijst.gevoel.eigen_teller': '{aantal} van {max} tekens',
+  'vragenlijst.gevoel.eigen_te_lang': 'Maximaal {max} tekens.',
+  'vragenlijst.gevoel.regel': 'Hoe je je wilt voelen',
+  'vragenlijst.voorbeeld.vraag': 'Zo ziet je herinnering eruit',
+  'vragenlijst.voorbeeld.toelichting':
+    'Dit is het zetje dat je krijgt als je meldingen aanzet: één per dag, alleen voor jou, en alleen als je die dag nog niets deed. Je zet meldingen aan of uit op je profiel.',
+  'vragenlijst.voorbeeld.a11y': 'Voorbeeld van je herinnering',
+  'profiel.motto': 'Hoe je je wilt voelen: {tekst}',
 } as const;
 
 export type Sleutel = keyof typeof nl;

@@ -54,7 +54,9 @@ const ONBOARDINGSCHERMEN: Readonly<Record<string, { readonly isOnboarded: boolea
       'QS8-266 opleverde: de wacht kende alleen het eerste segment, zag ' +
       '`onboarding`, en stuurde de gebruiker op hetzelfde moment naar `/`.',
   },
-  'app/onboarding/vragenlijst.tsx': {
+  // ⚠️ Sinds QS8-733 staat de navigatie in de hook en niet meer in het routebestand;
+  //    het register leest het bestand waar `router.replace()` echt staat.
+  'src/schermen/vragenlijst/useVragenlijst.ts': {
     isOnboarded: true,
     reden:
       'Acceptatiecriterium 2: wie de vragenlijst wegklikt of afmaakt, komt in ' +

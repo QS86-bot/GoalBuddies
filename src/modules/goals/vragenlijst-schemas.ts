@@ -1,6 +1,7 @@
 import { z } from 'zod';
 
 import { t, type Sleutel } from '../../shared/i18n';
+import { telTekens } from '../../shared/tekst';
 
 import { CATEGORIEEN, type Categorie } from './schemas';
 
@@ -49,6 +50,54 @@ export const VALKUILEN = [
 ] as const;
 export type Valkuil = (typeof VALKUILEN)[number];
 
+/**
+ * Hoe wil je je voelen — de vijfde vraag, QS8-733, migratie 0311.
+ *
+ * ⚠️ **Zes voorstellen en een eigen omschrijving, en ze doen niet hetzelfde.** Een
+ *    voorstel stuurt de tekst van de dagelijkse herinnering; de eigen
+ *    omschrijving staat alleen op het eigen scherm (besluit Quinten, 19-11-2026)
+ *    en komt nooit letterlijk in een melding of bericht. Beide zijn alleen voor
+ *    de eigenaar leesbaar (domeinregel 7).
+ *
+ * ⚠️ `GEVOELENS` is een kopie van `profiles_feeling_bekend` én van
+ *    `GEVOELENS` in `src/modules/notifications/regels.ts` (dat bestand wordt
+ *    naar de Edge Function gekopieerd en mag niets importeren).
+ *    `tests/beloftes/gevoelsregels.test.ts` en `tests/rls/gevoel.test.ts` leggen
+ *    ze naast elkaar.
+ */
+export const GEVOELENS = [
+  'calm',
+  'motivated',
+  'proud',
+  'supported',
+  'energetic',
+  'focused',
+] as const;
+export type Gevoel = (typeof GEVOELENS)[number];
+
+/**
+ * ⚠️ Geteld met `telTekens()` (codepunten) en niet met `.length`, want de
+ *    database telt `char_length`: dezelfde grens staat in `profiles_feeling_own_len`
+ *    (0311). Een emoji is hier één teken, en dat mag: de gebruiker typt wat hij wil.
+ */
+export const MAX_EIGEN_GEVOEL = 60;
+
+/**
+ * De eigen omschrijving zoals hij naar de database gaat: getrimd, of `null` als er
+ * niets overblijft. ⚠️ Een lege tekst is geen omschrijving en wordt nooit
+ * geschreven; de CHECK weigert hem ook.
+ */
+export function eigenGevoelSchoon(tekst: string | null | undefined): string | null {
+  const schoon = (tekst ?? '').trim();
+  return schoon === '' ? null : schoon;
+}
+
+export const eigenGevoelSchema = z
+  .string()
+  .refine((tekst) => telTekens(tekst.trim()) <= MAX_EIGEN_GEVOEL, {
+    error: () => t('vragenlijst.gevoel.eigen_te_lang', { max: MAX_EIGEN_GEVOEL }),
+  });
+
 export const vragenlijstSchema = z.object({
   /** 1. Waar wil je je op richten? Maximaal drie. */
   focus_areas: z
@@ -64,6 +113,10 @@ export const vragenlijstSchema = z.object({
   when_i_do_it: z.enum(MOMENTEN).nullable().default(null),
   /** 4. Wat laat jouw gewoontes normaal gesproken stuklopen? */
   what_breaks_it: z.array(z.enum(VALKUILEN)).default([]),
+  /** 5. Hoe wil je je voelen? Een van zes voorstellen, of niets. */
+  feeling: z.enum(GEVOELENS).nullable().default(null),
+  /** 5b. Of in je eigen woorden. Alleen op je eigen scherm. */
+  feeling_own: eigenGevoelSchema.nullable().default(null),
 });
 
 /**
@@ -73,12 +126,20 @@ export const vragenlijstSchema = z.object({
  */
 export type VragenlijstInvoer = z.input<typeof vragenlijstSchema>;
 
+/** Welke van de twee gevoelskolommen de gebruiker bewust leegmaakte. */
+export interface GevoelWissen {
+  readonly feeling?: boolean;
+  readonly feeling_own?: boolean;
+}
+
 /** Een vragenlijst waarin alles is overgeslagen. Geldig, en dat is het punt. */
 export const LEGE_VRAGENLIJST: Required<VragenlijstInvoer> = {
   focus_areas: [],
   minutes_per_day: null,
   when_i_do_it: null,
   what_breaks_it: [],
+  feeling: null,
+  feeling_own: null,
 };
 
 /**
@@ -90,11 +151,16 @@ export const LEGE_VRAGENLIJST: Required<VragenlijstInvoer> = {
  *    lijst alles op `null` zetten, dan wist "overslaan" stilletjes gegevens, en
  *    dat is niet wat overslaan betekent.
  */
-export function patchUitVragenlijst(invoer: VragenlijstInvoer): {
+export function patchUitVragenlijst(
+  invoer: VragenlijstInvoer,
+  wis: GevoelWissen = {},
+): {
   focus_areas?: Categorie[];
   minutes_per_day?: Minuten;
   when_i_do_it?: Moment;
   what_breaks_it?: Valkuil[];
+  feeling?: Gevoel | null;
+  feeling_own?: string | null;
 } {
   const patch: Record<string, unknown> = {};
 
@@ -107,6 +173,16 @@ export function patchUitVragenlijst(invoer: VragenlijstInvoer): {
   if ((invoer.what_breaks_it ?? []).length > 0) {
     patch.what_breaks_it = [...(invoer.what_breaks_it ?? [])];
   }
+  if ((invoer.feeling ?? null) !== null) patch.feeling = invoer.feeling;
+  // ⚠️ Getrimd en nooit leeg: een leeg veld is overslaan en wist niets.
+  const eigen = eigenGevoelSchoon(invoer.feeling_own);
+  if (eigen !== null) patch.feeling_own = eigen;
+
+  // ⚠️ **Weghalen is een handeling en overslaan niet.** Alleen als de gebruiker een eerder
+  //    gezet gevoel of motto expliciet leegmaakt, gaat er `null` mee; een overgeslagen
+  //    vraag blijft met rust (QS8-37, criterium 4).
+  if (wis.feeling === true && (invoer.feeling ?? null) === null) patch.feeling = null;
+  if (wis.feeling_own === true && eigen === null) patch.feeling_own = null;
 
   return patch;
 }
@@ -203,5 +279,17 @@ export function valkuilLabels(): Readonly<Record<Valkuil, string>> {
     all_or_nothing: t('valkuil.all_or_nothing'),
     nobody_notices: t('valkuil.nobody_notices'),
     life_chaotic: t('valkuil.life_chaotic'),
+  };
+}
+
+/** Zie `categorieLabels()`: een functie, want de taal ligt niet vast op importtijd. */
+export function gevoelLabels(): Readonly<Record<Gevoel, string>> {
+  return {
+    calm: t('vragenlijst.gevoel.calm'),
+    motivated: t('vragenlijst.gevoel.motivated'),
+    proud: t('vragenlijst.gevoel.proud'),
+    supported: t('vragenlijst.gevoel.supported'),
+    energetic: t('vragenlijst.gevoel.energetic'),
+    focused: t('vragenlijst.gevoel.focused'),
   };
 }
