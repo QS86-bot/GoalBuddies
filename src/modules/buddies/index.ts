@@ -33,9 +33,21 @@ export {
   type Vertrek,
 } from './api';
 
-export { beslissendeGroep, enigeOfGekozen, koppelbareGroepen, type DoelGroep } from './deling';
+export {
+  beslissendeGroep,
+  enigeOfGekozen,
+  isTeamgroep,
+  koppelbareGroepen,
+  type DoelGroep,
+} from './deling';
 
-export { beginfase, deelbareUitnodiging, type Beginfase } from './samen';
+export {
+  beginfase,
+  deelbaarBericht,
+  deelbareUitnodiging,
+  uitnodigingsBericht,
+  type Beginfase,
+} from './samen';
 
 export {
   fetchProfielDoelen,

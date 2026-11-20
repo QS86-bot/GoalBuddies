@@ -8,10 +8,14 @@ import { afstand, radius, useTheme } from '../theme';
 import { focusRing } from './a11y';
 import {
   actiefTabblad,
+  kopSleutel,
+  MENU_BEGINSTAND_OPEN,
   MENU_KOLOMBREEDTE,
+  menuKlaptIn,
   TABBLADEN,
   taakbalkVorm,
   toontTaakbalk,
+  toonMenuknoppen,
   type Taakbalkvorm,
 } from './tabbladen';
 
@@ -77,6 +81,7 @@ export function Taakbalk() {
   const theme = useTheme();
   const pad = usePathname();
   const vorm = useTaakbalkVorm();
+  const [open, setOpen] = useState(MENU_BEGINSTAND_OPEN);
 
   if (!toontTaakbalk(pad)) return null;
   const actief = actiefTabblad(pad);
@@ -98,16 +103,74 @@ export function Taakbalk() {
         },
       ]}
     >
-      {TABBLADEN.map((tab) => (
-        <Tab
-          key={tab.pad}
-          pad={tab.pad}
-          sleutel={tab.sleutel}
-          actief={tab.pad === actief}
-          zijkant={zijkant}
-        />
-      ))}
+      {menuKlaptIn(vorm) ? (
+        <MenuKop actief={actief} open={open} onWissel={() => setOpen((o) => !o)} />
+      ) : null}
+      {toonMenuknoppen(vorm, open)
+        ? TABBLADEN.map((tab) => (
+            <Tab
+              key={tab.pad}
+              pad={tab.pad}
+              sleutel={tab.sleutel}
+              actief={tab.pad === actief}
+              zijkant={zijkant}
+            />
+          ))
+        : null}
     </View>
+  );
+}
+
+interface MenuKopProps {
+  readonly actief: string | null;
+  readonly open: boolean;
+  readonly onWissel: () => void;
+}
+
+/**
+ * De ingeklapte kop van het menu op een telefoon — QS8-728 (optie A).
+ *
+ * ⚠️ **Eén knop met de stand erbij.** `aria-expanded` en `accessibilityState.expanded`
+ *    zeggen "open" of "dicht"; het label noemt het menu en de huidige pagina, zodat
+ *    een schermlezer niet alleen "Groep, knop" zegt. De pagina staat ook zichtbaar in
+ *    de knop, want in de dichte stand is dat het enige dat vertelt waar je bent.
+ *
+ * ⚠️ Een `Pressable` en geen `Link`: dit gaat nergens heen, het wisselt een stand.
+ *    De chevron is twee randen van een gedraaid vierkant, dus geen teken en geen
+ *    emoji, en `importantForAccessibility="no"` omdat de stand al in de knop staat.
+ */
+function MenuKop({ actief, open, onWissel }: MenuKopProps) {
+  const theme = useTheme();
+  const [heeftFocus, setFocus] = useState(false);
+  const c = theme.colors;
+  const naam = t(kopSleutel(actief));
+
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={`${t('tab.navigatie')}: ${naam}`}
+      accessibilityState={{ expanded: open }}
+      aria-expanded={open}
+      onPress={onWissel}
+      onFocus={() => setFocus(true)}
+      onBlur={() => setFocus(false)}
+      style={StyleSheet.flatten([
+        styles.knop,
+        styles.kop,
+        { backgroundColor: c.panel, borderColor: c.accent, borderWidth: 2 },
+        focusRing(theme, heeftFocus),
+      ])}
+    >
+      <Text style={[styles.label, { color: c.accent, fontWeight: '700' }]}>{naam}</Text>
+      <View
+        importantForAccessibility="no"
+        aria-hidden
+        style={[
+          styles.chevron,
+          { borderColor: c.accent, transform: [{ rotate: open ? '-135deg' : '45deg' }] },
+        ]}
+      />
+    </Pressable>
   );
 }
 
@@ -207,4 +270,14 @@ const styles = StyleSheet.create({
   knopRij: { alignItems: 'flex-start' },
   knopZijkant: { alignItems: 'flex-start' },
   label: { fontSize: 15 },
+  // De ingeklapte kop: label links, chevron rechts, dezelfde maat als een knop.
+  kop: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  chevron: {
+    width: 8,
+    height: 8,
+    borderRightWidth: 2,
+    borderBottomWidth: 2,
+    borderTopWidth: 0,
+    borderLeftWidth: 0,
+  },
 });

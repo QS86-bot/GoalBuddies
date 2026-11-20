@@ -11,6 +11,7 @@ import {
   type DoelMetVoortgang,
   type Risico,
 } from '@/modules/goals';
+import { Belofteverwijzing, verwijzingsdoel } from '@/schermen/belofte';
 import { opmaaktaal, t } from '@/shared/i18n';
 import { space, useTheme } from '@/shared/theme';
 import { localDateIn, now, toonDatum } from '@/shared/time';
@@ -127,6 +128,15 @@ export default function Doelen() {
            Regel 18 vraag 5: *kan een gebruiker hier daadwerkelijk bij, en langs
            welke knop?* Elk schakeltje was af en de keten was los.
       */}
+      {/*
+        ⚠️ **Eén verwijzing naar de weekbelofte, QS8-762** — alleen bij precies één
+           actief eigen doel en alleen met een groep of getuige; ze schrijft niets
+           en opent de aparte bevestigstap van QS8-761.
+      */}
+      <Belofteverwijzing
+        doelId={verwijzingsdoel({ paginaNr, totaal: pagina?.totaal, doelIds: rijen.map((d) => d.id) })}
+      />
+
       <Button variant="primair" block onPress={() => router.push('/doel/plan')}>
         {t('doelen.nieuw')}
       </Button>

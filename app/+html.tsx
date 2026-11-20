@@ -1,6 +1,9 @@
 import { ScrollViewStyleReset } from 'expo-router/html';
 import type { PropsWithChildren } from 'react';
 
+import { clientEnv } from '../src/lib/env';
+import { linkvoorbeeldTags } from '../src/shared/web/linkvoorbeeld';
+
 /**
  * De HTML-schil om elke statisch geëxporteerde route — QS8-117.
  *
@@ -21,6 +24,9 @@ import type { PropsWithChildren } from 'react';
  */
 export default function Root({ children }: PropsWithChildren) {
   return (
+    // ⚠️ QS8-741: `nl` is de standaard voor de prerender. De client zet het attribuut
+    //    naar de taal van de app (`zetDocumentTaal()` in `src/shared/i18n`), zodat een
+    //    schermlezer bij Engelse tekst een Engelse stem kiest.
     <html lang="nl">
       <head>
         <meta charSet="utf-8" />
@@ -32,6 +38,17 @@ export default function Root({ children }: PropsWithChildren) {
 
         <link rel="manifest" href="/manifest.json" />
         <meta name="theme-color" content="#0e1730" />
+
+        {/* ⚠️ Het linkvoorbeeld — QS8-706. Publiek en voor elke route gelijk: alleen
+            het logo en een algemene zin, nooit iets over een groep. Zie
+            `src/shared/web/linkvoorbeeld.ts` voor waarom. */}
+        {linkvoorbeeldTags(clientEnv().appUrl).map((tag) =>
+          tag.soort === 'property' ? (
+            <meta key={tag.sleutel} property={tag.sleutel} content={tag.inhoud} />
+          ) : (
+            <meta key={tag.sleutel} name={tag.sleutel} content={tag.inhoud} />
+          ),
+        )}
 
         {/* iOS leest het manifest-icoon niet voor het beginscherm. Zonder deze
             regel zet het toestel een schermafdruk op de tegel. */}

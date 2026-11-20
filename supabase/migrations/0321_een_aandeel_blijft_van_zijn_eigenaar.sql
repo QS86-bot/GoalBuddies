@@ -12,7 +12,7 @@
 --   de gemarkeerde QS8-661-voorwaarde); de vier policies hieronder terugzetten
 --   zonder de tak `aandeel_wacht_op_teamgenoot()`;
 --   drop function if exists public.aandeel_wacht_op_teamgenoot(uuid);
---   straffen_bij_uitstelverzoek() (0218), plaats_systeembericht_in_doelgroepen(),
+--   straffen_bij_uitstelverzoek() (0312, met `periode_start is null`), plaats_systeembericht_in_doelgroepen(),
 --   meld_goedkeuring(), groep_helden() en group_overview() terugzetten uit hun
 --   vorige definitie (de lichamen in sectie 6 zijn die, plus de QS8-661-regels);
 --   drop function if exists public.is_aandeel_van_een_ander(uuid);
