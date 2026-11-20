@@ -150,4 +150,40 @@ describe.skipIf(!rlsTestsConfigured)('een pauze is niet af te leiden uit De Kett
     },
     TEST_TIMEOUT,
   );
+
+  it(
+    'een lid in een pauze krijgt via de echte schrijver gewoon een schakel, en dan is de week voltallig',
+    async () => {
+      // ⚠️ De schrijver van `chain_links` is de trigger op `week_reviews`. Een pauzecheck daar
+      //    zou een pauzerend lid structureel schakelloos maken, en dat is zelf het signaal.
+      const d = duo[0];
+      if (d === undefined) throw new Error('duo ontbreekt');
+      const vandaag = localDateIn('UTC' as TimeZone, now()) as IsoDate;
+      const pauze = await adminDb()
+        .from('breathers')
+        .insert({
+          user_id: pauzerend.id,
+          goal_id: d.goalId,
+          starts_cycle: addDays(vandaag, -1),
+          ends_cycle: addDays(vandaag, 6),
+        })
+        .select('id')
+        .single();
+      expect(pauze.error, 'de pauze is niet gezet, dus de test bewijst niets').toBeNull();
+
+      const schrijf = await pauzerend.db.from('week_reviews').insert({
+        group_id: d.groupId,
+        user_id: pauzerend.id,
+        group_period_start: d.periode,
+        did_text: 'afgesloten tijdens een pauze',
+      });
+      expect(schrijf.error?.message ?? null).toBeNull();
+
+      const na = await stand(d);
+      await adminDb().from('breathers').delete().eq('id', pauze.data?.id ?? '');
+
+      expect(na).toEqual({ schakels: 2, in_aanmerking: 2, voltallig: true });
+    },
+    TEST_TIMEOUT,
+  );
 });

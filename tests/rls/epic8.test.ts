@@ -506,11 +506,12 @@ describe.skipIf(!rlsTestsConfigured)('EPIC 8 — De Ketting', () => {
     );
 
     it(
-      'haalt een lid met adempauze uit de noemer — maar alleen op een doel van deze groep',
+      'telt een lid met adempauze gewoon mee in de noemer (0328, QS8-769)',
       async () => {
-        // Criterium 4 was voor de helft ongetest, en dat was precies de helft
-        // die stuk was: de toets keek naar élk doel van een lid, ook doelen
-        // buiten deze groep.
+        // ⚠️ Omgedraaid in 0328 (QS8-769, besluit Quinten 20-11-2026): een lid in een
+        //    pauze telt mee, want het getal dat zakte was aan elk groepslid te lezen en
+        //    verried wie pauzeert. De naadtoets staat in `ketting-pauze-meetelt.test.ts`;
+        //    deze behoudt de oude opstelling, nu met het omgekeerde verwachte getal.
         const admin = adminDb();
         const doel = await admin
           .from('goals')
@@ -543,10 +544,13 @@ describe.skipIf(!rlsTestsConfigured)('EPIC 8 — De Ketting', () => {
           p_period_start: f.periodStart,
         });
 
-        expect(stand(na.data).in_aanmerking).toBe((stand(voor.data).in_aanmerking ?? 1) - 1);
-
+        // ⚠️ Eerst opruimen, dan beweren: een rode assertie hield de pauze vroeger
+        //    staan en maakte zo de volgende test (`plan_adempauze`) ook rood.
         const pauzeId = pauze.data?.id;
         if (pauzeId !== undefined) await admin.from('breathers').delete().eq('id', pauzeId);
+
+        expect(pauze.error).toBeNull();
+        expect(stand(na.data).in_aanmerking).toBe(stand(voor.data).in_aanmerking);
       },
       TEST_TIMEOUT,
     );
