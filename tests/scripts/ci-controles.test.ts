@@ -126,6 +126,12 @@ describe('het echte register', () => {
    *    is de grendel groen over een CI die niets draait.
    */
   it('is een uitzondering en geen tweede lijst', () => {
-    expect(Object.keys(ZONDER_CI).length).toBeLessThan(12);
+    // ⚠️ 11 werd 12 met QS8-742 (`prerender:controle`): hij leest een `dist/` en CI
+    //    bouwt niet. Een eerlijker alternatief was hem in CI te laten draaien met
+    //    `OVERGESLAGEN` en exit 0, maar dan telt `cidekking:controle` hem als
+    //    "draait in CI" terwijl hij daar niets meet: ongemeten als groen. De grens
+    //    is dus één opgehoogd, bewust, en zakt weer zodra `ci.yml` een exportstap
+    //    krijgt (een besluit van Quinten, zie `docs/decisions/2026-11-19-de-prerender-controle-en-de-openbare-routes.md`).
+    expect(Object.keys(ZONDER_CI).length).toBeLessThan(13);
   });
 });
