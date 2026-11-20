@@ -27,6 +27,7 @@ import {
   registreerPushToken,
   zetPushBron,
 } from '@/modules/notifications';
+import { openstaandeWerkcode } from '@/modules/organisaties';
 import { UiterlijkProvider, useKoppelUiterlijk } from '@/modules/uiterlijk/react';
 import { clientEnv } from '@/lib/env';
 import {
@@ -101,6 +102,7 @@ function Shell() {
         <>
           <Routewacht />
           <Uitnodigingswacht />
+          <Werkcodewacht />
           <Pushwacht />
           <Tijdzonewacht />
           <Uiterlijkwacht />
@@ -323,6 +325,35 @@ function Routewacht() {
   useEffect(() => {
     if (bestemming !== null) router.replace(bestemming);
   }, [bestemming, router]);
+
+  return null;
+}
+
+/**
+ * Opent het lid-worden-scherm met een onthouden werkcode — QS8-663.
+ *
+ * ⚠️ Alleen openen en invullen. Lid worden blijft een druk op de knop en de code
+ *    blijft staan tot dat gelukt is of 24 uur om zijn (`organisaties/pending.ts`).
+ *    Een groepsuitnodiging gaat voor, zodat de twee wachten elkaar niet wegduwen.
+ */
+function Werkcodewacht() {
+  const { session, loading: sessieLaadt } = useSession();
+  const { profiel, loading: profielLaadt } = useProfiel();
+  const router = useRouter();
+  const geprobeerd = useRef(false);
+
+  useEffect(() => {
+    if (sessieLaadt || profielLaadt || !session || !isOnboarded(profiel)) return;
+    if (geprobeerd.current) return;
+    geprobeerd.current = true;
+
+    void (async () => {
+      // Een groepsuitnodiging gaat voor: die wacht heeft zijn eigen pad.
+      if ((await openstaandeUitnodiging()) !== null) return;
+      const code = await openstaandeWerkcode();
+      if (code !== null) router.replace(`/organisatie/deelnemen?code=${code}`);
+    })();
+  }, [sessieLaadt, profielLaadt, session, profiel, router]);
 
   return null;
 }
