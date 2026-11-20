@@ -84,9 +84,24 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 import process from 'node:process';
 
 import { NAGEKEKEN } from './audit-controle.mjs';
+import { bouwIsOuderDanBron } from './prerender-controle.mjs';
 
 const WORTEL = fileURLToPath(new URL('..', import.meta.url));
 const BUNDEL = join(WORTEL, 'dist');
+
+/**
+ * Waar een nieuwere wijziging een oude `dist/` ongeldig maakt (QS8-767).
+ *
+ * ⚠️ Anders dan bij `prerender-controle` tellen hier ook `package.json` en de
+ *    lockfile: wat deze controle meet is *welk pakket in de bundel zit*, en dat
+ *    verandert met een dependency-wijziging, niet alleen met app-code.
+ */
+export const BRONNEN = [
+  join(WORTEL, 'app'),
+  join(WORTEL, 'src'),
+  join(WORTEL, 'package.json'),
+  join(WORTEL, 'package-lock.json'),
+];
 
 /**
  * De zelftoets van de zoekfunctie.
@@ -260,9 +275,30 @@ function meldAfwijkingen(afwijkend, zonderMarker) {
   );
 }
 
-export function hoofd(lees = leesBundel, bestaat = bundelBestaat) {
+/** De melding als `dist/` ouder is dan de bron: ongemeten, niet groen. */
+function meldVerouderd(ms) {
+  const uren = Math.max(1, Math.round(ms / 3_600_000));
+  console.error(
+    `⚠ bundel-controle: OVERGESLAGEN — de bron is ~${uren} uur nieuwer dan \`dist/index.html\`.\n` +
+      '  Die bouw zegt niets over de huidige code of dependencies. Draai `npm run build`\n' +
+      '  en daarna deze controle opnieuw. Dat is geen groene uitslag maar een ongemeten.',
+  );
+}
+
+/**
+ * @param {() => Array<{pad: string, inhoud: Buffer}>} lees
+ * @param {() => boolean} bestaat
+ * @param {() => number} verouderd ms dat de bouw ouder is dan de bron; `0` of minder is vers
+ */
+export function hoofd(lees = leesBundel, bestaat = bundelBestaat, verouderd = () => bouwIsOuderDanBron(BUNDEL, BRONNEN)) {
   if (!bestaat()) {
     meldOverslag();
+    return 0;
+  }
+
+  const ouder = verouderd();
+  if (ouder > 0) {
+    meldVerouderd(ouder);
     return 0;
   }
 
