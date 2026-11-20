@@ -111,6 +111,13 @@ export const nl = {
    */
   'systeembericht.prestatie_gedeeld': '{naam} deelt een prestatie: {prestatie}.',
   'systeembericht.prestatie_gedeeld_zonder_prestatie': '{naam} deelt een prestatie.',
+  /**
+   * ⚠️ Migratie 0323 (QS8-656). Over het team, niet over een persoon: geen
+   *    {naam} en geen titel. Wie het teamdoel maakte of afrondde, staat er met
+   *    opzet niet in.
+   */
+  'systeembericht.team_goal_created': 'Er is een nieuw teamdoel. Neem je aandeel als je mee wilt doen.',
+  'systeembericht.team_goal_completed': 'Het team heeft een teamdoel afgerond.',
 
   /** Iemand die er niet meer is. Zie oppervlak 18 in beslisdocument 002. */
   'algemeen.oud_lid': 'Een oud-lid',
