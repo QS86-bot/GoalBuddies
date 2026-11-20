@@ -69,6 +69,27 @@ maar `commitment.penalty.*` noemt de streefdatum en is voor een belofte onwaar, 
 `fetchCommitments()` zonder limiet (regel 10; gemeld bij x.3). Elk component in `src/` blijft onder de 50 regels; het
 doelscherm kreeg één element en geen functie, dus `regel15` staat op hetzelfde plafond.
 
+## Wat de reviews veranderden
+
+`security-reviewer` (geen blokkerende bevinding) en `critical-user` (milestone). Verwerkt:
+
+- **Een groep waarin alleen jij zit, wordt niet aangeboden** (M1): de bevestigtekst zei dat de groep kon lezen, en dan
+  las niemand. De database staat haar nog toe; dat is een besluit (ER-rij).
+- **De bevestigtekst belooft alleen wat de database garandeert** (M2): "kan lezen", niet "krijgt een bericht" (de
+  getuige kan zijn push uitzetten, 0237). Een groep heet "iedereen in {groep}".
+- **Andermans doel**: een groepsgenoot leest het doel wel (`goals_select`); knop en scherm toetsen de eigenaar (L1).
+- **De eigenaar hoort de uitkomst**: een verschuldigde belofte van vorige week staat boven het formulier, en na het
+  einde van de week, vóór de beslissing, zegt de kaart dat in plaats van "geldt voor deze week".
+- **Een doelstraf naast een lopende belofte** gaf "probeer het opnieuw" (en een Sentry-fout); nu een eigen zin
+  (`strafFoutsleutel()`).
+- De eerste zin zegt wat gehouden is ("minstens één weekdoel"), de lengte van de tekst staat onder het veld, een
+  tweede tik na succes doet niets, en "ververs het scherm" is vervangen.
+- De poort zei bij intrekken "de getuige hoort het (0293)"; dat is onjuist en daar rechtgezet.
+
+Niet verwerkt en in `docs/ENGINEER-REVIEW.md`: de lege groep in de database, de pushbelofte, de getuigenistekst
+*"hun streefdatum is verstreken"*, gehouden versus ingetrokken, `herstel_stuurloze_straf()` naast 0314, en de
+terugpijl en intrekken zonder vraag.
+
 ## Wat ongemeten is
 
 - Het scherm zelf is niet gerenderd: er is geen React-testbibliotheek en geen screenshot gemaakt. Criteria 1 en 2
@@ -76,5 +97,3 @@ doelscherm kreeg één element en geen functie, dus `regel15` staat op hetzelfde
 - Native (iOS en Android) niet bekeken.
 - Productie: 0312 t/m 0314 staan er nog niet op. Tot dan geeft elke belofte 42501 (zie `docs/DEPLOY.md` §2.5c).
 - Of honderd kandidaten volstaan (`fetchBelofteBegunstigden()`).
-- `getuigenissen()` (0169) toont een getuige een verschuldigde belofte met de zin *"hun streefdatum is verstreken"*.
-  Dat is voor een belofte onwaar; buiten deze bouw (een getuigenscherm), gemeld als vervolg.

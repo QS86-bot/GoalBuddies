@@ -44,6 +44,10 @@ describe('de keuze op het beloftescherm', () => {
     expect(soortVan(BEGIN, { groepen: [], getuigen: [] })).toBeNull();
   });
 
+  it('een groep als getuige heet "iedereen in" die groep, zodat de bevestigtekst zegt wie het leest', () => {
+    expect(gekozenGetuige({ ...BEGIN, groepId: 'g1' }, EEN_GROEP)?.naam).toBe('iedereen in Vrienden');
+  });
+
   it('geen bevestigstap zonder tekst, zonder getuige, of met een getuige die niet in de lijst staat', () => {
     expect(naarBevestigen({ ...BEGIN, soort: 'groep', groepId: 'g1' }, BEIDE, KLOK, NU)).toBeNull();
     expect(naarBevestigen({ ...BEGIN, tekst: 'Koffie', soort: 'groep' }, BEIDE, KLOK, NU)).toBeNull();

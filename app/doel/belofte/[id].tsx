@@ -8,8 +8,9 @@ import { Screen } from '@/shared/ui';
  * De weekbelofte van één doel — QS8-761. Bereikbaar vanuit het doelscherm
  * (`BelofteIngang`); de inhoud staat in `src/schermen/belofte`.
  *
- * ⚠️ De id in de URL geeft geen toegang: RLS geeft nul rijen voor een doel dat
- *    niet van jou is, en het scherm toont dan "niet gevonden".
+ * ⚠️ De id in de URL geeft geen toegang. Een groepsgenoot léést het doel wel
+ *    (`goals_select`), dus het scherm toetst de eigenaar en toont anders "niet
+ *    gevonden"; een belofte op andermans doel weigert de database (42501).
  */
 export default function Belofte() {
   const { id } = useLocalSearchParams<{ id: string }>();

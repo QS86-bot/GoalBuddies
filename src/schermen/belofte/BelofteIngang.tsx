@@ -24,6 +24,7 @@ export function BelofteIngang({
   klok,
   commitments,
   heeftGroep,
+  vanMij,
 }: {
   readonly goalId: string;
   readonly doelStatus: string;
@@ -32,9 +33,11 @@ export function BelofteIngang({
   readonly klok: UserClock | null;
   readonly commitments: readonly Commitment[];
   readonly heeftGroep: boolean;
+  /** Een groepsgenoot ziet dit doel ook (`goals_select`), maar een belofte is van de eigenaar. */
+  readonly vanMij: boolean;
 }) {
   const router = useRouter();
-  if (klok === null) return null;
+  if (klok === null || !vanMij) return null;
 
   const aanbod = belofteaanbod({
     beloftes: commitments,

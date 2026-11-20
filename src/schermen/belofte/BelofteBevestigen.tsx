@@ -42,9 +42,14 @@ export function BelofteBevestigen({
     setFout(null);
     const invoer = { body: stap.tekst, image_url: null };
     const uitkomst = await gaWeekbelofteAan(goalId, invoer, stap.begunstigde, klok, stap.periode.start);
+    // ⚠️ Bij succes blijft de knop bezig tot het scherm herlaadt: anders gaf een
+    //    tweede tik kort "staat al een belofte" terwijl het gelukt was.
+    if (uitkomst.ok) {
+      onKlaar();
+      return;
+    }
     setBezig(false);
-    if (uitkomst.ok) onKlaar();
-    else setFout(uitkomst.melding);
+    setFout(uitkomst.melding);
   }
 
   return (

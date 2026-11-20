@@ -1,4 +1,4 @@
-import { useProfiel, userClock } from '@/modules/auth';
+import { useProfiel, useSession, userClock } from '@/modules/auth';
 import {
   belofteaanbod,
   belofteperiode,
@@ -7,36 +7,47 @@ import {
   type Belofteaanbod,
   type BelofteBegunstigden,
   type Commitment,
+  vorigeVerschuldigd,
 } from '@/modules/commitments';
 import { fetchDoel } from '@/modules/goals';
 import { localDateIn, now, type UserClock } from '@/shared/time';
 import { useAsync } from '@/shared/ui';
 
 export interface Beloftegegevens {
-  /** `null`: het doel bestaat niet of is niet van jou; RLS geeft dan nul rijen. */
+  /**
+   * `false`: het doel bestaat niet of is niet van jou. ⚠️ RLS geeft een groepsgenoot
+   * het doel wél (`goals_select`), dus de eigenaar wordt hier getoetst; de database
+   * weigert een belofte op andermans doel toch (42501), maar een formulier dat altijd
+   * faalt hoort er niet te staan (security-ronde, L1).
+   */
   readonly doelGevonden: boolean;
+  /** De laatste verschuldigde belofte van een vorige week: de eigenaar hoort de uitkomst. */
+  readonly vorige: Commitment | undefined;
+  readonly dezeWeek: string;
   readonly aanbod: Belofteaanbod<Commitment>;
   readonly lijsten: BelofteBegunstigden;
   readonly klok: UserClock;
 }
 
-async function laad(goalId: string, klok: UserClock): Promise<Beloftegegevens> {
+async function laad(goalId: string, klok: UserClock, ik: string): Promise<Beloftegegevens> {
   const [doel, stand, lijsten] = await Promise.all([
     fetchDoel(goalId),
     fetchBelofteStand(goalId),
     fetchBelofteBegunstigden(),
   ]);
   const moment = now();
+  const dezeWeek = belofteperiode(klok, moment).start;
   const aanbod = belofteaanbod({
     beloftes: stand.beloftes,
     doelstrafOpen: stand.doelstrafOpen,
     doelStatus: doel?.status ?? '',
     streefdatum: doel?.target_date ?? '',
     vandaag: localDateIn(klok.tz, moment),
-    dezeWeek: belofteperiode(klok, moment).start,
+    dezeWeek,
     heeftGetuige: lijsten.groepen.length > 0 || lijsten.getuigen.length > 0,
   });
-  return { doelGevonden: doel !== null, aanbod, lijsten, klok };
+  const vorige = vorigeVerschuldigd(stand.beloftes, dezeWeek);
+  return { doelGevonden: doel !== null && doel.owner_id === ik, aanbod, lijsten, klok, vorige, dezeWeek };
 }
 
 /**
@@ -49,11 +60,12 @@ async function laad(goalId: string, klok: UserClock): Promise<Beloftegegevens> {
  * ⚠️ De afhankelijkheden zijn strings, geen klokobject (de laadlus van QS8-75).
  */
 export function useBelofte(goalId: string) {
+  const { userId } = useSession();
   const { profiel } = useProfiel();
   const klok = profiel ? userClock(profiel) : null;
 
   return useAsync<Beloftegegevens>(
-    klok && goalId ? () => laad(goalId, klok) : null,
-    [goalId, klok?.tz, klok?.weekStartDay],
+    klok && goalId && userId ? () => laad(goalId, klok, userId) : null,
+    [goalId, userId, klok?.tz, klok?.weekStartDay],
   );
 }

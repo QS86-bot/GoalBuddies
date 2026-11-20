@@ -1,5 +1,6 @@
-import type { BelofteBegunstigden } from '@/modules/commitments';
+import { COMMITMENT_MAX, COMMITMENT_MIN, type BelofteBegunstigden } from '@/modules/commitments';
 import { t } from '@/shared/i18n';
+import { schoneEneRegel, telTekens } from '@/shared/tekst';
 import { Body, Button, Caption, Card, Choice, Field, Subheading } from '@/shared/ui';
 
 import { soortVan, type Keuze, type Soort } from './keuze';
@@ -39,6 +40,7 @@ export function BelofteFormulier({
         onChangeText={(tekst) => onKeuze({ ...keuze, tekst })}
         placeholder={t('belofte.voorbeeld')}
       />
+      <Lengte tekst={keuze.tekst} />
       {beide ? (
         <Choice<Soort | ''>
           label={t('straf.wie_getuige')}
@@ -92,5 +94,13 @@ function Getuigekeuze({
       />
     );
   }
+  return null;
+}
+
+/** Waarom "Verder" grijs is: te kort of te lang, in codepunten zoals de database telt. */
+function Lengte({ tekst }: { readonly tekst: string }) {
+  const n = telTekens(schoneEneRegel(tekst));
+  if (n > COMMITMENT_MAX) return <Caption danger>{t('validatie.commitment_lang')}</Caption>;
+  if (tekst.length > 0 && n < COMMITMENT_MIN) return <Caption>{t('validatie.commitment_kort')}</Caption>;
   return null;
 }

@@ -3,7 +3,12 @@ import { join } from 'node:path';
 
 import { describe, expect, it } from 'vitest';
 
-import { BELOFTE_WEIGERINGEN, belofteFoutsleutel } from '../../src/modules/commitments/weekbelofte';
+import {
+  BELOFTE_WEIGERINGEN,
+  belofteFoutsleutel,
+  STRAF_NAAST_BELOFTE,
+  strafFoutsleutel,
+} from '../../src/modules/commitments/weekbelofte';
 
 /**
  * De foutvertaling van het beloftescherm leest de tekst van een `raise` — QS8-761.
@@ -45,5 +50,13 @@ describe('de weigeringen van een weekbelofte', () => {
     expect(belofteFoutsleutel({ code: '42501' })).toBe('belofte.fout.geweigerd');
     expect(belofteFoutsleutel({ code: '23514', message: 'iets anders' })).toBe('commitment.fout.vastleggen');
     expect(belofteFoutsleutel({ code: 'PGRST301' })).toBe('commitment.fout.vastleggen');
+  });
+
+  it('een doelstraf naast een lopende belofte krijgt een eigen zin, en het fragment staat in de migraties', () => {
+    expect(migraties).toMatch(new RegExp(`raise exception '[^']*${STRAF_NAAST_BELOFTE}`));
+    expect(
+      strafFoutsleutel({ code: '23514', message: 'Op dit doel loopt een weekbelofte; een straf erbij kan niet' }),
+    ).toBe('straf.belofte_loopt');
+    expect(strafFoutsleutel({ code: '23514', message: 'iets anders' })).toBe('commitment.fout.vastleggen');
   });
 });

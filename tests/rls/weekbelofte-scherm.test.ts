@@ -135,6 +135,11 @@ describe.skipIf(!rlsTestsConfigured || !stackErIs)('het beloftescherm tegen de d
     }
 
     const g = await maakGroep(alice, 'Schermgroep', bob);
+    // Een groep waarin alleen Alice zit: geen getuige (security-ronde, M1).
+    const leeg = await alice.db.rpc('create_group', { group_name: 'Lege schermgroep' });
+    const leegId = (leeg.data as unknown as { group?: { id: string } }).group?.id;
+    if (leegId === undefined) throw new Error(`lege groep: ${JSON.stringify(leeg.data)}`);
+    registreerGroep(leegId);
     const automatisch = await maakGroep(alice, 'Automatische schermgroep', dave);
     psql(`update groups set automatisch = true, zichtbaarheid = 'beschermd', ontdekbaar = false
            where id = '${automatisch}'`);
@@ -251,6 +256,11 @@ describe.skipIf(!rlsTestsConfigured || !stackErIs)('het beloftescherm tegen de d
       expect(await beloof(0, klok)).toEqual({ ok: false, melding: t('belofte.fout.al_deze_week') });
 
       // Een doelstraf ernaast: de uitsluiting van de trigger (23514).
+      // En andersom: een doelstraf naast de lopende belofte krijgt een eigen zin (critical-user).
+      expect(await als(w.alice, () => commitments.zetStraf(doel(0), INVOER, groep()))).toEqual({
+        ok: false,
+        melding: t('straf.belofte_loopt'),
+      });
       const straf = await als(w.alice, () => commitments.zetStraf(doel(3), INVOER, groep()));
       if (!straf.ok) throw new Error(straf.melding);
       expect(await beloof(3, klok)).toEqual({ ok: false, melding: t('belofte.fout.doelstraf') });

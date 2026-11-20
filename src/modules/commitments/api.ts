@@ -8,7 +8,7 @@ import { invoerfout, type Resultaat } from '../../shared/api';
 import { now, type UserClock } from '../../shared/time';
 
 import { commitmentSchema, type CommitmentInvoer } from './commitment-schemas';
-import { belofteFoutsleutel, belofteperiode } from './weekbelofte';
+import { belofteFoutsleutel, belofteperiode, strafFoutsleutel } from './weekbelofte';
 
 // ⚠️ Opnieuw geëxporteerd zodat de aanroepers via `modules/<naam>/index.ts`
 //    ongemoeid blijven. De definitie staat sinds 25-08-2026 in `shared/api`;
@@ -382,7 +382,9 @@ export async function fetchBelofteStand(goalId: string): Promise<BelofteStand> {
       .eq('goal_id', goalId)
       .eq('type', 'penalty')
       .is('periode_start', null)
-      .in('status', ['set', 'due'])
+      // Open = `set` of `due`: een doelstraf kent verder alleen `resolved` en `cancelled`.
+      .neq('status', 'cancelled')
+      .neq('status', 'resolved')
       .limit(1),
   ]);
 
@@ -448,7 +450,7 @@ export async function fetchBelofteBegunstigden(): Promise<BelofteBegunstigden> {
 
   const leden = await db
     .from('group_members')
-    .select('user_id, profiles(display_name)')
+    .select('group_id, user_id, profiles(display_name)')
     .in('group_id', groepen.map((g) => g.id))
     .neq('user_id', ik)
     .neq('status', 'inactive')
@@ -467,7 +469,11 @@ export async function fetchBelofteBegunstigden(): Promise<BelofteBegunstigden> {
     gezien.set(id, { id, naam: profiel?.display_name ?? t('commitment.begunstigde.naamloos') });
   }
 
-  return { groepen, getuigen: [...gezien.values()] };
+  // ⚠️ **Een groep waarin alleen jij zit, is geen getuige** (security-ronde, M1):
+  //    de bevestigstap zegt dat de groep je belofte kan lezen, en dan leest er
+  //    niemand. De database staat zo'n groep nog toe; zie `docs/ENGINEER-REVIEW.md`.
+  const bezet = new Set((leden.data ?? []).map((rij) => rij.group_id as string));
+  return { groepen: groepen.filter((g) => bezet.has(g.id)), getuigen: [...gezien.values()] };
 }
 
 // ⚠️ Het gecorrigeerde type: `tz` zet een trigger (0280), zie `database.types.correcties.ts`.
@@ -581,8 +587,9 @@ async function maak(
     .single();
 
   if (error) {
-    reportError(error, 'commitments.create', { goal_id: goalId, name: type });
-    return { ok: false, melding: t('commitment.fout.vastleggen') };
+    const sleutel = strafFoutsleutel(error);
+    if (sleutel === 'commitment.fout.vastleggen') reportError(error, 'commitments.create', { goal_id: goalId, name: type });
+    return { ok: false, melding: t(sleutel) };
   }
 
   // Geen logregel hier: de trigger `commitments_audit` heeft er al een

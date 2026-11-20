@@ -5,6 +5,7 @@ import {
   belofteweek,
   isOpenstaand,
   trekIn,
+  wachtOpBeslissing,
   type Commitment,
 } from '@/modules/commitments';
 import { opmaaktaal, t } from '@/shared/i18n';
@@ -24,10 +25,12 @@ import { Body, Button, Caption, Card, Subheading } from '@/shared/ui';
 export function BestaandeBelofte({
   belofte,
   klok,
+  dezeWeek,
   onKlaar,
 }: {
   readonly belofte: Commitment;
   readonly klok: UserClock;
+  readonly dezeWeek: string;
   readonly onKlaar: () => void;
 }) {
   const [bezig, setBezig] = useState(false);
@@ -47,21 +50,26 @@ export function BestaandeBelofte({
 
   return (
     <Card>
-      <Subheading>{t('belofte.jouw')}</Subheading>
+      <Subheading>{t(belofte.periode_start === dezeWeek ? 'belofte.jouw' : 'belofte.vorige_kop')}</Subheading>
       <Body>{belofte.body}</Body>
       {week === null ? null : (
         <Caption>
           {t('belofte.week', { start: toonDatumLang(week.start, taal), einde: toonDatumLang(week.laatsteDag, taal) })}
         </Caption>
       )}
-      <Caption>{t('commitment.stand', { titel: stand.titel, uitleg: stand.uitleg })}</Caption>
+      {/* ⚠️ Na de week en vóór de beslissing (0313 beslist één run later) zegt
+          "geldt voor deze week" iets onwaars; intrekken mag dan nog (besloten op QS8-759). */}
+      {wachtOpBeslissing(belofte, dezeWeek) ? (
+        <Caption>{t('belofte.week_voorbij_wacht')}</Caption>
+      ) : (
+        <Caption>{t('commitment.stand', { titel: stand.titel, uitleg: stand.uitleg })}</Caption>
+      )}
       {isOpenstaand(belofte) ? (
         <Button variant="stil" busy={bezig} onPress={() => void trekBelofteIn()}>
           {t('straf.intrekken')}
         </Button>
-      ) : (
-        <Caption>{t('belofte.deze_week_al')}</Caption>
-      )}
+      ) : null}
+      {!isOpenstaand(belofte) && belofte.periode_start === dezeWeek ? <Caption>{t('belofte.deze_week_al')}</Caption> : null}
       {fout === null ? null : <Caption danger>{fout}</Caption>}
     </Card>
   );

@@ -1399,7 +1399,7 @@ export const en: Record<Sleutel, string> = {
   'mijlpaal.status_mislukt': 'The status could not be changed.',
   'mijlpaal.verwijderen_mislukt': 'Deleting did not work.',
   'mijlpaal.volgorde_mislukt': 'The order could not be saved.',
-  'mijlpaal.lijst_veranderd': 'The list has changed in the meantime. Refresh the screen and try again.',
+  'mijlpaal.lijst_veranderd': 'The list has changed in the meantime. Go back to your goal and open the promise again.',
   'validatie.mijlpaaltitel': 'Give your milestone a name.',
 
   'weekdoel.laden_mislukt': 'Your weekly goals could not be loaded.',
@@ -1604,8 +1604,9 @@ export const en: Record<Sleutel, string> = {
   'belofte.knop': 'Make a weekly promise',
   'belofte.titel': 'Weekly promise',
   'belofte.uitleg':
-    'Promise that you will work on this goal this week, with a consequence you choose yourself. ' +
-    'Only your witness can ever see it, and only if you do not keep your promise.',
+    'Promise that you will complete at least one of this goal\u2019s weekly goals this week, with a ' +
+    'consequence you choose yourself if you do not. Only your witness can ever see it, and only if ' +
+    'you do not keep your promise.',
   'belofte.geen_getuige_titel': 'No witness yet',
   'belofte.geen_getuige':
     'A weekly promise needs a witness: a group you are in, or one person you share such a group ' +
@@ -1615,7 +1616,7 @@ export const en: Record<Sleutel, string> = {
   'belofte.datum_voorbij':
     'This goal’s target date has passed. Move your target date on the goal screen first if ' +
     'you are still working on it.',
-  'belofte.doelstraf': 'This goal already has a penalty, and a weekly promise cannot sit next to it.',
+  'belofte.doelstraf': 'This goal already has a penalty. While it stands, you cannot add a weekly promise.',
   'belofte.deze_week_al': 'Your promise for this week is already set. Next week you can make a new one.',
   'belofte.veld': 'What will you do if you do not keep your promise?',
   'belofte.voorbeeld': 'I buy my group a coffee',
@@ -1628,12 +1629,11 @@ export const en: Record<Sleutel, string> = {
   'belofte.bevestig_gevolg': 'The consequence: {tekst}',
   'belofte.bevestig_periode': 'The week: from {start} up to and including {einde}. Your promise starts now.',
   'belofte.bevestig_wanneer':
-    'If you miss a weekly goal of this goal that week without a week pass, and complete none of ' +
-    'them, your promise takes effect after the week ends. A week with a breather or without ' +
+    'If you miss one of this goal\u2019s weekly goals that week without a week pass, and complete ' +
+    'none of them, your promise takes effect after the week ends. A week with a breather or without ' +
     'weekly goals does not count as missed.',
   'belofte.bevestig_wie':
-    'Only then does {getuige} get a message that you did not keep your promise, and can read your ' +
-    'text and your week. Until that moment nobody sees that there is a promise, not even ' +
+    'Only then can {getuige} read that you did not keep your promise, with your own text. Until that moment nobody sees that there is a promise, not even ' +
     '{getuige}. If you keep your promise, nobody sees anything of it.',
   'belofte.bevestig_intrekken': 'Until that moment you can withdraw your promise. After that it stays.',
   'belofte.bevestig_punten': 'The promise costs you no extra points: a missed week counts as it always does.',
@@ -1653,13 +1653,19 @@ export const en: Record<Sleutel, string> = {
   'belofte.fout.laden': 'The details for your promise could not be loaded.',
   'belofte.fout.week_voorbij': 'Your week has ended in the meantime. Go back and confirm the new week.',
   'belofte.fout.startdag': 'Your week start has changed in the meantime. Refresh the screen and try again.',
-  'belofte.fout.doelstraf': 'This goal already has a penalty, and a weekly promise cannot sit next to it.',
+  'belofte.fout.doelstraf': 'This goal already has a penalty. While it stands, you cannot add a weekly promise.',
   'belofte.fout.plafond':
-    'You already have three running weekly promises. A new one can start once one is decided or withdrawn.',
+    'You already have three running weekly promises. A new one can start once one has ended or been withdrawn.',
   'belofte.fout.al_deze_week': 'This goal already has a promise for this week.',
   'belofte.fout.geweigerd':
-    'This promise could not be recorded. Refresh the screen: your witness or your goal may have ' +
-    'changed in the meantime.',
+    'This promise could not be recorded. Your witness or your goal may have changed in the ' +
+    'meantime: go back to your goal and open the promise again.',
+  'belofte.iedereen_in': 'everyone in {groep}',
+  'belofte.week_voorbij_wacht':
+    'The week of this promise is over. At the next round the app checks whether you kept it; ' +
+    'until then you can still withdraw it.',
+  'belofte.vorige_kop': 'Your promise from a previous week',
+  'straf.belofte_loopt': 'This goal has a weekly promise running. While it runs, you cannot add a penalty.',
   'belofte.niet_gevonden_titel': 'Goal not found',
   'belofte.niet_gevonden': 'This goal does not exist or is not yours.',
 

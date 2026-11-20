@@ -5,6 +5,7 @@ import {
   type BelofteBegunstigden,
   type Belofteperiode,
 } from '@/modules/commitments';
+import { t } from '@/shared/i18n';
 import { schoneEneRegel, telTekens } from '@/shared/tekst';
 import type { UserClock } from '@/shared/time';
 
@@ -51,7 +52,8 @@ export function gekozenGetuige(
   const soort = soortVan(keuze, lijsten);
   if (soort === 'groep') {
     const groep = lijsten.groepen.find((g) => g.id === keuze.groepId);
-    return groep === undefined ? null : { begunstigde: { soort, id: groep.id }, naam: groep.naam };
+    if (groep === undefined) return null;
+    return { begunstigde: { soort, id: groep.id }, naam: t('belofte.iedereen_in', { groep: groep.naam }) };
   }
   if (soort === 'persoon') {
     const persoon = lijsten.getuigen.find((m) => m.id === keuze.persoonId);

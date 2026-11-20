@@ -112,6 +112,39 @@ export function belofteaanbod<C extends AanbodCommitment>(invoer: {
 }
 
 /**
+ * De laatste verschuldigde belofte van een vórige week, of `undefined` — QS8-761.
+ *
+ * ⚠️ **De eigenaar hoort de uitkomst, niet alleen de getuige** (critical-user). Een
+ *    belofte die `due` werd, valt na haar week uit `belofteaanbod()` (dat kijkt naar
+ *    `set` en naar deze week), en dan zag de eigenaar een leeg formulier terwijl zijn
+ *    getuige een bericht kreeg. Een gehouden belofte is `cancelled` en hier niet te
+ *    onderscheiden van een ingetrokken (alleen de actor in het spoor verschilt); die
+ *    toont het scherm daarom niet, zie `docs/ENGINEER-REVIEW.md`.
+ */
+export function vorigeVerschuldigd<C extends AanbodCommitment>(beloftes: readonly C[], dezeWeek: string): C | undefined {
+  return beloftes.find(
+    (c) => isWeekbelofte(c) && c.status === 'due' && c.periode_start !== null && c.periode_start < dezeWeek,
+  );
+}
+
+/** Is de week van deze belofte voorbij terwijl ze nog niet beslist is? (0313 beslist één run later.) */
+export function wachtOpBeslissing(belofte: AanbodCommitment, dezeWeek: string): boolean {
+  return belofte.status === 'set' && belofte.periode_start !== null && belofte.periode_start < dezeWeek;
+}
+
+/**
+ * De weigering van een **doelstraf** naast een lopende belofte (0314), als eigen zin.
+ * Zonder dit las `maak()` "probeer het opnieuw", terwijl opnieuw proberen nooit lukt.
+ */
+export function strafFoutsleutel(fout: { readonly code?: string; readonly message?: string }): Sleutel {
+  if (fout.code === '23514' && (fout.message ?? '').includes(STRAF_NAAST_BELOFTE)) return 'straf.belofte_loopt';
+  return 'commitment.fout.vastleggen';
+}
+
+/** Fragment van de `raise` in 0314; `tests/beloftes/weekbelofte-fout.test.ts` zoekt het in de migraties. */
+export const STRAF_NAAST_BELOFTE = 'loopt een weekbelofte';
+
+/**
  * De weigeringen van de database bij het aangaan, en de zin die de gebruiker leest.
  *
  * ⚠️ **Herkend aan de tekst van de `raise` in 0314**, want ze delen allemaal de

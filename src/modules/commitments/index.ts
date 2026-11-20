@@ -52,6 +52,8 @@ export {
   belofteperiode,
   belofteweek,
   heeftOpenDoelstraf,
+  vorigeVerschuldigd,
+  wachtOpBeslissing,
   type Belofteaanbod,
   type Belofteperiode,
 } from './weekbelofte';

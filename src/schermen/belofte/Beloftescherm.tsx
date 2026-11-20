@@ -66,16 +66,30 @@ function Inhoud({
 }) {
   const { aanbod } = d;
   if (aanbod.soort === 'loopt' || aanbod.soort === 'deze_week_al') {
-    return <BestaandeBelofte belofte={aanbod.belofte} klok={d.klok} onKlaar={onKlaar} />;
+    return <BestaandeBelofte belofte={aanbod.belofte} klok={d.klok} dezeWeek={d.dezeWeek} onKlaar={onKlaar} />;
   }
+  // ⚠️ De uitkomst van vorige week staat boven het formulier: de getuige hoorde het
+  //    al, de eigenaar hoort het hier (critical-user, punt 1).
+  const vorige =
+    d.vorige === undefined ? null : (
+      <BestaandeBelofte belofte={d.vorige} klok={d.klok} dezeWeek={d.dezeWeek} onKlaar={onKlaar} />
+    );
   if (aanbod.soort === 'kan') {
-    return <BelofteMaken goalId={goalId} lijsten={d.lijsten} klok={d.klok} onKlaar={onKlaar} />;
+    return (
+      <>
+        {vorige}
+        <BelofteMaken goalId={goalId} lijsten={d.lijsten} klok={d.klok} onKlaar={onKlaar} />
+      </>
+    );
   }
   const sleutel = UITLEG[aanbod.soort];
   return (
-    <Card nested>
-      <Subheading>{t('belofte.titel')}</Subheading>
-      {sleutel === undefined ? <Caption>{t('belofte.fout.laden')}</Caption> : <Body muted>{t(sleutel)}</Body>}
-    </Card>
+    <>
+      {vorige}
+      <Card nested>
+        <Subheading>{t('belofte.titel')}</Subheading>
+        {sleutel === undefined ? <Caption>{t('belofte.fout.laden')}</Caption> : <Body muted>{t(sleutel)}</Body>}
+      </Card>
+    </>
   );
 }

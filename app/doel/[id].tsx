@@ -375,6 +375,7 @@ export default function DoelDetail() {
               klok={klok}
               commitments={commitments}
               heeftGroep={groepen.length > 0}
+              vanMij={d.owner_id === userId}
             />
 
             {/* ⚠️ Niet op een afgerond doel — 0211 §4 weigert de wissel daar, en een

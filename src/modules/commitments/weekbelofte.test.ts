@@ -2,7 +2,14 @@ import { describe, expect, it } from 'vitest';
 
 import type { TimeZone, UserClock } from '../../shared/time';
 
-import { belofteaanbod, belofteperiode, belofteweek, heeftOpenDoelstraf } from './weekbelofte';
+import {
+  belofteaanbod,
+  belofteperiode,
+  belofteweek,
+  heeftOpenDoelstraf,
+  vorigeVerschuldigd,
+  wachtOpBeslissing,
+} from './weekbelofte';
 
 /**
  * De pure kern van het beloftescherm — QS8-761.
@@ -115,5 +122,20 @@ describe('heeftOpenDoelstraf()', () => {
     expect(heeftOpenDoelstraf([{ type: 'penalty', status: 'cancelled', periode_start: null }])).toBe(false);
     expect(heeftOpenDoelstraf([{ type: 'penalty', status: 'set', periode_start: '2026-11-16' }])).toBe(false);
     expect(heeftOpenDoelstraf([{ type: 'reward', status: 'set', periode_start: null }])).toBe(false);
+  });
+});
+
+describe('de uitkomst van een vorige week (critical-user)', () => {
+  it('vorigeVerschuldigd(): de nieuwste due van vóór deze week, geen doelstraf en niets van deze week', () => {
+    const oud = belofte('due', '2026-11-09');
+    expect(vorigeVerschuldigd([belofte('cancelled', '2026-11-09'), oud], '2026-11-16')).toBe(oud);
+    expect(vorigeVerschuldigd([belofte('due')], '2026-11-16')).toBeUndefined();
+    expect(vorigeVerschuldigd([{ type: 'penalty', status: 'due', periode_start: null }], '2026-11-16')).toBeUndefined();
+  });
+
+  it('wachtOpBeslissing(): set en de week is voorbij', () => {
+    expect(wachtOpBeslissing(belofte('set', '2026-11-09'), '2026-11-16')).toBe(true);
+    expect(wachtOpBeslissing(belofte('set'), '2026-11-16')).toBe(false);
+    expect(wachtOpBeslissing(belofte('due', '2026-11-09'), '2026-11-16')).toBe(false);
   });
 });
