@@ -41,7 +41,13 @@ export {
   type DoelGroep,
 } from './deling';
 
-export { beginfase, deelbareUitnodiging, type Beginfase } from './samen';
+export {
+  beginfase,
+  deelbaarBericht,
+  deelbareUitnodiging,
+  uitnodigingsBericht,
+  type Beginfase,
+} from './samen';
 
 export {
   fetchProfielDoelen,
