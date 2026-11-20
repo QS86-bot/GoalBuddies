@@ -13,7 +13,7 @@ import { STANDAARDTAAL, zetTaal, zetTaalUitApparaat } from './index';
  *    waar de taal werkelijk verandert (`zetTaal` voor het profiel en de
  *    taalkeuze, `zetTaalUitApparaat` voor de start).
  *
- * ⚠️ Er is geen DOM in dit project; een stub met alleen `documentElement.lang`
+ * ⚠️ Deze toets draait zonder DOM (sinds QS8-739 bestaat er wel jsdom, in `tests/render`, maar dat is hier niet nodig); een stub met alleen `documentElement.lang`
  *    volstaat, want dat is het enige wat de functie aanraakt. Dat het attribuut in
  *    een echte browser meebeweegt is met Playwright gemeten (19-11-2026) en niet in CI.
  *

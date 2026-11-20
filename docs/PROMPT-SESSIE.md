@@ -608,8 +608,8 @@ Edge Functions en de webbundel rolt Quinten uit.
 
 📏 Op 18-11-2026 werd de werkmap van de bouwer van QS8-700 en QS8-701 halverwege door een parallelle lokale sessie naar `claude/qs8-702-lokaal-wip` omgeschakeld, waardoor ongecommitte wijzigingen verdwenen (later hersteld). De RLS-harnastakken van QS8-700 en QS8-702 kregen zo tegenstrijdige versies van `tests/rls/harness.ts` en `docs/DEPLOY.md`. Dat is de klasse van §4 en §5, maar dan in de werkmap in plaats van in git.
 
-1. **Elke lokale sessie werkt in een eigen worktree**, nooit in de hoofdmap: `git worktree add ../goalbuddies-qs8-nnn <tak>`. Ze begint met `git worktree list` en `git status`.
+1. **Elke lokale sessie werkt in een eigen worktree**, nooit in de hoofdmap. Het aanmaken doet `npm run claim` zelf (§1, QS8-717); wat hier bijkomt is dat ze begint met `git worktree list` en `git status`, en dat ze dat vóór de claim doet.
 2. **Treft een lokale sessie ongecommitte wijzigingen aan die ze niet zelf schreef, of staat de map op een tak die ze niet koos, dan stopt ze en meldt het.** Ze zet niets terug en werkt niet door.
 3. **`.env` gaat niet naar een worktree met `RLS_TEST_ALLOW_PROD=1` erin.** De oorzaak van QS8-702 was die vlag in gekopieerde `.env`-bestanden van worktrees.
 
-De startprompt voor een lokale sessie staat in `docs/VOLGENDE-SESSIE.md` (blok voor een tweede sessie). ⚠️ Er is geen controle en er hoeft er geen te komen: de regel is procedureel, en een worktree afdwingen kan alleen de sessie zelf. **Niet gemeten:** of een lokale sessie de regel volgt zonder dat de startprompt hem noemt.
+De startprompt voor een lokale sessie staat in `docs/VOLGENDE-SESSIE.md` (blok voor een tweede sessie). ⚠️ Het aanmaken van de worktree is sinds QS8-717 een eigenschap van `npm run claim`; de drie regels hierboven zijn procedureel en worden niet afgedwongen: de eerste kijk, de stop en de `.env`-regel kan alleen de sessie zelf naleven. **Niet gemeten:** of een lokale sessie de regel volgt zonder dat de startprompt hem noemt.

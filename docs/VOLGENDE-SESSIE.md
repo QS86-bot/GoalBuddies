@@ -1625,10 +1625,9 @@ VIJF VALLEN DIE OP 07-09 ECHT ZIJN OPGETREDEN:
 - Meten, niet redeneren. "Niet te breken" is hier een meting en geen conclusie.
 
 DRAAI JE LOKAAL, NIET IN DE CLOUD? (QS8-713, besluit Quinten 18-11-2026)
-Dan werk je in een EIGEN worktree en nooit in de hoofdmap. Twee lokale sessies in
-dezelfde map overschrijven elkaars ongecommitte werk.
+Dan werk je in een EIGEN worktree en nooit in de hoofdmap; hoe die ontstaat staat in
+`docs/PROMPT-SESSIE.md` §1 (`npm run claim` maakt hem zelf) en §12g.
 - Begin met `git worktree list` en `git status`. Dat zegt of je map van jou is.
-- Maak er een: `git worktree add ../goalbuddies-qs8-nnn <tak>`.
 - Staan er ongecommitte wijzigingen die je niet zelf schreef, of staat de map op
   een tak die je niet koos: STOP en meld het. Niet doorwerken, niet terugzetten.
 - Kopieer `.env` niet naar een worktree met `RLS_TEST_ALLOW_PROD=1` erin.

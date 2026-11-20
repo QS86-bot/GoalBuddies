@@ -20,6 +20,11 @@
  *     en `@expo/vector-icons/MaterialCommunityIcons` laden niet in node (Flow of een
  *     native module) en zijn hier vervangen door het kleinste dat een scherm nodig
  *     heeft.
+ *   - `react-native-svg` laadt om dezelfde reden niet en is een mock met lege
+ *     componenten voor `Svg`, `Circle`, `Path`, `Polyline`, `Defs`, `LinearGradient`
+ *     en `Stop` (de huisstijl, `Pictogram` en `Afvinkcirkel`). Een nieuw svg-element
+ *     in `src/shared/ui` faalt luid tot het hier bij komt. De lijst van vijf
+ *     schermen hieronder is gemeten vóór deze mock en niet opnieuw bekeken.
  *
  * ⚠️ Wat dit niet kan, en dat is gezien en geen aanname. Vijf schermbestanden laden
  *    onder deze mocks niet, dus ze zijn hiermee niet te renderen:

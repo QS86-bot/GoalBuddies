@@ -665,12 +665,9 @@ export function achtergeblevenMaps(bestanden) {
 }
 
 /**
- * Voert het verwijderen uit en breekt de deploy af als er iets achterblijft.
- *
- * ⚠️ Losgetrokken van `verwijderSourceMaps()` zodat die laatste getoetst kan
- *    worden. Een functie die `process.exit()` aanroept is niet te voeden, en een
- *    veiligheidsstap die je niet kunt ijken is er geen — dat is dezelfde regel
- *    die dit project vandaag twee keer heeft moeten leren.
+ * Breekt de deploy af als een geëxporteerde pagina zichtbare tekst in de body
+ * draagt (QS8-742): die tekst hangt van de taal van de bouwmachine af en is de
+ * oorzaak van React #418. Draait na de geheimenscan en vóór het uploaden.
  */
 export function eisEenNeutralePrerender(map = DIST) {
   const afwijkend = prerenderBezwaren(leesPaginas(map));
@@ -686,6 +683,14 @@ export function eisEenNeutralePrerender(map = DIST) {
   );
 }
 
+/**
+ * Voert het verwijderen uit en breekt de deploy af als er iets achterblijft.
+ *
+ * ⚠️ Losgetrokken van `verwijderSourceMaps()` zodat die laatste getoetst kan
+ *    worden. Een functie die `process.exit()` aanroept is niet te voeden, en een
+ *    veiligheidsstap die je niet kunt ijken is er geen — dat is dezelfde regel
+ *    die dit project vandaag twee keer heeft moeten leren.
+ */
 function eisEenSchoneBundel() {
   const { verwijderd, achtergebleven } = verwijderSourceMaps(DIST);
 
