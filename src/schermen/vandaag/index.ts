@@ -5,4 +5,4 @@ export { StandBlok } from './StandBlok';
 export { useVandaag } from './useVandaag';
 export { WeekstrookBlok } from './Weekstrook';
 export { TellersBlok } from './Tellers';
-export { tellers } from './tellers-vorm';
+export { vandaagKop } from './kop-vorm';

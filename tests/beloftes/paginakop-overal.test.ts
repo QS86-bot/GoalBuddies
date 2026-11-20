@@ -3,6 +3,7 @@ import { join } from 'node:path';
 
 import { describe, expect, it } from 'vitest';
 
+import { zonderCommentaar } from '../../scripts/zonder-commentaar.mjs';
 import { alsVoortgang, streepProcent } from '../../src/shared/ui/paginakop-vorm';
 
 /**
@@ -53,7 +54,7 @@ describe('voortgang is een waarde van 0 tot 1 en geen score', () => {
   });
 
   it('het component kent geen punten en geen gebruiker', () => {
-    const bron = lees('src/shared/ui/Paginakop.tsx').replace(/\/\*[\s\S]*?\*\//g, '');
+    const bron = zonderCommentaar(lees('src/shared/ui/Paginakop.tsx'));
     expect(bron).not.toMatch(/\b(punten|score|userId|lid|member)\b/i);
     expect(bron).toMatch(/voortgang\?: Voortgang/);
   });

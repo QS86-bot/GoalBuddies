@@ -13,10 +13,10 @@ import {
   Meldingen,
   OpenstaandBlok,
   StandBlok,
-  tellers,
   TellersBlok,
   ToevoegKnoppen,
   useVandaag,
+  vandaagKop,
   WeekstrookBlok,
 } from '@/schermen/vandaag';
 
@@ -43,30 +43,13 @@ export default function Vandaag() {
     ? t('vandaag.eyebrow_week', { datum: toonDatum(v.afTeSluiten.startDate, opmaaktaal()) })
     : t('vandaag.eyebrow_deze');
 
-  // ⚠️ QS8-726: de eigen reeks uit de standen die dit scherm al heeft (geen extra
-  //    query), en alleen zodra hij loopt: een nul bij iemand die net begint is
-  //    geen mededeling. De meldingen zijn de oordelen die op jou wachten — een
-  //    positief signaal; bij een mislukte telling staat de kaart eronder, niet
-  //    een getal dat nul kan liegen. Geen voortgangsstreep: dit scherm heeft geen
-  //    mijlpaalwaarde zonder nieuwe query (regel 12).
-  const reeks = v.standenStatus === 'klaar' ? tellers(v.standen).reeks : null;
+  const kop = vandaagKop(v, teBeoordelen, () => router.push('/beoordelen'));
 
   return (
     <Screen
       title={t('vandaag.titel')}
       eyebrow={eyebrow}
-      kop={
-        <Paginakop
-          titel={t('vandaag.titel')}
-          eyebrow={eyebrow}
-          reeks={reeks !== null && reeks > 0 ? reeks : null}
-          meldingen={
-            teBeoordelen.aantal > 0 && !teBeoordelen.mislukt
-              ? { aantal: teBeoordelen.aantal, onOpen: () => router.push('/beoordelen') }
-              : undefined
-          }
-        />
-      }
+      kop={<Paginakop titel={t('vandaag.titel')} eyebrow={eyebrow} {...kop} />}
     >
       {/*
         ⚠️ **Bovenaan het hoofdscherm, en dat is de hele reparatie van QS8-148.**
