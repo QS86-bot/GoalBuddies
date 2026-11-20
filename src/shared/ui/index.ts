@@ -64,6 +64,8 @@ export {
 } from './tabbladen';
 export type { Tabblad } from './tabbladen';
 export { TabFout } from './TabFout';
+export { RootVangnet } from './RootVangnet';
+export { useGehydrateerd } from './useGehydrateerd';
 export { Screen, useTerug, type Terug } from './Screen';
 export { Paginakop, type Paginameldingen } from './Paginakop';
 export { alsVoortgang, type Voortgang } from './paginakop-vorm';
