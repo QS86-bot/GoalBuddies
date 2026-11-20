@@ -14,6 +14,8 @@
 --   drop function if exists public.straf_teamband_klopt(uuid, uuid);
 --   drop trigger if exists commitments_teamstraf on public.commitments;
 --   drop function if exists public.bewaak_teamstraf();
+--   -- en meld_commitment() terugzetten uit 0213 (het lichaam hieronder zonder de
+--   -- regel met straf_teamband_klopt);
 --
 -- ---------------------------------------------------------------------------
 -- Wat dit doet, en waar het vandaan komt
@@ -77,6 +79,17 @@ begin
           where m.group_id = v_team
             and m.user_id  = new.beneficiary_user_id
             and m.status  <> 'inactive') then
+      v_fout := true;
+    end if;
+    -- 1b. ⚠️ **Besluit van Quinten, 20-11-2026 (~12:20 UTC, vraag V8): een
+    --     weekbelofte op een aandeel heeft alleen een teamgenoot als persoonlijke
+    --     getuige, nooit de teamgroep.** De weekbelofte (0312–0314) kwam op `main`
+    --     na de basis van dit issue. Met de teamgroep als begunstigde zag het team,
+    --     en daarmee mogelijk een leidinggevende, elke gebroken week dat iemand zijn
+    --     week niet haalde, mét de straftekst. Besluit 29 nam dat schaamtemoment
+    --     aan voor één straf op een streefdatum, niet voor een wekelijkse. De
+    --     gebruiker kiest zelf wie het wél ziet: één teamgenoot.
+    if new.periode_start is not null and new.beneficiary_group_id is not null then
       v_fout := true;
     end if;
   else
@@ -425,3 +438,77 @@ AS $function$
       and n.sent_at > now() - interval '24 hours'
   ));
 $function$;
+
+-- ---------------------------------------------------------------------------
+-- 9. Geen teambericht over een straf als de eigenaar het team verliet — besluit V11
+-- ---------------------------------------------------------------------------
+--
+-- ⚠️ **Besluit van Quinten, 20-11-2026 (~12:20 UTC, vraag V11), op een bevinding
+--    (Middel) van de security-ronde op de naad met main.** Besluit M1 versmalde
+--    wie een straf op een aandeel mag lezen, maar `meld_commitment()` plaatste
+--    `commitment_due` nog in de begunstigde teamgroep, ook als de eigenaar het
+--    team al verlaten had. De teamchat noemde dan iemand die er niet meer is.
+--
+-- ⚠️ Het lichaam is **woordelijk** dat van 0213 (de laatste definitie op `main`,
+--    nagemeten: 0299–0315 herdefiniëren hem niet), plus één regel. Gekopieerd en
+--    niet herschreven: zie de registerdrift die bij het hernummeren van deze keten
+--    vier keer stil iets liet vallen (QS8-358).
+CREATE OR REPLACE FUNCTION public.meld_commitment()
+ RETURNS trigger
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO 'public', 'pg_temp'
+AS $function$
+declare
+  v_owner_id uuid;
+begin
+  begin
+    if old.status = new.status then return new; end if;
+
+    select g.owner_id into v_owner_id from goals g where g.id = new.goal_id;
+    if v_owner_id is null then return new; end if;
+
+    if new.type = 'reward' and new.status = 'unlocked' then
+      perform plaats_systeembericht_in_doelgroepen(
+        new.goal_id,
+        'commitment_unlocked',
+        'Een lid heeft een beloning vrijgespeeld.',
+        v_owner_id
+      );
+
+      insert into commitment_events (commitment_id, actor_id, event_type, payload)
+      values (new.id, null, 'posted',
+              jsonb_build_object('event', 'commitment_unlocked', 'bereik', 'doelgroepen'));
+
+    elsif new.type = 'penalty'
+      and new.status = 'due'
+      and new.beneficiary_group_id is not null
+      -- ⚠️ QS8-660, besluit V11 van Quinten (20-11-2026): een straf op een
+      --    aandeel wiens eigenaar het team verliet, wordt niet meer in de
+      --    teamchat gemeld. De leesroutes eisten dat al (besluit M1, 18-11);
+      --    dit bericht ontsnapte eraan. Voor elk ander doel geeft de functie
+      --    `true` en verandert er niets.
+      and straf_teamband_klopt(new.goal_id, v_owner_id)
+    then
+      perform plaats_systeembericht(
+        new.beneficiary_group_id,
+        'commitment_due',
+        'De inzet die een lid zelf heeft ingesteld, is verschuldigd geworden.',
+        v_owner_id
+      );
+
+      insert into commitment_events (commitment_id, actor_id, event_type, payload)
+      values (new.id, null, 'posted',
+              jsonb_build_object('event', 'commitment_due',
+                                 'bereik', 'begunstigde_groep',
+                                 'group_id', new.beneficiary_group_id));
+    end if;
+  exception
+    when others then
+      raise warning 'Systeembericht voor commitment % is niet geplaatst: %', new.id, sqlerrm;
+  end;
+
+  return new;
+end;
+$function$
+;
