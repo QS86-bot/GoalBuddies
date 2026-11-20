@@ -2805,4 +2805,162 @@ export const en: Record<Sleutel, string> = {
     'This is the nudge you get if you turn notifications on: one a day, only for you, and only if you have not done anything yet that day. You turn notifications on or off in your profile.',
   'vragenlijst.voorbeeld.a11y': 'Example of your reminder',
   'profiel.motto': 'How you want to feel: {tekst}',
+  // Organisaties en teams — QS8-657
+  'organisatie.ingang_kop':
+    'Organisations',
+  'organisatie.ingang_uitleg':
+    'For the teams at your work. Your buddy groups stay separate.',
+  'organisatie.ingang_leeg':
+    'You are not in any organisation yet.',
+  'organisatie.ingang_storing':
+    'Your organisations could not be loaded.',
+  'organisatie.ingang_aanmaken':
+    'Create an organisation',
+  'organisatie.ingang_deelnemen':
+    'Join with a code',
+  'organisatie.eyebrow':
+    'Organisation',
+  'organisatie.rol_beheerder':
+    'admin',
+  'organisatie.jouw_rol_beheerder':
+    'You are an admin of this organisation.',
+  'organisatie.jouw_rol_lid':
+    'You are a member of this organisation.',
+  'organisatie.nieuw_titel':
+    'Create an organisation',
+  'organisatie.naam_label':
+    'Name of the organisation',
+  'organisatie.naam_hint':
+    'This is how your colleagues see the organisation. You become its admin.',
+  'organisatie.naam_teller':
+    '{aantal} of {max} characters',
+  'organisatie.nieuw_knop':
+    'Create organisation',
+  'organisatie.naam_leeg':
+    'Give the organisation a name.',
+  'organisatie.naam_lang':
+    'That name is too long. 80 characters at most.',
+  'organisatie.naam_ongeldig':
+    'That name contains characters that are not allowed. Try it without invisible or formatting characters.',
+  'organisatie.aanmaken_mislukt':
+    'The organisation could not be created. Please try again.',
+  'organisatie.rate_limited_aanmaken':
+    'You already created three organisations today. You can try again tomorrow.',
+  'organisatie.te_veel':
+    'You are already in ten organisations. Leave one to make room.',
+  'organisatie.deelnemen_titel':
+    'Join an organisation',
+  'organisatie.code_label':
+    'Invitation code',
+  'organisatie.code_hint':
+    'You get the code from an admin of the organisation.',
+  'organisatie.deelnemen_knop':
+    'Join',
+  'organisatie.deelnemen_mislukt':
+    'Joining did not work. Please try again in a moment.',
+  'organisatie.code_ongeldig':
+    'This code does not work. It was withdrawn or it is wrong; ask an admin for a new one.',
+  'organisatie.rate_limited_deelnemen':
+    'You tried too many codes today. Try again tomorrow.',
+  'organisatie.niet_gevonden_titel':
+    'Organisation not found',
+  'organisatie.niet_gevonden_tekst':
+    'This organisation does not exist or you do not have access to it.',
+  'organisatie.leden_kop':
+    'Members',
+  'organisatie.leden_laden':
+    'The members could not be loaded.',
+  'organisatie.leden_leeg_titel':
+    'No members to show',
+  'organisatie.leden_leeg_tekst':
+    'There are no members to show right now.',
+  'organisatie.meer_laden':
+    'Load more',
+  'organisatie.meer_mislukt':
+    'Loading more did not work. Please try again.',
+  'organisatie.uitzetten_label': 'Remove {naam} from the organisation',
+  'organisatie.uitzetten_knop':
+    'Remove',
+  'organisatie.uitzetten_titel':
+    'Remove this member?',
+  'organisatie.uitzetten_uitleg':
+    '{naam} loses access to this organisation and cannot come back with the code. To make sure the old code stops working too, the organisation gets a new code afterwards.',
+  'organisatie.uitzetten_bevestig':
+    'Yes, remove {naam}',
+  'organisatie.uitzetten_mislukt':
+    'Removing did not work. Please try again.',
+  'organisatie.teams_kop':
+    'Teams',
+  'organisatie.teams_laden':
+    'The teams could not be loaded.',
+  'organisatie.teams_uitleg':
+    'You only see the names of the teams here. What happens in a team is visible to the members of that team only.',
+  'organisatie.teams_leeg_titel':
+    'This organisation has no teams yet',
+  'organisatie.teams_leeg_tekst':
+    'An admin can create a team.',
+  'organisatie.team_nieuw_knop':
+    'Create a team',
+  'organisatie.team_naam_label':
+    'Name of the team',
+  'organisatie.team_naam_hint':
+    'At least two characters, 60 at most.',
+  'organisatie.team_opslaan':
+    'Create',
+  'organisatie.team_aanmaken_mislukt':
+    'The team could not be created. Please try again.',
+  'organisatie.team_gemaakt':
+    'The team was created.',
+  'organisatie.code_kop':
+    'Invitation code',
+  'organisatie.code_uitleg':
+    'Share this code with colleagues so they can join. Only admins see it.',
+  'organisatie.code_ingetrokken':
+    'The code was withdrawn. Nobody can join with it right now.',
+  'organisatie.code_laden':
+    'The code could not be loaded.',
+  'organisatie.code_leeg_titel':
+    'No code available',
+  'organisatie.code_leeg_tekst':
+    'Only an admin can see the code.',
+  'organisatie.code_vernieuwen_knop':
+    'Make a new code',
+  'organisatie.code_vernieuwen_titel':
+    'Make a new code?',
+  'organisatie.code_vernieuwen_uitleg':
+    'The current code stops working. Anyone who has it needs the new code. Current members stay members.',
+  'organisatie.code_vernieuwen_bevestig':
+    'Yes, new code',
+  'organisatie.code_intrekken_knop':
+    'Withdraw the code',
+  'organisatie.code_intrekken_titel':
+    'Withdraw the code?',
+  'organisatie.code_intrekken_uitleg':
+    'After that nobody can join with a code until you make a new one. Current members stay members.',
+  'organisatie.code_intrekken_bevestig':
+    'Yes, withdraw',
+  'organisatie.rate_limited_code':
+    'You already changed the code ten times today. You can try again tomorrow.',
+  'organisatie.actie_mislukt':
+    'That did not work. Please try again.',
+  'organisatie.niet_toegestaan':
+    'Only an admin of this organisation can do this.',
+  'organisatie.geen_lid':
+    'You are not a member of this organisation.',
+  'organisatie.verlaten_knop':
+    'Leave organisation',
+  'organisatie.verlaten_titel':
+    'Leave this organisation?',
+  'organisatie.verlaten_uitleg':
+    'You lose access to the organisation and leave its teams. You cannot get back in with the code. Your other groups stay as they are.',
+  'organisatie.verlaten_bevestig':
+    'Yes, leave',
+  'organisatie.verlaten_mislukt':
+    'Leaving did not work. Please try again.',
+  'organisatie.laatste_beheerder':
+    'You are the only admin of this organisation, so you cannot leave it.',
+  'organisatie.verwijder_waarschuwing':
+    'Are you the only admin of {naam}? Then nobody can invite new members there after you delete your account. Everyone already in keeps everything.',
+  'organisatie.verwijder_waarschuwing_storing':
+    'We could not check whether you are an admin of an organisation. If you are, and you are the only one, hand over the admin role first. Otherwise nobody can invite new members afterwards.',
 };
