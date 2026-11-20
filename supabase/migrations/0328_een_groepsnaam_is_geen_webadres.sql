@@ -44,21 +44,31 @@ language sql
 immutable
 set search_path to 'pg_catalog', 'pg_temp'
 as $$
+  -- v: NFKC, zonder onzichtbare en combinerende tekens (zelfde lijst als
+  -- `ONZICHTBAAR_OF_COMBINEREND` in src/shared/tekst): `evil<LRM>.com` leest als
+  -- evil.com en moet dus ook zo gewogen worden.
   select coalesce(
-    p_tekst ~* '://|www\.'
+    v ~* '://|www\.'
     -- een domeinvorm: letter/cijfer/streepje, een punt (ook de punten die een
-    -- browser tot een punt omzet: U+3002, U+FF0E, U+FF61, U+2024, U+FE52),
-    -- eventueel combinerende tekens, en twee letters
-    or p_tekst ~* (
+    -- browser tot een punt omzet: U+3002, U+FF0E, U+FF61, U+2024, U+FE52) en twee letters
+    or v ~* (
       '[[:alnum:]-][.' || U&'\3002\FF0E\FF61\2024\FE52' || ']' ||
-      '[' || U&'\0300-\036F\1AB0-\1AFF\1DC0-\1DFF\20D0-\20FF\FE20-\FE2F' || ']*' ||
       '[[:alpha:]' || U&'\0300-\036F' || ']{2}'
     )
     -- een IP-adres of ander getal-punt-getal (besluit Quinten, 20-11-2026)
-    or p_tekst ~ ('[0-9][.' || U&'\3002\FF0E\FF61\2024\FE52' || '][0-9]')
+    or v ~ ('[0-9][.' || U&'\3002\FF0E\FF61\2024\FE52' || '][0-9]')
     or p_tekst ~ ('[' || chr(10) || chr(13) || chr(133) || chr(8232) || chr(8233) || ']'),
     false
-  );
+  )
+  from (
+    select regexp_replace(
+      normalize(coalesce(p_tekst, ''), NFKC),
+      '[' || U&'\00AD\0300-\036F\061C\180B-\180F\1AB0-\1AFF\1DC0-\1DFF' ||
+        U&'\200B-\200F\202A-\202E\2060-\206F\20D0-\20FF\FE00-\FE0F' ||
+        U&'\FE20-\FE2F\FEFF\+0E0000-\+0E0FFF' || ']',
+      '', 'g'
+    ) as v
+  ) s;
 $$;
 
 comment on function public.bevat_linkachtige_tekst(text) is

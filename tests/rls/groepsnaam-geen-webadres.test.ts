@@ -35,6 +35,16 @@ const WEIGEREN = [
   'Jan\u2029Admin',
   'log in via 185.12.3.4',
   'Lopen 5.5 km',
+  'Log in via evil\u200E.com',
+  'evil.\u200Ecom',
+  'evil\u200F.com',
+  'evil\u061C.com',
+  '185\u200E.12\u200E.3\u200E.4',
+  'evile\u0301.com',
+  'evile\uFE0F.com',
+  'evile\u200D.com',
+  'goalbuddies-login.\u200Dсом',
+  'https\uFF1A\uFF0F\uFF0Fevil',
 ];
 const TOELATEN = ['Sportmaatjes', 'Team 3A', 'Lopen, 5 km', 'Jan & Piet', 'e.g. wij', 'Jan’s groep'];
 

@@ -40,6 +40,14 @@ describe('groepSchema.name', () => {
     'Jan\u2029Admin',
     'log in via 185.12.3.4',
     'Lopen 5.5 km',
+    'Log in via evil\u200E.com',
+    'evil.\u200Ecom',
+    '185\u200E.12\u200E.3\u200E.4',
+    'evile\u0301.com',
+    'evile\uFE0F.com',
+    'evile\u200D.com',
+    'goalbuddies-login.\u200Dсом',
+    'https\uFF1A\uFF0F\uFF0Fevil',
   ])('weigert %j', (naam) => {
     expect(bevatLinkAchtigeTekst(naam)).toBe(true);
     expect(nieuw(naam).success).toBe(false);
