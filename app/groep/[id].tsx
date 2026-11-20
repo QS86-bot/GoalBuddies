@@ -24,6 +24,7 @@ import {
   type Pagina,
   type Zichtbaarheid,
   deelbaarBericht,
+  isTeamgroep,
   verlaatGroep,
   zichtbaarheidLabels,
 } from '@/modules/buddies';
@@ -96,6 +97,18 @@ import {
  *    `groups_select` eist lidmaatschap, dus een niet-lid krijgt niets — en dat
  *    ziet er hetzelfde uit als een groep die niet bestaat.
  */
+/**
+ * De kop van de pagina — QS8-778. "Jouw groep" zolang de groep laadt, met de naam zodra hij er is, en neutraal
+ * "Groep" als de lading klaar is en er geen groep is (geen lid, of weg): "Jouw groep" boven "deze groep is er niet
+ * voor jou" spreekt zichzelf tegen (critical-user, 20-11-2026).
+ */
+function kopVan(stand: { readonly groep: { readonly name: string } | null } | undefined): string {
+  if (stand === undefined) return t('groepdetail.titel');
+  return stand.groep === null
+    ? t('groepdetail.titel_zonder_groep')
+    : t('groepdetail.titel_naam', { naam: stand.groep.name });
+}
+
 export default function GroepDetail() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
@@ -112,9 +125,7 @@ export default function GroepDetail() {
   return (
     <Screen
       terug={{ naar: '/groep' }}
-      title={
-        stand?.groep ? t('groepdetail.titel_naam', { naam: stand.groep.name }) : t('groepdetail.titel')
-      }
+      title={kopVan(stand)}
       eyebrow={
         stand?.groep
           ? // ⚠️ **De dag zelf krijgt een eigen zin en niet een dagnaam (QS8-199).**
@@ -174,7 +185,7 @@ export default function GroepDetail() {
               <Caption>
                 {t('groepdetail.inhoud', {
                   onderdelen: groepInhoud({
-                    open: s.groep.zichtbaarheid === 'open',
+                    open: s.groep.zichtbaarheid === 'open' && !isTeamgroep(s.groep),
                     kanUitnodigen:
                       deelbaarBericht(s.groep, clientEnv().appUrl, profiel?.display_name) !== null,
                   })
@@ -306,7 +317,7 @@ export default function GroepDetail() {
             */}
             <HeldenKaart
               uitkomst={s.helden}
-              open={s.groep?.zichtbaarheid === 'open'}
+              open={s.groep?.zichtbaarheid === 'open' && !isTeamgroep(s.groep)}
               onOpnieuw={herlaad}
             />
 
