@@ -3426,6 +3426,164 @@ export const nl = {
     'Dit is het zetje dat je krijgt als je meldingen aanzet: één per dag, alleen voor jou, en alleen als je die dag nog niets deed. Je zet meldingen aan of uit op je profiel.',
   'vragenlijst.voorbeeld.a11y': 'Voorbeeld van je herinnering',
   'profiel.motto': 'Hoe je je wilt voelen: {tekst}',
+  // Organisaties en teams — QS8-657
+  'organisatie.ingang_kop':
+    'Organisaties',
+  'organisatie.ingang_uitleg':
+    'Voor de teams op je werk. Je buddy-groepen blijven er los van.',
+  'organisatie.ingang_leeg':
+    'Je zit nog in geen enkele organisatie.',
+  'organisatie.ingang_storing':
+    'Je organisaties konden niet geladen worden.',
+  'organisatie.ingang_aanmaken':
+    'Organisatie aanmaken',
+  'organisatie.ingang_deelnemen':
+    'Lid worden met een code',
+  'organisatie.eyebrow':
+    'Organisatie',
+  'organisatie.rol_beheerder':
+    'beheerder',
+  'organisatie.jouw_rol_beheerder':
+    'Je bent beheerder van deze organisatie.',
+  'organisatie.jouw_rol_lid':
+    'Je bent lid van deze organisatie.',
+  'organisatie.nieuw_titel':
+    'Organisatie aanmaken',
+  'organisatie.naam_label':
+    'Naam van de organisatie',
+  'organisatie.naam_hint':
+    'Zo staat de organisatie bij je collega’s. Je wordt zelf beheerder.',
+  'organisatie.naam_teller':
+    '{aantal} van {max} tekens',
+  'organisatie.nieuw_knop':
+    'Organisatie aanmaken',
+  'organisatie.naam_leeg':
+    'Geef de organisatie een naam.',
+  'organisatie.naam_lang':
+    'Die naam is te lang. Maximaal 80 tekens.',
+  'organisatie.naam_ongeldig':
+    'Die naam bevat tekens die niet kunnen. Probeer hem zonder onzichtbare of opmaaktekens.',
+  'organisatie.aanmaken_mislukt':
+    'De organisatie kon niet worden aangemaakt. Probeer het opnieuw.',
+  'organisatie.rate_limited_aanmaken':
+    'Je hebt vandaag al drie organisaties aangemaakt. Morgen kan het weer.',
+  'organisatie.te_veel':
+    'Je zit al in tien organisaties. Verlaat er een om ruimte te maken.',
+  'organisatie.deelnemen_titel':
+    'Lid worden van een organisatie',
+  'organisatie.code_label':
+    'Uitnodigingscode',
+  'organisatie.code_hint':
+    'De code krijg je van een beheerder van de organisatie.',
+  'organisatie.deelnemen_knop':
+    'Lid worden',
+  'organisatie.deelnemen_mislukt':
+    'Lid worden lukte niet. Probeer het zo nog eens.',
+  'organisatie.code_ongeldig':
+    'Deze code werkt niet. Hij is ingetrokken of hij klopt niet; vraag een beheerder om een nieuwe.',
+  'organisatie.rate_limited_deelnemen':
+    'Je hebt vandaag te vaak een code geprobeerd. Probeer het morgen opnieuw.',
+  'organisatie.niet_gevonden_titel':
+    'Organisatie niet gevonden',
+  'organisatie.niet_gevonden_tekst':
+    'Deze organisatie bestaat niet of je hebt er geen toegang toe.',
+  'organisatie.leden_kop':
+    'Leden',
+  'organisatie.leden_laden':
+    'De leden konden niet geladen worden.',
+  'organisatie.leden_leeg_titel':
+    'Geen leden te tonen',
+  'organisatie.leden_leeg_tekst':
+    'Er zijn nu geen leden om te laten zien.',
+  'organisatie.meer_laden':
+    'Meer laden',
+  'organisatie.meer_mislukt':
+    'Meer laden lukte niet. Probeer het opnieuw.',
+  'organisatie.uitzetten_label': '{naam} uit de organisatie zetten',
+  'organisatie.uitzetten_knop':
+    'Uitzetten',
+  'organisatie.uitzetten_titel':
+    'Dit lid uitzetten?',
+  'organisatie.uitzetten_uitleg':
+    '{naam} verliest de toegang tot deze organisatie en kan er niet met de code terugkomen. Om te zorgen dat de oude code ook niet meer werkt, krijgt de organisatie daarna een nieuwe code.',
+  'organisatie.uitzetten_bevestig':
+    'Ja, zet {naam} uit',
+  'organisatie.uitzetten_mislukt':
+    'Uitzetten lukte niet. Probeer het opnieuw.',
+  'organisatie.teams_kop':
+    'Teams',
+  'organisatie.teams_laden':
+    'De teams konden niet geladen worden.',
+  'organisatie.teams_uitleg':
+    'Je ziet hier alleen de namen van de teams. Wat er in een team gebeurt, zien alleen de leden van dat team.',
+  'organisatie.teams_leeg_titel':
+    'Deze organisatie heeft nog geen teams',
+  'organisatie.teams_leeg_tekst':
+    'Een beheerder kan een team aanmaken.',
+  'organisatie.team_nieuw_knop':
+    'Team aanmaken',
+  'organisatie.team_naam_label':
+    'Naam van het team',
+  'organisatie.team_naam_hint':
+    'Minstens twee tekens, maximaal 60.',
+  'organisatie.team_opslaan':
+    'Aanmaken',
+  'organisatie.team_aanmaken_mislukt':
+    'Het team kon niet worden aangemaakt. Probeer het opnieuw.',
+  'organisatie.team_gemaakt':
+    'Het team is aangemaakt.',
+  'organisatie.code_kop':
+    'Uitnodigingscode',
+  'organisatie.code_uitleg':
+    'Deel deze code met collega’s zodat ze lid kunnen worden. Alleen beheerders zien hem.',
+  'organisatie.code_ingetrokken':
+    'De code is ingetrokken. Niemand kan er nu lid mee worden.',
+  'organisatie.code_laden':
+    'De code kon niet geladen worden.',
+  'organisatie.code_leeg_titel':
+    'Geen code beschikbaar',
+  'organisatie.code_leeg_tekst':
+    'Alleen een beheerder kan de code zien.',
+  'organisatie.code_vernieuwen_knop':
+    'Nieuwe code maken',
+  'organisatie.code_vernieuwen_titel':
+    'Een nieuwe code maken?',
+  'organisatie.code_vernieuwen_uitleg':
+    'De huidige code werkt daarna niet meer. Wie hem al heeft, heeft de nieuwe code nodig. Huidige leden blijven lid.',
+  'organisatie.code_vernieuwen_bevestig':
+    'Ja, nieuwe code',
+  'organisatie.code_intrekken_knop':
+    'Code intrekken',
+  'organisatie.code_intrekken_titel':
+    'De code intrekken?',
+  'organisatie.code_intrekken_uitleg':
+    'Daarna kan niemand meer lid worden met een code, tot je een nieuwe code maakt. Huidige leden blijven lid.',
+  'organisatie.code_intrekken_bevestig':
+    'Ja, intrekken',
+  'organisatie.rate_limited_code':
+    'Je hebt vandaag al tien keer de code aangepast. Morgen kan het weer.',
+  'organisatie.actie_mislukt':
+    'Dat lukte niet. Probeer het opnieuw.',
+  'organisatie.niet_toegestaan':
+    'Alleen een beheerder van deze organisatie kan dit doen.',
+  'organisatie.geen_lid':
+    'Je bent geen lid van deze organisatie.',
+  'organisatie.verlaten_knop':
+    'Organisatie verlaten',
+  'organisatie.verlaten_titel':
+    'Deze organisatie verlaten?',
+  'organisatie.verlaten_uitleg':
+    'Je verliest de toegang tot de organisatie en stapt uit haar teams. Met de code kom je er niet meer in terug. Je andere groepen blijven zoals ze zijn.',
+  'organisatie.verlaten_bevestig':
+    'Ja, verlaten',
+  'organisatie.verlaten_mislukt':
+    'Verlaten lukte niet. Probeer het opnieuw.',
+  'organisatie.laatste_beheerder':
+    'Je bent de enige beheerder van deze organisatie, dus je kunt hem niet verlaten.',
+  'organisatie.verwijder_waarschuwing':
+    'Ben je de enige beheerder van {naam}? Dan kan na het verwijderen niemand daar nog nieuwe leden uitnodigen. Wie er al in zit, houdt alles.',
+  'organisatie.verwijder_waarschuwing_storing':
+    'We konden niet nagaan of je beheerder bent van een organisatie. Ben je dat en ben je de enige, draag het beheer dan eerst over. Anders kan daarna niemand nog nieuwe leden uitnodigen.',
 } as const;
 
 export type Sleutel = keyof typeof nl;

@@ -6,6 +6,8 @@ import { signOut, useProfiel, useSession } from '@/modules/auth';
 
 import { fetchOpenstaandeMeldingen } from '@/modules/buddies';
 
+import { fetchMijnOrganisaties } from '@/modules/organisaties';
+
 import { t } from '@/shared/i18n';
 
 import { space } from '@/shared/theme';
@@ -175,14 +177,68 @@ function Uitloggen() {
   );
 }
 
-/** De ingangen naar de schermen Statistieken, Prestaties en je groepsprofiel, in één regel van Profiel zodat dat scherm niet groeit. */
+/** De ingangen naar de schermen Statistieken, Prestaties, je groepsprofiel en je organisaties, in één regel van Profiel zodat dat scherm niet groeit. */
 function Ingangen() {
   return (
     <>
       <StatistiekIngang />
       <PrestatiesIngang />
       <GroepsProfielIngang />
+      <OrganisatieIngang />
     </>
+  );
+}
+
+/**
+ * Je organisaties, met de twee ingangen — QS8-657.
+ *
+ * ⚠️ Een storing laat de kaart staan met een foutzin en een knop, zoals
+ *    `MeldingenIngang`: wegblijven zou "ik zit in geen organisatie" lijken.
+ *    De twee knoppen om er een te maken of lid te worden staan er altijd.
+ *
+ * ⚠️ Bij het hernummeren (20-11-2026) overgezet naar de opbouw van `main`: het
+ *    profiel is sinds QS8-754 een rij ingangen, en deze kaart staat daar als
+ *    laatste, in dezelfde vorm als de andere.
+ */
+function OrganisatieIngang() {
+  const router = useRouter();
+  const { data, loading, error, herlaad } = useAsync(() => fetchMijnOrganisaties(), []);
+
+  return (
+    <Card>
+      <Subheading>{t('organisatie.ingang_kop')}</Subheading>
+      <Body muted>{t('organisatie.ingang_uitleg')}</Body>
+      <AsyncView
+        loading={loading}
+        error={error}
+        data={data}
+        isEmpty={(rijen) => rijen.length === 0}
+        onRetry={herlaad}
+        empty={{ title: t('organisatie.ingang_kop'), body: t('organisatie.ingang_leeg') }}
+      >
+        {(rijen) => (
+          <View style={styles.keuzes}>
+            {rijen.map((organisatie) => (
+              <Button
+                key={organisatie.id}
+                variant="secundair"
+                onPress={() => router.push(`/organisatie/${organisatie.id}`)}
+              >
+                {organisatie.naam}
+              </Button>
+            ))}
+          </View>
+        )}
+      </AsyncView>
+      <View style={styles.keuzes}>
+        <Button variant="stil" onPress={() => router.push('/organisatie/nieuw')}>
+          {t('organisatie.ingang_aanmaken')}
+        </Button>
+        <Button variant="stil" onPress={() => router.push('/organisatie/deelnemen')}>
+          {t('organisatie.ingang_deelnemen')}
+        </Button>
+      </View>
+    </Card>
   );
 }
 
@@ -306,6 +362,7 @@ const styles = StyleSheet.create({
   blokken: { gap: space.blokGap + 3 },
   kop: { flexDirection: 'row', gap: space.blokGap, alignItems: 'center' },
   kopTekst: { gap: 2, flex: 1 },
+  keuzes: { flexDirection: 'row', gap: space.blokGap - 3, flexWrap: 'wrap' },
 });
 
 // ⚠️ QS8-705: een renderfout op dit tabblad is een foutstaat met herstelknop en

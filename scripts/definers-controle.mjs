@@ -567,6 +567,13 @@ export function beoordeel(gevonden, register = REGISTER, soort = undefined) {
  *    iemand opschrijft waarom hij open mag.
  */
 const LEESREGISTER = new Map([
+  [
+    'organisatieteams',
+    'Poort: `is_organisatielid(p_organization_id)` (QS8-657, 0324), als one-time filter vóór de scan. ' +
+      'Geeft id en naam van de teams van je eigen organisatie, aan elk actief lid hetzelfde (besluit 6); ' +
+      'geen persoon, dus geen gemiste week af te leiden. Een niet-lid en een verzonnen id krijgen nul ' +
+      'rijen. Gemeten: poort weg → 2 rood in `tests/rls/organisatieteams.test.ts`.',
+  ],
   // --- Predicaten: geven een boolean over de aanroeper zélf -----------------
   //
   // ⚠️ Deze negen zijn de predicaten. Ze lezen `group_members` als eigenaar
