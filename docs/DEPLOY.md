@@ -553,6 +553,15 @@ bundel. 0314 zelf vervangt `commitments_insert` en zet een trigger op `commitmen
 ook die wacht op Quintens "backup gedaan".
 Beslisdocument: `docs/decisions/2026-11-20-de-belofte-is-een-commitment-met-een-getuige.md`.
 
+⚠️ **Sinds QS8-761 staat er een beloftescherm (`/doel/belofte/[id]`) met een knop op het
+doelscherm, en dat scherm werkt pas ná 0312, 0313 en 0314.** `fetchBelofteStand()`
+filtert op `periode_start`, en `gaWeekbelofteAan()` stuurt die kolom mee: vóór 0314
+heeft `authenticated` er geen INSERT-grant op en geeft elke belofte `42501` ("Deze
+belofte kon niet vastgelegd worden"). Dezelfde volgorde dus: de drie migraties, dan
+`npm run types:db` (en `NogNietInTypes` plus `belofterij()` in
+`src/modules/commitments/api.ts` vereenvoudigen), dan pas `deploy-web`.
+Beslisdocument: `docs/decisions/2026-11-20-het-beloftescherm-vraagt-elke-keuze-en-toont-wat-het-opslaat.md`.
+
 ### 2.5b Hoe wil je je voelen (QS8-733, migratie 0311) — volgorde
 
 ⚠️ **Migratie 0311 vóór `functions deploy notificaties`.** De profielquery van de job

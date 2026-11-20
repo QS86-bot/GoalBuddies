@@ -2092,6 +2092,73 @@ export const nl = {
   'straf.verder': 'Verder',
   'straf.jouw_groep': 'je groep',
 
+  // ⚠️ **De weekbelofte — QS8-761.** De bevestigstap noemt drie dingen (§4 van
+  //    de poort QS8-744): het gevolg, de periode, en wie het ziet en wanneer. Geen
+  //    geld (domeinregel 5), geen emoji, en geen woord dat iets afdwingt wat de app
+  //    niet doet. "Gebroken" is de definitie van domeinregel 11 (0313), in gewone
+  //    taal: een gemiste week zonder weekpas, en niets afgerond.
+  'belofte.knop': 'Een weekbelofte doen',
+  'belofte.titel': 'Weekbelofte',
+  'belofte.uitleg':
+    'Beloof voor deze week dat je aan dit doel werkt, met een gevolg dat je zelf kiest. ' +
+    'Alleen je getuige kan het ooit zien, en alleen als je je belofte niet houdt.',
+  'belofte.geen_getuige_titel': 'Nog geen getuige',
+  'belofte.geen_getuige':
+    'Een weekbelofte heeft een getuige nodig: een groep waar je in zit, of één iemand met wie ' +
+    'je zo’n groep deelt. Een groep die de app voor je samenstelde telt niet, want die ' +
+    'mensen ken je nog niet.',
+  'belofte.doel_niet_actief': 'Dit doel is niet actief, dus er valt deze week niets aan te beloven.',
+  'belofte.datum_voorbij':
+    'De streefdatum van dit doel is voorbij. Verzet eerst je streefdatum op het doelscherm als ' +
+    'je er nog aan werkt.',
+  'belofte.doelstraf': 'Op dit doel staat al een straf, en een weekbelofte kan daar niet naast.',
+  'belofte.deze_week_al': 'Je belofte voor deze week staat al vast. Volgende week kun je een nieuwe doen.',
+  'belofte.veld': 'Wat doe je als je je belofte niet houdt?',
+  'belofte.voorbeeld': 'Ik trakteer mijn groep op koffie',
+  'belofte.welke_groep': 'Welke groep is je getuige?',
+  'belofte.welke_persoon': 'Wie is je getuige?',
+  'belofte.kies_soort_eerst': 'Kies eerst of een groep of één persoon je getuige is.',
+  'belofte.kies_groep_eerst': 'Kies eerst welke groep je getuige is.',
+  'belofte.kies_persoon_eerst': 'Kies eerst wie je getuige is.',
+  'belofte.bevestig_kop': 'Lees dit voordat je belooft',
+  'belofte.bevestig_gevolg': 'Het gevolg: {tekst}',
+  'belofte.bevestig_periode': 'De week: van {start} tot en met {einde}. Je belofte begint nu.',
+  'belofte.bevestig_wanneer':
+    'Mis je in die week een weekdoel van dit doel zonder weekpas, en rond je er geen een af, dan ' +
+    'gaat je belofte na het einde van de week in werking. Een week met een adempauze of zonder ' +
+    'weekdoelen telt niet als gemist.',
+  'belofte.bevestig_wie':
+    'Pas dan krijgt {getuige} een bericht dat je je belofte niet hield, en kan je tekst en je ' +
+    'week lezen. Tot dat moment ziet niemand dat er een belofte is, ook {getuige} niet. Houd je ' +
+    'je belofte, dan ziet niemand er iets van.',
+  'belofte.bevestig_intrekken': 'Tot dat moment kun je je belofte intrekken. Daarna blijft ze staan.',
+  'belofte.bevestig_punten': 'De belofte kost je geen extra punten: een gemiste week telt zoals altijd.',
+  'belofte.bevestig_startdag': 'Zolang je belofte loopt, kun je je week-startdag niet veranderen.',
+  'belofte.ja': 'Ja, ik beloof dit voor deze week',
+  'belofte.jouw': 'Je weekbelofte',
+  'belofte.week': 'Week van {start} tot en met {einde}',
+  'belofte.stand.set.titel': 'Loopt',
+  'belofte.stand.set.uitleg':
+    'Je belofte geldt voor deze week. Na het einde van de week kijkt de app of je haar gehouden hebt.',
+  'belofte.stand.due.titel': 'In werking',
+  'belofte.stand.due.uitleg': 'Je hebt deze belofte niet gehouden. Je getuige kan haar nu lezen.',
+  'belofte.stand.resolved.titel': 'Afgehandeld',
+  'belofte.stand.resolved.uitleg': 'Deze belofte is afgehandeld.',
+  'belofte.stand.cancelled.titel': 'Vervallen',
+  'belofte.stand.cancelled.uitleg': 'Deze belofte gaat niet meer in werking.',
+  'belofte.fout.laden': 'De gegevens voor je belofte konden niet geladen worden.',
+  'belofte.fout.week_voorbij': 'Je week is intussen voorbij. Ga terug en bevestig de nieuwe week.',
+  'belofte.fout.startdag': 'Je week-startdag is intussen veranderd. Ververs het scherm en probeer het opnieuw.',
+  'belofte.fout.doelstraf': 'Op dit doel staat al een straf, en een weekbelofte kan daar niet naast.',
+  'belofte.fout.plafond':
+    'Je hebt al drie lopende weekbeloftes. Een nieuwe kan zodra er een beslist of ingetrokken is.',
+  'belofte.fout.al_deze_week': 'Op dit doel staat al een belofte voor deze week.',
+  'belofte.fout.geweigerd':
+    'Deze belofte kon niet vastgelegd worden. Ververs het scherm: misschien is je getuige of je ' +
+    'doel intussen veranderd.',
+  'belofte.niet_gevonden_titel': 'Doel niet gevonden',
+  'belofte.niet_gevonden': 'Dit doel bestaat niet of is niet van jou.',
+
   // ---------------------------------------------------------------------------
   // Afronden, archiveren en herplannen — QS8-83, QS8-32 en QS8-96
   // ---------------------------------------------------------------------------

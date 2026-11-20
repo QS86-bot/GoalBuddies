@@ -2414,6 +2414,19 @@ oppervlak is rij 61 in `docs/decisions/002-domeinregel7-oppervlakken.md`. 0312, 
   zelf de rij neer die je wilt verzetten. Lokale stack: Postgres hier op **5433** gezet, PostgREST met checksum uit
   `.github/workflows/ci.yml`.
 
+### 20-11-2026 — het beloftescherm (QS8-761, geen migratie), en drie valkuilen
+
+Wat de bouw koos staat in `docs/decisions/2026-11-20-het-beloftescherm-vraagt-elke-keuze-en-toont-wat-het-opslaat.md`;
+het scherm werkt pas na 0312 t/m 0314 op productie (`docs/DEPLOY.md` §2.5c).
+
+- ⚠️ **`kolomrechten:controle` knipt een selectie op komma's, ook binnen een embed.** `groups!inner(id, name)` vanuit
+  `group_members` las `name` als kolom van `group_members`. Draai de vraag om (`.from('groups')` met één ingebedde kolom).
+- ⚠️ **Een variabele in `.insert(rij)` leest hij via de éérste `const rij` in het bestand**, en commentaar met
+  `.insert(` erin telt mee in het venster van de vorige `.from(`. Zet de bouwfunctie met het objectliteraal bovenaan.
+- ⚠️ **De lokale stack in deze cloudsessie:** `service postgresql start` (5432), `alter user postgres password
+  'postgres'`, PostgREST v12.2.12 met de checksum uit `.github/workflows/ci.yml` in `/tmp/goalbuddies-lokale-stack`,
+  dan `PGPASSWORD=postgres PGPORT=5432 PGUSER=postgres PGHOST=127.0.0.1 bash scripts/lokale-stack.sh`. 317 migraties.
+
 ### 20-11-2026 — de weekbelofte beslist (QS8-759, 0313), en drie valkuilen
 
 De beslisregel staat in domeinregel 11 van `CLAUDE.md`; wat de bouw erbij koos staat in

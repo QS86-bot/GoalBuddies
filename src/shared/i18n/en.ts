@@ -1600,6 +1600,69 @@ export const en: Record<Sleutel, string> = {
   'straf.verder': 'Continue',
   'straf.jouw_groep': 'your group',
 
+  // QS8-761 — the weekly promise. See the comment in nl.ts.
+  'belofte.knop': 'Make a weekly promise',
+  'belofte.titel': 'Weekly promise',
+  'belofte.uitleg':
+    'Promise that you will work on this goal this week, with a consequence you choose yourself. ' +
+    'Only your witness can ever see it, and only if you do not keep your promise.',
+  'belofte.geen_getuige_titel': 'No witness yet',
+  'belofte.geen_getuige':
+    'A weekly promise needs a witness: a group you are in, or one person you share such a group ' +
+    'with. A group the app put together for you does not count, because you do not know those ' +
+    'people yet.',
+  'belofte.doel_niet_actief': 'This goal is not active, so there is nothing to promise for it this week.',
+  'belofte.datum_voorbij':
+    'This goal’s target date has passed. Move your target date on the goal screen first if ' +
+    'you are still working on it.',
+  'belofte.doelstraf': 'This goal already has a penalty, and a weekly promise cannot sit next to it.',
+  'belofte.deze_week_al': 'Your promise for this week is already set. Next week you can make a new one.',
+  'belofte.veld': 'What will you do if you do not keep your promise?',
+  'belofte.voorbeeld': 'I buy my group a coffee',
+  'belofte.welke_groep': 'Which group is your witness?',
+  'belofte.welke_persoon': 'Who is your witness?',
+  'belofte.kies_soort_eerst': 'First choose whether a group or one person is your witness.',
+  'belofte.kies_groep_eerst': 'First choose which group is your witness.',
+  'belofte.kies_persoon_eerst': 'First choose who your witness is.',
+  'belofte.bevestig_kop': 'Read this before you promise',
+  'belofte.bevestig_gevolg': 'The consequence: {tekst}',
+  'belofte.bevestig_periode': 'The week: from {start} up to and including {einde}. Your promise starts now.',
+  'belofte.bevestig_wanneer':
+    'If you miss a weekly goal of this goal that week without a week pass, and complete none of ' +
+    'them, your promise takes effect after the week ends. A week with a breather or without ' +
+    'weekly goals does not count as missed.',
+  'belofte.bevestig_wie':
+    'Only then does {getuige} get a message that you did not keep your promise, and can read your ' +
+    'text and your week. Until that moment nobody sees that there is a promise, not even ' +
+    '{getuige}. If you keep your promise, nobody sees anything of it.',
+  'belofte.bevestig_intrekken': 'Until that moment you can withdraw your promise. After that it stays.',
+  'belofte.bevestig_punten': 'The promise costs you no extra points: a missed week counts as it always does.',
+  'belofte.bevestig_startdag': 'While your promise is running, you cannot change your week start.',
+  'belofte.ja': 'Yes, I promise this for this week',
+  'belofte.jouw': 'Your weekly promise',
+  'belofte.week': 'Week from {start} up to and including {einde}',
+  'belofte.stand.set.titel': 'Running',
+  'belofte.stand.set.uitleg':
+    'Your promise applies to this week. After the week ends, the app checks whether you kept it.',
+  'belofte.stand.due.titel': 'In effect',
+  'belofte.stand.due.uitleg': 'You did not keep this promise. Your witness can read it now.',
+  'belofte.stand.resolved.titel': 'Settled',
+  'belofte.stand.resolved.uitleg': 'This promise has been settled.',
+  'belofte.stand.cancelled.titel': 'Lapsed',
+  'belofte.stand.cancelled.uitleg': 'This promise will no longer take effect.',
+  'belofte.fout.laden': 'The details for your promise could not be loaded.',
+  'belofte.fout.week_voorbij': 'Your week has ended in the meantime. Go back and confirm the new week.',
+  'belofte.fout.startdag': 'Your week start has changed in the meantime. Refresh the screen and try again.',
+  'belofte.fout.doelstraf': 'This goal already has a penalty, and a weekly promise cannot sit next to it.',
+  'belofte.fout.plafond':
+    'You already have three running weekly promises. A new one can start once one is decided or withdrawn.',
+  'belofte.fout.al_deze_week': 'This goal already has a promise for this week.',
+  'belofte.fout.geweigerd':
+    'This promise could not be recorded. Refresh the screen: your witness or your goal may have ' +
+    'changed in the meantime.',
+  'belofte.niet_gevonden_titel': 'Goal not found',
+  'belofte.niet_gevonden': 'This goal does not exist or is not yours.',
+
   // ---------------------------------------------------------------------------
   // Completing, archiving and replanning — QS8-83, QS8-32 and QS8-96
   // ---------------------------------------------------------------------------
