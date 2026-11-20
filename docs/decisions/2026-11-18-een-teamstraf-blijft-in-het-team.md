@@ -102,12 +102,37 @@ rij gaat langs `bewaak_teamstraf()`. Een belofte op een aandeel heeft dus alleen
 de eigen teamgroep als begunstigde, en een teamgroep is nooit begunstigde van
 een belofte op een privédoel.
 
-⚠️ **Open voor Quinten (grens 1), gevonden door de security-ronde op de naad.**
-Besluit 29 nam het schaamtemoment aan voor één straf op een streefdatum. Een
-weekbelofte kan elke week verschuldigd worden, en dan ziet het team, waar een
-leidinggevende in kan zitten, wekelijks dat iemand zijn week niet haalde, met
-de tekst van de straf erbij. Die afweging is niet gemaakt toen besluit 29 viel:
-de weekbelofte bestond toen nog niet. Tot Quinten beslist is dit niet besloten.
+⚠️ **Besluit van Quinten, 20-11-2026 (~12:20 UTC, vraag V8; grens 1), op een
+bevinding (Hoog) van de security-ronde op de naad.** Besluit 29 nam het
+schaamtemoment aan voor één straf op een streefdatum. Een weekbelofte kan elke
+week verschuldigd worden, en dan zou het team (waar een leidinggevende in kan
+zitten) wekelijks zien dat iemand zijn week niet haalde, met de straftekst erbij.
+**Daarom: een weekbelofte op een aandeel heeft alleen een teamgenoot als
+persoonlijke getuige, nooit de teamgroep.** Gebouwd als tak 1b in
+`bewaak_teamstraf()`, ook voor `service_role`. 📏 Gemeten op een lokale database
+(t/m 0325):
+- de weekbelofte met de teamgroep wordt geweigerd (`teamstraf`);
+- de gewone straf met de teamgroep mag;
+- de weekbelofte met een teamgenoot mag;
+- zonder tak 1b wordt de eerste ingevoegd.
+
+De toets staat in `tests/rls/teamstraf.test.ts`.
+
+⚠️ **Wat de app hier niet doet:** de keuzelijst van `fetchBelofteBegunstigden()`
+biedt de teamgroep bij een aandeel nog aan, en de weigering toont de algemene
+zin `commitment.fout.teamstraf`. Dat is een schermkeuze, en die hoort bij
+QS8-698 (de eigen bevestigingszin voor teams en de gefilterde keuzelijst).
+
+⚠️ **Besluit V11 van Quinten (zelfde moment), op een bevinding (Middel):**
+`meld_commitment()` plaatste `commitment_due` in de begunstigde teamgroep, ook als
+de eigenaar het team al verlaten had. Nu niet meer: het lichaam is woordelijk dat
+van 0213, plus de regel `and straf_teamband_klopt(new.goal_id, v_owner_id)`.
+📏 Gemeten:
+- met de eigenaar nog in het team: één bericht;
+- na zijn vertrek: nul;
+- zonder die regel: na zijn vertrek één.
+
+Toets in `tests/rls/teamstraf.test.ts`.
 
 In de app herkent `gaWeekbelofteAan()` in `src/modules/commitments/api.ts` de
 weigering nu ook aan `TEAMSTRAF_HINT`, net als `zetStraf()` en `herstel()`. Zonder

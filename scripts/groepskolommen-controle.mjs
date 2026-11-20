@@ -287,7 +287,8 @@ export const CENSUS = {
   },
   xp_grootboek: {
     groepszichtbaar: false,
-    kolommen: 'id, user_id, bron, weekdoel_id, badge, bedrag, verdiend_op, terugwerkend',
+    // `teamdoel_id` (QS8-662, 0326): de sleutel van een teambonus-XP-rij (besluit V7, 20-11-2026).
+    kolommen: 'id, user_id, bron, weekdoel_id, badge, bedrag, verdiend_op, terugwerkend, teamdoel_id',
   },
   hero_profiles: {
     groepszichtbaar: false,

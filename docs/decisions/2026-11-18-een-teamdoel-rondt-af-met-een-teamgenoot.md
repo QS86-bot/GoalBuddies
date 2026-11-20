@@ -100,12 +100,17 @@ hoogstens +2 per persoon per kwartaal.
 
 ## Bij het hernummeren (20-11-2026)
 
-- **XP.** Na de basis van deze tak kwam op `main` de XP-teller (0304, QS8-734).
-  `xp_na_weekpunten()` hangt aan elke insert op `points_ledger`, maar boekt alleen
-  bij `completion_approved_ceiling` en `completion_approved_floor`. 📏 Gelezen in
-  0304: de teambonus (`team_goal_bonus`) levert dus **geen** XP op. Dat is
-  consistent met het XP-besluit, dat alleen weekdoelen en badges noemt. Of Quinten
-  dat zo wil, is als vraag aan de orchestrator voorgelegd.
+- **XP — besluit van Quinten, 20-11-2026 (~12:15 UTC, vraag V7):** de teambonus
+  levert **20 XP** op, net als een gehaald plafond. Gebouwd in deze migratie
+  (sectie 9), zonder terugwerkende boeking. Er is een eigen bron `teambonus`, een
+  eigen sleutel `xp_grootboek.teamdoel_id` met een unieke index per persoon, en een
+  eigen trigger `xp_na_teambonus()`. `xp_na_weekpunten()` (0304) blijft
+  onaangeroerd, en de twee CHECK's op `xp_grootboek` zijn die van 0304 plus deze
+  bron. XP blijft eigenaar-only en telt alleen op. 📏 Gemeten op een lokale
+  database: één bonus geeft één rij van 20, een tweede bonus in hetzelfde seizoen
+  geeft er geen. Zonder de trigger zijn het nul rijen; zonder de unieke index geeft
+  een herhaalde boeking een tweede rij. De toets op de naad staat in
+  `tests/rls/teambonus.test.ts`.
 - **`points_ledger_reason_valid`** is op `main` na 0132 niet herdefinieerd. De
   lijst hier is die van 0132 plus `team_goal_bonus`, en er valt niets weg.
 - **Aanroepers.** `vraag_teamdoel_afronding()` en `keur_teamdoel_goed()` hebben
