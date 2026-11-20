@@ -89,10 +89,9 @@ doel bestaat niet; een gebruiker zonder actief doel krijgt hem niet aangeboden.
 ### 2. De week van de belofte, en de klok
 
 De belofte duurt **één week van de gebruiker zelf**: van het moment van bevestigen tot het einde van de lopende
-cyclus (`currentUserCycle(userId)`, domeinregel 1; de week-startdag is persoonlijk). Het einde wordt op de server
-afgeleid uit `shared/time`-logica en **bevroren op het moment van bevestigen**, naar het voorbeeld van `tz` in
-0280 en de les van 0294: *een klok die de gestrafte zelf later kan verzetten, is geen klok.* De client levert nooit
-een datum.
+cyclus (`currentUserCycle(userId)`, domeinregel 1; de week-startdag is persoonlijk). Het einde is
+`periode_start + 7` en wordt **bevroren op het moment van bevestigen**, naar het voorbeeld van `tz` in
+0280 en de les van 0294: *een klok die de gestrafte zelf later kan verzetten, is geen klok.* ⚠️ **Correctie op de eerste versie van dit document:** SQL kent geen cyclusberekening (correctheidsregel 7), dus de client rekent de cyclusstart uit met `userCycle()` uit `src/shared/time/cycle.ts` en de database accepteert alleen die ene geldige waarde: de weekdag klopt met `week_start_day` en het is de lopende cyclus. Dat is het precedent van 0198 (`weekdoel_cyclus_klopt`). `periode_einde` levert de client nooit; een trigger zet hem. De trigger moet zwijgen als de invoerder niet de eigenaar is, anders lekt `week_start_day`.
 
 ⚠️ **Conservatieve invullingen, als aanname gemarkeerd (Quinten tekent ze af):**
 
@@ -102,8 +101,8 @@ een datum.
   de fout die dit besluit niet mag maken is een straf die ten onrechte `due` wordt.
 - **Geen uitstel.** Een belofte heeft geen streefdatum die een buddy kan opschuiven; het uitstelverzoek (A7) hangt
   aan een doel en niet aan een belofteweek. Eén week verschuiven is bovendien geen uitstel maar een andere belofte.
-- **Eén belofte per doel per week**, en het plafond van 0170 blijft voor het doel gelden. Geen herhaling: elke
-  week is een nieuwe, nieuw bevestigde belofte. Een automatisch verlengde belofte zou stilzwijgend aan gaan.
+- **Eén weekbelofte per doel per week**, nooit tegelijk met een doelstraf op hetzelfde doel (de unieke index van 0170 laat per doel één open straf toe, en na één `due` kom je er niet meer uit: de index wordt versmald, zie x.1). Geen herhaling: elke
+  week is een nieuwe, nieuw bevestigde belofte. In code heet het `weekbelofte`, want "belofte" is hier al de term voor de testbeloftes. Een automatisch verlengde belofte zou stilzwijgend aan gaan.
 - **De weekafsluiting verandert niet** en de belofte heeft geen eigen punten: een gemiste week kost nog steeds
   `−1` en de belofte komt daar niet bij. Dat is de dubbele straf die domeinregel 10 en A43 al afwezen.
 
@@ -166,7 +165,7 @@ de gebeurtenis, nooit de tekst.
 verschuldigde belofte zegt per definitie dat de gebruiker zijn week niet haalde. Dat is geen lek maar het
 **doel** van een commitment device, en het is precies de uitzondering die domeinregel 7 al noemt (*een straf die de
 gebruiker zelf vooraf heeft ingesteld en bevestigd*). De grens is wat er **vóór** het verschuldigd worden te zien is:
-niets. Een belofte op `set`, `cancelled` of `resolved`-zonder-straf verraadt niets. ⚠️ Eén tweede afleiding
+niets. Een belofte op `set` of `cancelled` verraadt niets. ⚠️⚠️ **Een gehouden belofte eindigt op `cancelled` en nooit op `resolved`** (gemeten door de spec-ronde, 0168 r.369): `commitment_zichtbaar_voor_persoon()` en de groepslijst bevatten `resolved`, dus een gehouden belofte op `resolved` werd met haar tekst leesbaar voor de begunstigde. Ook de week (`periode_start`) is na `due` zichtbaar voor de begunstigde; dat is een bewuste keuze. ⚠️ Een tweede afleiding
 moet dicht: de *aanwezigheid van de belofte zelf* (iemand heeft er een, en de week loopt) is in een
 beschermde groep geen tegenslag maar wel privé; ze mag niet uit de begunstigde-lijsten te lezen zijn.
 
@@ -212,7 +211,7 @@ prestatiebericht uit QS8-736) blijven zoals ze zijn.
 - **Een teamgroep als begunstigde** van een belofte. Voor teamgroepen weegt domeinregel 7 zwaarder; zolang QS8-649
   en het profiel (QS8-750) hun eigen besluit niet genomen hebben, staat dat uit.
 - **Herinneringen en meldingen voor de belofte.** Een pushmelding over een lopende belofte is een uitgaande stroom
-  naar echte mensen (grens 1). Niet in deze bouw.
+  naar echte mensen (grens 1). Niet in deze bouw. ⚠️ Eerlijk erbij: de getuige krijgt bij `due` al automatisch de bestaande `commitment_witness`-push (0293). Dat is hergebruik van een bestaande stroom en geen nieuwe; het blijft daarbij.
 
 ## Herbevestigen vóór …
 
@@ -237,17 +236,117 @@ Gescheiden van de conservatieve invullingen, want dit zijn de punten die onder g
 1. **De verruiming van domeinregel 11** (§2): akkoord dat een door de gebruiker vooraf bevestigde belofte aan zijn eigen
    deadline een benoemde verruiming is op *"een gemiste week kost een minpunt, meer niet"*. Zonder dat akkoord valt de
    belofte terug op de "zonder gevolg"-variant.
-2. **De definitie van gehouden** (§2): geen weekdoel op `missed`, vloer telt, adempauze en weekpas niet gebroken.
+2. **De definitie van gehouden** (§2): geen weekdoel op `missed`, vloer telt, adempauze en weekpas niet gebroken. ⚠️ **De spec-ronde vond dat dit meer uitwegen openlaat dan genoemd:** een adempauze met terugwerkende kracht, een weekdoel doorschuiven (`carried`) of zelf afsluiten, een weekdoel verwijderen, of die week geen weekdoel hebben, tellen allemaal als gehouden. Een belofte die je zo kunt ontwijken is in feite geen belofte; elke uitweg dichtzetten maakt de straf strenger dan de gebruiker gewend is. Conservatief gekozen: ze blijven open. Dat is een keuze voor Quinten.
 3. **De lezing van de vragenlijst-reactie** (§3): de vragenlijst maakt nooit een commitment en wijst hoogstens naar de
    aparte bevestigstap.
-4. **Eén belofte per doel per week, elke week opnieuw bevestigd** (§2).
+4. **Eén weekbelofte per doel per week, elke week opnieuw bevestigd, en niet naast een doelstraf op hetzelfde doel** (§2).
+5. **Welke week:** de lopende cyclus vanaf het moment van bevestigen (ook op de laatste dag), niet de volgende volle cyclus. Aangenomen: de lopende.
+6. **Een groep van onbekenden** (`groups.automatisch`, QS8-230) als begunstigde. Aangenomen: niet toegestaan zodra dat afdwingbaar is; vandaag is er alleen `groups.automatisch` om op te toetsen en dat valt in x.3.
 
 Conservatief ingevuld en dus niet meer gevraagd: geen uitstel, geen herhaling, geen punten voor de belofte,
 `commitment_due` hergebruikt, de begunstigde pas na `due`, de nullable periodekolom in plaats van een tweede tabel.
 
 ## Splitsing in bouwissues (spec-planner-ronde) — voorstel
 
-SPLITSING_PLAATSHOUDER
+De spec-planner-ronde (20-11-2026) las migraties en code en draaide niets tegen een database. De nummering x.1 tot
+x.5 is een plaatshouder voor de epicnummering; het hoogste migratienummer op `main` is **0310** en elke migratie
+krijgt haar nummer via `npm run migratie:nieuw`. De volgorde is zo gekozen dat **een client pas in x.3 een belofte
+kan aanmaken**: tot dan bestaan er geen belofterijen, op testrijen na. Elk issue krijgt een eigen tak en PR; geen
+bundeling.
+
+### Wat de ronde vond dat het eerste concept van dit document niet wist
+
+📏 Gecontroleerd tegen de bestanden (de vier kernpunten ook door mij nagelezen):
+
+1. **Een gehouden belofte moet op `cancelled` eindigen, nooit op `resolved`** (0168 r.369): beide zichtbaarheidslijsten bevatten `resolved`.
+2. **`commitments_een_open_per_soort` (0170 r.124) is uniek op `(goal_id, type)` bij `set`, `unlocked`, `due`, en uit `due` kom je niet meer.** Na één gebroken belofte kan er op dat doel nooit meer een belofte of doelstraf bij. De index wordt versmald (x.1).
+3. **Vijf bestaande paden pakken elke `type = 'penalty'`** en zouden de belofte meenemen: `maak_straffen_verschuldigd()` (op `goals.target_date`), `beslis_deadline_verzoek()`, `straffen_bij_uitstelverzoek()` (zou de gevraagde groep laten weten *dát* er een belofte is), `doeldatum()` en de grendel van `zet_streefdatum()`, plus de client-spiegel `wordtZichtbaarBijUitstelverzoek()` in `src/modules/commitments/stand.ts`. Ook `wikkel_commitments_af()` annuleert bij op-tijd afronden elke straf op `set`; of dat als "gehouden" telt, moet uitdrukkelijk besloten en getest worden.
+4. **De rollovervolgorde:** `wikkelStraffenAf()` draait vóór `sluitVerstrekenWekenAf()` (`supabase/functions/rollover/index.ts`, r.549 en r.551). In de run waarin de week sluit staan de weekdoelen nog op `todo`; "geen `missed`" zou dan te vroeg beslissen. De belofte beslist dus pas als er geen weekdoel van die week meer op `todo` staat.
+5. De `currentUserCycle(userId)` uit de opdracht heet in de code `userCycle(clock, at)`; zie de correctie in §2.
+6. De getuige krijgt bij `due` al een push (zie §Wat expliciet níet besloten is).
+7. Een teamgroep **kan nog niet worden uitgesloten**: er is geen `team_id` of organisatiekolom in de migraties. De grendel komt met QS8-649; tot dan staat het als *niet toetsbaar*, niet als *uit*.
+
+### x.1 — Een weekbelofte in het datamodel; de strafpaden slaan haar over
+
+- **Doel:** de kolommen en indexen, en de bestaande paden ongevoelig maken vóórdat er ooit een belofterij bestaat.
+- **Wijzigt:** `commitments` krijgt nullable `periode_start` en `periode_einde` (allebei of geen van beide; `periode_einde = periode_start + 7`; alleen bij `type = 'penalty'`). **Geen INSERT-grant** op beide. SELECT-kolomgrant wel (de eigenaar leest ze; de begunstigde pas vanaf `due` via RLS). `commitments_een_open_per_soort` versmallen tot `where periode_start is null`; nieuw: uniek op `(goal_id)` voor een belofte op `set`, en op `(goal_id, periode_start)` voor niet-geannuleerde. De vijf functies hierboven krijgen `periode_start is null`, de client-spiegel idem. Raakt `src/lib/database.types.ts` (hergenereren) en `src/modules/commitments/api.ts`.
+- **Migratie:** ja. **Blokkeert:** x.2, x.3. **`security-reviewer` direct:** ja. **Review:** zwaar, zwaarste model.
+- **Acceptatiecriteria (naad vet):**
+  1. **Een belofte op `set` op een doel met een streefdatum van 30 dagen geleden blijft `set` na `maak_straffen_verschuldigd()`** (doelpad ↔ belofte).
+  2. Een verschuldigde belofte blijft `due` na een goedgekeurd uitstelverzoek op hetzelfde doel.
+  3. **`straffen_bij_uitstelverzoek()` geeft 0 rijen voor een belofte én `wordtZichtbaarBijUitstelverzoek()` geeft `false` op dezelfde invoer** (server ↔ client-spiegel).
+  4. Een gewone JWT kan geen `periode_start` of `periode_einde` inserten (42501).
+  5. Service_role: een `periode_einde` dat niet `periode_start + 7` is, of een `reward` met periode, wordt door de CHECK geweigerd.
+  6. `doeldatum()` verandert niet door een belofte met een afwijkende `tz`.
+  7. De bestaande straftests (0170, 0177, 0218, 0288, 0294) blijven groen zonder wijziging.
+- **Raakt controles:** `registerdrift` (kopieer het lichaam van `main`), `kolomrechten`, `functiegrants`, `typesdrift`, `migraties`, `idempotent` (indexwissel met `drop … if exists` in de goede volgorde), `handtekening`.
+- **Mis te gaan / ongemeten:** git ziet geen conflict als een parallelle tak een van de vijf functies herdefinieert; de uitsluiting valt dan stil weg. Ongemeten: of de partiële indexen op productie (stand 0282) zonder botsing landen.
+
+### x.2 — Een weekbelofte wordt verschuldigd of gehouden aan het einde van haar week
+
+- **Doel:** de beslissing over een lopende belofte, en de benoemde verruiming van domeinregel 11 in `CLAUDE.md` (alleen na Quintens akkoord).
+- **Wijzigt:** een tweede tak in `maak_straffen_verschuldigd(uuid)` met **dezelfde handtekening**, zodat de rollover niet opnieuw gedeployd hoeft te worden. Beslist als de dag in de bevroren `tz` ≥ `periode_einde`, de belofte ouder is dan 24 uur, en er geen weekdoel van het doel in die cyclus meer op `todo` staat. Minstens één `missed` geeft `due`; anders `cancelled` met `actor_id null` (= gehouden, geen systeembericht, geen push). `pending` telt niet als gemist. `zet_week_startdag()` weigert (`weekbelofte_loopt`) zolang er een belofte op `set` staat, naar het voorbeeld van 0184: de wijziging verschuift de lopende week en dus de deadline.
+- **Migratie:** ja. **Hangt af van:** x.1. **`security-reviewer` direct:** ja. **Review:** zwaar, zwaarste model.
+- **Acceptatiecriteria:**
+  1. Met `week_start_day` 1 en 0 en `tz` Europe/Amsterdam over de DST-wissel van 25-10-2026 en Pacific/Auckland wordt de belofte `due` bij de eerste aanroep waarin de dag in de eigen `tz` ≥ `periode_einde` is, en niet eerder.
+  2. **Een belofte aangegaan in Kiritimati en daarna het profiel naar Honolulu: het moment van `due` verandert niet** (naad met 0294).
+  3. Een week op `excused` (adempauze, weekpas) geeft `cancelled`, `actor_id null`, geen systeembericht en geen `commitment_witness`-push.
+  4. Een gehaalde vloer telt als gehouden.
+  5. **Sluit de week in dezelfde rollover-run waarin de belofte beslist, dan blijft ze `set` tot de volgende run** (rollover ↔ SQL).
+  6. Bij `due` staat er precies één `commitment_due` in de begunstigde groep, niets in andere groepen, en **geen extra rij in `points_ledger`** (geen dubbele straf, A43).
+  7. `zet_week_startdag()` weigert zolang de belofte op `set` staat en lukt weer na `cancelled`.
+  8. **Een eigenaar met een verschuldigde belofte verwijdert zijn account: bericht, commitment en spoor zijn weg en er blijft niets over hem in de groep** (naad met 0247 en 0309; dit is besluit 6).
+- **Raakt controles:** `registerdrift` (`maak_straffen_verschuldigd`, `zet_week_startdag`), `klokgrens`, `tijdzones`, `datums`, `keten`, `functiegrants`, `eenrij`.
+- **Mis te gaan / ongemeten:** of `pending` ooit op `missed` komt (zo niet, dan blijft een belofte eeuwig `set` en blokkeert ze de volgende); dat een weekpas de status echt op `excused` zet is uit een comment gelezen (0159), niet gemeten; een rollover die een dag niet draait geeft het bericht op een andere dag.
+
+### x.3 — Een weekbelofte aangaan: de insertgrendel, het plafond en de begunstigde
+
+- **Doel:** het enige pad om een belofte aan te maken, dicht in de database.
+- **Wijzigt:** `grant insert (periode_start)` (niet `periode_einde`); een trigger `bevries_belofteperiode()` (BEFORE INSERT, definer) die **zwijgt als de invoerder niet de eigenaar is**, eist dat de weekdag klopt met `week_start_day` en dat `periode_start` de lopende cyclus is, en `periode_einde` zet. `commitments_insert` eist een begunstigde, geen doelstraf op `set` of `due` op hetzelfde doel (en omgekeerd), geen groep met `groups.automatisch` als begunstigde (onbekenden), en hoogstens N beloftes op `set` per eigenaar (regel 5, de spamvector van 0170; N = 3 is aangenomen). Voegt rij 60 toe aan `docs/decisions/002-domeinregel7-oppervlakken.md` (de tekst staat in §5 hierboven).
+- **Migratie:** ja. **Hangt af van:** x.2 (anders bestaan er aan te maken beloftes zonder beslispad). **`security-reviewer` direct:** ja. **Review:** zwaar, zwaarste model.
+- **Acceptatiecriteria:**
+  1. Een cyclusstart van de vorige of volgende week, of een verkeerde weekdag, wordt geweigerd; getoetst met `week_start_day` 1 en 0 en met Auckland zondag 23:30 lokaal (in UTC nog zaterdag).
+  2. Een gewone JWT kan `periode_einde` niet inserten (42501).
+  3. **B met het `goal_id` van A krijgt de 42501 van de policy en nooit de `check_violation` van de trigger** (anders lekt `week_start_day`).
+  4. **Een tweede JWT (groepslid en getuige) krijgt via een direct REST-verzoek, ook met `select=periode_start`, 0 rijen bij `set` en 1 na `due`; een lid van een andere groep altijd 0.**
+  5. Zonder groep en zonder getuige weigert de database.
+  6. De N+1-ste belofte op `set` wordt geweigerd.
+  7. Een belofte naast een doelstraf op hetzelfde doel wordt geweigerd, en andersom.
+- **Raakt controles:** `rls:dekking`, `functiegrants`, `kolomrechten`, `definers`, `keten`, `review:controle` (een Laag-rij vraagt een "Wordt zwaarder als"). ER-rij gaat als regel in het PR-verslag.
+- **Mis te gaan / ongemeten:** de trigger rekent "de lopende cyclus" met de profiel-`tz` van nu terwijl `bevries_commitmentzone()` dezelfde waarde bevriest; in een andere volgorde meten ze aan twee klokken, dus de volgorde krijgt een test. N is aangenomen.
+
+### x.4 — Het beloftescherm: aanbieden, apart bevestigen, intrekken
+
+- **Doel:** de ingang vanaf het doelscherm, de bevestigstap en de stand.
+- **Wijzigt:** een dun routebestand onder `app/doel/` plus een schermmap onder `src/schermen/` (nieuw), `src/modules/commitments` (`gaWeekbelofteAan()` haalt `periode_start` uit `userCycle()`), `src/shared/i18n/nl.ts` en `en.ts`, en alleen één knop in `app/doel/[id].tsx`.
+- **Migratie:** nee. **Hangt af van:** x.3. **`security-reviewer`:** ja (commitments en bevestiging). **Review:** zwaar voor de bevestigtekst, licht voor de rest; licht model; `critical-user` bij de milestone.
+- **Acceptatiecriteria:**
+  1. Zonder groep en getuige is er geen knop en toont de route een lege staat zonder verzendknop.
+  2. De bevestigstap toont gevolg, periode en wie het ziet en wanneer; niets is voorgeselecteerd; zonder bevestiging gebeurt er geen API-aanroep.
+  3. **De vragenlijst voltooien doet geen enkele `from('commitments')`, en geen bestand onder `app/onboarding/` importeert `gaWeekbelofteAan` of `zetStraf`** (naad vragenlijst ↔ commitment).
+  4. **`userCycle()` voor `week_start_day` 1 en 0 levert een waarde die de trigger van x.3 accepteert** (naad TypeScript ↔ SQL).
+  5. Intrekken op `set` geeft `cancelled`; op `due` volgt de melding `al_afgegaan`.
+  6. Laden, fout en leeg bestaan alle drie (regel 16).
+  7. `emoji`, `catalogus` (nl en en gelijk), `schermingang` en `exports` zijn groen en het aantal functies boven de 50 in `app/doel/[id].tsx` stijgt niet (`regel15`).
+- **Mis te gaan / ongemeten:** of `fetchMogelijkeBegunstigden()` (100 kandidaten) volstaat voor "is er een getuige"; een groep zonder andere leden geeft een lege lijst maar telt wel als groep.
+
+### x.5 — De vragenlijst wijst na afloop naar de belofte (optioneel)
+
+- **Doel:** na het opslaan één verwijzing, alleen als er al een groep of getuige is. **Hangt af van:** QS8-733, x.4 en Quintens akkoord op punt 3 hieronder. **`security-reviewer`:** nee (schrijft niets). Licht model.
+- **Acceptatiecriteria:** zonder groep geen verwijzing; tikken opent de route van x.4; **de hele vragenlijst schrijft 0 rijen in `commitments`** (naad).
+- **Mis te gaan:** QS8-733 herontwerpt de vragenlijst; verhuist het opslagpad, dan groeit de naadtest niet vanzelf mee.
+
+### Buiten deze splitsing
+
+Een belofte zonder gevolg, een belofte van meerdere weken of een herhaling, herinneringen, een teamgroep als begunstigde, een nieuwe status of een nieuw systeemtype, en een wijziging aan de Edge Function `rollover`.
+
+### Aanvullingen voor 002, voor de bouwissue
+
+Rij 31 krijgt een zin: een belofte valt buiten `straffen_bij_uitstelverzoek()` en buiten de client-spiegel; anders weet de gevraagde groep dat er een belofte loopt. Rij 60 zegt bovendien: een gehouden belofte eindigt op `cancelled`; na `due` ziet de begunstigde ook de week; de getuige krijgt de bestaande push; de trigger zwijgt voor niet-eigenaren; een teamgroep is *niet toetsbaar tot QS8-649*; beschermd en open geven hetzelfde; en het verschuldigd worden is zelf geen handeling van de gebruiker, anders dan het delen in rij 53.
+
+### Aannames in deze splitsing
+
+N = 3 beloftes op `set` per eigenaar; de rollover draait minstens één keer per dag; een weekpas zet de week op `excused` (gelezen, niet gemeten); de nummering x.1 tot x.5 is plaatshouder.
 
 ## ER-rij
 
