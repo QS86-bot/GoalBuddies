@@ -1864,7 +1864,7 @@ export const en: Record<Sleutel, string> = {
   'adempauze.uitleg':
     'Going on holiday, ill, or just a strange month? Then pause those weeks. They cost you no ' +
     'point and your streak stays where it is; it just does not grow. You pick how long, you may ' +
-    'have several side by side, and a week that is already over is allowed too.',
+    'have several side by side, and afterwards only the past week is allowed.',
   // ⚠️ QS8-768 (decision by Quinten, 20-11-2026): replaced, the old sentence was untrue
   //    after 0307. The last sentence (the Ketting remainder) must go in the PR of QS8-769.
   'adempauze.groep_ziet':
@@ -1878,12 +1878,14 @@ export const en: Record<Sleutel, string> = {
   'adempauze.ingepland': 'Scheduled',
   'adempauze.annuleren': 'Cancel',
   'adempauze.vanaf': 'From',
-  'adempauze.vanaf_hint': 'As yyyy-mm-dd. Any date works, including one that is already past.',
+  'adempauze.vanaf_hint': 'As yyyy-mm-dd. Afterwards, only the past week works.',
   'adempauze.tot': 'Up to and including',
   'adempauze.tot_hint': 'Leaving this empty means one week.',
   'adempauze.wordt_een_week': 'This becomes the week of {van}.',
   'adempauze.wordt_meer_weken':
     'This becomes {weken} weeks: from {van} up to and including the week of {tot}.',
+  // ⚠️ QS8-770 (decision by Quinten, 20-11-2026): the brake on a breather set afterwards.
+  'adempauze.te_ver_terug': 'A breather set afterwards can only cover the past week.',
   'adempauze.terugwerkend':
     'These weeks are already over. Missed weeks inside them are excused after all and the ' +
     'minus point is reversed.',

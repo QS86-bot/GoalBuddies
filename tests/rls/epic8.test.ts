@@ -861,7 +861,7 @@ describe.skipIf(!rlsTestsConfigured)('EPIC 8 — De Ketting', () => {
           .insert({
             goal_id: doelId,
             title: 'doorgeschoven',
-            cycle_start_date: cyclusOverWeken(-9),
+            cycle_start_date: cyclusOverWeken(-1),
             status: 'carried',
             points_miss: -1,
           })
@@ -882,8 +882,8 @@ describe.skipIf(!rlsTestsConfigured)('EPIC 8 — De Ketting', () => {
 
         const antwoord = await f.alice.db.rpc('plan_adempauze', {
           p_goal_id: doelId,
-          p_starts_cycle: cyclusOverWeken(-9),
-          p_ends_cycle: cyclusOverWeken(-9),
+          p_starts_cycle: cyclusOverWeken(-1),
+          p_ends_cycle: cyclusOverWeken(-1),
         });
 
         expect(uitkomst(antwoord.data).ok, JSON.stringify(antwoord.data)).toBe(true);
@@ -924,7 +924,7 @@ describe.skipIf(!rlsTestsConfigured)('EPIC 8 — De Ketting', () => {
           .insert({
             goal_id: doelId,
             title: 'ingetrokken',
-            cycle_start_date: cyclusOverWeken(-11),
+            cycle_start_date: cyclusOverWeken(-1),
             status: 'cancelled',
             points_miss: -1,
           })
@@ -934,8 +934,8 @@ describe.skipIf(!rlsTestsConfigured)('EPIC 8 — De Ketting', () => {
 
         const antwoord = await f.alice.db.rpc('plan_adempauze', {
           p_goal_id: doelId,
-          p_starts_cycle: cyclusOverWeken(-11),
-          p_ends_cycle: cyclusOverWeken(-11),
+          p_starts_cycle: cyclusOverWeken(-1),
+          p_ends_cycle: cyclusOverWeken(-1),
         });
 
         expect(uitkomst(antwoord.data).ok).toBe(true);
@@ -1001,7 +1001,7 @@ describe.skipIf(!rlsTestsConfigured)('EPIC 8 — De Ketting', () => {
           .insert({
             goal_id: doelId,
             title: 'gemiste week',
-            cycle_start_date: cyclusOverWeken(-4),
+            cycle_start_date: cyclusOverWeken(-1),
             status: 'missed',
             points_miss: -1,
           })
@@ -1025,8 +1025,8 @@ describe.skipIf(!rlsTestsConfigured)('EPIC 8 — De Ketting', () => {
 
         const antwoord = await f.alice.db.rpc('plan_adempauze', {
           p_goal_id: doelId,
-          p_starts_cycle: cyclusOverWeken(-4),
-          p_ends_cycle: cyclusOverWeken(-4),
+          p_starts_cycle: cyclusOverWeken(-1),
+          p_ends_cycle: cyclusOverWeken(-1),
         });
 
         expect(uitkomst(antwoord.data).ok).toBe(true);
@@ -1077,9 +1077,9 @@ describe.skipIf(!rlsTestsConfigured)('EPIC 8 — De Ketting', () => {
         const doelId = doel.data.id as string;
 
         const weken = [
-          { weken: -6, status: 'approved' },
-          { weken: -5, status: 'missed' },
-          { weken: -4, status: 'approved' },
+          { weken: -2, status: 'approved' },
+          { weken: -1, status: 'missed' },
+          { weken: 0, status: 'approved' },
         ];
         let index = 0;
         for (const w of weken) {
@@ -1100,7 +1100,7 @@ describe.skipIf(!rlsTestsConfigured)('EPIC 8 — De Ketting', () => {
             goal_id: doelId,
             current_streak: 1,
             best_streak: 1,
-            last_cycle_start: cyclusOverWeken(-4),
+            last_cycle_start: cyclusOverWeken(0),
             total_points: 0,
           },
           { onConflict: 'user_id,goal_id' },
@@ -1109,8 +1109,8 @@ describe.skipIf(!rlsTestsConfigured)('EPIC 8 — De Ketting', () => {
 
         const antwoord = await f.alice.db.rpc('plan_adempauze', {
           p_goal_id: doelId,
-          p_starts_cycle: cyclusOverWeken(-5),
-          p_ends_cycle: cyclusOverWeken(-5),
+          p_starts_cycle: cyclusOverWeken(-1),
+          p_ends_cycle: cyclusOverWeken(-1),
         });
         expect(uitkomst(antwoord.data).ok, JSON.stringify(antwoord.data)).toBe(true);
 
@@ -1165,7 +1165,7 @@ describe.skipIf(!rlsTestsConfigured)('EPIC 8 — De Ketting', () => {
           ).error,
         ).toBeNull();
 
-        const cyclus = cyclusOverWeken(-5);
+        const cyclus = cyclusOverWeken(-1);
         const weekIds: string[] = [];
 
         for (const index of [1, 2]) {
@@ -1249,7 +1249,7 @@ describe.skipIf(!rlsTestsConfigured)('EPIC 8 — De Ketting', () => {
           .insert({
             goal_id: doelId,
             title: 'gemist zonder beoordelaar',
-            cycle_start_date: cyclusOverWeken(-6),
+            cycle_start_date: cyclusOverWeken(-1),
             status: 'missed',
             points_miss: -1,
           })
@@ -1259,8 +1259,8 @@ describe.skipIf(!rlsTestsConfigured)('EPIC 8 — De Ketting', () => {
 
         const antwoord = await f.alice.db.rpc('plan_adempauze', {
           p_goal_id: doelId,
-          p_starts_cycle: cyclusOverWeken(-6),
-          p_ends_cycle: cyclusOverWeken(-6),
+          p_starts_cycle: cyclusOverWeken(-1),
+          p_ends_cycle: cyclusOverWeken(-1),
         });
 
         expect(uitkomst(antwoord.data).ok).toBe(true);
@@ -1639,8 +1639,9 @@ describe.skipIf(!rlsTestsConfigured)('EPIC 8 — De Ketting', () => {
           ).error,
         ).toBeNull();
 
-        const start = cyclusOverWeken(-8);
-        const eind = cyclusOverWeken(-7);
+        // ⚠️ De laatst gesloten week, want verder terug weigert 0328 (QS8-770).
+        const start = cyclusOverWeken(-1);
+        const eind = cyclusOverWeken(-1);
 
         const gezet = await f.alice.db.rpc('plan_adempauze', {
           p_goal_id: doelId,

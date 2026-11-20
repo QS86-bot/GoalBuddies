@@ -2408,8 +2408,8 @@ export const nl = {
   'adempauze.uitleg':
     'Ga je op vakantie, ben je ziek, of is het gewoon een gekke maand? Zet die weken dan stil. ' +
     'Ze kosten je geen punt en je reeks blijft staan waar hij staat; hij groeit alleen niet mee. ' +
-    'Je kiest zelf hoe lang, je mag er meerdere naast elkaar hebben, en een week die al voorbij ' +
-    'is mag ook.',
+    'Je kiest zelf hoe lang, je mag er meerdere naast elkaar hebben, en achteraf mag alleen de ' +
+    'afgelopen week nog.',
   // ⚠️ **Wat de groep ziet is de aankondiging, niet je weken.** Dit is domeinregel
   //    7's eigen uitzondering: de route loopt via jou, want je kondigt hem zelf
   //    aan. De statuskolom per week is sinds migratie 0047 dicht. Deze zin zegt
@@ -2434,7 +2434,7 @@ export const nl = {
   'adempauze.ingepland': 'Ingepland',
   'adempauze.annuleren': 'Annuleren',
   'adempauze.vanaf': 'Vanaf',
-  'adempauze.vanaf_hint': 'Als jjjj-mm-dd. Elke datum mag, ook een die al voorbij is.',
+  'adempauze.vanaf_hint': 'Als jjjj-mm-dd. Achteraf kan alleen de afgelopen week.',
   'adempauze.tot': 'Tot en met',
   'adempauze.tot_hint': 'Leeg laten betekent één week.',
   // ⚠️ **Deze zin is het halve punt van de vrije datums.** De rollover werkt
@@ -2443,6 +2443,8 @@ export const nl = {
   //    de eerste keer dat je het merkt je puntentotaal.
   'adempauze.wordt_een_week': 'Dit wordt de week van {van}.',
   'adempauze.wordt_meer_weken': 'Dit wordt {weken} weken: van {van} tot en met de week van {tot}.',
+  // ⚠️ QS8-770 (besluit Quinten, 20-11-2026): de rem op een pauze achteraf, tekst van hem.
+  'adempauze.te_ver_terug': 'Een adempauze achteraf kan alleen de afgelopen week dekken.',
   'adempauze.terugwerkend':
     'Deze weken zijn al voorbij. Gemiste weken erin worden alsnog vrijgesteld en het minpunt ' +
     'wordt teruggedraaid.',

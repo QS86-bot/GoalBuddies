@@ -3230,6 +3230,7 @@ function Afronding({
       {/* De pauze ligt helemaal in het verleden: dan gebeurt er meer dan
           vooruit plannen, en dat hoort de gebruiker te weten voordat hij drukt. */}
       {eind.endDate < vandaag ? <Caption>{t('adempauze.terugwerkend')}</Caption> : null}
+      {eind.endDate < vandaag ? <Caption>{t('adempauze.te_ver_terug')}</Caption> : null}
     </>
   );
 }
