@@ -112,10 +112,6 @@ export const ALLOWLIST = [
       'bewaakt dat geen enkele client hem leest.',
   },
   {
-    sleutel: 'auth_leaked_password_protection',
-    reden: 'Bekend en open — QS8-141. Vraagt een schakelaar in het dashboard.',
-  },
-  {
     regel: 'anon_security_definer_function_executable',
     hoogstens: 1,
     reden:
@@ -126,14 +122,22 @@ export const ALLOWLIST = [
   },
   {
     regel: 'authenticated_security_definer_function_executable',
-    hoogstens: 76,
+    hoogstens: 81,
     reden:
-      'Bekend en open — QS8-181. 📏 Gemeten op 24-09-2026: de adviseur meldt er ' +
-      '**76**. Het plafond stond op 47 en is sindsdien met 29 overschreden zonder ' +
-      'dat iemand het zag, want deze controle vraagt een token en draait niet in ' +
-      'CI. ⚠️ Dit getal is een ratel en geen constante: `beoordeel()` faalt óók ' +
-      'als het aantal zákt zonder dat het plafond meezakt, zodat er geen ruimte ' +
-      'vrijkomt waar de volgende definer-functie stil in glijdt.',
+      'Bekend en open — QS8-181. 📏 Gemeten op 18-11-2026 (get_advisors op ' +
+      'productie, alleen lezen): de adviseur meldt er **81**. Op 24-09-2026 ' +
+      'waren het er 76, en het plafond van 47 was met 29 overschreden voordat ' +
+      'iemand het zag. De vijf erbij zijn de buddywachtrij van QS8-233: ' +
+      '`buddyzoekopdrachten_over()`, `zoek_buddies_aan()`, `zoek_buddies_uit()` ' +
+      'en `buddyzoek_stand()` in twee handtekeningen. Ze staan op productie en ' +
+      'nog niet op `main`, en hun migratienummers volgen QS8-641. Elk is per ' +
+      'functie nagelopen: een `grant` die een migratie met zoveel woorden geeft, ' +
+      'een toets op `auth.uid()`, alleen eigen rijen, en geen tegenslag van een ' +
+      'ander. ⚠️ Dat precies deze vijf het verschil met 76 zijn is afgeleid uit ' +
+      'het getal en niet per naam vergeleken: de lijst van 24-09 is er niet ' +
+      'meer. ⚠️ Dit getal is een ratel en geen constante: `beoordeel()` faalt ' +
+      'óók als het aantal zákt zonder dat het plafond meezakt, zodat er geen ' +
+      'ruimte vrijkomt waar de volgende definer-functie stil in glijdt.',
   },
 ];
 
