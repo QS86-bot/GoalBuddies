@@ -35,7 +35,7 @@ import {
   fetchOpenVerzoekenVoorGroep,
   type DeadlineVerzoek,
 } from '@/modules/goals';
-import { DempGroep } from '@/schermen/groep';
+import { DempGroep, groepInhoud } from '@/schermen/groep';
 import { opmaaktaal, t } from '@/shared/i18n';
 import { toonDatum } from '@/shared/time';
 import { space } from '@/shared/theme';
@@ -112,7 +112,9 @@ export default function GroepDetail() {
   return (
     <Screen
       terug={{ naar: '/groep' }}
-      title={stand?.groep?.name ?? t('groepdetail.titel')}
+      title={
+        stand?.groep ? t('groepdetail.titel_naam', { naam: stand.groep.name }) : t('groepdetail.titel')
+      }
       eyebrow={
         stand?.groep
           ? // ⚠️ **De dag zelf krijgt een eigen zin en niet een dagnaam (QS8-199).**
@@ -164,6 +166,20 @@ export default function GroepDetail() {
               <Caption>
                 {t('groepdetail.zichtbaarheid', {
                   stand: zichtbaarheidLabels()[s.groep.zichtbaarheid as Zichtbaarheid],
+                })}
+              </Caption>
+            )}
+
+            {s.groep === null ? null : (
+              <Caption>
+                {t('groepdetail.inhoud', {
+                  onderdelen: groepInhoud({
+                    open: s.groep.zichtbaarheid === 'open',
+                    kanUitnodigen:
+                      deelbaarBericht(s.groep, clientEnv().appUrl, profiel?.display_name) !== null,
+                  })
+                    .map((sleutel) => t(sleutel))
+                    .join(', '),
                 })}
               </Caption>
             )}
