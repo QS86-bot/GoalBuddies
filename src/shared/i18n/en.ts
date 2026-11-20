@@ -1602,6 +1602,11 @@ export const en: Record<Sleutel, string> = {
 
   // QS8-761 — the weekly promise. See the comment in nl.ts.
   'belofte.knop': 'Make a weekly promise',
+  // QS8-762 — see the comment in nl.ts.
+  'belofte.verwijzing.tekst':
+    'Want to attach a weekly promise to this goal, with a group or witness you choose yourself? Nothing is set until you confirm it yourself.',
+  'belofte.verwijzing.link': 'Go to the weekly promise',
+  'belofte.verwijzing.sluit': 'Not now',
   'belofte.titel': 'Weekly promise',
   'belofte.uitleg':
     'Promise that you will complete at least one of this goal\u2019s weekly goals this week, with a ' +

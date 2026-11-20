@@ -99,7 +99,23 @@ function bijAankomst(pad: string, isOnboarded: boolean): Routestand {
  *    niet meer te lezen is, is een naad die niet meer bewaakt wordt.
  */
 export function navigeertNaar(bron: string): readonly string[] {
-  return [...bron.matchAll(/router\.replace\(\s*'([^']+)'\s*\)/g)].map((m) => m[1] ?? '');
+  const letterlijk = [...bron.matchAll(/router\.replace\(\s*'([^']+)'\s*\)/g)].map((m) => m[1] ?? '');
+  return [...letterlijk, ...bestemmingUitParameterbestand(bron)];
+}
+
+/**
+ * ⚠️ **Eén benoemde vorm naast het letterlijke pad (QS8-762):** `router.replace(
+ * doelenNaVragenlijst())`. De vragenlijst stuurt met een parameter door, en een
+ * href-object is geen letterlijk pad. Het pad wordt dan **uit het bestand gelezen
+ * dat de functie definieert** en niet hier opgeschreven, dus verandert iemand de
+ * `pathname` daar, dan valt deze toets om. Een andere functie in `router.replace()`
+ * blijft onleesbaar en valt op de ondergrens.
+ */
+function bestemmingUitParameterbestand(bron: string): readonly string[] {
+  if (!/router\.replace\(\s*doelenNaVragenlijst\(\)\s*\)/.test(bron)) return [];
+  const definitie = readFileSync(join(WORTEL, 'src/schermen/belofte/verwijzingsparameter.ts'), 'utf8');
+  const pad = /pathname:\s*'([^']+)'/.exec(definitie)?.[1];
+  return pad === undefined ? [] : [pad];
 }
 
 /**
