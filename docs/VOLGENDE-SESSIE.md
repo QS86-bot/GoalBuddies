@@ -2399,6 +2399,21 @@ de volgende bijwerking bij #650.**
 | #649 | 06-10 | QS8-648 | NAGEKEKEN: compression en source-map-js nagemeten met een bouw |
 | #650 | 06-10 | QS8-645 | rij 169: 11 van de 21 regels gaan over een grant |
 
+### 20-11-2026 — een weekbelofte aangaan (QS8-760, 0314), en drie valkuilen
+
+Wat de bouw koos staat in `docs/decisions/2026-11-20-een-weekbelofte-gaat-aan-in-de-lopende-week.md`; het
+oppervlak is rij 61 in `docs/decisions/002-domeinregel7-oppervlakken.md`. 0312, 0313 en 0314 wachten op Quintens
+"backup gedaan", en de bundel pas daarna (`docs/DEPLOY.md` §2.5c: de client vraagt `periode_start` op).
+
+- ⚠️ **Een BEFORE-trigger antwoordt vóór de policy.** Elke `raise` in `bevries_belofteperiode()` staat ná de
+  eigenaarstoets; een nieuwe hoort daar ook, anders leest B iets over A uit een 23514.
+- ⚠️ **Een telling in een `with check` is niet veilig tegen bulk of gelijktijdigheid.** Gemeten: zonder slot op de
+  profielrij staan er na twee parallelle sessies 4 beloftes waar het plafond 3 is.
+- ⚠️ **Ijk met de hele voorwaarde, niet met `false and`.** `if false and A or B` blijft waar door de voorrang; de
+  eerste mutatie van de UPDATE-grendel bleef daardoor groen. En een update op nul rijen "lukt" altijd: zet eerst
+  zelf de rij neer die je wilt verzetten. Lokale stack: Postgres hier op **5433** gezet, PostgREST met checksum uit
+  `.github/workflows/ci.yml`.
+
 ### 20-11-2026 — de weekbelofte beslist (QS8-759, 0313), en drie valkuilen
 
 De beslisregel staat in domeinregel 11 van `CLAUDE.md`; wat de bouw erbij koos staat in

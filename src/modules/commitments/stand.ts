@@ -165,8 +165,8 @@ export function isAfgegaan(commitment: { readonly status: string }): boolean {
  *
  *    ⚠️ **Optioneel, en een ontbrekende kolom telt als doelstraf.** Dat is de
  *    veilige kant: een aanroeper die `periode_start` niet opvraagt, waarschuwt
- *    eerder te veel dan te weinig. `fetchCommitments()` vraagt de kolom nog niet
- *    op; dat komt met de eerste schrijfweg (x.3), ná de uitrol van 0312.
+ *    eerder te veel dan te weinig. Sinds QS8-760 vraagt `fetchCommitments()` de
+ *    kolom op (`COMMITMENT_KOLOMMEN`), dus op het doelscherm is hij er.
  */
 export function wordtZichtbaarBijUitstelverzoek(
   commitment: {
@@ -176,6 +176,33 @@ export function wordtZichtbaarBijUitstelverzoek(
   },
 ): boolean {
   return commitment.type === 'penalty' && (commitment.periode_start ?? null) === null;
+}
+
+/**
+ * Is dit de straf van het doel zelf, en geen weekbelofte? — QS8-760.
+ *
+ * Een weekbelofte is een `penalty` mét `periode_start` (0312). Ze meet aan haar
+ * eigen week en niet aan de streefdatum, dus ze hoort niet op de Straf-kaart van
+ * het doel ("verschuldigd na de streefdatum") en houdt `Herplannen` niet tegen:
+ * de grendel `straf_staat_open` van `zet_streefdatum()` slaat haar ook over.
+ *
+ * ⚠️ **Eén functie voor de plekken die eerst elk `type === 'penalty'` lazen.**
+ *    QS8-758 vond er drie in `app/doel/[id].tsx`; staat de vergelijking in de
+ *    JSX, dan is de enige test die haar kan raken er een die in dát bestand zoekt
+ *    (regel 18 vraag 4). `tests/beloftes/doelstraf.test.ts` toetst deze functie
+ *    en dat het scherm haar gebruikt.
+ *
+ * ⚠️ **Niet optioneel, anders dan bij {@link wordtZichtbaarBijUitstelverzoek}.**
+ *    Daar is "ontbreekt, dus doelstraf" de veilige kant (een waarschuwing te
+ *    veel). Hier is het de onveilige: een belofte die als straf van het doel op
+ *    het scherm staat, met de streefdatum als moment, belooft de gebruiker iets
+ *    wat de database niet doet. Wie de kolom niet opvraagt, compileert niet.
+ */
+export function isDoelstraf(commitment: {
+  readonly type: string;
+  readonly periode_start: string | null;
+}): boolean {
+  return commitment.type === 'penalty' && commitment.periode_start === null;
 }
 
 /**

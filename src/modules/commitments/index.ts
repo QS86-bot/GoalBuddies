@@ -28,6 +28,7 @@ export {
 export {
   COMMITMENT_STANDEN,
   isAfgegaan,
+  isDoelstraf,
   isOpenstaand,
   magStrafVastleggen,
   SPOORGEBEURTENISSEN,

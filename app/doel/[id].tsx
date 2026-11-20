@@ -22,6 +22,7 @@ import {
   fetchCommitmentSpoor,
   herstelStuurlozeStraf,
   fetchMogelijkeBegunstigden,
+  isDoelstraf,
   isOpenstaand,
   magStrafVastleggen,
   spoorLabels,
@@ -316,7 +317,7 @@ export default function DoelDetail() {
 
             <Herplannen
               risico={risico}
-              heeftStraf={commitments.some((c) => c.type === 'penalty' && c.status !== 'cancelled')}
+              heeftStraf={commitments.some((c) => isDoelstraf(c) && c.status !== 'cancelled')}
             />
 
             <HulpVragen doel={d} risico={risico} groepen={doelGroepen} userId={userId} />
@@ -359,7 +360,7 @@ export default function DoelDetail() {
             <Straf
               goalId={d.id}
               groepen={groepen}
-              bestaand={commitments.find((c) => c.type === 'penalty')}
+              bestaand={commitments.find(isDoelstraf)}
               streefdatumVoorbij={!magStrafVastleggen(d.target_date, vandaag)}
               onKlaar={herlaad}
             />

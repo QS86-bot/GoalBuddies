@@ -548,7 +548,7 @@ export function beoordeel(gevonden, register = REGISTER, soort = undefined) {
 const LEESREGISTER = new Map([
   // --- Predicaten: geven een boolean over de aanroeper zélf -----------------
   //
-  // ⚠️ Deze acht zijn de predicaten. Ze lezen `group_members` als eigenaar
+  // ⚠️ Deze negen zijn de predicaten. Ze lezen `group_members` als eigenaar
   //    om de recursie te vermijden die policies op die tabel anders veroorzaken,
   //    en ze scopen allemaal hard op `auth.uid()`: de uitkomst gaat over de
   //    aanroeper en over niemand anders. `tests/rls/hulpfuncties.test.ts` pint
@@ -561,6 +561,7 @@ const LEESREGISTER = new Map([
   ['shares_group_with_goal', 'Predicaat op `m.user_id = auth.uid()`; de kijker én de eigenaar moeten actief lid zijn en de groep niet gearchiveerd.'],
   ['deelt_groep_met_eigenaar', 'Leunt volledig op `shares_group_with_user()`, en die scopet op `auth.uid()`. Leest `goals` alleen om de eigenaar op te zoeken.'],
   ['deelt_open_groep_met_doel', 'Predicaat op `m.user_id = auth.uid()` in een groep met `zichtbaarheid = open`.'],
+  ['weekbelofte_begunstigde_bekend', 'Predicaat op `auth.uid()` in beide takken (QS8-760, 0314): de groep is er een van de aanroeper en niet automatisch, de getuige deelt met de aanroeper een niet-automatische groep. Geen uid-argument, en het antwoord zegt alleen iets over de band van de aanroeper zelf.'],
 
   // --- Eigen rijen: de scoping is `auth.uid()` in de query zelf --------------
   ['dagafvinkingen_over', 'Ratelimiet-teller. Telt uitsluitend `g.owner_id = auth.uid()` en geeft 0 zonder sessie.'],

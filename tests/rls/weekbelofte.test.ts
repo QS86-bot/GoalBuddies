@@ -14,7 +14,7 @@ import { psqlMetInvoer, stackBeschikbaarOfFaal } from './psql-stack';
  * van een pad dat helemaal niets meer doet.
  *
  * ⚠️ **Alles als `postgres` opgezet, in `begin … rollback`.** Een client kan
- *    `periode_start` niet schrijven (dat is criterium 4), en
+ *    `periode_einde` niet schrijven (criterium 4; `periode_start` sinds 0314 wel), en
  *    `TablesInsert<'commitments'>` kent de kolom pas na de uitrol. De
  *    rolwissel naar `authenticated` gebeurt alleen waar de toets over rechten of
  *    over de leeskant gaat.
@@ -241,13 +241,16 @@ ${['periode_start', 'periode_einde']
   )
   .join('\n')}`);
 
-      expect(uit).toEqual(['periode_start=true,false,false', 'periode_einde=true,false,false']);
+      // ⚠️ Sinds 0314 (QS8-760) mag `authenticated` `periode_start` inserten: de
+      //    client rekent de cyclusstart uit en de trigger toetst hem. Het einde
+      //    blijft dicht. `tests/rls/weekbelofte-aangaan.test.ts` toetst de rest.
+      expect(uit).toEqual(['periode_start=true,true,false', 'periode_einde=true,false,false']);
     },
     TIMEOUT,
   );
 
   it(
-    'een gewone JWT die `periode_start` of `periode_einde` meestuurt krijgt 42501; zonder die kolommen lukt de insert',
+    'een gewone JWT die `periode_einde` meestuurt krijgt 42501; zonder die kolom lukt de insert',
     () => {
       const poging = (kolommen: string, waarden: string): string => `
 do $$
@@ -259,18 +262,20 @@ exception when others then
   insert into uitslag (regel) values ('sqlstate=' || sqlstate);
 end $$;`;
 
+      // ⚠️ `periode_start` alleen viel hier af sinds 0314: die kolom heeft nu een
+      //    INSERT-grant (QS8-760). Wat er dan gebeurt, toetst
+      //    `tests/rls/weekbelofte-aangaan.test.ts`.
       const uit = draai(`
 ${opzet({ dagenTerug: -10, gekoppeld: false })}
 set local role authenticated;
 do $$ begin perform set_config('request.jwt.claims',
   json_build_object('sub', (select a from proef), 'role', 'authenticated')::text, true); end $$;
-${poging(', periode_start', ', current_date')}
 ${poging(', periode_einde', ', current_date + 7')}
 ${poging(', periode_start, periode_einde', ', current_date, current_date + 7')}
 ${poging('', '')}
 reset role;`);
 
-      expect(uit).toEqual(['sqlstate=42501', 'sqlstate=42501', 'sqlstate=42501', 'gelukt']);
+      expect(uit).toEqual(['sqlstate=42501', 'sqlstate=42501', 'gelukt']);
     },
     TIMEOUT,
   );

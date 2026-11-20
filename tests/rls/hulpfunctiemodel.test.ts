@@ -185,6 +185,19 @@ const REGISTER: Readonly<Record<string, Rij>> = {
       'terwijl zelf vertrekken dat wél deed. Geen archieftoets, want dit is de leeskant — ' +
       'hij draagt profiles_select en de avataremmer.',
   },
+  weekbelofte_begunstigde_bekend: {
+    nietInactief: 3,
+    alleenActief: 0,
+    archief: true,
+    open: false,
+    reden:
+      'De begunstigde van een weekbelofte is een bekende (0314, QS8-760). Twee takken: de ' +
+      'groep is er een van de aanroeper (één toets, net als is_group_member()) en de ' +
+      'getuige deelt met de aanroeper een groep waarin béíde actief zijn (twee toetsen, net ' +
+      'als shares_group_with_user()). Anders dan die laatste wél een archieftoets, want dit ' +
+      'is een schrijfkant: een gearchiveerde groep is geen plek om een nieuwe belofte aan te ' +
+      'hangen. Plus `not automatisch` in beide takken, fail-closed geschreven.',
+  },
 
   // ── Drie die de persoon als parameter krijgen in plaats van uit het JWT ────
   //

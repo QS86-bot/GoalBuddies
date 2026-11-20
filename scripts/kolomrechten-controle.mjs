@@ -1084,6 +1084,16 @@ export const GEEN_SCHRIJFPAD = [
     reden: 'idem — zelfde grant, zelfde zin in 0057.',
   },
   {
+    tabel: 'commitments',
+    soort: 'INSERT',
+    kolom: 'periode_start',
+    reden:
+      '0314 (QS8-760) opent de schrijfweg voor een weekbelofte in de database: de ' +
+      'trigger `bevries_belofteperiode()` toetst de lopende week. Het scherm dat een ' +
+      'belofte aanbiedt en apart laat bevestigen is x.4 van de poort QS8-744; tot dan ' +
+      'schrijft geen client de kolom. Weg uit dit register zodra x.4 landt.',
+  },
+  {
     tabel: 'profiles',
     soort: 'UPDATE',
     kolom: 'notify_group_digest',
