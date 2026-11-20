@@ -216,6 +216,15 @@ const REGISTER: Readonly<Record<string, string>> = {
     'approval_withdrawals; plan_adempauze() boekt alleen bij een herstel van een ' +
     'al afgeboekt punt, en dan hoogstens 1 rij per doel per cyclus.',
   reports: 'meld() weigert zodra meldingen_over() op nul staat.',
+  // ⚠️ De twee teamtabellen (QS8-654, 0319) groeien alleen via een RPC.
+  team_goal_shares:
+    'neem_aandeel() is de enige clientroute; UNIQUE (team_goal_id, user_id) geeft hoogstens één ' +
+    'aandeel per persoon per teamdoel, dus het aantal volgt team_goals. Elk aandeel maakt ' +
+    'bovendien een rij in goals, en die draagt doelen_dagplafond.',
+  team_goals:
+    'maak_teamdoel() weigert vanaf 10 teamdoelen per aanmaker in het laatste etmaal. ' +
+    '⚠️ Tellen-dan-invoegen: gelijktijdige aanroepen komen erboven (securityreview QS8-654, L5). ' +
+    'Een rem tegen een lus, geen beleid.',
   week_reviews: 'UNIQUE (group_id, user_id, group_period_start) — één weekafsluiting per periode.',
 };
 
@@ -346,7 +355,9 @@ describe.skipIf(!beschikbaar)('elke groeibare tabel heeft een plafond of een red
     //    laten groeien, en allebei met de grens in die RPC.
     // ⚠️ En zevenendertig werd achtendertig met `organization_role_events`
     //    (QS8-695, 0318): het spoor van rolwijzigingen, met de grens in de RPC.
-    expect(gevonden.length, 'het aantal groeibare tabellen is veranderd').toBe(38);
+    // ⚠️ En achtendertig werd veertig met `team_goals` en `team_goal_shares`
+    //    (QS8-654, 0319), om dezelfde reden.
+    expect(gevonden.length, 'het aantal groeibare tabellen is veranderd').toBe(40);
     // ⚠️ En zeventien werd achttien met `user_blocks` (QS8-496, 0276). Die tabel
     //    stond hierboven in REGISTER met de reden *"begrensd door het aantal
     //    mensen dat je kunt noemen"* — en die reden verviel toen `zoek_mensen()`

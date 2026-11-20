@@ -352,6 +352,15 @@ export const WACHT_OP_EEN_BESLUIT = {
     'Schrijfpad van een organisatiebeheerder (0318, QS8-695). De schermen zijn QS8-657. ' +
     '**Vraag:** krijgt hij daar een aanroeper? Zo ja, dan gaat deze rij weg zodra die er is; ' +
     'zo nee, dan hoort de RPC weg.',
+  // ⚠️ De twee teamdoel-RPC's (QS8-654, 0319): zelfde reden, het scherm is QS8-658.
+  maak_teamdoel:
+    'Schrijfpad van een teamdoel (0319, QS8-654). Het scherm is QS8-658. ' +
+    '**Vraag:** krijgt hij daar een aanroeper? Zo ja, dan gaat deze rij weg zodra die er is; ' +
+    'zo nee, dan hoort de RPC weg.',
+  neem_aandeel:
+    'Schrijfpad van een aandeel (0319, QS8-654). Het scherm is QS8-658. ' +
+    '**Vraag:** krijgt hij daar een aanroeper? Zo ja, dan gaat deze rij weg zodra die er is; ' +
+    'zo nee, dan hoort de RPC weg.',
 };
 
 /** Bestanden waarin een aanroep als "productie" telt. Tests en scripts niet. */
@@ -729,17 +738,23 @@ export const GEDEELDE_WAARDEN = {
   //    daardoor als geschreven (📏 een rij in `BEWUST_ONGESCHREVEN` werd hier
   //    meteen als verlopen gemeld). Het staat daarom als keuze 7 in
   //    `docs/decisions/2026-11-17-organisaties-en-lidmaatschappen.md`.
-  active: ['goals', 'group_members', 'groups', 'organization_members', 'organizations'],
+  // ⚠️ **`team_goals` — QS8-654, migratie 0319.** Met de hand nagelopen: `active`
+  //    is de default en wordt door `maak_teamdoel()` geschreven. `completed` en
+  //    `archived` hebben vandaag **géén** schrijver: afronden is QS8-662, en
+  //    archiveren is niet gepland. Dezelfde blinde vlek als bij
+  //    `organizations.archived` hierboven; het staat in de aannames van
+  //    `docs/decisions/2026-11-17-teamdoelen-en-aandelen.md`.
+  active: ['goals', 'group_members', 'groups', 'organization_members', 'organizations', 'team_goals'],
   admin: ['group_members', 'organization_members'],
   // QS8-736: `badge` is de sleutel in `xp_grootboek` (xp_na_badge) en in de payload van
   // `prestatie_gedeeld`; allebei worden geschreven (deel_prestatie() en de XP-trigger).
   badge: ['chat_messages', 'xp_grootboek'],
   approved: ['completion_approvals', 'deadline_requests', 'weekly_goals'],
-  archived: ['goal_events', 'goals', 'groups', 'organizations'],
+  archived: ['goal_events', 'goals', 'groups', 'organizations', 'team_goals'],
   building: ['goals', 'groups', 'profiles'],
   business: ['goals', 'groups', 'profiles'],
   cancelled: ['commitment_events', 'commitments', 'weekly_goals'],
-  completed: ['goal_events', 'goals'],
+  completed: ['goal_events', 'goals', 'team_goals'],
   connection: ['goals', 'groups', 'profiles'],
   created: ['commitment_events', 'goal_events'],
   creativity: ['goals', 'groups', 'profiles'],
