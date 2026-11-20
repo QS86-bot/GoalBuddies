@@ -266,10 +266,10 @@ function Meldingwacht() {
   const userId = session?.user.id ?? null;
 
   useEffect(() => {
-    if (userId === null) {
-      zetMeldingWacht(false);
-      return;
-    }
+    // ⚠️ Eerst uit, voor elke gebruiker: een directe wissel van A naar B zonder tussenliggende `null` mag B niet de
+    //    stip van A laten erven als B's eigen lading mislukt (security-review QS8-777, Laag 1).
+    zetMeldingWacht(false);
+    if (userId === null) return;
     let actueel = true;
     fetchOpenstaandeMeldingen({ limiet: 1 }).then(
       (rijen) => {

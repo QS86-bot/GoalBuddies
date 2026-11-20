@@ -16,7 +16,7 @@ import { zonderCommentaar } from '../../scripts/zonder-commentaar.mjs';
  *
  * IJKING — met de hand, 20-11-2026:
  *   A  `<Meldingwacht />` uit `Shell` halen -> rood: 'staat in de Shell'
- *   B  `if (userId === null) { zetMeldingWacht(false)` weg -> rood: 'gaat uit bij uitloggen'
+ *   B  de `zetMeldingWacht(false)` aan het begin van het effect weg -> rood: 'gaat uit vóór elke nieuwe gebruiker'
  *   C  `platform_beheerder` in `_layout.tsx` zetten -> rood: 'kent de rol niet'
  *   D  `<MeldingenIngang />` onder de eerste `<Card>` zetten -> rood: 'bovenaan'
  *   E  in het foutpad van `Meldingwacht` `zetMeldingWacht(false)` zetten -> rood: 'een storing laat de stip staan'
@@ -35,8 +35,12 @@ describe('Meldingstip: één waarheid voor stip en kaart', () => {
     expect(wacht).toMatch(/fetchOpenstaandeMeldingen\(\{ limiet: 1 \}\)/);
   });
 
-  it('gaat uit bij uitloggen, zodat een volgend account de stip niet erft', () => {
-    expect(wacht).toMatch(/userId === null\)\s*\{\s*zetMeldingWacht\(false\)/);
+  it('gaat uit vóór elke nieuwe gebruiker, zodat een volgend account de stip niet erft', () => {
+    const effect = wacht.slice(wacht.indexOf('useEffect('));
+    expect(effect.indexOf('zetMeldingWacht(false)')).toBeGreaterThan(-1);
+    // Vóór de vroege terugkeer voor `null` én vóór de fetch: ook een directe wissel A -> B valt eronder.
+    expect(effect.indexOf('zetMeldingWacht(false)')).toBeLessThan(effect.indexOf('userId === null'));
+    expect(effect.indexOf('zetMeldingWacht(false)')).toBeLessThan(effect.indexOf('fetchOpenstaandeMeldingen'));
   });
 
   it('een storing laat de stip staan zoals hij was', () => {

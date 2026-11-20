@@ -1,6 +1,5 @@
 // @vitest-environment jsdom
-import { createElement } from 'react';
-import { act } from 'react';
+import { act, createElement } from 'react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { t } from '@/shared/i18n';
