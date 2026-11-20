@@ -191,3 +191,33 @@ export function useSpraakUitlegGezien(actief: boolean): {
   //    hierboven.
   return { gezien: zojuist || opgeslagen.data === 'ja', geladen: !opgeslagen.loading, onthoud };
 }
+
+const SLEUTEL_BELOFTEVERWIJZING = 'goalbuddies.belofteverwijzing-weg';
+
+/**
+ * Heeft de gebruiker de verwijzing naar de weekbelofte weggeklikt? — QS8-762.
+ *
+ * ⚠️ **Eén keer weg is weg**, per apparaat en niet per doel: de regel wijst naar
+ *    een mogelijkheid, niet naar een stand van één doel. Hetzelfde patroon als
+ *    `useHulpvraagVerborgen()`, en om dezelfde reden niet in `profiles`: dit is
+ *    een schermvoorkeur, geen domeinfeit (zie de kop van dit bestand).
+ * ⚠️ **Een onleesbare opslag valt de milde kant op:** de regel komt dan nog een
+ *    keer terug. Hij doet uit zichzelf niets en maakt nooit een commitment.
+ * ⚠️ `geladen` is onwaar zolang de lezing loopt; de aanroeper toont de regel pas
+ *    daarna, anders knippert hij voor wie hem al weggeklikt had.
+ */
+export function useBelofteverwijzingVerborgen(): {
+  readonly weg: boolean;
+  readonly geladen: boolean;
+  readonly verberg: () => void;
+} {
+  const opgeslagen = useAsync(() => AsyncStorage.getItem(SLEUTEL_BELOFTEVERWIJZING), []);
+  const [zojuist, setZojuist] = useState(false);
+
+  const verberg = useCallback(() => {
+    setZojuist(true);
+    void AsyncStorage.setItem(SLEUTEL_BELOFTEVERWIJZING, 'ja');
+  }, []);
+
+  return { weg: zojuist || opgeslagen.data === 'ja', geladen: !opgeslagen.loading, verberg };
+}
