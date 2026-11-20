@@ -153,6 +153,7 @@ export const nl = {
 
   'profiel.laden_mislukt': 'Je profiel kon niet geladen worden.',
   'profiel.opslaan_mislukt': 'Opslaan lukte niet. Probeer het opnieuw.',
+  'profiel.weekbelofte_loopt': 'Je startdag kan niet veranderen zolang je weekbelofte loopt. Na het einde van die week kan het weer.',
 
   // ⚠️ Zod-meldingen. Deze staan in schema's die op moduleniveau gebouwd worden,
   //    dus de aanroep moet lui zijn: `{ error: () => t(...) }` en niet

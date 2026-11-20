@@ -343,6 +343,14 @@ export async function zetWeekStartdag(
   }
 
   const uit = (data ?? {}) as { ok?: boolean; reason?: string };
+
+  // ⚠️ QS8-759 (0313): de enige weigering die een gebruiker zelf veroorzaakt en
+  //    zelf kan oplossen — wachten tot de week van zijn belofte voorbij is. Die
+  //    hoort op het scherm en niet in Sentry.
+  if (uit.ok !== true && uit.reason === 'weekbelofte_loopt') {
+    return { ok: false, melding: t('profiel.weekbelofte_loopt') };
+  }
+
   if (uit.ok !== true) {
     // ⚠️ De reden gaat naar Sentry en niet naar het scherm: `geen_profiel` en
     //    `cyclus_bevat_vandaag_niet` zijn toestanden die een gebruiker niet kan

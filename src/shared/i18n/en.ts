@@ -71,6 +71,7 @@ export const en: Record<Sleutel, string> = {
 
   'profiel.laden_mislukt': 'Your profile could not be loaded.',
   'profiel.opslaan_mislukt': 'Saving did not work. Please try again.',
+  'profiel.weekbelofte_loopt': "Your week start can't change while your weekly promise is running. Once that week is over, you can change it again.",
 
   'validatie.wachtwoord_kort': 'Use at least 8 characters. A short phrase works fine.',
   'validatie.wachtwoord_lang':
