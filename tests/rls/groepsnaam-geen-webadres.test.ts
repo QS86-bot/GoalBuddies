@@ -45,8 +45,12 @@ const WEIGEREN = [
   'evile\u200D.com',
   'goalbuddies-login.\u200Dсом',
   'https\uFF1A\uFF0F\uFF0Fevil',
+  'Log in via evil\u0483.com',
+  'evil\u0951.com',
+  'evil\u{13430}.com',
+  '185\u064B.12\u064B.3\u064B.4',
 ];
-const TOELATEN = ['Sportmaatjes', 'Team 3A', 'Lopen, 5 km', 'Jan & Piet', 'e.g. wij', 'Jan’s groep'];
+const TOELATEN = ['Sportmaatjes', 'Team 3A', 'Lopen, 5 km', 'Jan & Piet', 'e.g. wij', 'Jan’s groep', 'Dr. Jansen', 'Café de Paris', 'A & B'];
 
 describe.skipIf(!beschikbaar)('groepsnaam zonder webadres: client en database zijn gelijk', () => {
   const db = (tekst: string): boolean => {

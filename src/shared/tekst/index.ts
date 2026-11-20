@@ -709,22 +709,21 @@ export function schoneEneRegel(ruw: string): string {
  *    draagt dezelfde regel als CHECK; houd de twee gelijk.
  */
 export function bevatLinkAchtigeTekst(tekst: string): boolean {
-  // ⚠️ Eerst normaliseren (NFKC) en onzichtbare en combinerende tekens strijken,
-  //    daarna pas de regexen: een richtingsteken of accent naast de punt
-  //    (`evil<LRM>.com`) laat de mens `evil.com` lezen terwijl de regex hem mist.
-  //    De lijst staat identiek in migratie 0328; houd de twee gelijk.
-  const v = tekst.normalize('NFKC').replace(ONZICHTBAAR_OF_COMBINEREND, '');
+  // ⚠️ Een whitelist en geen blokkenlijst: na NFKC blijft alleen over wat een mens
+  //    als letter, cijfer, spatie, `-`, `:`, `/` of punt leest. Alles anders
+  //    (onzichtbare tekens, accenten, richtingstekens, opmaaktekens) verdwijnt
+  //    vóór de regexen, want `evil<LRM>.com` en `evil<U+0483>.com` lezen als
+  //    evil.com. Een lijst van te strijken tekens groeide per reviewronde.
+  //    Migratie 0328 doet hetzelfde; houd de twee gelijk.
+  const v = tekst.normalize('NFKC').replace(/[^\p{L}\p{N}\s:/\-.\u3002\uFF0E\uFF61\u2024\uFE52]/gu, '');
   // Puntvormen die een browser (IDNA) tot een punt omzet.
   const punt = '[.\\u3002\\uFF0E\\uFF61\\u2024\\uFE52]';
-  const domein = new RegExp(`[\\p{L}\\p{N}-]${punt}[\\p{L}\\p{M}]{2}`, 'iu');
+  const domein = new RegExp(`[\\p{L}\\p{N}-]${punt}\\p{L}{2}`, 'iu');
   const ip = new RegExp(`[0-9]${punt}[0-9]`, 'u');
   return (
     /:\/\/|www\./i.test(v) || ip.test(v) || domein.test(v) || /[\n\r\u0085\u2028\u2029]/u.test(tekst)
   );
 }
-
-const ONZICHTBAAR_OF_COMBINEREND =
-  /[\u00AD\u0300-\u036F\u061C\u180B-\u180F\u1AB0-\u1AFF\u1DC0-\u1DFF\u200B-\u200F\u202A-\u202E\u2060-\u206F\u20D0-\u20FF\uFE00-\uFE0F\uFE20-\uFE2F\uFEFF\u{E0000}-\u{E0FFF}]/gu;
 
 /**
  * Een naam zonder onzichtbare randen.

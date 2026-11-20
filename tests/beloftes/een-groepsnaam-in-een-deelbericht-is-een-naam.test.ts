@@ -73,3 +73,24 @@ describe('teamNaamSchema', () => {
     expect(teamNaamSchema.safeParse('Sales').success).toBe(true);
   });
 });
+
+describe('elk teken naast de punt (scan over alle codepunten)', () => {
+  // ⚠️ Een lijst met omzeilingen groeit per reviewronde; deze scan niet. Wat er
+  //    ook naast de punt staat: de naam blijft een webadres, tenzij het teken
+  //    zelf zichtbaar witruimte, een dubbele punt, een schuine streep of een punt is.
+  it('geen enkel codepunt verbergt de punt in evil.com of in een IP', () => {
+    const gemist: string[] = [];
+    for (let cp = 1; cp <= 0x10ffff; cp++) {
+      if (cp >= 0xd800 && cp <= 0xdfff) continue;
+      const x = String.fromCodePoint(cp);
+      if (/[\s:/.\p{L}\p{N}\-\u3002\uFF0E\uFF61\u2024\uFE52]/u.test(x)) continue;
+      // Wat NFKC tot een zichtbare letter, cijfer, spatie, punt of dubbele punt maakt, is geen verborgen teken.
+      if (/[\s\p{L}\p{N}.:/\-\u3002\uFF0E\uFF61\u2024\uFE52]/u.test(x.normalize('NFKC'))) continue;
+      const kandidaten = [`evil${x}.com`, `evil.${x}com`, `185${x}.12${x}.3${x}.4`, ...(/\p{M}/u.test(x) ? [] : [`www${x}.x`])];
+      for (const k of kandidaten) {
+        if (!bevatLinkAchtigeTekst(k)) gemist.push(`U+${cp.toString(16)} in ${k}`);
+      }
+    }
+    expect(gemist.slice(0, 20)).toEqual([]);
+  });
+});
