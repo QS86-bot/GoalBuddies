@@ -37,3 +37,20 @@ missen is niet gratis.
   (gemeten voor 1 en 4: ze vallen samen).
 * Bestaande pauzes die verder terug liggen blijven staan; de rem kijkt alleen naar een nieuwe aanroep.
 * Productie draait 0328 nog niet.
+
+## Wat de security-review vond (open, besluit voor Quinten)
+
+* **Laag: de tijdzone verschuift de grens.** `v_huidig` leunt op `eigenaarsdatum()` en dus op
+  `profiles.tz`, dat de gebruiker zelf mag wijzigen. Wie in het eerste etmaal van een nieuwe cyclus
+  `tz` naar een westelijke zone zet, krijgt hoogstens één week extra: de week van twee weken terug is dan nog
+  de "laatst gesloten". 📏 Aangetoond door de reviewer op de lokale database (Amsterdam: `te_ver_terug`;
+  na `tz = America/New_York`: `ok`, `hersteld 1`). Begrensd tot één week en ongeveer 26 uur, één minpunt per
+  weekdoel; vóór 0328 was er geen grens. De week-start wisselen levert niets op (`zet_week_startdag()` eist
+  dat beide cycli vandaag bevatten).
+* **Voorlopig aanvaard als risico (optie c)**, tot Quinten kiest: (a) de grens meten op de vroegste
+  kalender (UTC+14), strenger maar een lid in Honolulu kan de laatst gesloten week een deel van de dag
+  niet meer dekken; (b) een `tz`-wijziging weigeren zolang er een gemiste week binnen bereik ligt.
+  ER-rij (Laag), **Wordt zwaarder als:** de grens krapper wordt dan één week, of het minpunt/de reeks aan
+  meer gaat hangen (teambonus, klassement).
+* De test zet de tijdzone vast en wisselt niet van tijdzone of week-start, en meet `now()` in TypeScript
+  en in de database apart; op een cyclusgrens kan een run toevallig falen. Geen beveiligingsgat.
