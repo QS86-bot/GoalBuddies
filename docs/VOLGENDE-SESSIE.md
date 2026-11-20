@@ -36,6 +36,8 @@
 >
 > ⚠️ **Aanvulling van 19-11-2026 (batchsessie, #701):** QS8-718 (de deploy-workflow) is gemerged; de stand staat in `docs/WERKVOORRAAD.md`. Valkuil uit die ronde: **een nieuwe grendel van `main` kan een bouwtak rood maken die er afzonderlijk groen uitzag** — `knip:controle` eiste een rij in `MET_REDEN` voor een YAML-knip, en dat bleek pas op de merge-commit. Draai na het samenvoegen de hele CI-repobaan lokaal (`node scripts/ci-controles.mjs --baan repo`), niet alleen wat bij de inhoud hoort. Het vervolg is aan Quinten: de omgeving `productie`, de secrets en de eerste droge run.
 >
+> ⚠️ **Aanvulling van 20-11-2026 (ketensessie, §12):** de zakelijke keten is gemerged, van #746 tot en met #762 (veertien PR's, QS8-652 t/m 699 en 719, zonder QS8-658); de stand staat in `docs/WERKVOORRAAD.md`. Punt 00 hieronder is daarmee achterhaald: de poort QS8-649 staat nog open, maar de keten is gebouwd en de migraties 0316 t/m 0327 wachten alleen op de uitrol. Twee valkuilen uit die ronde: (1) **een ER-rij die een migratie in de titel noemt, maakt `dossierdrift:controle` rood zodra een latere migratie dezelfde functie herdefinieert.** Hermeet de bewering met `pg_get_functiondef()` en zet een 📏-zin achter de rij; zo is rij 664 tegen 0322 hermeten. (2) **Bouw een tak die op een nog niet gemergede tak leunt los op, door de eigen commits te cherry-picken op `main`**, en los registerconflicten op door het lichaam van `main` te kopiëren, niet dat van de stapel.
+>
 > ⚠️ **Die afkapping is met opzet een nummer en geen "alles".** Terwijl deze
 > bijwerking geschreven werd landden er drie PR's bij — de teller ging van
 > achttien naar negentien naar tweeëntwintig. Een tabel die zegt *alles van
@@ -3951,7 +3953,7 @@ bouwen.
 1. **Lees QS8-649 en zijn reacties**, en daarna het beslisdocument
    `docs/decisions/2026-11-03-zakelijk-gebruik-met-organisaties-en-teamdoelen.md`. Wat de
    poort nog openhoudt staat als checklist in het issue.
-2. **Bouw niets aan organisaties of teamdoelen** zolang QS8-649 openstaat. De eerste
+2. **Achterhaald op 20-11-2026:** de keten staat op `main` (zie `docs/WERKVOORRAAD.md`). Wat er stond: **Bouw niets aan organisaties of teamdoelen** zolang QS8-649 openstaat. De eerste
    organisatie-migratie is QS8-652 en is daardoor geblokkeerd. Wat los van de organisaties
    staat en eerder mag, is QS8-651.
 
