@@ -10,7 +10,7 @@
  *
  * ⚠️ Wat hier getoetst wordt is de naad: de tags komen uit één functie die alleen
  *    het adres van de app kent, de tekst komt uit de catalogus zonder
- *    invulplek, en `app/+html.tsx` bouwt zelf geen tag erbij. Elk van die vier
+ *    invulplek, en `app/+html.tsx` bouwt zelf geen tag erbij. Elk van die zeven grendels
  *    is een eigen grendel met een eigen ijking (zie het commit-bericht).
  */
 import { readdirSync, readFileSync } from 'node:fs';
@@ -144,6 +144,16 @@ describe('uitnodigingsBericht (optie A, besluit Quinten 19-11)', () => {
     expect(deelbaarBericht({ name: 'x', invite_code: '  ' }, APP, 'Sanne')).toBeNull();
     expect(deelbaarBericht({ name: 'x' }, APP, 'Sanne')).toBeNull();
     expect(deelbaarBericht(basis, APP, 'Sanne')?.tekst).toContain(`${APP}/uitnodiging/VYHC2X9GSRVH`);
+  });
+
+  it('wordt buiten samen.ts nergens rechtstreeks aangeroepen: elke deelknop gaat via deelbaarBericht (grendel 7)', () => {
+    // Een gesloten link geeft daar `null`. Wie `uitnodigingsBericht()` zelf aanroept, deelt
+    // de groepsnaam ook bij een ingetrokken link (gevonden door de security-review van QS8-706).
+    const bronnen = [...bronBestanden('app'), ...bronBestanden('src')].filter(
+      (f) => !/\.test\.tsx?$/.test(f) && !f.endsWith('src/modules/buddies/samen.ts') && !f.endsWith('src/modules/buddies/index.ts'),
+    );
+    const schuldig = bronnen.filter((f) => /\buitnodigingsBericht\(/.test(zonderCommentaar(lees(f))));
+    expect(schuldig).toEqual([]);
   });
 
   it('heeft in beide talen dezelfde invulplekken en geen verweesde deel_titel-sleutel', () => {

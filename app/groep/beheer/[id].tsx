@@ -24,7 +24,7 @@ import {
   huddledagLabel,
   type Bewijseis,
   toonCode,
-  uitnodigingsBericht,
+  deelbaarBericht,
   uitnodigingsLink,
   vernieuwUitnodiging,
   wijzigGroep,
@@ -81,17 +81,22 @@ import {
  *    een nieuwe dependency (`expo-clipboard`) toe te voegen — en dependencies
  *    gaan niet zonder overleg.
  */
-/** De deelknop met het bericht van QS8-706: uitleg, groepsnaam en de link. */
+/**
+ * De deelknop met het bericht van QS8-706: uitleg, groepsnaam en de link.
+ *
+ * ⚠️ Via `deelbaarBericht()` en nooit rechtstreeks: een gesloten link geeft daar
+ *    `null`, en dan staat er geen knop. De database verbergt de groep voor wie
+ *    een gesloten link opent; een bericht met de groepsnaam erin zou dat omzeilen.
+ */
 function DeelUitnodiging({
-  groepsnaam,
-  code,
+  groep,
   afzender,
 }: {
-  readonly groepsnaam: string;
-  readonly code: string;
+  readonly groep: Parameters<typeof deelbaarBericht>[0];
   readonly afzender: string | null | undefined;
 }) {
-  const bericht = uitnodigingsBericht(uitnodigingsLink(clientEnv().appUrl, code), groepsnaam, afzender);
+  const bericht = deelbaarBericht(groep, clientEnv().appUrl, afzender);
+  if (bericht === null) return null;
   return <Deelknop label={t('beheer.deel')} titel={bericht.onderwerp} tekst={bericht.tekst} />;
 }
 
@@ -793,7 +798,7 @@ export default function GroepBeheer() {
                 <Subheading>{t('beheer.link_titel')}</Subheading>
                 <Body muted>{t('beheer.link_uitleg')}</Body>
 
-                <DeelUitnodiging groepsnaam={g.name} code={g.invite_code} afzender={profiel?.display_name} />
+                <DeelUitnodiging groep={g} afzender={profiel?.display_name} />
 
                 <Field
                   label={t('beheer.kopieer')}

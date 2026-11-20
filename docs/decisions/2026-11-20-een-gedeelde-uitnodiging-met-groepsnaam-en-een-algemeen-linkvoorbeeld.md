@@ -15,7 +15,7 @@ ingetrokken of lege code. `uitnodigingsBericht()` bouwt er de zin omheen; `deelb
 de twee, zodat een ingetrokken link nooit een bericht oplevert. De drie `*.deel_titel`-sleutels
 vervallen.
 
-**Bewaakt door** `tests/beloftes/een-linkvoorbeeld-draagt-geen-groep.test.ts`: tags zonder
+**Bewaakt door** `tests/beloftes/een-linkvoorbeeld-draagt-geen-groep.test.ts`: elke deelknop gaat via `deelbaarBericht()` (de beheerknop deelde eerst ook bij een gesloten link, gevonden door de security-review); tags zonder
 invulplek en alleen met logo, titel en beschrijving; onderwerp-sleutels met alleen `{naam}`; geen
 eigen og-tag buiten `linkvoorbeeld.ts`. Elke grendel is met de hand rood gemaakt.
 
