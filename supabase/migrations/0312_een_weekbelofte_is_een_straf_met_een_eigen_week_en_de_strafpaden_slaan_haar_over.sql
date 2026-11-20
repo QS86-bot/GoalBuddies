@@ -1,0 +1,13 @@
+-- 0312_een_weekbelofte_is_een_straf_met_een_eigen_week_en_de_strafpaden_slaan_haar_over.sql — <waarom deze migratie bestaat, in één regel>
+--
+-- ROLLBACK-PAD:
+--   <de SQL die dit terugdraait, of "n.v.t. — voegt alleen toe">
+--
+-- ---------------------------------------------------------------------------
+-- Waar dit vandaan komt
+-- ---------------------------------------------------------------------------
+--
+-- <de meting die deze migratie nodig maakte, niet de redenering>
+--
+-- ---------------------------------------------------------------------------
+
