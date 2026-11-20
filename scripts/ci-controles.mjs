@@ -85,8 +85,9 @@ export const ZONDER_CI = {
     'Leest de geëxporteerde HTML in `dist/` en CI bouwt niet: `expo export` kost ' +
     'minuten. Zonder `dist/` meldt hij OVERGESLAGEN en telt de poort hem als ' +
     'ongemeten. Een exportstap in `ci.yml` is een wijziging aan `.github/` en dus ' +
-    'een besluit van Quinten (QS8-742). `npm run deploy` draait dezelfde controle ' +
-    'wel, op de verse bouw van de deploymachine.',
+    'een besluit van Quinten (QS8-742). `npm run deploy` draait de bezwaren en de ' +
+    'kanarie wel, op de verse bouw van de deploymachine (de leeftijdscheck is daar ' +
+    'niet nodig: de deploy bouwt zelf).',
   'realtime-identiteit:controle':
     'Leest `realtime_bewaking()` van het échte project om te zien of een ' +
     'realtime-tabel REPLICA IDENTITY FULL draagt. Vraagt de productiesleutel, ' +

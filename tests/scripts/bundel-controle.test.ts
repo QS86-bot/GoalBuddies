@@ -1,3 +1,6 @@
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
+
 import { describe, expect, it, vi } from 'vitest';
 
 import {
@@ -168,7 +171,7 @@ describe('hoofd', () => {
     //    gebouwd heeft, en een controle die altijd rood staat leer je uitzetten.
     const fout = vi.spyOn(console, 'error').mockImplementation(() => {});
     try {
-      expect(hoofd(() => [], () => false)).toBe(0);
+      expect(hoofd(() => [], () => false, () => 0)).toBe(0);
       expect(fout.mock.calls.join('\n')).toMatch(/OVERGESLAGEN/);
     } finally {
       fout.mockRestore();
@@ -182,12 +185,50 @@ describe('hoofd', () => {
     //    de vijf markers.
     const fout = vi.spyOn(console, 'error').mockImplementation(() => {});
     try {
-      expect(hoofd(() => [], () => true)).toBe(1);
+      expect(hoofd(() => [], () => true, () => 0)).toBe(1);
       const uitvoer = fout.mock.calls.join('\n');
       expect(uitvoer).toMatch(/kanarie/);
       expect(uitvoer).not.toMatch(/staat in NAGEKEKEN als in_bundel/);
     } finally {
       fout.mockRestore();
     }
+  });
+
+  it('meldt een dist/ die ouder is dan de bron als OVERGESLAGEN met de leeftijd, niet als groen (QS8-767)', () => {
+    // ⚠️ De bundel is hier bewust een geldige: zonder de leeftijdscheck zou dit
+    //    een rode of groene uitslag zijn, nooit een overslag.
+    const fout = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const uit = vi.spyOn(console, 'log').mockImplementation(() => {});
+    try {
+      const lees = vi.fn(() => BUNDEL);
+      expect(hoofd(lees, () => true, () => 5 * 3_600_000)).toBe(0);
+      expect(fout.mock.calls.join('\n')).toMatch(/OVERGESLAGEN.*~5 uur/s);
+      expect(lees).not.toHaveBeenCalled();
+      expect(uit).not.toHaveBeenCalled();
+    } finally {
+      fout.mockRestore();
+      uit.mockRestore();
+    }
+  });
+
+  it('meet gewoon door als de bouw vers is (0 of minder)', () => {
+    const fout = vi.spyOn(console, 'error').mockImplementation(() => {});
+    try {
+      expect(hoofd(() => [], () => true, () => -1000)).toBe(1); // lege bundel: kanaries rood
+      expect(fout.mock.calls.join('\n')).not.toMatch(/OVERGESLAGEN/);
+    } finally {
+      fout.mockRestore();
+    }
+  });
+});
+
+describe('de leeftijdscheck zelf, tegen echte bestanden (QS8-767)', () => {
+  it('hoofd() zonder injectie gebruikt bouwIsOuderDanBron met package.json en de lockfile erbij', async () => {
+    const { BRONNEN } = await import('../../scripts/bundel-controle.mjs');
+    const namen = (BRONNEN as string[]).map((p) => p.split('/').pop());
+    expect(namen).toEqual(expect.arrayContaining(['app', 'src', 'package.json', 'package-lock.json']));
+    // De standaard van hoofd() moet de echte check zijn, niet `() => 0`.
+    const bron = readFileSync(join(__dirname, '..', '..', 'scripts', 'bundel-controle.mjs'), 'utf8');
+    expect(bron).toMatch(/verouderd = \(\) => bouwIsOuderDanBron\(BUNDEL, BRONNEN\)/);
   });
 });
