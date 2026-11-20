@@ -22,6 +22,10 @@ import { zonderCommentaar } from '../../scripts/zonder-commentaar.mjs';
  *    commentaarknip). Dat het in een echte deploy werkt, is **niet** gemeten:
  *    `npm run deploy:droog` draait de stap, maar die vraagt de bouw en `.env`.
  *
+ * IJKING QS8-767 — met de hand, 20-11-2026: `kanarieFaalt(lees)` uit
+ *   `eisEenNeutralePrerender` halen -> rood: 'een kapotte zoekfunctie laat de stap
+ *   falen' en 'de kanarie gaat af vóór …'.
+ *
  * IJKING — met de hand, 19-11-2026, vooraf en achteraf 7 groen:
  *
  *   A  de aanroep `eisEenNeutralePrerender()` uit `main()` halen
@@ -42,7 +46,8 @@ const functie = bron.slice(
 describe('de deploy en de prerender-controle', () => {
   it('de deploy leest de pagina’s en de bezwaren uit prerender-controle.mjs', () => {
     expect(bron).toMatch(/from '\.\/prerender-controle\.mjs'/);
-    expect(functie).toContain('prerenderBezwaren(leesPaginas(map))');
+    expect(functie).toContain('prerenderBezwaren(leesPaginas(map), lees)');
+    expect(bron).toContain('kanarieFaalt');
   });
 
   it('de deploy roept de prerender-controle aan', () => {
@@ -99,6 +104,20 @@ describe('de stap zelf, tegen een echte map', () => {
     expect(uit).toContain('aanmelden.html');
     expect(uit).toContain('Welcome back');
     expect(uit).toContain('Er is niets geüpload');
+  });
+
+  it('een kapotte zoekfunctie laat de stap falen, ook op een export zonder tekst (QS8-767)', () => {
+    // ⚠️ Zonder kanarie meldt een `zichtbareTekst()` die altijd '' geeft overal
+    //    "geen tekst": groen op precies het pad dat in productie meet.
+    schrijf('index.html', pagina('<div id="root"></div>'));
+    schrijf('aanmelden.html', pagina('<div id="root"></div>'));
+    expect(() => eisEenNeutralePrerender(map, () => '')).toThrow(/prerender/i);
+    expect(vi.mocked(console.error).mock.calls.flat().join('\n')).toContain('Er is niets geüpload');
+  });
+
+  it('de kanarie gaat af vóór er pagina’s gelezen worden', () => {
+    expect(functie.indexOf('kanarieFaalt(')).toBeGreaterThan(-1);
+    expect(functie.indexOf('kanarieFaalt(')).toBeLessThan(functie.indexOf('leesPaginas('));
   });
 
   it('een onvolledige export (geen index.html) laat de stap falen', () => {
