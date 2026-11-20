@@ -32,6 +32,10 @@ const leesVorm = (): Taakbalkvorm => taakbalkVorm(Dimensions.get('window').width
 // Wat de server en de eerste clientronde zien.
 const serverVorm = (): Taakbalkvorm => 'bovenrand';
 
+// ⚠️ QS8-740: op web mount de `Taakbalk` sinds dat issue nooit tijdens de hydratie,
+//    want `Shell` tekent alles pas na `useGehydrateerd()`. De server-snapshot
+//    hieronder wordt daar dus niet meer gebruikt; hij blijft als verdediging in de
+//    diepte. De hydratie-veiligheid van de app wordt in `Shell` geregeld en niet hier.
 export function useTaakbalkVorm(): Taakbalkvorm {
   return useSyncExternalStore(abonneer, leesVorm, serverVorm);
 }
