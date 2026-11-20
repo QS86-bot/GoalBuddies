@@ -541,10 +541,16 @@ noemt.
 
 ⚠️ **Wacht op Quintens "backup gedaan"**: 0312 wijzigt `commitments` (twee kolommen, een
 CHECK, een versmalde unieke index en twee nieuwe) en herdefinieert vijf strafpaden. Geen
-Edge Function of bundel leest de nieuwe kolommen al, dus deze migratie heeft geen
-deploy-volgorde. Ná de migratie: `npm run types:db`. **Pas daarna** mag een `.select()`
-op `commitments` `periode_start` of `periode_einde` noemen (x.3); vóór de uitrol geeft
-PostgREST daar `42703` en valt `fetchCommitments()` om.
+Edge Function leest de nieuwe kolommen. Ná de migratie: `npm run types:db`, en daarna
+`NogNietInTypes` uit `src/modules/commitments/api.ts` weghalen.
+
+⚠️⚠️ **Sinds QS8-760 (migratie 0314) heeft de bundel wél een volgorde: 0312 vóór
+`deploy-web`.** `fetchCommitments()` en het aanmaken van een commitment vragen
+`periode_start` op (`COMMITMENT_KOLOMMEN` in `src/modules/commitments/kolommen.ts`).
+Zonder die kolom geeft PostgREST `42703`, en dan valt het doelscherm om en lukt geen
+enkele straf of beloning meer. Volgorde op productie: 0312, 0313, 0314, dan pas de
+bundel. 0314 zelf vervangt `commitments_insert` en zet een trigger op `commitments`;
+ook die wacht op Quintens "backup gedaan".
 Beslisdocument: `docs/decisions/2026-11-20-de-belofte-is-een-commitment-met-een-getuige.md`.
 
 ### 2.5b Hoe wil je je voelen (QS8-733, migratie 0311) — volgorde

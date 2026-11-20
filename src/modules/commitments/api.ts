@@ -1,3 +1,4 @@
+import { COMMITMENT_KOLOMMEN } from './kolommen';
 import type { Database, Tables } from '../../lib/database.types';
 import { reportError } from '../../lib/observability';
 import { supabase } from '../../lib/supabase';
@@ -67,7 +68,27 @@ export type Commitment = Pick<
   | 'status'
   | 'confirmed_at'
   | 'created_at'
->;
+> & NogNietInTypes;
+
+/**
+ * De week van een weekbelofte (migratie 0312), die de gegenereerde typen nog niet
+ * kennen — QS8-760.
+ *
+ * ⚠️ **Tijdelijk, en waarom hier en niet in het gegenereerde bestand.** De kolommen
+ *    bestaan pas op productie na de uitrol van 0312, en `types:db` leest productie.
+ *    Met de hand in `database.types.ts` is de vorm die bij de eerste hergeneratie
+ *    stil verdwijnt (QS8-569). Zodra 0312 uitgerold is: `npm run types:db`, en dit
+ *    type verdwijnt; `periode_start` komt dan uit de `Pick` hierboven. Zelfde
+ *    vorm als `NogNietInTypes` in `src/modules/auth/profile.ts`.
+ *
+ * ⚠️ **Niet optioneel.** `fetchCommitments()` en `maak()` vragen de kolom op; een
+ *    ontbrekende kolom zou een belofte als doelstraf laten lezen, en dat is
+ *    precies wat dit issue weghaalt. `null` = een doelstraf of een beloning.
+ */
+export interface NogNietInTypes {
+  readonly periode_start: string | null;
+}
+
 export type CommitmentGebeurtenis = Tables<'commitment_events'>;
 
 
@@ -118,7 +139,7 @@ export async function fetchCommitments(goalId: string): Promise<readonly Commitm
     //    per kolom en ligt `tz` erbuiten — de begunstigde groep leest deze rij
     //    mee zodra een straf verschuldigd wordt. PostgREST geeft bij een `*`
     //    dan 42501 en niet stilzwijgend minder kolommen.
-    .select('id, goal_id, type, body, image_url, beneficiary_group_id, beneficiary_user_id, status, confirmed_at, created_at')
+    .select<string, Commitment>(COMMITMENT_KOLOMMEN)
     .eq('goal_id', goalId)
     .order('created_at', { ascending: true });
 
@@ -348,7 +369,7 @@ async function maak(
       // `status` staat er bewust niet bij. De database staat alleen 'set' toe
       // bij een insert (0006); meesturen zou suggereren dat er iets te kiezen is.
     })
-    .select('id, goal_id, type, body, image_url, beneficiary_group_id, beneficiary_user_id, status, confirmed_at, created_at')
+    .select<string, Commitment>(COMMITMENT_KOLOMMEN)
     .single();
 
   if (error) {
