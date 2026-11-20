@@ -92,7 +92,7 @@ export const ALLEEN_LOKAAL = new Map([
 
 /**
  * Zones die Postgres kent en `Intl` weigert — de weigerlijst van
- * `bewaak_tijdzone()` (migratie 0315, QS8-763).
+ * `bewaak_tijdzone()` (migratie 0328, QS8-763).
  *
  * 📏 Gemeten op 20-11-2026 (Node, ICU 78.3) over alle 499 namen van de lokale
  * stack: precies drie. `localtime` en `posixrules` zijn de twee namen van
@@ -289,7 +289,7 @@ function hoofd() {
 
   const nietGeweigerd = PRODUCTIEVORMEN.filter((n) => intlWeigert([n]).length === 0);
   if (nietGeweigerd.length > 0) {
-    console.error(`✗ Intl accepteert nu ${nietGeweigerd.join(', ')}; de voorvoegselregel van 0315 weigert ze nog.`);
+    console.error(`✗ Intl accepteert nu ${nietGeweigerd.join(', ')}; de voorvoegselregel van 0328 weigert ze nog.`);
     return 1;
   }
   const verschil = intlVerschil(lokaleZones);
@@ -298,7 +298,7 @@ function hoofd() {
       '✗ Intl en de weigerlijst van bewaak_tijdzone() zijn het oneens.\n' +
         `    Intl weigert, lijst mist:  ${verschil.ontbreektInRegister.join(', ') || '-'}\n` +
         `    Lijst noemt, Intl kent:    ${verschil.teVeelInRegister.join(', ') || '-'}\n` +
-        'Werk ZONES_DIE_INTL_WEIGERT en de lijst in een nieuwe migratie bij (0315, QS8-763).',
+        'Werk ZONES_DIE_INTL_WEIGERT en de lijst in een nieuwe migratie bij (0328, QS8-763).',
     );
     return 1;
   }

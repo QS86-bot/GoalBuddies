@@ -1,4 +1,4 @@
--- 0315_een_tijdzone_die_intl_weigert_is_geen_tijdzone.sql — QS8-763, nazorg op 0119
+-- 0328_een_tijdzone_die_intl_weigert_is_geen_tijdzone.sql — QS8-763, nazorg op 0119
 --
 -- ROLLBACK-PAD:
 --   Zet `bewaak_tijdzone()` terug op de vorm van 0119: alleen de toets tegen
@@ -96,7 +96,7 @@ $$;
 
 comment on function public.bewaak_tijdzone() is
   'Weigert een tz-waarde die Postgres niet kent (0119), en Factory, die '
-  'Postgres wel kent maar Intl weigert, plus de posix/- en right/-spiegels (0315, QS8-763). Zonder de tweede helft '
+  'Postgres wel kent maar Intl weigert, plus de posix/- en right/-spiegels (0328, QS8-763). Zonder de tweede helft '
   'slaat de rollover een profiel stilzwijgend over.';
 
 -- Een triggerfunctie is geen RPC (0052a, 0069, 0119).

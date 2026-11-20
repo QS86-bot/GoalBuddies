@@ -101,7 +101,7 @@ export function topniveauDml(sql) {
  * @type {Record<string, { bevat: string, reden: string }[]>}
  */
 export const DML_MET_REDEN = {
-  '0315': [
+  '0328': [
     { bevat: 'update public.profiles set tz =',
       reden: '`where lower(tz) = \'factory\' or like \'posix/%\' or like \'right/%\'` — na de run staat er een echte zone, dus de tweede run matcht niets' },
     { bevat: 'update public.groups set tz =',

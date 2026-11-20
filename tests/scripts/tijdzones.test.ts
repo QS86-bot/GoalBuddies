@@ -143,7 +143,7 @@ describe('de productievormen die lokaal niet bestaan (QS8-763)', () => {
   it('de migratie weigert dezelfde voorvoegsels', async () => {
     const { readFileSync, readdirSync } = await import('node:fs');
     const map = 'supabase/migrations';
-    const bestand = readdirSync(map).find((n) => n.startsWith('0315_'));
+    const bestand = readdirSync(map).find((n) => n.startsWith('0328_'));
     const sql = readFileSync(`${map}/${bestand}`, 'utf8').replace(/--[^\n]*/g, '');
     for (const v of GEWEIGERDE_VOORVOEGSELS) expect(sql).toContain(`like '${v}%'`);
     for (const z of ZONES_DIE_INTL_WEIGERT) expect(sql.toLowerCase()).toContain(`= '${z.toLowerCase()}'`);

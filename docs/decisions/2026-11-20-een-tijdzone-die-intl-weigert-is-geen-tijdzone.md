@@ -1,4 +1,4 @@
-# Een tijdzone die Intl weigert is geen tijdzone (QS8-763, migratie 0315)
+# Een tijdzone die Intl weigert is geen tijdzone (QS8-763, migratie 0328)
 
 ## Wat er aan de hand was
 
