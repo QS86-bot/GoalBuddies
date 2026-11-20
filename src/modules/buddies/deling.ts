@@ -79,6 +79,30 @@ export function koppelbareGroepen(
 }
 
 /**
+ * Is dit een groep van een organisatie? — QS8-719.
+ *
+ * ⚠️⚠️ **Duck-typing op `organization_id`, en dat is een open gat dat een test sluit.**
+ *    Op `main` bestaat die kolom nog niet (de keten QS8-652/653 wacht op QS8-233), dus
+ *    vandaag is elke groep hier "geen teamgroep" en doet de regel niets. Zodra de
+ *    kolom landt moeten de bronnen van de keuzelijsten hem **ook selecteren**: een
+ *    `select()` die hem niet noemt, geeft `undefined`, en dan staat de regel stil uit
+ *    zonder dat iets het zegt — dezelfde klasse als `invite_code` bij QS8-387. De
+ *    wachtwacht daarvoor staat in `tests/beloftes/geen-stille-eerste-groep.test.ts`
+ *    en wordt rood op het moment dat de kolom in `database.types.ts` verschijnt.
+ *
+ * ⚠️ Een persoon (een kandidaat-getuige) heeft dat veld niet en is dus nooit een
+ *    teamgroep; voor mensen verandert er niets.
+ */
+export function isTeamgroep(kandidaat: unknown): boolean {
+  return (
+    typeof kandidaat === 'object' &&
+    kandidaat !== null &&
+    'organization_id' in kandidaat &&
+    typeof kandidaat.organization_id === 'string'
+  );
+}
+
+/**
  * De ene regel voor "welke van mijn groepen (of mensen) bedoel je" — QS8-651.
  *
  * Nul kandidaten geeft niets. Eén kandidaat zonder keuze geeft die ene. In élk
@@ -93,9 +117,13 @@ export function koppelbareGroepen(
  *    gaat dan je aanwees, is erger dan iets dat niet weggaat; het scherm toont
  *    dan de lijst opnieuw zodat de gebruiker de overgebleven groep kan aanwijzen.
  *
- * ⚠️ **Deze functie kent geen teamgroepen (QS8-649): bij één kandidaat kiest hij
- *    die, teamgroep of niet.** Een teamgroep als enige kandidaat uitsluiten is
- *    aan de aanroeper, die de rij kent — open tot QS8-649, zie
+ * ⚠️ **Een teamgroep is nooit de enige kandidaat — besluit 2 van QS8-649, QS8-719.**
+ *    Een werknemer die alleen in het team van zijn werkgever zit, stuurde anders
+ *    een hulpvraag over een privédoel zonder keuzemoment naar de teamchat (domeinregel
+ *    7: bij zakelijk gebruik beschermt de regel tegen een beoordelingsgesprek). Met
+ *    één teamgroep en zonder keuze geeft deze functie dus `undefined`, de schermen
+ *    tonen dan de lijst met die ene optie, en de knop blijft uit tot de gebruiker
+ *    hem aanwees. Zie `isTeamgroep()` voor hoe een teamgroep herkend wordt, en
  *    `docs/decisions/2026-11-05-de-eerste-groep-is-geen-keuze.md` §3.
  *
  * @param items   de kandidaten, in de volgorde van het scherm
@@ -107,7 +135,7 @@ export function enigeOfGekozen<T>(
   keuze: string,
   idVan: (item: T) => string,
 ): T | undefined {
-  if (items.length === 1 && keuze === '') return items[0];
+  if (items.length === 1 && keuze === '' && !isTeamgroep(items[0])) return items[0];
 
   return items.find((item) => idVan(item) === keuze);
 }
