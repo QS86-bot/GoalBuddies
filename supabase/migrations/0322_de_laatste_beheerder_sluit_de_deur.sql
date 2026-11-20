@@ -260,10 +260,6 @@ begin
   --    lijst hierboven is de grens van QS8-335 en wordt niet verruimd. Zelfde
   --    reden voor de volgorde: ná de delete is `subject_id` `null` en vindt dit
   --    blok niets meer.
-  delete from chat_messages
-   where subject_id = mij
-     and system_event = 'prestatie_gedeeld';
-  get diagnostics v_prestaties = row_count;
 
   delete from auth.users where id = mij;
 
