@@ -27,6 +27,7 @@ export {
   laadTeamdoel,
   maakTeamdoel,
   neemAandeel,
+  toonAandeelkaart,
   type Datumregel,
   type Teamdoel,
   type Teambalk,

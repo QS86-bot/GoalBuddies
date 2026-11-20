@@ -125,6 +125,20 @@ export function kanAandeelNemen(teamdoel: Teamdoel, vandaag: IsoDate): boolean {
   return teamdoel.status === 'active' && !isVerstreken(teamdoel.streefdatum, vandaag);
 }
 
+/**
+ * Of het scherm de kaart "Jouw aandeel" toont (L1 = kaart weg, Quinten, 20-11-2026).
+ *
+ * Wie een aandeel heeft, houdt de kaart met de link ernaartoe. Zonder aandeel
+ * staat hij er alleen zolang je er een kunt nemen.
+ */
+export function toonAandeelkaart(
+  teamdoel: Teamdoel,
+  aandeelDoelId: string | null,
+  vandaag: IsoDate,
+): boolean {
+  return aandeelDoelId !== null || kanAandeelNemen(teamdoel, vandaag);
+}
+
 // ---------------------------------------------------------------------------
 // Lezen
 // ---------------------------------------------------------------------------

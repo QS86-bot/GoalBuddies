@@ -338,6 +338,15 @@ describe('V15-A: wat een teamdoel over de tijd zegt (besluit van Quinten, 20-11-
     expect(kanAandeelNemen({ ...basis, status: 'completed' }, '2026-11-01' as IsoDate)).toBe(false);
   });
 
+  it('toont de kaart "Jouw aandeel" bij een aandeel altijd, zonder aandeel alleen zolang je er een kunt nemen (L1)', () => {
+    const { toonAandeelkaart } = teamdoelen;
+    expect(toonAandeelkaart(basis, null, '2026-11-15' as IsoDate)).toBe(true);
+    expect(toonAandeelkaart(basis, null, '2026-11-16' as IsoDate)).toBe(false);
+    expect(toonAandeelkaart(basis, AANDEEL, '2026-11-16' as IsoDate)).toBe(true);
+    expect(toonAandeelkaart({ ...basis, status: 'completed' }, null, '2026-11-01' as IsoDate)).toBe(false);
+    expect(toonAandeelkaart({ ...basis, status: 'completed' }, AANDEEL, '2026-11-01' as IsoDate)).toBe(true);
+  });
+
   it('heeft een tekst in de catalogus voor elke regel die iets zegt', () => {
     for (const s of ['teamdoel.loopt_nog', 'teamdoel.afgerond'] as const) {
       expect(t(s as Sleutel)).not.toBe(s);

@@ -5,9 +5,9 @@ import { StyleSheet, View } from 'react-native';
 import { useProfiel, useSession } from '@/modules/auth';
 import {
   datumregel,
-  kanAandeelNemen,
   laadTeamdoel,
   neemAandeel,
+  toonAandeelkaart,
   type Datumregel,
   type Teambalk,
   type Teamdoelstand,
@@ -97,12 +97,18 @@ function Inhoud({
         {teamdoel.beschrijving === null ? null : <Body>{teamdoel.beschrijving}</Body>}
       </Card>
       <BalkKaart balk={stand.balk} />
-      <AandeelKaart
-        teamGoalId={teamdoel.id}
-        aandeelDoelId={stand.aandeelDoelId}
-        kanNemen={kanAandeelNemen(teamdoel, vandaag)}
-        onGenomen={onVerandert}
-      />
+      {/*
+        ⚠️ Zonder aandeel en zonder mogelijkheid er een te nemen (verlopen, afgerond
+        of gearchiveerd) is er geen kaart: V21 = A en L1, besloten door Quinten,
+        20-11-2026. Wie een aandeel heeft, houdt de kaart met de link ernaartoe.
+      */}
+      {!toonAandeelkaart(teamdoel, stand.aandeelDoelId, vandaag) ? null : (
+        <AandeelKaart
+          teamGoalId={teamdoel.id}
+          aandeelDoelId={stand.aandeelDoelId}
+          onGenomen={onVerandert}
+        />
+      )}
     </View>
   );
 }
@@ -137,12 +143,10 @@ function BalkKaart({ balk }: { readonly balk: Teambalk }) {
 function AandeelKaart({
   teamGoalId,
   aandeelDoelId,
-  kanNemen,
   onGenomen,
 }: {
   readonly teamGoalId: string;
   readonly aandeelDoelId: string | null;
-  readonly kanNemen: boolean;
   readonly onGenomen: () => void;
 }) {
   const router = useRouter();
@@ -162,7 +166,7 @@ function AandeelKaart({
     <Card>
       <Subheading>{t('teamdoel.aandeel_kop')}</Subheading>
       <Caption>{t('teamdoel.aandeel_uitleg')}</Caption>
-      {aandeelDoelId === null && !kanNemen ? null : aandeelDoelId === null ? (
+      {aandeelDoelId === null ? (
         <>
           {fout === null ? null : <Caption danger>{fout}</Caption>}
           <Button variant="primair" block busy={bezig} onPress={() => void nemen()}>
