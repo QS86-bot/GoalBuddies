@@ -327,19 +327,8 @@ export const WACHT_OP_EEN_BESLUIT = {
     'Schrijfpad van een organisatiebeheerder (0318, QS8-695). Er is nog geen scherm: QS8-657 is gebouwd vóór QS8-695 en roept hem niet aan. ' +
     '**Vraag:** krijgt hij daar een aanroeper? Zo ja, dan gaat deze rij weg zodra die er is; ' +
     'zo nee, dan hoort de RPC weg.',
-  // ⚠️ De twee teamdoel-RPC's (QS8-654, 0319): zelfde reden, het scherm is QS8-658.
-  maak_teamdoel:
-    'Schrijfpad van een teamdoel (0319, QS8-654). Het scherm is QS8-658. ' +
-    '**Vraag:** krijgt hij daar een aanroeper? Zo ja, dan gaat deze rij weg zodra die er is; ' +
-    'zo nee, dan hoort de RPC weg.',
-  teambalk:
-    'Leespad van de teambalk (0320, QS8-655). Het scherm is QS8-658. ' +
-    '**Vraag:** krijgt hij daar een aanroeper? Zo ja, dan gaat deze rij weg zodra die er is; ' +
-    'zo nee, dan hoort de RPC weg.',
-  neem_aandeel:
-    'Schrijfpad van een aandeel (0319, QS8-654). Het scherm is QS8-658. ' +
-    '**Vraag:** krijgt hij daar een aanroeper? Zo ja, dan gaat deze rij weg zodra die er is; ' +
-    'zo nee, dan hoort de RPC weg.',
+  // ⚠️ De drie teamdoel-RPC's van 0319 en 0320 (QS8-654, QS8-655) stonden hier tot
+  //    18-11-2026: het scherm is QS8-658 en heeft de aanroepers gebouwd.
 };
 
 /** Bestanden waarin een aanroep als "productie" telt. Tests en scripts niet. */

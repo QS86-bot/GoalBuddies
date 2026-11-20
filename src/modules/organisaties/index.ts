@@ -19,4 +19,19 @@ export {
   type Uitnodigcode,
 } from './api';
 
-export { ORGANISATIENAAM_MAX } from './schemas';
+export {
+  fetchIsTeamgroep,
+  fetchTeamdoelen,
+  laadTeamdoel,
+  maakTeamdoel,
+  neemAandeel,
+  type Teamdoel,
+  type Teambalk,
+  type Teamdoelstand,
+} from './teamdoelen';
+
+export {
+  ORGANISATIENAAM_MAX,
+  TEAMDOEL_BESCHRIJVING_MAX,
+  TEAMDOEL_TITEL_MAX,
+} from './schemas';

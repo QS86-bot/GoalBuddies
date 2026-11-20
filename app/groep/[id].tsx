@@ -35,6 +35,7 @@ import {
   fetchOpenVerzoekenVoorGroep,
   type DeadlineVerzoek,
 } from '@/modules/goals';
+import { fetchIsTeamgroep } from '@/modules/organisaties';
 import { DempGroep } from '@/schermen/groep';
 import { opmaaktaal, t } from '@/shared/i18n';
 import { toonDatum } from '@/shared/time';
@@ -315,6 +316,8 @@ export default function GroepDetail() {
                 {t('groepdetail.naar_chat')}
               </Button>
             </Card>
+
+            <TeamdoelenIngang groupId={id} />
 
             {userId ? (
               <DeadlineVerzoeken groupId={id ?? ''} userId={userId} onBeslist={herlaad} />
@@ -1196,6 +1199,44 @@ async function laadGroep(groupId: string, userId: string): Promise<Stand> {
     klassement,
     helden,
   };
+}
+
+/**
+ * De ingang naar de teamdoelen, alleen in een groep van een organisatie — QS8-658.
+ *
+ * ⚠️ **Een eigen verzoek en niet in `laadGroep()`.** Een mislukte vraag "is dit
+ *    een teamgroep" hoort het groepsscherm niet leeg te maken, en een gewone
+ *    groep toont hier niets: geen kaart, geen laadbalk, geen foutregel.
+ */
+function TeamdoelenIngang({ groupId }: { readonly groupId: string }) {
+  const router = useRouter();
+  const teamgroep = useAsync(() => fetchIsTeamgroep(groupId), [groupId]);
+
+  if (teamgroep.error !== undefined && teamgroep.error !== null) {
+    return (
+      <View style={styles.knoppen}>
+        <Caption danger>{t('teamdoel.ingang_storing')}</Caption>
+        <Button variant="stil" onPress={teamgroep.herlaad}>
+          {t('laden.opnieuw')}
+        </Button>
+      </View>
+    );
+  }
+  if (teamgroep.data !== true) return null;
+
+  return (
+    <Card>
+      <Subheading>{t('teamdoel.ingang_kop')}</Subheading>
+      <Body muted>{t('teamdoel.ingang_uitleg')}</Body>
+      <Button
+        variant="secundair"
+        block
+        onPress={() => router.push(`/groep/teamdoelen/${groupId}`)}
+      >
+        {t('teamdoel.ingang_knop')}
+      </Button>
+    </Card>
+  );
 }
 
 const styles = StyleSheet.create({
