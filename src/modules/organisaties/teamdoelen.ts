@@ -94,7 +94,7 @@ function naarTeamdoel(rij: TeamdoelRuw): Teamdoel {
  *    0319, dus de streefdatum zelf telt nog als "komt nog". `vandaag` is de datum
  *    in de tijdzone van de gebruiker, zoals `mijn_datum()`.
  *
- * ⚠️ Een afgerond teamdoel zegt "afgerond" (V20, advies; mag om), een
+ * ⚠️ Een afgerond teamdoel zegt "afgerond" (V20 = A, Quinten, 20-11-2026), een
  *    gearchiveerd teamdoel zegt niets.
  */
 export type Datumregel =
@@ -115,7 +115,7 @@ export function datumregel(teamdoel: Teamdoel, vandaag: IsoDate): Datumregel {
 }
 
 /**
- * Of het scherm de knop "Neem een aandeel" toont (V21, advies; mag om).
+ * Of het scherm de knop "Neem een aandeel" toont (V21 = A, Quinten, 20-11-2026).
  *
  * ⚠️ De server blijft de grens: `neem_aandeel()` weigert met
  *    `streefdatum_verstreken` en `niet_actief`. Dit haalt alleen een knop weg
