@@ -1,6 +1,9 @@
 import { ScrollViewStyleReset } from 'expo-router/html';
 import type { PropsWithChildren } from 'react';
 
+import { clientEnv } from '../src/lib/env';
+import { linkvoorbeeldTags } from '../src/shared/web/linkvoorbeeld';
+
 /**
  * De HTML-schil om elke statisch geëxporteerde route — QS8-117.
  *
@@ -32,6 +35,17 @@ export default function Root({ children }: PropsWithChildren) {
 
         <link rel="manifest" href="/manifest.json" />
         <meta name="theme-color" content="#0e1730" />
+
+        {/* ⚠️ Het linkvoorbeeld — QS8-706. Publiek en voor elke route gelijk: alleen
+            het logo en een algemene zin, nooit iets over een groep. Zie
+            `src/shared/web/linkvoorbeeld.ts` voor waarom. */}
+        {linkvoorbeeldTags(clientEnv().appUrl).map((tag) =>
+          tag.soort === 'property' ? (
+            <meta key={tag.sleutel} property={tag.sleutel} content={tag.inhoud} />
+          ) : (
+            <meta key={tag.sleutel} name={tag.sleutel} content={tag.inhoud} />
+          ),
+        )}
 
         {/* iOS leest het manifest-icoon niet voor het beginscherm. Zonder deze
             regel zet het toestel een schermafdruk op de tegel. */}

@@ -24,6 +24,7 @@ import {
   huddledagLabel,
   type Bewijseis,
   toonCode,
+  uitnodigingsBericht,
   uitnodigingsLink,
   vernieuwUitnodiging,
   wijzigGroep,
@@ -80,6 +81,20 @@ import {
  *    een nieuwe dependency (`expo-clipboard`) toe te voegen — en dependencies
  *    gaan niet zonder overleg.
  */
+/** De deelknop met het bericht van QS8-706: uitleg, groepsnaam en de link. */
+function DeelUitnodiging({
+  groepsnaam,
+  code,
+  afzender,
+}: {
+  readonly groepsnaam: string;
+  readonly code: string;
+  readonly afzender: string | null | undefined;
+}) {
+  const bericht = uitnodigingsBericht(uitnodigingsLink(clientEnv().appUrl, code), groepsnaam, afzender);
+  return <Deelknop label={t('beheer.deel')} titel={bericht.onderwerp} tekst={bericht.tekst} />;
+}
+
 export default function GroepBeheer() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
@@ -778,11 +793,7 @@ export default function GroepBeheer() {
                 <Subheading>{t('beheer.link_titel')}</Subheading>
                 <Body muted>{t('beheer.link_uitleg')}</Body>
 
-                <Deelknop
-                  label={t('beheer.deel')}
-                  titel={t('beheer.deel_titel', { groep: g.name })}
-                  tekst={uitnodigingsLink(clientEnv().appUrl, g.invite_code)}
-                />
+                <DeelUitnodiging groepsnaam={g.name} code={g.invite_code} afzender={profiel?.display_name} />
 
                 <Field
                   label={t('beheer.kopieer')}
