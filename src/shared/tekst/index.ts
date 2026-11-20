@@ -700,6 +700,19 @@ export function schoneEneRegel(ruw: string): string {
 }
 
 /**
+ * Staat er een webadres of domeinvorm in deze tekst? — QS8-771.
+ *
+ * ⚠️ Voor een groepsnaam: die staat in een bericht dat een lid onder zijn eigen
+ *    naam verstuurt, naast een echte GoalBuddies-link. Weert `://`, `www.` en
+ *    een domeinvorm (letters, punt, minstens twee letters: `evil.example`).
+ *    Regeleinden zijn al geweerd door `schoneNaam()` (stap 2b). De database
+ *    draagt dezelfde regel als CHECK; houd de twee gelijk.
+ */
+export function bevatLinkAchtigeTekst(tekst: string): boolean {
+  return /:\/\/|www\.|[\p{L}\p{N}-]\.\p{L}{2}/iu.test(tekst);
+}
+
+/**
  * Een naam zonder onzichtbare randen.
  *
  * ⚠️ **Randen knippen en niet alles**, zie `ONZICHTBARE_BEREIKEN`. Wat er tussen

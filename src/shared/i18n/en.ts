@@ -295,8 +295,8 @@ export const en: Record<Sleutel, string> = {
   'delen.mislukt': 'Sharing does not work here. Select the link above',
   'delen.uitnodiging_onderwerp': '{naam} invites you to GoalBuddies',
   'delen.uitnodiging_onderwerp_zonder_naam': 'You are invited to GoalBuddies',
-  'delen.uitnodiging_tekst': '{naam} invites you to the group {groep} on GoalBuddies, an app for working on your goals together with others. Open the link to see the group and join:\n{link}',
-  'delen.uitnodiging_tekst_zonder_naam': 'You are invited to the group {groep} on GoalBuddies, an app for working on your goals together with others. Open the link to see the group and join:\n{link}',
+  'delen.uitnodiging_tekst': '{naam} invites you to the group “{groep}” on GoalBuddies, an app for working on your goals together with others. Open the link to see the group and join:\n{link}',
+  'delen.uitnodiging_tekst_zonder_naam': 'You are invited to the group “{groep}” on GoalBuddies, an app for working on your goals together with others. Open the link to see the group and join:\n{link}',
   'linkvoorbeeld.titel': 'GoalBuddies',
   'linkvoorbeeld.beschrijving': 'Work on your goals together with others. GoalBuddies helps you keep going, with a group that cheers you on.',
 
@@ -1030,6 +1030,7 @@ export const en: Record<Sleutel, string> = {
   'groep.aanmaken_mislukt_kort': 'Your group could not be created. Please try again.',
   'groep.onbekend_lid': 'Unknown member',
   'validatie.groepsnaam_lang': 'At most 60 characters.',
+  'validatie.groepsnaam_link': 'A group name is not a web address. Leave out the link or domain.',
   'validatie.weekdag_kort': 'Choose a day of the week.',
   'validatie.uitnodigingscode': 'This invitation code is not right. Check the link.',
 
