@@ -50,7 +50,7 @@ alter table public.chat_messages
       'completion_approved', 'completion_pending', 'deadline_requested',
       'goal_completed', 'group_opened', 'group_protected', 'group_sleeping',
       'member_joined', 'milestone_done', 'season_recap', 'group_discoverable',
-      'huddle_day_changed', 'prestatie_gedeeld',
+      'huddle_day_changed',
       -- QS8-656. ⚠️ 'prestatie_gedeeld' (0309, QS8-736) is bij het hernummeren
       --    (20-11-2026) overgenomen van main: deze tak is gebouwd op de lijst van
       --    vóór 0309, en zonder hem viel dat type stil uit de allowlist.
