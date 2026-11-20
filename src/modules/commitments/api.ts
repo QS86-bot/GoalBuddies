@@ -7,7 +7,7 @@ import { t } from '../../shared/i18n';
 import { invoerfout, type Resultaat } from '../../shared/api';
 import { now, type UserClock } from '../../shared/time';
 
-import { commitmentSchema, type CommitmentInvoer } from './commitment-schemas';
+import { commitmentSchema, TEAMSTRAF_HINT, type CommitmentInvoer } from './commitment-schemas';
 import { belofteFoutsleutel, belofteperiode, strafFoutsleutel } from './weekbelofte';
 
 // ⚠️ Opnieuw geëxporteerd zodat de aanroepers via `modules/<naam>/index.ts`
@@ -545,6 +545,11 @@ export async function gaWeekbelofteAan(
     .single();
 
   if (error) {
+    // ⚠️ QS8-660 op de naad met de weekbelofte (0312–0314, gekomen na de basis van
+    //    QS8-660; toegevoegd bij het hernummeren op 20-11-2026): ook een belofte
+    //    gaat langs `bewaak_teamstraf()`. Dezelfde weigering, dezelfde zin, en
+    //    geen melding aan Sentry, net als in `zetStraf()` en `herstel()`.
+    if (error.hint === TEAMSTRAF_HINT) return { ok: false, melding: t('commitment.fout.teamstraf') };
     const sleutel = belofteFoutsleutel(error);
     // Een weigering die de gebruiker zelf kan oplossen is geen storing; alleen
     // de terugval gaat naar Sentry (de vorm van `weekbelofte_loopt`, 0313).
@@ -587,6 +592,12 @@ async function maak(
     .single();
 
   if (error) {
+    // ⚠️ QS8-660: een afspraak op een teamaandeel blijft in het team, en een
+    //    team is alleen getuige van een teamaandeel (`bewaak_teamstraf()`, 0325).
+    //    Herkend aan de vaste `hint` en niet aan de zin, zodat een andere
+    //    formulering in de database dit niet stil breekt. Geen `reportError`:
+    //    dit is een weigering die de gebruiker kan herstellen, geen storing.
+    if (error.hint === TEAMSTRAF_HINT) return { ok: false, melding: t('commitment.fout.teamstraf') };
     const sleutel = strafFoutsleutel(error);
     if (sleutel === 'commitment.fout.vastleggen') reportError(error, 'commitments.create', { goal_id: goalId, name: type });
     return { ok: false, melding: t(sleutel) };
@@ -703,6 +714,9 @@ export async function herstelStuurlozeStraf(
     //    zet de code al in de melding, en een tweede exemplaar in de context is
     //    dezelfde waarde langs een tweede weg. Deze regel is er tijdens het
     //    bijtrekken op `main` bij gekomen; hij stond hier al vóór die regel.
+    // QS8-660 (review L2): een nieuwe getuige buiten het team van een aandeel is
+    // een weigering die de gebruiker kan herstellen, geen storing.
+    if (error.hint === TEAMSTRAF_HINT) return { ok: false, melding: t('commitment.fout.teamstraf') };
     reportError(error, 'commitments.herstel');
     return { ok: false, melding: t('commitment.fout.herstel') };
   }

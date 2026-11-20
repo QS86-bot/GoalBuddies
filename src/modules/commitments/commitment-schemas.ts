@@ -65,3 +65,13 @@ export const commitmentSchema = z.object({
 });
 
 export type CommitmentInvoer = z.infer<typeof commitmentSchema>;
+
+/**
+ * De vaste `hint` waarmee `bewaak_teamstraf()` (migratie 0325, QS8-660) een
+ * afspraak weigert die het team verlaat of een team buiten een aandeel haalt.
+ *
+ * ⚠️ Hier en niet in `api.ts`: de RLS-suite legt deze constante naast de
+ *    database (`tests/rls/teamstraf.test.ts`), en die importeert alleen pure
+ *    modules.
+ */
+export const TEAMSTRAF_HINT = 'teamstraf';
