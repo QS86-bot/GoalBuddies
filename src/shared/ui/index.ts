@@ -26,10 +26,14 @@ export { Avatar } from './Avatar';
 export { AvatarKeuze } from './AvatarKeuze';
 export { initialen } from './naming';
 export { Button, type ButtonVariant } from './Button';
+export { Actiekaart } from './Actiekaart';
+export { Afvinkcirkel } from './Afvinkcirkel';
 export { Card } from './Card';
 export { ChatRegel, type Chatbijlage } from './ChatRegel';
 export { Choice, type Optie } from './Choice';
 export { CategorieMerk } from './CategorieMerk';
+export { Pictogram } from './Pictogram';
+export { BETEKENISSEN, PICTOGRAMMEN, PICTOGRAM_BETEKENISSEN, type Betekenis, type PictogramNaam } from './pictogrammen';
 export { DatumKeuze } from './DatumKeuze';
 export { Kalender, type KalenderDag } from './Kalender';
 export { Ritmestrook } from './Ritmestrook';
@@ -38,11 +42,13 @@ export { Weekbalken, type WeekbalkRegel } from './Weekbalken';
 export { CATEGORIEMERKEN, categoriemerk, type Categoriemerk, type Familie } from './merken';
 export { GegroepeerdeKeuze, type Keuzegroep } from './GegroepeerdeKeuze';
 export { Deelknop } from './Deelknop';
+export { Groepskaart } from './Groepskaart';
 export { BEWIJSFOTO_TEKSTEN, CHATFOTO_TEKSTEN, Foto, type FotoProps } from './Foto';
 export { CHATDOC_TEKSTEN, Document, type DocumentProps } from './Document';
 export { DoelStandKaart } from './DoelStandKaart';
 export { EmptyState } from './EmptyState';
 export { Field } from './Field';
+export { OntdekGroepKaart, type OntdekGroepKaartGegevens } from './OntdekGroepKaart';
 export { Ketting } from './Ketting';
 export { FloorCeiling } from './FloorCeiling';
 export { Meldpaneel, type MeldpaneelProps } from './Meldpaneel';
@@ -50,9 +56,20 @@ export { MemberRow } from './MemberRow';
 export { MilestoneProgress } from './MilestoneProgress';
 export { RisicoBadge } from './RisicoBadge';
 export { Taakbalk } from './Taakbalk';
-export { actiefTabblad, TABBLADEN, toontTaakbalk, ZONDER_TAAKBALK } from './tabbladen';
+export {
+  actiefTabblad,
+  BREED_VANAF,
+  TABBLADEN,
+  toontTaakbalk,
+  ZONDER_TAAKBALK,
+} from './tabbladen';
 export type { Tabblad } from './tabbladen';
+export { TabFout } from './TabFout';
+export { RootVangnet } from './RootVangnet';
+export { useGehydrateerd } from './useGehydrateerd';
 export { Screen, useTerug, type Terug } from './Screen';
+export { Paginakop, Streep as Voortgangsstreep, type Paginameldingen } from './Paginakop';
+export { alsVoortgang, type Voortgang } from './paginakop-vorm';
 export { StreakCounter } from './StreakCounter';
 export { Weekpas } from './Weekpas';
 export { Weekplanblok, type WeekplanRegel } from './Weekplanblok';
@@ -71,6 +88,7 @@ export {
   type TipSet,
 } from './tips';
 export { WeekStartKeuze } from './WeekStartKeuze';
+export { Accountregel } from './Accountregel';
 export { Body, Caption, Eyebrow, Heading, Subheading } from './Text';
 
 export {
@@ -90,6 +108,9 @@ export {
 } from './vieringen';
 
 export { HULPVRAAG_MAX, hulpvraagVoorstel } from './hulpvraag';
+
+export { AdempauzeBericht } from './AdempauzeBericht';
+export { adempauzeBerichtVoorstel } from './adempauze-bericht';
 
 export {
   risicoLabel,

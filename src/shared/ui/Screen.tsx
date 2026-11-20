@@ -1,4 +1,4 @@
-import { useRouter, type Href } from 'expo-router';
+import { usePathname, useRouter, type Href } from 'expo-router';
 import { useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -7,7 +7,8 @@ import { t } from '../i18n';
 import { radius, space, useTheme } from '../theme';
 
 import { focusRing } from './a11y';
-import { Taakbalk } from './Taakbalk';
+import { Taakbalk, useTaakbalkVorm } from './Taakbalk';
+import { MAX_INHOUDSBREEDTE, toontTaakbalk } from './tabbladen';
 import { Eyebrow, Heading } from './Text';
 
 /**
@@ -50,6 +51,14 @@ interface Props {
    *    zonder deze prop vast. `scripts/uitgang-controle.mjs` bewaakt dat.
    */
   readonly terug?: Terug | undefined;
+  /**
+   * De paginakop van een hoofdscherm — QS8-726 (`<Paginakop …/>`).
+   *
+   * ⚠️ Met een kop tekent `Screen` zelf geen titel en eyebrow: de kop draagt ze,
+   *    en er staan nooit twee kopjes. `title` blijft verplicht voor de schermen
+   *    zonder kop.
+   */
+  readonly kop?: React.ReactNode;
 }
 
 /**
@@ -103,7 +112,7 @@ function TerugKnop({ naar, label }: Terug) {
   );
 }
 
-export function Screen({ title, eyebrow, children, scroll = true, terug }: Props) {
+export function Screen({ title, eyebrow, children, scroll = true, terug, kop }: Props) {
   const theme = useTheme();
   const insets = useSafeAreaInsets();
 
@@ -119,6 +128,14 @@ export function Screen({ title, eyebrow, children, scroll = true, terug }: Props
   //    De grendel staat in `tests/beloftes/tabbalk-bovenaan.test.ts`.
   const bovenrand = insets.top;
 
+  // ⚠️ QS8-705: breed staat het menu als kolom naast de inhoud, smal als rij
+  //    erboven. `Screen` weet dat omdat hij de hoogtehouder is; `Taakbalk`
+  //    tekent alleen wat hij te zien krijgt. Beide vragen dezelfde functie
+  //    (`taakbalkVorm`), dus er is één breekpunt.
+  const pad = usePathname();
+  const vorm = useTaakbalkVorm();
+  const zijkant = toontTaakbalk(pad) && vorm === 'zijkant';
+
   // ⚠️ `flex: 1` erbij zodra het scherm níét scrollt, en alleen dan. Dit blok is
   //    dan de enige hoogtehouder, en een View zonder flex krimpt in React Native
   //    naar zijn inhoud — waardoor een lijst die zelf scrollt (de groepschat,
@@ -129,8 +146,12 @@ export function Screen({ title, eyebrow, children, scroll = true, terug }: Props
     <View style={[styles.inhoud, scroll ? null : styles.vult]}>
       <View style={styles.kop}>
         {terug === undefined ? null : <TerugKnop {...terug} />}
-        {eyebrow === undefined ? null : <Eyebrow>{eyebrow}</Eyebrow>}
-        <Heading>{title}</Heading>
+        {kop ?? (
+          <>
+            {eyebrow === undefined ? null : <Eyebrow>{eyebrow}</Eyebrow>}
+            <Heading>{title}</Heading>
+          </>
+        )}
       </View>
       {children}
     </View>
@@ -156,15 +177,22 @@ export function Screen({ title, eyebrow, children, scroll = true, terug }: Props
   );
 
   return (
-    <View style={[...buiten, { paddingTop: bovenrand }]}>
+    <View
+      style={[
+        ...buiten,
+        { paddingTop: bovenrand },
+        zijkant ? styles.naastElkaar : null,
+      ]}
+    >
       <Taakbalk />
-      {romp}
+      {zijkant ? <View style={styles.vult}>{romp}</View> : romp}
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   scherm: { flex: 1 },
+  naastElkaar: { flexDirection: 'row' },
   // De ruimte tussen de balk (of de bovenrand) en de kop van het scherm.
   rand: { paddingTop: space.shell },
   vult: { flex: 1 },
@@ -174,7 +202,7 @@ const styles = StyleSheet.create({
     // De app is een leesapp op een telefoon, maar draait ook op een breed
     // scherm. Zonder deze grens worden regels op een monitor onleesbaar lang.
     width: '100%',
-    maxWidth: 620,
+    maxWidth: MAX_INHOUDSBREEDTE,
     alignSelf: 'center',
   },
   kop: { gap: 3, paddingBottom: 2 },

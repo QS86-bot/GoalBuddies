@@ -18,6 +18,7 @@ export {
   type VerdiendeBadge,
 } from './badges';
 
+export { BADGE_WAARDE, ZELDZAAMHEDEN, type BadgeWaarde, type Zeldzaamheid } from './badge-zeldzaamheid';
 export { fetchBadges } from './badges-api';
 
 export { naEenNieuwDoel, SAMEN } from './doelroute';
@@ -72,6 +73,16 @@ export {
   planAdempauze,
   type Adempauze,
 } from './adempauze';
+
+export {
+  berichtGroepen,
+  berichtMagBij,
+  pauzeMetBericht,
+  stuurLos,
+  stuurLosMetRem,
+  type BerichtGroep,
+  type BerichtUitkomst,
+} from './adempauze-bericht';
 
 export {
   MAX_ADEMPAUZE_CYCLI,
@@ -134,6 +145,7 @@ export { weekdoelSchema, type AfrondInvoer, type WeekdoelInvoer } from './weekly
 
 export { verwijderDoel } from './api';
 export { fetchWeekpasStanden, type WeekpasStanden } from './weekpas';
+export { fetchPuntenDezeWeek } from './punten-week';
 
 export { fetchDoelStanden, type DoelStand, type Reeks } from './stand';
 export { doelIdsInBeeld } from './doelen-in-beeld';
@@ -198,7 +210,11 @@ export {
 } from './overzicht-stand';
 
 export {
+  eigenGevoelSchoon,
+  gevoelLabels,
+  GEVOELENS,
   LEGE_VRAGENLIJST,
+  MAX_EIGEN_GEVOEL,
   MAX_FOCUSGEBIEDEN,
   MINUTEN_OPTIES,
   MOMENTEN,
@@ -210,6 +226,8 @@ export {
   valkuilLabels,
   VALKUILEN,
   vragenlijstSchema,
+  type Gevoel,
+  type GevoelWissen,
   type Minuten,
   type Moment,
   type Valkuil,

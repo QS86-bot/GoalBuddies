@@ -1,5 +1,5 @@
 import { execFile, execFileSync } from 'node:child_process';
-import { cpus } from 'node:os';
+import { cpus, networkInterfaces } from 'node:os';
 import { fileURLToPath } from 'node:url';
 import { promisify } from 'node:util';
 
@@ -87,7 +87,251 @@ export function psqlBasisArgumenten(verbose = false): string[] {
   return basisArgumenten(verbose);
 }
 
+/**
+ * Wijst deze psql-omgeving naar een lokale database? Zo niet, de melding.
+ *
+ * ⚠️⚠️ **Het psql-pad had geen productieslot** (QS8-703, security-review van
+ *    PR #690). `PSQL_OMGEVING` neemt `PGHOST`, `PGUSER`, `PGPASSWORD` en
+ *    `PGDATABASE` over uit de omgeving, en `src/lib/test-env.ts` laadt `.env`.
+ *    Wees `PGHOST` naar de pooler van productie — wat voor een dump heel gewoon
+ *    is — dan schreven de psql-tests daar als `postgres`, met meer rechten dan
+ *    de service role, zonder dat iemand een doel koos.
+ *
+ *    **Een allowlist en geen blocklist**: loopback of een Unix-socket (een pad),
+ *    en verder niets — zelfde vorm als `magHierDraaien()` in
+ *    `scripts/rls-dekking.mjs`. Een blocklist op de projectref mist een eigen
+ *    domein en een hostnaam in hoofdletters; dat was de les van `guardProductie()`.
+ *    `PGHOSTADDR` overschrijft `PGHOST` in libpq en wordt dus ook getoetst,
+ *    `PGSERVICE` verwijst naar een bestand dat hier niet te lezen is (geweigerd),
+ *    en `PGDATABASE` moet een kale naam zijn: als `-d` leest psql er anders een
+ *    hele verbindingsstring in.
+ */
+const LOOPBACK = ['localhost', '127.0.0.1', '::1'];
+
+export function psqlDoelFout(omgeving: NodeJS.ProcessEnv): string | null {
+  const host = (omgeving.PGHOST ?? '').trim();
+  const adres = (omgeving.PGHOSTADDR ?? '').trim();
+  // ⚠️ Een lijst met komma's probeert libpq op volgorde: elk deel moet lokaal
+  //    zijn, anders valt hij door naar de volgende host als de eerste niet
+  //    antwoordt (security-review QS8-703).
+  const lokaal = (lijst: string) =>
+    lijst.split(',').every((h) => {
+      const deel = h.trim();
+      return deel.startsWith('/') || LOOPBACK.includes(deel.toLowerCase());
+    });
+  const db = (omgeving.PGDATABASE ?? 'goalbuddies_rls').trim();
+  const weiger = (wat: string) =>
+    `De RLS-suite weigert psql naar ${wat}: alleen een lokale database (loopback of ` +
+    'een Unix-socket) mag. Zet PGHOST niet in .env of in je sessie, of draai met ' +
+    '`npm run rls:lokaal` tegen de lokale stack (QS8-703).';
+
+  if ((omgeving.PGSERVICE ?? '').trim() !== '') return weiger(`de dienst "${omgeving.PGSERVICE}" (PGSERVICE)`);
+  if (!lokaal(host)) return weiger(`de host "${host}"`);
+  // ⚠️ `PGDATABASE` gaat als `-d` mee, en daar leest psql ook een
+  //    verbindingsstring, een URI of `service=…` — met een eigen host die de
+  //    toets hierboven nooit ziet. Alleen een kale naam mag.
+  if (!/^[A-Za-z0-9_]+$/.test(db)) return weiger(`de database "${db}" (PGDATABASE is geen kale naam)`);
+  // ⚠️ En alleen de naam die de lokale stack en CI opbouwen (QS8-715). Achter
+  //    een tunnel naar een pooler op de servermachine meldt ook productie zich
+  //    als loopback, en `PGDATABASE=postgres` is voor een dump heel gewoon;
+  //    de naam is dan het enige wat het verschil maakt.
+  if (db !== 'goalbuddies_rls') return weiger(`de database "${db}" (alleen goalbuddies_rls)`);
+  if (adres !== '' && !lokaal(adres)) return weiger(`het adres "${adres}" (PGHOSTADDR)`);
+  return null;
+}
+
+/** Werpt als het doel niet lokaal is — vóór het verbinden. */
+function eisLokaalDoel(): void {
+  const fout = psqlDoelFout(PSQL_OMGEVING);
+  if (fout !== null) throw new Error(fout);
+}
+
+/**
+ * Werpt vóór er een psql-proces start, als het doel niet lokaal is of de
+ * bestemming niet gemeten kon worden.
+ *
+ * ⚠️ **Niet kunnen meten is stoppen** (security-review QS8-715). Hier stond
+ *    eerst "geen verbinding: zwijgen", en dan liep de eigenlijke aanroep daarna
+ *    ongemeten door — een tunnel die de meetverbinding één keer weigerde, kreeg
+ *    de volgende `psqlMetInvoer` met DML gewoon binnen. Alleen
+ *    `stackBeschikbaarOfFaal()` mag "geen verbinding" als uitkomst behandelen,
+ *    en die draait dan zijn proef niet meer.
+ */
+function eisLokaleDatabase(): void {
+  eisLokaalDoel();
+  if (eisBestemming() === 'geen-verbinding') {
+    throw new Error(
+      `psql: geen verbinding met ${PSQL_OMGEVING.PGHOST}:${PSQL_OMGEVING.PGPORT}/${PSQL_DB} ` +
+        '— de bestemming is niet gemeten en er wordt niets uitgevoerd (QS8-715).',
+    );
+  }
+}
+
+/**
+ * Waar kwam psql werkelijk uit? — QS8-715.
+ *
+ * ⚠️ **`psqlDoelFout()` toetst wat we van plan zijn; dit toetst waar we
+ *    uitkwamen.** Een tunnel of lokale proxy naar productie op `127.0.0.1` gaat
+ *    door elke lijst die je van tevoren kunt opschrijven. Zelfde vorm als
+ *    `kloptDeBestemming()` in `scripts/rls-dekking.mjs`, zonder de poort: CI
+ *    draait op 5432 en de lokale stack op 5433.
+ *
+ * ⚠️⚠️ **Twee soorten bewijs dat de server hier staat, en geen vlag.** CI draait
+ *    Postgres als servicecontainer: `inet_server_addr()` is daar het adres van
+ *    de container op de dockerbrug (`172.18.0.2`), en de eerste versie weigerde
+ *    dat als "geen loopback". Wat de server van zichzelf ziet bewijst niet dat
+ *    hij op deze machine staat, dus een tweede getuige erbij — wat de server van
+ *    *ons* ziet:
+ *
+ *    1. **loopback**: het serveradres is `127.0.0.1`, `::1` of een socket
+ *       (`unix-socket`): de lokale stack en een native Postgres. Een clienttoets
+ *       voegt hier niets toe; een tunnel op loopback vangt alleen de databasenaam.
+ *    2. **de eigen brug**: het serveradres ligt in `172.16.0.0/12` (de
+ *       dockerbruggen), het clientadres — wat `inet_client_addr()` ziet — is een
+ *       adres van een dockerbrug van déze machine (`docker0`/`br-…`, de gateway,
+ *       `172.18.0.1`), en beide liggen in hetzelfde /16-net. Een tunnel naar een
+ *       server aan de overkant laat de server een ander adres als client zien
+ *       (het NAT-adres, de tunneluitgang) dat hier op geen interface staat.
+ *
+ *    Er is geen omgevingsvariabele die dit opent: `CI=true` zet iedereen overal,
+ *    en dan is de grendel een instelling. Wat meetbaar is, staat hier; wat niet,
+ *    is een ER-rij (zie het beslisdocument).
+ *
+ * @param uitkomst de regel `adres|database|clientadres` van de vraag in `BESTEMMING`
+ * @param database de database die we bedoelden (`PSQL_DB`)
+ * @param eigenAdressen de adressen van de netwerkinterfaces van deze machine
+ */
+export function bestemmingFout(
+  uitkomst: string,
+  database: string,
+  eigenAdressen: readonly string[] = eigenInterfaceAdressen(),
+): string | null {
+  const delen = uitkomst.trim().split('|');
+  // ⚠️ Precies drie velden: een naam met een pipe mag de velden niet verschuiven.
+  if (delen.length !== 3) {
+    return `De RLS-suite weigert te meten: de bestemming had ${delen.length} velden in plaats van 3 (QS8-715).`;
+  }
+  const [adres = '', echt = '', client = ''] = delen;
+
+  if (!isLoopback(adres) && !opEigenBrug(adres, client, eigenAdressen)) {
+    return (
+      `De RLS-suite weigert te meten: psql kwam uit op "${adres}", en dat is geen loopback ` +
+      'en ook geen container op de eigen dockerbrug (QS8-715).'
+    );
+  }
+  if (echt !== database) {
+    return `De RLS-suite weigert te meten: psql kwam uit in database "${echt}" en niet in "${database}" (QS8-715).`;
+  }
+  return null;
+}
+
+function isLoopback(adres: string): boolean {
+  return ['127.0.0.1', '::1', 'unix-socket'].includes(adres);
+}
+
+/** `172.16.0.0/12`: de ruimte waaruit Docker zijn bruggen uitdeelt. */
+function indockerRuimte(adres: string): boolean {
+  const m = /^172\.(\d{1,3})\.\d{1,3}\.\d{1,3}$/.exec(adres);
+  const tweede = m ? Number(m[1]) : -1;
+  return tweede >= 16 && tweede <= 31;
+}
+
+function opEigenBrug(server: string, client: string, eigenAdressen: readonly string[]): boolean {
+  // De serverkant volgt uit de clientkant plus hetzelfde /16-net.
+  if (!indockerRuimte(client)) return false;
+  if (!eigenAdressen.includes(client)) return false;
+  const net = (a: string) => a.split('.').slice(0, 2).join('.');
+  return net(server) === net(client);
+}
+
+/**
+ * De adressen van de dockerbruggen van deze machine: alleen interfaces die
+ * `docker0` of `br-<12 hex>` heten, en alleen IPv4.
+ *
+ * ⚠️ **Niet elke interface** (security-review QS8-715, M2). Op een netwerk zonder
+ *    NAT — een AWS-VPC, een kantoor-LAN, een VPN — ziet een server aan de overkant
+ *    ons eigen `eth0`-adres, dus "is een eigen interface" bewees alleen "zelfde
+ *    privénet". Een bruggateway is wat een container-op-deze-machine oplevert.
+ */
+export function brugAdressen(interfaces: ReturnType<typeof networkInterfaces>): string[] {
+  return Object.entries(interfaces)
+    .filter(([naam]) => /^(docker0|br-[0-9a-f]{12})$/.test(naam))
+    .flatMap(([, lijst]) => lijst ?? [])
+    .filter((i) => i.family === 'IPv4')
+    .map((i) => i.address);
+}
+
+export function eigenInterfaceAdressen(): string[] {
+  return brugAdressen(networkInterfaces());
+}
+
+const BESTEMMING =
+  "select coalesce(host(inet_server_addr()), 'unix-socket') || '|' || current_database() || '|' || coalesce(host(inet_client_addr()), '');";
+
+/** Eén keer per proces, en pas als er een antwoord was. */
+let bestemmingGemeten = false;
+
+export type Meting = 'gemeten' | 'geen-verbinding';
+
+/** psql eindigt met 2 als de verbinding niet tot stand kwam. */
+function geenVerbinding(fout: unknown): boolean {
+  return typeof fout === 'object' && fout !== null && (fout as { status?: unknown }).status === 2;
+}
+
+/**
+ * Meet de bestemming één keer en werpt als hij niet lokaal is.
+ *
+ * ⚠️ **Alleen psql-exitcode 2 heet "geen verbinding"**, en dan zegt
+ *    `eisLokaleDatabase()` of `stackBeschikbaarOfFaal()` wat er moet gebeuren.
+ *    Elke andere fout — een vraag die de server niet kent, een time-out — is
+ *    "niet vast te stellen", en dat werpt. Een proxy die `inet_server_addr()`
+ *    niet beantwoordt is geen reden om ongemeten door te gaan.
+ *
+ * @param voerUit de psql-aanroep; de toets geeft een nep
+ */
+export function eisBestemming(voerUit: (sql: string) => string = bestemmingVragen): Meting {
+  if (bestemmingGemeten) return 'gemeten';
+
+  let uitkomst: string;
+  try {
+    uitkomst = voerUit(BESTEMMING);
+  } catch (fout) {
+    if (geenVerbinding(fout)) return 'geen-verbinding';
+    const reden = fout instanceof Error ? (fout.message.split('\n')[0] ?? '') : String(fout);
+    throw new Error(
+      `De RLS-suite weigert te meten: de bestemming van psql was niet vast te stellen (${reden}) (QS8-715).`,
+    );
+  }
+
+  const fout = bestemmingFout(uitkomst, PSQL_DB);
+  if (fout !== null) throw new Error(fout);
+  bestemmingGemeten = true;
+  return 'gemeten';
+}
+
+/** Alleen voor de toets: vergeet dat de bestemming gemeten is. */
+export function vergeetBestemming(): void {
+  bestemmingGemeten = false;
+}
+
+/** De vraag zelf, buiten `basisArgumenten()` om — anders roept hij zichzelf aan. */
+function bestemmingVragen(sql: string): string {
+  return execFileSync('psql', [...kaleArgumenten(false), '-c', sql], {
+    env: PSQL_OMGEVING,
+    encoding: 'utf8',
+    stdio: ['ignore', 'pipe', 'pipe'],
+    // ⚠️ Een verbinding die aangenomen wordt en nooit antwoordt, hangt anders
+    //    eeuwig (CLAUDE.md, regel 14). Een time-out is "niet vast te stellen".
+    timeout: 10_000,
+  }).trim();
+}
+
 function basisArgumenten(verbose: boolean): string[] {
+  eisLokaleDatabase();
+  return kaleArgumenten(verbose);
+}
+
+function kaleArgumenten(verbose: boolean): string[] {
   return [
     '-U',
     PSQL_OMGEVING.PGUSER as string,
@@ -249,6 +493,9 @@ export type Stackoordeel = 'meten' | 'overslaan' | 'geen-verbinding' | 'schema-l
  *    alleen het aanroepen en het formuleren.
  */
 export function stackOordeel(uitkomst: string | null, rlsDoel: string | undefined): Stackoordeel {
+  // QS8-702: een productierun meet het échte project via REST; de lokale
+  // database zegt daar niets over, dus psql-delen slaan zich over.
+  if (rlsDoel === 'productie') return 'overslaan';
   if (uitkomst === '1') return 'meten';
   if (rlsDoel === undefined) return 'overslaan';
   return uitkomst === null ? 'geen-verbinding' : 'schema-loopt-achter';
@@ -268,12 +515,24 @@ export function stackOordeel(uitkomst: string | null, rlsDoel: string | undefine
  *    `stackOordeel()` hierboven; hier staat alleen wat je er dan van merkt.
  */
 export function stackBeschikbaarOfFaal(proef: string, bron: string): boolean {
+  // ⚠️ Buiten de `try` hieronder, met opzet: die vangt elke fout en noemt hem
+  //    "geen database". Een geweigerde host is iets anders, en een melding met
+  //    de verkeerde oorzaak is de klasse van QS8-268 (QS8-703).
+  //    En "geen verbinding" bij het meten is hier de enige plek waar dat een
+  //    uitkomst is: dan draait de proef niet meer, en meldt het oordeel hieronder
+  //    "geen database" of "overslaan" (QS8-715).
+  eisLokaalDoel();
+  const meting = eisBestemming();
+
   let uitkomst: string | null = null;
-  let fout: unknown = null;
-  try {
-    uitkomst = psql(proef);
-  } catch (opgevangen) {
-    fout = opgevangen;
+  let fout: unknown = new Error('psql: geen verbinding (exitcode 2 bij het meten van de bestemming)');
+  if (meting === 'gemeten') {
+    fout = null;
+    try {
+      uitkomst = psql(proef);
+    } catch (opgevangen) {
+      fout = opgevangen;
+    }
   }
 
   const oordeel = stackOordeel(uitkomst, process.env.RLS_DOEL);

@@ -8,15 +8,11 @@ on:
     branches: ['**']
   pull_request:
     branches: [main]
-  # ⚠️ **De wekelijkse run bestaat voor één controle: `audit:controle`** — QS8-191.
-  #    Elke andere controle hier meet de repo, en die verandert alleen als iemand
-  #    pusht. Kwetsbaarheden niet: de aanleiding voor QS8-191 was géén wijziging
-  #    in dit project. `decode-uri-component@0.2.2` zat er al maanden; de advisory
-  #    kwam erbij. Een meter die alleen op een push draait, vindt dat pas bij de
-  #    volgende push — en dat is hetzelfde "je moet eraan denken" dat dit issue
-  #    juist wilde afschaffen, één laag hoger.
-  schedule:
-    - cron: '17 6 * * 1'
+  # ⚠️ Het wekelijkse `schedule:` van QS8-191 is op 19-11-2026 (QS8-707)
+  #    verhuisd naar `advisories.yml`. Een run die alleen voor `audit:controle`
+  #    bestond, hoefde niet de hele suite en de RLS-baan te draaien om één
+  #    advisory-database te lezen; en op `main` meet die controle nu de vorm van
+  #    het register en niet meer de wereld.
 
 # Een nieuwe push op dezelfde branch maakt de vorige run overbodig. Scheelt
 # wachttijd en minuten, en de uitkomst van een verouderde commit zegt niets.

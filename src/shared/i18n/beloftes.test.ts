@@ -63,6 +63,17 @@ const ONZICHTBAARHEID = [
   /alleen jij (ziet|leest)/i,
   /alleen voor jou/i,
   /ziet .{0,25}nooit/i,
+  // ⚠️⚠️ **De passieve vorm, en die ontbrak — QS8-233.** `/ziet .{0,25}nooit/`
+  //    vangt *"je groep ziet dit nooit"* en niet *"dit is er nooit te zien"*,
+  //    terwijl die tweede in het Nederlands minstens zo gewoon is. 📏 Gemeten op
+  //    05-10-2026 over beide catalogi: twee sleutels gebruiken hem, en
+  //    `radar.alleen_jij` werd alleen gevangen doordat hij óók *"alleen jij
+  //    ziet"* zegt. Eén sleutel hing er dus volledig buiten.
+  //
+  //    Dat is dezelfde klasse als de vier vormen hierboven: het register bewaakte
+  //    de zinnen die er toevallig in de actieve vorm stonden.
+  /nooit te zien/i,
+  /never visible/i,
   // ⚠️ `only you\b` en niet `only you`: dat tweede matcht ook *"only your
   //    group members"*, en dat is een scope-belofte en geen
   //    onzichtbaarheidsbelofte. Die vangen we hieronder apart, zodat het
@@ -81,6 +92,49 @@ const ONZICHTBAARHEID = [
  *    dan moet het scherm dat ook echt afdwingen.
  */
 const TOEGESTAAN: Readonly<Record<string, string>> = {
+  'belofte.bevestig_wie':
+    'QS8-761. De zin gaat over de eigen weekbelofte en is onvoorwaardelijk waar, ook in een open ' +
+    'groep: `commitments_select` geeft de begunstigde pas leesrecht vanaf `due` en kijkt niet naar ' +
+    '`groups.zichtbaarheid` (rij 61 in 002: beschermd en open geven hetzelfde), en ' +
+    '`straffen_bij_uitstelverzoek()` slaat een belofte over (0312). Getoetst met een tweede JWT in ' +
+    '`tests/rls/weekbelofte-aangaan.test.ts` (criterium 4). Geen `_open`-tegenhanger nodig.',
+  'prestaties.ingang_uitleg':
+    'QS8-735. De zin gaat over het eigen Prestatiescherm en is onvoorwaardelijk waar, ook in een ' +
+    'open groep: `badges_select` en `xp_grootboek` zijn eigenaar-only (`user_id = auth.uid()`, ' +
+    'geen groepstak), en geen groepscomponent kan het scherm importeren ' +
+    '(`tests/beloftes/prestaties-blijven-voor-jezelf.test.ts`). Er is geen `_open`-tegenhanger ' +
+    'nodig, want er is geen groepsoppervlak dat varieert.',
+  'prestaties.privacy':
+    'QS8-735. De zin gaat over het eigen Prestatiescherm en is onvoorwaardelijk waar, ook in een ' +
+    'open groep: `badges_select` en `xp_grootboek` zijn eigenaar-only (`user_id = auth.uid()`, ' +
+    'geen groepstak), en geen groepscomponent kan het scherm importeren ' +
+    '(`tests/beloftes/prestaties-blijven-voor-jezelf.test.ts`). Er is geen `_open`-tegenhanger ' +
+    'nodig, want er is geen groepsoppervlak dat varieert.',
+  'demping.privacy':
+    'QS8-752. De zin gaat over de eigen demping en is onvoorwaardelijk waar, ook in een open ' +
+    'groep: `groep_demping` heeft vier policies op `user_id = (select auth.uid())` zonder ' +
+    'groepstak, er komt geen systeembericht en geen kolom op `group_members` ' +
+    '(`tests/beloftes/een-gedempte-groep-belt-niet.test.ts`, `tests/rls/groep-demping.test.ts`). ' +
+    'Er is geen `_open`-tegenhanger nodig, want geen groepsoppervlak varieert.',
+  'buddyzoek.bevestig_bescherming':
+    'QS8-233. De zin geldt onvoorwaardelijk omdat een automatisch gevormde groep ' +
+    'niet open kán worden: `groups_automatisch_is_beschermd` is een CHECK, en de ' +
+    'derde pin in `guard_group_update()` houdt `automatisch` zelf vast. Daarom is ' +
+    'hier géén `_open`-tegenhanger nodig — en daarom heet hij ook niet ' +
+    '`_beschermd`: die naam betekent in dit project "het scherm kiest per groep", ' +
+    'en dat is precies wat hier niet gebeurt. De zin belooft sinds 19-11-2026 ' +
+    'alleen een gemiste week en een achterstand: de huidige reeks is zichtbaar voor ' +
+    'de groep (A15, 002), en de tekst zegt dat nu. 📏 Geijkt als `service_role`: ' +
+    '`zichtbaarheid = open` en `ontdekbaar = true` geven beide een 23514, en een ' +
+    'beheerder die `automatisch` patcht krijgt de raise uit de guard.',
+  'buddyzoek.bevestig_stoppen':
+    'QS8-233. "Niemand ziet het" gaat over uit de wáchtrij stappen, en die belofte ' +
+    'staat los van `groups.zichtbaarheid` — je bent op dat moment nog in geen ' +
+    'enkele groep. 📏 Gemeten: `goal_match_queue_select` is `user_id = auth.uid()` ' +
+    'en een ander krijgt nul rijen; `zoek_buddies_uit()` zet alleen status en ' +
+    '`decided_at`, en boekt geen punt, plaatst geen `group_events`-rij en geen ' +
+    'chatbericht. Dat is acceptatiecriterium 11 van het issue, en het is de reden ' +
+    'dat er geen bevestiging om die knop zit: wie eruit wil, wil eruit.',
   'koppel.uitleg_beschermd':
     'Wordt alleen getoond als groups.zichtbaarheid = beschermd; app/groep/[id].tsx kiest.',
   'koppel.uitleg_open':
@@ -153,6 +207,21 @@ const TOEGESTAAN: Readonly<Record<string, string>> = {
     'profiles en eist overal nul. ⚠️ groups.zichtbaarheid raakt dit oppervlak niet: A41 gaat ' +
     'over wat leden van elkaar zien, en de kijker is hier per definitie geen lid — de zin is ' +
     'dus in beide standen waar en hoeft niet gesplitst.',
+  'vragenlijst.gevoel.toelichting':
+    'Zelfde reden en zelfde meting als vragenlijst.gevoel.eigen_hint: profiles.feeling en ' +
+    'profiles.feeling_own zijn voor geen enkele groepsgenoot leesbaar, in een open én een ' +
+    'beschermde groep (tests/rls/gevoel.test.ts, QS8-733).',
+  'vragenlijst.voorbeeld.toelichting':
+    'De nudge gaat alleen naar de apparaten van de eigenaar (push_tokens van user_id = ' +
+    'profiel.id, supabase/functions/notificaties) en noemt geen groep, naam of aantal; ' +
+    'nudgeBericht() is dezelfde functie als die het voorbeeld tekent. Het is geen ' +
+    'zichtbaarheid-van-andermans-gegevens-belofte maar "voor jou alleen", en waar in elke groep.',
+  'vragenlijst.gevoel.eigen_hint':
+    'Waar, en nagemeten in plaats van aangenomen. profiles.feeling en profiles.feeling_own ' +
+    'staan in geen enkele select-grant voor authenticated (alleen id, display_name en ' +
+    'avatar_url zijn leesbaar) en komen alleen via mijn_profiel bij de eigenaar; ze zijn ' +
+    'niet afhankelijk van groups.zichtbaarheid. De eigen tekst komt bovendien in geen enkele ' +
+    'melding (nudgeBericht() krijgt alleen de sleutel). tests/rls/gevoel.test.ts (QS8-733).',
   'straf.tot_dan':
     'Een commitment vóór de deadline. Oppervlak 20 is in EPIC 13 bewust niet opengezet: ' +
     'commitments_select geeft de begunstigde groep pas leesrecht vanaf unlocked/due/resolved. ' +
@@ -217,5 +286,21 @@ describe('onzichtbaarheidsbeloftes', () => {
       const open = sleutel.replace(/_beschermd$/, '_open');
       expect(nl[open as keyof typeof nl], sleutel).not.toBe(nl[sleutel as keyof typeof nl]);
     }
+  });
+});
+
+describe('de bevestiging bij het zoeken van buddy’s (QS8-233, security-review PR #700)', () => {
+  // De groep leest je streefdatum en je huidige reeks (A15, 002). Wat de tekst
+  // vóór de bevestigknop belooft, mag daar niet onder zitten.
+  it('noemt wat onbekenden wél lezen: de streefdatum en de reeks', () => {
+    expect(nl['buddyzoek.bevestig_onbekenden']).toMatch(/streefdatum/i);
+    expect(en['buddyzoek.bevestig_onbekenden']).toMatch(/target date/i);
+    expect(nl['buddyzoek.bevestig_bescherming']).toMatch(/huidige reeks ziet de groep wel/i);
+    expect(en['buddyzoek.bevestig_bescherming']).toMatch(/does see your current streak/i);
+  });
+
+  it('belooft niet dat een verbroken reeks onzichtbaar is', () => {
+    expect(nl['buddyzoek.bevestig_bescherming']).not.toMatch(/verbroken reeks/i);
+    expect(en['buddyzoek.bevestig_bescherming']).not.toMatch(/broken streak/i);
   });
 });

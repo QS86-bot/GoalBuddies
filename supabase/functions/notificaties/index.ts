@@ -24,6 +24,7 @@ import { heldregel } from '../_shared/helden/stemteksten.ts';
 import { isHeldsleutel, type Heldsleutel, type Trigger } from '../_shared/helden/helden.ts';
 import {
   berichtVoor,
+  GROEPSDIGEST_UUR,
   meldingPoortReden,
   nudgeBericht,
   overzichtsuur,
@@ -171,6 +172,8 @@ interface Profiel {
   reminder_enabled: boolean;
   reminder_time: string | null;
   reminder_tone: string | null;
+  /** Een van de zes voorstellen uit de vragenlijst (0311), of `null`. Nooit de eigen omschrijving. */
+  feeling: string | null;
   /** De taalkeuze van de ontvanger. `null` = nog niet gekozen (migratie 0061). */
   locale: string | null;
   /**
@@ -184,6 +187,8 @@ interface Profiel {
   notify_approval_received: boolean;
   notify_cycle_summary: boolean;
   notify_commitment_witness: boolean;
+  /** Opt-in groepsdagmelding (migratie 0310, QS8-755); standaard false. */
+  notify_group_digest: boolean;
   /** Het stille venster in hele uren (migratie 0238, QS8-406). */
   quiet_from: number | null;
   quiet_to: number | null;
@@ -507,7 +512,7 @@ async function profielenPagina(
     //    QS8-688, Laag 4: *wordt zwaarder als er tussen het lezen van de tokens
     //    en het versturen langer gewacht wordt*).
     // deno-fmt-ignore
-    .select('id, tz, week_start_day, reminder_enabled, reminder_time, reminder_tone, locale, notify_approval_request, notify_approval_received, notify_cycle_summary, notify_commitment_witness, quiet_from, quiet_to, push_tokens!inner(user_id)');
+    .select('id, tz, week_start_day, reminder_enabled, reminder_time, reminder_tone, feeling, locale, notify_approval_request, notify_approval_received, notify_cycle_summary, notify_commitment_witness, notify_group_digest, quiet_from, quiet_to, push_tokens!inner(user_id)');
 
   if (laatste !== null) vraag = vraag.gt('id', laatste);
   else if (grens.vanaf !== null) vraag = vraag.gte('id', grens.vanaf);
@@ -574,6 +579,7 @@ async function meldEenProfiel(
 
   await stuurGetuigenissen(ronde);
   await stuurTeruggedraaideStraffen(ronde);
+  await stuurGroepsdigest(ronde);
 
   return 'gedaan';
 }
@@ -722,7 +728,7 @@ async function stuurNudge(ronde: Meldronde): Promise<void> {
       const trigger: Trigger =
         laatste === null ? 'misser' : tegenslagtrigger(laatste as never, lokaleDatum as never);
 
-      return metHeldenstem(ronde, 'nudge', nudgeBericht(toon, taalVan(profiel)), trigger);
+      return metHeldenstem(ronde, 'nudge', nudgeBericht(toon, taalVan(profiel), profiel.feeling), trigger);
     };
 
     const stand = await stuur(db, {
@@ -1131,6 +1137,58 @@ async function stuurTeruggedraaideStraffen(ronde: Meldronde): Promise<void> {
   }
 }
 
+/**
+ * De groepsdagmelding — QS8-755: één positieve melding per groep per dag.
+ *
+ * ⚠️⚠️ **Wat hier staat en wat er met opzet niet staat.** De tekst noemt de
+ *    groep en niets anders: geen persoon, geen aantal, geen titel. Er is geen
+ *    "full house", geen "bijna" en geen "nog X te gaan" — de afwezigheid van zo'n
+ *    bericht zou zelf zeggen dat iemand het niet haalde (domeinregel 7).
+ *
+ * ⚠️ **De voorpoort staat vóór de RPC en kost niets**: opt-in aan, en het
+ *    digestuur (verschoven bij stille uren) bereikt. Zonder die volgorde doet
+ *    elk profiel met een token elk uur één verzoek extra.
+ *
+ * ⚠️ **Geen `alVerstuurd()` en geen `metHeldenstem()`.** `alVerstuurd` negeert de
+ *    datum zodra er een `refId` is en zou per groep één digest in een mensenleven
+ *    geven; de RPC (anti-join) en de unieke index per (gebruiker, groep, dag)
+ *    zijn de grendel. Een held onder dit bericht verbruikt de dagregel voor iets
+ *    dat niet over jouw eigen werk gaat.
+ *
+ * ⚠️ De database houdt de grens zelf (vlag `groepsdigest_aan()`, demping,
+ *    dagplafond in een trigger): wat de job hier vergeet te filteren, kan niet
+ *    langs de insert in `stuur()`.
+ */
+async function stuurGroepsdigest(ronde: Meldronde): Promise<void> {
+  const { db, profiel, apparaten, inStilte, nu, lokaleDatum, lokaalUur, tel } = ronde;
+
+  if (profiel.notify_group_digest !== true) return;
+  const uur = verschovenUur(GROEPSDIGEST_UUR, profiel.quiet_from, profiel.quiet_to) ?? GROEPSDIGEST_UUR;
+  if (lokaalUur < uur) return;
+
+  const groepen = await groepenMetNieuws(db, profiel.id, lokaleDatum);
+
+  for (const rij of groepen) {
+    const stand = await stuur(db, {
+      opruim: ronde.opruim,
+      userId: profiel.id,
+      apparaten,
+      voorkeuren: profiel,
+      inStilte,
+      nu,
+      soort: 'group_digest',
+      bericht: berichtVoor(
+        'group_digest',
+        { naam: rij.groepsnaam, groepId: rij.groupId },
+        taalVan(profiel),
+      ),
+      lokaleDatum,
+      refId: rij.groupId,
+    });
+    tel(stand);
+  }
+}
+
 // ---------------------------------------------------------------------------
 // De vragen die de regels stellen
 // ---------------------------------------------------------------------------
@@ -1447,6 +1505,27 @@ async function openBeoordelingen(
   return gevonden.map((r) => ({ completionId: r.completion_id, naam: r.owner_name ?? '' }));
 }
 
+/** Groepen met positief nieuws voor deze gebruiker, via `groepsdigest_voor()` (0310). */
+async function groepenMetNieuws(
+  db: Db,
+  userId: string,
+  lokaleDatum: string,
+): Promise<{ groupId: string; groepsnaam: string }[]> {
+  const { data, error } = await (db as unknown as {
+    rpc: (n: string, a: object) => Promise<{ data: unknown; error: { message: string } | null }>;
+  }).rpc('groepsdigest_voor', { p_user_id: userId, p_lokale_datum: lokaleDatum });
+
+  if (error) {
+    console.error(`groepsnieuws ophalen mislukte voor een gebruiker: ${error.message}`);
+    return [];
+  }
+
+  return ((data ?? []) as { group_id: string; groepsnaam: string }[]).map((r) => ({
+    groupId: r.group_id,
+    groepsnaam: r.groepsnaam,
+  }));
+}
+
 /** Goedkeuringen op je eigen weken van de afgelopen dag. */
 async function verseGoedkeuringen(
   db: Db,
@@ -1543,6 +1622,7 @@ function refTypeVoor(soort: Melding, refId: string | null): string | null {
   if (soort === 'approval_received') return 'approval';
   if (soort === 'commitment_witness') return 'commitment';
   if (soort === 'commitment_reverted') return 'commitment';
+  if (soort === 'group_digest') return 'group';
   return null;
 }
 

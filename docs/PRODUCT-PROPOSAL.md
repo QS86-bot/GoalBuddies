@@ -67,7 +67,7 @@ altijd nog een winnende zet.
 | Habit Huddle | GoalBuddies |
 |---|---|
 | Streak freezes (1 per 30 dagen) | **Weekpas** — één gemiste week verbruikt een pas i.p.v. je reeks. Je verdient er één per 6 voltooide cycli. |
-| Vacation Mode (14 dagen) | **Adempauze** — tot 2 cycli, vooraf aangekondigd aan je groep. Vakantie, ziekte, drukke periode op het werk. |
+| Vacation Mode (14 dagen) | **Adempauze** — tot 2 cycli, vooraf aangekondigd aan je groep *(sinds 19-11-2026: alleen als je dat zelf in een chatbericht doet; de rij is eigenaar-only, zie `docs/decisions/2026-11-19-de-adempauze-is-van-jou-alleen.md`)*. Vakantie, ziekte, drukke periode op het werk. |
 | Night Owl Checkins (tot 08:00) | **Coulanceperiode** — tot 12 uur ná je cycle-rollover kun je de vorige week nog afsluiten. Zondagavond klaar, maandagochtend gelogd: niets verloren. |
 
 Habit Huddle heeft dit als expliciet principe opgeschreven, en ik neem het over:

@@ -1,10 +1,14 @@
+import { COMMITMENT_KOLOMMEN } from './kolommen';
 import type { Database, Tables } from '../../lib/database.types';
+import type { Database as GecorrigeerdeDatabase } from '../../lib/database.types.correcties';
 import { reportError } from '../../lib/observability';
 import { supabase } from '../../lib/supabase';
 import { t } from '../../shared/i18n';
 import { invoerfout, type Resultaat } from '../../shared/api';
+import { now, type UserClock } from '../../shared/time';
 
 import { commitmentSchema, type CommitmentInvoer } from './commitment-schemas';
+import { belofteFoutsleutel, belofteperiode, strafFoutsleutel } from './weekbelofte';
 
 // ⚠️ Opnieuw geëxporteerd zodat de aanroepers via `modules/<naam>/index.ts`
 //    ongemoeid blijven. De definitie staat sinds 25-08-2026 in `shared/api`;
@@ -67,7 +71,27 @@ export type Commitment = Pick<
   | 'status'
   | 'confirmed_at'
   | 'created_at'
->;
+> & NogNietInTypes;
+
+/**
+ * De week van een weekbelofte (migratie 0312), die de gegenereerde typen nog niet
+ * kennen — QS8-760.
+ *
+ * ⚠️ **Tijdelijk, en waarom hier en niet in het gegenereerde bestand.** De kolommen
+ *    bestaan pas op productie na de uitrol van 0312, en `types:db` leest productie.
+ *    Met de hand in `database.types.ts` is de vorm die bij de eerste hergeneratie
+ *    stil verdwijnt (QS8-569). Zodra 0312 uitgerold is: `npm run types:db`, en dit
+ *    type verdwijnt; `periode_start` komt dan uit de `Pick` hierboven. Zelfde
+ *    vorm als `NogNietInTypes` in `src/modules/auth/profile.ts`.
+ *
+ * ⚠️ **Niet optioneel.** `fetchCommitments()` en `maak()` vragen de kolom op; een
+ *    ontbrekende kolom zou een belofte als doelstraf laten lezen, en dat is
+ *    precies wat dit issue weghaalt. `null` = een doelstraf of een beloning.
+ */
+export interface NogNietInTypes {
+  readonly periode_start: string | null;
+}
+
 export type CommitmentGebeurtenis = Tables<'commitment_events'>;
 
 
@@ -118,7 +142,7 @@ export async function fetchCommitments(goalId: string): Promise<readonly Commitm
     //    per kolom en ligt `tz` erbuiten — de begunstigde groep leest deze rij
     //    mee zodra een straf verschuldigd wordt. PostgREST geeft bij een `*`
     //    dan 42501 en niet stilzwijgend minder kolommen.
-    .select('id, goal_id, type, body, image_url, beneficiary_group_id, beneficiary_user_id, status, confirmed_at, created_at')
+    .select<string, Commitment>(COMMITMENT_KOLOMMEN)
     .eq('goal_id', goalId)
     .order('created_at', { ascending: true });
 
@@ -320,6 +344,217 @@ export async function zetStraf(
   );
 }
 
+/** De beloftestand van één doel — QS8-761. */
+export interface BelofteStand {
+  /** De recentste weekbeloftes, nieuwste eerst. */
+  readonly beloftes: readonly Commitment[];
+  /** Staat er een doelstraf op `set` of `due`? Die sluit een belofte uit (0314). */
+  readonly doelstrafOpen: boolean;
+}
+
+/** Hoeveel weekbeloftes het scherm terugkijkt: de lopende en de vorige weken. */
+const BELOFTES_TERUG = 5;
+
+/**
+ * De weekbeloftes en de open doelstraf van één doel — QS8-761.
+ *
+ * ⚠️ **Begrensd, anders dan `fetchCommitments()`** (regel 10): met 52 beloftes
+ *    per doel per jaar groeit die lijst onbeperkt (gemeld bij x.3). Het scherm
+ *    heeft de lopende belofte en die van deze week nodig; vijf is ruim.
+ *
+ * ⚠️ Werpt bij een fout: "geen belofte" is een bewering, geen terugval (regel 16).
+ */
+export async function fetchBelofteStand(goalId: string): Promise<BelofteStand> {
+  const db = supabase();
+
+  const [beloftes, doelstraf] = await Promise.all([
+    db
+      .from('commitments')
+      .select<string, Commitment>(COMMITMENT_KOLOMMEN)
+      .eq('goal_id', goalId)
+      .eq('type', 'penalty')
+      .not('periode_start', 'is', null)
+      .order('created_at', { ascending: false })
+      .limit(BELOFTES_TERUG),
+    db
+      .from('commitments')
+      .select('id')
+      .eq('goal_id', goalId)
+      .eq('type', 'penalty')
+      .is('periode_start', null)
+      // Open = `set` of `due`: een doelstraf kent verder alleen `resolved` en `cancelled`.
+      .neq('status', 'cancelled')
+      .neq('status', 'resolved')
+      .limit(1),
+  ]);
+
+  const fout = beloftes.error ?? doelstraf.error;
+  if (fout) {
+    reportError(fout, 'commitments.belofte.stand', { goal_id: goalId });
+    throw new Error(t('belofte.fout.laden'));
+  }
+
+  return { beloftes: beloftes.data ?? [], doelstrafOpen: (doelstraf.data ?? []).length > 0 };
+}
+
+/** Wie je als getuige van een weekbelofte kunt aanwijzen — QS8-761. */
+export interface BelofteBegunstigden {
+  readonly groepen: readonly { readonly id: string; readonly naam: string }[];
+  readonly getuigen: readonly MogelijkeBegunstigde[];
+}
+
+/**
+ * De groepen en mensen die een weekbelofte mogen zien — QS8-761.
+ *
+ * ⚠️ **Niet `fetchMogelijkeBegunstigden()`, en dat is de grens van 0314.**
+ *    `weekbelofte_begunstigde_bekend()` weigert een automatisch gevormde groep
+ *    (onbekenden, QS8-230) en een getuige die je alleen uit zo'n groep kent. De
+ *    lijst voor een doelstraf filtert daar niet op; hergebruiken zou mensen
+ *    aanbieden die de database weigert. Dezelfde voorwaarden als de functie:
+ *    jouw lidmaatschap niet `inactive`, de groep niet `archived` en niet
+ *    `automatisch`, het lid niet `inactive`.
+ *
+ * ⚠️ **Werpt bij een fout, anders dan `fetchMogelijkeBegunstigden()`.** Een
+ *    lege lijst betekent op het beloftescherm "je hebt geen getuige", en dat is
+ *    een bewering die je bij een mislukte vraag niet mag doen (regel 16).
+ *
+ * ⚠️ Twee query's en geen N+1 (regel 12), allebei begrensd (regel 10); dezelfde
+ *    daken als hierboven. Ongemeten: of honderd kandidaten volstaan.
+ */
+export async function fetchBelofteBegunstigden(): Promise<BelofteBegunstigden> {
+  const db = supabase();
+
+  const { data: sessie } = await db.auth.getUser();
+  const ik = sessie.user?.id ?? '';
+  if (ik === '') return { groepen: [], getuigen: [] };
+
+  // ⚠️ Vanuit `groups` met één ingebedde kolom, en niet vanuit `group_members`
+  //    met `groups!inner(id, name, …)`: `kolomrechten:controle` knipt een
+  //    selectie op komma's en las `name` dan als kolom van `group_members`.
+  const mijn = await db
+    .from('groups')
+    .select('id, name, group_members!inner(user_id)')
+    .eq('group_members.user_id', ik)
+    .neq('group_members.status', 'inactive')
+    .eq('automatisch', false)
+    .neq('status', 'archived')
+    .limit(MAX_GROEPEN);
+
+  if (mijn.error) {
+    reportError(mijn.error, 'commitments.belofte.groepen');
+    throw new Error(t('belofte.fout.laden'));
+  }
+
+  const groepen = (mijn.data ?? []).map((g) => ({ id: g.id, naam: g.name }));
+  if (groepen.length === 0) return { groepen: [], getuigen: [] };
+
+  const leden = await db
+    .from('group_members')
+    .select('group_id, user_id, profiles(display_name)')
+    .in('group_id', groepen.map((g) => g.id))
+    .neq('user_id', ik)
+    .neq('status', 'inactive')
+    .limit(MAX_KANDIDATEN);
+
+  if (leden.error) {
+    reportError(leden.error, 'commitments.belofte.leden');
+    throw new Error(t('belofte.fout.laden'));
+  }
+
+  const gezien = new Map<string, MogelijkeBegunstigde>();
+  for (const rij of leden.data ?? []) {
+    const id = rij.user_id as string;
+    if (gezien.has(id)) continue;
+    const profiel = rij.profiles as { display_name?: string | null } | null;
+    gezien.set(id, { id, naam: profiel?.display_name ?? t('commitment.begunstigde.naamloos') });
+  }
+
+  // ⚠️ **Een groep waarin alleen jij zit, is geen getuige** (security-ronde, M1):
+  //    de bevestigstap zegt dat de groep je belofte kan lezen, en dan leest er
+  //    niemand. De database staat zo'n groep nog toe; zie `docs/ENGINEER-REVIEW.md`.
+  const bezet = new Set((leden.data ?? []).map((rij) => rij.group_id as string));
+  return { groepen: groepen.filter((g) => bezet.has(g.id)), getuigen: [...gezien.values()] };
+}
+
+// ⚠️ Het gecorrigeerde type: `tz` zet een trigger (0280), zie `database.types.correcties.ts`.
+type CommitmentInsert = GecorrigeerdeDatabase['public']['Tables']['commitments']['Insert'];
+
+/**
+ * De rij van een weekbelofte. `periode_start` staat nog niet in de gegenereerde
+ * typen (zie `NogNietInTypes`); de rij wordt daarom hier opgebouwd en als
+ * `Insert` teruggegeven, de vorm van `naarKolommen()` in `modules/auth`.
+ * ⚠️ Verdwijnt zodra `types:db` na 0312 opnieuw gedraaid is.
+ * ⚠️ **Staat vóór `gaWeekbelofteAan()`, en dat draagt.** `kolomrechten:controle`
+ *    leest de insert-aanroep via de eerste `const rij` in dit bestand
+ *    (`velduitLokaal()`), dezelfde vorm als `naarKolommen()` en `const update`.
+ */
+function belofterij(goalId: string, body: string, begunstigde: Begunstigde, start: string): CommitmentInsert {
+  const rij: CommitmentInsert & NogNietInTypes = {
+    goal_id: goalId,
+    type: 'penalty',
+    body,
+    image_url: null,
+    beneficiary_group_id: begunstigde.soort === 'groep' ? begunstigde.id : null,
+    beneficiary_user_id: begunstigde.soort === 'persoon' ? begunstigde.id : null,
+    confirmed_at: 'now',
+    periode_start: start,
+  };
+  return rij;
+}
+
+/**
+ * Gaat een weekbelofte aan — QS8-761 (x.4 van de poort QS8-744).
+ *
+ * ⚠️⚠️ **`periode_start` komt uit `belofteperiode()` en nergens anders**, en
+ *    wordt hier opnieuw uitgerekend in plaats van overgenomen van het scherm. De
+ *    gebruiker bevestigde een wéék (`bevestigdeStart`); is die week sinds het
+ *    tonen van de bevestigstap verstreken, dan gaat er niets de deur uit. Anders
+ *    bevestigt hij week A en legt de app week B vast, en domeinregel 5 eist dat
+ *    een consequentie bevestigd is zoals ze vastgelegd wordt (de les van
+ *    QS8-507 over de geschoonde tekst, nu voor de periode).
+ *
+ * ⚠️ **Geen `periode_einde`, geen `status`, geen `tz`.** Het einde zet de
+ *    trigger `bevries_belofteperiode()`, de zone `bevries_commitmentzone()`, en
+ *    voor geen van drieën heeft een client een INSERT-grant (42501).
+ *
+ * ⚠️ De bevestiging is het aanroepen zelf: het scherm roept dit alleen aan
+ *    vanuit de aparte bevestigstap (`confirmed_at: 'now'`, NOT NULL sinds 0001).
+ */
+export async function gaWeekbelofteAan(
+  goalId: string,
+  invoer: CommitmentInvoer,
+  begunstigde: Begunstigde,
+  klok: UserClock,
+  bevestigdeStart: string,
+): Promise<Resultaat<Commitment>> {
+  const gevalideerd = commitmentSchema.safeParse(invoer);
+  if (!gevalideerd.success) {
+    return { ok: false, melding: invoerfout(gevalideerd.error, t('commitment.fout.invoer')) };
+  }
+  if (!begunstigde.id) return { ok: false, melding: t('commitment.fout.geen_begunstigde') };
+
+  const periode = belofteperiode(klok, now());
+  if (periode.start !== bevestigdeStart) return { ok: false, melding: t('belofte.fout.week_voorbij') };
+
+  const rij = belofterij(goalId, gevalideerd.data.body, begunstigde, periode.start);
+
+  const { data, error } = await supabase()
+    .from('commitments')
+    .insert(rij)
+    .select<string, Commitment>(COMMITMENT_KOLOMMEN)
+    .single();
+
+  if (error) {
+    const sleutel = belofteFoutsleutel(error);
+    // Een weigering die de gebruiker zelf kan oplossen is geen storing; alleen
+    // de terugval gaat naar Sentry (de vorm van `weekbelofte_loopt`, 0313).
+    if (sleutel === 'commitment.fout.vastleggen') reportError(error, 'commitments.belofte', { goal_id: goalId });
+    return { ok: false, melding: t(sleutel) };
+  }
+
+  return { ok: true, waarde: data };
+}
+
 async function maak(
   goalId: string,
   type: 'reward' | 'penalty',
@@ -348,12 +583,13 @@ async function maak(
       // `status` staat er bewust niet bij. De database staat alleen 'set' toe
       // bij een insert (0006); meesturen zou suggereren dat er iets te kiezen is.
     })
-    .select('id, goal_id, type, body, image_url, beneficiary_group_id, beneficiary_user_id, status, confirmed_at, created_at')
+    .select<string, Commitment>(COMMITMENT_KOLOMMEN)
     .single();
 
   if (error) {
-    reportError(error, 'commitments.create', { goal_id: goalId, name: type });
-    return { ok: false, melding: t('commitment.fout.vastleggen') };
+    const sleutel = strafFoutsleutel(error);
+    if (sleutel === 'commitment.fout.vastleggen') reportError(error, 'commitments.create', { goal_id: goalId, name: type });
+    return { ok: false, melding: t(sleutel) };
   }
 
   // Geen logregel hier: de trigger `commitments_audit` heeft er al een

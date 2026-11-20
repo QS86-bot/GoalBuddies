@@ -25,7 +25,8 @@ import { restMelding } from './tellerrest';
  *    de eerste in de volgorde wint — niet de beste.
  */
 export default function setup(): () => void {
-  if (!process.env.RLS_DOEL) return () => {};
+  // Alleen `lokaal` meet tegen de lokale database; productie kijkt niet in psql.
+  if (process.env.RLS_DOEL !== 'lokaal') return () => {};
 
   const melding = niveauMelding(registerVanDatabase());
   if (melding !== null) throw new Error(melding);

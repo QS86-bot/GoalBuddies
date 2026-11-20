@@ -109,3 +109,74 @@ describe('de randen', () => {
     expect(zonderCommentaar('a\n   \nb')).toBe('a\n   \nb');
   });
 });
+
+// ---------------------------------------------------------------------------
+
+/**
+ * QS8-709: **een `/*` in een string of template is geen commentaar.**
+ *
+ * 📏 De vorm die dit kostte: `` const a = [`${app}/**`]; process.exit(1); /** later *\/ ``.
+ *    De oude knip las `/**` uit de template als begin van een blok en at alles tot
+ *    de volgende `*\/` op — dus ook de `process.exit`. Gemeten over 892 bronbestanden:
+ *    in 60 bestanden at hij code op (scripts/ en tests/, nul in src/ en app/).
+ */
+describe('een blokopening in een string is geen commentaar (QS8-709)', () => {
+  it('laat code staan achter `/**` in een template, ook met een `*/` verderop', () => {
+    const bron = 'const a = [`${app}/**`];\nprocess.exit(1);\n/** later */\nconst b = 2;';
+    const uit = zonderCommentaar(bron);
+
+    expect(uit).toContain('process.exit(1);');
+    expect(uit).toContain('const b = 2;');
+    expect(uit).not.toContain('later');
+  });
+
+  it.each([
+    "const a = 'goalbuddies://**'; run(); /* x */",
+    'const a = "http://localhost:8081/**"; run(); /* x */',
+    "const re = /'/; run(); /* x */",
+    'const re = /`/; run(); /* x */',
+    "const re = /[/*]/; run(); /* x */",
+  ])('laat de code staan in %s', (bron) => {
+    const uit = zonderCommentaar(bron);
+
+    expect(uit).toContain('run();');
+    expect(uit).not.toContain('x */');
+  });
+
+  it('laat een `*/` in een string staan en knipt het blok erna wel', () => {
+    const uit = zonderCommentaar("const s = '*/'; keep(); /* weg */ end();");
+
+    expect(uit).toContain("'*/'");
+    expect(uit).toContain('keep();');
+    expect(uit).toContain('end();');
+    expect(uit).not.toContain('weg');
+  });
+
+  it('volgt een template in een template-expressie', () => {
+    const bron = 'const a = `x ${`${b}/**`} y`; keep(); /* weg */';
+    const uit = zonderCommentaar(bron);
+
+    expect(uit).toContain('keep();');
+    expect(uit).not.toContain('weg');
+  });
+
+  it('knipt een regelcommentaar dat in een template staat niet weg', () => {
+    const bron = 'const a = `\n// geen commentaar\n`;';
+
+    expect(zonderCommentaar(bron)).toBe(bron);
+  });
+
+  it('knipt een JSDoc-blok en de JSX-vorm nog steeds', () => {
+    const uit = zonderCommentaar('/** weg */\n{/* ook weg */}\nkeep();');
+
+    expect(uit).not.toContain('weg');
+    expect(uit).toContain('keep();');
+  });
+
+  it('een deling is geen regex', () => {
+    const uit = zonderCommentaar("const a = b / c; const t = 'x'; keep(); /* weg */");
+
+    expect(uit).toContain('keep();');
+    expect(uit).not.toContain('weg');
+  });
+});

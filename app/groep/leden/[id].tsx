@@ -1,4 +1,4 @@
-import { useLocalSearchParams } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 
@@ -232,6 +232,7 @@ function LidKaart({
   onBlokkeer,
   onZetEruit,
 }: KaartProps) {
+  const router = useRouter();
   return (
     <Card>
       <View style={styles.kop}>
@@ -241,8 +242,18 @@ function LidKaart({
 
       {lid.role === 'admin' ? <Caption>{t('leden.beheerder')}</Caption> : null}
 
+      {/* QS8-750: het profiel; de database beslist wat erop staat. */}
+      <Button
+        variant="stil"
+        block
+        accessibilityLabel={`${t('profiel_ander.ingang_knop')}: ${lid.display_name}`}
+        onPress={() => router.push(`/mensen/${lid.user_id}`)}
+      >
+        {ikZelf ? t('profiel_ander.ingang_zelf') : t('profiel_ander.ingang_knop')}
+      </Button>
+
       {/*
-        ⚠️ **Op je eigen rij staat geen enkele knop**, en dat is geen weggelaten
+        ⚠️ **Op je eigen rij staat geen knop om te melden of te blokkeren**, en dat is geen weggelaten
            functionaliteit: jezelf melden weigert de database (`self`), jezelf
            blokkeren ook, en jezelf uitzetten hoort via `verlaat_groep()` te
            lopen omdat daar de overdracht in zit. Drie knoppen die alle drie een

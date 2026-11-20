@@ -43,7 +43,7 @@ Terugdraaien kan in één regel: de `push`-tak van `modusUit()`. Dan is de push-
 
 ## Wat de controle op een PR niet meer ziet
 
-1. **Een advisory die al in `main` zat en die de PR niet aanraakt.** Dat is het besluit zelf. Het signaal verhuist naar `main` en het wekelijkse schema, waar het wel rood wordt.
+1. **Een advisory die al in `main` zat en die de PR niet aanraakt.** Dat is het besluit zelf. Het signaal verhuist naar `main` en het wekelijkse schema, waar het wel rood wordt. ⚠️ **Sinds 19-11-2026 (QS8-707) is dat achterhaald:** `main` toetst alleen de vorm van het register en het strikte oordeel draait dagelijks in `advisories.yml`; zie `docs/decisions/2026-11-19-de-advisory-database-is-geen-eigenschap-van-main.md`.
 2. **Een versiewissel binnen dezelfde advisory.** Gaat een PR van een kwetsbare versie van een pakket naar een andere kwetsbare versie met dezelfde advisory-nummers, dan is het paar gelijk en blijft het groen.
 3. **Een extra exemplaar van een pakket dat het register volledig dekt.** Dat dekte strikt ook; de teller bestaat voor het pakket dat het register níet dekt.
 4. **Een eigen register-rij in dezelfde PR.** `NAGEKEKEN` is het register van de PR zelf: een PR die een dependency met een advisory toevoegt mét een rij komt door, zodat zo'n PR groen kan worden. De weging van die rij (staat de marker echt niet in `dist/`) is de review, niet deze controle. Ernst en reparatie van die rij worden wél gelezen (`registerSchade`), maar alleen voor wat de PR *verschuift*; een rij voor een pakket dat op de PR en de basis allebei hetzelfde meldt, wordt niet opnieuw getoetst.

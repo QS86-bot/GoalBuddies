@@ -40,78 +40,83 @@ import { beoordeelOmgeving } from './migratieregister-omgeving.mjs';
 import { bouwRapport, isFout, vergelijkFuncties } from './functies-vergelijk.mjs';
 import { pathToFileURL } from 'node:url';
 
-// ⚠️ Het werk staat in een blok achter de main-guard, en niet in een
-//    `hoofd()`: zo doet importeren niets (QS8-608) zonder dat er een lange
-//    functie bijkomt die coderegel 15 zou breken. Top-level `await` mag
-//    binnen dit blok — gemeten, niet aangenomen.
-if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+const ONTBREEKT =
+  'geen EXPO_PUBLIC_SUPABASE_URL en SUPABASE_SERVICE_ROLE_KEY in de omgeving.\n' +
+  '  Deze controle legt productie naast de lokale stack; zie stap 20 van /audit.';
+
+async function uitProductie(url, serviceRoleKey) {
+  const antwoord = await fetch(`${url}/rest/v1/rpc/functie_vingerafdrukken`, {
+    method: 'POST',
+    headers: {
+      apikey: serviceRoleKey,
+      Authorization: `Bearer ${serviceRoleKey}`,
+      'Content-Type': 'application/json',
+    },
+    body: '{}',
+    // ⚠️ Elke externe call heeft een timeout — CLAUDE.md, coderegel 14.
+    signal: AbortSignal.timeout(20_000),
+  });
+
+  if (!antwoord.ok) {
+    throw new Error(
+      `Productie lezen lukte niet (${antwoord.status}). Bestaat migratie 0105 al ` +
+        'op dit project, en draai je met de service-role-key?',
+    );
+  }
+
+  return antwoord.json();
+}
+
+function uitLokaal() {
+  const args = psqlArgumenten('select * from functie_vingerafdrukken();');
+
+  const uitvoer = execFileSync('psql', args, { encoding: 'utf8' });
+
+  return uitvoer
+    .split('\n')
+    .filter((regel) => regel.trim() !== '')
+    .map((regel) => {
+      const [naam, kaal, ruw] = regel.split('|');
+      return { naam, kaal, ruw };
+    });
+}
+
+/**
+ * Het werk, met een exitcode als uitkomst.
+ *
+ * ⚠️ **Een `hoofd()` die de code teruggeeft, en geen blok met het proces-exit
+ *    van Node** — QS8-704. Hier stond het werk in een blok achter de
+ *    main-guard, met de exit middenin, ná de `await fetch` naar productie. Dat
+ *    crasht op Windows (QS8-684). De twee bronfuncties staan daarom op
+ *    moduleniveau, zodat `hoofd()` onder de vijftig regels blijft (regel 15) en
+ *    importeren nog steeds niets doet (QS8-608).
+ */
+async function hoofd() {
   config({ path: '.env', quiet: true });
 
   const url = process.env.EXPO_PUBLIC_SUPABASE_URL;
   const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
   const streng = process.argv.includes('--streng') || process.env.FUNCTIES_CONTROLE_STRENG === '1';
-
-  const ONTBREEKT =
-    'geen EXPO_PUBLIC_SUPABASE_URL en SUPABASE_SERVICE_ROLE_KEY in de omgeving.\n' +
-    '  Deze controle legt productie naast de lokale stack; zie stap 20 van /audit.';
-
   const oordeel = beoordeelOmgeving({ url, sleutel: serviceRoleKey, streng });
 
   if (oordeel === 'ontbreekt') {
     console.error(`✗ functies-controle kon niet draaien — ${ONTBREEKT}`);
-    process.exit(1);
+    return 1;
   }
 
   if (oordeel === 'overslaan') {
     console.error(`⚠ functies-controle: OVERGESLAGEN — ${ONTBREEKT}`);
-    process.exit(0);
-  }
-
-  async function uitProductie() {
-    const antwoord = await fetch(`${url}/rest/v1/rpc/functie_vingerafdrukken`, {
-      method: 'POST',
-      headers: {
-        apikey: serviceRoleKey,
-        Authorization: `Bearer ${serviceRoleKey}`,
-        'Content-Type': 'application/json',
-      },
-      body: '{}',
-      // ⚠️ Elke externe call heeft een timeout — CLAUDE.md, coderegel 14.
-      signal: AbortSignal.timeout(20_000),
-    });
-
-    if (!antwoord.ok) {
-      throw new Error(
-        `Productie lezen lukte niet (${antwoord.status}). Bestaat migratie 0105 al ` +
-          'op dit project, en draai je met de service-role-key?',
-      );
-    }
-
-    return antwoord.json();
-  }
-
-  function uitLokaal() {
-    const args = psqlArgumenten('select * from functie_vingerafdrukken();');
-
-    const uitvoer = execFileSync('psql', args, { encoding: 'utf8' });
-
-    return uitvoer
-      .split('\n')
-      .filter((regel) => regel.trim() !== '')
-      .map((regel) => {
-        const [naam, kaal, ruw] = regel.split('|');
-        return { naam, kaal, ruw };
-      });
+    return 0;
   }
 
   let productie;
   let lokaal;
 
   try {
-    productie = await uitProductie();
+    productie = await uitProductie(url, serviceRoleKey);
   } catch (fout) {
     console.error(`✗ ${fout instanceof Error ? fout.message : String(fout)}`);
-    process.exit(1);
+    return 1;
   }
 
   try {
@@ -123,13 +128,13 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
         '  vergelijken. Start hem met `npm run rls:stack`.\n\n' +
         `  psql zei: ${fout instanceof Error ? fout.message.split('\n')[0] : String(fout)}`,
     );
-    process.exit(1);
+    return 1;
   }
 
   const uitslag = vergelijkFuncties(productie, lokaal);
 
   // ⚠️⚠️ **Eerst álles afdrukken, dan pas afsluiten** — QS8-220. Hier stond de
-  //    commentaarmelding ná `process.exit(1)`, en dus was hij onbereikbaar zodra er
+  //    commentaarmelding ná de exit, en dus was hij onbereikbaar zodra er
   //    óók een logicaverschil was. 📏 Met productie op 0186 en de map op 0213 zijn
   //    dat er 75, dus de 21 functies zonder commentaar zijn nooit afgedrukt terwijl
   //    de vergelijking ze al die tijd teruggaf. De volgorde staat nu vast in
@@ -140,10 +145,15 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
     if (blok.uitleg !== undefined) console.error(`\n${blok.uitleg}\n`);
   }
 
-  if (isFout(uitslag)) process.exit(1);
+  if (isFout(uitslag)) return 1;
 
   console.log(
     `functies-controle: ${productie.length} functies, logica overal gelijk` +
       (uitslag.commentaar.length > 0 ? ` (${uitslag.commentaar.length} zonder commentaar).` : '.'),
   );
+  return 0;
+}
+
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+  process.exitCode = await hoofd();
 }

@@ -274,11 +274,12 @@ describe('het doelscherm', () => {
    *    (code-critic, 05-11-2026): `enigeOfGekozen(groepen.slice(0, 1), …)` is één
    *    kandidaat en dus altijd de eerste, en dat ziet een telling van bindingen
    *    niet. In de volgorde van het bestand: de vervangende getuige, de
-   *    begunstigde groep, de begunstigde persoon, de hulpvraag.
+   *    begunstigde groep, de begunstigde persoon, de hulpvraag, en sinds QS8-753 de
+   *    groep van het adempauzebericht (`useAdempauzeBericht`).
    */
   it('geeft enigeOfGekozen() de hele lijst en de rauwe keuze', () => {
-    expect(argumentenVan(inhoud, 'enigeOfGekozen', 0)).toEqual(['mensen', 'groepen', 'mensen', 'groepen']);
-    expect(argumentenVan(inhoud, 'enigeOfGekozen', 1)).toEqual(['gekozen', 'groepId', 'gekozenPersoon', 'groepId']);
+    expect(argumentenVan(inhoud, 'enigeOfGekozen', 0)).toEqual(['mensen', 'groepen', 'mensen', 'groepen', 'groepen']);
+    expect(argumentenVan(inhoud, 'enigeOfGekozen', 1)).toEqual(['gekozen', 'groepId', 'gekozenPersoon', 'groepId', 'groepId']);
   });
 
   it('bindt de ontvanger van de hulpvraag, de begunstigde van de straf en de vervangende getuige aan de keuze', () => {
@@ -289,7 +290,9 @@ describe('het doelscherm', () => {
   });
 
   it('stuurt de hulpvraag naar de gebonden groep', () => {
-    expect(argumentenVan(inhoud, 'stuurBericht', 0)).toEqual(['gekozenGroep.group_id']);
+    // De tweede aanroep is het adempauzebericht (QS8-753): `groupId` is daar de
+    // `keuze.groupId` die `useAdempauzeBericht` uit `enigeOfGekozen()` haalt.
+    expect(argumentenVan(inhoud, 'stuurBericht', 0)).toEqual(['gekozenGroep.group_id', 'groupId']);
   });
 
   /**
@@ -317,6 +320,46 @@ describe('het doelscherm', () => {
     for (const sleutel of ['hulpvraag.kies_eerst', 'straf.kies_groep_eerst', 'straf.kies_persoon_eerst', 'stuurloos.kies_eerst']) {
       expect(inhoud, `${sleutel} wordt niet getoond`).toContain(`'${sleutel}'`);
     }
+  });
+});
+
+/**
+ * Het blok van `useAdempauzeBericht` (QS8-753) — de functie van het adempauzebericht.
+ *
+ * ⚠️ Hier telt ook `.find(` als stille eerste: in dit blok is er geen predicaat dat
+ *    iets anders mag vragen dan `enigeOfGekozen()`, en `groepId || (groepen.find(Boolean)
+ *    ?.id ?? '')` is `[0]` met een omweg die de sweep hierboven niet ziet.
+ */
+export function adempauzeBlok(inhoud: string): string {
+  const begin = inhoud.indexOf('function useAdempauzeBericht(');
+  const eind = inhoud.indexOf('\nfunction ', begin + 1);
+  return begin < 0 ? '' : inhoud.slice(begin, eind < 0 ? undefined : eind);
+}
+
+export function stilleEersteInBlok(blok: string): readonly string[] {
+  return [...stilleEerste(blok), ...(blok.match(/\.find\(/g) ?? [])];
+}
+
+describe('het adempauzebericht', () => {
+  const blok = adempauzeBlok(zonderCommentaar(readFileSync(DOEL, 'utf8')));
+
+  it('leest zijn groep uit enigeOfGekozen() en geeft precies die door als keuze.groupId', () => {
+    expect(blok).not.toBe('');
+    expect(bindingen(blok, 'gekozen')).toBe(1);
+    expect(argumentenVan(blok, 'enigeOfGekozen', 0)).toEqual(['groepen']);
+    expect(argumentenVan(blok, 'enigeOfGekozen', 1)).toEqual(['groepId']);
+    expect(blok).toMatch(/keuze:\s*\{[^}]*groupId:\s*gekozen\b/);
+  });
+
+  it('kent geen stille eerste, ook niet als find', () => {
+    expect(stilleEersteInBlok(blok)).toEqual([]);
+  });
+
+  it('ijking: ziet de vormen die het moet zien en laat de rest met rust', () => {
+    expect(stilleEersteInBlok("groepId || (groepen.find(Boolean)?.id ?? '')")).toEqual(['.find(']);
+    expect(stilleEersteInBlok("groepen[0]?.id ?? ''")).toEqual(['groepen[0]']);
+    expect(stilleEersteInBlok("enigeOfGekozen(groepen, groepId, (g) => g.id)?.id ?? ''")).toEqual([]);
+    expect(adempauzeBlok('function andere() {}')).toBe('');
   });
 });
 

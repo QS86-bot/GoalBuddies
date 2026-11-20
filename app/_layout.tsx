@@ -1,7 +1,7 @@
 import Constants from 'expo-constants';
-import { Stack, useRouter, useSegments } from 'expo-router';
+import { Stack, usePathname, useRouter, useSegments } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, type ReactNode } from 'react';
 import { ActivityIndicator, Platform, View } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
@@ -27,6 +27,7 @@ import {
   registreerPushToken,
   zetPushBron,
 } from '@/modules/notifications';
+import { UiterlijkProvider, useKoppelUiterlijk } from '@/modules/uiterlijk/react';
 import { clientEnv } from '@/lib/env';
 import {
   koppelGlobaleFouten,
@@ -36,32 +37,59 @@ import {
   setErrorSink,
 } from '@/lib/observability';
 import { apparaatVoorkeuren, t, zetTaalUitApparaat } from '@/shared/i18n';
-import { ThemeProvider, useTheme } from '@/shared/theme';
+import { useTheme } from '@/shared/theme';
+import { RootVangnet, useGehydrateerd } from '@/shared/ui';
 
 /**
  * De wortel van de app. Alles wat elk scherm nodig heeft, hangt hier.
  *
- * ⚠️ De volgorde van de providers is niet vrij. `ThemeProvider` staat bóven de
+ * ⚠️ De volgorde van de providers is niet vrij. `UiterlijkProvider` (die het `ThemeProvider` draagt) staat bóven de
  *    navigatie, anders valt hij bij elke routewissel weg en flitst het verkeerde
  *    thema. En `ProfielProvider` staat ónder `SessionProvider`, want zonder
  *    sessie is er geen profiel om te laden.
  */
 export default function RootLayout() {
+  // ⚠️ QS8-710: het vangnet staat BOVEN alle providers en niet erbinnen. Een fout
+  //    in `ThemeProvider`, `Screen` of `Taakbalk` valt dan in een foutstaat die
+  //    geen van die dingen gebruikt (`RootVangnet`).
   return (
-    <SafeAreaProvider>
-      <ThemeProvider>
-        <SessionProvider>
-          <ProfielProvider>
-            <Shell />
-          </ProfielProvider>
-        </SessionProvider>
-      </ThemeProvider>
-    </SafeAreaProvider>
+    <PadVangnet>
+      <SafeAreaProvider>
+        <UiterlijkProvider>
+          <SessionProvider>
+            <ProfielProvider>
+              <Shell />
+            </ProfielProvider>
+          </SessionProvider>
+        </UiterlijkProvider>
+      </SafeAreaProvider>
+    </PadVangnet>
   );
+}
+
+/**
+ * Het vangnet met het pad als resetsleutel: een padwissel haalt de foutstaat weg.
+ *
+ * ⚠️ **`usePathname()` staat hier en niet in `RootLayout`.** Dat hook abonneert
+ *    op de routestore; stond hij in `RootLayout`, dan maakte elke navigatie daar
+ *    een nieuw kindelement en renderden alle providers, `Shell` en `Stack` mee.
+ *    In deze wrapper blijft `children` hetzelfde element en slaat React de rest
+ *    over (code-critic, QS8-710).
+ */
+function PadVangnet({ children }: { readonly children: ReactNode }) {
+  const pad = usePathname();
+
+  return <RootVangnet resetSleutel={pad}>{children}</RootVangnet>;
 }
 
 function Shell() {
   const theme = useTheme();
+  // ⚠️ QS8-740: wat van de taal afhangt wordt pas getekend ná de hydratie. De
+  //    prerender (`expo export`) kent het apparaat niet en rendert in de taal van
+  //    de bouwmachine; elke client met een andere taal gaf daardoor React-fout
+  //    #418. Server en eerste clientronde tekenen nu hetzelfde: alleen de
+  //    achtergrond. Zie `useGehydrateerd`.
+  const klaar = useGehydrateerd();
 
   return (
     // De achtergrondkleur staat óók hier, niet alleen op elk scherm. Tijdens een
@@ -69,18 +97,36 @@ function Shell() {
     // wit te zijn in de donkere modus.
     <View style={{ flex: 1, backgroundColor: theme.colors.bg }}>
       <StatusBar style={theme.dark ? 'light' : 'dark'} />
-      <Routewacht />
-      <Uitnodigingswacht />
-      <Pushwacht />
-      <Tijdzonewacht />
-      <Stack
-        screenOptions={{
-          headerShown: false,
-          contentStyle: { backgroundColor: theme.colors.bg },
-        }}
-      />
+      {klaar ? (
+        <>
+          <Routewacht />
+          <Uitnodigingswacht />
+          <Pushwacht />
+          <Tijdzonewacht />
+          <Uiterlijkwacht />
+          <Stack
+            screenOptions={{
+              headerShown: false,
+              contentStyle: { backgroundColor: theme.colors.bg },
+            }}
+          />
+        </>
+      ) : null}
     </View>
   );
+}
+
+/**
+ * Verzoent de uiterlijkvoorkeur met de account zodra er een sessie is — QS8-731.
+ *
+ * ⚠️ **Een wacht en geen scherm**, om dezelfde reden als `Tijdzonewacht`: de provider staat bóven de sessie
+ *    (anders flitst het thema bij elke routewissel) en kent dus zelf geen gebruiker. Zonder deze wacht blijft
+ *    de keuze op het apparaat en reist ze nooit mee.
+ */
+function Uiterlijkwacht() {
+  const { userId } = useSession();
+  useKoppelUiterlijk(userId);
+  return null;
 }
 
 /**

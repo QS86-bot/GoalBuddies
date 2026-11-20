@@ -243,6 +243,13 @@ export const MET_REDEN = {
     '`tests/scripts/edge-tijd.test.ts` om op `const a = 1; // uitleg`. Hij draagt ' +
     'sinds datzelfde issue wél de `(^|[^:])`-wacht van QS8-412 — zonder die wacht ' +
     'verklaarde hij twee uiteenlopende kopieën gelijk zodra er een URL in stond',
+  'scripts/netwerkexit-controle.mjs:zonderCommentaar':
+    'eist dat een blokcommentaar aan het begin van een regel begint. De gedeelde ' +
+    'knip vervangt elke `/* … */` en leest dan de glob `${app}/**` in een ' +
+    'template-string als commentaar; de code tot de volgende `*/` verdwijnt. ' +
+    '📏 Gemeten op 18-11-2026 (QS8-704): met de gedeelde knip viel de toets op ' +
+    'die vorm om — de vorm van PR #688. Faalt de andere kant op: een blok midden ' +
+    'in een regel blijft code en kan hoogstens te veel melden',
   'scripts/registerdrift-controle.mjs:registersIn':
     'knipt SQL (`--`) uit een functielichaam om de registerrijen te tellen; een ' +
     'JS-knip haalt daar niets weg',
@@ -266,6 +273,12 @@ export const MET_REDEN = {
     'knipt SQL-commentaar (`--`) uit een migratie; JS-commentaar komt er niet in voor',
   'scripts/pinuitzonderingen-controle.mjs:zonderCommentaar':
     'knipt SQL-commentaar (`--`) uit een functiedefinitie; JS-commentaar komt er niet in voor',
+  'scripts/deploy-workflow.mjs:zonderCommentaar':
+    'knipt YAML-commentaar (alleen hele `#`-regels) uit een workflow, niet JS — een ' +
+    'andere taal en dus een andere knip. Bewust géén `#` midden in een regel: in een ' +
+    '`run:`-blok is dat bash-inhoud, en `echo "t #$GEHEIM"` mag niet onzichtbaar ' +
+    'worden. 📏 Gemeten bij QS8-718: een knip op ` #` liet dat lek door ' +
+    '(`tests/scripts/deploy-workflow.test.ts`, mutatie "# binnen een run-blok")',
   'scripts/zonder-sql-commentaar.mjs:zonderCommentaarSql':
     'de **gedeelde SQL-knip**, de tegenhanger van de gedeelde JS-knip: `--` én ' +
     'geneste `/* */`, om enkele quotes én dollar-quotes heen, met de literalen ' +

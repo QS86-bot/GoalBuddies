@@ -6,7 +6,9 @@ import { describe, expect, it } from 'vitest';
 import { zonderCommentaar } from './roept-aan';
 
 const WORTEL = join(__dirname, '..', '..');
-const PROFIELTAB = join(WORTEL, 'app', '(tabs)', 'profiel.tsx');
+// QS8-754: de instellingen staan sinds dat issue in `src/schermen/instellingen`; Profiel heeft er alleen een ingang.
+const PROFIELTAB = join(WORTEL, 'src', 'schermen', 'instellingen', 'Instellingenscherm.tsx');
+const ACCOUNTPANEEL = join(WORTEL, 'src', 'schermen', 'instellingen', 'AccountPaneel.tsx');
 const ONBOARDING = join(WORTEL, 'app', 'onboarding', 'profiel.tsx');
 
 /**
@@ -72,7 +74,7 @@ describe('elk gedeeld profielveld is te wijzigen zonder de onboarding over te do
   it('vindt beide schermen — anders bewaakt de rest hier niets', () => {
     expect(
       () => statSync(PROFIELTAB),
-      'app/(tabs)/profiel.tsx is verdwenen of hernoemd — verhuis deze grendel mee',
+      'Instellingenscherm.tsx is verdwenen of hernoemd — verhuis deze grendel mee',
     ).not.toThrow();
     expect(
       () => statSync(ONBOARDING),
@@ -81,7 +83,10 @@ describe('elk gedeeld profielveld is te wijzigen zonder de onboarding over te do
   });
 
   it.each(GEDEELDE_VELDEN)('$veld is te wijzigen op het profieltabblad', ({ schrijft, reden }) => {
-    const bron = zonderCommentaar(readFileSync(PROFIELTAB, 'utf8'));
+    // Het schrijfpad van de naam staat in het account-paneel, de kaart zelf in het scherm.
+    const bron = zonderCommentaar(
+      readFileSync(PROFIELTAB, 'utf8') + readFileSync(ACCOUNTPANEEL, 'utf8'),
+    );
 
     expect(
       schrijft.test(bron),
@@ -119,12 +124,12 @@ describe('elk gedeeld profielveld is te wijzigen zonder de onboarding over te do
  */
 describe('de naamteller telt in de eenheid van de grens', () => {
   it('gebruikt telTekens() en niet .length', () => {
-    const bron = zonderCommentaar(readFileSync(PROFIELTAB, 'utf8'));
+    const bron = zonderCommentaar(readFileSync(ACCOUNTPANEEL, 'utf8'));
 
     const naamkaart = bron.slice(bron.indexOf('function Naamkaart'));
     expect(
       naamkaart,
-      'function Naamkaart staat niet meer in app/(tabs)/profiel.tsx — verhuis deze grendel mee',
+      'function Naamkaart staat niet meer in AccountPaneel.tsx — verhuis deze grendel mee',
     ).not.toBe('');
 
     const tot = naamkaart.indexOf('\n}\n');

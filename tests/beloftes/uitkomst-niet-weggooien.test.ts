@@ -162,7 +162,8 @@ function ongelezen(): string[] {
 /** Elke functie in `src/modules/` die met `@uitkomst-optioneel` is vrijgesteld. */
 function optioneleUitkomsten(): OptioneleUitkomst[] {
   const uit: OptioneleUitkomst[] = [];
-  for (const pad of modulebestanden()) uit.push(...optioneleUitkomstenIn(readFileSync(pad, 'utf8')));
+  for (const pad of modulebestanden())
+    uit.push(...optioneleUitkomstenIn(readFileSync(pad, 'utf8')));
   return uit;
 }
 
@@ -323,7 +324,9 @@ describe('geen enkel scherm gooit een uitkomst weg', () => {
     ).toEqual([]);
 
     expect(
-      optioneel.filter((o) => !functies.includes(o.naam)).map((o) => o.naam || '(geen functie eronder)'),
+      optioneel
+        .filter((o) => !functies.includes(o.naam))
+        .map((o) => o.naam || '(geen functie eronder)'),
       'deze markering wijst geen functie aan die een uitkomst belooft — hij vrijwaart dus niets',
     ).toEqual([]);
   });
@@ -346,7 +349,10 @@ describe('uitloggen staat vóór de instellingen', () => {
     '<TijdzoneInstelling',
     '<Meldingen',
     '<HerinneringInstelling',
-    '<ThemaKeuze',
+    // QS8-749/754: `<Ingangen />` draagt de ingangen naar Statistiek, Prestaties en Groepsprofiel; Instellingen
+    // heeft sinds QS8-754 een eigen ingang.
+    '<Ingangen',
+    '<InstellingenIngang',
     '<VieringKeuze',
   ];
 
@@ -373,17 +379,20 @@ describe('uitloggen staat vóór de instellingen', () => {
 
   /**
    * ⚠️ **De must-allow-helft, en die is hier een domeinregel en geen smaak.**
-   *    Account verwijderen hóórt moeilijk bereikbaar te zijn. Zou iemand deze
-   *    grendel "verbeteren" door ook dat naar boven te halen, dan is dat een
-   *    achteruitgang die niemand opmerkt.
+   *    Account verwijderen hóórt moeilijk bereikbaar te zijn. Sinds QS8-754 staat het niet meer op Profiel maar
+   *    achter Instellingen, onder Account, ná naam en profielfoto. Zou iemand deze grendel "verbeteren" door het
+   *    naar boven te halen of op Profiel terug te zetten, dan is dat een achteruitgang die niemand opmerkt.
    */
-  it('laat account verwijderen juist onderaan staan', () => {
-    const bron = readFileSync(SCHERM, 'utf8');
+  it('laat account verwijderen juist onderaan staan, achter Instellingen', () => {
+    const profiel = readFileSync(SCHERM, 'utf8');
+    expect(profiel).not.toContain('<AccountVerwijderen');
 
-    expect(bron.indexOf('<AccountVerwijderen />')).toBeGreaterThan(bron.indexOf('<Uitloggen />'));
-    for (const tag of INSTELLINGEN) {
-      const plek = bron.indexOf(tag);
-      if (plek > -1) expect(bron.indexOf('<AccountVerwijderen />')).toBeGreaterThan(plek);
-    }
+    const paneel = readFileSync(
+      join(WORTEL, 'src', 'schermen', 'instellingen', 'Instellingenscherm.tsx'),
+      'utf8',
+    );
+    const verwijder = paneel.indexOf('<AccountVerwijderen />');
+    expect(verwijder).toBeGreaterThan(paneel.indexOf('<Naamkaart'));
+    expect(verwijder).toBeGreaterThan(paneel.indexOf('<Avatarkaart'));
   });
 });

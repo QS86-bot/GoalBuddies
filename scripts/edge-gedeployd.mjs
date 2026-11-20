@@ -467,7 +467,7 @@ async function main() {
 
   if (melding !== null) {
     console.error(melding.tekst);
-    process.exit(melding.code);
+    return melding.code;
   }
 
   console.log(`  · project    ${ref}`);
@@ -533,7 +533,7 @@ async function main() {
         'dan niets; repareer hem voordat je hem vertrouwt.',
       ].join('\n'),
     );
-    process.exit(1);
+    return 1;
   }
 
   if (rood > 0) {
@@ -545,11 +545,11 @@ async function main() {
         'functions deploy ' + FUNCTIES.join(' ') + '`.',
       ].join('\n'),
     );
-    process.exit(1);
+    return 1;
   }
 
   console.log('edge-gedeployd: wat er draait komt overeen met wat er in de repo staat.');
-  process.exit(0);
+  return 0;
 }
 
 // ⚠️ Alleen draaien als dit bestand het startpunt is. Wordt hij geïmporteerd —
@@ -559,8 +559,15 @@ async function main() {
 //    vijf andere controlescripts. Een naamvergelijking zou bovendien ook aanslaan
 //    op een bestand dat toevallig zo eindigt.
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
-  main().catch((fout) => {
-    console.error(`  ✗ ${fout instanceof Error ? fout.message : 'onbekende fout'}`);
-    process.exit(1);
-  });
+  // ⚠️ `process.exitCode` en geen proces-exit: `main()` doet `await fetch` naar
+  //    de Management API, en daarna crasht een exit op Windows (QS8-684, QS8-704).
+  main().then(
+    (code) => {
+      process.exitCode = code;
+    },
+    (fout) => {
+      console.error(`  ✗ ${fout instanceof Error ? fout.message : 'onbekende fout'}`);
+      process.exitCode = 1;
+    },
+  );
 }

@@ -9,7 +9,9 @@ import {
 } from './interview-schemas';
 import { CATEGORIEEN } from './schemas';
 import {
+  eigenGevoelSchema,
   LEGE_VRAGENLIJST,
+  MAX_EIGEN_GEVOEL,
   MAX_FOCUSGEBIEDEN,
   patchUitVragenlijst,
   urenPerWeekUitMinuten,
@@ -227,5 +229,46 @@ describe('wat de app tegen een valkuil heeft', () => {
     for (const valkuil of VALKUILEN.filter((v) => v !== 'forget')) {
       expect(valkuilAntwoord(valkuil).route, valkuil).toMatch(/^\//);
     }
+  });
+});
+
+describe('hoe wil je je voelen (QS8-733)', () => {
+  it('stuurt geen gevoel mee als er niets gekozen is, en wist dus niets', () => {
+    const patch = patchUitVragenlijst({ ...LEGE_VRAGENLIJST, feeling: null, feeling_own: '   ' });
+
+    expect(patch).toEqual({});
+  });
+
+  it('stuurt het gevoel en de getrimde eigen tekst mee', () => {
+    const patch = patchUitVragenlijst({ ...LEGE_VRAGENLIJST, feeling: 'calm', feeling_own: '  stap voor stap ' });
+
+    expect(patch).toEqual({ feeling: 'calm', feeling_own: 'stap voor stap' });
+  });
+
+  it('telt de eigen tekst in codepunten: 60 emoji mogen, 61 niet', () => {
+    const zestig = '\u{1F600}'.repeat(MAX_EIGEN_GEVOEL);
+
+    expect(eigenGevoelSchema.safeParse(zestig).success).toBe(true);
+    expect(eigenGevoelSchema.safeParse(`${zestig}x`).success).toBe(false);
+  });
+
+  it('weigert een onbekend gevoel', () => {
+    expect(vragenlijstSchema.safeParse({ feeling: 'boos' }).success).toBe(false);
+  });
+});
+
+describe('een gevoel weghalen (QS8-733)', () => {
+  it('stuurt alleen null mee als de gebruiker het expliciet leegmaakte', () => {
+    expect(patchUitVragenlijst(LEGE_VRAGENLIJST, { feeling: true, feeling_own: true })).toEqual({
+      feeling: null,
+      feeling_own: null,
+    });
+    expect(patchUitVragenlijst(LEGE_VRAGENLIJST, {})).toEqual({});
+  });
+
+  it('laat een wisopdracht vallen als er intussen weer iets gekozen is', () => {
+    const patch = patchUitVragenlijst({ ...LEGE_VRAGENLIJST, feeling: 'proud' }, { feeling: true });
+
+    expect(patch).toEqual({ feeling: 'proud' });
   });
 });

@@ -18,7 +18,7 @@ import { invoerfout } from '../../shared/api';
  *    iets mee gaat rekenen (CLAUDE.md, correctheidsregel 7).
  */
 
-export type Profiel = Tables<'profiles'>;
+export type Profiel = Tables<'profiles'> & NogNietInTypes;
 
 /**
  * Je eigen profiel.
@@ -87,6 +87,17 @@ export async function fetchProfiel(userId: string): Promise<Profiel | null> {
 }
 
 /**
+ * ⚠️ **Tijdelijk: de twee kolommen van 0311 staan nog niet in `database.types.ts`.**
+ *    Dat bestand is een afschrift van productie en 0311 wacht op Quintens "backup
+ *    gedaan". Zodra de migratie uitgerold is: `npm run types:db`, en dit type en
+ *    zijn gebruik verdwijnen (niet met de hand in het gegenereerde bestand: QS8-569).
+ */
+export interface NogNietInTypes {
+  feeling?: string | null;
+  feeling_own?: string | null;
+}
+
+/**
  * De gevalideerde patch omzetten naar de kolommen die PostgREST krijgt.
  *
  * ⚠️ **Veld voor veld, en niet `update(gevalideerd.data)`.** Zod maakt van een
@@ -101,7 +112,7 @@ export async function fetchProfiel(userId: string): Promise<Profiel | null> {
  *    `notify_*`-velden.
  */
 function naarKolommen(velden: ProfielPatch): TablesUpdate<'profiles'> {
-  const update: TablesUpdate<'profiles'> = {};
+  const update: TablesUpdate<'profiles'> & NogNietInTypes = {};
   if (velden.display_name !== undefined) update.display_name = velden.display_name;
   if (velden.tz !== undefined) update.tz = velden.tz;
   if (velden.reminder_time !== undefined) update.reminder_time = velden.reminder_time;
@@ -152,6 +163,10 @@ function naarKolommen(velden: ProfielPatch): TablesUpdate<'profiles'> {
   if (velden.minutes_per_day !== undefined) update.minutes_per_day = velden.minutes_per_day;
   if (velden.when_i_do_it !== undefined) update.when_i_do_it = velden.when_i_do_it;
   if (velden.what_breaks_it !== undefined) update.what_breaks_it = [...velden.what_breaks_it];
+
+  // Hoe wil je je voelen — QS8-733. Zelfde regel: alleen wat er echt in de patch zit.
+  if (velden.feeling !== undefined) update.feeling = velden.feeling;
+  if (velden.feeling_own !== undefined) update.feeling_own = velden.feeling_own;
 
   return update;
 }
@@ -328,6 +343,14 @@ export async function zetWeekStartdag(
   }
 
   const uit = (data ?? {}) as { ok?: boolean; reason?: string };
+
+  // ⚠️ QS8-759 (0313): de enige weigering die een gebruiker zelf veroorzaakt en
+  //    zelf kan oplossen — wachten tot de week van zijn belofte voorbij is. Die
+  //    hoort op het scherm en niet in Sentry.
+  if (uit.ok !== true && uit.reason === 'weekbelofte_loopt') {
+    return { ok: false, melding: t('profiel.weekbelofte_loopt') };
+  }
+
   if (uit.ok !== true) {
     // ⚠️ De reden gaat naar Sentry en niet naar het scherm: `geen_profiel` en
     //    `cyclus_bevat_vandaag_niet` zijn toestanden die een gebruiker niet kan

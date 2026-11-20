@@ -42,7 +42,7 @@ Kies per bouwbare baan een eigen boom (§1). Raken twee issues dezelfde bestande
 ROL: BOUWSESSIE (docs/PROMPT-SESSIE.md §12) — baan <A|B>, issue <QS8-nnn>
 
 Lees docs/PROMPT-SESSIE.md §1 t/m §3, §6, §10, §11 en §12, daarna het issue én al zijn reacties.
-1. Claim: npm run claim -- --hier   (je werkt op de tak die het platform je gaf)
+1. Claim: npm run claim -- --hier   (je werkt op de tak die het platform je gaf; lokaal zonder vaste tak: npm run claim -- <naam>, die maakt een eigen worktree, PROMPT-SESSIE §1)
 2. Bouw tegen de acceptatiecriteria in het issue. Schrijf vóór je begint op wat "klaar" is.
 3. Draai npm run poort. "Ongemeten" is geen groen; zeg wat je niet kon meten.
 4. Reviewagents naar risico (CLAUDE.md regel 19; §6). Raakt het auth, RLS, punten, goedkeuring, commitments of een groepszichtbaar oppervlak: security-reviewer direct.

@@ -16,6 +16,7 @@ import {
   Button,
   Caption,
   Card,
+  Paginakop,
   Screen,
   Subheading,
   TeBeoordelenKaart,
@@ -46,7 +47,7 @@ export default function GroepTab() {
   const { data: groepen, loading, error, herlaad } = useAsync(() => fetchMijnGroepen(), []);
 
   return (
-    <Screen title={t('groepen.titel')}>
+    <Screen title={t('groepen.titel')} kop={<Paginakop titel={t('groepen.titel')} />}>
       {/*
         ⚠️ Sinds QS8-148 staat deze kaart óók op het hoofdscherm, uit één
            component met één hook. Twee kopieën zouden na de eerste wijziging
@@ -63,6 +64,9 @@ export default function GroepTab() {
         empty={{
           title: t('groepen.leeg_titel'),
           body: t('groepen.leeg_tekst'),
+          // QS8-705: de lege staat draagt zelf de stap die erbij hoort. Zonder
+          // deze knop stond "groep maken" onderaan, onder een lege vlakte.
+          action: { label: t('groepen.aanmaken'), onPress: () => router.push('/groep/nieuw') },
         }}
       >
         {(lijst) => (
@@ -78,12 +82,33 @@ export default function GroepTab() {
         )}
       </AsyncView>
 
-      <Button variant="primair" block onPress={() => router.push('/groep/nieuw')}>
-        {t('groepen.aanmaken')}
-      </Button>
+      <Groepsacties toonAanmaken={groepen?.length !== 0} />
+    </Screen>
+  );
+}
+
+/**
+ * De knoppen onder de lijst. Los van `GroepTab`, want dat scherm zat op de
+ * grens van regel 15 en QS8-705 voegde er regels aan toe.
+ */
+function Groepsacties({ toonAanmaken }: { readonly toonAanmaken: boolean }) {
+  const router = useRouter();
+
+  return (
+    <>
+      {/* Weg alleen als de lijst geladen is en leeg: dan staat hij in de lege staat. Tijdens laden en bij een fout blijft hij staan. */}
+      {toonAanmaken ? (
+        <Button variant="primair" block onPress={() => router.push('/groep/nieuw')}>
+          {t('groepen.aanmaken')}
+        </Button>
+      ) : null}
       <Button variant="secundair" block onPress={() => router.push('/groep/deelnemen')}>
         {t('groepen.heb_code')}
       </Button>
+      <Button variant="stil" block onPress={() => router.push('/groep/ontdek')}>
+        {t('groepen.ontdekken')}
+      </Button>
+
       {/*
         ⚠️ QS8-231. Onderaan en niet bovenaan: wie hier komt heeft meestal al een
            groep of een link. Zoeken is de derde weg naar binnen en niet de
@@ -91,13 +116,9 @@ export default function GroepTab() {
            tabblad iets anders maken dan het is.
       */}
       <Button variant="stil" block onPress={() => router.push('/mensen/zoek')}>
-        {t('mensen.titel')}
+        {t('groepen.mensen_zoeken')}
       </Button>
-
-      <Button variant="stil" block onPress={() => router.push('/groep/ontdek')}>
-        {t('groepen.ontdekken')}
-      </Button>
-    </Screen>
+    </>
   );
 }
 
@@ -147,3 +168,7 @@ function GroepKaart({
 const styles = StyleSheet.create({
   lijst: { gap: space.blokGap },
 });
+
+// ⚠️ QS8-705: een renderfout op dit tabblad is een foutstaat met herstelknop en
+//    geen wit scherm. Zie `src/shared/ui/TabFout.tsx`.
+export { TabFout as ErrorBoundary } from '@/shared/ui';

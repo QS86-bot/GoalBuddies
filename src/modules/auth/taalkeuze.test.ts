@@ -116,7 +116,8 @@ describe('het profielscherm biedt de keuze aan', () => {
    *    de stand tot 24-08-2026.
    */
   it('rendert de TaalKeuze en slaat hem op', () => {
-    const scherm = lees('app/(tabs)/profiel.tsx');
+    // QS8-754: de taalkeuze staat in het paneel Taal en tijd van Instellingen.
+    const scherm = lees('src/schermen/instellingen/VoorkeurenPaneel.tsx');
 
     expect(scherm).toContain('<TaalKeuze');
     expect(scherm).toContain('updateProfiel(userId, { locale: nieuw })');

@@ -98,7 +98,10 @@ import { psqlArgumenten, verbindingsmelding } from './psql.mjs';
  *    `points_ledger` was dat in QS8-453 precies de vraag.
  *
  * 📏 Gemeten op 14-09-2026 tegen een verse opbouw (269 migraties): **40** tabellen,
- *    **305** kolommen, waarvan **21** tabellen groepszichtbaar. De 38 uit het
+ *    **305** kolommen, waarvan **21** tabellen groepszichtbaar.
+ *    (⚠️ Een momentopname, en sindsdien verschoven: `breathers` ging op 19-11-2026
+ *    van `true` naar `false` (0307). De actuele tellingen staan in
+ *    `tests/scripts/groepskolommen-controle.test.ts`, die ze bewaakt.) De 38 uit het
  *    issue waren er 38 vóór 0264; `hero_profiles` en `hero_appearances` kwamen
  *    daar bij, allebei niet groepszichtbaar.
  *
@@ -144,7 +147,8 @@ export const CENSUS = {
       'reminder_tone, share_moves_by_default, created_at, updated_at, onboarded_at, ' +
       'wants_own_goal, locale, focus_areas, minutes_per_day, when_i_do_it, what_breaks_it, ' +
       'notify_approval_request, notify_approval_received, notify_cycle_summary, ' +
-      'notify_commitment_witness, quiet_from, quiet_to, vindbaar, platform_beheerder',
+      'notify_commitment_witness, quiet_from, quiet_to, vindbaar, platform_beheerder, ' +
+      'notify_group_digest, feeling, feeling_own',
   },
   ai_jobs: {
     groepszichtbaar: false,
@@ -159,7 +163,11 @@ export const CENSUS = {
     kolommen: 'user_id, badge, earned_at',
   },
   breathers: {
-    groepszichtbaar: true,
+    // ⚠️ `false` sinds 0307 (besluit Quinten 19-11-2026): `breathers_select` is
+    //    eigenaar-only, de groepstak van A50/QS8-227 is ingetrokken. Hij stond op
+    //    `true` zolang de policy `shares_group_with_goal` droeg. Rij 21 in
+    //    `docs/decisions/002-domeinregel7-oppervlakken.md`.
+    groepszichtbaar: false,
     kolommen: 'id, user_id, goal_id, starts_cycle, ends_cycle, announced_at',
   },
   chain_links: {
@@ -235,11 +243,51 @@ export const CENSUS = {
   },
   groups: {
     groepszichtbaar: true,
-    kolommen: 'id, name, icon, created_by, invite_code, invite_revoked, huddle_day, tz, evidence_policy, approval_rule, season_cadence, status, last_activity_at, created_at, zichtbaarheid, approval_quorum, ontdekbaar, categorie, omschrijving, voertaal',
+    // ⚠️ `automatisch` erbij op 05-10-2026 (QS8-233, 0300). Een groepsgenoot
+    //    kan hem lezen en dat is de bedoeling: hij zégt "deze groep is niet
+    //    door iemand van jullie opgericht", en dat is informatie die de leden
+    //    toekomt. Er valt niets uit af te leiden over iemands tegenslag — de
+    //    kolom gaat over de groep en niet over een lid. ⚠️⚠️ **Wat hij wél
+    //    draagt is een belofte die niet in deze tabel staat:** `beschermd` en
+    //    `niet ontdekbaar` hangen er met twee CHECKs aan vast, en de
+    //    `automatisch`-tak in beide zet-RPC's sluit de beheerdersroute af.
+    //    `authenticated` heeft géén UPDATE op deze kolom (📏 nagemeten: negen
+    //    andere kolommen wél) en `guard_group_update()` pint hem daarachter.
+    //    Rij 42 in `docs/decisions/002-domeinregel7-oppervlakken.md`.
+    kolommen: 'id, name, icon, created_by, invite_code, invite_revoked, huddle_day, tz, evidence_policy, approval_rule, season_cadence, status, last_activity_at, created_at, zichtbaarheid, approval_quorum, ontdekbaar, categorie, omschrijving, voertaal, automatisch',
+  },
+  goal_match_queue: {
+    // ⚠️⚠️ **Niet groepszichtbaar, en dat is de hele belofte van deze tabel.**
+    //    `goal_match_queue_select` is `user_id = (select auth.uid())` en de drie
+    //    schrijfpolicies staan op `false`; `authenticated` heeft alleen SELECT.
+    //    Een rij zegt dat deze persoon een doel in deze categorie met deze
+    //    streefdatum heeft en actief onbekenden zoekt, en dat is van niemand
+    //    anders — ook niet van een toekomstige groepsgenoot, want zodra de groep
+    //    er is staat de status op `gekoppeld` en is de rij nog steeds alleen van
+    //    de eigenaar.
+    //
+    // ⚠️ De tabelbrede grant mag hier omdat er geen kolom is die de eigenaar
+    //    niet mag zien: het zijn zijn eigen velden. Wat over ánderen gaat komt
+    //    niet uit de tabel maar uit `buddyzoek_stand()`, als één verzadigd
+    //    getal — rij 50 in `docs/decisions/002-domeinregel7-oppervlakken.md`.
+    groepszichtbaar: false,
+    kolommen: 'id, goal_id, user_id, status, group_id, created_at, expires_at, decided_at',
   },
   hero_appearances: {
     groepszichtbaar: false,
     kolommen: 'id, user_id, hero_key, trigger, shown_at',
+  },
+  gebruikersvoorkeuren: {
+    groepszichtbaar: false,
+    kolommen: 'user_id, stijl, kleurvariant, weergave, dichtheid, emoji, bijgewerkt_op',
+  },
+  groep_demping: {
+    groepszichtbaar: false,
+    kolommen: 'user_id, group_id, gedempt_op',
+  },
+  xp_grootboek: {
+    groepszichtbaar: false,
+    kolommen: 'id, user_id, bron, weekdoel_id, badge, bedrag, verdiend_op, terugwerkend',
   },
   hero_profiles: {
     groepszichtbaar: false,

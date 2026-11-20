@@ -1,10 +1,10 @@
-import { readFileSync } from 'node:fs';
+import { readdirSync, readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 
 import { describe, expect, it } from 'vitest';
 
 import { HELDSLEUTELS } from '../../src/modules/helden/helden';
-import { heldkeuze, HELDVRAGEN, teBewarenHeld } from '../../src/modules/helden/quiz';
+import { heldkeuze, teBewarenHeld } from '../../src/modules/helden/quiz';
 
 import { zonderCommentaar } from './roept-aan';
 
@@ -50,15 +50,31 @@ import { zonderCommentaar } from './roept-aan';
  *    uitslag geloofd werd, en elke mutatie raakte precies één grendel.
  */
 
-const SCHERM = readFileSync(
-  fileURLToPath(new URL('../../app/onboarding/vragenlijst.tsx', import.meta.url)),
-  'utf8',
-);
+/**
+ * ⚠️ **Sinds QS8-733 is "het scherm" een map en niet één bestand.** De vragenlijst
+ *    woont in `src/schermen/vragenlijst/` (één bestand per vraag); `app/onboarding/
+ *    vragenlijst.tsx` is nog maar een doorgeefluik. Deze toets leest daarom alle
+ *    bronbestanden in die map aan elkaar. Bleef hij het kale routebestand lezen,
+ *    dan zocht hij in tien regels en bewaakte hij niets meer — zelfde klasse als
+ *    een verhuizing die de tests laat meeverhuizen zonder dat ze iets toetsen.
+ */
+function leesMap(pad: string): string {
+  const map = fileURLToPath(new URL(pad, import.meta.url));
+  return readdirSync(map, { withFileTypes: true })
+    .flatMap((e) => {
+      const volledig = `${map}/${e.name}`;
+      if (e.isDirectory()) return [leesMap(`${pad}/${e.name}`)];
+      return /\.(ts|tsx)$/.test(e.name) && !/\.test\./.test(e.name) ? [readFileSync(volledig, 'utf8')] : [];
+    })
+    .join('\n');
+}
+
+const SCHERM = leesMap('../../src/schermen/vragenlijst');
 
 const SCHOON = zonderCommentaar(SCHERM);
 
-/** Hoeveel vragen er vóór de heldenvragen staan: de vier van besluit A56. */
-const VRAGEN_VAN_A56 = 4;
+/** Hoeveel vragen er vóór de heldenvragen staan: de vier van besluit A56 plus "hoe wil je je voelen" (QS8-733). */
+const VRAGEN_VOOR_DE_HELDEN = 5;
 
 describe('het scherm toont elke gedeelde koploper', () => {
   it('snijdt de koplopers nergens af', () => {
@@ -96,13 +112,16 @@ describe('acht vragen en precies één samenvatting', () => {
    */
   it('zet de samenvatting achter alle acht de vragen, afgeleid uit de module', () => {
     const eerste = Number(/const EERSTE_HELDVRAAG = (\d+)/.exec(SCHOON)?.[1]);
-    const samenvatting = Number(/const SAMENVATTING: Stap = (\d+)/.exec(SCHOON)?.[1]);
 
-    expect(eerste, 'EERSTE_HELDVRAAG staat niet in het scherm').toBe(VRAGEN_VAN_A56);
-    expect(
-      samenvatting,
-      `de samenvatting staat op ${samenvatting} en er zijn ${eerste + HELDVRAGEN.length} vragen`,
-    ).toBe(eerste + HELDVRAGEN.length);
+    expect(eerste, 'EERSTE_HELDVRAAG staat niet in het scherm').toBe(VRAGEN_VOOR_DE_HELDEN);
+    // ⚠️ De samenvatting staat achter de heldenvragen én het voorbeeld, en beide
+    //    afgeleid: een getal erin typen is hoe hij op de verkeerde plek belandt.
+    expect(SCHOON, 'het voorbeeld volgt op de laatste heldenvraag').toMatch(
+      /const VOORBEELD = EERSTE_HELDVRAAG \+ HELDVRAGEN\.length/,
+    );
+    expect(SCHOON, 'de samenvatting volgt op het voorbeeld').toMatch(
+      /const SAMENVATTING = VOORBEELD \+ 1/,
+    );
   });
 
   it('monteert de samenvatting precies één keer', () => {
@@ -115,8 +134,8 @@ describe('acht vragen en precies één samenvatting', () => {
     //    schermlaag, en dan loopt die lijst uit elkaar met het register zonder
     //    dat iets rood wordt. Bovendien staat `app/` precies op het plafond van
     //    regel 15.
-    expect(SCHOON).toMatch(/HELDVRAGEN\.map\(/);
-    expect(SCHOON.match(/<HeldVraag\b/g) ?? [], 'één keer gemonteerd').toHaveLength(1);
+    expect(SCHOON).toMatch(/HELDVRAGEN(\.map\(|\[)/);
+    expect(SCHOON.match(/<Held\b/g) ?? [], 'één keer gemonteerd').toHaveLength(1);
   });
 
   it('noemt geen enkele heldsleutel letterlijk in de schermlaag', () => {
@@ -192,7 +211,7 @@ describe('de uitslag die het scherm bewaart, klopt met wat het toont', () => {
     //    scherm de uitslag in `useState` bewaren, dan overleeft die keuze
     //    precies de wijziging die hem ongeldig maakte.
     expect(SCHOON, 'de uitslag wordt afgeleid').toMatch(
-      /const keuze = heldkeuze\(heldantwoorden, gekozenHeld\)/,
+      /const keuze: Heldkeuze = heldkeuze\(antwoorden, gekozen\)/,
     );
     expect(/useState[^\n]*Heldkeuze/.test(SCHOON), 'de uitslag staat in state').toBe(false);
   });

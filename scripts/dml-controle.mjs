@@ -101,6 +101,12 @@ export function topniveauDml(sql) {
  * @type {Record<string, { bevat: string, reden: string }[]>}
  */
 export const DML_MET_REDEN = {
+  '0304': [
+    { bevat: 'insert into public.xp_grootboek (user_id, bron, weekdoel_id',
+      reden: '`on conflict do nothing` op de unieke sleutel (user, weekdoel, bron), en het bedrag is 20/10 min wat er al geboekt is: een tweede run vindt de sleutel bezet of een restant van nul' },
+    { bevat: 'insert into public.xp_grootboek (user_id, bron, badge',
+      reden: '`on conflict do nothing` op de unieke sleutel (user, badge): een tweede run voegt niets toe' },
+  ],
   '0033': [
     { bevat: 'update chat_messages m set sender_id = null',
       reden: '`where sender_id is not null and not exists (profiel)` — na de run is die kolom null, dus de tweede run raakt niets' },

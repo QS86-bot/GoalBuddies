@@ -38,6 +38,18 @@ export { beslissendeGroep, enigeOfGekozen, koppelbareGroepen, type DoelGroep } f
 export { beginfase, deelbareUitnodiging, type Beginfase } from './samen';
 
 export {
+  fetchProfielDoelen,
+  fetchProfielGroepen,
+  fetchProfielVanLid,
+  isEigenTab,
+  profielTabs,
+  type GedeeldeGroep,
+  type LidProfiel,
+  type ProfielDoel,
+  type ProfielTab,
+} from './profiel';
+
+export {
   BIJLAGE_BEWAARDAGEN,
   CHATFOTO_BUCKET,
   CHATFOTO_MAX_BYTES,
@@ -61,6 +73,24 @@ export {
 } from './chatdoc';
 
 export {
+  actieVoor,
+  lidmaatschapStand,
+  magAutomatischToetreden,
+  titelIsVerlopen,
+  uitnodigingsStand,
+  type Actie,
+  type LidmaatschapStand,
+  type UitnodigingsStand,
+} from './uitnodiging-stand';
+
+export {
+  maakToetredenSlot,
+  toetredenMetSlot,
+  type ToetredenUitvoer,
+} from './uitnodiging-toetreden';
+export { useAutomatischToetreden } from './useAutomatischToetreden';
+
+export {
   bewaarOpenstaandeUitnodiging,
   openstaandeUitnodiging,
   routeVoorUitnodiging,
@@ -81,8 +111,22 @@ export {
   type Lidmaatschapsverzoek,
   type Verleden,
   type Verledensoort,
+  groepsKaartVan,
   type OntdekteGroep,
 } from './ontdekken';
+
+export type { Buddyzoekstand } from './wachtrij';
+export {
+  ALTERNATIEVEN_MAX,
+  fetchBuddyzoekAlternatieven,
+  fetchBuddyzoekopdrachtenOver,
+  fetchBuddyzoekStand,
+  isVerlopen,
+  kiesAlternatieven,
+  stopBuddyZoeken,
+  verloopdatumTekst,
+  zoekBuddies,
+} from './wachtrij';
 
 export {
   blokkeer,
@@ -239,3 +283,6 @@ export {
   zoekMensen,
 } from './zoeken';
 export type { GevondenPersoon } from './zoeken';
+
+export { fetchGroepGedempt, zetGroepGedempt } from './demping';
+export { deelPrestatie, leesDeelUitslag, type DeelUitslag } from './prestatie-delen';

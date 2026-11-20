@@ -46,6 +46,35 @@ export const TABBLADEN: readonly Tabblad[] = [
   { pad: '/profiel', sleutel: 'tab.profiel' },
 ];
 
+/**
+ * Vanaf welke breedte (in punten) het menu een kolom links is — QS8-705.
+ *
+ * ⚠️ **900 en niet 600.** De inhoud van `Screen` is 620 breed; een kolom van 220
+ *    ernaast heeft dan 840 nodig om niets te klemmen. Op een tablet rechtop (768)
+ *    is de balk bovenin de conservatieve keuze, en dat is waar dit besluit op
+ *    uitkomt: pas wie er echt ruimte voor heeft krijgt de kolom.
+ */
+export const BREED_VANAF = 900;
+
+/**
+ * De breedte van de menukolom (punten) en de maximale breedte van de inhoud — QS8-728.
+ *
+ * ⚠️ **Eén bron voor stijl én test.** Tot dit issue stond 220 in `Taakbalk` en 620 in
+ *    `Screen`, en de test van het breekpunt rekende met losse getallen die een
+ *    stijlwijziging niet zagen. `BREED_VANAF` moet kolom + inhoud + marges kunnen
+ *    dragen; `tests/beloftes/menu-maten.test.ts` toetst die ongelijkheid op deze
+ *    exports, dus wie er één verschuift ziet het in plaats van een geklemde inhoud.
+ */
+export const MENU_KOLOMBREEDTE = 220;
+export const MAX_INHOUDSBREEDTE = 620;
+
+export type Taakbalkvorm = 'zijkant' | 'bovenrand';
+
+/** Kolom links op een breed scherm, anders dezelfde kolom gestapeld bovenaan. */
+export function taakbalkVorm(breedte: number): Taakbalkvorm {
+  return breedte >= BREED_VANAF ? 'zijkant' : 'bovenrand';
+}
+
 /** Een scherm dat de balk met reden niet krijgt. */
 interface Uitzondering {
   /** Het pad zelf, of een prefix met een `/` erachter. */
@@ -149,6 +178,7 @@ function hoortBij(pad: string, tab: string): boolean {
  */
 const ONDER: Readonly<Record<string, string>> = {
   '/doel': '/doelen',
+  '/instellingen': '/profiel',
 };
 
 function afgeleid(pad: string): string | null {

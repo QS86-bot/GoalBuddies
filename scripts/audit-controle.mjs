@@ -256,27 +256,6 @@ export const NAGEKEKEN = {
       'geregistreerd staat. `npm audit` noemt `fixAvailable: true`; niet gedaan, want dat ' +
       'raakt de lockfile.',
   },
-  picomatch: {
-    ernst: 'high',
-    advisories: [1247710],
-    reparatie: 'brekend',
-    in_bundel: false,
-    marker: 'Expected pattern to be a non-empty string',
-    reden:
-      'Nieuw op 17-11-2026, tussen de CI-run van #681 (16:24 UTC, groen) en die van `main` ' +
-      '(18:02 UTC, rood): ReDoS door herhaalde extglobs met één tak (`<=4.0.7`, GHSA-fc5q-39xc-vjpf). ' +
-      'Geen commit veranderde iets, de advisory-database kreeg een nieuwe wortel. 📏 `npm ls` zet ' +
-      'hem onder `expo > @expo/cli` en `@expo/metro-config` (4.0.5), onder `react-native > ' +
-      'tinyglobby > fdir` en onder `micromatch` en `jest-util` (2.3.2): bundler, dev-server, test- ' +
-      'en bouw-tooling, geen app-code. Verse `npx expo export --platform web` met ' +
-      'dummy-EXPO_PUBLIC-waarden, `dist/` van 5,4 MB met twee JS-bestanden: **nul** treffers op ' +
-      '`Expected pattern to be a non-empty string` (en op `Expected a non-empty string`), tegen ' +
-      'een treffer op de controlegrep `supabase`. ⚠️ **`reparatie: brekend` is wat npm zegt** ' +
-      '(`fixAvailable` wijst naar `react-native@0.83.10`, `isSemVerMajor: true`) en dus geen ' +
-      'advies: niet gerepareerd, want dat raakt de lockfile en een major van `react-native`. ' +
-      'De advisory raakt ook de versies die `micromatch` en `jest-util` binnenhalen; die staan ' +
-      'als gevolg in het rapport en niet als eigen wortel.',
-  },
   compression: {
     ernst: 'high',
     advisories: [1241221],
@@ -508,7 +487,7 @@ function meldOvergeslagen(rapport, wat = '`npm audit`') {
 
 /**
  * Het volledige register-oordeel: elke afwijking van NAGEKEKEN is rood.
- * Dit is het oordeel op `main`, het wekelijkse schema en lokaal — ongewijzigd
+ * Dit is het oordeel van de geplande run (`advisories.yml`), handmatig en lokaal — ongewijzigd
  * sinds QS8-191.
  */
 function strikt(rapport) {
@@ -544,7 +523,7 @@ function strikt(rapport) {
  *
  * ⚠️ **`pr` is de uitzondering en `strikt` de standaard.** Alleen een
  *    `pull_request`-run en een `push` naar een andere branch dan `main` krijgen
- *    het lichte oordeel; `main`, het wekelijkse `schedule`, een tag, een lege
+ *    het lichte oordeel; `main` krijgt sinds QS8-707 `vorm`; het `schedule`, een tag, een lege
  *    omgeving (lokaal) en elke onbekende waarde krijgen het volledige
  *    register-oordeel. Een onbekende gebeurtenis valt dus naar de strenge kant.
  *
@@ -564,7 +543,66 @@ export function modusUit(omgeving = process.env) {
   if (gebeurtenis === 'push' && ref.startsWith('refs/heads/') && ref !== 'refs/heads/main') {
     return 'pr';
   }
+  // ⚠️ QS8-707: een push naar `main` meet de vorm van het register en niet de
+  //    wereld. Alleen die exacte combinatie; `schedule`, `workflow_dispatch`,
+  //    een tag, lokaal en elke onbekende waarde blijven `strikt`.
+  if (gebeurtenis === 'push' && ref === 'refs/heads/main') return 'vorm';
   return 'strikt';
+}
+
+const REPARATIES = ['geen', 'brekend', 'gratis'];
+const ERNSTEN = ['low', 'moderate', 'high', 'critical'];
+
+/**
+ * De vorm van het register — QS8-707, optie A.
+ *
+ * ⚠️ **Dit is een eigenschap van de commit en geen van de wereld.** Het leest
+ *    alleen `NAGEKEKEN` zelf: elke rij moet een ernst, gesorteerde numerieke
+ *    advisories, een reparatiesoort, een gemeten `in_bundel`, een marker die geen
+ *    pakketnaam is en een reden dragen. Het vraagt npm niets, dus een advisory
+ *    die verschijnt of verdwijnt kan `main` hiermee niet rood maken. De vraag
+ *    "klopt het register nog met npm?" beantwoordt de geplande run (`strikt`).
+ *
+ * @param {Record<string, any>} register
+ * @returns {string[]} de bezwaren, leeg als de vorm klopt
+ */
+export function registerVorm(register = NAGEKEKEN) {
+  const bezwaren = [];
+  for (const [naam, rij] of Object.entries(register)) {
+    if (!ERNSTEN.includes(rij?.ernst)) bezwaren.push(`'${naam}': ernst '${rij?.ernst}' is onbekend`);
+    const adv = rij?.advisories;
+    if (!Array.isArray(adv) || adv.length === 0 || !adv.every((n) => Number.isInteger(n))) {
+      bezwaren.push(`'${naam}': advisories moeten een niet-lege lijst getallen zijn`);
+    } else if (adv.some((n, i) => i > 0 && adv[i - 1] >= n)) {
+      bezwaren.push(`'${naam}': advisories horen oplopend gesorteerd te staan, zonder dubbelen`);
+    }
+    if (!REPARATIES.includes(rij?.reparatie)) bezwaren.push(`'${naam}': reparatie '${rij?.reparatie}' is onbekend`);
+    if (typeof rij?.in_bundel !== 'boolean') bezwaren.push(`'${naam}': in_bundel is gemeten en geen gok`);
+    if (typeof rij?.marker !== 'string' || rij.marker.length <= 3) {
+      bezwaren.push(`'${naam}': de marker ontbreekt of is te kort`);
+    } else if (rij.marker === naam) {
+      bezwaren.push(`'${naam}': de marker mag niet de pakketnaam zijn`);
+    }
+    if (typeof rij?.reden !== 'string' || rij.reden.length <= 30) {
+      bezwaren.push(`'${naam}': de reden ontbreekt of zegt niets`);
+    }
+  }
+  return bezwaren;
+}
+
+/** Het oordeel van modus `vorm`: rood alleen om het register zelf. */
+function vormOordeel(register = NAGEKEKEN) {
+  const bezwaren = registerVorm(register);
+  if (bezwaren.length === 0) {
+    console.log(
+      `audit-controle: de vorm van NAGEKEKEN klopt (${Object.keys(register).length} rijen). ` +
+        'Op `main` is niet gemeten of npm er nog mee eens is; dat doet de geplande run ' +
+        '(`.github/workflows/advisories.yml`).',
+    );
+    return 0;
+  }
+  for (const b of bezwaren) console.error(`✗ NAGEKEKEN: ${b}.`);
+  return 1;
 }
 
 /**
@@ -794,7 +832,11 @@ export function prOordeel(paar) {
   return 1;
 }
 
-export function hoofd(leesRapport = leesAudit, { modus = 'strikt', leesBasis = leesBasisEnPr } = {}) {
+export function hoofd(
+  leesRapport = leesAudit,
+  { modus = 'strikt', leesBasis = leesBasisEnPr, register = NAGEKEKEN } = {},
+) {
+  if (modus === 'vorm') return vormOordeel(register);
   if (modus === 'pr') {
     const uit = prOordeel(leesBasis());
     if (uit !== null) return uit;

@@ -78,6 +78,21 @@ export function beginfase(
     return raak ? { fase: 'gedeeld', groupId: raak.group_id } : { fase: 'kiezen' };
   }
 
-  const eerste = gekoppeld[0];
-  return eerste ? { fase: 'gedeeld', groupId: eerste.group_id } : { fase: 'kiezen' };
+  // ⚠️⚠️ **Precies één koppeling is geen keuze; twee of meer wél** — QS8-233,
+  //    en het is dezelfde redenering als in `beslissendeGroep()`.
+  //
+  //    Hier stond `gekoppeld[0]`, en dat was onschuldig zolang élke koppeling een
+  //    eigen keuze van de gebruiker was: dan is de eerste de enige. Automatisch
+  //    koppelen haalt die aanname weg — een doel kan er een groep bij krijgen die
+  //    de gebruiker nooit heeft aangewezen, en dan opent dit scherm op "gedeeld
+  //    met <een groep die je niet koos>", bepaald door rijvolgorde.
+  //
+  //    Bij twee of meer zonder expliciete `?groep=` is het eerlijke antwoord
+  //    `kiezen`: het scherm beweert dan niets over wélke groep je bedoelt.
+  if (gekoppeld.length === 1) {
+    const enige = gekoppeld[0];
+    if (enige) return { fase: 'gedeeld', groupId: enige.group_id };
+  }
+
+  return { fase: 'kiezen' };
 }

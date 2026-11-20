@@ -1,13 +1,23 @@
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 
 import { ROUTE_AANMELDEN, useProfiel, useSession } from '@/modules/auth';
 import {
   bewaarOpenstaandeUitnodiging,
+  fetchMijnLidmaatschap,
   fetchUitnodiging,
   huddledagLabel,
+  actieVoor,
+  magAutomatischToetreden,
   neemDeel,
+  lidmaatschapStand,
+  titelIsVerlopen,
+  uitnodigingsStand,
+  toetredenMetSlot,
+  maakToetredenSlot,
+  type ToetredenUitvoer,
+  useAutomatischToetreden,
   vergeetOpenstaandeUitnodiging,
   zichtbaarheidLabels,
   zichtbaarheidUitleg,
@@ -15,6 +25,7 @@ import {
 import { t } from '@/shared/i18n';
 import { space } from '@/shared/theme';
 import {
+  Accountregel,
   AsyncView,
   Avatar,
   Body,
@@ -57,10 +68,6 @@ export default function UitnodigingScherm() {
   const [fout, setFout] = useState<string | null>(null);
   const [binnen, setBinnen] = useState<string | null>(null);
 
-  /** Had dit scherm al een sessie toen het openging? Dan kwam je hier niet via aanmelden. */
-  const sessieBijBinnenkomst = useRef<boolean | null>(null);
-  const automatischGeprobeerd = useRef(false);
-
   // ⚠️ Onthouden vóór alles, en apart van het laden. Gaat de bezoeker hierna
   //    aanmelden, dan overleeft de uitnodiging de bevestigingsmail en de
   //    onboarding — ook als het ophalen mislukt.
@@ -75,88 +82,93 @@ export default function UitnodigingScherm() {
     herlaad,
   } = useAsync(code ? () => fetchUitnodiging(code) : null, [code]);
 
-  const deelnemen = useCallback(async () => {
-    if (!code) return;
-    setBezig(true);
-    setFout(null);
+  // ⚠️ QS8-708. De uitnodiging draagt het groeps-id; of dít account al lid is,
+  //    leest de pagina uit zijn eigen lidmaatschapsrij (RLS: alleen de eigen rij
+  //    of die van een groepsgenoot). `invite_preview()` blijft ongemoeid: aan een
+  //    niet-lid vertelt dat antwoord niets nieuws.
+  const userId = session?.user.id ?? null;
+  const groupId = uitnodiging?.group_id ?? null;
+  const lidmaatschap = useAsync(
+    groupId && userId ? () => fetchMijnLidmaatschap(groupId, userId) : null,
+    [groupId, userId],
+  );
 
-    const uitkomst = await neemDeel(code);
-    setBezig(false);
+  const stand = uitnodigingsStand({
+    uitnodiging,
+    ingelogd: session !== null,
+    sessieLaadt,
+    lidmaatschap: lidmaatschapStand({
+      gevraagd: groupId !== null && userId !== null,
+      laadt: lidmaatschap.loading,
+      fout: lidmaatschap.error !== null,
+      status: lidmaatschap.data?.status ?? null,
+      antwoordVan: lidmaatschap.data?.user_id ?? null,
+      gebruiker: userId,
+    }),
+  });
+  const magToetreden = magAutomatischToetreden(stand);
+  const actie = actieVoor(stand, binnen);
+  const alLidGroep = stand.soort === 'al-lid' ? stand.groupId : null;
 
-    if (!uitkomst.ok) {
-      setFout(uitkomst.melding);
-      // ⚠️ Ook bij een fout vergeten. Blijft de code staan, dan probeert de app
-      //    hem bij elke start opnieuw, en elke poging kost er één van de twintig
-      //    per dag.
-      void vergeetOpenstaandeUitnodiging();
-      return;
-    }
-
-    void vergeetOpenstaandeUitnodiging();
-    setBinnen(uitkomst.waarde);
-
-    if (profiel?.onboarded_at) router.replace(`/groep/${uitkomst.waarde}`);
-  }, [code, profiel, router]);
-
-  /**
-   * Verschijnt er een sessie terwijl dit scherm openstaat, dan kwam die van het
-   * aanmeldscherm hiernaast — en dan is toetreden geen extra stap meer.
-   *
-   * ⚠️ Deze route zet geen `bezig` vóór de aanroep, anders is dat een setState in
-   *    de body van een effect en dus een cascade van renders. De toestand
-   *    verandert hier uitsluitend in de callback.
-   *
-   * ⚠️ De ref en niet de state als slot. State is pas bij de volgende render
-   *    bijgewerkt, en tot dat moment zou een tweede effectronde nog een keer
-   *    kunnen toetreden — en elke toetreding kost een poging uit de dagelijkse
-   *    limiet van twintig.
-   */
+  // Wie al lid is heeft de bewaarde code niet meer nodig; blijft hij staan, dan
+  // probeert de app hem bij de volgende start nog eens te verzilveren.
   useEffect(() => {
-    if (sessieLaadt) return;
+    if (alLidGroep !== null) void vergeetOpenstaandeUitnodiging();
+  }, [alLidGroep]);
 
-    // De momentopname staat in dezelfde effect-body als de beslissing die hem
-    // gebruikt. Dat is geen elegantie maar noodzaak: een ref uitlezen tijdens de
-    // render mag niet, en twee losse effecten geven geen vaste volgorde.
-    if (sessieBijBinnenkomst.current === null) {
-      sessieBijBinnenkomst.current = session !== null;
-    }
-
-    if (!session || uitnodiging === null || !code) return;
-    if (sessieBijBinnenkomst.current !== false) return;
-    if (automatischGeprobeerd.current) return;
-
-    automatischGeprobeerd.current = true;
-    let levend = true;
-
-    neemDeel(code)
-      .then((uitkomst) => {
-        if (!levend) return;
-        void vergeetOpenstaandeUitnodiging();
-
-        if (!uitkomst.ok) {
-          setFout(uitkomst.melding);
-          return;
-        }
-
-        setBinnen(uitkomst.waarde);
-        if (profiel?.onboarded_at) router.replace(`/groep/${uitkomst.waarde}`);
-      })
-      .catch(() => {
-        if (levend) setFout(t('uitnodiging.deelnemen_mislukt'));
-      });
-
+  // ⚠️ QS8-712. Of het scherm er nog is en of het profiel inmiddels binnen is, wordt
+  //    bij de afhandeling gevraagd en niet bij het starten van de toetreding: een
+  //    effectronde die afloopt terwijl `neemDeel` loopt is geen reden om de
+  //    uitkomst van een geslaagde toetreding weg te gooien.
+  const gemount = useRef(true);
+  const profielRef = useRef(profiel);
+  useEffect(() => {
+    gemount.current = true;
     return () => {
-      levend = false;
+      gemount.current = false;
     };
-  }, [sessieLaadt, session, uitnodiging, code, profiel, router]);
+  }, []);
+  useEffect(() => {
+    profielRef.current = profiel;
+  }, [profiel]);
+
+  const uitvoer = useMemo<ToetredenUitvoer>(
+    () => ({
+      gemount: () => gemount.current,
+      onboarded: () => Boolean(profielRef.current?.onboarded_at),
+      vergeetCode: () => void vergeetOpenstaandeUitnodiging(),
+      zetFout: setFout,
+      zetBinnen: setBinnen,
+      naarGroep: (groupId) => router.replace(`/groep/${groupId}`),
+    }),
+    [router],
+  );
+
+  // ⚠️ QS8-716. Eén slot voor de knop én het vanzelf toetreden; `bezig` volgt eruit.
+  //    `useState` en niet `useMemo`: dit slot is een correctheidsgrendel, en React
+  //    mag een memo weggooien (Fast Refresh doet dat altijd). Een nieuw slot
+  //    midden in een toetreding laat een tweede toe.
+  const [slot] = useState(() => maakToetredenSlot(setBezig));
+
+  const deelnemen = useCallback(() => {
+    if (!code) return;
+    setFout(null);
+    void toetredenMetSlot(code, { slot, uitvoer, toetreden: neemDeel });
+  }, [code, slot, uitvoer]);
+
+  useAutomatischToetreden({
+    sessieLaadt,
+    ingelogd: session !== null,
+    code,
+    magToetreden,
+    uitvoer,
+    slot,
+    toetreden: neemDeel,
+  });
 
   return (
     <Screen
-      title={
-        uitnodiging === null && !loading
-          ? t('uitnodiging.titel_verlopen')
-          : t('uitnodiging.titel')
-      }
+      title={titelIsVerlopen(stand) ? t('uitnodiging.titel_verlopen') : t('uitnodiging.titel')}
       eyebrow={t('uitnodiging.eyebrow')}
       terug={{ naar: '/' }}
     >
@@ -173,6 +185,10 @@ export default function UitnodigingScherm() {
       >
         {(u) => (
           <View style={styles.lijst}>
+            {stand.soort === 'al-lid' && binnen === null ? (
+              <AlLidKaart groupId={stand.groupId} />
+            ) : null}
+
             <Card>
               <Subheading>{u.group_name}</Subheading>
               <Caption>
@@ -199,9 +215,7 @@ export default function UitnodigingScherm() {
                 </View>
               ))}
 
-              {u.detailed ? null : (
-                <Caption>{t('uitnodiging.pas_bij_meedoen')}</Caption>
-              )}
+              {u.detailed ? null : <Caption>{t('uitnodiging.pas_bij_meedoen')}</Caption>}
             </Card>
 
             {/*
@@ -215,18 +229,20 @@ export default function UitnodigingScherm() {
                  Besluit A41; migratie 0080 zet `zichtbaarheid` daarom ook in het
                  antwoord voor wie nog geen account heeft.
             */}
-            <Card nested>
-              <Subheading>{zichtbaarheidLabels()[u.zichtbaarheid]}</Subheading>
-              <Body muted>{zichtbaarheidUitleg()[u.zichtbaarheid]}</Body>
-              {u.zichtbaarheid === 'open' ? (
-                <Caption danger>{t('uitnodiging.open_waarschuwing')}</Caption>
-              ) : null}
-            </Card>
+            {stand.soort === 'al-lid' && binnen === null ? null : (
+              <>
+                <Card nested>
+                  <Subheading>{zichtbaarheidLabels()[u.zichtbaarheid]}</Subheading>
+                  <Body muted>{zichtbaarheidUitleg()[u.zichtbaarheid]}</Body>
+                  {u.zichtbaarheid === 'open' ? (
+                    <Caption danger>{t('uitnodiging.open_waarschuwing')}</Caption>
+                  ) : null}
+                </Card>
 
-            <Card nested>
-              <Subheading>{t('uitnodiging.wat_je_doet')}</Subheading>
-              <Body muted>{t('uitnodiging.uitleg_kern')}</Body>
-              {/*
+                <Card nested>
+                  <Subheading>{t('uitnodiging.wat_je_doet')}</Subheading>
+                  <Body muted>{t('uitnodiging.uitleg_kern')}</Body>
+                  {/*
                 ⚠️ Voorwaardelijk sinds besluit A41. Hier stond onvoorwaardelijk
                    "Niemand in de groep ziet het", drie kaarten onder de
                    waarschuwing hierboven dat een open groep je gemiste weken wél
@@ -234,14 +250,20 @@ export default function UitnodigingScherm() {
                    je besluit of je meedoet — en de geruststellende was de laatste
                    die je las.
               */}
-              <Body muted>
-                {u.zichtbaarheid === 'open'
-                  ? t('uitnodiging.uitleg_missen_open')
-                  : t('uitnodiging.uitleg_missen_beschermd')}
-              </Body>
-            </Card>
+                  <Body muted>
+                    {u.zichtbaarheid === 'open'
+                      ? t('uitnodiging.uitleg_missen_open')
+                      : t('uitnodiging.uitleg_missen_beschermd')}
+                  </Body>
+                </Card>
+              </>
+            )}
 
-            {binnen !== null ? (
+            {binnen === null && stand.soort !== 'al-lid' ? <AccountBlok /> : null}
+
+            {actie === 'controleren' ? <Caption>{t('uitnodiging.controleren')}</Caption> : null}
+
+            {actie === 'binnen' ? (
               <Card>
                 <Subheading>{t('uitnodiging.al_lid')}</Subheading>
                 <Body muted>
@@ -258,17 +280,25 @@ export default function UitnodigingScherm() {
                   variant="primair"
                   block
                   onPress={() =>
-                    router.replace(profiel?.onboarded_at ? `/groep/${binnen}` : '/onboarding/uitleg')
+                    router.replace(
+                      profiel?.onboarded_at ? `/groep/${binnen}` : '/onboarding/uitleg',
+                    )
                   }
                 >
-                  {profiel?.onboarded_at ? t('uitnodiging.naar_groep') : t('uitnodiging.profiel_afmaken')}
+                  {profiel?.onboarded_at
+                    ? t('uitnodiging.naar_groep')
+                    : t('uitnodiging.profiel_afmaken')}
                 </Button>
               </Card>
-            ) : session ? (
-              <Button variant="primair" block busy={bezig} onPress={() => void deelnemen()}>
+            ) : null}
+
+            {actie === 'deelnemen' ? (
+              <Button variant="primair" block busy={bezig} onPress={deelnemen}>
                 {t('uitnodiging.deelnemen')}
               </Button>
-            ) : (
+            ) : null}
+
+            {actie === 'inloggen' ? (
               <>
                 {/*
                   ⚠️ Rechtstreeks op het aanmeldformulier (QS8-248). Wie een
@@ -281,19 +311,58 @@ export default function UitnodigingScherm() {
                 </Button>
                 <Caption>{t('uitnodiging.blijft_bewaard')}</Caption>
               </>
-            )}
+            ) : null}
 
+            {lidmaatschap.error ? <Caption>{t('uitnodiging.lid_onbekend')}</Caption> : null}
             {fout === null ? null : <Caption danger>{fout}</Caption>}
           </View>
         )}
       </AsyncView>
 
-      {uitnodiging === null && !loading ? (
+      {titelIsVerlopen(stand) ? (
         <Button variant="secundair" block onPress={() => router.replace('/aanmelden')}>
           {t('uitnodiging.rondkijken')}
         </Button>
       ) : null}
     </Screen>
+  );
+}
+
+/**
+ * Het account staat bij de knop en niet bovenaan — QS8-708. Bovenaan is het op een
+ * telefoon al uit beeld op het moment dat je beslist.
+ *
+ * ⚠️ Niets tonen zolang de sessie laadt: dan zegt "je bent niet ingelogd" iets
+ *    wat nog niet vaststaat.
+ */
+function AccountBlok() {
+  const { session, loading } = useSession();
+  const { profiel } = useProfiel();
+  if (loading) return null;
+  return (
+    <View>
+      <Accountregel
+        ingelogd={session !== null}
+        naam={profiel?.display_name ?? null}
+        adres={session?.user.email ?? null}
+      />
+      {session ? <Caption>{t('account.verkeerd_account')}</Caption> : null}
+    </View>
+  );
+}
+
+/** Een bestaand lid ziet dit bovenaan, vóór de uitleg voor nieuwkomers. */
+function AlLidKaart({ groupId }: { readonly groupId: string }) {
+  const router = useRouter();
+  return (
+    <Card>
+      <Subheading>{t('uitnodiging.al_lid_titel')}</Subheading>
+      <Body muted>{t('uitnodiging.al_lid_tekst')}</Body>
+      <AccountBlok />
+      <Button variant="primair" block onPress={() => router.replace(`/groep/${groupId}`)}>
+        {t('uitnodiging.naar_groep')}
+      </Button>
+    </Card>
   );
 }
 

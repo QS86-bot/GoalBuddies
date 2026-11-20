@@ -27,6 +27,7 @@ import {
   Card,
   Choice,
   Field,
+  Paginakop,
   Screen,
   bevestigingen,
   useAsync,
@@ -64,7 +65,7 @@ export default function Lijst() {
   const [melding, setMelding] = useState<string | null>(null);
 
   return (
-    <Screen title={t('lijst.titel')}>
+    <Screen title={t('lijst.titel')} kop={<Paginakop titel={t('lijst.titel')} />}>
       <Caption>{t('lijst.prive_uitleg')}</Caption>
 
       <Invoer userId={userId} onKlaar={lijst.opnieuw} onFout={setMelding} />
@@ -674,3 +675,7 @@ const styles = StyleSheet.create({
   },
   knoppen: { flexDirection: 'row', flexWrap: 'wrap', gap: space.blokGap - 3, alignItems: 'center' },
 });
+
+// ⚠️ QS8-705: een renderfout op dit tabblad is een foutstaat met herstelknop en
+//    geen wit scherm. Zie `src/shared/ui/TabFout.tsx`.
+export { TabFout as ErrorBoundary } from '@/shared/ui';

@@ -5,7 +5,7 @@ import { StyleSheet, View } from 'react-native';
 import {
   fetchOntdekteGroepen,
   fetchVerzoekenOver,
-  huddledagLabel,
+  groepsKaartVan,
   type OntdekteGroep,
   vraagLidmaatschapAan,
   voertaalLabels,
@@ -15,7 +15,6 @@ import {
 import { categorieLabels } from '@/modules/goals';
 import { CATEGORIEEN, type Categorie } from '@/shared/categorieen';
 import { t } from '@/shared/i18n';
-import { telTekens } from '@/shared/tekst';
 import { space } from '@/shared/theme';
 import {
   AsyncView,
@@ -23,11 +22,9 @@ import {
   Button,
   Caption,
   Card,
-  CategorieMerk,
   Choice,
-  Field,
+  OntdekGroepKaart,
   Screen,
-  Subheading,
   useAsync,
 } from '@/shared/ui';
 
@@ -193,9 +190,9 @@ export default function GroepenOntdekken() {
         {(lijst) => (
           <View style={styles.lijst}>
             {lijst.map((groep) => (
-              <GroepsKaart
+              <OntdekGroepKaart
                 key={groep.groupId}
-                groep={groep}
+                groep={groepsKaartVan(groep, categorieLabels()[groep.categorie as Categorie] ?? groep.categorie)}
                 aangevraagd={aangevraagd.includes(groep.groupId)}
                 geblokkeerd={over === 0}
                 onVraagAan={(bericht) => vraagAan(groep, bericht)}
@@ -225,111 +222,6 @@ export default function GroepenOntdekken() {
   );
 }
 
-interface KaartProps {
-  readonly groep: OntdekteGroep;
-  readonly aangevraagd: boolean;
-  /** De dagrem is op. De database weigert sowieso; dit voorkomt de weigering. */
-  readonly geblokkeerd: boolean;
-  readonly onVraagAan: (bericht: string) => Promise<string | null>;
-}
-
-/**
- * Eén vindbare groep.
- *
- * ⚠️ De kaart toont precies de zes velden uit de kolomlijst van
- *    `ontdek_groepen()` en geen zevende. Komt er ooit iets bij, dan begint dat
- *    in die functie en niet hier.
- */
-function GroepsKaart({ groep, aangevraagd, geblokkeerd, onVraagAan }: KaartProps) {
-  const [open, setOpen] = useState(false);
-  const [bericht, setBericht] = useState('');
-  const [bezig, setBezig] = useState(false);
-  const [fout, setFout] = useState<string | null>(null);
-  const [klaar, setKlaar] = useState(false);
-
-  async function verstuur() {
-    setBezig(true);
-    setFout(null);
-    const melding = await onVraagAan(bericht);
-    setBezig(false);
-    if (melding !== null) {
-      setFout(melding);
-      return;
-    }
-    setOpen(false);
-    setKlaar(true);
-  }
-
-  const labels = categorieLabels();
-
-  return (
-    <Card>
-      <Subheading>{groep.naam}</Subheading>
-
-      <View style={styles.merken}>
-        <CategorieMerk
-          categorie={groep.categorie}
-          label={labels[groep.categorie as Categorie] ?? groep.categorie}
-        />
-      </View>
-
-      {groep.omschrijving === null ? null : <Body>{groep.omschrijving}</Body>}
-
-      <Caption>
-        {groep.leden === 1 ? t('ontdek.leden_een') : t('ontdek.leden', { aantal: groep.leden })}
-      </Caption>
-      <Caption>{t('ontdek.huddledag', { dag: huddledagLabel(groep.huddleDag) })}</Caption>
-      {groep.voertaal === null ? null : (
-        <Caption>{voertaalLabels()[groep.voertaal] ?? groep.voertaal}</Caption>
-      )}
-
-      {aangevraagd || klaar ? (
-        <Caption muted={false}>{t('ontdek.verzonden')}</Caption>
-      ) : open ? (
-        <>
-          <Field
-            label={t('ontdek.bericht_label')}
-            hint={t('ontdek.bericht_hint')}
-            value={bericht}
-            onChangeText={setBericht}
-            multiline
-          />
-          {/*
-            ⚠️ Geteld met `telTekens()` en niet met `.length`: de database telt
-               codepunten en een emoji kost er in UTF-16 twee (CLAUDE.md).
-          */}
-          <Caption>{`${telTekens(bericht)}/280`}</Caption>
-
-          <Button
-            variant="primair"
-            block
-            busy={bezig}
-            disabled={telTekens(bericht) > 280}
-            onPress={() => void verstuur()}
-          >
-            {t('ontdek.versturen')}
-          </Button>
-          <Button variant="stil" block onPress={() => setOpen(false)}>
-            {t('ontdek.annuleren')}
-          </Button>
-        </>
-      ) : (
-        <Button
-          variant="secundair"
-          block
-          disabled={geblokkeerd}
-          onPress={() => setOpen(true)}
-        >
-          {t('ontdek.aanvragen')}
-        </Button>
-      )}
-
-      {fout === null ? null : <Caption danger>{fout}</Caption>}
-    </Card>
-  );
-}
-
 const styles = StyleSheet.create({
   lijst: { gap: space.blokGap },
-  merken: { flexDirection: 'row', flexWrap: 'wrap', gap: space.blokGap },
 });

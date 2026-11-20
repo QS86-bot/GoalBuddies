@@ -24,6 +24,7 @@ import {
   Card,
   MilestoneProgress,
   RisicoBadge,
+  Paginakop,
   Screen,
   Subheading,
 } from '@/shared/ui';
@@ -106,7 +107,7 @@ export default function Doelen() {
   const vandaag = profiel ? localDateIn(profiel.tz, now()) : null;
 
   return (
-    <Screen title={t('doelen.titel')}>
+    <Screen title={t('doelen.titel')} kop={<Paginakop titel={t('doelen.titel')} />}>
       {/*
         ⚠️ **Boven de lijst en niet eronder** — QS8-226, punt 2. Hij stond
            onderaan, ónder de paginering: bij drie doelen moest je ervoor
@@ -260,3 +261,7 @@ const styles = StyleSheet.create({
   voet: { flexDirection: 'row', justifyContent: 'space-between', gap: space.blokGap },
   streep: { height: 1, marginTop: 2 },
 });
+
+// ⚠️ QS8-705: een renderfout op dit tabblad is een foutstaat met herstelknop en
+//    geen wit scherm. Zie `src/shared/ui/TabFout.tsx`.
+export { TabFout as ErrorBoundary } from '@/shared/ui';
