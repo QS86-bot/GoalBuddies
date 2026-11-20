@@ -51,23 +51,22 @@ const BEKENDE_SLEUTELS = [
   'rls_enabled_no_policy_public_invite_events',
   'rls_enabled_no_policy_public_invite_preview_limits',
   'rls_enabled_no_policy_public_dagtellers',
-  'auth_leaked_password_protection',
 ];
 
 /**
- * De gemeten stand van 24-09-2026: alles verklaard, niets te ruim.
+ * De gemeten stand van 18-11-2026: alles verklaard, niets te ruim.
  *
- * 📏 Zeven bevindingen met een eigen sleutel, één oningelogde definer-functie
- *    (`invite_preview`) en **76** die `authenticated` mag aanroepen. Dat laatste
- *    getal stond tot deze dag op 47 en is met 29 overschreden zonder dat iemand
- *    het zag.
+ * 📏 Zes bevindingen met een eigen sleutel, één oningelogde definer-functie
+ *    (`invite_preview`) en **81** die `authenticated` mag aanroepen — gemeten met
+ *    `get_advisors` op productie. Op 24-09-2026 waren het er 76; de vijf erbij
+ *    zijn `buddyzoekopdrachten_over()`, `zoek_buddies_aan()`, `zoek_buddies_uit()`
+ *    en `buddyzoek_stand()` in twee handtekeningen (buddywachtrij van QS8-233, migraties 0299, 0301, 0302 en 0306 op `main`).
  *
- * ⚠️ `auth_leaked_password_protection` zit er nog in en de échte adviseur meldt
- *    hem op 24-09 **niet** meer. Dat is met opzet niet uit de allowlist gehaald:
- *    *niet meer gerapporteerd* is niet hetzelfde als *gerepareerd* (QS8-411), en
- *    het verschil is een schakelaar in het dashboard die geen sessie hier kan
- *    lezen. Deze fixture beschrijft dus de stand zoals de lijst hem verwacht,
- *    niet wat de linter vandaag toevallig teruggeeft.
+ * ⚠️ `auth_leaked_password_protection` staat er niet meer in: de adviseur meldt
+ *    hem op 18-11 niet meer, en een rij die niets aanwijst is per ontwerp rood.
+ *    *Niet meer gemeld* is niet hetzelfde als *gerepareerd* (QS8-411) — de
+ *    schakelaar zelf kan hier niemand lezen, en dat staat op QS8-141. Komt de
+ *    bevinding terug, dan is hij nieuw en wordt hij rood: zie de toets hieronder.
  */
 function gemetenStand() {
   const rijen = BEKENDE_SLEUTELS.map((cache_key) => bevinding({ cache_key }));
@@ -77,7 +76,7 @@ function gemetenStand() {
       cache_key: 'anon_security_definer_function_executable_public_invite_preview_code text',
     }),
   );
-  for (let i = 0; i < 76; i += 1) {
+  for (let i = 0; i < 81; i += 1) {
     rijen.push(
       bevinding({
         name: 'authenticated_security_definer_function_executable',
@@ -117,7 +116,7 @@ describe('normaliseer', () => {
 });
 
 describe('beoordeel — wat er met rust gelaten moet worden', () => {
-  it('meldt niets bij de gemeten stand van 24-09-2026', () => {
+  it('meldt niets bij de gemeten stand van 18-11-2026', () => {
     const { onverwacht, verouderd } = beoordeel(gemetenStand(), ALLOWLIST);
     expect(onverwacht).toEqual([]);
     expect(verouderd).toEqual([]);
@@ -173,7 +172,7 @@ describe('beoordeel — wat er gevonden moet worden', () => {
     expect(onverwacht.at(0)?.detail).toContain('hoogstens 1');
   });
 
-  it('meldt een 77e definer-functie', () => {
+  it('meldt een 82e definer-functie — het plafond staat op 81', () => {
     const rijen = [
       ...gemetenStand(),
       bevinding({
@@ -183,19 +182,48 @@ describe('beoordeel — wat er gevonden moet worden', () => {
     ];
     const { onverwacht } = beoordeel(rijen, ALLOWLIST);
     expect(onverwacht).toHaveLength(1);
-    expect(onverwacht.at(0)?.detail).toContain('77 keer');
+    expect(onverwacht.at(0)?.niveau).toBe('RATEL');
+    expect(onverwacht.at(0)?.detail).toContain('hoogstens 81');
+    expect(onverwacht.at(0)?.detail).toContain('82 keer');
   });
 });
 
 describe('beoordeel — de lijst rot ook de andere kant op', () => {
   it('meldt een uitzondering die niets meer aanwijst', () => {
     const rijen = gemetenStand().filter(
-      (r) => r.cache_key !== 'auth_leaked_password_protection',
+      (r) => r.cache_key !== 'security_definer_view_public_mijn_profiel',
     );
     const { onverwacht, verouderd } = beoordeel(rijen, ALLOWLIST);
     expect(onverwacht).toEqual([]);
     expect(verouderd).toEqual([
-      expect.objectContaining({ soort: 'ongebruikt', sleutel: 'auth_leaked_password_protection' }),
+      expect.objectContaining({ soort: 'ongebruikt', sleutel: 'security_definer_view_public_mijn_profiel' }),
+    ]);
+  });
+
+  it('meldt een daling van 81 naar 80 — het plafond moet mee omlaag', () => {
+    // ⚠️ De ratel slaat twee kanten op: 81 mag, 82 niet (hierboven), en 80 is
+    //    "te ruim" zodat de vrijgekomen plek niet stil door de volgende
+    //    definer-functie wordt opgevuld.
+    const rijen = gemetenStand().slice(0, -1);
+    const { onverwacht, verouderd } = beoordeel(rijen, ALLOWLIST);
+    expect(onverwacht).toEqual([]);
+    expect(verouderd).toEqual([
+      expect.objectContaining({
+        soort: 'te-ruim',
+        sleutel: 'authenticated_security_definer_function_executable',
+        reden: expect.stringContaining('hoogstens 81 en komt nog 80 keer voor'),
+      }),
+    ]);
+  });
+
+  it('meldt auth_leaked_password_protection als hij terugkomt — de rij is bewust weg', () => {
+    // ⚠️ Zonder de rij is een terugkeer van de bevinding nieuw werk en dus rood.
+    //    Met de rij erbij zou hij onzichtbaar meeliften op een oordeel van vóór
+    //    de schakelaar.
+    expect(ALLOWLIST.some((r) => r.sleutel === 'auth_leaked_password_protection')).toBe(false);
+    const rijen = [...gemetenStand(), bevinding({ cache_key: 'auth_leaked_password_protection' })];
+    expect(beoordeel(rijen, ALLOWLIST).onverwacht).toEqual([
+      expect.objectContaining({ sleutel: 'auth_leaked_password_protection' }),
     ]);
   });
 
