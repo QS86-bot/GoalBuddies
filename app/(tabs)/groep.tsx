@@ -16,6 +16,7 @@ import {
   Button,
   Caption,
   Card,
+  Paginakop,
   Screen,
   Subheading,
   TeBeoordelenKaart,
@@ -46,7 +47,7 @@ export default function GroepTab() {
   const { data: groepen, loading, error, herlaad } = useAsync(() => fetchMijnGroepen(), []);
 
   return (
-    <Screen title={t('groepen.titel')}>
+    <Screen title={t('groepen.titel')} kop={<Paginakop titel={t('groepen.titel')} />}>
       {/*
         ⚠️ Sinds QS8-148 staat deze kaart óók op het hoofdscherm, uit één
            component met één hook. Twee kopieën zouden na de eerste wijziging

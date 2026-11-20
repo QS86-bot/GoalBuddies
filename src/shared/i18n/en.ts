@@ -248,6 +248,9 @@ export const en: Record<Sleutel, string> = {
   'weekdoel.wacht_op_buddy': '{wat}: waiting for your buddy',
   'weekdoel.wacht_op_bevestigingen': '{wat}: {gedaan} of {nodig} confirmed',
 
+  'paginakop.voortgang': 'Progress',
+  'paginakop.meldingen': 'Notifications, {aantal} waiting',
+  'paginakop.meldingen_knop': 'Notifications {aantal}',
   'reeks.geen': 'No streak yet',
   'reeks.een': '1 week in a row',
   'reeks.meer': '{n} weeks in a row',

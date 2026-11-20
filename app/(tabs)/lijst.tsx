@@ -27,6 +27,7 @@ import {
   Card,
   Choice,
   Field,
+  Paginakop,
   Screen,
   bevestigingen,
   useAsync,
@@ -64,7 +65,7 @@ export default function Lijst() {
   const [melding, setMelding] = useState<string | null>(null);
 
   return (
-    <Screen title={t('lijst.titel')}>
+    <Screen title={t('lijst.titel')} kop={<Paginakop titel={t('lijst.titel')} />}>
       <Caption>{t('lijst.prive_uitleg')}</Caption>
 
       <Invoer userId={userId} onKlaar={lijst.opnieuw} onFout={setMelding} />

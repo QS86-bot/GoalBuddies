@@ -3,7 +3,7 @@ import { useRouter } from 'expo-router';
 import { useTeBeoordelen } from '@/modules/completions';
 import { opmaaktaal, t } from '@/shared/i18n';
 import { toonDatum } from '@/shared/time';
-import { Screen, TeBeoordelenKaart } from '@/shared/ui';
+import { Paginakop, Screen, TeBeoordelenKaart } from '@/shared/ui';
 import {
   BadgeBlok,
   DagzetBlok,
@@ -13,6 +13,7 @@ import {
   Meldingen,
   OpenstaandBlok,
   StandBlok,
+  tellers,
   TellersBlok,
   ToevoegKnoppen,
   useVandaag,
@@ -38,13 +39,33 @@ export default function Vandaag() {
   const teBeoordelen = useTeBeoordelen();
   const v = useVandaag();
 
+  const eyebrow = v.afTeSluiten
+    ? t('vandaag.eyebrow_week', { datum: toonDatum(v.afTeSluiten.startDate, opmaaktaal()) })
+    : t('vandaag.eyebrow_deze');
+
+  // ⚠️ QS8-726: de eigen reeks uit de standen die dit scherm al heeft (geen extra
+  //    query), en alleen zodra hij loopt: een nul bij iemand die net begint is
+  //    geen mededeling. De meldingen zijn de oordelen die op jou wachten — een
+  //    positief signaal; bij een mislukte telling staat de kaart eronder, niet
+  //    een getal dat nul kan liegen. Geen voortgangsstreep: dit scherm heeft geen
+  //    mijlpaalwaarde zonder nieuwe query (regel 12).
+  const reeks = v.standenStatus === 'klaar' ? tellers(v.standen).reeks : null;
+
   return (
     <Screen
       title={t('vandaag.titel')}
-      eyebrow={
-        v.afTeSluiten
-          ? t('vandaag.eyebrow_week', { datum: toonDatum(v.afTeSluiten.startDate, opmaaktaal()) })
-          : t('vandaag.eyebrow_deze')
+      eyebrow={eyebrow}
+      kop={
+        <Paginakop
+          titel={t('vandaag.titel')}
+          eyebrow={eyebrow}
+          reeks={reeks !== null && reeks > 0 ? reeks : null}
+          meldingen={
+            teBeoordelen.aantal > 0 && !teBeoordelen.mislukt
+              ? { aantal: teBeoordelen.aantal, onOpen: () => router.push('/beoordelen') }
+              : undefined
+          }
+        />
       }
     >
       {/*

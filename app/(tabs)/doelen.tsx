@@ -24,6 +24,7 @@ import {
   Card,
   MilestoneProgress,
   RisicoBadge,
+  Paginakop,
   Screen,
   Subheading,
 } from '@/shared/ui';
@@ -106,7 +107,7 @@ export default function Doelen() {
   const vandaag = profiel ? localDateIn(profiel.tz, now()) : null;
 
   return (
-    <Screen title={t('doelen.titel')}>
+    <Screen title={t('doelen.titel')} kop={<Paginakop titel={t('doelen.titel')} />}>
       {/*
         ⚠️ **Boven de lijst en niet eronder** — QS8-226, punt 2. Hij stond
            onderaan, ónder de paginering: bij drie doelen moest je ervoor
