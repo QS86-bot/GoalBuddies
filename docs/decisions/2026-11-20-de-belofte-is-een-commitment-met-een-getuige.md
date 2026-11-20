@@ -2,7 +2,7 @@
 
 **Datum:** 20-11-2026 · **Issue:** QS8-744 (poort, onder epic QS8-721) · **Raakt:** domeinregel 5, 7 en 11,
 Beslisbevoegdheid grens 1, `docs/decisions/002-domeinregel7-oppervlakken.md`
-**Status:** **besloten door Quinten (19-11-2026) en niet gebouwd.** Dit document legt het besluit vast, geeft de
+**Status:** **besloten door Quinten (19-11-2026); x.1 gebouwd in QS8-758 (migratie 0312, nog niet op productie), de rest niet.** Dit document legt het besluit vast, geeft de
 splitsing in bouwissues als *voorstel* en benoemt wat er nog bevestigd moet worden. De poort sluit pas met Quintens
 akkoord (acceptatiecriterium 1 en 4 van het issue); dit document is de voorbereiding daarvan, geen sluiting.
 
@@ -182,7 +182,7 @@ vóór `due` (RLS kan geen kolommen beperken: een kolomgrant of een view met exp
 
 | # | Oppervlak | Waar | Wat de groep ziet | Afgedwongen door |
 |---|---|---|---|---|
-| 60 | **Een verschuldigde belofte** | `commitments` (type `penalty` met een belofteperiode), `commitment_events`, de bestaande systeemberichten `commitment_due` en `commitment_unlocked`, `beneficiary_group_id` en `beneficiary_user_id` | Aan de **begunstigde** (de groep of de ene getuige), en **pas als de belofte verschuldigd is**: dát de gebruiker zijn belofte niet hield en de eigen tekst van het gevolg. Vóór dat moment niets, ook niet dát er een belofte is. Aan elke andere groep of persoon: niets | ⚠️ Is **de enige toegestane uitzondering op *falen is nooit publiek*** (een straf die de gebruiker zelf vooraf instelde en bevestigde). RLS (`commitments_select`) bepaalt het, niet de UI. De periodekolom staat niet in de kolomgrant van een groepslid. Beschermd en open geven hetzelfde: geen verwijzing naar `groups.zichtbaarheid`. Een teamgroep als begunstigde is uit tot QS8-649 en QS8-750 hun eigen besluit hebben gemaakt. Een verwijderd account neemt zijn berichten en spoor mee (QS8-335) |
+| 60 | **Een verschuldigde belofte** | `commitments` (type `penalty` met een belofteperiode), `commitment_events`, de bestaande systeemberichten `commitment_due` en `commitment_unlocked`, `beneficiary_group_id` en `beneficiary_user_id` | Aan de **begunstigde** (de groep of de ene getuige), en **pas als de belofte verschuldigd is**: dát de gebruiker zijn belofte niet hield en de eigen tekst van het gevolg. Vóór dat moment niets, ook niet dát er een belofte is. Aan elke andere groep of persoon: niets | ⚠️ Is **de enige toegestane uitzondering op *falen is nooit publiek*** (een straf die de gebruiker zelf vooraf instelde en bevestigde). RLS (`commitments_select`) bepaalt het, niet de UI. ⚠️ *Correctie bij de bouw van x.1 (QS8-758):* hier stond "de periodekolom staat niet in de kolomgrant van een groepslid", maar een kolomgrant onderscheidt eigenaar en groepslid niet (beide zijn `authenticated`). 0312 geeft `select (periode_start, periode_einde)` aan `authenticated`; wat de begunstigde vóór `due` niet ziet, houdt `commitments_select` tegen, en ná `due` ziet hij ook de week (§5). Beschermd en open geven hetzelfde: geen verwijzing naar `groups.zichtbaarheid`. Een teamgroep als begunstigde is uit tot QS8-649 en QS8-750 hun eigen besluit hebben gemaakt. Een verwijderd account neemt zijn berichten en spoor mee (QS8-335) |
 
 Voor de tweede tabel, **wat "open" hier betekent**: niets. Wat dit oppervlak opent hangt aan de handeling van de
 gebruiker (hij bevestigt zelf) en niet aan `groups.zichtbaarheid`; een open groep krijgt niet méér dan een
@@ -249,7 +249,7 @@ Conservatief ingevuld en dus niet meer gevraagd: geen uitstel, geen herhaling, g
 ## Splitsing in bouwissues (spec-planner-ronde) — voorstel
 
 De spec-planner-ronde (20-11-2026) las migraties en code en draaide niets tegen een database. De nummering x.1 tot
-x.5 is een plaatshouder voor de epicnummering; het hoogste migratienummer op `main` is **0310** en elke migratie
+x.5 is een plaatshouder voor de epicnummering; het hoogste migratienummer op `main` was bij het schrijven **0310** (bij de bouw van x.1: 0311, en x.1 kreeg 0312) en elke migratie
 krijgt haar nummer via `npm run migratie:nieuw`. De volgorde is zo gekozen dat **een client pas in x.3 een belofte
 kan aanmaken**: tot dan bestaan er geen belofterijen, op testrijen na. Elk issue krijgt een eigen tak en PR; geen
 bundeling.

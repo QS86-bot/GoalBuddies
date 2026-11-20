@@ -537,6 +537,16 @@ noemt.
 
 ---
 
+### 2.5c De weekbelofte in het datamodel (QS8-758, migratie 0312) — volgorde
+
+⚠️ **Wacht op Quintens "backup gedaan"**: 0312 wijzigt `commitments` (twee kolommen, een
+CHECK, een versmalde unieke index en twee nieuwe) en herdefinieert vijf strafpaden. Geen
+Edge Function of bundel leest de nieuwe kolommen al, dus deze migratie heeft geen
+deploy-volgorde. Ná de migratie: `npm run types:db`. **Pas daarna** mag een `.select()`
+op `commitments` `periode_start` of `periode_einde` noemen (x.3); vóór de uitrol geeft
+PostgREST daar `42703` en valt `fetchCommitments()` om.
+Beslisdocument: `docs/decisions/2026-11-20-de-belofte-is-een-commitment-met-een-getuige.md`.
+
 ### 2.5b Hoe wil je je voelen (QS8-733, migratie 0311) — volgorde
 
 ⚠️ **Migratie 0311 vóór `functions deploy notificaties`.** De profielquery van de job

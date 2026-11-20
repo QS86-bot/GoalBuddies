@@ -155,11 +155,27 @@ export function isAfgegaan(commitment: { readonly status: string }): boolean {
  *    hierboven. Een parameter die er niet is, kan die vraag niet stellen. Een
  *    test kan er bovendien elk type en elke stand langs halen zonder een rij te
  *    verzinnen — en dus zonder een cast die de toets zou uithollen.
+ *
+ * ⚠️⚠️ **Een weekbelofte valt erbuiten** (QS8-758, migratie 0312). Een belofte is
+ *    een `penalty` mét `periode_start`; ze schuift niet mee met een uitstel, en
+ *    de server laat haar in `straffen_bij_uitstelverzoek()` weg. Waarschuwde de
+ *    client wél, dan beloofde het scherm iets wat de groep nooit te zien krijgt.
+ *    `tests/rls/weekbelofte.test.ts` legt deze functie en de server naast elkaar
+ *    op dezelfde rij.
+ *
+ *    ⚠️ **Optioneel, en een ontbrekende kolom telt als doelstraf.** Dat is de
+ *    veilige kant: een aanroeper die `periode_start` niet opvraagt, waarschuwt
+ *    eerder te veel dan te weinig. `fetchCommitments()` vraagt de kolom nog niet
+ *    op; dat komt met de eerste schrijfweg (x.3), ná de uitrol van 0312.
  */
 export function wordtZichtbaarBijUitstelverzoek(
-  commitment: { readonly type: string; readonly status: string },
+  commitment: {
+    readonly type: string;
+    readonly status: string;
+    readonly periode_start?: string | null;
+  },
 ): boolean {
-  return commitment.type === 'penalty';
+  return commitment.type === 'penalty' && (commitment.periode_start ?? null) === null;
 }
 
 /**
