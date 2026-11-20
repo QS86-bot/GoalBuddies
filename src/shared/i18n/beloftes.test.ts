@@ -201,6 +201,21 @@ const TOEGESTAAN: Readonly<Record<string, string>> = {
     'profiles en eist overal nul. ⚠️ groups.zichtbaarheid raakt dit oppervlak niet: A41 gaat ' +
     'over wat leden van elkaar zien, en de kijker is hier per definitie geen lid — de zin is ' +
     'dus in beide standen waar en hoeft niet gesplitst.',
+  'vragenlijst.gevoel.toelichting':
+    'Zelfde reden en zelfde meting als vragenlijst.gevoel.eigen_hint: profiles.feeling en ' +
+    'profiles.feeling_own zijn voor geen enkele groepsgenoot leesbaar, in een open én een ' +
+    'beschermde groep (tests/rls/gevoel.test.ts, QS8-733).',
+  'vragenlijst.voorbeeld.toelichting':
+    'De nudge gaat alleen naar de apparaten van de eigenaar (push_tokens van user_id = ' +
+    'profiel.id, supabase/functions/notificaties) en noemt geen groep, naam of aantal; ' +
+    'nudgeBericht() is dezelfde functie als die het voorbeeld tekent. Het is geen ' +
+    'zichtbaarheid-van-andermans-gegevens-belofte maar "voor jou alleen", en waar in elke groep.',
+  'vragenlijst.gevoel.eigen_hint':
+    'Waar, en nagemeten in plaats van aangenomen. profiles.feeling en profiles.feeling_own ' +
+    'staan in geen enkele select-grant voor authenticated (alleen id, display_name en ' +
+    'avatar_url zijn leesbaar) en komen alleen via mijn_profiel bij de eigenaar; ze zijn ' +
+    'niet afhankelijk van groups.zichtbaarheid. De eigen tekst komt bovendien in geen enkele ' +
+    'melding (nudgeBericht() krijgt alleen de sleutel). tests/rls/gevoel.test.ts (QS8-733).',
   'straf.tot_dan':
     'Een commitment vóór de deadline. Oppervlak 20 is in EPIC 13 bewust niet opengezet: ' +
     'commitments_select geeft de begunstigde groep pas leesrecht vanaf unlocked/due/resolved. ' +

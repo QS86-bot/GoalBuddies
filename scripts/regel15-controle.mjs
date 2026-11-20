@@ -64,7 +64,10 @@ export const PLAFOND = Object.freeze({
   // 65 → 61 op 19-11-2026 (QS8-748): `app/(tabs)/index.tsx` was één functie van
   // 194 regels, één van 289 en twee van ruim vijftig. De onderdelen staan nu in
   // `src/schermen/vandaag/`, waar de lintregel van 50 hard geldt.
-  'app/': 61,
+  // 61 → 60 op 20-11-2026 (QS8-733): `app/onboarding/vragenlijst.tsx` was 795 regels met
+  // `VragenlijstFormulier` (ruim 140) en `Samenvatting` (75) erin; de vragen staan nu
+  // één per bestand in `src/schermen/vragenlijst/`, onder de harde lintgrens van 50.
+  'app/': 60,
   // 8 → 7 op 14-09-2026 (QS8-472): `TijdzoneKeuze.tsx` is verwijderd toen de
   // tijdzone uit het apparaat ging komen. De ratel zakt mee, anders staat er
   // ruimte open voor een lange functie die niemand ziet terugkomen.

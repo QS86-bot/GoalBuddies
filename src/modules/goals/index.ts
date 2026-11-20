@@ -210,7 +210,11 @@ export {
 } from './overzicht-stand';
 
 export {
+  eigenGevoelSchoon,
+  gevoelLabels,
+  GEVOELENS,
   LEGE_VRAGENLIJST,
+  MAX_EIGEN_GEVOEL,
   MAX_FOCUSGEBIEDEN,
   MINUTEN_OPTIES,
   MOMENTEN,
@@ -222,6 +226,8 @@ export {
   valkuilLabels,
   VALKUILEN,
   vragenlijstSchema,
+  type Gevoel,
+  type GevoelWissen,
   type Minuten,
   type Moment,
   type Valkuil,

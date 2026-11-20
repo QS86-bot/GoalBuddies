@@ -2210,9 +2210,9 @@ export const en: Record<Sleutel, string> = {
   'overzicht.groep_uitleg': 'A group\u2019s standing lives on the group screen itself \u2014 that is where the app knows which group you mean.',
   'overzicht.groep_open': 'Go to your groups',
 
-  'vragenlijst.titel': 'Four short questions',
+  'vragenlijst.titel': 'A few short questions',
   'vragenlijst.eyebrow': 'SO THE APP KNOWS YOU',
-  'vragenlijst.overslaan': 'Skip',
+  'vragenlijst.overslaan': 'Go to summary',
   'vragenlijst.volgende': 'Next',
   'vragenlijst.vorige': 'Back',
   'vragenlijst.alles_overslaan': 'You can skip all of it. You lose nothing, and you can fill it in later.',
@@ -2239,7 +2239,7 @@ export const en: Record<Sleutel, string> = {
   'vragenlijst.valkuil.vraag': 'What normally makes your habits fall apart?',
   'vragenlijst.valkuil.toelichting': 'Tick as many as ring true. This is what the app was built for.',
   'valkuil.forget': 'I simply forget',
-  'valkuil.forget.antwoord': 'Later you will get a reminder on your group\u2019s day. It does not exist yet, and we will not pretend it does.',
+  'valkuil.forget.antwoord': 'That is what the daily reminder is for: one gentle nudge, only if you have not done anything yet that day. You turn it on in your profile.',
   'valkuil.motivation_drops': 'Motivation drops after week one',
   'valkuil.motivation_drops.antwoord': 'That is what a week pass is for: a missed week does not cost you your run. And your floor keeps a mediocre week counting.',
   'valkuil.all_or_nothing': 'All or nothing: one missed day and I stop',
@@ -2696,4 +2696,27 @@ export const en: Record<Sleutel, string> = {
     'Your current hero could not be loaded. Answer the four questions to pick one.',
   'vragenlijst.held.kies_een': 'Pick one',
   'vragenlijst.held.opslaan_mislukt': 'Your hero could not be saved. Please try again in a moment.',
+  // How do you want to feel — QS8-733. Only for yourself; see migration 0311.
+  'vragenlijst.stap_van': 'Question {stap} of {totaal}',
+  'vragenlijst.gevoel.vraag': 'How do you want to feel?',
+  'vragenlijst.gevoel.toelichting':
+    'Pick what fits best, or describe it yourself. This stays yours: your group never sees it.',
+  'vragenlijst.gevoel.calm': 'Calm',
+  'vragenlijst.gevoel.motivated': 'Motivated',
+  'vragenlijst.gevoel.proud': 'Proud',
+  'vragenlijst.gevoel.supported': 'Supported',
+  'vragenlijst.gevoel.energetic': 'Energetic',
+  'vragenlijst.gevoel.focused': 'Focused',
+  'vragenlijst.gevoel.eigen_label': 'Or in your own words',
+  'vragenlijst.gevoel.eigen_hint':
+    'Only you see this, in your profile under Daily reminder. It never appears in a notification.',
+  'vragenlijst.gevoel.eigen_plaatshouder': 'For example: step by step',
+  'vragenlijst.gevoel.eigen_teller': '{aantal} of {max} characters',
+  'vragenlijst.gevoel.eigen_te_lang': 'At most {max} characters.',
+  'vragenlijst.gevoel.regel': 'How you want to feel',
+  'vragenlijst.voorbeeld.vraag': 'This is what your reminder looks like',
+  'vragenlijst.voorbeeld.toelichting':
+    'This is the nudge you get if you turn notifications on: one a day, only for you, and only if you have not done anything yet that day. You turn notifications on or off in your profile.',
+  'vragenlijst.voorbeeld.a11y': 'Example of your reminder',
+  'profiel.motto': 'How you want to feel: {tekst}',
 };

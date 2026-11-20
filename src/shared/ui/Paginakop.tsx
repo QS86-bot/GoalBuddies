@@ -63,7 +63,8 @@ export function Paginakop({ titel, eyebrow, voortgang, reeks, meldingen }: Props
   );
 }
 
-function Streep({ voortgang }: { readonly voortgang: Voortgang }) {
+/** De streep los van de kop, voor een scherm dat zelf de rest van de kop draagt (QS8-733). */
+export function Streep({ voortgang }: { readonly voortgang: Voortgang }) {
   const theme = useTheme();
   const procent = streepProcent(voortgang);
 

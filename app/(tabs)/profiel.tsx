@@ -172,6 +172,7 @@ export default function Profiel() {
               aan={p.reminder_enabled}
               tijd={p.reminder_time}
               toon={(p.reminder_tone === 'firm' ? 'firm' : 'gentle') as Toon}
+              motto={p.feeling_own ?? null}
               userId={p.id}
               onOpgeslagen={zetProfiel}
             />
@@ -794,12 +795,15 @@ function HerinneringInstelling({
   aan,
   tijd,
   toon,
+  motto,
   userId,
   onOpgeslagen,
 }: {
   readonly aan: boolean;
   readonly tijd: string | null;
   readonly toon: Toon;
+  /** Je eigen woorden uit de vragenlijst (QS8-733): alleen hier, nooit in een melding. */
+  readonly motto: string | null;
   readonly userId: string;
   readonly onOpgeslagen: (profiel: ProfielRij) => void;
 }) {
@@ -839,6 +843,7 @@ function HerinneringInstelling({
     <Card>
       <Subheading>{t('profiel.herinnering_titel')}</Subheading>
       <Body muted>{t('profiel.herinnering_uitleg')}</Body>
+      {motto === null ? null : <Body>{t('profiel.motto', { tekst: motto })}</Body>}
 
       <Choice
         label={t('profiel.herinnering_label')}

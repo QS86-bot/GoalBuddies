@@ -148,7 +148,7 @@ export const CENSUS = {
       'wants_own_goal, locale, focus_areas, minutes_per_day, when_i_do_it, what_breaks_it, ' +
       'notify_approval_request, notify_approval_received, notify_cycle_summary, ' +
       'notify_commitment_witness, quiet_from, quiet_to, vindbaar, platform_beheerder, ' +
-      'notify_group_digest',
+      'notify_group_digest, feeling, feeling_own',
   },
   ai_jobs: {
     groepszichtbaar: false,
