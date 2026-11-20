@@ -214,6 +214,11 @@ describe('advisories.yml — QS8-707', () => {
     ...over,
   });
 
+  it('deelt de grens met de uurjobs: één bron en geen tweede getal', async () => {
+    const { GETOLEREERDE_VERTRAGING_UUR } = await import('../../scripts/uurjobs-controle.mjs');
+    expect(ADVISORIES_MAX_UUR).toBe(GETOLEREERDE_VERTRAGING_UUR);
+  });
+
   it('is groen bij een verse, geslaagde run', () => {
     expect(advisoriesStand([run()], NU).stand).toBe('groen');
   });
