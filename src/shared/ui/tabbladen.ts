@@ -178,6 +178,7 @@ function hoortBij(pad: string, tab: string): boolean {
  */
 const ONDER: Readonly<Record<string, string>> = {
   '/doel': '/doelen',
+  '/instellingen': '/profiel',
 };
 
 function afgeleid(pad: string): string | null {

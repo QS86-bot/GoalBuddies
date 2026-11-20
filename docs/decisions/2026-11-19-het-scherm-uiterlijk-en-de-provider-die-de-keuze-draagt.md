@@ -4,8 +4,10 @@ QS8-731, 19-11-2026. Bouwt op QS8-722 (besluiten), QS8-723/724/725 (paletten), Q
 
 ## Wat er staat
 
-- `app/uiterlijk.tsx` met de onderdelen in `src/schermen/uiterlijk/`; Profiel heeft één kaart
-  (`UiterlijkIngang`) die erheen leidt en vervangt de oude `ThemaKeuze`.
+- Een eigen route met de onderdelen in `src/schermen/uiterlijk/`; Profiel had één kaart
+  (`UiterlijkIngang`) die erheen leidde en verving de oude `ThemaKeuze`. *(Sinds 20-11-2026, QS8-754: de route
+  is vervallen en het scherm is een onderdeel van Instellingen; de kaart is vervangen door één ingang naar
+  Instellingen.)*
 - Keuzes: stijl A/B/C, bij C een kleurvariant, weergave, dichtheid en de emoji-schakelaar, met een
   voorvertoning die `useTheme()` leest (dezelfde tokens als de app; het uiterlijk geldt direct).
 - `UiterlijkProvider` (`src/modules/uiterlijk/react.tsx`) draagt de keuze en rendert `ThemeProvider`. De
