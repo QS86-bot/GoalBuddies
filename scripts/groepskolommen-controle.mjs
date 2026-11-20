@@ -254,7 +254,7 @@ export const CENSUS = {
     //    `authenticated` heeft géén UPDATE op deze kolom (📏 nagemeten: negen
     //    andere kolommen wél) en `guard_group_update()` pint hem daarachter.
     //    Rij 42 in `docs/decisions/002-domeinregel7-oppervlakken.md`.
-    kolommen: 'id, name, icon, created_by, invite_code, invite_revoked, huddle_day, tz, evidence_policy, approval_rule, season_cadence, status, last_activity_at, created_at, zichtbaarheid, approval_quorum, ontdekbaar, categorie, omschrijving, voertaal, automatisch',
+    kolommen: 'id, name, icon, created_by, invite_code, invite_revoked, huddle_day, tz, evidence_policy, approval_rule, season_cadence, status, last_activity_at, created_at, zichtbaarheid, approval_quorum, ontdekbaar, categorie, omschrijving, voertaal, automatisch, organization_id',
   },
   goal_match_queue: {
     // ⚠️⚠️ **Niet groepszichtbaar, en dat is de hele belofte van deze tabel.**

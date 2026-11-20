@@ -1602,6 +1602,11 @@ export const en: Record<Sleutel, string> = {
 
   // QS8-761 — the weekly promise. See the comment in nl.ts.
   'belofte.knop': 'Make a weekly promise',
+  // QS8-762 — see the comment in nl.ts.
+  'belofte.verwijzing.tekst':
+    'Want to attach a weekly promise to this goal, with a group or witness you choose yourself? Nothing is set until you confirm it yourself.',
+  'belofte.verwijzing.link': 'Go to the weekly promise',
+  'belofte.verwijzing.sluit': 'Not now',
   'belofte.titel': 'Weekly promise',
   'belofte.uitleg':
     'Promise that you will complete at least one of this goal\u2019s weekly goals this week, with a ' +
@@ -1852,12 +1857,12 @@ export const en: Record<Sleutel, string> = {
     'Going on holiday, ill, or just a strange month? Then pause those weeks. They cost you no ' +
     'point and your streak stays where it is; it just does not grow. You pick how long, you may ' +
     'have several side by side, and a week that is already over is allowed too.',
-  // ⚠️ QS8-753: this sentence no longer fully holds after the RLS change (part A) and stays
-  //    unchanged by decision of Quinten (19-11-2026). Do not change it as a side effect.
+  // ⚠️ QS8-768 (decision by Quinten, 20-11-2026): replaced, the old sentence was untrue
+  //    after 0307. The last sentence (the Ketting remainder) must go in the PR of QS8-769.
   'adempauze.groep_ziet':
-    'Your group sees that you have a breather and from when to when, including one you place ' +
-    'over weeks that are already past. They do not see which weekly goals you did or did not ' +
-    'reach.',
+    'Your group does not see your breather. If you want to let them know, post a message ' +
+    'yourself. The Ketting does not count members on a pause; in a small group someone can ' +
+    'infer from that that somebody is pausing.',
   'adempauze.week_van': 'Week of {datum}',
   'adempauze.tot_en_met': ' up to and including the week of {datum}',
   'adempauze.voorbij': 'Over',
@@ -2327,7 +2332,7 @@ export const en: Record<Sleutel, string> = {
   'valkuil.nobody_notices': 'Nobody notices if I stop',
   'valkuil.nobody_notices.antwoord': 'Your week is confirmed by a buddy, not by yourself. That is what this app is built around.',
   'valkuil.life_chaotic': 'My life gets chaotic sometimes',
-  'valkuil.life_chaotic.antwoord': 'Then you announce a breather in advance. Your group sees that you are pausing, and your run stays.',
+  'valkuil.life_chaotic.antwoord': 'Then you set a breather. Your run stays, and your group only sees it if you let them know yourself.',
   'valkuil.bekijk': 'Show me',
 
   'vragenlijst.samenvatting.kop': 'Here is what you told me',
