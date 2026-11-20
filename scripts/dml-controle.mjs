@@ -101,6 +101,12 @@ export function topniveauDml(sql) {
  * @type {Record<string, { bevat: string, reden: string }[]>}
  */
 export const DML_MET_REDEN = {
+  '0315': [
+    { bevat: 'update public.profiles set tz =',
+      reden: '`where lower(tz) = \'factory\' or like \'posix/%\' or like \'right/%\'` — na de run staat er een echte zone, dus de tweede run matcht niets' },
+    { bevat: 'update public.groups set tz =',
+      reden: '`where lower(tz) = \'factory\' or like \'posix/%\' or like \'right/%\'` — na de run staat er een echte zone, dus de tweede run matcht niets' },
+  ],
   '0304': [
     { bevat: 'insert into public.xp_grootboek (user_id, bron, weekdoel_id',
       reden: '`on conflict do nothing` op de unieke sleutel (user, weekdoel, bron), en het bedrag is 20/10 min wat er al geboekt is: een tweede run vindt de sleutel bezet of een restant van nul' },
