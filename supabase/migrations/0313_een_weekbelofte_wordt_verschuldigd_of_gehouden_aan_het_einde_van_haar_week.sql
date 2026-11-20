@@ -67,7 +67,8 @@
 --
 -- Een rijpe belofte is **gebroken** als er in haar week een weekdoel op
 -- `missed` staat zonder bestede weekpas voor die cyclus, en er in die week
--- niets `approved` is. Dat laatste is de regel van de reeks (A37,
+-- niets `approved` of `pending` is (een lopende keuring kan de week nog laten
+-- tellen). Dat laatste is de regel van de reeks (A37,
 -- `herbereken_reeks()`: één gehaald weekdoel laat de week tellen) en van
 -- `verbruik_weekpas()`, die in zo'n week geen pas besteedt; zonder die eis werd
 -- een week die voor de reeks telt, voor de belofte gebroken. Dan `due`, en
@@ -126,7 +127,10 @@ begin
               where h.goal_id = c.goal_id
                 and h.cycle_start_date >= c.periode_start
                 and h.cycle_start_date <  c.periode_einde
-                and h.status = 'approved'
+                -- ⚠️ Ook `pending` (security-ronde): een keuring die nog loopt
+                --    kan de week alsnog laten tellen, en een `due` is niet terug
+                --    te draaien. Bij twijfel niet verschuldigd.
+                and h.status in ('approved', 'pending')
            )
            and exists (
              select 1

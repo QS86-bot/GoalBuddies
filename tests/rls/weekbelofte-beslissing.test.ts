@@ -234,6 +234,8 @@ ${STAND}`);
     { geval: 'geen weekdoel in die week', weken: [], stand: 'cancelled' },
     { geval: 'gemist (`missed`)', weken: [['missed']], stand: 'due' },
     { geval: 'één gehaald, één gemist: de week telt (A37)', weken: [['approved'], ['missed']], stand: 'cancelled' },
+    // Security-ronde: een keuring die nog loopt kan de week alsnog laten tellen.
+    { geval: 'één wacht op goedkeuring, één gemist', weken: [['pending'], ['missed']], stand: 'cancelled' },
     // ⚠️ `carried` ís een gemiste week (0185, 0216). Gehouden zoals de poort het
     //    tekende; dat het een uitweg is, ligt bij Quinten (kop van 0313).
     { geval: 'gemist en doorgeschoven (`carried`)', weken: [['carried']], stand: 'cancelled' },

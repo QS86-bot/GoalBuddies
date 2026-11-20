@@ -696,7 +696,7 @@ Voordat er één feature gebouwd wordt:
     (A43), en zonder belofte verandert er niets.
 
     **Gebroken** is: in die week staat een weekdoel op `missed` zonder bestede
-    weekpas, en niets op `approved`. Al het andere is **gehouden**, en gehouden
+    weekpas, en niets op `approved` of `pending`. Al het andere is **gehouden**, en gehouden
     eindigt op `cancelled` met `actor_id null`, **nooit op `resolved`** (dat maakt
     de tekst leesbaar voor de begunstigde). Bij twijfel niet verschuldigd. De
     belofte beslist pas als de rollover de week heeft gesloten (geen weekdoel meer
