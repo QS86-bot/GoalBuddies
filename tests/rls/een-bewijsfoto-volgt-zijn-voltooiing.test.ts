@@ -316,7 +316,7 @@ describe.runIf(beschikbaar)('een bewijsfoto volgt zijn voltooiing', () => {
     });
   });
 
-  it('laat het bewijs verdwijnen als de eigenaar zijn account verwijdert', () => {
+  it('laat het bewijs aan de opruimpas als de eigenaar zijn account verwijdert', () => {
     // ⚠️⚠️ **Dit is het tegenovergestelde van wat QS8-391 vroeg, en de reden
     //    staat in 0230.** Het issue zei dat de bewijsfoto blijft omdat hij bewijs
     //    is voor een ander. Maar `completions_user_id_fkey` en
@@ -338,13 +338,23 @@ describe.runIf(beschikbaar)('een bewijsfoto volgt zijn voltooiing', () => {
     const week = maakWeek(doel, 'Weg', 'pending');
     const pad = maakBewijs(week, vertrekker, 'weg');
 
+    // ⚠️⚠️ **Sinds 0315 (QS8-692) wist de cascade de objectrij níet meer.**
+    //    Supabase weigert `delete from storage.objects` met 42501
+    //    (`storage.protect_delete()`, sinds QS8-694 ook in de shim), en dat liet
+    //    op productie élke accountverwijdering falen. De foto blijft als wees
+    //    staan, en `verlopen_bewijsfotos()` wijst hem aan, zodat de rollover blob
+    //    én rij wist met `storage.remove()`. Hier stond `naObject: '0'`: de
+    //    belofte van 0230, die met 0315 bewust is vervangen.
     const voor = psql(`select count(*) from storage.objects where name = '${pad}'`);
-    psql(`delete from public.profiles where id = '${vertrekker}'`);
+    psql(`begin; set local storage.allow_delete_query = 'false';
+          delete from public.profiles where id = '${vertrekker}'; commit;`);
     const naObject = psql(`select count(*) from storage.objects where name = '${pad}'`);
     const naRij = psql(`select count(*) from public.completions where attachment_url = '${pad}'`);
+    const wees = psql(`select count(*) from public.verlopen_bewijsfotos(500) where pad = '${pad}'`);
 
     psql(`delete from auth.users where id = '${vertrekker}'`);
+    psql(`delete from storage.objects where name = '${pad}'`);
 
-    expect({ voor, naObject, naRij }).toEqual({ voor: '1', naObject: '0', naRij: '0' });
+    expect({ voor, naObject, naRij, wees }).toEqual({ voor: '1', naObject: '1', naRij: '0', wees: '1' });
   });
 });

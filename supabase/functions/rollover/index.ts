@@ -783,19 +783,27 @@ async function ruimVerlopenBijlagenOp(db: Db): Promise<{ opgeruimd: number; misl
   //
   // ⚠️ Wat de lus deelt, blijft de uitvoerende helft. Alleen het opvrágen is per
   //    emmer een eigen regel, en dat is precies één ternary.
-  async function verlopenPaden(emmer: 'chatfotos' | 'chatdocs') {
+  //
+  // ⚠️ **`bewijsfotos` erbij sinds QS8-692 (0315).** Een bewijsfoto van een
+  //    verwijderd account blijft als wees staan — `delete from storage.objects` in
+  //    de cascade wordt op productie met 42501 geweigerd — en deze pas haalt hem
+  //    met `storage.remove()` weg. De RPC geeft alleen objecten waarvan de
+  //    eigenaar geen profiel meer heeft.
+  async function verlopenPaden(emmer: 'chatfotos' | 'chatdocs' | 'bewijsfotos') {
+    if (emmer === 'bewijsfotos') return await db.rpc('verlopen_bewijsfotos', { p_limiet: BIJLAGE_PAS_LIMIET });
     return emmer === 'chatfotos'
       ? await db.rpc('verlopen_chatfotos', { p_limiet: BIJLAGE_PAS_LIMIET })
       : await db.rpc('verlopen_chatdocs', { p_limiet: BIJLAGE_PAS_LIMIET });
   }
 
-  const emmers = ['chatfotos', 'chatdocs'] as const;
+  const emmers = ['chatfotos', 'chatdocs', 'bewijsfotos'] as const;
 
   let opgeruimd = 0;
   let mislukt = 0;
   const misluktPerEmmer: Record<(typeof emmers)[number], number> = {
     chatfotos: 0,
     chatdocs: 0,
+    bewijsfotos: 0,
   };
 
   for (const emmer of emmers) {
@@ -865,7 +873,7 @@ async function ruimVerlopenBijlagenOp(db: Db): Promise<{ opgeruimd: number; misl
  */
 async function wisBlokgewijs(
   db: Db,
-  emmer: 'chatfotos' | 'chatdocs',
+  emmer: 'chatfotos' | 'chatdocs' | 'bewijsfotos',
   paden: readonly string[],
 ): Promise<{ opgeruimd: number; mislukt: number }> {
   let opgeruimd = 0;
