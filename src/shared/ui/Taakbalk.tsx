@@ -171,14 +171,16 @@ function MenuKop({ actief, open, stip, onWissel }: MenuKopProps) {
         focusRing(theme, heeftFocus),
       ])}
     >
-      <Text style={[styles.label, { color: c.accent, fontWeight: '700' }]}>{naam}</Text>
-      {stip && !open ? (
-        <View
-          importantForAccessibility="no"
-          aria-hidden
-          style={[styles.stip, { backgroundColor: c.accent }]}
-        />
-      ) : null}
+      <View style={styles.inhoud}>
+        <Text style={[styles.label, { color: c.accent, fontWeight: '700' }]}>{naam}</Text>
+        {stip && !open ? (
+          <View
+            importantForAccessibility="no"
+            aria-hidden
+            style={[styles.stip, { backgroundColor: c.accent }]}
+          />
+        ) : null}
+      </View>
       <View
         importantForAccessibility="no"
         aria-hidden
