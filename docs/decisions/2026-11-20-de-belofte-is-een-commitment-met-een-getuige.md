@@ -149,7 +149,7 @@ daar niet mee eens, dan valt het besluit niet om maar wordt het smaller: dan is 
   een andere knop (zoals "plan opslaan"), nooit een toestemming die ergens anders al gegeven is. De bevestiging
   schrijft `confirmed_at` en een gebeurtenis in `commitment_events`.
 - **Terugdraaien:** de gebruiker kan intrekken zolang de belofte op `set` staat. Dat zet hem op `cancelled`,
-  de getuige hoort het (0293), er gaat geen straf naar iemand. Zodra hij verschuldigd is, blijft hij staan.
+  de getuige hoort er níets van (⚠️ *correctie bij QS8-761:* hier stond "de getuige hoort het (0293)"; de kop van 0293 zegt dat een bericht bij intrekken vanuit `set` domeinregel 11 zou schenden, want de getuige wist nog van niets), er gaat geen straf naar iemand. Zodra hij verschuldigd is, blijft hij staan.
 - **Wat de gebruiker te horen krijgt vóór bevestigen** moet in beide talen staan en zonder emoji (emoji-regel) en
   zonder woorden die iets afdwingen dat de app niet doet. ⚠️ De woorden "straf" en `due` zijn in de app-tekst nog
   steeds geen besloten kwestie (zie CLAUDE.md, domeinregel 5, laatste ⚠️); de bouwissue gebruikt de bestaande

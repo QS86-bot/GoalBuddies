@@ -206,6 +206,41 @@ export function isDoelstraf(commitment: {
 }
 
 /**
+ * Is dit een weekbelofte? — QS8-761. Het spiegelbeeld van {@link isDoelstraf}:
+ * een `penalty` mét `periode_start` (0312).
+ *
+ * ⚠️ Staat hier en niet in het beloftescherm, om dezelfde reden als
+ *    `isDoelstraf()`: `tests/beloftes/doelstraf.test.ts` laat een rauwe
+ *    `type === 'penalty'` alleen in dit bestand toe.
+ */
+export function isWeekbelofte(commitment: {
+  readonly type: string;
+  readonly periode_start: string | null;
+}): boolean {
+  return commitment.type === 'penalty' && commitment.periode_start !== null;
+}
+
+/**
+ * De standen van een weekbelofte waar een tekst voor is — QS8-761.
+ *
+ * ⚠️ **Eigen teksten en niet die van de doelstraf.** `commitment.penalty.*`
+ *    noemt de streefdatum ("dit gaat in werking als je streefdatum verstrijkt");
+ *    een belofte meet aan haar eigen week (domeinregel 11, tweede verruiming).
+ *    `cancelled` dekt twee wegen (zelf ingetrokken, of gehouden: `actor_id null`
+ *    bij 0313), dus de zin noemt geen van beide als oorzaak.
+ */
+export const BELOFTE_STANDEN = ['set', 'due', 'resolved', 'cancelled'] as const;
+
+export function belofteTekstVoor(commitment: { readonly status: string }): CommitmentTekst {
+  const stand = BELOFTE_STANDEN.find((s) => s === commitment.status);
+  if (stand === undefined) return onbekend();
+  return {
+    titel: t(`belofte.stand.${stand}.titel` as Sleutel),
+    uitleg: t(`belofte.stand.${stand}.uitleg` as Sleutel),
+  };
+}
+
+/**
  * Staat dit commitment nog open — en is het dus nog in te trekken?
  *
  * Alleen `set`. Dat is dezelfde grens als in `commitments_update`; staat het

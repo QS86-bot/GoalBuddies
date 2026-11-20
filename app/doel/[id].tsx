@@ -3,6 +3,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 
 import { useProfiel, useSession, userClock } from '@/modules/auth';
+import { BelofteIngang } from '@/schermen/belofte';
 import {
   beslissendeGroep,
   enigeOfGekozen,
@@ -363,6 +364,18 @@ export default function DoelDetail() {
               bestaand={commitments.find(isDoelstraf)}
               streefdatumVoorbij={!magStrafVastleggen(d.target_date, vandaag)}
               onKlaar={herlaad}
+            />
+
+            {/* QS8-761: de weekbelofte heeft een eigen scherm; hier alleen de ingang. */}
+            <BelofteIngang
+              goalId={d.id}
+              doelStatus={d.status ?? ''}
+              streefdatum={d.target_date ?? ''}
+              vandaag={vandaag}
+              klok={klok}
+              commitments={commitments}
+              heeftGroep={groepen.length > 0}
+              vanMij={d.owner_id === userId}
             />
 
             {/* ⚠️ Niet op een afgerond doel — 0211 §4 weigert de wissel daar, en een

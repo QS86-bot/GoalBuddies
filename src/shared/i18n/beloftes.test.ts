@@ -92,6 +92,12 @@ const ONZICHTBAARHEID = [
  *    dan moet het scherm dat ook echt afdwingen.
  */
 const TOEGESTAAN: Readonly<Record<string, string>> = {
+  'belofte.bevestig_wie':
+    'QS8-761. De zin gaat over de eigen weekbelofte en is onvoorwaardelijk waar, ook in een open ' +
+    'groep: `commitments_select` geeft de begunstigde pas leesrecht vanaf `due` en kijkt niet naar ' +
+    '`groups.zichtbaarheid` (rij 61 in 002: beschermd en open geven hetzelfde), en ' +
+    '`straffen_bij_uitstelverzoek()` slaat een belofte over (0312). Getoetst met een tweede JWT in ' +
+    '`tests/rls/weekbelofte-aangaan.test.ts` (criterium 4). Geen `_open`-tegenhanger nodig.',
   'prestaties.ingang_uitleg':
     'QS8-735. De zin gaat over het eigen Prestatiescherm en is onvoorwaardelijk waar, ook in een ' +
     'open groep: `badges_select` en `xp_grootboek` zijn eigenaar-only (`user_id = auth.uid()`, ' +
