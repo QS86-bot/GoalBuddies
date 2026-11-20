@@ -75,6 +75,15 @@ vi.mock('react-native-safe-area-context', () => ({
   useSafeAreaInsets: () => ({ top: 0, bottom: 0, left: 0, right: 0 }),
 }));
 vi.mock('@expo/vector-icons/MaterialCommunityIcons', () => ({ default: () => null }));
+// `react-native-svg` laadt onder jsdom niet: het pakket is een Flow-module en de
+// loader weigert `import typeof` (`SyntaxError: Unexpected token 'typeof'`). Sinds de
+// nieuwe huisstijl importeert `src/shared/ui` (Pictogram, Afvinkcirkel) het, dus elk
+// scherm dat die componenten haalt faalt zonder deze mock. Lege componenten volstaan:
+// een schermtest toetst gedrag en tekst, geen tekeningen.
+vi.mock('react-native-svg', () => {
+  const leeg = () => null;
+  return { default: leeg, Circle: leeg, Path: leeg, Polyline: leeg, Defs: leeg, LinearGradient: leeg, Stop: leeg };
+});
 
 export interface GerenderdScherm {
   /** Alle tekst die op het scherm staat, aan elkaar. */
