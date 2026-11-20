@@ -38,6 +38,8 @@ export const en: Record<Sleutel, string> = {
     '{naam} made this group discoverable. People you don’t know yet can see the name, the topic, the description and the number of members. Nothing else.',
   'systeembericht.huddle_day_changed':
     '{naam} moved the huddle day. The week that is running moved along with it; anything already closed stays closed.',
+  'systeembericht.team_goal_created': 'There is a new team goal. Take your share if you want to join in.',
+  'systeembericht.team_goal_completed': 'The team completed a team goal.',
 
   'systeembericht.prestatie_gedeeld': '{naam} shares an achievement: {prestatie}.',
   'systeembericht.prestatie_gedeeld_zonder_prestatie': '{naam} shares an achievement.',
@@ -120,6 +122,9 @@ export const en: Record<Sleutel, string> = {
   'commitment.begunstigde.naamloos': 'A group member',
   'commitment.fout.invoer': 'Check what you entered.',
   'commitment.fout.vastleggen': 'Saving did not work. Please try again.',
+  'commitment.fout.teamstraf':
+    'An agreement on a team share can only have your team or a teammate as its witness. ' +
+    'And a team can only witness a team share. Choose another witness.',
   'commitment.fout.intrekken': 'Withdrawing did not work.',
   'commitment.fout.al_afgegaan':
     'This commitment has already come into effect and can no longer be withdrawn.',
@@ -288,6 +293,12 @@ export const en: Record<Sleutel, string> = {
 
   'delen.gekopieerd': 'Copied. Paste it into your chat',
   'delen.mislukt': 'Sharing does not work here. Select the link above',
+  'delen.uitnodiging_onderwerp': '{naam} invites you to GoalBuddies',
+  'delen.uitnodiging_onderwerp_zonder_naam': 'You are invited to GoalBuddies',
+  'delen.uitnodiging_tekst': '{naam} invites you to the group {groep} on GoalBuddies, an app for working on your goals together with others. Open the link to see the group and join:\n{link}',
+  'delen.uitnodiging_tekst_zonder_naam': 'You are invited to the group {groep} on GoalBuddies, an app for working on your goals together with others. Open the link to see the group and join:\n{link}',
+  'linkvoorbeeld.titel': 'GoalBuddies',
+  'linkvoorbeeld.beschrijving': 'Work on your goals together with others. GoalBuddies helps you keep going, with a group that cheers you on.',
 
   'stand.punten': 'Points',
   'stand.langste_reeks': 'Longest streak',
@@ -396,7 +407,6 @@ export const en: Record<Sleutel, string> = {
   'beheer.link_titel': 'Invite link',
   'beheer.link_uitleg': 'Whoever opens this link sees the group and how many people are in it, even without an account. What you share in goals is only visible after joining. Still, only share the link with people you want in.',
   'beheer.deel': 'Share the invitation',
-  'beheer.deel_titel': 'Join {groep}',
   'beheer.kopieer': 'Or copy it by hand',
   'beheer.link_gesloten': 'The link is closed. Nobody can get in with it right now.',
   'beheer.nieuwe_link': 'Create a new link',
@@ -462,7 +472,6 @@ export const en: Record<Sleutel, string> = {
   'groepdetail.naar_weekafsluiting': 'The weekly wrap-up',
   'groepdetail.naar_chat': 'Group chat',
   'groepdetail.link_uitleg': 'Whoever opens this link sees the group and how many people are in it, even without an account. Only share it with people you want in.',
-  'groepdetail.deel_titel': 'Join {groep}',
   'demping.titel': 'Mute group',
   'demping.uitleg_uit': 'Muting turns off notifications from this group: you will not be notified when a buddy is waiting for your review.',
   'demping.uitleg_aan': 'This group is muted: you will not be notified when a buddy is waiting for your review.',
@@ -921,7 +930,6 @@ export const en: Record<Sleutel, string> = {
   'samen.gekoppeld': 'Shared with {naam}',
   'samen.gekoppeld_tekst': 'Send the invite link to whoever you want along. Whoever opens it lands in this group.',
   'samen.deel': 'Share invite link',
-  'samen.deel_titel': 'Want to join {groep}?',
   'samen.link_gesloten': 'This group\'s invite link is closed. You can reopen it in group settings.',
   'samen.groep_weg_titel': 'This group is gone',
   'samen.groep_weg_tekst': 'Your goal is still there. Link it to another group from the goal itself.',
@@ -1602,6 +1610,11 @@ export const en: Record<Sleutel, string> = {
 
   // QS8-761 — the weekly promise. See the comment in nl.ts.
   'belofte.knop': 'Make a weekly promise',
+  // QS8-762 — see the comment in nl.ts.
+  'belofte.verwijzing.tekst':
+    'Want to attach a weekly promise to this goal, with a group or witness you choose yourself? Nothing is set until you confirm it yourself.',
+  'belofte.verwijzing.link': 'Go to the weekly promise',
+  'belofte.verwijzing.sluit': 'Not now',
   'belofte.titel': 'Weekly promise',
   'belofte.uitleg':
     'Promise that you will complete at least one of this goal\u2019s weekly goals this week, with a ' +
@@ -1852,12 +1865,12 @@ export const en: Record<Sleutel, string> = {
     'Going on holiday, ill, or just a strange month? Then pause those weeks. They cost you no ' +
     'point and your streak stays where it is; it just does not grow. You pick how long, you may ' +
     'have several side by side, and a week that is already over is allowed too.',
-  // ⚠️ QS8-753: this sentence no longer fully holds after the RLS change (part A) and stays
-  //    unchanged by decision of Quinten (19-11-2026). Do not change it as a side effect.
+  // ⚠️ QS8-768 (decision by Quinten, 20-11-2026): replaced, the old sentence was untrue
+  //    after 0307. The last sentence (the Ketting remainder) must go in the PR of QS8-769.
   'adempauze.groep_ziet':
-    'Your group sees that you have a breather and from when to when, including one you place ' +
-    'over weeks that are already past. They do not see which weekly goals you did or did not ' +
-    'reach.',
+    'Your group does not see your breather. If you want to let them know, post a message ' +
+    'yourself. The Ketting does not count members on a pause; in a small group someone can ' +
+    'infer from that that somebody is pausing.',
   'adempauze.week_van': 'Week of {datum}',
   'adempauze.tot_en_met': ' up to and including the week of {datum}',
   'adempauze.voorbij': 'Over',
@@ -2327,7 +2340,7 @@ export const en: Record<Sleutel, string> = {
   'valkuil.nobody_notices': 'Nobody notices if I stop',
   'valkuil.nobody_notices.antwoord': 'Your week is confirmed by a buddy, not by yourself. That is what this app is built around.',
   'valkuil.life_chaotic': 'My life gets chaotic sometimes',
-  'valkuil.life_chaotic.antwoord': 'Then you announce a breather in advance. Your group sees that you are pausing, and your run stays.',
+  'valkuil.life_chaotic.antwoord': 'Then you set a breather. Your run stays, and your group only sees it if you let them know yourself.',
   'valkuil.bekijk': 'Show me',
 
   'vragenlijst.samenvatting.kop': 'Here is what you told me',
@@ -2803,4 +2816,162 @@ export const en: Record<Sleutel, string> = {
     'This is the nudge you get if you turn notifications on: one a day, only for you, and only if you have not done anything yet that day. You turn notifications on or off in your profile.',
   'vragenlijst.voorbeeld.a11y': 'Example of your reminder',
   'profiel.motto': 'How you want to feel: {tekst}',
+  // Organisaties en teams — QS8-657
+  'organisatie.ingang_kop':
+    'Organisations',
+  'organisatie.ingang_uitleg':
+    'For the teams at your work. Your buddy groups stay separate.',
+  'organisatie.ingang_leeg':
+    'You are not in any organisation yet.',
+  'organisatie.ingang_storing':
+    'Your organisations could not be loaded.',
+  'organisatie.ingang_aanmaken':
+    'Create an organisation',
+  'organisatie.ingang_deelnemen':
+    'Join with a code',
+  'organisatie.eyebrow':
+    'Organisation',
+  'organisatie.rol_beheerder':
+    'admin',
+  'organisatie.jouw_rol_beheerder':
+    'You are an admin of this organisation.',
+  'organisatie.jouw_rol_lid':
+    'You are a member of this organisation.',
+  'organisatie.nieuw_titel':
+    'Create an organisation',
+  'organisatie.naam_label':
+    'Name of the organisation',
+  'organisatie.naam_hint':
+    'This is how your colleagues see the organisation. You become its admin.',
+  'organisatie.naam_teller':
+    '{aantal} of {max} characters',
+  'organisatie.nieuw_knop':
+    'Create organisation',
+  'organisatie.naam_leeg':
+    'Give the organisation a name.',
+  'organisatie.naam_lang':
+    'That name is too long. 80 characters at most.',
+  'organisatie.naam_ongeldig':
+    'That name contains characters that are not allowed. Try it without invisible or formatting characters.',
+  'organisatie.aanmaken_mislukt':
+    'The organisation could not be created. Please try again.',
+  'organisatie.rate_limited_aanmaken':
+    'You already created three organisations today. You can try again tomorrow.',
+  'organisatie.te_veel':
+    'You are already in ten organisations. Leave one to make room.',
+  'organisatie.deelnemen_titel':
+    'Join an organisation',
+  'organisatie.code_label':
+    'Invitation code',
+  'organisatie.code_hint':
+    'You get the code from an admin of the organisation.',
+  'organisatie.deelnemen_knop':
+    'Join',
+  'organisatie.deelnemen_mislukt':
+    'Joining did not work. Please try again in a moment.',
+  'organisatie.code_ongeldig':
+    'This code does not work. It was withdrawn or it is wrong; ask an admin for a new one.',
+  'organisatie.rate_limited_deelnemen':
+    'You tried too many codes today. Try again tomorrow.',
+  'organisatie.niet_gevonden_titel':
+    'Organisation not found',
+  'organisatie.niet_gevonden_tekst':
+    'This organisation does not exist or you do not have access to it.',
+  'organisatie.leden_kop':
+    'Members',
+  'organisatie.leden_laden':
+    'The members could not be loaded.',
+  'organisatie.leden_leeg_titel':
+    'No members to show',
+  'organisatie.leden_leeg_tekst':
+    'There are no members to show right now.',
+  'organisatie.meer_laden':
+    'Load more',
+  'organisatie.meer_mislukt':
+    'Loading more did not work. Please try again.',
+  'organisatie.uitzetten_label': 'Remove {naam} from the organisation',
+  'organisatie.uitzetten_knop':
+    'Remove',
+  'organisatie.uitzetten_titel':
+    'Remove this member?',
+  'organisatie.uitzetten_uitleg':
+    '{naam} loses access to this organisation and cannot come back with the code. To make sure the old code stops working too, the organisation gets a new code afterwards.',
+  'organisatie.uitzetten_bevestig':
+    'Yes, remove {naam}',
+  'organisatie.uitzetten_mislukt':
+    'Removing did not work. Please try again.',
+  'organisatie.teams_kop':
+    'Teams',
+  'organisatie.teams_laden':
+    'The teams could not be loaded.',
+  'organisatie.teams_uitleg':
+    'You only see the names of the teams here. What happens in a team is visible to the members of that team only.',
+  'organisatie.teams_leeg_titel':
+    'This organisation has no teams yet',
+  'organisatie.teams_leeg_tekst':
+    'An admin can create a team.',
+  'organisatie.team_nieuw_knop':
+    'Create a team',
+  'organisatie.team_naam_label':
+    'Name of the team',
+  'organisatie.team_naam_hint':
+    'At least two characters, 60 at most.',
+  'organisatie.team_opslaan':
+    'Create',
+  'organisatie.team_aanmaken_mislukt':
+    'The team could not be created. Please try again.',
+  'organisatie.team_gemaakt':
+    'The team was created.',
+  'organisatie.code_kop':
+    'Invitation code',
+  'organisatie.code_uitleg':
+    'Share this code with colleagues so they can join. Only admins see it.',
+  'organisatie.code_ingetrokken':
+    'The code was withdrawn. Nobody can join with it right now.',
+  'organisatie.code_laden':
+    'The code could not be loaded.',
+  'organisatie.code_leeg_titel':
+    'No code available',
+  'organisatie.code_leeg_tekst':
+    'Only an admin can see the code.',
+  'organisatie.code_vernieuwen_knop':
+    'Make a new code',
+  'organisatie.code_vernieuwen_titel':
+    'Make a new code?',
+  'organisatie.code_vernieuwen_uitleg':
+    'The current code stops working. Anyone who has it needs the new code. Current members stay members.',
+  'organisatie.code_vernieuwen_bevestig':
+    'Yes, new code',
+  'organisatie.code_intrekken_knop':
+    'Withdraw the code',
+  'organisatie.code_intrekken_titel':
+    'Withdraw the code?',
+  'organisatie.code_intrekken_uitleg':
+    'After that nobody can join with a code until you make a new one. Current members stay members.',
+  'organisatie.code_intrekken_bevestig':
+    'Yes, withdraw',
+  'organisatie.rate_limited_code':
+    'You already changed the code ten times today. You can try again tomorrow.',
+  'organisatie.actie_mislukt':
+    'That did not work. Please try again.',
+  'organisatie.niet_toegestaan':
+    'Only an admin of this organisation can do this.',
+  'organisatie.geen_lid':
+    'You are not a member of this organisation.',
+  'organisatie.verlaten_knop':
+    'Leave organisation',
+  'organisatie.verlaten_titel':
+    'Leave this organisation?',
+  'organisatie.verlaten_uitleg':
+    'You lose access to the organisation and leave its teams. You cannot get back in with the code. Your other groups stay as they are.',
+  'organisatie.verlaten_bevestig':
+    'Yes, leave',
+  'organisatie.verlaten_mislukt':
+    'Leaving did not work. Please try again.',
+  'organisatie.laatste_beheerder':
+    'You are the only admin of this organisation, so you cannot leave it.',
+  'organisatie.verwijder_waarschuwing':
+    'Are you the only admin of {naam}? Then nobody can invite new members there after you delete your account. Everyone already in keeps everything.',
+  'organisatie.verwijder_waarschuwing_storing':
+    'We could not check whether you are an admin of an organisation. If you are, and you are the only one, hand over the admin role first. Otherwise nobody can invite new members afterwards.',
 };

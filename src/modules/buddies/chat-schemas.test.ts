@@ -152,6 +152,10 @@ describe('domeinregel 7: falen is nooit publiek', () => {
       'huddle_day_changed',
       // QS8-736 (0309): een prestatie die iemand zelf deelt; nooit een titel, niveau of XP.
       'prestatie_gedeeld',
+      // ⚠️ QS8-656 (migratie 0323). Over het teamdoel en niet over een persoon:
+      //    geen naam en geen titel. Er is met opzet geen bericht over een aandeel.
+      'team_goal_created',
+      'team_goal_completed',
     ]);
   });
 

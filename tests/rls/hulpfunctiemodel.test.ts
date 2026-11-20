@@ -175,6 +175,26 @@ const REGISTER: Readonly<Record<string, Rij>> = {
     open: true,
     reden: 'De open-groepvariant van shares_group_with_goal(), zelfde model (0141).',
   },
+  straf_teamband_klopt: {
+    nietInactief: 2,
+    alleenActief: 0,
+    archief: false,
+    open: false,
+    reden:
+      'QS8-660 (0325, besluit M1): een straf op een aandeel alleen voor wie nu in het team zit. ' +
+      'Lezer én eigenaar actief, zoals shares_group_with_user(); geen archieftoets, want dit is ' +
+      'de leeskant van een straf, en die blijft na archiveren leesbaar zoals elke begunstigde groep.',
+  },
+  aandeel_wacht_op_teamgenoot: {
+    nietInactief: 2,
+    alleenActief: 0,
+    archief: true,
+    open: false,
+    reden:
+      'Het goedkeurvenster voor een aandeel (0321, QS8-661): zelfde model als ' +
+      'shares_group_with_goal(), kijker én eigenaar actief en de groep niet gearchiveerd, ' +
+      'want het staat in dezelfde leesregels. Alleen zolang er een weekdoel op pending staat.',
+  },
   shares_group_with_user: {
     nietInactief: 2,
     alleenActief: 0,

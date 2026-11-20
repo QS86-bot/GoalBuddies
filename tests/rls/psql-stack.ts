@@ -45,6 +45,14 @@ export const PSQL_OMGEVING: NodeJS.ProcessEnv = {
   PGPORT: process.env.PGPORT ?? '5433',
   PGUSER: process.env.PGUSER ?? 'postgres',
   PGPASSWORD: process.env.PGPASSWORD ?? 'postgres',
+  // ⚠️ **De beheerverbinding mag uit `storage.objects` wissen, de app niet** —
+  //    QS8-692. De shim draagt sinds dat issue Supabase' grendel
+  //    `storage.protect_delete()`, die een `delete` weigert tenzij deze
+  //    instelling aan staat. Op productie zet de Storage-API hem; het dashboard
+  //    en deze tests ruimen als beheerder op. Wat via PostgREST loopt (de app,
+  //    `verwijder_mijn_account()`) krijgt hem níet, en daar hoort de fout van
+  //    QS8-692 dus ook lokaal te vallen.
+  PGOPTIONS: [process.env.PGOPTIONS, '-c storage.allow_delete_query=true'].filter(Boolean).join(' '),
 };
 
 /** De database die de lokale stack opbouwt. */

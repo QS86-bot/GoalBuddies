@@ -111,6 +111,13 @@ export const nl = {
    */
   'systeembericht.prestatie_gedeeld': '{naam} deelt een prestatie: {prestatie}.',
   'systeembericht.prestatie_gedeeld_zonder_prestatie': '{naam} deelt een prestatie.',
+  /**
+   * ⚠️ Migratie 0323 (QS8-656). Over het team, niet over een persoon: geen
+   *    {naam} en geen titel. Wie het teamdoel maakte of afrondde, staat er met
+   *    opzet niet in.
+   */
+  'systeembericht.team_goal_created': 'Er is een nieuw teamdoel. Neem je aandeel als je mee wilt doen.',
+  'systeembericht.team_goal_completed': 'Het team heeft een teamdoel afgerond.',
 
   /** Iemand die er niet meer is. Zie oppervlak 18 in beslisdocument 002. */
   'algemeen.oud_lid': 'Een oud-lid',
@@ -214,6 +221,10 @@ export const nl = {
   'commitment.begunstigde.naamloos': 'Een groepsgenoot',
   'commitment.fout.invoer': 'Controleer je invoer.',
   'commitment.fout.vastleggen': 'Vastleggen lukte niet. Probeer het opnieuw.',
+  // ⚠️ QS8-660 (0325): een werkaandeel en een vriendenkring zijn twee werelden.
+  'commitment.fout.teamstraf':
+    'Een afspraak op een teamaandeel heeft alleen je team of een teamgenoot als getuige. ' +
+    'En een team is alleen getuige van een teamaandeel. Kies een andere getuige.',
   'commitment.fout.intrekken': 'Intrekken lukte niet.',
   'commitment.fout.al_afgegaan':
     'Dit commitment is al in werking getreden en kan niet meer worden ingetrokken.',
@@ -453,6 +464,12 @@ export const nl = {
   //    deed; de zin wijst hem naar wat wél werkt.
   'delen.gekopieerd': 'Gekopieerd. Plak hem in je chat',
   'delen.mislukt': 'Delen lukt hier niet. Selecteer de link hierboven',
+  'delen.uitnodiging_onderwerp': '{naam} nodigt je uit voor GoalBuddies',
+  'delen.uitnodiging_onderwerp_zonder_naam': 'Je bent uitgenodigd voor GoalBuddies',
+  'delen.uitnodiging_tekst': '{naam} nodigt je uit voor de groep {groep} op GoalBuddies, een app waarmee je samen met anderen aan je doelen werkt. Open de link om de groep te zien en mee te doen:\n{link}',
+  'delen.uitnodiging_tekst_zonder_naam': 'Je bent uitgenodigd voor de groep {groep} op GoalBuddies, een app waarmee je samen met anderen aan je doelen werkt. Open de link om de groep te zien en mee te doen:\n{link}',
+  'linkvoorbeeld.titel': 'GoalBuddies',
+  'linkvoorbeeld.beschrijving': 'Werk samen met anderen aan je doelen. GoalBuddies helpt je volhouden, met een groep die meekijkt en je aanmoedigt.',
 
   'stand.punten': 'Punten',
   'stand.langste_reeks': 'Langste reeks',
@@ -569,7 +586,6 @@ export const nl = {
   'beheer.link_titel': 'Uitnodigingslink',
   'beheer.link_uitleg': 'Wie deze link opent, ziet de groep en hoeveel mensen erin zitten, ook zonder account. Wat jullie aan doelen delen, ziet iemand pas na het meedoen. Deel de link toch alleen met mensen die je erbij wilt.',
   'beheer.deel': 'Deel de uitnodiging',
-  'beheer.deel_titel': 'Doe mee met {groep}',
   'beheer.kopieer': 'Of kopieer hem met de hand',
   'beheer.link_gesloten': 'De link is gesloten. Niemand kan er op dit moment mee binnenkomen.',
   'beheer.nieuwe_link': 'Nieuwe link maken',
@@ -642,7 +658,6 @@ export const nl = {
   'groepdetail.naar_weekafsluiting': 'De weekafsluiting',
   'groepdetail.naar_chat': 'Groepschat',
   'groepdetail.link_uitleg': 'Wie deze link opent, ziet de groep en hoeveel mensen erin zitten, ook zonder account. Deel hem alleen met mensen die je erbij wilt.',
-  'groepdetail.deel_titel': 'Doe mee met {groep}',
   'demping.titel': 'Groep dempen',
   'demping.uitleg_uit': 'Dempen zet de meldingen van deze groep uit: je krijgt geen bericht meer als een buddy op jouw oordeel wacht.',
   'demping.uitleg_aan': 'Deze groep is gedempt: je krijgt geen meldingen meer als een buddy op jouw oordeel wacht.',
@@ -1265,7 +1280,6 @@ export const nl = {
   'samen.gekoppeld': 'Gedeeld met {naam}',
   'samen.gekoppeld_tekst': 'Stuur de uitnodigingslink naar wie je erbij wilt. Wie hem opent, komt in deze groep terecht.',
   'samen.deel': 'Uitnodigingslink delen',
-  'samen.deel_titel': 'Doe je mee in {groep}?',
   'samen.link_gesloten': 'De uitnodigingslink van deze groep staat dicht. In het groepsbeheer zet je hem weer open.',
   'samen.groep_weg_titel': 'Deze groep is er niet meer',
   'samen.groep_weg_tekst': 'Je doel blijft staan. Koppel het aan een andere groep vanaf het doel zelf.',
@@ -2098,6 +2112,12 @@ export const nl = {
   //    niet doet. "Gebroken" is de definitie van domeinregel 11 (0313), in gewone
   //    taal: een gemiste week zonder weekpas, en niets afgerond.
   'belofte.knop': 'Een weekbelofte doen',
+  // QS8-762 — de verwijzing boven de doelenlijst. Een uitnodiging en geen verzoek: ze
+  // zegt dat er een keuze is, niet dat er iets moet, en ze belooft niets over wat er daarna gebeurt.
+  'belofte.verwijzing.tekst':
+    'Wil je een weekbelofte aan dit doel koppelen, met een groep of getuige die je zelf kiest? Pas na je eigen bevestiging gaat er iets in.',
+  'belofte.verwijzing.link': 'Naar de weekbelofte',
+  'belofte.verwijzing.sluit': 'Niet nu',
   'belofte.titel': 'Weekbelofte',
   'belofte.uitleg':
     'Beloof dat je deze week minstens één weekdoel van dit doel haalt, met een gevolg dat je zelf ' +
@@ -2401,13 +2421,12 @@ export const nl = {
   //    niet welke weken je gemist hebt" lezen terwijl een pauze die je áchteraf
   //    aankondigt precies dat verraadt. Zie
   //    `docs/decisions/002-domeinregel7-oppervlakken.md` rij 21 en §4a.
-  // ⚠️ QS8-753: deze zin klopt na de RLS-wijziging (deel A) niet meer volledig, en
-  //    blijft op besluit van Quinten (19-11-2026) ongewijzigd staan. Pas hem niet
-  //    aan als bijvangst; dat is een eigen besluit.
+  // ⚠️ QS8-768 (besluit Quinten, 20-11-2026): vervangen, want de oude zin was na 0307
+  //    onwaar. De laatste zin (het Ketting-restant) moet weg in de PR van QS8-769.
   'adempauze.groep_ziet':
-    'Je groep ziet dát je een adempauze hebt en van wanneer tot wanneer, ook als je hem over ' +
-    'weken legt die al voorbij zijn. Ze zien niet welke weekdoelen je wel of niet gehaald ' +
-    'hebt.',
+    'Je groep ziet je adempauze niet. Wil je het ze laten weten, dan plaats je zelf een ' +
+    'bericht. De Ketting telt leden in een pauze niet mee; in een kleine groep kan iemand ' +
+    'daaruit afleiden dat er iemand pauzeert.',
   'adempauze.week_van': 'Week van {datum}',
   'adempauze.tot_en_met': ' tot en met de week van {datum}',
   'adempauze.voorbij': 'Voorbij',
@@ -2875,7 +2894,7 @@ export const nl = {
   'valkuil.nobody_notices': 'Niemand merkt het als ik stop',
   'valkuil.nobody_notices.antwoord': 'Je week wordt door een buddy bevestigd, niet door jezelf. Dat is waar deze app om draait.',
   'valkuil.life_chaotic': 'Mijn leven wordt soms chaotisch',
-  'valkuil.life_chaotic.antwoord': 'Dan kondig je vooraf een adempauze aan. Je groep ziet dat je even pauzeert, en je reeks blijft staan.',
+  'valkuil.life_chaotic.antwoord': 'Dan zet je een adempauze. Je reeks blijft staan, en je groep ziet het alleen als je het ze zelf laat weten.',
   'valkuil.bekijk': 'Laat zien',
 
   'vragenlijst.samenvatting.kop': 'Dit heb je me verteld',
@@ -3411,6 +3430,164 @@ export const nl = {
     'Dit is het zetje dat je krijgt als je meldingen aanzet: één per dag, alleen voor jou, en alleen als je die dag nog niets deed. Je zet meldingen aan of uit op je profiel.',
   'vragenlijst.voorbeeld.a11y': 'Voorbeeld van je herinnering',
   'profiel.motto': 'Hoe je je wilt voelen: {tekst}',
+  // Organisaties en teams — QS8-657
+  'organisatie.ingang_kop':
+    'Organisaties',
+  'organisatie.ingang_uitleg':
+    'Voor de teams op je werk. Je buddy-groepen blijven er los van.',
+  'organisatie.ingang_leeg':
+    'Je zit nog in geen enkele organisatie.',
+  'organisatie.ingang_storing':
+    'Je organisaties konden niet geladen worden.',
+  'organisatie.ingang_aanmaken':
+    'Organisatie aanmaken',
+  'organisatie.ingang_deelnemen':
+    'Lid worden met een code',
+  'organisatie.eyebrow':
+    'Organisatie',
+  'organisatie.rol_beheerder':
+    'beheerder',
+  'organisatie.jouw_rol_beheerder':
+    'Je bent beheerder van deze organisatie.',
+  'organisatie.jouw_rol_lid':
+    'Je bent lid van deze organisatie.',
+  'organisatie.nieuw_titel':
+    'Organisatie aanmaken',
+  'organisatie.naam_label':
+    'Naam van de organisatie',
+  'organisatie.naam_hint':
+    'Zo staat de organisatie bij je collega’s. Je wordt zelf beheerder.',
+  'organisatie.naam_teller':
+    '{aantal} van {max} tekens',
+  'organisatie.nieuw_knop':
+    'Organisatie aanmaken',
+  'organisatie.naam_leeg':
+    'Geef de organisatie een naam.',
+  'organisatie.naam_lang':
+    'Die naam is te lang. Maximaal 80 tekens.',
+  'organisatie.naam_ongeldig':
+    'Die naam bevat tekens die niet kunnen. Probeer hem zonder onzichtbare of opmaaktekens.',
+  'organisatie.aanmaken_mislukt':
+    'De organisatie kon niet worden aangemaakt. Probeer het opnieuw.',
+  'organisatie.rate_limited_aanmaken':
+    'Je hebt vandaag al drie organisaties aangemaakt. Morgen kan het weer.',
+  'organisatie.te_veel':
+    'Je zit al in tien organisaties. Verlaat er een om ruimte te maken.',
+  'organisatie.deelnemen_titel':
+    'Lid worden van een organisatie',
+  'organisatie.code_label':
+    'Uitnodigingscode',
+  'organisatie.code_hint':
+    'De code krijg je van een beheerder van de organisatie.',
+  'organisatie.deelnemen_knop':
+    'Lid worden',
+  'organisatie.deelnemen_mislukt':
+    'Lid worden lukte niet. Probeer het zo nog eens.',
+  'organisatie.code_ongeldig':
+    'Deze code werkt niet. Hij is ingetrokken of hij klopt niet; vraag een beheerder om een nieuwe.',
+  'organisatie.rate_limited_deelnemen':
+    'Je hebt vandaag te vaak een code geprobeerd. Probeer het morgen opnieuw.',
+  'organisatie.niet_gevonden_titel':
+    'Organisatie niet gevonden',
+  'organisatie.niet_gevonden_tekst':
+    'Deze organisatie bestaat niet of je hebt er geen toegang toe.',
+  'organisatie.leden_kop':
+    'Leden',
+  'organisatie.leden_laden':
+    'De leden konden niet geladen worden.',
+  'organisatie.leden_leeg_titel':
+    'Geen leden te tonen',
+  'organisatie.leden_leeg_tekst':
+    'Er zijn nu geen leden om te laten zien.',
+  'organisatie.meer_laden':
+    'Meer laden',
+  'organisatie.meer_mislukt':
+    'Meer laden lukte niet. Probeer het opnieuw.',
+  'organisatie.uitzetten_label': '{naam} uit de organisatie zetten',
+  'organisatie.uitzetten_knop':
+    'Uitzetten',
+  'organisatie.uitzetten_titel':
+    'Dit lid uitzetten?',
+  'organisatie.uitzetten_uitleg':
+    '{naam} verliest de toegang tot deze organisatie en kan er niet met de code terugkomen. Om te zorgen dat de oude code ook niet meer werkt, krijgt de organisatie daarna een nieuwe code.',
+  'organisatie.uitzetten_bevestig':
+    'Ja, zet {naam} uit',
+  'organisatie.uitzetten_mislukt':
+    'Uitzetten lukte niet. Probeer het opnieuw.',
+  'organisatie.teams_kop':
+    'Teams',
+  'organisatie.teams_laden':
+    'De teams konden niet geladen worden.',
+  'organisatie.teams_uitleg':
+    'Je ziet hier alleen de namen van de teams. Wat er in een team gebeurt, zien alleen de leden van dat team.',
+  'organisatie.teams_leeg_titel':
+    'Deze organisatie heeft nog geen teams',
+  'organisatie.teams_leeg_tekst':
+    'Een beheerder kan een team aanmaken.',
+  'organisatie.team_nieuw_knop':
+    'Team aanmaken',
+  'organisatie.team_naam_label':
+    'Naam van het team',
+  'organisatie.team_naam_hint':
+    'Minstens twee tekens, maximaal 60.',
+  'organisatie.team_opslaan':
+    'Aanmaken',
+  'organisatie.team_aanmaken_mislukt':
+    'Het team kon niet worden aangemaakt. Probeer het opnieuw.',
+  'organisatie.team_gemaakt':
+    'Het team is aangemaakt.',
+  'organisatie.code_kop':
+    'Uitnodigingscode',
+  'organisatie.code_uitleg':
+    'Deel deze code met collega’s zodat ze lid kunnen worden. Alleen beheerders zien hem.',
+  'organisatie.code_ingetrokken':
+    'De code is ingetrokken. Niemand kan er nu lid mee worden.',
+  'organisatie.code_laden':
+    'De code kon niet geladen worden.',
+  'organisatie.code_leeg_titel':
+    'Geen code beschikbaar',
+  'organisatie.code_leeg_tekst':
+    'Alleen een beheerder kan de code zien.',
+  'organisatie.code_vernieuwen_knop':
+    'Nieuwe code maken',
+  'organisatie.code_vernieuwen_titel':
+    'Een nieuwe code maken?',
+  'organisatie.code_vernieuwen_uitleg':
+    'De huidige code werkt daarna niet meer. Wie hem al heeft, heeft de nieuwe code nodig. Huidige leden blijven lid.',
+  'organisatie.code_vernieuwen_bevestig':
+    'Ja, nieuwe code',
+  'organisatie.code_intrekken_knop':
+    'Code intrekken',
+  'organisatie.code_intrekken_titel':
+    'De code intrekken?',
+  'organisatie.code_intrekken_uitleg':
+    'Daarna kan niemand meer lid worden met een code, tot je een nieuwe code maakt. Huidige leden blijven lid.',
+  'organisatie.code_intrekken_bevestig':
+    'Ja, intrekken',
+  'organisatie.rate_limited_code':
+    'Je hebt vandaag al tien keer de code aangepast. Morgen kan het weer.',
+  'organisatie.actie_mislukt':
+    'Dat lukte niet. Probeer het opnieuw.',
+  'organisatie.niet_toegestaan':
+    'Alleen een beheerder van deze organisatie kan dit doen.',
+  'organisatie.geen_lid':
+    'Je bent geen lid van deze organisatie.',
+  'organisatie.verlaten_knop':
+    'Organisatie verlaten',
+  'organisatie.verlaten_titel':
+    'Deze organisatie verlaten?',
+  'organisatie.verlaten_uitleg':
+    'Je verliest de toegang tot de organisatie en stapt uit haar teams. Met de code kom je er niet meer in terug. Je andere groepen blijven zoals ze zijn.',
+  'organisatie.verlaten_bevestig':
+    'Ja, verlaten',
+  'organisatie.verlaten_mislukt':
+    'Verlaten lukte niet. Probeer het opnieuw.',
+  'organisatie.laatste_beheerder':
+    'Je bent de enige beheerder van deze organisatie, dus je kunt hem niet verlaten.',
+  'organisatie.verwijder_waarschuwing':
+    'Ben je de enige beheerder van {naam}? Dan kan na het verwijderen niemand daar nog nieuwe leden uitnodigen. Wie er al in zit, houdt alles.',
+  'organisatie.verwijder_waarschuwing_storing':
+    'We konden niet nagaan of je beheerder bent van een organisatie. Ben je dat en ben je de enige, draag het beheer dan eerst over. Anders kan daarna niemand nog nieuwe leden uitnodigen.',
 } as const;
 
 export type Sleutel = keyof typeof nl;

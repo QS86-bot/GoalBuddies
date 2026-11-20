@@ -9,11 +9,12 @@ import {
 } from '@/modules/auth';
 import { useAvatarKeuze } from '@/modules/auth/react';
 
+import { fetchMijnOrganisaties } from '@/modules/organisaties';
 import { t } from '@/shared/i18n';
 import { telTekens } from '@/shared/tekst';
 import { space } from '@/shared/theme';
 
-import { AvatarKeuze, Body, Button, Caption, Card, Field, Subheading } from '@/shared/ui';
+import { AvatarKeuze, Body, Button, Caption, Card, Field, Subheading, useAsync } from '@/shared/ui';
 
 /**
  * Je weergavenaam wijzigen — QS8-473.
@@ -147,6 +148,33 @@ export function Avatarkaart({
 const WOORD = 'VERWIJDER';
 
 /** Het overtyp-formulier van account verwijderen; de handeling zelf staat in de aanroeper. */
+/**
+ * Wat er met een organisatie gebeurt als de enige beheerder zijn account opzegt — QS8-657.
+ *
+ * ⚠️ De waarschuwing zegt wat er daarna niet meer kan. Een laadfout geeft een
+ *    algemene zin en nooit stilte, want dit is de plek waar iemand het nog kan
+ *    regelen. Bij het hernummeren (20-11-2026) verhuisd uit `app/(tabs)/profiel.tsx`,
+ *    waar accountverwijderen sinds QS8-754 niet meer staat.
+ */
+function OrganisatieWaarschuwing() {
+  const { data, error } = useAsync(() => fetchMijnOrganisaties(), []);
+
+  if (error !== null) return <Body>{t('organisatie.verwijder_waarschuwing_storing')}</Body>;
+
+  const beheerd = (data ?? []).filter((organisatie) => organisatie.rol === 'admin');
+  if (beheerd.length === 0) return null;
+
+  return (
+    <View style={styles.keuzes}>
+      {beheerd.map((organisatie) => (
+        <Body key={organisatie.id}>
+          {t('organisatie.verwijder_waarschuwing', { naam: organisatie.naam })}
+        </Body>
+      ))}
+    </View>
+  );
+}
+
 function VerwijderBevestigen({
   bevestiging,
   bezig,
@@ -166,6 +194,7 @@ function VerwijderBevestigen({
     <Card nested>
       <Subheading>{t('profiel.zeker_weten')}</Subheading>
       <Body>{t('profiel.geen_backup')}</Body>
+      <OrganisatieWaarschuwing />
       <Field
         label={t('profiel.typ_woord', { woord: WOORD })}
         value={bevestiging}

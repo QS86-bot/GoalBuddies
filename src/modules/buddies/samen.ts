@@ -1,3 +1,5 @@
+import { t } from '../../shared/i18n';
+
 import { uitnodigingsLink } from './schemas';
 
 import type { DoelGroep } from './deling';
@@ -95,4 +97,49 @@ export function beginfase(
   }
 
   return { fase: 'kiezen' };
+}
+
+/**
+ * De tekst die een gedeelde uitnodiging draagt — QS8-706, optie A.
+ *
+ * ⚠️ **Dit is wat het lid zelf verstuurt**, en alleen dat. De groepsnaam mag
+ *    erin (besluit van Quinten, 19-11-2026): het lid drukt zelf op "delen" en
+ *    kiest wie het krijgt. Het **linkvoorbeeld** (de metatags die WhatsApp en
+ *    mailproviders cachen) is een ander oppervlak en blijft algemeen; zie
+ *    `src/shared/web/linkvoorbeeld.ts`. De afzender is de weergavenaam van het
+ *    lid, en ontbreekt die, dan staat er een zin zonder afzender.
+ *
+ * ⚠️ Het onderwerp (mail) noemt de groep niet: een onderwerpregel staat in
+ *    lijsten en meldingen, en daar hoort alleen de app en eventueel de afzender.
+ *
+ * ⚠️ De link komt van `deelbareUitnodiging()`; deze functie bouwt er alleen de
+ *    zin omheen en kan een ingetrokken link dus nooit zelf uitdelen.
+ */
+export function uitnodigingsBericht(
+  link: string,
+  groepsnaam: string,
+  afzender: string | null | undefined,
+): { readonly tekst: string; readonly onderwerp: string } {
+  const groep = groepsnaam.trim();
+  const naam = typeof afzender === 'string' ? afzender.trim() : '';
+  if (naam === '') {
+    return {
+      tekst: t('delen.uitnodiging_tekst_zonder_naam', { groep, link }),
+      onderwerp: t('delen.uitnodiging_onderwerp_zonder_naam'),
+    };
+  }
+  return {
+    tekst: t('delen.uitnodiging_tekst', { naam, groep, link }),
+    onderwerp: t('delen.uitnodiging_onderwerp', { naam }),
+  };
+}
+
+/** Het bericht voor een groep, of `null` als er geen link is om te delen. */
+export function deelbaarBericht(
+  groep: Parameters<typeof deelbareUitnodiging>[0] & { readonly name: string },
+  appUrl: string,
+  afzender: string | null | undefined,
+): { readonly tekst: string; readonly onderwerp: string } | null {
+  const link = deelbareUitnodiging(groep, appUrl);
+  return link === null ? null : uitnodigingsBericht(link, groep.name, afzender);
 }

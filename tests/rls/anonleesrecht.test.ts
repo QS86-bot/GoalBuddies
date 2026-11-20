@@ -106,6 +106,10 @@ const REGISTER: Readonly<Record<string, string>> = {};
  *    zweeg — en dan bewaakt hij de kant die stuk kán gaan niet meer.
  */
 const GEEN_CLIENTLEZER: Readonly<Record<string, string>> = {
+  team_progress_events:
+    'De teller achter de teambalk (0320, QS8-655). Alleen leesbaar via `teambalk()`, als één getal: ' +
+    'een leesbare rij geeft per mijlpaal een tijdstip, en tijdstippen naast elkaar zijn een delta per ' +
+    'dag (002 rij 45).',
   dagtellers:
     'De gedeelde dagtellertabel achter `tel_dagteller()` (0203/0207/0234). Een ' +
     'client die zijn eigen verbruik kan lezen, kan het ook plannen; de tellers ' +
@@ -114,6 +118,10 @@ const GEEN_CLIENTLEZER: Readonly<Record<string, string>> = {
     'De limiettabel achter het oningelogde uitnodigingseindpunt (0131). Hij ' +
     'bestaat juist om een niet-ingelogde bezoeker te remmen, dus leesrecht voor ' +
     'wie dan ook zou de rem meetbaar maken voor wie hem wil omzeilen.',
+  organization_role_events:
+    'Het spoor van rolwijzigingen in een organisatie (0318, QS8-695). Bewust zonder ' +
+    'leesoppervlak: besluit 6 zegt dat een beheerder niet meer ziet dan een lid, en ' +
+    'de huidige rol staat al in `organisatieleden()`. Alleen de twee rol-RPC\'s schrijven.',
 };
 
 const beschikbaar = stackBeschikbaarOfFaal(
