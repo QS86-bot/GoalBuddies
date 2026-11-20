@@ -7,7 +7,7 @@ import { zonderCommentaar } from '../../scripts/zonder-commentaar.mjs';
 import { reportError } from '../../src/lib/observability';
 
 import { isHuddledagOp } from '../../src/modules/buddies/periods';
-import { BREED_VANAF, taakbalkVorm, TABBLADEN } from '../../src/shared/ui/tabbladen';
+import { BREED_VANAF, MAX_INHOUDSBREEDTE, MENU_KOLOMBREEDTE, taakbalkVorm, TABBLADEN } from '../../src/shared/ui/tabbladen';
 
 vi.mock('../../src/lib/observability', () => ({ reportError: vi.fn() }));
 
@@ -101,6 +101,6 @@ describe('het menu', () => {
   it('het breekpunt ligt op de kolombreedte plus de inhoud', () => {
     expect(taakbalkVorm(BREED_VANAF - 1)).toBe('bovenrand');
     expect(taakbalkVorm(BREED_VANAF)).toBe('zijkant');
-    expect(BREED_VANAF).toBeGreaterThanOrEqual(620 + 220);
+    expect(BREED_VANAF).toBeGreaterThanOrEqual(MAX_INHOUDSBREEDTE + MENU_KOLOMBREEDTE);
   });
 });

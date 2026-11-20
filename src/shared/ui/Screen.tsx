@@ -8,7 +8,7 @@ import { radius, space, useTheme } from '../theme';
 
 import { focusRing } from './a11y';
 import { Taakbalk, useTaakbalkVorm } from './Taakbalk';
-import { toontTaakbalk } from './tabbladen';
+import { MAX_INHOUDSBREEDTE, toontTaakbalk } from './tabbladen';
 import { Eyebrow, Heading } from './Text';
 
 /**
@@ -202,7 +202,7 @@ const styles = StyleSheet.create({
     // De app is een leesapp op een telefoon, maar draait ook op een breed
     // scherm. Zonder deze grens worden regels op een monitor onleesbaar lang.
     width: '100%',
-    maxWidth: 620,
+    maxWidth: MAX_INHOUDSBREEDTE,
     alignSelf: 'center',
   },
   kop: { gap: 3, paddingBottom: 2 },
