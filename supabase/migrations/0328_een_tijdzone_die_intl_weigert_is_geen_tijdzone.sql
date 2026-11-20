@@ -60,6 +60,11 @@
 --    0119. `lower()` omdat Postgres zonenamen hoofdletterongevoelig vergelijkt:
 --    `at time zone 'factory'` werkt, en `Intl` weigert die spelling net zo.
 --
+-- ⚠️ **Het lichaam is dat van 0156, niet van 0119.** 0156 zette `pg_temp` achteraan
+--    het zoekpad van deze functie. De eerste versie van deze migratie kopieerde 0119
+--    en haalde `pg_temp` weer weg; de RLS-suite (`definer-aanroepertoets`,
+--    `hulpfuncties`, `zoekpadschaduw`) werd rood. Laatste definitie kopiëren.
+--
 -- ⚠️ **De volgorde in de functie is met opzet:** eerst de weigerlijst, dan de
 --    toets tegen `pg_timezone_names`. De lijst is de strengere en goedkopere
 --    helft, en de foutmelding noemt dan de échte reden.
@@ -70,7 +75,7 @@ create or replace function public.bewaak_tijdzone()
 returns trigger
 language plpgsql
 security invoker
-set search_path = public, pg_catalog
+set search_path = public, pg_catalog, pg_temp
 as $$
 begin
   -- NULL laten we door, zie 0119.
