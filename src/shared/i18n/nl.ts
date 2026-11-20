@@ -401,6 +401,9 @@ export const nl = {
   // ---------------------------------------------------------------------------
   // Reeks, Ketting en weekpassen — QS8-75, QS8-80, QS8-81
   // ---------------------------------------------------------------------------
+  'paginakop.voortgang': 'Voortgang',
+  'paginakop.meldingen': 'Meldingen, {aantal} wachten',
+  'paginakop.meldingen_knop': 'Meldingen {aantal}',
   'reeks.geen': 'Nog geen reeks',
   'reeks.een': '1 week op rij',
   'reeks.meer': '{n} weken op rij',

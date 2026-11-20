@@ -3,7 +3,7 @@ import { useRouter } from 'expo-router';
 import { useTeBeoordelen } from '@/modules/completions';
 import { opmaaktaal, t } from '@/shared/i18n';
 import { toonDatum } from '@/shared/time';
-import { Screen, TeBeoordelenKaart } from '@/shared/ui';
+import { Paginakop, Screen, TeBeoordelenKaart } from '@/shared/ui';
 import {
   BadgeBlok,
   DagzetBlok,
@@ -16,6 +16,7 @@ import {
   TellersBlok,
   ToevoegKnoppen,
   useVandaag,
+  vandaagKop,
   WeekstrookBlok,
 } from '@/schermen/vandaag';
 
@@ -38,14 +39,17 @@ export default function Vandaag() {
   const teBeoordelen = useTeBeoordelen();
   const v = useVandaag();
 
+  const eyebrow = v.afTeSluiten
+    ? t('vandaag.eyebrow_week', { datum: toonDatum(v.afTeSluiten.startDate, opmaaktaal()) })
+    : t('vandaag.eyebrow_deze');
+
+  const kop = vandaagKop(v, teBeoordelen, () => router.push('/beoordelen'));
+
   return (
     <Screen
       title={t('vandaag.titel')}
-      eyebrow={
-        v.afTeSluiten
-          ? t('vandaag.eyebrow_week', { datum: toonDatum(v.afTeSluiten.startDate, opmaaktaal()) })
-          : t('vandaag.eyebrow_deze')
-      }
+      eyebrow={eyebrow}
+      kop={<Paginakop titel={t('vandaag.titel')} eyebrow={eyebrow} {...kop} />}
     >
       {/*
         ⚠️ **Bovenaan het hoofdscherm, en dat is de hele reparatie van QS8-148.**

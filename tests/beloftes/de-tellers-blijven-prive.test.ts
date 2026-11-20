@@ -41,6 +41,7 @@ describe('de drie tellers blijven privé', () => {
       'src/modules/goals/punten-week.ts',
       'src/schermen/vandaag/Tellers.tsx',
       'src/schermen/vandaag/index.ts',
+      'src/schermen/vandaag/kop-vorm.ts',
       'src/schermen/vandaag/tellers-vorm.ts',
       'src/schermen/vandaag/useVandaag.ts',
     ]);

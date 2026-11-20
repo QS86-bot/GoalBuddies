@@ -55,6 +55,7 @@ import {
   Card,
   Choice,
   Field,
+  Paginakop,
   Screen,
   Subheading,
   TaalKeuze,
@@ -75,7 +76,7 @@ export default function Profiel() {
   const { profiel, loading, error, zetProfiel, herlaad } = useProfiel();
 
   return (
-    <Screen title={t('profiel.titel')}>
+    <Screen title={t('profiel.titel')} kop={<Paginakop titel={t('profiel.titel')} />}>
       {/*
         ⚠️ `onRetry` stond hier niet, en dat maakte dit scherm bij een laadfout
            volledig dood: álle inhoud staat binnen deze AsyncView, inclusief de

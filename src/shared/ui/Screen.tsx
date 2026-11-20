@@ -51,6 +51,14 @@ interface Props {
    *    zonder deze prop vast. `scripts/uitgang-controle.mjs` bewaakt dat.
    */
   readonly terug?: Terug | undefined;
+  /**
+   * De paginakop van een hoofdscherm — QS8-726 (`<Paginakop …/>`).
+   *
+   * ⚠️ Met een kop tekent `Screen` zelf geen titel en eyebrow: de kop draagt ze,
+   *    en er staan nooit twee kopjes. `title` blijft verplicht voor de schermen
+   *    zonder kop.
+   */
+  readonly kop?: React.ReactNode;
 }
 
 /**
@@ -104,7 +112,7 @@ function TerugKnop({ naar, label }: Terug) {
   );
 }
 
-export function Screen({ title, eyebrow, children, scroll = true, terug }: Props) {
+export function Screen({ title, eyebrow, children, scroll = true, terug, kop }: Props) {
   const theme = useTheme();
   const insets = useSafeAreaInsets();
 
@@ -138,8 +146,12 @@ export function Screen({ title, eyebrow, children, scroll = true, terug }: Props
     <View style={[styles.inhoud, scroll ? null : styles.vult]}>
       <View style={styles.kop}>
         {terug === undefined ? null : <TerugKnop {...terug} />}
-        {eyebrow === undefined ? null : <Eyebrow>{eyebrow}</Eyebrow>}
-        <Heading>{title}</Heading>
+        {kop ?? (
+          <>
+            {eyebrow === undefined ? null : <Eyebrow>{eyebrow}</Eyebrow>}
+            <Heading>{title}</Heading>
+          </>
+        )}
       </View>
       {children}
     </View>

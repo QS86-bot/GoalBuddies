@@ -67,6 +67,8 @@ export { TabFout } from './TabFout';
 export { RootVangnet } from './RootVangnet';
 export { useGehydrateerd } from './useGehydrateerd';
 export { Screen, useTerug, type Terug } from './Screen';
+export { Paginakop, type Paginameldingen } from './Paginakop';
+export { alsVoortgang, type Voortgang } from './paginakop-vorm';
 export { StreakCounter } from './StreakCounter';
 export { Weekpas } from './Weekpas';
 export { Weekplanblok, type WeekplanRegel } from './Weekplanblok';
