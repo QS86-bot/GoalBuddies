@@ -2098,6 +2098,12 @@ export const nl = {
   //    niet doet. "Gebroken" is de definitie van domeinregel 11 (0313), in gewone
   //    taal: een gemiste week zonder weekpas, en niets afgerond.
   'belofte.knop': 'Een weekbelofte doen',
+  // QS8-762 — de verwijzing boven de doelenlijst. Een uitnodiging en geen verzoek: ze
+  // zegt dat er een keuze is, niet dat er iets moet, en ze belooft niets over wat er daarna gebeurt.
+  'belofte.verwijzing.tekst':
+    'Wil je een weekbelofte aan dit doel koppelen, met een groep of getuige die je zelf kiest? Pas na je eigen bevestiging gaat er iets in.',
+  'belofte.verwijzing.link': 'Naar de weekbelofte',
+  'belofte.verwijzing.sluit': 'Niet nu',
   'belofte.titel': 'Weekbelofte',
   'belofte.uitleg':
     'Beloof dat je deze week minstens één weekdoel van dit doel haalt, met een gevolg dat je zelf ' +
