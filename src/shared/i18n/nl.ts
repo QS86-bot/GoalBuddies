@@ -2105,6 +2105,23 @@ export const nl = {
     'en krijgt hij er een melding van, tenzij hij dat soort meldingen heeft uitgezet.',
   'straf.verder': 'Verder',
   'straf.jouw_groep': 'je groep',
+  // QS8-698, besluit van Quinten 20-11-2026: drie vaste regels en één knop, in de vorm van de weekbelofte.
+  'straf.team.kop': 'Lees dit voordat je deze straf bevestigt',
+  'straf.team.haal_niet_groep':
+    'Haal je je streefdatum niet, dan zien je collega\u2019s in {groep} deze afspraak met je naam erbij.',
+  'straf.team.haal_niet_persoon':
+    'Haal je je streefdatum niet, dan kan {naam} deze afspraak met je naam erbij lezen.',
+  'straf.team.gevolg': 'Het gevolg: {tekst}',
+  'straf.team.wie_groep':
+    'Je collega\u2019s in {groep} zien je naam en deze tekst. Dat zijn ook collega\u2019s die later bij het team komen.',
+  'straf.team.wie_persoon': '{naam} ziet je naam en deze tekst, en verder niemand.',
+  'straf.team.wanneer':
+    'Dit wordt pas zichtbaar als je streefdatum voorbij is en je doel dan niet af is. Tot dat moment ziet niemand dit, ook {wie} niet.',
+  'straf.team.collegas': 'je collega\u2019s',
+  'straf.team.niet_zien':
+    'Welk doel het is, staat niet in deze afspraak. Zet dat doel daarom ook niet zelf in je straftekst.',
+  'straf.team.intrekken':
+    'Tot je streefdatum voorbij is, kun je intrekken. Daarna blijft de afspraak staan. Er gaat nooit geld mee gemoeid.',
 
   // ⚠️ **De weekbelofte — QS8-761.** De bevestigstap noemt drie dingen (§4 van
   //    de poort QS8-744): het gevolg, de periode, en wie het ziet en wanneer. Geen

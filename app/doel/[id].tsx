@@ -23,6 +23,9 @@ import {
   fetchCommitmentSpoor,
   herstelStuurlozeStraf,
   fetchMogelijkeBegunstigden,
+  fetchStrafKeuzes,
+  GEEN_STRAFKEUZES,
+  type StrafGroep,
   isDoelstraf,
   isOpenstaand,
   magStrafVastleggen,
@@ -360,7 +363,6 @@ export default function DoelDetail() {
 
             <Straf
               goalId={d.id}
-              groepen={groepen}
               bestaand={commitments.find(isDoelstraf)}
               streefdatumVoorbij={!magStrafVastleggen(d.target_date, vandaag)}
               onKlaar={herlaad}
@@ -1093,22 +1095,82 @@ function StuurlozeStraf({
  */
 function gekozenBegunstigde(
   soort: 'groep' | 'persoon',
-  groep: Lijstgroep | undefined,
+  groep: StrafGroep | undefined,
   persoon: MogelijkeBegunstigde | undefined,
 ): Begunstigde | null {
   if (soort === 'groep') return groep === undefined ? null : { soort, id: groep.id };
   return persoon === undefined ? null : { soort, id: persoon.id };
 }
 
+/**
+ * De bevestiging van een straf op een teamaandeel — QS8-698, besluit van Quinten
+ * 20-11-2026: drie vaste regels en één knop, in de vorm van de weekbelofte.
+ *
+ * ⚠️ Het gevolg, wie het ziet en wanneer, en hoe je intrekt, elk op een eigen regel.
+ *    De tekst belooft geen melding aan het team, en zegt dat het aandeel zelf dicht
+ *    blijft. Apart component en niet een tak in `Straf`, zodat `Straf` niet
+ *    langer wordt.
+ */
+function TeamStrafBevestiging({
+  soort,
+  naam,
+  tekst,
+  kanBevestigen,
+  bezig,
+  fout,
+  onBevestig,
+  onTerug,
+}: {
+  readonly soort: 'groep' | 'persoon';
+  readonly naam: string;
+  readonly tekst: string;
+  readonly kanBevestigen: boolean;
+  readonly bezig: boolean;
+  readonly fout: string | null;
+  readonly onBevestig: () => void;
+  readonly onTerug: () => void;
+}) {
+  const teamGroep = soort === 'groep';
+  return (
+    <Card>
+      <Subheading>{t('straf.team.kop')}</Subheading>
+      <Body>
+        {teamGroep
+          ? t('straf.team.haal_niet_groep', { groep: naam })
+          : t('straf.team.haal_niet_persoon', { naam })}
+      </Body>
+      <Body muted>{t('straf.team.gevolg', { tekst: schoneEneRegel(tekst) })}</Body>
+      <Caption>
+        {teamGroep ? t('straf.team.wie_groep', { groep: naam }) : t('straf.team.wie_persoon', { naam })}
+      </Caption>
+      <Caption>
+        {t('straf.team.wanneer', { wie: teamGroep ? t('straf.team.collegas') : naam })}
+      </Caption>
+      <Caption>{t('straf.team.niet_zien')}</Caption>
+      <Caption>{t('straf.team.intrekken')}</Caption>
+      {kanBevestigen ? null : (
+        <Caption>{t(teamGroep ? 'straf.kies_groep_eerst' : 'straf.kies_persoon_eerst')}</Caption>
+      )}
+      {fout === null ? null : <Caption danger>{fout}</Caption>}
+      <View style={styles.knoppen}>
+        <Button variant="primair" busy={bezig} disabled={!kanBevestigen} onPress={onBevestig}>
+          {t('straf.ja_vastleggen')}
+        </Button>
+        <Button variant="stil" onPress={onTerug}>
+          {t('straf.terug')}
+        </Button>
+      </View>
+    </Card>
+  );
+}
+
 function Straf({
   goalId,
-  groepen,
   bestaand,
   streefdatumVoorbij,
   onKlaar,
 }: {
   readonly goalId: string;
-  readonly groepen: readonly Lijstgroep[];
   readonly bestaand: Commitment | undefined;
   readonly streefdatumVoorbij: boolean;
   readonly onKlaar: () => void;
@@ -1122,7 +1184,13 @@ function Straf({
   const [bezig, setBezig] = useState(false);
   const [fout, setFout] = useState<string | null>(null);
 
-  const mensen = useAsyncMetTerugval(fetchMogelijkeBegunstigden, GEEN_BEGUNSTIGDEN, []);
+  // QS8-698: de lijst komt van `fetchStrafKeuzes` en biedt alleen wat de database
+  //    toelaat (0325). Op een aandeel alleen het eigen team, op een gewoon doel
+  //    geen teamgroep. De database blijft de grendel; dit is het gemak.
+  const keuzes = useAsyncMetTerugval(() => fetchStrafKeuzes(goalId), GEEN_STRAFKEUZES, [goalId]);
+  const groepen = keuzes.groepen;
+  const mensen = keuzes.personen;
+  const aandeel = keuzes.aandeel;
 
   // ⚠️ Afgeleid en niet in state gezet vanuit de lading: twee plekken die
   //    hetzelfde weten gaan uit de pas lopen, en dan verstuurt het scherm een
@@ -1237,6 +1305,22 @@ function Straf({
       onKlaar();
     }
     setBezig(false);
+  }
+
+  // QS8-698: een aandeel krijgt zijn eigen bevestiging, met het team of de teamgenoot erin.
+  if (bevestigen && aandeel) {
+    return (
+      <TeamStrafBevestiging
+        soort={soort}
+        naam={soort === 'groep' ? (gekozenGroep?.name ?? '') : (persoon?.naam ?? '')}
+        tekst={tekst}
+        kanBevestigen={begunstigde !== null}
+        bezig={bezig}
+        fout={fout}
+        onBevestig={() => void bewaar()}
+        onTerug={() => setBevestigen(false)}
+      />
+    );
   }
 
   if (bevestigen) {
