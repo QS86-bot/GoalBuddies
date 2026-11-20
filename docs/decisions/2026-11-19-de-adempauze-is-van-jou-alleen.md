@@ -57,6 +57,8 @@ de rij leest.
 
 ### B1. `ketting_stand()` blijft het aantal pauzerende leden tonen
 
+⚠️ **OPGELOST 20-11-2026 door migratie 0328 (QS8-769, besluit Quinten):** pauzerende leden tellen mee in `in_aanmerking`. De tekst hieronder is bewaard als de reden. Gevolg dat Quinten accepteert: De Ketting wordt in een pauzeweek niet voltallig. Test: `tests/rls/ketting-pauze-meetelt.test.ts`. De laatste zin van `adempauze.groep_ziet` is in dezelfde wijziging weggehaald (B3).
+
 `ketting_stand()` (0107, laatst 0204, SECURITY DEFINER) laat leden met een lopende pauze uit
 `in_aanmerking` vallen en geeft `in_aanmerking` en `voltallig` terug aan elk groepslid. Een lid dat
 `in_aanmerking` van het ledental aftrekt, weet **hoeveel** leden in pauze zijn, en bij een kleine

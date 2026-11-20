@@ -2,11 +2,12 @@
  * De tekst onder `adempauze.groep_ziet` — QS8-768, vervolg op migratie 0307.
  *
  * De belofte: het formulier zegt niet meer dat de groep de adempauze ziet (dat
- * is na 0307 onwaar), en noemt het Ketting-restant eerlijk. Getoetst wordt op de
+ * is na 0307 onwaar), en beweert ook niets over De Ketting. Getoetst wordt op de
  * inhoud van de catalogus in beide talen, niet op een plek in een scherm.
  *
- * ⚠️ De laatste zin (Ketting-restant) moet weg in de PR van QS8-769; dan hoort de
- *    toets op "Ketting" hier mee te veranderen.
+ * ⚠️ De laatste zin (het Ketting-restant) is weg sinds 0328 (QS8-769): De Ketting telt
+ *    een lid in een pauze mee. De toets eist nu dat die zin er ook niet meer staat,
+ *    want hij zou onwaar zijn.
  */
 import { afterEach, describe, expect, it } from 'vitest';
 
@@ -25,7 +26,7 @@ describe('adempauze.groep_ziet', () => {
     expect(zin).not.toBe(SLEUTEL);
     expect(zin).not.toMatch(/ziet dát je een adempauze/i);
     expect(zin).toContain('Je groep ziet je adempauze niet');
-    expect(zin).toContain('De Ketting telt leden in een pauze niet mee');
+    expect(zin).not.toMatch(/Ketting/);
   });
 
   it('belooft niet meer dat de groep de adempauze ziet (en)', () => {
@@ -34,7 +35,7 @@ describe('adempauze.groep_ziet', () => {
     expect(zin).not.toBe(SLEUTEL);
     expect(zin).not.toMatch(/sees that you have a breather/i);
     expect(zin).toContain('does not see your breather');
-    expect(zin).toContain('Ketting does not count members on a pause');
+    expect(zin).not.toMatch(/Ketting/);
   });
 
   // Ook het antwoord bij de valkuil 'chaotisch leven' noemt de adempauze.
