@@ -271,6 +271,47 @@ grant usage on schema storage to anon, authenticated, service_role;
 grant select, insert, update, delete on storage.objects to authenticated, service_role;
 grant select on storage.buckets to authenticated, service_role;
 
+-- ⚠️⚠️ **Supabase' eigen grendel tegen `delete from storage.objects`** — QS8-692.
+--    📏 Woordelijk overgenomen van productie op 17-11-2026, met
+--    `pg_get_functiondef('storage.protect_delete'::regproc)` en
+--    `pg_get_triggerdef()` op `protect_objects_delete`. Hij gooit 42501, tenzij
+--    `storage.allow_delete_query` op `'true'` staat; de Storage-API zet dat, een
+--    SQL-functie niet.
+--
+--    **Hij staat er omdat zijn afwezigheid een bug verborg.** Op productie faalde
+--    vanaf 09-11 élke accountverwijdering met 42501, omdat de trigger van 0230
+--    `delete from storage.objects` deed. Hier stond deze grendel niet, dus de
+--    RLS-suite zag een geslaagde verwijdering en bleef groen.
+--
+--    ⚠️ **Per statement en niet per rij**, zoals op productie. Hij gaat dus ook af
+--    als de `delete` niets raakt: een gebruiker zónder bewijsfoto liep er op
+--    productie net zo hard tegenaan.
+--
+--    ⚠️ De beheerverbinding van de tests (`PSQL_OMGEVING` in
+--    `tests/rls/psql-stack.ts`) zet `storage.allow_delete_query` aan, zoals het
+--    dashboard. De app-weg via PostgREST niet. Dat is precies het verschil dat
+--    productie maakt.
+create or replace function storage.protect_delete()
+ returns trigger
+ language plpgsql
+as $function$
+begin
+    -- Check if storage.allow_delete_query is set to 'true'
+    if coalesce(current_setting('storage.allow_delete_query', true), 'false') != 'true' then
+        raise exception 'Direct deletion from storage tables is not allowed. Use the Storage API instead.'
+            using hint = 'This prevents accidental data loss from orphaned objects.',
+                  errcode = '42501';
+    end if;
+    return null;
+end;
+$function$;
+
+drop trigger if exists protect_objects_delete on storage.objects;
+create trigger protect_objects_delete
+  before delete on storage.objects
+  for each statement
+  execute function storage.protect_delete();
+
 -- Supabase' eigen `foldername()`: de padsegmenten zónder de bestandsnaam.
 -- `avatars/<uuid>/foto.png` geeft `{<uuid>}` als je hem op `name` toepast, want
 -- `name` is daar het pad bínnen de bucket.
