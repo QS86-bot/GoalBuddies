@@ -56,6 +56,8 @@ describe('Instellingen: lijst met paneel', () => {
 
   it('elk onderdeel staat in de lijst en is bij id te vinden', () => {
     expect(ONDERDELEN.map((o) => o.id)).toEqual([...ONDERDEEL_IDS]);
+    // Account verwijderen hoort niet het standaardpaneel te zijn (QS8-245).
+    expect(ONDERDELEN[0]?.id).not.toBe('account');
     for (const id of ONDERDEEL_IDS) expect(vindOnderdeel(id)?.id).toBe(id);
     expect(vindOnderdeel('bestaat-niet')).toBeNull();
     expect(vindOnderdeel(undefined)).toBeNull();

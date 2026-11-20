@@ -58,6 +58,7 @@ export { RisicoBadge } from './RisicoBadge';
 export { Taakbalk } from './Taakbalk';
 export {
   actiefTabblad,
+  BREED_VANAF,
   TABBLADEN,
   toontTaakbalk,
   ZONDER_TAAKBALK,

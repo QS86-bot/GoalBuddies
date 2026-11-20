@@ -1,11 +1,11 @@
 import { useRouter } from 'expo-router';
+import { useState } from 'react';
 import { Pressable, StyleSheet, useWindowDimensions, View } from 'react-native';
 
 import { useProfiel, type Profiel } from '@/modules/auth';
 import { t } from '@/shared/i18n';
 import { radius, space, useTheme } from '@/shared/theme';
-import { AsyncView, Body, Caption, Subheading } from '@/shared/ui';
-import { focusRing } from '@/shared/ui/a11y';
+import { AsyncView, Body, Caption, focusRing, Subheading } from '@/shared/ui';
 import { Uiterlijkscherm } from '@/schermen/uiterlijk';
 
 import { AccountVerwijderen, Avatarkaart, Naamkaart } from './AccountPaneel';
@@ -29,7 +29,6 @@ import {
   type Onderdeel,
   type OnderdeelId,
 } from './onderdelen';
-import { useState } from 'react';
 
 interface PaneelProps {
   readonly p: Profiel;
@@ -117,7 +116,9 @@ function Lijstrij({
   onderdeel,
   actief,
   onKies,
+  kort,
 }: {
+  readonly kort: boolean;
   readonly onderdeel: Onderdeel;
   readonly actief: boolean;
   readonly onKies: () => void;
@@ -143,53 +144,68 @@ function Lijstrij({
       ]}
     >
       <Subheading>{t(onderdeel.titel)}</Subheading>
-      <Caption>{t(onderdeel.uitleg)}</Caption>
+      {kort ? null : <Caption>{t(onderdeel.uitleg)}</Caption>}
     </Pressable>
   );
 }
 
-function Lijst({ actief }: { readonly actief: OnderdeelId | null }) {
+function Lijst({
+  actief,
+  breed,
+}: {
+  readonly actief: OnderdeelId | null;
+  readonly breed: boolean;
+}) {
   const router = useRouter();
   return (
-    <View
-      style={styles.lijst}
-      accessibilityRole="list"
-      accessibilityLabel={t('instellingen.lijst_label')}
-    >
+    <View style={styles.lijst} accessibilityLabel={t('instellingen.lijst_label')}>
       {ONDERDELEN.map((o) => (
         <Lijstrij
           key={o.id}
           onderdeel={o}
           actief={o.id === actief}
-          onKies={() => router.push(`/instellingen/${o.id}`)}
+          // Breed vervangt een klik het paneel: anders loopt de terugknop al je klikken na.
+          onKies={() =>
+            breed ? router.replace(`/instellingen/${o.id}`) : router.push(`/instellingen/${o.id}`)
+          }
+          kort={breed}
         />
       ))}
     </View>
   );
 }
 
-function Paneel({ onderdeel }: { readonly onderdeel: Onderdeel }) {
+/** Een paneel dat het profiel nodig heeft, met zijn eigen laad-, fout- en lege staat. */
+function ProfielPaneel({ id }: { readonly id: OnderdeelId }) {
   const { profiel, loading, error, zetProfiel, herlaad } = useProfiel();
   return (
+    <AsyncView
+      loading={loading}
+      error={error}
+      data={profiel ?? undefined}
+      isEmpty={() => false}
+      onRetry={herlaad}
+      empty={{ title: t('profiel.leeg_titel'), body: t('profiel.leeg_tekst') }}
+    >
+      {(p) => (
+        <View style={styles.paneel}>
+          <PaneelInhoud id={id} p={p} zet={zetProfiel} />
+        </View>
+      )}
+    </AsyncView>
+  );
+}
+
+/**
+ * ⚠️ Uiterlijk wacht niet op het profiel: de keuze leeft op het apparaat en `Uiterlijkscherm` heeft zelf geen
+ *    foutstaat. Zou het achter de profielpoort staan, dan kun je bij slecht bereik je thema niet wisselen.
+ */
+function Paneel({ onderdeel }: { readonly onderdeel: Onderdeel }) {
+  return (
     <View style={styles.paneel} accessibilityLabel={t(onderdeel.titel)}>
+      <Subheading>{t(onderdeel.titel)}</Subheading>
       <Body muted>{t(onderdeel.uitleg)}</Body>
-      <AsyncView
-        loading={loading}
-        error={error}
-        data={profiel ?? undefined}
-        isEmpty={() => false}
-        onRetry={herlaad}
-        empty={{
-          title: t('profiel.leeg_titel'),
-          body: t('profiel.leeg_tekst'),
-        }}
-      >
-        {(p) => (
-          <View style={styles.paneel}>
-            <PaneelInhoud id={onderdeel.id} p={p} zet={zetProfiel} />
-          </View>
-        )}
-      </AsyncView>
+      {onderdeel.id === 'uiterlijk' ? <Uiterlijkscherm /> : <ProfielPaneel id={onderdeel.id} />}
     </View>
   );
 }
@@ -210,17 +226,17 @@ export function Instellingenscherm({ onderdeel }: { readonly onderdeel?: string 
     const getoond = gekozen ?? ONDERDELEN[0]!;
     return (
       <View style={styles.naast}>
-        <Lijst actief={getoond.id} />
+        <Lijst actief={getoond.id} breed />
         <Paneel onderdeel={getoond} />
       </View>
     );
   }
-  return gekozen === null ? <Lijst actief={null} /> : <Paneel onderdeel={gekozen} />;
+  return gekozen === null ? <Lijst actief={null} breed={false} /> : <Paneel onderdeel={gekozen} />;
 }
 
 const styles = StyleSheet.create({
   naast: { flexDirection: 'row', gap: space.blokGap, alignItems: 'flex-start' },
-  lijst: { gap: space.blokGap, minWidth: 200, flexShrink: 0 },
+  lijst: { gap: space.blokGap, width: 180, flexShrink: 0 },
   paneel: { gap: space.blokGap + 3, flex: 1 },
   rij: {
     borderWidth: 1,

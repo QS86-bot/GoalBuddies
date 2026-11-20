@@ -349,9 +349,10 @@ describe('uitloggen staat vóór de instellingen', () => {
     '<TijdzoneInstelling',
     '<Meldingen',
     '<HerinneringInstelling',
-    // QS8-749: `<Ingangen />` draagt `UiterlijkIngang` en `StatistiekIngang`, zodat Profiel niet boven de
-    // vijftig regels groeit; de losse tag staat nu alleen nog in die ene functie.
+    // QS8-749/754: `<Ingangen />` draagt de ingangen naar Statistiek, Prestaties en Groepsprofiel; Instellingen
+    // heeft sinds QS8-754 een eigen ingang.
     '<Ingangen',
+    '<InstellingenIngang',
     '<VieringKeuze',
   ];
 

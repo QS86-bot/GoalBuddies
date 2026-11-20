@@ -1,4 +1,5 @@
 import type { Sleutel } from '@/shared/i18n';
+// ⚠️ Rechtstreeks uit `tabbladen` en niet uit de index: dit is een pure module en de index trekt React Native mee.
 import { BREED_VANAF } from '@/shared/ui/tabbladen';
 
 /**
@@ -9,11 +10,11 @@ import { BREED_VANAF } from '@/shared/ui/tabbladen';
  *    de catalogus. Een instelling die uit de lijst valt is dan een rode test en geen stil verdwenen scherm.
  */
 export const ONDERDEEL_IDS = [
-  'account',
   'voorkeuren',
   'meldingen',
   'privacy',
   'uiterlijk',
+  'account',
 ] as const;
 
 export type OnderdeelId = (typeof ONDERDEEL_IDS)[number];
@@ -24,12 +25,11 @@ export interface Onderdeel {
   readonly uitleg: Sleutel;
 }
 
+/**
+ * ⚠️ Account staat laatst en is dus nooit het standaardpaneel op breed scherm: account verwijderen hoort niet het
+ *    eerste te zijn dat je ziet (QS8-245: dat is met opzet moeilijk bereikbaar).
+ */
 export const ONDERDELEN: readonly Onderdeel[] = [
-  {
-    id: 'account',
-    titel: 'instellingen.account_titel',
-    uitleg: 'instellingen.account_uitleg',
-  },
   {
     id: 'voorkeuren',
     titel: 'instellingen.voorkeuren_titel',
@@ -49,6 +49,11 @@ export const ONDERDELEN: readonly Onderdeel[] = [
     id: 'uiterlijk',
     titel: 'instellingen.uiterlijk_titel',
     uitleg: 'instellingen.uiterlijk_uitleg',
+  },
+  {
+    id: 'account',
+    titel: 'instellingen.account_titel',
+    uitleg: 'instellingen.account_uitleg',
   },
 ];
 

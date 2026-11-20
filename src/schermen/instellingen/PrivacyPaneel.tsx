@@ -166,16 +166,31 @@ export function Blokkades() {
     herlaad();
   }
 
-  // ⚠️ Bij een storing blijft de kaart weg en niet met een foutbalk staan. Dit is
-  //    een blok naast de instellingen, geen hoofdinhoud; wie hier komt, kwam voor
-  //    iets anders.
-  if (loading || error !== null || data === undefined || data.length === 0) return null;
+  // ⚠️ Sinds QS8-754 staat dit in het onderdeel Privacy en groepen, en dat belooft "wie je geblokkeerd hebt":
+  //    wegblijven bij een storing laat de gebruiker denken dat de deblokkeerknop weg is. Dus een foutstaat met
+  //    opnieuw proberen, en een lege staat die zegt dat er niemand is.
+  if (loading) return null;
+
+  if (error !== null) {
+    return (
+      <Card>
+        <Subheading>{t('melden.geblokkeerd_titel')}</Subheading>
+        <Body muted>{t('melden.geblokkeerd_fout')}</Body>
+        <Button variant="stil" onPress={herlaad}>
+          {t('melden.geblokkeerd_opnieuw')}
+        </Button>
+      </Card>
+    );
+  }
 
   return (
     <Card>
       <Subheading>{t('melden.geblokkeerd_titel')}</Subheading>
+      {data === undefined || data.length === 0 ? (
+        <Body muted>{t('melden.geblokkeerd_leeg')}</Body>
+      ) : null}
 
-      {data.map((blokkade) => (
+      {(data ?? []).map((blokkade) => (
         <View key={blokkade.userId}>
           <Body>{blokkade.naam}</Body>
           <Button

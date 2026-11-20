@@ -25,7 +25,7 @@ import {
 } from '@/shared/ui';
 
 /**
- * Profiel — reeks, punten, weekpassen en instellingen.
+ * Profiel — jezelf, je ingangen naar statistieken en prestaties, en de ingang naar Instellingen.
  *
  * ⚠️ Dit is de enige plek waar punten mogen staan. `points_ledger` en het
  *    puntentotaal zijn uitsluitend voor de eigenaar leesbaar (domeinregel 10):
@@ -175,7 +175,7 @@ function Uitloggen() {
   );
 }
 
-/** De ingangen naar de schermen Uiterlijk en Statistieken, in één regel van Profiel zodat dat scherm niet groeit. */
+/** De ingangen naar de schermen Statistieken, Prestaties en je groepsprofiel, in één regel van Profiel zodat dat scherm niet groeit. */
 function Ingangen() {
   return (
     <>
@@ -243,7 +243,7 @@ function StatistiekIngang() {
  *    erachter, omdat het dezelfde functie is die hem geeft.
  *
  * ⚠️ Bij een storing blijft de kaart weg in plaats van met een foutbalk te
- *    staan, zelfde afweging als bij `Blokkades`: dit is een blok naast de
+ *    staan, zelfde afweging als bij `Blokkades` (nu in `src/schermen/instellingen/PrivacyPaneel.tsx`): dit is een blok naast de
  *    instellingen, en wie hier komt kwam voor iets anders. De fout wordt wél
  *    gemeld — `fetchOpenstaandeMeldingen()` stuurt hem naar Sentry voordat hij
  *    werpt.
