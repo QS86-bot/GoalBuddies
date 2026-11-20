@@ -271,20 +271,11 @@ describe.runIf(rlsTestsConfigured)('een teamgroep hoort bij een organisatie (QS8
         uitkomst(await rpc(anna, 'beslis_lidmaatschapsverzoek', { p_request_id: (data as { id: string }).id, p_naar: 'declined' })),
       ).toBe('ok');
 
-      // ⚠️ Sinds 0317 (vervroegd uit 0319 bij het hernummeren, 20-11-2026; H2 van de
-      //    security-ronde) mag een teamgroep niet open tot QS8-661 landt. `unchanged`
-      //    komt ná de beheerderspoort, dus bewijst dat anna erdoor mag; `open` stuit
-      //    daarna op de CHECK, ook voor haar. Rood als 0317 de CHECK niet zet.
-      expect(
-        uitkomst(await rpc(anna, 'zet_groepszichtbaarheid', { p_group_id: team, p_naar: 'beschermd', p_bevestigd: true })),
-      ).toBe('unchanged');
+      // ⚠️ Van 0317 tot 0321 (tot het hernummeren: 0319) stond hier een weigering: een teamgroep mocht niet
+      //    open tot QS8-661 de aandeeldoelen dicht had. Dat is nu zo (besluit 18).
       expect(
         uitkomst(await rpc(anna, 'zet_groepszichtbaarheid', { p_group_id: team, p_naar: 'open', p_bevestigd: true })),
-      ).toBe('fout 23514');
-      // En de andere route: een team dat open aangemaakt wordt.
-      expect(
-        uitkomst(await rpc(anna, 'maak_teamgroep', { p_organization_id: x, p_naam: 'Open team', p_zichtbaarheid: 'open' })),
-      ).toBe('fout 23514');
+      ).toBe('ok');
     }, TEST_TIMEOUT);
 
     it('(a) zet een teamlid uit met verwijder_lid(), zonder zelf lid te zijn', async () => {
