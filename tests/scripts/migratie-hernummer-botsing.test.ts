@@ -136,6 +136,8 @@ beforeAll(() => {
       '-- ROLLBACK-PAD:',
       '--   Draai 0009 terug; dit nummer gaat over onszelf.',
       '--',
+      '-- ⚠️ Productie draagt 0009–0012 van een ander issue (QS8-765, het incident).',
+      '--',
       `-- ⚠️ Niet te verwarren met ${ANDER}.sql, die toevallig hetzelfde nummer draagt.`,
       '',
     ].join('\n'),
@@ -184,11 +186,21 @@ describe('hernummeren terwijl twee migraties hetzelfde nummer dragen', () => {
     expect(lees('supabase', 'migrations', `${ANDER}.sql`)).toBe(ANDER_INHOUD);
   });
 
-  it('herschrijft in het gekozen bestand zowel de kop als zijn eigen nummer', () => {
+  it('herschrijft in het gekozen bestand de kop maar geen kaal nummer (QS8-765)', () => {
     const inhoud = lees('supabase', 'migrations', '0010_onze_migratie.sql');
 
     expect(inhoud.split('\n')[0]).toBe('-- 0010_onze_migratie.sql — de onze');
-    expect(inhoud).toContain('Draai 0010 terug');
+    // ⚠️ Een kaal getal is niet te onderscheiden van een verwijzing naar een ander
+    //    bestand. Het incident van 20-11-2026: `0299–0302` werd `0315–0302`.
+    expect(inhoud).toContain('Productie draagt 0009–0012 van een ander issue');
+    expect(inhoud).not.toContain('0010–0012');
+    expect(inhoud).toContain('Draai 0009 terug');
+  });
+
+  it('meldt die kale nummers in het gekozen bestand, met regel', () => {
+    expect(uitvoer).toContain('supabase/migrations/0010_onze_migratie.sql');
+    expect(uitvoer).toMatch(/regel \d+: .*Productie draagt 0009–0012/);
+    expect(uitvoer).toMatch(/regel \d+: .*Draai 0009 terug/);
   });
 
   it('laat de naam van de ander ook binnen ons eigen bestand staan', () => {
