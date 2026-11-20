@@ -143,6 +143,30 @@ function HerinneringKop({ motto }: { readonly motto: string | null }) {
   );
 }
 
+/** De aan/uit-keuze van de herinnering. */
+function HerinneringAanUit({
+  aan,
+  bezig,
+  onKies,
+}: {
+  readonly aan: boolean;
+  readonly bezig: boolean;
+  readonly onKies: (aan: boolean) => void;
+}) {
+  return (
+    <Choice
+      label={t('profiel.herinnering_label')}
+      opties={[
+        { waarde: 'aan', label: t('profiel.aan') },
+        { waarde: 'uit', label: t('profiel.uit') },
+      ]}
+      waarde={aan ? 'aan' : 'uit'}
+      onKies={(v) => onKies(v === 'aan')}
+      disabled={bezig}
+    />
+  );
+}
+
 interface HerinneringProps {
   readonly aan: boolean;
   readonly tijd: string | null;
@@ -201,16 +225,7 @@ export function HerinneringInstelling({
     <Card>
       <HerinneringKop motto={motto} />
 
-      <Choice
-        label={t('profiel.herinnering_label')}
-        opties={[
-          { waarde: 'aan', label: t('profiel.aan') },
-          { waarde: 'uit', label: t('profiel.uit') },
-        ]}
-        waarde={wilAan ? 'aan' : 'uit'}
-        onKies={(v) => wijzig(() => setWilAan(v === 'aan'))}
-        disabled={bezig}
-      />
+      <HerinneringAanUit aan={wilAan} bezig={bezig} onKies={(v) => wijzig(() => setWilAan(v))} />
 
       {wilAan ? (
         <HerinneringDetails
