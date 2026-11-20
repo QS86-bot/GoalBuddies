@@ -2401,13 +2401,12 @@ export const nl = {
   //    niet welke weken je gemist hebt" lezen terwijl een pauze die je áchteraf
   //    aankondigt precies dat verraadt. Zie
   //    `docs/decisions/002-domeinregel7-oppervlakken.md` rij 21 en §4a.
-  // ⚠️ QS8-753: deze zin klopt na de RLS-wijziging (deel A) niet meer volledig, en
-  //    blijft op besluit van Quinten (19-11-2026) ongewijzigd staan. Pas hem niet
-  //    aan als bijvangst; dat is een eigen besluit.
+  // ⚠️ QS8-768 (besluit Quinten, 20-11-2026): vervangen, want de oude zin was na 0307
+  //    onwaar. De laatste zin (het Ketting-restant) moet weg in de PR van QS8-769.
   'adempauze.groep_ziet':
-    'Je groep ziet dát je een adempauze hebt en van wanneer tot wanneer, ook als je hem over ' +
-    'weken legt die al voorbij zijn. Ze zien niet welke weekdoelen je wel of niet gehaald ' +
-    'hebt.',
+    'Je groep ziet je adempauze niet. Wil je het ze laten weten, dan plaats je zelf een ' +
+    'bericht. De Ketting telt leden in een pauze niet mee; in een kleine groep kan iemand ' +
+    'daaruit afleiden dat er iemand pauzeert.',
   'adempauze.week_van': 'Week van {datum}',
   'adempauze.tot_en_met': ' tot en met de week van {datum}',
   'adempauze.voorbij': 'Voorbij',

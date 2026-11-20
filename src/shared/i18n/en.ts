@@ -1852,12 +1852,12 @@ export const en: Record<Sleutel, string> = {
     'Going on holiday, ill, or just a strange month? Then pause those weeks. They cost you no ' +
     'point and your streak stays where it is; it just does not grow. You pick how long, you may ' +
     'have several side by side, and a week that is already over is allowed too.',
-  // ⚠️ QS8-753: this sentence no longer fully holds after the RLS change (part A) and stays
-  //    unchanged by decision of Quinten (19-11-2026). Do not change it as a side effect.
+  // ⚠️ QS8-768 (decision by Quinten, 20-11-2026): replaced, the old sentence was untrue
+  //    after 0307. The last sentence (the Ketting remainder) must go in the PR of QS8-769.
   'adempauze.groep_ziet':
-    'Your group sees that you have a breather and from when to when, including one you place ' +
-    'over weeks that are already past. They do not see which weekly goals you did or did not ' +
-    'reach.',
+    'Your group does not see your breather. If you want to let them know, post a message ' +
+    'yourself. The Ketting does not count members on a pause; in a small group someone can ' +
+    'infer from that that somebody is pausing.',
   'adempauze.week_van': 'Week of {datum}',
   'adempauze.tot_en_met': ' up to and including the week of {datum}',
   'adempauze.voorbij': 'Over',
