@@ -106,6 +106,10 @@ const REGISTER: Readonly<Record<string, string>> = {};
  *    zweeg — en dan bewaakt hij de kant die stuk kán gaan niet meer.
  */
 const GEEN_CLIENTLEZER: Readonly<Record<string, string>> = {
+  team_progress_events:
+    'De teller achter de teambalk (0320, QS8-655). Alleen leesbaar via `teambalk()`, als één getal: ' +
+    'een leesbare rij geeft per mijlpaal een tijdstip, en tijdstippen naast elkaar zijn een delta per ' +
+    'dag (002 rij 45).',
   dagtellers:
     'De gedeelde dagtellertabel achter `tel_dagteller()` (0203/0207/0234). Een ' +
     'client die zijn eigen verbruik kan lezen, kan het ook plannen; de tellers ' +
