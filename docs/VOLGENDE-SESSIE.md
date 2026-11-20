@@ -4331,8 +4331,9 @@ of `verify_jwt` echt aanstaat op `rollover` en `notificaties` (er is geen
 e-mailbevestiging aanstaat in Supabase Auth, en of er een uitgavenplafond op de
 Anthropic-sleutel staat. Dat laatste is vandaag de enige bodem onder punt 4.
 
-⚠️ **`auth_leaked_password_protection` staat uit.** Eén schakelaar in het
-Supabase-dashboard, en Supabase' eigen adviseur noemt hem.
+⚠️ **`auth_leaked_password_protection`: de adviseur meldt hem op 18-11 niet meer
+(QS8-181), maar *niet gemeld* is niet *aan*.** Of de schakelaar in het
+Supabase-dashboard aan staat, of op dit abonnement bestaat, is open op QS8-141.
 
 
 ### 0b. Wat je zelf moet deployen, en het merkt zichzelf niet

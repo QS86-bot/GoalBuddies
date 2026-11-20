@@ -45,6 +45,17 @@ const REGISTER: Readonly<Record<string, string>> = {
   organisatie_uitnodigcode: 'beheerderspoort; geeft een code en geen voortgang',
   vernieuw_organisatiecode: 'beheerderspoort op een schrijfactie',
   organisatieleden: 'toont de rol als label in de ledenlijst; de poort is is_organisatielid() en is voor beheerder en lid gelijk',
+  // QS8-653
+  actief_organisatielid: 'leest alleen of iemand actief lid is; geeft een boolean en geen rol',
+  maak_teamgroep: 'beheerderspoort op een schrijfactie (besluit 13)',
+  bewaak_teamlidmaatschap:
+    'triggerfunctie: leest of een nieuw teamlid actief organisatielid is, met for share tegen de race met vertrek (review M1); geen rol, geeft niets terug',
+  is_teambeheerder:
+    'beheerderspoort voor teambeheer (besluit 34 en 36). ⚠️ Via is_group_admin() ook in ' +
+    'group_join_requests_select: een organisatiebeheerder leest de lidmaatschapsverzoeken ' +
+    'van zijn teams, zoals elke groepsbeheerder. Dat is beheer en geen voortgang (besluit 6); ' +
+    'chat, overzicht, leden en teambalk blijven aan mag_groep_lezen() en dus aan het lidmaatschap. ' +
+    'Grendel 1 hieronder ziet deze route via een tussenfunctie niet; zie de afleverregel van QS8-653.',
 };
 
 const VRAAG = `

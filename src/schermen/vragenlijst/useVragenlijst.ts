@@ -4,6 +4,8 @@ import { useRef, useState } from 'react';
 import { useProfiel, useSession } from '@/modules/auth';
 import { eigenGevoelSchoon, type GevoelWissen, type VragenlijstInvoer } from '@/modules/goals';
 
+import { doelenNaVragenlijst } from '../belofte/verwijzingsparameter';
+
 import { useAntwoorden } from './antwoorden';
 import { bewaarAlles, bewaarTussendoor } from './bewaar';
 import { eigenTeLang } from './vragen/Gevoel';
@@ -55,7 +57,9 @@ export function useVragenlijst() {
     herlaad();
     // ⚠️ Naar de doelen en niet naar Vandaag: wie net verteld heeft waar hij zich op
     //    wil richten, hoort meteen bij de plek te komen waar hij dat vastlegt.
-    router.replace('/doelen');
+    // ⚠️ Met de parameter van QS8-762: alleen zo, direct na het afronden, kan de
+    //    doelenlijst naar de weekbelofte wijzen. Ze schrijft niets.
+    router.replace(doelenNaVragenlijst());
   }
 
   return {

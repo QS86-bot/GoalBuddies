@@ -158,3 +158,28 @@ afleverregel van QS8-651.
   Acht mutaties met de hand gedraaid; de kop zegt per mutatie wélke test omviel.
 - `tests/beloftes/doel-in-meerdere-groepen.test.ts` blijft het uitstelverzoek
   bewaken via `beslissendeGroep()`; die binding is niet aangeraakt.
+
+## Bijgewerkt 19-11-2026 (QS8-719): besluit 2 van QS8-649 is gebouwd, voor zover `main` het toelaat
+
+§3 zegt hierboven dat `enigeOfGekozen()` teamgroepen niet kent. Dat klopte op 05-11 en klopt niet meer: Quinten besloot op 19-11-2026
+dat een teamgroep nooit de stille enige kandidaat is (de lijst verschijnt met één optie, de knop blijft uit tot er gekozen is).
+`enigeOfGekozen()` geeft bij één kandidaat zonder keuze nu `undefined` als `isTeamgroep()` waar is; de schermen reageren daar al op.
+
+**Gemaakte keuzes, met wat ze kosten.**
+- **Duck-typing op `organization_id`** en niet een parameter of een apart type. Reden: de kolom bestaat op `main` nog niet, dus een
+  verplicht veld zou nu niets kunnen invullen. Prijs: **fail-open** — een bron die het veld niet doorgeeft zet de regel stil uit, en voor
+  een groep is dat de gevaarlijke kant (de client is hier de enige grens: een hulpvraag is een gewoon chatbericht naar een groep waar
+  je lid van bent). De wachtwacht in `tests/beloftes/geen-stille-eerste-groep.test.ts` wordt rood zodra de kolom in `database.types.ts`
+  staat zonder dat select, map en type van `fetchMijnGroepen()`, `Lijstgroep`, `fetchGroepenVanDoel()` en `DoelGroep` hem dragen.
+  De security-ronde vond eerst dat de wacht de map in `fetchGroepenVanDoel()` niet zag (select wel, map niet, groen); dat is gesloten.
+- **Niet gedaan:** groepen en personen in het type scheiden, zodat "veld ontbreekt" voor een groep dicht kan vallen. Dat vraagt dat
+  `enigeOfGekozen()` twee vormen krijgt (de vervangende getuige en de straf-persoon gebruiken dezelfde functie) en hoort bij het bouwen
+  van de organisatielaag, niet hiervoor.
+
+**Open, en niet van dit issue:** een enkele collega als enige kandidaat voor een vervangende getuige of een straf-persoon wordt nog stil
+gekozen. `fetchMogelijkeBegunstigden()` haalt medeleden van al je groepen op, dus straks ook collega's. Of besluit 2 ook voor personen
+geldt, is een besluit voor Quinten (grens 1).
+
+**Beantwoord, 19-11-2026 (via de orchestrator; reactie op QS8-719 van 12:06 UTC), en hier ingebouwd bij het landen op 20-11-2026:**
+besluit 2 geldt **alleen voor teamgroepen, niet voor personen**. Een persoon die de gebruiker zelf aanwijst, is een bewuste keuze. Het
+open punt hierboven (een collega als enige kandidaat voor een vervangende getuige of een straf-persoon) vervalt daarmee als bevinding.
