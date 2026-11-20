@@ -100,6 +100,10 @@ intrekken alleen vóór `periode_einde`, en de beslissing nemen op de stand van 
 `sluitVerstrekenWekenAf()`, of de uitslag per cyclus vastleggen). **Moet besloten zijn vóór x.3 (QS8-760) een client
 beloftes laat aangaan.**
 
+✅ **Besloten door Quinten (20-11-2026): "Laat open zoals gebouwd."** Het venster na de week blijft dus zoals het is,
+met alle vier de routes, `carried` inbegrepen. ⚠️ Bron: doorgegeven door de orchestrator (QS8-757) aan deze
+bouwsessie op 20-11-2026 om 08:14 UTC; het staat niet als reactie in Linear en is daar dus niet nagelezen.
+
 De andere uitwegen uit punt 2 van de poort blijven zoals ze getekend zijn: een adempauze met terugwerkende kracht
 vóór de beslissende run, een weekdoel verwijderen, en een week zonder weekdoel.
 
