@@ -61,6 +61,13 @@ const REGISTER: Readonly<Record<string, string>> = {
     'beheerderspoort op een schrijfactie; schrijft admin alleen voor een actief lid met de rol member',
   treed_terug_als_organisatiebeheerder:
     'beheerderspoort op de eigen rij; de laatste actieve beheerder weigert, achter een for update op de organisatie',
+  // QS8-659
+  verwijder_mijn_account:
+    'vergrendelt als eerste stap de organisaties waarvan hij beheerder of aanmaker is (review K1, ' +
+    'lockvolgorde organisatie → groep); leest geen rol uit voor een ander en geeft niets terug over de organisatie',
+  trek_organisatiecode_in_zonder_beheerder:
+    'statementtrigger: telt of er een actieve beheerder overblijft en trekt anders de code in; ' +
+    'geeft niets terug en verleent niemand een rol (besluit van Quinten, 18-11-2026)',
 };
 
 const VRAAG = `
