@@ -66,11 +66,15 @@ export const AANSLUITPUNTEN = {
 /**
  * Namen die op een injectiepunt lijken maar er geen zijn, met de reden.
  *
- * ⚠️ Leeg is hier een geldige stand en geen teken dat er niets gebeurt: vandaag
- *    is élke `zet*`/`set*`-export ook echt een injectiepunt. Zodra er een
- *    bijkomt die dat niet is, hoort hij hier met zijn reden.
+ * ⚠️ Een rij hier is een bewuste uitzondering met een reden en een meting. Zodra een
+ *    `zet*`/`set*`-export synchroon is maar geen modulestatus zet, hoort hij hier.
  */
-export const GEEN_AANSLUITPUNT = {};
+export const GEEN_AANSLUITPUNT = {
+  zetDocumentTaal:
+    'Geen injectiepunt: het zet geen modulestatus maar het `lang`-attribuut van `document` ' +
+    '(QS8-741) en is een bijwerking van `zetTaal()` en `zetTaalUitApparaat()`. Die twee ' +
+    'zijn wel aangesloten (gemeten: `src/shared/i18n/index.ts` roept hem aan in allebei).',
+};
 
 /** Alle `.ts`/`.tsx` onder `dir`. */
 function bronbestanden(dir, uit = []) {
