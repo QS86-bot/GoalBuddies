@@ -20,3 +20,5 @@ export {
 } from './api';
 
 export { ORGANISATIENAAM_MAX } from './schemas';
+
+export { ORGANISATIE_AANMAKEN_ZICHTBAAR } from './zichtbaarheid';

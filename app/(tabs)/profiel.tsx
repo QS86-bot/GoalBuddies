@@ -6,7 +6,7 @@ import { signOut, useProfiel, useSession } from '@/modules/auth';
 
 import { fetchOpenstaandeMeldingen } from '@/modules/buddies';
 
-import { fetchMijnOrganisaties } from '@/modules/organisaties';
+import { fetchMijnOrganisaties, ORGANISATIE_AANMAKEN_ZICHTBAAR } from '@/modules/organisaties';
 
 import { t } from '@/shared/i18n';
 
@@ -231,9 +231,11 @@ function OrganisatieIngang() {
         )}
       </AsyncView>
       <View style={styles.keuzes}>
-        <Button variant="stil" onPress={() => router.push('/organisatie/nieuw')}>
-          {t('organisatie.ingang_aanmaken')}
-        </Button>
+        {ORGANISATIE_AANMAKEN_ZICHTBAAR ? (
+          <Button variant="stil" onPress={() => router.push('/organisatie/nieuw')}>
+            {t('organisatie.ingang_aanmaken')}
+          </Button>
+        ) : null}
         <Button variant="stil" onPress={() => router.push('/organisatie/deelnemen')}>
           {t('organisatie.ingang_deelnemen')}
         </Button>

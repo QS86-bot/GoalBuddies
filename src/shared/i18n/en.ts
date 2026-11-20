@@ -379,6 +379,9 @@ export const en: Record<Sleutel, string> = {
   'aanmelden.ben_nieuw': 'I am new here',
   'aanmelden.bestaand_account': 'Or use an existing account',
   'aanmelden.alleen_browser': 'Signing in with Apple or Google currently only works in the browser.',
+  // Second entry: work — QS8-663
+  'aanmelden.werk_kop': 'I am here through work',
+  'aanmelden.werk_tekst': 'Got an invitation link or a code from your employer? Create an account first; then you join your team. Your team sees the team bar and your own share, never how far anyone else is.',
   'beoordeling.titel': 'Review',
   'beoordeling.leeg_titel': 'Nothing to review',
   'beoordeling.leeg_tekst': 'As soon as a buddy finishes a week, it shows up here. One line back is enough. That is the point.',
