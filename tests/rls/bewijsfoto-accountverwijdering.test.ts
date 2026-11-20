@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { psql, stackBeschikbaarOfFaal } from './psql-stack';
 
 /**
- * Een account verwijderen mag niet stuklopen op een bewijsfoto — QS8-692, 0299.
+ * Een account verwijderen mag niet stuklopen op een bewijsfoto — QS8-692, 0315.
  *
  * ⚠️⚠️ **De belofte is dat `delete from auth.users` slaagt, niet dat een functie
  *    iets niet doet.** 📏 Op productie gaf elke van de 1.050 verwijderingen op

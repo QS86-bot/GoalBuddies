@@ -6,7 +6,7 @@
 
 Alle **1.050 van de 1.050** `DELETE /auth/v1/admin/users/…` van 16-11 18:48–21:15 UTC
 gaven HTTP 500: `Direct deletion from storage tables is not allowed … (SQLSTATE
-42501)`. De keten staat in de kop van migratie 0299. Dit raakt het wisrecht van elke
+42501)`. De keten staat in de kop van migratie 0315. Dit raakt het wisrecht van elke
 gebruiker, niet alleen een testsuite. Niet gemeten: of een echte gebruiker het heeft
 geprobeerd, en sinds wanneer Supabase `protect_delete` op dit project heeft.
 
@@ -86,5 +86,5 @@ emmerfilter; elke keer viel de bedoelde test om (bij `not exists` drie).
 ## Volgorde
 
 Migratie eerst, dan `rollover` deployen (`docs/DEPLOY.md` §2.3a). De nieuwe rollover
-roept `verlopen_bewijsfotos` aan en werkt dus niet zonder de migratie. **Het nummer 0299
-is voorlopig**, zie de kop van de migratie.
+roept `verlopen_bewijsfotos` aan en werkt dus niet zonder de migratie. **Het nummer was 0299 en is op 20-11-2026
+hernummerd naar 0315** (besluit van Quinten), zie de kop van de migratie.

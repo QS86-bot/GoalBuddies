@@ -1,13 +1,11 @@
--- 0299 — een bewijsfoto verdwijnt via de Storage-API bij accountverwijdering (QS8-692)
+-- 0315 — een bewijsfoto verdwijnt via de Storage-API bij accountverwijdering (QS8-692)
 --
--- ⚠️⚠️ NUMMER 0299 IS EEN VOORLOPIG NUMMER. Productie draagt 0299–0302 die `main`
---    niet heeft (QS8-233/641), en `npm run migraties:controle` meldt (18-11) acht
---    branches met een eigen 0299 (qs8-661, 662, 665, 666, 687, 695, 696 en 699).
---    Hernummeren met `npm run migratie:hernummer` vóór dit op productie komt; wie
---    als tweede merget, hernummert (QS8-318).
---    ⚠️ Bij het hernummeren: `0299` staat hier ook als de productienummers hierboven
---    (niet meeveranderen) en in de `COMMENT ON`-strings verderop (die belanden in de
---    databasecatalogus). Kale verwijzingen raakt de tool niet aan; lees ze per regel.
+-- ⚠️⚠️ NUMMER 0315 (hernummerd op 20-11-2026 van 0299, besluit van Quinten: #689 krijgt
+--    0315 en gaat vóór de zakelijke keten). Productie draagt 0299–0302 van QS8-233 en
+--    `main` draagt 0303–0314; dit is de eerste vrije plek erna. Wie als tweede merget,
+--    hernummert (QS8-318).
+--    ⚠️ `0315` staat ook in de `COMMENT ON`-strings verderop (die belanden in de
+--    databasecatalogus). Kale verwijzingen raakt `migratie:hernummer` niet aan; lees ze per regel.
 --
 -- ROLLBACK:
 --   drop function if exists public.verlopen_bewijsfotos(integer);
@@ -83,7 +81,7 @@ end;
 $$;
 
 comment on function public.wis_bewijsfotos_van_vertrekker() is
-  'Raakt storage.objects niet meer (QS8-692, 0299): een delete daarop faalt op '
+  'Raakt storage.objects niet meer (QS8-692, 0315): een delete daarop faalt op '
   'productie met 42501. De bewijsfoto''s van een vertrekker blijven als wees '
   'staan tot verlopen_bewijsfotos() ze aanwijst en de rollover ze wist.';
 
@@ -112,7 +110,7 @@ $$;
 
 comment on function public.verlopen_bewijsfotos(integer) is
   'De paden van bewijsfoto''s waarvan de eigenaar geen profiel meer heeft '
-  '(QS8-692, 0299). Wist zelf niets: een delete op storage.objects haalt de rij '
+  '(QS8-692, 0315). Wist zelf niets: een delete op storage.objects haalt de rij '
   'weg en het bestand niet, en wordt op productie met 42501 geweigerd.';
 
 -- ⚠️ Onwrikbare regel 4: de revoke noemt `authenticated` met zoveel woorden.

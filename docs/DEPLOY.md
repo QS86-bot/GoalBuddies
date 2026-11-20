@@ -631,7 +631,7 @@ het raakt het hele AVG-verwijderpad:
 - **een bericht verwijderen** ruimt het bestand wél op — `verwijderBericht()`
   roept de Storage-API aan, na de rij;
 - **een account verwijderen** ruimt de metadata-rijen op (migratie `0224` voor de
-  chat) en laat de bewijsfoto's als wees staan, onleesbaar. Sinds `0299` (QS8-692)
+  chat) en laat de bewijsfoto's als wees staan, onleesbaar. Sinds `0315` (QS8-692)
   raakt de verwijdering `storage.objects` niet meer, omdat `storage.protect_delete()`
   elke `delete` daarop per statement weigert; `verlopen_bewijsfotos()` wijst de wezen
   aan en de rollover verwijdert de objecten via de Storage-API, ten hoogste 500 per

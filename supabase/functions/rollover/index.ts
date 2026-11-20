@@ -784,7 +784,7 @@ async function ruimVerlopenBijlagenOp(db: Db): Promise<{ opgeruimd: number; misl
   // ⚠️ Wat de lus deelt, blijft de uitvoerende helft. Alleen het opvrágen is per
   //    emmer een eigen regel, en dat is precies één ternary.
   //
-  // ⚠️ **`bewijsfotos` erbij sinds QS8-692 (0299).** Een bewijsfoto van een
+  // ⚠️ **`bewijsfotos` erbij sinds QS8-692 (0315).** Een bewijsfoto van een
   //    verwijderd account blijft als wees staan — `delete from storage.objects` in
   //    de cascade wordt op productie met 42501 geweigerd — en deze pas haalt hem
   //    met `storage.remove()` weg. De RPC geeft alleen objecten waarvan de
