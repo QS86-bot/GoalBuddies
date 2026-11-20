@@ -2,18 +2,19 @@
 
 **Datum:** 18-11-2026 · **Issue:** QS8-658 (epic QS8-650) · **Migratie:** geen
 **Raakt:** besluit 7, 11, 16, 17, 20 en 21 in `docs/decisions/2026-11-03-zakelijk-gebruik-met-organisaties-en-teamdoelen.md`; domeinregel 10; rij 43 tot en met 45 in `docs/decisions/002-domeinregel7-oppervlakken.md`
-**Status:** gebouwd op `quintenstrijdonk/qs8-658-teamdoelscherm-en-teambalk`, bovenop QS8-657. Niet gemerged.
+**Status:** gebouwd op `quintenstrijdonk/qs8-658-teamdoelscherm-en-teambalk`, bovenop QS8-657. Op 20-11-2026 los van de stapel opnieuw gebouwd op `quintenstrijdonk/qs8-658-teamdoelscherm-en-teambalk-hernummerd`, met V15-A erbij. Niet gemerged.
 
 ## Wat er staat
 
 - **De ingang:** op het groepsscherm van een teamgroep staat een kaart *Teamdoelen*. Een gewone groep ziet niets.
-- **`/groep/teamdoelen/[id]`:** de teamdoelen van een groep, gepagineerd op id. Elk lid kan er een aanmaken (besluit 20).
+- **`/groep/teamdoelen/[id]`:** de teamdoelen van een groep, gepagineerd op id, met alleen hun titels (V15-A). Elk lid kan er een aanmaken (besluit 20).
 - **`/teamdoel/nieuw`:** titel, beschrijving en streefdatum. Het minimum is
   "vandaag" in de tijdzone van de groep, via `shared/time` (besluit 17), en de
   server toetst opnieuw.
-- **`/teamdoel/[id]`:** titel, beschrijving, streefdatum, de teambalk als getal
-  ("N mijlpalen behaald"), en je eigen aandeel. Heb je er een, dan staat er een
-  link naar je doel; anders een knop *Neem een aandeel*.
+- **`/teamdoel/[id]`:** titel, beschrijving, een regel over de tijd (V15-A,
+  hieronder), de teambalk als getal ("N mijlpalen behaald"), en je eigen
+  aandeel. Heb je er een, dan staat er een link naar je doel; anders een knop
+  *Neem een aandeel*, maar alleen zolang de streefdatum nog komt (V21).
 - **De API** staat in `src/modules/organisaties/teamdoelen.ts`.
 
 ## De keuzes
@@ -29,6 +30,9 @@
 | 7 | **De API staat in de organisatiemodule** | Zo blijft er één typebrug en één cast, die in één keer weggaat na de hergeneratie van de types |
 | 8 | **Geordend op id** | Stabiel en zonder migratie, maar zonder betekenis voor de lezer. Een index op `(group_id, created_at, id)` is de volgende stap zodra de volgorde ertoe doet |
 | 9 | **Geen balk per rij in de lijst** | Dat zou een N+1 zijn (regel 12) |
+| 10 | **Een verstreken streefdatum staat nergens (V15-A, besluit van Quinten, 20-11-2026).** De lijst toont alleen titels. Het teamdoel noemt de streefdatum zolang hij nog komt, de dag zelf inbegrepen, en daarna "Dit teamdoel loopt nog." | Een teamdoel dat zijn datum niet haalde, wijst in een klein team naar wie er een aandeel in had: domeinregel 7. De grens is die van `mijn_datum()` in 0319: `vandaag` is de datum in de tijdzone van de gebruiker, via `localDateIn()` uit `shared/time`. Het is één pure functie, `datumregel()`, en geen rekensom in een scherm. ⚠️ Een schermbesluit: `target_date` en `status` blijven leesbaar via `team_goals` (rij 43 in 002) |
+| 11 | **Een afgerond teamdoel zegt "Dit teamdoel is afgerond."**, een gearchiveerd niets (V20, advies van de bouwsessie; ter beslissing bij Quinten) | "Loopt nog" klopt niet voor een afgerond teamdoel, en een datum hoort er volgens V15-A ook niet. Afgerond is een positief signaal |
+| 12 | **Een verlopen teamdoel biedt geen aandeel meer aan** (V21, advies van de bouwsessie; ter beslissing bij Quinten) | De knop leidde altijd tot de weigering `streefdatum_verstreken` van `neem_aandeel()`. De server blijft de grens; `kanAandeelNemen()` haalt alleen de knop weg. Het is je eigen scherm, dus er gaat niets naar de groep |
 
 ## Gemeten
 
@@ -40,13 +44,17 @@
   cursor van de laatste rij, en de select bevat nooit `*` of `created_by`.
   Geijkt: laat ik de cursor weg, dan valt precies die toets om.
 - Het merktype is geijkt met `tsc` (TS2741 zonder `@ts-expect-error`).
+- **V15-A:** vijf toetsen op `datumregel()` en `kanAandeelNemen()`, waaronder de
+  dag zelf (nog de streefdatum) en één moment dat in Amsterdam de 15e en in
+  Auckland de 16e is (twee antwoorden). Geijkt: met `>= 0` in plaats van `> 0`
+  vallen precies die twee toetsen om.
 - Lichte UI-controle op `app/teamdoel/[id].tsx`: de enige lokale staat is
   `bezig` en `fout`. Er is geen setter op een getal, geen noemer, geen score en
   geen aandeel van een ander.
 
 ## Niet gemeten
 
-- De schermen zijn niet visueel bekeken, niet op web en niet native.
+- De schermen zijn op 20-11-2026 op web in navy bekeken, met nep-gegevens, op 390 en 1280 px. Native en navy-licht niet.
 - Het dagplafond van `goals` geeft bij `neem_aandeel` een `check_violation` in
   plaats van een reden; de gebruiker krijgt dan de algemene zin.
 

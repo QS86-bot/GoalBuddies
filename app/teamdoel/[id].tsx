@@ -2,16 +2,19 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 
-import { useSession } from '@/modules/auth';
+import { useProfiel, useSession } from '@/modules/auth';
 import {
+  datumregel,
+  kanAandeelNemen,
   laadTeamdoel,
   neemAandeel,
+  type Datumregel,
   type Teambalk,
   type Teamdoelstand,
 } from '@/modules/organisaties';
 import { opmaaktaal, t } from '@/shared/i18n';
 import { space } from '@/shared/theme';
-import { toonDatum } from '@/shared/time';
+import { localDateIn, now, toonDatum, type IsoDate } from '@/shared/time';
 import { AsyncView, Body, Button, Caption, Card, Screen, Subheading, useAsync } from '@/shared/ui';
 
 /**
@@ -37,6 +40,13 @@ export default function TeamdoelScherm() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const { userId } = useSession();
   const stand = useAsync(id && userId ? () => laadTeamdoel(id, userId) : null, [id, userId]);
+  const { profiel, loading: profielLaadt, error: profielFout, herlaad: herlaadProfiel } = useProfiel();
+  // ⚠️ "Vandaag" in de tijdzone van de gebruiker, zoals `mijn_datum()` op de server.
+  const vandaag = profiel ? localDateIn(profiel.tz, now()) : null;
+  const klaar =
+    stand.data !== undefined && stand.data !== null && vandaag !== null
+      ? { stand: stand.data, vandaag }
+      : undefined;
 
   return (
     <Screen
@@ -49,17 +59,20 @@ export default function TeamdoelScherm() {
       }
     >
       <AsyncView
-        loading={stand.loading}
-        error={stand.error}
-        data={stand.data ?? undefined}
+        loading={stand.loading || profielLaadt}
+        error={stand.error ?? profielFout}
+        data={klaar}
         isEmpty={() => false}
-        onRetry={stand.herlaad}
+        onRetry={() => {
+          stand.herlaad();
+          herlaadProfiel();
+        }}
         empty={{
           title: t('teamdoel.niet_gevonden_titel'),
           body: t('teamdoel.niet_gevonden_tekst'),
         }}
       >
-        {(s) => <Inhoud stand={s} onVerandert={stand.herlaad} />}
+        {(k) => <Inhoud stand={k.stand} vandaag={k.vandaag} onVerandert={stand.herlaad} />}
       </AsyncView>
     </Screen>
   );
@@ -67,29 +80,44 @@ export default function TeamdoelScherm() {
 
 function Inhoud({
   stand,
+  vandaag,
   onVerandert,
 }: {
   readonly stand: Teamdoelstand;
+  readonly vandaag: IsoDate;
   readonly onVerandert: () => void;
 }) {
   const { teamdoel } = stand;
+  const regel = tekstVan(datumregel(teamdoel, vandaag));
 
   return (
     <View style={styles.blokken}>
       <Card>
-        <Caption>
-          {t('teamdoel.streefdatum', { datum: toonDatum(teamdoel.streefdatum, opmaaktaal()) })}
-        </Caption>
+        {regel === null ? null : <Caption>{regel}</Caption>}
         {teamdoel.beschrijving === null ? null : <Body>{teamdoel.beschrijving}</Body>}
       </Card>
       <BalkKaart balk={stand.balk} />
       <AandeelKaart
         teamGoalId={teamdoel.id}
         aandeelDoelId={stand.aandeelDoelId}
+        kanNemen={kanAandeelNemen(teamdoel, vandaag)}
         onGenomen={onVerandert}
       />
     </View>
   );
+}
+
+function tekstVan(regel: Datumregel): string | null {
+  switch (regel.soort) {
+    case 'streefdatum':
+      return t('teamdoel.streefdatum', { datum: toonDatum(regel.datum, opmaaktaal()) });
+    case 'loopt_nog':
+      return t('teamdoel.loopt_nog');
+    case 'afgerond':
+      return t('teamdoel.afgerond');
+    case 'geen':
+      return null;
+  }
 }
 
 function BalkKaart({ balk }: { readonly balk: Teambalk }) {
@@ -109,10 +137,12 @@ function BalkKaart({ balk }: { readonly balk: Teambalk }) {
 function AandeelKaart({
   teamGoalId,
   aandeelDoelId,
+  kanNemen,
   onGenomen,
 }: {
   readonly teamGoalId: string;
   readonly aandeelDoelId: string | null;
+  readonly kanNemen: boolean;
   readonly onGenomen: () => void;
 }) {
   const router = useRouter();
@@ -132,7 +162,7 @@ function AandeelKaart({
     <Card>
       <Subheading>{t('teamdoel.aandeel_kop')}</Subheading>
       <Caption>{t('teamdoel.aandeel_uitleg')}</Caption>
-      {aandeelDoelId === null ? (
+      {aandeelDoelId === null && !kanNemen ? null : aandeelDoelId === null ? (
         <>
           {fout === null ? null : <Caption danger>{fout}</Caption>}
           <Button variant="primair" block busy={bezig} onPress={() => void nemen()}>

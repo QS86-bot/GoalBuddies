@@ -1,6 +1,7 @@
 import { reportError } from '../../lib/observability';
 import { invoerfout, type Resultaat } from '../../shared/api';
 import { t } from '../../shared/i18n';
+import { daysBetween, type IsoDate } from '../../shared/time';
 
 import { volgendeCursor, type Bladzijde } from './api';
 import { db } from './database';
@@ -74,6 +75,54 @@ function naarTeamdoel(rij: TeamdoelRuw): Teamdoel {
     streefdatum: rij.target_date,
     status: rij.status,
   };
+}
+
+// ---------------------------------------------------------------------------
+// De datum (V15-A, besluit van Quinten, 20-11-2026)
+// ---------------------------------------------------------------------------
+
+/**
+ * Wat een teamdoel onder zijn titel zegt over de tijd.
+ *
+ * ⚠️ **Een verstreken streefdatum staat nergens.** Een teamdoel dat zijn datum
+ *    niet haalde, wijst in een klein team naar wie er een aandeel in had; dat is
+ *    het schaamtemoment van domeinregel 7, in een groep die niet vrijwillig
+ *    gekozen is. Daarom: de streefdatum zolang hij nog komt, en daarna
+ *    "loopt nog". De lijst toont helemaal geen datum (zie het lijstscherm).
+ *
+ * ⚠️ **"Verstreken" rekent zoals de server:** `target_date < mijn_datum()` in
+ *    0319, dus de streefdatum zelf telt nog als "komt nog". `vandaag` is de datum
+ *    in de tijdzone van de gebruiker, zoals `mijn_datum()`.
+ *
+ * ⚠️ Een afgerond teamdoel zegt "afgerond" (V20, advies; mag om), een
+ *    gearchiveerd teamdoel zegt niets.
+ */
+export type Datumregel =
+  | { readonly soort: 'streefdatum'; readonly datum: string }
+  | { readonly soort: 'loopt_nog' }
+  | { readonly soort: 'afgerond' }
+  | { readonly soort: 'geen' };
+
+function isVerstreken(streefdatum: string, vandaag: IsoDate): boolean {
+  return daysBetween(streefdatum as IsoDate, vandaag) > 0;
+}
+
+export function datumregel(teamdoel: Teamdoel, vandaag: IsoDate): Datumregel {
+  if (teamdoel.status === 'completed') return { soort: 'afgerond' };
+  if (teamdoel.status !== 'active') return { soort: 'geen' };
+  if (isVerstreken(teamdoel.streefdatum, vandaag)) return { soort: 'loopt_nog' };
+  return { soort: 'streefdatum', datum: teamdoel.streefdatum };
+}
+
+/**
+ * Of het scherm de knop "Neem een aandeel" toont (V21, advies; mag om).
+ *
+ * ⚠️ De server blijft de grens: `neem_aandeel()` weigert met
+ *    `streefdatum_verstreken` en `niet_actief`. Dit haalt alleen een knop weg
+ *    die altijd tot een weigering leidt.
+ */
+export function kanAandeelNemen(teamdoel: Teamdoel, vandaag: IsoDate): boolean {
+  return teamdoel.status === 'active' && !isVerstreken(teamdoel.streefdatum, vandaag);
 }
 
 // ---------------------------------------------------------------------------

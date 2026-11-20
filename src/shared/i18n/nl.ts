@@ -3659,6 +3659,10 @@ export const nl = {
     'Het teamdoel kon niet geladen worden.',
   'teamdoel.streefdatum':
     'Streefdatum {datum}',
+  'teamdoel.loopt_nog':
+    'Dit teamdoel loopt nog.',
+  'teamdoel.afgerond':
+    'Dit teamdoel is afgerond.',
   'teamdoel.balk_kop':
     'Teambalk',
   'teamdoel.balk_een':

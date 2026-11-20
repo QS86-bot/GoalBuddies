@@ -3045,6 +3045,10 @@ export const en: Record<Sleutel, string> = {
     'The team goal could not be loaded.',
   'teamdoel.streefdatum':
     'Target date {datum}',
+  'teamdoel.loopt_nog':
+    'This team goal is still running.',
+  'teamdoel.afgerond':
+    'This team goal is complete.',
   'teamdoel.balk_kop':
     'Team bar',
   'teamdoel.balk_een':

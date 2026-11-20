@@ -20,11 +20,14 @@ export {
 } from './api';
 
 export {
+  datumregel,
   fetchIsTeamgroep,
+  kanAandeelNemen,
   fetchTeamdoelen,
   laadTeamdoel,
   maakTeamdoel,
   neemAandeel,
+  type Datumregel,
   type Teamdoel,
   type Teambalk,
   type Teamdoelstand,

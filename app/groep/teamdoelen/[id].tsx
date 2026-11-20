@@ -2,9 +2,8 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import { StyleSheet, View } from 'react-native';
 
 import { fetchTeamdoelen, type Teamdoel } from '@/modules/organisaties';
-import { opmaaktaal, t } from '@/shared/i18n';
+import { t } from '@/shared/i18n';
 import { space } from '@/shared/theme';
-import { toonDatum } from '@/shared/time';
 import { AsyncView, Button, Caption, Card, Screen, useBladerlijst } from '@/shared/ui';
 
 /**
@@ -14,6 +13,11 @@ import { AsyncView, Button, Caption, Card, Screen, useBladerlijst } from '@/shar
  *    en geen aandeel: de balk is één verzoek per teamdoel, en een lijst met een
  *    balk per rij is precies de N+1 die groepsoverzichten hier niet mogen hebben.
  *    De balk staat op het teamdoel zelf.
+ *
+ * ⚠️ **Geen streefdatum in de rij** (V15-A, besluit van Quinten, 20-11-2026). Een
+ *    lijst met datums toont welke teamdoelen hun datum niet haalden, en in een klein
+ *    team wijst dat naar wie. Het teamdoel zelf noemt de datum zolang hij nog komt
+ *    (`datumregel()` in de module).
  *
  * ⚠️ Elk lid mag een teamdoel aanmaken (besluit 20); de server toetst het
  *    lidmaatschap, en een niet-lid krijgt hier een lege lijst.
@@ -69,19 +73,12 @@ export default function Teamdoelen() {
 
 function Teamdoelrij({ doel }: { readonly doel: Teamdoel }) {
   const router = useRouter();
-  const datum = t('teamdoel.streefdatum', { datum: toonDatum(doel.streefdatum, opmaaktaal()) });
 
   return (
     <Card>
-      <Button
-        variant="stil"
-        block
-        accessibilityLabel={`${doel.titel}. ${datum}`}
-        onPress={() => router.push(`/teamdoel/${doel.id}`)}
-      >
+      <Button variant="stil" block onPress={() => router.push(`/teamdoel/${doel.id}`)}>
         {doel.titel}
       </Button>
-      <Caption>{datum}</Caption>
     </Card>
   );
 }

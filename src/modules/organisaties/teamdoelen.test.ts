@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { t, type Sleutel } from '../../shared/i18n';
+import { localDateIn, type IsoDate, type TimeZone } from '../../shared/time';
 
 import type { Teambalk } from './teamdoelen';
 
@@ -293,6 +294,53 @@ describe('fetchIsTeamgroep', () => {
     ] as const) {
       from.mockReturnValue(keten(() => ({ data, error: null })).proxy);
       expect(await teamdoelen.fetchIsTeamgroep(GROEP)).toBe(verwacht);
+    }
+  });
+});
+
+describe('V15-A: wat een teamdoel over de tijd zegt (besluit van Quinten, 20-11-2026)', () => {
+  const { datumregel, kanAandeelNemen } = teamdoelen;
+  const basis = {
+    id: DOEL,
+    groepId: GROEP,
+    titel: 'Nieuwe website live',
+    beschrijving: null,
+    streefdatum: '2026-11-15',
+    status: 'active',
+  } as const;
+
+  it('noemt de streefdatum zolang hij nog komt, de dag zelf inbegrepen (zoals mijn_datum() in 0319)', () => {
+    expect(datumregel(basis, '2026-11-14' as IsoDate)).toEqual({ soort: 'streefdatum', datum: '2026-11-15' });
+    expect(datumregel(basis, '2026-11-15' as IsoDate)).toEqual({ soort: 'streefdatum', datum: '2026-11-15' });
+    expect(kanAandeelNemen(basis, '2026-11-15' as IsoDate)).toBe(true);
+  });
+
+  it('noemt een verstreken streefdatum nergens: "loopt nog", en geen knop voor een aandeel', () => {
+    const regel = datumregel(basis, '2026-11-16' as IsoDate);
+    expect(regel).toEqual({ soort: 'loopt_nog' });
+    expect(JSON.stringify(regel)).not.toContain('2026-11-15');
+    expect(kanAandeelNemen(basis, '2026-11-16' as IsoDate)).toBe(false);
+  });
+
+  it('rekent "vandaag" in de tijdzone van de gebruiker: hetzelfde moment, twee antwoorden', () => {
+    // 22:30 UTC op de 15e: in Amsterdam 23:30 op de 15e, in Auckland al de 16e.
+    const moment = new Date('2026-11-15T22:30:00Z');
+    const amsterdam = localDateIn('Europe/Amsterdam' as TimeZone, moment);
+    const auckland = localDateIn('Pacific/Auckland' as TimeZone, moment);
+    expect(datumregel(basis, amsterdam).soort).toBe('streefdatum');
+    expect(datumregel(basis, auckland).soort).toBe('loopt_nog');
+  });
+
+  it('zegt bij een afgerond teamdoel "afgerond" en bij een gearchiveerd niets, en biedt geen aandeel', () => {
+    expect(datumregel({ ...basis, status: 'completed' }, '2026-11-20' as IsoDate)).toEqual({ soort: 'afgerond' });
+    expect(datumregel({ ...basis, status: 'completed' }, '2026-11-01' as IsoDate)).toEqual({ soort: 'afgerond' });
+    expect(datumregel({ ...basis, status: 'archived' }, '2026-11-01' as IsoDate)).toEqual({ soort: 'geen' });
+    expect(kanAandeelNemen({ ...basis, status: 'completed' }, '2026-11-01' as IsoDate)).toBe(false);
+  });
+
+  it('heeft een tekst in de catalogus voor elke regel die iets zegt', () => {
+    for (const s of ['teamdoel.loopt_nog', 'teamdoel.afgerond'] as const) {
+      expect(t(s as Sleutel)).not.toBe(s);
     }
   });
 });
