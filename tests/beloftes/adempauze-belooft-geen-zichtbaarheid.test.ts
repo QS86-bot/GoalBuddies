@@ -36,4 +36,19 @@ describe('adempauze.groep_ziet', () => {
     expect(zin).toContain('does not see your breather');
     expect(zin).toContain('Ketting does not count members on a pause');
   });
+
+  // Ook het antwoord bij de valkuil 'chaotisch leven' noemt de adempauze.
+  it('valkuil.life_chaotic.antwoord belooft ook niet dat de groep de pauze ziet', () => {
+    const sleutel = 'valkuil.life_chaotic.antwoord' as never;
+    zetTaal('nl');
+    const nl = t(sleutel);
+    expect(nl).not.toBe(sleutel);
+    expect(nl).not.toMatch(/ziet dat je/i);
+    expect(nl).toContain('alleen als je het ze zelf laat weten');
+    zetTaal('en');
+    const en = t(sleutel);
+    expect(en).not.toBe(sleutel);
+    expect(en).not.toMatch(/sees that you/i);
+    expect(en).toContain('only sees it if you let them know yourself');
+  });
 });

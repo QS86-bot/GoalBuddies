@@ -2327,7 +2327,7 @@ export const en: Record<Sleutel, string> = {
   'valkuil.nobody_notices': 'Nobody notices if I stop',
   'valkuil.nobody_notices.antwoord': 'Your week is confirmed by a buddy, not by yourself. That is what this app is built around.',
   'valkuil.life_chaotic': 'My life gets chaotic sometimes',
-  'valkuil.life_chaotic.antwoord': 'Then you announce a breather in advance. Your group sees that you are pausing, and your run stays.',
+  'valkuil.life_chaotic.antwoord': 'Then you set a breather. Your run stays, and your group only sees it if you let them know yourself.',
   'valkuil.bekijk': 'Show me',
 
   'vragenlijst.samenvatting.kop': 'Here is what you told me',

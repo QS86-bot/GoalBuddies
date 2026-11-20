@@ -2874,7 +2874,7 @@ export const nl = {
   'valkuil.nobody_notices': 'Niemand merkt het als ik stop',
   'valkuil.nobody_notices.antwoord': 'Je week wordt door een buddy bevestigd, niet door jezelf. Dat is waar deze app om draait.',
   'valkuil.life_chaotic': 'Mijn leven wordt soms chaotisch',
-  'valkuil.life_chaotic.antwoord': 'Dan kondig je vooraf een adempauze aan. Je groep ziet dat je even pauzeert, en je reeks blijft staan.',
+  'valkuil.life_chaotic.antwoord': 'Dan zet je een adempauze. Je reeks blijft staan, en je groep ziet het alleen als je het ze zelf laat weten.',
   'valkuil.bekijk': 'Laat zien',
 
   'vragenlijst.samenvatting.kop': 'Dit heb je me verteld',
