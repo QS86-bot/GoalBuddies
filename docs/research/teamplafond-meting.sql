@@ -13,6 +13,9 @@
 --    een sequential scan per bericht, en dan wordt de chat kwadratisch in het
 --    ledental. Met duizenden profielen kiest hij de index. Meet dus met
 --    `extra` in de buurt van productie.
+-- ⚠️ En om dezelfde reden draait het script `analyze` op elke tabel die het
+--    vult (QS8-699). Zonder dat heeft de planner geen statistieken over de
+--    rijen die er net bij kwamen, en meet je een plan dat productie niet kiest.
 --
 -- Alles staat in één transactie die aan het eind teruggedraaid wordt: de
 -- database is daarna precies zoals ervoor.
@@ -86,6 +89,16 @@ begin
       values (v_g, v_leden[i], 'text', format('Bericht %s van lid %s', b, i));
     end loop;
   end loop;
+
+  -- ⚠️ **QS8-699: zonder deze regels meet je de planner en niet de query.**
+  --    Alles hierboven staat in één transactie, dus autovacuum heeft deze
+  --    tabellen nog niet gezien: de planner houdt `group_members`, `goals` en
+  --    `goal_group_links` voor bijna leeg en kiest per lid een scan over alle
+  --    koppelingen van de groep. 📏 Zonder deze regels kostte het oude
+  --    `group_overview()` 32, 88 en 297 ms bij 12, 25 en 50 leden, mét deze
+  --    regels 28, 55 en 127. Productie heeft statistieken; dit is wat telt.
+  analyze groups; analyze group_members; analyze goals; analyze goal_group_links;
+  analyze weekly_goals; analyze milestones; analyze chat_messages;
 
   perform set_config('meet.groep', v_g::text, true);
   perform set_config('meet.lid', v_leden[2]::text, true);
