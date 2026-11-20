@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 
 import { clientEnv } from '@/lib/env';
-import { useSession } from '@/modules/auth';
+import { useProfiel, useSession } from '@/modules/auth';
 import {
   fetchGroep,
   fetchGroepsoverzicht,
@@ -23,7 +23,7 @@ import {
   type Klassementsrij,
   type Pagina,
   type Zichtbaarheid,
-  deelbareUitnodiging,
+  deelbaarBericht,
   verlaatGroep,
   zichtbaarheidLabels,
 } from '@/modules/buddies';
@@ -100,6 +100,7 @@ export default function GroepDetail() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
   const { userId } = useSession();
+  const { profiel } = useProfiel();
 
   const {
     data: stand,
@@ -217,8 +218,7 @@ export default function GroepDetail() {
                 }
                 onOpnieuw={herlaad}
                 leden={s.overzicht.totaal}
-                uitnodigingsLink={deelbareUitnodiging(s.groep, clientEnv().appUrl)}
-                groepsnaam={s.groep.name}
+                uitnodiging={deelbaarBericht(s.groep, clientEnv().appUrl, profiel?.display_name)}
               />
             )}
 
