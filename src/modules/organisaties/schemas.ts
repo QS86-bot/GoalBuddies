@@ -1,7 +1,7 @@
 import { z } from 'zod';
 
 import { t } from '../../shared/i18n';
-import { schoneNaam, telTekens } from '../../shared/tekst';
+import { bevatLinkAchtigeTekst, schoneNaam, telTekens } from '../../shared/tekst';
 
 /**
  * De grenzen van `maak_organisatie()` (0316): 1 tot 80 codepunten na het
@@ -34,4 +34,5 @@ export const teamNaamSchema = z
   .refine((v) => telTekens(v) >= TEAMNAAM_MIN, { error: () => t('groep.naam_kort') })
   .refine((v) => telTekens(v) <= TEAMNAAM_MAX, {
     error: () => t('validatie.groepsnaam_lang'),
-  });
+  })
+  .refine((v) => !bevatLinkAchtigeTekst(v), { error: () => t('validatie.groepsnaam_link') });

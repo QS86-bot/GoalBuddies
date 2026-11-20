@@ -25,11 +25,18 @@
 -- geen bestaande naam gewijzigd.
 --
 -- ⚠️ De regel spiegelt `bevatLinkAchtigeTekst()` in `src/shared/tekst`:
---    `://`, `www.` en een domeinvorm (letter of cijfer of streepje, punt, twee
---    letters). Houd de twee gelijk. Regeleinden weert de CHECK hier zelf (CR, LF,
+--    `://`, `www.` en een domeinvorm (letter of cijfer of streepje, een punt of
+--    een punt-lookalike, twee letters).
+--
+-- ⚠️ `[[:alpha:]]` hangt van de locale af. 📏 Productie meet `en_US.UTF-8` en
+--    daar dekt hij é, ā en кириллица; onder locale `C` (een lokale teststack)
+--    zijn dat geen letters en weigert de CHECK minder dan de TS-kant. De
+--    pariteitstest toetst dat tegen de draaiende database. Houd de twee gelijk. Regeleinden weert de CHECK hier zelf (CR, LF,
 --    NEL, LS, PS), want `schoneNaam()` strijkt ze in de client maar een directe
 --    API-aanroep gaat daar niet langs.
 -- ---------------------------------------------------------------------------
+
+begin;
 
 create or replace function public.bevat_linkachtige_tekst(p_tekst text)
 returns boolean
@@ -38,7 +45,15 @@ immutable
 set search_path to 'pg_catalog', 'pg_temp'
 as $$
   select coalesce(
-    p_tekst ~* ('://|www\.|[[:alnum:]-]\.[[:alpha:]]{2}')
+    p_tekst ~* '://|www\.'
+    -- een domeinvorm: letter/cijfer/streepje, een punt (ook de punten die een
+    -- browser tot een punt omzet: U+3002, U+FF0E, U+FF61, U+2024, U+FE52),
+    -- eventueel combinerende tekens, en twee letters
+    or p_tekst ~* (
+      '[[:alnum:]-][.' || U&'\3002\FF0E\FF61\2024\FE52' || ']' ||
+      '[' || U&'\0300-\036F\1AB0-\1AFF\1DC0-\1DFF\20D0-\20FF\FE20-\FE2F' || ']*' ||
+      '[[:alpha:]' || U&'\0300-\036F' || ']{2}'
+    )
     or p_tekst ~ ('[' || chr(10) || chr(13) || chr(133) || chr(8232) || chr(8233) || ']'),
     false
   );
@@ -49,7 +64,7 @@ comment on function public.bevat_linkachtige_tekst(text) is
   'Spiegelt `bevatLinkAchtigeTekst()` uit `src/shared/tekst`.';
 
 revoke all on function public.bevat_linkachtige_tekst(text) from public, anon, authenticated;
-grant execute on function public.bevat_linkachtige_tekst(text) to authenticated;
+grant execute on function public.bevat_linkachtige_tekst(text) to authenticated, service_role;
 
 alter table public.groups
   drop constraint if exists groups_name_geen_webadres;
@@ -61,3 +76,5 @@ alter table public.groups
 comment on constraint groups_name_geen_webadres on public.groups is
   'Een groepsnaam draagt geen webadres, domeinvorm of regeleinde — QS8-771. De '
   'naam staat in het bericht dat een lid onder eigen naam verstuurt.';
+
+commit;

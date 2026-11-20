@@ -709,7 +709,12 @@ export function schoneEneRegel(ruw: string): string {
  *    draagt dezelfde regel als CHECK; houd de twee gelijk.
  */
 export function bevatLinkAchtigeTekst(tekst: string): boolean {
-  return /:\/\/|www\.|[\p{L}\p{N}-]\.\p{L}{2}/iu.test(tekst);
+  // Puntvormen die een browser (IDNA) tot een punt omzet: U+3002, U+FF0E, U+FF61,
+  // U+2024 en U+FE52; combinerende tekens direct na de punt tellen niet mee.
+  const punt = '[.\\u3002\\uFF0E\\uFF61\\u2024\\uFE52]';
+  const marks = '[\\u0300-\\u036F\\u1AB0-\\u1AFF\\u1DC0-\\u1DFF\\u20D0-\\u20FF\\uFE20-\\uFE2F]*';
+  const domein = new RegExp(`[\\p{L}\\p{N}-]${punt}${marks}[\\p{L}\\p{M}]{2}`, 'iu');
+  return /:\/\/|www\./i.test(tekst) || domein.test(tekst) || /[\n\r\u0085\u2028\u2029]/u.test(tekst);
 }
 
 /**

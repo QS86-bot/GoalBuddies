@@ -5,6 +5,7 @@
 import { describe, expect, it } from 'vitest';
 
 import { groepSchema } from '../../src/modules/buddies/schemas';
+import { teamNaamSchema } from '../../src/modules/organisaties/schemas';
 import { uitnodigingsBericht } from '../../src/modules/buddies/samen';
 import { bevatLinkAchtigeTekst } from '../../src/shared/tekst';
 
@@ -19,6 +20,8 @@ describe('uitnodigingsBericht', () => {
   it('laat een aanhalingsteken in de naam er niet uit breken', () => {
     const tekst = uitnodigingsBericht(LINK, 'A” log in “B', 'Jan').tekst;
     expect(tekst.match(/[“”]/gu)).toHaveLength(2);
+    const lang = uitnodigingsBericht(LINK, 'A〞 reageer 〝B', 'Jan').tekst;
+    expect(lang.match(/[“”〞〝]/gu)).toHaveLength(2);
   });
 });
 
@@ -28,20 +31,35 @@ describe('groepSchema.name', () => {
   it.each([
     'Account verlopen, log in via evil.example',
     'https://evil.example',
-    'www evil',
     'go to www.x',
     'a://b',
-  ])('weigert %s', (naam) => {
-    expect(bevatLinkAchtigeTekst(naam) || naam === 'www evil').toBe(true);
-    if (naam !== 'www evil') expect(nieuw(naam).success).toBe(false);
+    'evil。com',
+    'evil．com',
+    'evil｡com',
+    'evil.\u0301com',
+    'Jan\u2029Admin',
+  ])('weigert %j', (naam) => {
+    expect(bevatLinkAchtigeTekst(naam)).toBe(true);
+    expect(nieuw(naam).success).toBe(false);
   });
 
-  it.each(['Sportmaatjes', 'Team 3A', 'Lopen, 5 km', 'Jan & Piet', 'e.g. wij'])('laat %s door', (naam) => {
-    expect(nieuw(naam).success).toBe(true);
-  });
+  it.each(['Sportmaatjes', 'Team 3A', 'Lopen, 5 km', 'Jan & Piet', 'e.g. wij', 'Jan’s groep'])(
+    'laat %s door',
+    (naam) => {
+      expect(nieuw(naam).success).toBe(true);
+    },
+  );
 
-  it('weigert een naam met een regeleinde niet als link maar maakt er één regel van', () => {
+  it('maakt van een naam met een regeleinde één regel', () => {
     const r = nieuw('Jan\nAdmin');
-    expect(r.success ? r.data.name.includes('\n') : false).toBe(false);
+    expect(r.success).toBe(true);
+    if (r.success) expect(r.data.name).not.toMatch(/[\n\r]/);
+  });
+});
+
+describe('teamNaamSchema', () => {
+  it('weigert een webadres zoals groepSchema', () => {
+    expect(teamNaamSchema.safeParse('Log in via evil.example').success).toBe(false);
+    expect(teamNaamSchema.safeParse('Sales').success).toBe(true);
   });
 });
