@@ -16,6 +16,12 @@
 --     drop column if exists afronding_goedgekeurd_door,
 --     drop column if exists afronding_gevraagd_op,
 --     drop column if exists afronding_gevraagd_door;
+--   drop trigger if exists xp_na_teambonus on public.points_ledger;
+--   drop function if exists public.xp_na_teambonus();
+--   drop index if exists public.xp_grootboek_teamdoel_uniek_idx;
+--   -- de twee CHECK's op xp_grootboek terugzetten uit 0304 (sectie 2), en dan:
+--   alter table public.xp_grootboek drop column if exists teamdoel_id;
+--   -- (een teambonus-XP-rij moet eerst weg; dat is XP die gebruikers zagen: grens 2)
 --   drop index if exists public.points_ledger_teambonus_per_seizoen_idx;
 --   alter table public.points_ledger drop constraint if exists points_ledger_teambonus_heeft_seizoen;
 --   alter table public.points_ledger drop column if exists seizoen;
@@ -296,3 +302,72 @@ end;
 $$;
 revoke all on function public.keur_teamdoel_goed(uuid) from public, anon, authenticated;
 grant execute on function public.keur_teamdoel_goed(uuid) to authenticated;
+
+-- ---------------------------------------------------------------------------
+-- 9. XP voor de teambonus — besluit van Quinten, 20-11-2026 (~12:15 UTC)
+-- ---------------------------------------------------------------------------
+--
+-- ⚠️ **Besluit (V7, via de orchestrator):** een teambonus levert 20 XP op, net als
+--    een gehaald plafond (dat is ook +2 punten). In deze migratie zelf en zonder
+--    terugwerkende boeking: de teambonus bestaat nog niet op productie.
+--
+-- ⚠️ Een eigen sleutelkolom en een eigen trigger, en `xp_na_weekpunten()` (0304)
+--    blijft onaangeroerd: een herdefinitie van een lichaam van `main` is precies
+--    de klasse die bij het hernummeren van deze keten vier keer stil iets liet
+--    vallen (QS8-358). De twee CHECK's hieronder zijn wél herdefinities: de lijst
+--    is die van 0304 plus `teambonus`, en de sleutelregel die van 0304 plus één tak.
+--
+-- ⚠️ **De eisen uit het XP-blok in CLAUDE.md blijven staan:** alleen de eigenaar
+--    leest (de policy van 0304 geldt per rij, ook voor deze bron), het bedrag is
+--    strikt positief (`xp_grootboek_bedrag_telt_alleen_op`), en er is geen pad
+--    naar een negatieve rij: de trigger boekt alleen bij `team_goal_bonus`, die
+--    zelf altijd +2 is. Idempotent per bonus: één rij per persoon per teamdoel
+--    (`xp_grootboek_teamdoel_uniek_idx`), dezelfde vorm als de andere bronnen.
+--    Het plafond van één teambonus per seizoen zit in `points_ledger`
+--    (`points_ledger_teambonus_per_seizoen_idx`); geen bonusrij is geen XP-rij.
+alter table public.xp_grootboek add column if not exists teamdoel_id uuid;
+
+alter table public.xp_grootboek drop constraint if exists xp_grootboek_bron_bekend;
+alter table public.xp_grootboek add constraint xp_grootboek_bron_bekend
+  check (bron in ('weekdoel_plafond', 'weekdoel_vloer', 'badge', 'teambonus'));
+
+alter table public.xp_grootboek drop constraint if exists xp_grootboek_sleutel_hoort_bij_bron;
+alter table public.xp_grootboek add constraint xp_grootboek_sleutel_hoort_bij_bron
+  check (
+    (bron = 'badge' and badge is not null and weekdoel_id is null and teamdoel_id is null)
+    or (bron = 'teambonus' and teamdoel_id is not null and weekdoel_id is null and badge is null)
+    or (bron in ('weekdoel_plafond', 'weekdoel_vloer') and weekdoel_id is not null
+        and badge is null and teamdoel_id is null)
+  );
+
+create unique index if not exists xp_grootboek_teamdoel_uniek_idx
+  on public.xp_grootboek (user_id, teamdoel_id)
+  where teamdoel_id is not null;
+
+create or replace function public.xp_na_teambonus() returns trigger
+  language plpgsql
+  security definer
+  set search_path = public, pg_temp
+as $$
+begin
+  -- Alleen de teambonus, met het teamdoel als sleutel. Geen `raise`, om de reden
+  -- van `xp_na_badge()` (0304): deze trigger draait in de transactie van de
+  -- goedkeuring, en een fout hier zou de afronding terugdraaien.
+  if new.reason is distinct from 'team_goal_bonus' or new.ref_type is distinct from 'team_goal'
+     or new.ref_id is null or new.delta <= 0 then
+    return new;
+  end if;
+
+  insert into public.xp_grootboek (user_id, bron, teamdoel_id, bedrag, verdiend_op)
+  values (new.user_id, 'teambonus', new.ref_id, 20, new.created_at)
+  on conflict do nothing;
+  return new;
+end;
+$$;
+
+revoke all on function public.xp_na_teambonus() from public, anon, authenticated;
+
+drop trigger if exists xp_na_teambonus on public.points_ledger;
+create trigger xp_na_teambonus
+  after insert on public.points_ledger
+  for each row execute function public.xp_na_teambonus();

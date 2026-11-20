@@ -124,6 +124,21 @@ describe.runIf(rlsTestsConfigured)('afronden van een teamdoel en de teambonus (Q
     return data as { ref_id: string; delta: number }[];
   }
 
+  /**
+   * De XP van de teambonus — besluit van Quinten, 20-11-2026 (V7): 20 XP per
+   * bonus, idempotent per teamdoel. ⚠️ Gelezen als service_role: het gaat hier om
+   * wat er geboekt is, niet om wie het mag lezen (dat is `tests/rls/xp.test.ts`).
+   */
+  async function teambonusXp(wie: TestUser): Promise<{ teamdoel_id: string; bedrag: number }[]> {
+    const { data, error } = await adminDb()
+      .from('xp_grootboek' as never)
+      .select('teamdoel_id, bedrag')
+      .eq('user_id' as never, wie.id as never)
+      .eq('bron' as never, 'teambonus' as never);
+    expect(error).toBeNull();
+    return data as unknown as { teamdoel_id: string; bedrag: number }[];
+  }
+
   beforeAll(async () => {
     [anna, bert, cleo, dirk, eva] = await Promise.all([
       createTestUser('tbonus-anna'),
@@ -210,6 +225,15 @@ describe.runIf(rlsTestsConfigured)('afronden van een teamdoel en de teambonus (Q
     // Nog eens goedkeuren boekt niets: het teamdoel is af.
     expect(uitkomst(await rpc(cleo, 'keur_teamdoel_goed', { p_team_goal_id: eerste }))).toBe('niet_actief');
     expect(await bonussen(bert)).toHaveLength(1);
+
+    // De naad met XP (0304), besluit V7 van 20-11-2026: één bonus is precies één
+    // XP-rij van 20, en wie geen bonus kreeg, krijgt ook geen XP.
+    // ⚠️ Rood gemaakt op een lokale database: zonder de trigger `xp_na_teambonus`
+    //    nul rijen; zonder `xp_grootboek_teamdoel_uniek_idx` een tweede rij bij een
+    //    herhaalde boeking.
+    expect(await teambonusXp(bert)).toEqual([{ teamdoel_id: eerste, bedrag: 20 }]);
+    expect(await teambonusXp(cleo)).toEqual([{ teamdoel_id: eerste, bedrag: 20 }]);
+    expect(await teambonusXp(dirk)).toEqual([]);
   }, TEST_TIMEOUT);
 
   it('een goedgekeurde afronding is definitief, ook voor service_role (besluit 2)', async () => {
@@ -280,6 +304,9 @@ describe.runIf(rlsTestsConfigured)('afronden van een teamdoel en de teambonus (Q
 
     expect((await bonussen(bert)).map((b) => b.ref_id)).toEqual([eerste]);
     expect((await bonussen(cleo)).map((b) => b.ref_id)).toEqual([eerste]);
+    // Geen tweede bonus in hetzelfde seizoen, dus ook geen tweede XP-rij (V7).
+    expect(await teambonusXp(bert)).toEqual([{ teamdoel_id: eerste, bedrag: 20 }]);
+    expect(await teambonusXp(cleo)).toEqual([{ teamdoel_id: eerste, bedrag: 20 }]);
     expect((await bonussen(dirk)).map((b) => b.ref_id).sort()).toEqual(
       [proefId(1), tweede].sort(),
     );

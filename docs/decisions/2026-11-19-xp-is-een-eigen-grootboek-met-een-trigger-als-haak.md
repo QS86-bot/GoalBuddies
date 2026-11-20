@@ -13,6 +13,12 @@ de drempels (20, 50, 100, 180, 300, 480, 750, 1150, 1700, 2500) en de bedragen
 De app kent geen constante: `src/modules/xp` valideert alleen wat `mijn_xp()`
 teruggeeft. Onder 20 XP is het niveau 0.
 
+⚠️ **Sinds 0326 (QS8-662, 20-11-2026) staat er één bedrag buiten deze migratie:**
+de teambonus geeft **20 XP** (besluit van Quinten, V7). Hij heeft een eigen bron
+(`teambonus`), een eigen sleutel (`teamdoel_id`, uniek per persoon) en een eigen
+trigger (`xp_na_teambonus()` op `points_ledger`). `xp_na_weekpunten()` is daarvoor
+niet herdefinieerd. Wie de bedragen zoekt, kijkt dus in 0304 én 0326.
+
 ## Keuzes van de bouwsessie (geen besluit van Quinten nodig)
 
 1. **De haak is een trigger op `points_ledger` en op `badges`, geen tweede

@@ -66,6 +66,7 @@ De getallen komen uit QS8-734, sectie *Besluiten (Quinten, 19-11-2026, vierde ro
 | Wie leest | **Alleen de eigenaar.** Niveau en XP staan alleen op het Prestatiescherm en op je eigen profiel; niet in het menu, niet voor groepsleden |
 | Weekbedragen | Plafond gehaald **20**, vloer gehaald **10**, gemiste week **0** (nooit negatief), adempauze **0** |
 | Badges | XP naar zeldzaamheid, **10 (gewoon) tot 200 (legendarisch)**. De vijf bestaande: `first_goal`, `first_milestone`, `first_review` = gewoon (10); `streak_4` = ongewoon (25); `streak_12` = zeldzaam (50) |
+| Teambonus | **20 XP per teambonus**, net als een gehaald plafond (dat is ook +2 punten). Besluit van Quinten, 20-11-2026 (~12:15 UTC, via de orchestrator; vraag V7). Gebouwd in 0326 (QS8-662), zonder terugwerkende boeking: de teambonus bestond toen nog niet op productie |
 | Niveaus | **Tien, genummerd, zonder titels** (geen titels of schaal van Habit Huddle, ToS §7). Drempels in totaal-XP: **20, 50, 100, 180, 300, 480, 750, 1150, 1700, 2500**, in één bron |
 | Bestaande gebruikers | **Terugwerkend**, met één eenmalige migratie uit `points_ledger` en `badges`: rollback-pad in de kop, `pg_dump` vooraf, idempotent (unieke sleutel per bron; een tweede run voegt niets toe) |
 
