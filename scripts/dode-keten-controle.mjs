@@ -329,6 +329,16 @@ export const WACHT_OP_EEN_BESLUIT = {
     'zo nee, dan hoort de RPC weg.',
   // ⚠️ De drie teamdoel-RPC's van 0319 en 0320 (QS8-654, QS8-655) stonden hier tot
   //    18-11-2026: het scherm is QS8-658 en heeft de aanroepers gebouwd.
+  // ⚠️ De twee afrond-RPC's van QS8-662 (0326) hebben nog geen aanroeper: de
+  //    afrondknop op het teamdoelscherm is een vervolgissue (afleverregel QS8-658).
+  vraag_teamdoel_afronding:
+    'Schrijfpad van een teamafronding (0326, QS8-662). Het scherm is het vervolgissue van QS8-658. ' +
+    '**Vraag:** krijgt hij daar een aanroeper? Zo ja, dan gaat deze rij weg zodra die er is; ' +
+    'zo nee, dan hoort de RPC weg.',
+  keur_teamdoel_goed:
+    'Schrijfpad van een teamafronding en de teambonus (0326, QS8-662). Het scherm is het vervolgissue van QS8-658. ' +
+    '**Vraag:** krijgt hij daar een aanroeper? Zo ja, dan gaat deze rij weg zodra die er is; ' +
+    'zo nee, dan hoort de RPC weg.',
 };
 
 /** Bestanden waarin een aanroep als "productie" telt. Tests en scripts niet. */
@@ -707,9 +717,9 @@ export const GEDEELDE_WAARDEN = {
   //    meteen als verlopen gemeld). Het staat daarom als keuze 7 in
   //    `docs/decisions/2026-11-17-organisaties-en-lidmaatschappen.md`.
   // ⚠️ **`team_goals` — QS8-654, migratie 0319.** Met de hand nagelopen: `active`
-  //    is de default en wordt door `maak_teamdoel()` geschreven. `completed` en
-  //    `archived` hebben vandaag **géén** schrijver: afronden is QS8-662, en
-  //    archiveren is niet gepland. Dezelfde blinde vlek als bij
+  //    is de default en wordt door `maak_teamdoel()` geschreven. `completed`
+  //    schrijft `keur_teamdoel_goed()` sinds QS8-662 (0326). `archived` heeft
+  //    vandaag **géén** schrijver: archiveren is niet gepland. Dezelfde blinde vlek als bij
   //    `organizations.archived` hierboven; het staat in de aannames van
   //    `docs/decisions/2026-11-17-teamdoelen-en-aandelen.md`.
   active: ['goals', 'group_members', 'groups', 'organization_members', 'organizations', 'team_goals'],
