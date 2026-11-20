@@ -288,6 +288,12 @@ export const en: Record<Sleutel, string> = {
 
   'delen.gekopieerd': 'Copied. Paste it into your chat',
   'delen.mislukt': 'Sharing does not work here. Select the link above',
+  'delen.uitnodiging_onderwerp': '{naam} invites you to GoalBuddies',
+  'delen.uitnodiging_onderwerp_zonder_naam': 'You are invited to GoalBuddies',
+  'delen.uitnodiging_tekst': '{naam} invites you to the group {groep} on GoalBuddies, an app for working on your goals together with others. Open the link to see the group and join:\n{link}',
+  'delen.uitnodiging_tekst_zonder_naam': 'You are invited to the group {groep} on GoalBuddies, an app for working on your goals together with others. Open the link to see the group and join:\n{link}',
+  'linkvoorbeeld.titel': 'GoalBuddies',
+  'linkvoorbeeld.beschrijving': 'Work on your goals together with others. GoalBuddies helps you keep going, with a group that cheers you on.',
 
   'stand.punten': 'Points',
   'stand.langste_reeks': 'Longest streak',
@@ -396,7 +402,6 @@ export const en: Record<Sleutel, string> = {
   'beheer.link_titel': 'Invite link',
   'beheer.link_uitleg': 'Whoever opens this link sees the group and how many people are in it, even without an account. What you share in goals is only visible after joining. Still, only share the link with people you want in.',
   'beheer.deel': 'Share the invitation',
-  'beheer.deel_titel': 'Join {groep}',
   'beheer.kopieer': 'Or copy it by hand',
   'beheer.link_gesloten': 'The link is closed. Nobody can get in with it right now.',
   'beheer.nieuwe_link': 'Create a new link',
@@ -462,7 +467,6 @@ export const en: Record<Sleutel, string> = {
   'groepdetail.naar_weekafsluiting': 'The weekly wrap-up',
   'groepdetail.naar_chat': 'Group chat',
   'groepdetail.link_uitleg': 'Whoever opens this link sees the group and how many people are in it, even without an account. Only share it with people you want in.',
-  'groepdetail.deel_titel': 'Join {groep}',
   'demping.titel': 'Mute group',
   'demping.uitleg_uit': 'Muting turns off notifications from this group: you will not be notified when a buddy is waiting for your review.',
   'demping.uitleg_aan': 'This group is muted: you will not be notified when a buddy is waiting for your review.',
@@ -921,7 +925,6 @@ export const en: Record<Sleutel, string> = {
   'samen.gekoppeld': 'Shared with {naam}',
   'samen.gekoppeld_tekst': 'Send the invite link to whoever you want along. Whoever opens it lands in this group.',
   'samen.deel': 'Share invite link',
-  'samen.deel_titel': 'Want to join {groep}?',
   'samen.link_gesloten': 'This group\'s invite link is closed. You can reopen it in group settings.',
   'samen.groep_weg_titel': 'This group is gone',
   'samen.groep_weg_tekst': 'Your goal is still there. Link it to another group from the goal itself.',
@@ -1602,6 +1605,11 @@ export const en: Record<Sleutel, string> = {
 
   // QS8-761 — the weekly promise. See the comment in nl.ts.
   'belofte.knop': 'Make a weekly promise',
+  // QS8-762 — see the comment in nl.ts.
+  'belofte.verwijzing.tekst':
+    'Want to attach a weekly promise to this goal, with a group or witness you choose yourself? Nothing is set until you confirm it yourself.',
+  'belofte.verwijzing.link': 'Go to the weekly promise',
+  'belofte.verwijzing.sluit': 'Not now',
   'belofte.titel': 'Weekly promise',
   'belofte.uitleg':
     'Promise that you will complete at least one of this goal\u2019s weekly goals this week, with a ' +
@@ -1852,12 +1860,12 @@ export const en: Record<Sleutel, string> = {
     'Going on holiday, ill, or just a strange month? Then pause those weeks. They cost you no ' +
     'point and your streak stays where it is; it just does not grow. You pick how long, you may ' +
     'have several side by side, and a week that is already over is allowed too.',
-  // ⚠️ QS8-753: this sentence no longer fully holds after the RLS change (part A) and stays
-  //    unchanged by decision of Quinten (19-11-2026). Do not change it as a side effect.
+  // ⚠️ QS8-768 (decision by Quinten, 20-11-2026): replaced, the old sentence was untrue
+  //    after 0307. The last sentence (the Ketting remainder) must go in the PR of QS8-769.
   'adempauze.groep_ziet':
-    'Your group sees that you have a breather and from when to when, including one you place ' +
-    'over weeks that are already past. They do not see which weekly goals you did or did not ' +
-    'reach.',
+    'Your group does not see your breather. If you want to let them know, post a message ' +
+    'yourself. The Ketting does not count members on a pause; in a small group someone can ' +
+    'infer from that that somebody is pausing.',
   'adempauze.week_van': 'Week of {datum}',
   'adempauze.tot_en_met': ' up to and including the week of {datum}',
   'adempauze.voorbij': 'Over',
@@ -2327,7 +2335,7 @@ export const en: Record<Sleutel, string> = {
   'valkuil.nobody_notices': 'Nobody notices if I stop',
   'valkuil.nobody_notices.antwoord': 'Your week is confirmed by a buddy, not by yourself. That is what this app is built around.',
   'valkuil.life_chaotic': 'My life gets chaotic sometimes',
-  'valkuil.life_chaotic.antwoord': 'Then you announce a breather in advance. Your group sees that you are pausing, and your run stays.',
+  'valkuil.life_chaotic.antwoord': 'Then you set a breather. Your run stays, and your group only sees it if you let them know yourself.',
   'valkuil.bekijk': 'Show me',
 
   'vragenlijst.samenvatting.kop': 'Here is what you told me',

@@ -384,3 +384,128 @@ describe('De Lijst', () => {
   });
 });
 
+// ---------------------------------------------------------------------------
+// QS8-719 — besluit 2 van QS8-649: een teamgroep is nooit de stille enige kandidaat
+// ---------------------------------------------------------------------------
+
+/**
+ * De wachtwacht voor het gat dat `isTeamgroep()` openlaat: de regel leest
+ * `organization_id` van de kandidaat, en een `select()` die die kolom niet noemt
+ * zet de regel stil uit (zelfde klasse als `invite_code` bij QS8-387).
+ *
+ * Op `main` bestaat de kolom nog niet; dan is er niets af te dwingen en geeft deze
+ * functie niets terug. Zodra `groups.Row` hem draagt, eist ze dat de twee bronnen
+ * van de keuzelijsten hem ook selecteren: `fetchMijnGroepen()` (de straf en De Lijst)
+ * en `fetchGroepenVanDoel()` (de hulpvraag).
+ *
+ * @returns wat er mist, leeg als alles klopt of als de kolom er nog niet is
+ */
+export function teamveldOntbreekt(
+  typesBron: string,
+  apiBron: string,
+  delingBron: string,
+): readonly string[] {
+  const rij = groepsrij(typesBron);
+  if (rij === null || !rij.includes('organization_id')) return [];
+
+  const mist: string[] = [];
+  const mijn = functie(apiBron, 'fetchMijnGroepen');
+  if (!/\.select\('[^']*organization_id[^']*'\)/.test(mijn)) mist.push('fetchMijnGroepen: select');
+  if (!/Lijstgroep = Pick<[^>]*organization_id[^>]*>/.test(apiBron)) mist.push('Lijstgroep: Pick');
+
+  // ⚠️ De hulpvraag leest `DoelGroep` en niet de rij: `fetchGroepenVanDoel()` bouwt
+  //    een nieuw object. Een select die het veld noemt maar een map die het weglaat,
+  //    zet de regel dus uit — precies bij de casus waar besluit 2 over gaat.
+  const doel = functie(apiBron, 'fetchGroepenVanDoel');
+  if (!/\.select\('[^']*organization_id[^']*'\)/.test(doel)) mist.push('fetchGroepenVanDoel: select');
+  if (!/organization_id\s*:/.test(doel.slice(doel.indexOf('.map(')))) mist.push('fetchGroepenVanDoel: map');
+  if (!/interface DoelGroep \{[^}]*organization_id[^}]*\}/.test(delingBron)) mist.push('DoelGroep');
+  return mist;
+}
+
+/** De groups-Row uit de gegenereerde types, of `null` als de opmaak niet herkend wordt. */
+export function groepsrij(typesBron: string): string | null {
+  const rij = /\n\s*"?groups"?: \{\s*Row: \{([\s\S]*?)\n\s*\}\s*Insert:/.exec(typesBron);
+  return rij?.[1] ?? null;
+}
+
+/** Eén functie uit een bron, vanaf zijn declaratie en niet vanaf een vermelding in commentaar. */
+function functie(bron: string, naam: string): string {
+  const begin = bron.indexOf(`export async function ${naam}`);
+  if (begin === -1) return '';
+  const volgende = bron.indexOf('\nexport ', begin + 10);
+  return bron.slice(begin, volgende === -1 ? undefined : volgende);
+}
+
+describe('teamveldOntbreekt', () => {
+  const kolom = '\n      groups: {\n        Row: {\n          organization_id: string | null\n        }\n        Insert: {';
+  const zonderKolom = '\n      groups: {\n        Row: {\n          name: string\n        }\n        Insert: {';
+  const volledig = {
+    mijn: "id, organization_id",
+    doel: "group_id, groups(organization_id)",
+    map: 'organization_id: rij.groups?.organization_id ?? null,',
+    pick: "'id' | 'organization_id'",
+    doelgroep: 'organization_id: string | null;',
+  };
+  const api = (o: Partial<typeof volledig> = {}) => {
+    const v = { ...volledig, ...o };
+    return (
+      `export type Lijstgroep = Pick<Groep, ${v.pick}>;\n` +
+      `export async function fetchMijnGroepen() { await x.from('groups').select('${v.mijn}') }\n` +
+      `export async function fetchGroepenVanDoel() { await x.select('${v.doel}'); return d.map((rij) => ({ group_id: 1, ${v.map} })); }`
+    );
+  };
+  const deling = (o: Partial<typeof volledig> = {}) =>
+    `export interface DoelGroep { readonly group_id: string; ${{ ...volledig, ...o }.doelgroep} }`;
+
+  it('zegt niets zolang de kolom er niet is', () => {
+    expect(teamveldOntbreekt(zonderKolom, api({ mijn: 'id', doel: 'x', map: '', pick: "'id'" }), deling({ doelgroep: '' }))).toEqual([]);
+  });
+
+  it('is stil als alles het veld draagt', () => {
+    expect(teamveldOntbreekt(kolom, api(), deling())).toEqual([]);
+  });
+
+  /** ⚠️ Het geval van de security-ronde: select wel, map niet. */
+  it('meldt een map die het veld weglaat, ook als de select het noemt', () => {
+    expect(teamveldOntbreekt(kolom, api({ map: '' }), deling())).toEqual(['fetchGroepenVanDoel: map']);
+  });
+
+  it.each([
+    ['mijn', { mijn: 'id' }, 'fetchMijnGroepen: select'],
+    ['pick', { pick: "'id'" }, 'Lijstgroep: Pick'],
+    ['doel', { doel: 'group_id' }, 'fetchGroepenVanDoel: select'],
+  ])('meldt een ontbrekend veld in %s', (_n, o, verwacht) => {
+    expect(teamveldOntbreekt(kolom, api(o), deling())).toEqual([verwacht]);
+  });
+
+  it('meldt een DoelGroep zonder het veld', () => {
+    expect(teamveldOntbreekt(kolom, api(), deling({ doelgroep: '' }))).toEqual(['DoelGroep']);
+  });
+});
+
+describe('groepsrij', () => {
+  it('leest ook een generator die de sleutel tussen aanhalingstekens zet', () => {
+    expect(groepsrij('\n  "groups": {\n    Row: {\n      a: 1\n    }\n    Insert: {')).toContain('a: 1');
+  });
+
+  it('geeft null bij een opmaak die niet herkend wordt', () => {
+    expect(groepsrij('geen types hier')).toBeNull();
+  });
+});
+
+describe('een teamgroep als enige kandidaat — de bronnen van de keuzelijsten', () => {
+  const types = readFileSync(join(WORTEL, 'src/lib/database.types.ts'), 'utf8');
+
+  /** ⚠️ Anders zwijgt de wacht voorgoed als de generator zijn opmaak verandert. */
+  it('vindt het groups-blok in de echte types, los van of de kolom erin staat', () => {
+    expect(groepsrij(types)).not.toBeNull();
+  });
+
+  it('dragen organization_id door select, map en type zodra de kolom op main bestaat', () => {
+    const api = readFileSync(join(WORTEL, 'src/modules/buddies/api.ts'), 'utf8');
+    const deling = readFileSync(join(WORTEL, 'src/modules/buddies/deling.ts'), 'utf8');
+
+    expect(teamveldOntbreekt(types, api, deling)).toEqual([]);
+  });
+});

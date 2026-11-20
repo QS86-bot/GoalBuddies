@@ -453,6 +453,12 @@ export const nl = {
   //    deed; de zin wijst hem naar wat wél werkt.
   'delen.gekopieerd': 'Gekopieerd. Plak hem in je chat',
   'delen.mislukt': 'Delen lukt hier niet. Selecteer de link hierboven',
+  'delen.uitnodiging_onderwerp': '{naam} nodigt je uit voor GoalBuddies',
+  'delen.uitnodiging_onderwerp_zonder_naam': 'Je bent uitgenodigd voor GoalBuddies',
+  'delen.uitnodiging_tekst': '{naam} nodigt je uit voor de groep {groep} op GoalBuddies, een app waarmee je samen met anderen aan je doelen werkt. Open de link om de groep te zien en mee te doen:\n{link}',
+  'delen.uitnodiging_tekst_zonder_naam': 'Je bent uitgenodigd voor de groep {groep} op GoalBuddies, een app waarmee je samen met anderen aan je doelen werkt. Open de link om de groep te zien en mee te doen:\n{link}',
+  'linkvoorbeeld.titel': 'GoalBuddies',
+  'linkvoorbeeld.beschrijving': 'Werk samen met anderen aan je doelen. GoalBuddies helpt je volhouden, met een groep die meekijkt en je aanmoedigt.',
 
   'stand.punten': 'Punten',
   'stand.langste_reeks': 'Langste reeks',
@@ -569,7 +575,6 @@ export const nl = {
   'beheer.link_titel': 'Uitnodigingslink',
   'beheer.link_uitleg': 'Wie deze link opent, ziet de groep en hoeveel mensen erin zitten, ook zonder account. Wat jullie aan doelen delen, ziet iemand pas na het meedoen. Deel de link toch alleen met mensen die je erbij wilt.',
   'beheer.deel': 'Deel de uitnodiging',
-  'beheer.deel_titel': 'Doe mee met {groep}',
   'beheer.kopieer': 'Of kopieer hem met de hand',
   'beheer.link_gesloten': 'De link is gesloten. Niemand kan er op dit moment mee binnenkomen.',
   'beheer.nieuwe_link': 'Nieuwe link maken',
@@ -642,7 +647,6 @@ export const nl = {
   'groepdetail.naar_weekafsluiting': 'De weekafsluiting',
   'groepdetail.naar_chat': 'Groepschat',
   'groepdetail.link_uitleg': 'Wie deze link opent, ziet de groep en hoeveel mensen erin zitten, ook zonder account. Deel hem alleen met mensen die je erbij wilt.',
-  'groepdetail.deel_titel': 'Doe mee met {groep}',
   'demping.titel': 'Groep dempen',
   'demping.uitleg_uit': 'Dempen zet de meldingen van deze groep uit: je krijgt geen bericht meer als een buddy op jouw oordeel wacht.',
   'demping.uitleg_aan': 'Deze groep is gedempt: je krijgt geen meldingen meer als een buddy op jouw oordeel wacht.',
@@ -1265,7 +1269,6 @@ export const nl = {
   'samen.gekoppeld': 'Gedeeld met {naam}',
   'samen.gekoppeld_tekst': 'Stuur de uitnodigingslink naar wie je erbij wilt. Wie hem opent, komt in deze groep terecht.',
   'samen.deel': 'Uitnodigingslink delen',
-  'samen.deel_titel': 'Doe je mee in {groep}?',
   'samen.link_gesloten': 'De uitnodigingslink van deze groep staat dicht. In het groepsbeheer zet je hem weer open.',
   'samen.groep_weg_titel': 'Deze groep is er niet meer',
   'samen.groep_weg_tekst': 'Je doel blijft staan. Koppel het aan een andere groep vanaf het doel zelf.',
@@ -2098,6 +2101,12 @@ export const nl = {
   //    niet doet. "Gebroken" is de definitie van domeinregel 11 (0313), in gewone
   //    taal: een gemiste week zonder weekpas, en niets afgerond.
   'belofte.knop': 'Een weekbelofte doen',
+  // QS8-762 — de verwijzing boven de doelenlijst. Een uitnodiging en geen verzoek: ze
+  // zegt dat er een keuze is, niet dat er iets moet, en ze belooft niets over wat er daarna gebeurt.
+  'belofte.verwijzing.tekst':
+    'Wil je een weekbelofte aan dit doel koppelen, met een groep of getuige die je zelf kiest? Pas na je eigen bevestiging gaat er iets in.',
+  'belofte.verwijzing.link': 'Naar de weekbelofte',
+  'belofte.verwijzing.sluit': 'Niet nu',
   'belofte.titel': 'Weekbelofte',
   'belofte.uitleg':
     'Beloof dat je deze week minstens één weekdoel van dit doel haalt, met een gevolg dat je zelf ' +
@@ -2401,13 +2410,12 @@ export const nl = {
   //    niet welke weken je gemist hebt" lezen terwijl een pauze die je áchteraf
   //    aankondigt precies dat verraadt. Zie
   //    `docs/decisions/002-domeinregel7-oppervlakken.md` rij 21 en §4a.
-  // ⚠️ QS8-753: deze zin klopt na de RLS-wijziging (deel A) niet meer volledig, en
-  //    blijft op besluit van Quinten (19-11-2026) ongewijzigd staan. Pas hem niet
-  //    aan als bijvangst; dat is een eigen besluit.
+  // ⚠️ QS8-768 (besluit Quinten, 20-11-2026): vervangen, want de oude zin was na 0307
+  //    onwaar. De laatste zin (het Ketting-restant) moet weg in de PR van QS8-769.
   'adempauze.groep_ziet':
-    'Je groep ziet dát je een adempauze hebt en van wanneer tot wanneer, ook als je hem over ' +
-    'weken legt die al voorbij zijn. Ze zien niet welke weekdoelen je wel of niet gehaald ' +
-    'hebt.',
+    'Je groep ziet je adempauze niet. Wil je het ze laten weten, dan plaats je zelf een ' +
+    'bericht. De Ketting telt leden in een pauze niet mee; in een kleine groep kan iemand ' +
+    'daaruit afleiden dat er iemand pauzeert.',
   'adempauze.week_van': 'Week van {datum}',
   'adempauze.tot_en_met': ' tot en met de week van {datum}',
   'adempauze.voorbij': 'Voorbij',
@@ -2875,7 +2883,7 @@ export const nl = {
   'valkuil.nobody_notices': 'Niemand merkt het als ik stop',
   'valkuil.nobody_notices.antwoord': 'Je week wordt door een buddy bevestigd, niet door jezelf. Dat is waar deze app om draait.',
   'valkuil.life_chaotic': 'Mijn leven wordt soms chaotisch',
-  'valkuil.life_chaotic.antwoord': 'Dan kondig je vooraf een adempauze aan. Je groep ziet dat je even pauzeert, en je reeks blijft staan.',
+  'valkuil.life_chaotic.antwoord': 'Dan zet je een adempauze. Je reeks blijft staan, en je groep ziet het alleen als je het ze zelf laat weten.',
   'valkuil.bekijk': 'Laat zien',
 
   'vragenlijst.samenvatting.kop': 'Dit heb je me verteld',
