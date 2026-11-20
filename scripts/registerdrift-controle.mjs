@@ -33,6 +33,8 @@ import { readFileSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 
+import { GRENS, MIN_OVERLAP, verliezenInRegels } from './registerdrift-regels.mjs';
+
 const WORTEL = fileURLToPath(new URL('..', import.meta.url));
 const MIGRATIEMAP = join(WORTEL, 'supabase', 'migrations');
 
@@ -140,6 +142,34 @@ export function definitiesUitDeMap(map = MIGRATIEMAP) {
   return uit;
 }
 
+/** Alle migraties uit de map, op volgorde van bestandsnaam. */
+export function migratiesUitDeMap(map = MIGRATIEMAP) {
+  return readdirSync(map)
+    .filter((n) => n.endsWith('.sql'))
+    .sort()
+    .map((naam) => ({ naam, bron: readFileSync(join(map, naam), 'utf8') }));
+}
+
+/** Tweede helft — QS8-766: een voorwaarde of blok dat een herdefinitie laat vallen. */
+function meldRegelVerliezen() {
+  const gevonden = verliezenInRegels(migratiesUitDeMap());
+  if (gevonden.length === 0) return false;
+
+  console.error('registerdrift-controle: een herdefinitie laat regels of waarden vallen.\n');
+  for (const v of gevonden) {
+    console.error(`  - ${v.migratie}: ${v.soort} ${v.sleutel} verliest «${v.item}» (uit ${v.eerder})`);
+  }
+  console.error(
+    `\nDit is de tweede helft van de controle (QS8-766), en hij oordeelt vanaf ${GRENS}\n` +
+      `over een herdefinitie waarvan minstens ${Math.round(MIN_OVERLAP * 100)}% van de vorige regels terugkomt:\n` +
+      'het beeld van een kopie van een oude stand. Hoort de regel er nog te zijn, zet\n' +
+      'hem dan terug uit het lichaam van main. Is hij bewust weg, zet dan in de kop\n' +
+      'van de migratie:\n\n' +
+      '  -- laat bewust vallen: <de regel zoals hij er stond>\n',
+  );
+  return true;
+}
+
 function main() {
   const definities = definitiesUitDeMap();
 
@@ -156,6 +186,9 @@ function main() {
   }
 
   const gevonden = verliezen(definities);
+  const regelsRood = meldRegelVerliezen();
+
+  if (gevonden.length === 0 && regelsRood) process.exit(1);
 
   if (gevonden.length === 0) {
     const functies = new Set(definities.map((d) => d.functie));

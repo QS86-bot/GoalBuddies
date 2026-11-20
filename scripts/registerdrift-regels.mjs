@@ -15,60 +15,72 @@
  *
  *      -- laat bewust vallen: <de regel of waarde zoals hij er stond>
  *
- * ⚠️ **Wat hij níét ziet:** een herdefinitie waarvan de regels herschreven maar
- *    niet verdwenen zijn (een andere vorm met dezelfde betekenis is voor hem een
- *    verlies, dus daar markeer je), en een definitie die buiten deze drie soorten
- *    valt (view, trigger). Dat is de blinde vlek om te kennen.
+ * ⚠️⚠️ **Twee afbakeningen, besloten door Quinten op 20-11-2026, en beide zijn een
+ *    blinde vlek die je moet kennen:**
+ *
+ *    1. **Alleen migraties vanaf `GRENS` (0328) worden beoordeeld.** 📏 Gemeten op
+ *       0327: een regelvergelijking van elke herdefinitie met de vorige geeft
+ *       **1389** meldingen over 0001-0327, en ook bij 85% overlap nog 400. Een
+ *       volledige herschrijving is hier de norm. Wat eronder zit is niet
+ *       goedgekeurd maar vrijgesteld; de vorige definitie komt wél uit de héle
+ *       map, want de oude tak herdefinieert op basis van een oudere stand.
+ *    2. **Een herdefinitie telt pas als `MIN_OVERLAP` (70%) van de vorige regels
+ *       terugkomt.** Dat is het beeld van een kopie van een oude stand met een
+ *       gat. Een bijna volledige herschrijving valt erbuiten: een verdwenen
+ *       voorwaarde in een functie die voor 60% opnieuw geschreven is, ziet deze
+ *       controle niet.
+ *
+ *    Ook buiten die twee: een definitie die buiten functie, CHECK en policy valt
+ *    (view, trigger) ziet hij niet, en een herschrijving met dezelfde betekenis in
+ *    een andere vorm is voor hem een verlies — daar markeer je.
  */
 
-/** Alles vóór de eerste scheidslijn `;` op nul haakjes, zonder commentaar. */
-export function zonderCommentaar(bron) {
-  return (bron ?? '').replace(/--[^\n]*/g, '');
-}
+import { zonderCommentaarSql } from './zonder-sql-commentaar.mjs';
+
+/** De eerste migratie die deze controle beoordeelt. Zie de kop. */
+export const GRENS = '0328';
+
+/** Het deel van de vorige regels dat moet terugkomen om te mogen oordelen. */
+export const MIN_OVERLAP = 0.7;
 
 const spatie = (t) => t.replace(/\s+/g, ' ').trim().toLowerCase();
 
 /** Genormaliseerde, niet-triviale regels van een stuk SQL. */
 export function regelsVan(sql) {
-  const triviaal = new Set(['', '$function$', '$$', 'begin', 'end', 'end;', ');', ')', '(', 'as', 'declare', ',']);
-  return zonderCommentaar(sql)
+  const triviaal = new Set(['', 'begin', 'end', 'end;', ');', ')', '(', 'as', 'declare', ',']);
+  return zonderCommentaarSql(sql)
     .replace(/\bpublic\./gi, '')
     .split('\n')
     .map(spatie)
-    .filter((r) => !triviaal.has(r));
+    // ⚠️ `as $$` en `$function$;` zeggen niets over wat de functie doet.
+    .filter((r) => !triviaal.has(r) && !/^(as )?\$\w*\$;?$/.test(r));
 }
 
 /** De tekstwaarden `'…'` in een stuk SQL. */
 export function waardenVan(sql) {
-  return [...zonderCommentaar(sql).matchAll(/'((?:[^']|'')*)'/g)].map((m) => `'${m[1].toLowerCase()}'`);
+  return [...zonderCommentaarSql(sql).matchAll(/'((?:[^']|'')*)'/g)].map((m) => `'${m[1].toLowerCase()}'`);
 }
 
-/** Het stuk vanaf `start` tot de sluitende haak of puntkomma op nul diepte. */
+/** Spring over een `'…'` of `$tag$…$tag$` op positie `i`; geeft de nieuwe positie, of `i`. */
+function springOver(bron, i) {
+  const dollar = /^\$(\w*)\$/.exec(bron.slice(i, i + 40));
+  if (dollar !== null) {
+    const einde = bron.indexOf(dollar[0], i + dollar[0].length);
+    return einde === -1 ? bron.length : einde + dollar[0].length - 1;
+  }
+  if (bron[i] !== "'") return i;
+  const einde = bron.indexOf("'", i + 1);
+  return einde === -1 ? bron.length : einde;
+}
+
+/** Het stuk vanaf `start` tot de puntkomma op haakjesdiepte nul, buiten tekst en `$$`-lichamen. */
 function totPuntkomma(bron, start) {
   let diepte = 0;
-  let tag = null;
   for (let i = start; i < bron.length; i += 1) {
-    const rest = bron.slice(i);
-    if (tag === null) {
-      const d = /^\$(\w*)\$/.exec(rest);
-      if (d !== null) {
-        tag = d[0];
-        i += tag.length - 1;
-        continue;
-      }
-      if (bron[i] === "'") {
-        const einde = bron.indexOf("'", i + 1);
-        if (einde === -1) return bron.slice(start);
-        i = einde;
-        continue;
-      }
-      if (bron[i] === '(') diepte += 1;
-      if (bron[i] === ')') diepte -= 1;
-      if (bron[i] === ';' && diepte <= 0) return bron.slice(start, i);
-    } else if (rest.startsWith(tag)) {
-      i += tag.length - 1;
-      tag = null;
-    }
+    i = springOver(bron, i);
+    if (bron[i] === '(') diepte += 1;
+    if (bron[i] === ')') diepte -= 1;
+    if (bron[i] === ';' && diepte <= 0) return bron.slice(start, i);
   }
   return bron.slice(start);
 }
@@ -94,7 +106,7 @@ function checkTekst(bron, start) {
  * tekstwaarden (CHECK).
  */
 export function definitiesIn(bron) {
-  const schoon = zonderCommentaar(bron);
+  const schoon = zonderCommentaarSql(bron);
   const uit = [];
 
   for (const m of schoon.matchAll(/create\s+(?:or\s+replace\s+)?function\s+(?:public\.)?(\w+)\s*\(([^)]*)\)/gi)) {
@@ -145,7 +157,7 @@ export function behouden(eerder, nu) {
  * Een verlies is aanvaard als een markering in de kop van die migratie het item
  * als deelstring bevat.
  */
-export function verliezenInRegels(migraties, minOverlap = 0) {
+export function verliezenInRegels(migraties, { grens = GRENS, minOverlap = MIN_OVERLAP } = {}) {
   const laatste = new Map();
   const uit = [];
 
@@ -154,15 +166,27 @@ export function verliezenInRegels(migraties, minOverlap = 0) {
     for (const d of definitiesIn(bron)) {
       const k = `${d.soort} ${d.sleutel}`;
       const eerder = laatste.get(k);
-      if (eerder !== undefined && behouden(eerder.items, d.items) >= minOverlap) {
-        for (const item of eerder.items) {
-          if (d.items.includes(item)) continue;
-          if (bewust.some((b) => b !== '' && item.includes(b))) continue;
-          uit.push({ migratie: naam, soort: d.soort, sleutel: d.sleutel, item, eerder: eerder.migratie });
-        }
+      if (naam.slice(0, 4) >= grens && eerder !== undefined) {
+        uit.push(...verlies(naam, d, eerder, bewust, minOverlap));
       }
       laatste.set(k, { migratie: naam, items: d.items });
     }
   }
   return uit;
+}
+
+/** De regels uit `eerder` die `nu` mist, als `nu` genoeg op `eerder` lijkt en de kop ze niet noemt. */
+function verlies(naam, nu, eerder, bewust, minOverlap) {
+  if (behouden(eerder.items, nu.items) < minOverlap) return [];
+
+  return eerder.items
+    .filter((item) => !nu.items.includes(item))
+    .filter((item) => !bewust.some((b) => b !== '' && item.includes(b)))
+    .map((item) => ({
+      migratie: naam,
+      soort: nu.soort,
+      sleutel: nu.sleutel,
+      item,
+      eerder: eerder.migratie,
+    }));
 }
