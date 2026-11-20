@@ -7,14 +7,20 @@ import { t } from '@/shared/i18n';
 import { renderScherm, ruimAllesOp } from './scherm';
 
 /**
- * De panelen van Instellingen, gerenderd zoals een gebruiker ze op een breed scherm ziet — QS8-754 AC4.
+ * De panelen van Instellingen, gerenderd zoals een gebruiker ze op een breed scherm ziet — QS8-754 AC4 en AC5.
  *
  * ⚠️ **AC4 is de belofte dat een paneel nooit een leeg of wit vlak toont:** wachten op het profiel laat de
  *    laadstaat zien, een mislukte lading de foutstaat met een herstelknop, en een ontbrekend profiel de lege staat.
  *    `AsyncView` levert ze alle drie; deze test toetst dat elk paneel ze ook echt door `AsyncView` laat lopen.
  *    Uiterlijk wacht met opzet niet op het profiel (de keuze leeft op het apparaat) en heeft dus geen drie staten.
  *
- * IJKING — met de hand, 20-11-2026: de `AsyncView` uit `ProfielPaneel` halen -> rood op alle drie de staten.
+ * ⚠️ **AC5 (besluit Quinten, 20-11-2026, optie A): precies één primaire knop waar een paneel een bewaarknop heeft,
+ *    en geen waar de keuzes direct bewaren.** Geteld wordt aan de variant die een `Button` krijgt (de mock zet hem
+ *    als attribuut in de boom), niet aan een tekst of kleur. Een tweede `variant="primair"` in een paneel maakt
+ *    dat paneel rood; een keuze die direct bewaart en toch primair is ook.
+ *
+ * IJKING — met de hand, 20-11-2026: de `AsyncView` uit `ProfielPaneel` halen -> rood op alle drie de staten;
+ *    AC5: `variant="primair"` van `Herinnering bewaren` halen, of een tweede primaire knop in Privacy zetten.
  */
 
 const mocks = vi.hoisted(() => {
@@ -144,5 +150,28 @@ describe('Instellingen: elk paneel kent zijn drie staten (QS8-754 AC4)', () => {
     const s = await toon('uiterlijk');
     expect(s.tekst()).not.toContain(t('laden.mislukt'));
     expect(s.tekst()).toContain(t('instellingen.uiterlijk_titel'));
+  });
+});
+
+const primairen = () => [...document.querySelectorAll('[data-variant="primair"]')];
+
+/** De bewaarknop van een paneel, voor zover het er een heeft. Alle andere panelen bewaren direct bij het kiezen. */
+const BEWAARKNOP: Record<string, string | null> = {
+  voorkeuren: null,
+  meldingen: t('profiel.herinnering_bewaren'),
+  privacy: null,
+  uiterlijk: null,
+  account: t('profiel.naam_bewaren'),
+};
+
+describe('Instellingen: één primaire handeling waar bewaard wordt (QS8-754 AC5)', () => {
+  it('elk onderdeel heeft een vastgelegde regel', () => {
+    expect(Object.keys(BEWAARKNOP).sort()).toEqual([...ONDERDEEL_IDS].sort());
+  });
+
+  it.each(ONDERDEEL_IDS)('%s: de primaire knop is de bewaarknop, of er is geen', async (id) => {
+    await toon(id);
+    const bewaar = BEWAARKNOP[id];
+    expect(primairen().map((e) => e.textContent)).toEqual(bewaar === null ? [] : [bewaar]);
   });
 });
