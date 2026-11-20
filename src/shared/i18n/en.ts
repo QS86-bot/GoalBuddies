@@ -122,6 +122,9 @@ export const en: Record<Sleutel, string> = {
   'commitment.begunstigde.naamloos': 'A group member',
   'commitment.fout.invoer': 'Check what you entered.',
   'commitment.fout.vastleggen': 'Saving did not work. Please try again.',
+  'commitment.fout.teamstraf':
+    'An agreement on a team share can only have your team or a teammate as its witness. ' +
+    'And a team can only witness a team share. Choose another witness.',
   'commitment.fout.intrekken': 'Withdrawing did not work.',
   'commitment.fout.al_afgegaan':
     'This commitment has already come into effect and can no longer be withdrawn.',

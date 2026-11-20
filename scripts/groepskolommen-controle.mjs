@@ -287,7 +287,8 @@ export const CENSUS = {
   },
   xp_grootboek: {
     groepszichtbaar: false,
-    kolommen: 'id, user_id, bron, weekdoel_id, badge, bedrag, verdiend_op, terugwerkend',
+    // `teamdoel_id` (QS8-662, 0326): de sleutel van een teambonus-XP-rij (besluit V7, 20-11-2026).
+    kolommen: 'id, user_id, bron, weekdoel_id, badge, bedrag, verdiend_op, terugwerkend, teamdoel_id',
   },
   hero_profiles: {
     groepszichtbaar: false,
@@ -311,7 +312,8 @@ export const CENSUS = {
   },
   points_ledger: {
     groepszichtbaar: false,
-    kolommen: 'id, user_id, group_id, goal_id, delta, reason, ref_type, ref_id, created_at, cycle_start_date, zonder_beoordelaar, ronde',
+    // `seizoen` (QS8-662, 0326): het kwartaallabel van een teambonus. Eigenaar-only, net als de rest van de rij.
+    kolommen: 'id, user_id, group_id, goal_id, delta, reason, ref_type, ref_id, created_at, cycle_start_date, zonder_beoordelaar, ronde, seizoen',
   },
   push_tokens: {
     groepszichtbaar: false,
