@@ -33,6 +33,8 @@ const WEIGEREN = [
   'пример.рф',
   'Jan\nAdmin',
   'Jan\u2029Admin',
+  'log in via 185.12.3.4',
+  'Lopen 5.5 km',
 ];
 const TOELATEN = ['Sportmaatjes', 'Team 3A', 'Lopen, 5 km', 'Jan & Piet', 'e.g. wij', 'Jan’s groep'];
 

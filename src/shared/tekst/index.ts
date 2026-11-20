@@ -714,7 +714,8 @@ export function bevatLinkAchtigeTekst(tekst: string): boolean {
   const punt = '[.\\u3002\\uFF0E\\uFF61\\u2024\\uFE52]';
   const marks = '[\\u0300-\\u036F\\u1AB0-\\u1AFF\\u1DC0-\\u1DFF\\u20D0-\\u20FF\\uFE20-\\uFE2F]*';
   const domein = new RegExp(`[\\p{L}\\p{N}-]${punt}${marks}[\\p{L}\\p{M}]{2}`, 'iu');
-  return /:\/\/|www\./i.test(tekst) || domein.test(tekst) || /[\n\r\u0085\u2028\u2029]/u.test(tekst);
+  const ip = new RegExp(`[0-9]${punt}[0-9]`, 'u');
+  return /:\/\/|www\./i.test(tekst) || ip.test(tekst) || domein.test(tekst) || /[\n\r\u0085\u2028\u2029]/u.test(tekst);
 }
 
 /**

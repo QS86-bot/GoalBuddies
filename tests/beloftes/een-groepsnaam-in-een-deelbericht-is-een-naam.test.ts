@@ -38,6 +38,8 @@ describe('groepSchema.name', () => {
     'evil｡com',
     'evil.\u0301com',
     'Jan\u2029Admin',
+    'log in via 185.12.3.4',
+    'Lopen 5.5 km',
   ])('weigert %j', (naam) => {
     expect(bevatLinkAchtigeTekst(naam)).toBe(true);
     expect(nieuw(naam).success).toBe(false);
