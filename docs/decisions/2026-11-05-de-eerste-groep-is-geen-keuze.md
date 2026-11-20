@@ -179,3 +179,7 @@ dat een teamgroep nooit de stille enige kandidaat is (de lijst verschijnt met é
 **Open, en niet van dit issue:** een enkele collega als enige kandidaat voor een vervangende getuige of een straf-persoon wordt nog stil
 gekozen. `fetchMogelijkeBegunstigden()` haalt medeleden van al je groepen op, dus straks ook collega's. Of besluit 2 ook voor personen
 geldt, is een besluit voor Quinten (grens 1).
+
+**Beantwoord, 19-11-2026 (via de orchestrator; reactie op QS8-719 van 12:06 UTC), en hier ingebouwd bij het landen op 20-11-2026:**
+besluit 2 geldt **alleen voor teamgroepen, niet voor personen**. Een persoon die de gebruiker zelf aanwijst, is een bewuste keuze. Het
+open punt hierboven (een collega als enige kandidaat voor een vervangende getuige of een straf-persoon) vervalt daarmee als bevinding.
