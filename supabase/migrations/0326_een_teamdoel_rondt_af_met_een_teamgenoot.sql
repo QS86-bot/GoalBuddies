@@ -368,6 +368,3 @@ $$;
 revoke all on function public.xp_na_teambonus() from public, anon, authenticated;
 
 drop trigger if exists xp_na_teambonus on public.points_ledger;
-create trigger xp_na_teambonus
-  after insert on public.points_ledger
-  for each row execute function public.xp_na_teambonus();
