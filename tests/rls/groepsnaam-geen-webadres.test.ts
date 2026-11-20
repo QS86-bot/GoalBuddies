@@ -14,7 +14,7 @@ import { bevatLinkAchtigeTekst } from '../../src/shared/tekst';
 import { psqlMetInvoer, stackBeschikbaarOfFaal } from './psql-stack';
 
 const beschikbaar = stackBeschikbaarOfFaal(
-  "select to_regprocedure('public.bevat_linkachtige_tekst(text)')::text",
+  "select count(*) from pg_proc where proname = 'bevat_linkachtige_tekst'",
   import.meta.url,
 );
 

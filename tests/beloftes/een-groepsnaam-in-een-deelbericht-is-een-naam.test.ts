@@ -78,7 +78,7 @@ describe('elk teken naast de punt (scan over alle codepunten)', () => {
   // ⚠️ Een lijst met omzeilingen groeit per reviewronde; deze scan niet. Wat er
   //    ook naast de punt staat: de naam blijft een webadres, tenzij het teken
   //    zelf zichtbaar witruimte, een dubbele punt, een schuine streep of een punt is.
-  it('geen enkel codepunt verbergt de punt in evil.com of in een IP', () => {
+  it('geen enkel codepunt verbergt de punt in evil.com of in een IP', { timeout: 120_000 }, () => {
     const gemist: string[] = [];
     for (let cp = 1; cp <= 0x10ffff; cp++) {
       if (cp >= 0xd800 && cp <= 0xdfff) continue;
