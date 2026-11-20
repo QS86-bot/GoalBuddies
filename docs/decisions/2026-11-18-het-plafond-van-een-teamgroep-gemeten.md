@@ -41,6 +41,8 @@ wordt gematerialiseerd. In het plan draaien de doelen, mijlpalen en reeksen per 
 een scan op `goal_group_links_group_idx` alle koppelingen van de groep langs
 (`rows=38 loops=75` bij 25 leden). Daardoor groeit de tijd ongeveer kwadratisch met
 het ledental. Bij 25 is dat te dragen, bij 50 niet. **Vervolg: QS8-699.**
+⚠️ *Gecorrigeerd door de nameting hieronder: lineair, niet kwadratisch. De
+`rows=38`-scan kwam uit ontbrekende statistieken.*
 
 **2. De chat groeit lineair, mits de database groot genoeg is.** In een bijna lege
 `profiles` kiest Postgres per bericht een sequential scan over alle profielen, met de
@@ -64,6 +66,31 @@ hangen nauwelijks af van het ledental.
   zijn indicatief; de verhoudingen tussen 12, 25 en 50 zijn wat telt.
 - **De schermlaag.** Hoeveel aanroepen het groepsscherm doet, is niet geteld. Dat zijn
   vier RPC's en geen per-lidaanroepen, volgens `src/modules/buddies/`.
+
+## Nameting (QS8-699): de vorm van de curve was deels een meetfout
+
+⚠️ **De tabel hierboven is gemeten zonder statistieken op de tabellen die het script
+net gevuld had.** Alleen `profiles` kreeg een `analyze`. De planner hield
+`group_members`, `goals` en `goal_group_links` daardoor voor bijna leeg, en koos per
+lid een scan over alle koppelingen van de groep. Dat is dezelfde fout als bij de chat
+in punt 2, één tabel verder. Het meetscript draait sinds QS8-699 `analyze` op elke
+tabel die het vult.
+
+📏 Opnieuw gemeten, mediaan in ms, met `extra=5000`, op de machine van de eerste
+reeks (die is onrustig: herhalingen wijken tot 30% af):
+
+| leden | oud lichaam (0321), zonder `analyze` | oud lichaam, mét `analyze` | 0327, mét `analyze` |
+| --- | --- | --- | --- |
+| 12 | 32 | 28–43 | 28–48 |
+| 25 | 88 | 52–70 | 44–72 |
+| 50 | 297 | 109–155 | 52–60 |
+| 100 | — | 346 | 65 |
+
+Wat er van punt 1 overeind blijft: het oude `group_overview()` rekende alle leden
+door voordat hij pagineerde, en groeide daardoor **lineair** met het ledental. Het
+was niet kwadratisch; dat kwam uit de ontbrekende statistieken. 0327 rekent alleen de
+pagina door en blijft vlak. **De uitkomst "25 houdt" verandert niet**; de voorwaarde
+eronder is met 0327 vervuld.
 
 ## Het besluit
 
