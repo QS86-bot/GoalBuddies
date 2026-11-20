@@ -119,7 +119,7 @@ export {
   risicoUitleg,
 } from './risico';
 
-export { useBelofteverwijzingVerborgen, useHulpvraagVerborgen, useVieringenAan } from './voorkeuren';
+export { useHulpvraagVerborgen, useVieringenAan } from './voorkeuren';
 
 export { focusRing, motionDuration, useReducedMotion } from './a11y';
 export { bewegingsDuur, bewegingsStijl, type BewegingsStijl } from './beweging';

@@ -1,16 +1,35 @@
 import { describe, expect, it } from 'vitest';
 
 import { toonBelofteverwijzing, verwijzingsdoel } from './verwijzing';
+import { doelenNaVragenlijst, VERWIJZING_PARAM, verwijzingAangevraagd } from './verwijzingsparameter';
 
 describe('toonBelofteverwijzing', () => {
+  const met = { aangevraagd: true };
   it('zonder groep en zonder getuige: geen verwijzing', () => {
-    expect(toonBelofteverwijzing({ groepen: 0, getuigen: 0 })).toBe(false);
+    expect(toonBelofteverwijzing({ ...met, groepen: 0, getuigen: 0 })).toBe(false);
   });
   it('met een groep: wel', () => {
-    expect(toonBelofteverwijzing({ groepen: 1, getuigen: 0 })).toBe(true);
+    expect(toonBelofteverwijzing({ ...met, groepen: 1, getuigen: 0 })).toBe(true);
   });
   it('met alleen een getuige: wel', () => {
-    expect(toonBelofteverwijzing({ groepen: 0, getuigen: 2 })).toBe(true);
+    expect(toonBelofteverwijzing({ ...met, groepen: 0, getuigen: 2 })).toBe(true);
+  });
+  it('zonder de parameter: nooit, ook niet met groep en getuige (naad vragenlijst ↔ doelenlijst)', () => {
+    expect(toonBelofteverwijzing({ aangevraagd: false, groepen: 3, getuigen: 3 })).toBe(false);
+  });
+});
+
+describe('de parameter van de vragenlijst naar de doelenlijst', () => {
+  it('wat bewaar() meestuurt, leest de doelenlijst als aangevraagd (rondreis)', () => {
+    const href = doelenNaVragenlijst();
+    expect(href.pathname).toBe('/doelen');
+    expect(verwijzingAangevraagd(href.params[VERWIJZING_PARAM])).toBe(true);
+  });
+  it('een doelenlijst zonder, met een andere of een lege waarde: niet aangevraagd', () => {
+    expect(verwijzingAangevraagd(undefined)).toBe(false);
+    expect(verwijzingAangevraagd('')).toBe(false);
+    expect(verwijzingAangevraagd('1')).toBe(false);
+    expect(verwijzingAangevraagd(['na-vragenlijst'])).toBe(false);
   });
 });
 

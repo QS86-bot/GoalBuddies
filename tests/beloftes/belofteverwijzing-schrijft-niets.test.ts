@@ -23,7 +23,11 @@ const VERBODEN = [/\.from\(\s*['"]commitments['"]\s*\)/, /\bgaWeekbelofteAan\b/,
 const lees = (pad: string) => zonderCommentaar(readFileSync(join(WORTEL, pad), 'utf8'));
 
 describe('de verwijzing naar de weekbelofte schrijft niets', () => {
-  for (const pad of ['src/schermen/belofte/Belofteverwijzing.tsx', 'src/schermen/belofte/verwijzing.ts']) {
+  for (const pad of [
+    'src/schermen/belofte/Belofteverwijzing.tsx',
+    'src/schermen/belofte/verwijzing.ts',
+    'src/schermen/belofte/verwijzingsparameter.ts',
+  ]) {
     it(`${pad} maakt, wijzigt en trekt geen commitment`, () => {
       const code = lees(pad);
       expect(code.length).toBeGreaterThan(100);
@@ -35,6 +39,9 @@ describe('de verwijzing naar de weekbelofte schrijft niets', () => {
     const code = lees('src/schermen/belofte/Belofteverwijzing.tsx');
     expect(code).toMatch(/toonBelofteverwijzing\(/);
     expect(code).toMatch(/fetchBelofteBegunstigden/);
+    // De parameter bepaalt of de regel er is; een component die dat vergeet toont haar altijd.
+    expect(code).toMatch(/verwijzingAangevraagd\(\s*params\[VERWIJZING_PARAM\]\s*\)/);
+    expect(code).toMatch(/toonBelofteverwijzing\(\{\s*aangevraagd,/);
   });
 
   it('niets in de vragenlijst importeert de verwijzing (hij hoort bij de doelenlijst)', () => {
@@ -44,7 +51,18 @@ describe('de verwijzing naar de weekbelofte schrijft niets', () => {
       'src/schermen/vragenlijst/Vragenlijstscherm.tsx',
       'app/onboarding/vragenlijst.tsx',
     ]) {
-      expect(lees(pad), pad).not.toMatch(/Belofteverwijzing|verwijzingsdoel/);
+      expect(lees(pad), pad).not.toMatch(/Belofteverwijzing|verwijzingsdoel|toonBelofteverwijzing/);
     }
+  });
+
+  it('de vragenlijst stuurt met de parameter door en trekt niets anders van het beloftescherm binnen', () => {
+    const code = lees('src/schermen/vragenlijst/useVragenlijst.ts');
+    expect(code).toMatch(/router\.replace\(doelenNaVragenlijst\(\)\)/);
+    const uitBelofte = [...code.matchAll(/from\s+['"]([^'"]*belofte[^'"]*)['"]/g)].map((m) => m[1]);
+    expect(uitBelofte).toEqual(['../belofte/verwijzingsparameter']);
+  });
+
+  it('het bestand met de parameter heeft geen enkele import (anders opent het een pad naar commitments)', () => {
+    expect(lees('src/schermen/belofte/verwijzingsparameter.ts')).not.toMatch(/\bimport\b/);
   });
 });
