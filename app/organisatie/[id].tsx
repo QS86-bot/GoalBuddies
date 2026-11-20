@@ -243,8 +243,6 @@ function Ledenrij({
   readonly onStap: (stap: LedenStap) => void;
   readonly onUitgezet: () => void;
 }) {
-  const handeling = useHandeling();
-
   return (
     <View style={styles.blok}>
       <View style={styles.ledenrij}>
@@ -260,30 +258,59 @@ function Ledenrij({
           />
         ) : null}
       </View>
-      {stap === 'menu' ? (
-        <Button
-          variant="stil"
-          accessibilityLabel={t('organisatie.uitzetten_label', { naam: lid.naam })}
-          onPress={() => onStap('bevestig')}
-        >
-          {t('organisatie.uitzetten_knop')}
-        </Button>
-      ) : null}
-      {stap === 'bevestig' ? (
-        <Bevestiging
-          tekst={uitzettenTekst(lid.naam)}
-          bezig={handeling.bezig}
-          fout={handeling.fout}
-          onAnnuleer={() => {
-            onStap('dicht');
-            handeling.wisFout();
-          }}
-          onBevestig={() =>
-            void handeling.voerUit(() => zetLidUit(organisatieId, lid.userId), onUitgezet)
-          }
-        />
-      ) : null}
+      <Uitzetstappen
+        organisatieId={organisatieId}
+        lid={lid}
+        stap={stap}
+        onStap={onStap}
+        onUitgezet={onUitgezet}
+      />
     </View>
+  );
+}
+
+/** Het menu en de bevestiging onder een rij; ze staan in de lijst en zweven niet. */
+function Uitzetstappen({
+  organisatieId,
+  lid,
+  stap,
+  onStap,
+  onUitgezet,
+}: {
+  readonly organisatieId: string;
+  readonly lid: Organisatielid;
+  readonly stap: LedenStap;
+  readonly onStap: (stap: LedenStap) => void;
+  readonly onUitgezet: () => void;
+}) {
+  const handeling = useHandeling();
+
+  if (stap === 'dicht') return null;
+  if (stap === 'menu') {
+    return (
+      <Button
+        variant="stil"
+        accessibilityLabel={t('organisatie.uitzetten_label', { naam: lid.naam })}
+        onPress={() => onStap('bevestig')}
+      >
+        {t('organisatie.uitzetten_knop')}
+      </Button>
+    );
+  }
+
+  return (
+    <Bevestiging
+      tekst={uitzettenTekst(lid.naam)}
+      bezig={handeling.bezig}
+      fout={handeling.fout}
+      onAnnuleer={() => {
+        onStap('dicht');
+        handeling.wisFout();
+      }}
+      onBevestig={() =>
+        void handeling.voerUit(() => zetLidUit(organisatieId, lid.userId), onUitgezet)
+      }
+    />
   );
 }
 
