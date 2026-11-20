@@ -1131,34 +1131,24 @@ function TeamStrafBevestiging({
   readonly onTerug: () => void;
 }) {
   const teamGroep = soort === 'groep';
+  const wie = teamGroep ? t('straf.team.collegas') : naam;
+  const kiesEerst = teamGroep ? 'straf.kies_groep_eerst' : 'straf.kies_persoon_eerst';
   return (
     <Card>
       <Subheading>{t('straf.team.kop')}</Subheading>
-      <Body>
-        {teamGroep
-          ? t('straf.team.haal_niet_groep', { groep: naam })
-          : t('straf.team.haal_niet_persoon', { naam })}
-      </Body>
+      <Body>{teamGroep ? t('straf.team.haal_niet_groep', { groep: naam }) : t('straf.team.haal_niet_persoon', { naam })}</Body>
       <Body muted>{t('straf.team.gevolg', { tekst: schoneEneRegel(tekst) })}</Body>
-      <Caption>
-        {teamGroep ? t('straf.team.wie_groep', { groep: naam }) : t('straf.team.wie_persoon', { naam })}
-      </Caption>
-      <Caption>
-        {t('straf.team.wanneer', { wie: teamGroep ? t('straf.team.collegas') : naam })}
-      </Caption>
+      <Caption>{teamGroep ? t('straf.team.wie_groep', { groep: naam }) : t('straf.team.wie_persoon', { naam })}</Caption>
+      <Caption>{t('straf.team.wanneer', { wie })}</Caption>
       <Caption>{t('straf.team.niet_zien')}</Caption>
       <Caption>{t('straf.team.intrekken')}</Caption>
-      {kanBevestigen ? null : (
-        <Caption>{t(teamGroep ? 'straf.kies_groep_eerst' : 'straf.kies_persoon_eerst')}</Caption>
-      )}
+      {kanBevestigen ? null : <Caption>{t(kiesEerst)}</Caption>}
       {fout === null ? null : <Caption danger>{fout}</Caption>}
       <View style={styles.knoppen}>
         <Button variant="primair" busy={bezig} disabled={!kanBevestigen} onPress={onBevestig}>
           {t('straf.ja_vastleggen')}
         </Button>
-        <Button variant="stil" onPress={onTerug}>
-          {t('straf.terug')}
-        </Button>
+        <Button variant="stil" onPress={onTerug}>{t('straf.terug')}</Button>
       </View>
     </Card>
   );
