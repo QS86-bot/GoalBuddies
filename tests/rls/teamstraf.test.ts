@@ -104,8 +104,10 @@ describe.runIf(rlsTestsConfigured)('een teamstraf blijft in het team (QS8-660)',
     const vcode = (v.data as { group: { invite_code: string } }).group.invite_code;
     expect(uitkomst(await rpc(bert, 'join_group_with_code', { code: vcode }))).toBe('ok');
 
-    // Twee teamdoelen, zodat bert twee aandelen heeft: één straf per doel.
-    for (const titel of ['Kwartaal', 'Halfjaar']) {
+    // Drie teamdoelen, zodat bert drie aandelen heeft: één open straf per doel
+    // (`commitments_een_open_per_soort`, 0170). Het derde is van de V11-toets;
+    // op aandeel[1] staat dan al een open straf van de M1-toets.
+    for (const titel of ['Kwartaal', 'Halfjaar', 'Jaar']) {
       const td = await rpc(bert, 'maak_teamdoel', { p_group_id: team, p_titel: titel, p_streefdatum: datum(90) });
       const a = await rpc(bert, 'neem_aandeel', { p_team_goal_id: (td.data as { team_goal_id: string }).team_goal_id });
       expect(uitkomst(a)).toBe('ok');
@@ -301,7 +303,7 @@ describe.runIf(rlsTestsConfigured)('een teamstraf blijft in het team (QS8-660)',
   //    teamchat. Rood gemaakt op een lokale database door de regel met
   //    `straf_teamband_klopt()` weg te halen: dan blijft het bericht komen.
   it('meldt geen verschuldigde straf in de teamchat als de eigenaar het team verliet (besluit V11)', async () => {
-    const nieuw = await leg(bert, straf(aandeel[1]!, { groep: team }));
+    const nieuw = await leg(bert, straf(aandeel[2]!, { groep: team }));
     expect(nieuw.error).toBeNull();
     const id = (nieuw.data as { id: string }).id;
     const berichten = async (): Promise<number> => {
