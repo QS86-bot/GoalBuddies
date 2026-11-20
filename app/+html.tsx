@@ -24,6 +24,9 @@ import { linkvoorbeeldTags } from '../src/shared/web/linkvoorbeeld';
  */
 export default function Root({ children }: PropsWithChildren) {
   return (
+    // ⚠️ QS8-741: `nl` is de standaard voor de prerender. De client zet het attribuut
+    //    naar de taal van de app (`zetDocumentTaal()` in `src/shared/i18n`), zodat een
+    //    schermlezer bij Engelse tekst een Engelse stem kiest.
     <html lang="nl">
       <head>
         <meta charSet="utf-8" />
