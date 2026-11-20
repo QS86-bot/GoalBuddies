@@ -555,6 +555,7 @@ export const en: Record<Sleutel, string> = {
   'tab.doelen': 'Goals',
   'tab.groep': 'Group',
   'tab.profiel': 'Profile',
+  'tab.melding_wacht': 'a report is waiting',
   'tab.navigatie': 'Main menu',
   'vangnet.kop': 'The app could not continue',
   'vangnet.tekst': 'Something went wrong while building this screen. Go back to the start screen. If it keeps failing, restart the app.',
