@@ -10,6 +10,10 @@ Gemeten op **20-11-2026**, productie (`goalbuddies`, ref `wehgocadxehottiiyvsc`,
 
 **Eindconclusie (acceptatiecriterium 3): niet vast te stellen.** Er is geen aangetoond gat en ook geen aangetoond ontbreken van een gat. Daarom: **Fase 6.1 (QS8-756) wordt niet vrijgegeven op grond van deze meting**, en wordt ook niet met een bewijs gesloten. De meting moet worden herhaald zodra er gebruikers zijn die een volle week hebben gespeeld. Dat besluit en de keuze tussen "sluiten als niet nodig" en "laten staan tot er data is" zijn aan Quinten.
 
+## Besluit van Quinten (20-11-2026)
+
+**Niet vast te stellen.** QS8-756 (Fase 6.1) blijft staan, niet vrijgegeven en niet gesloten. De meting wordt herhaald zodra enkele tientallen gebruikers een volle week hebben gespeeld. Het onverklaarde minpunt zonder grootboekrij is opgenomen als QS8-774.
+
 ## Wat er staat (stand 20-11-2026)
 
 | Tabel | Aantal rijen |
