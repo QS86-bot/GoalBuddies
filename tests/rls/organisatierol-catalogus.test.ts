@@ -56,6 +56,11 @@ const REGISTER: Readonly<Record<string, string>> = {
     'van zijn teams, zoals elke groepsbeheerder. Dat is beheer en geen voortgang (besluit 6); ' +
     'chat, overzicht, leden en teambalk blijven aan mag_groep_lezen() en dus aan het lidmaatschap. ' +
     'Grendel 1 hieronder ziet deze route via een tussenfunctie niet; zie de afleverregel van QS8-653.',
+  // QS8-695
+  benoem_organisatiebeheerder:
+    'beheerderspoort op een schrijfactie; schrijft admin alleen voor een actief lid met de rol member',
+  treed_terug_als_organisatiebeheerder:
+    'beheerderspoort op de eigen rij; de laatste actieve beheerder weigert, achter een for update op de organisatie',
 };
 
 const VRAAG = `

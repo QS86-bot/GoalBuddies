@@ -202,6 +202,11 @@ const REGISTER: Readonly<Record<string, string>> = {
     'word_organisatielid() telt elke poging, ook een foute, en weigert vanaf 20 in het ' +
     'laatste etmaal; PRIMARY KEY (organization_id, user_id) en hoogstens 10 actieve ' +
     'lidmaatschappen per persoon.',
+  // ⚠️ Het spoor van rolwijzigingen (QS8-695, 0318): alleen te laten groeien via
+  //    de twee rol-RPC's, en die delen één dagteller per organisatie.
+  organization_role_events:
+    'benoem_organisatiebeheerder() en treed_terug_als_organisatiebeheerder() weigeren vanaf ' +
+    '20 rolwijzigingen per organisatie in het laatste etmaal (dagteller organisatierollen).',
   organizations:
     'maak_organisatie() weigert vanaf 3 nieuwe organisaties per persoon in het laatste ' +
     'etmaal (dagteller organisaties) en vanaf 10 actieve lidmaatschappen.',
@@ -339,7 +344,9 @@ describe.skipIf(!beschikbaar)('elke groeibare tabel heeft een plafond of een red
     // ⚠️ En vijfendertig werd zevenendertig met `organizations` en
     //    `organization_members` (QS8-652, 0316): allebei alleen via een RPC te
     //    laten groeien, en allebei met de grens in die RPC.
-    expect(gevonden.length, 'het aantal groeibare tabellen is veranderd').toBe(37);
+    // ⚠️ En zevenendertig werd achtendertig met `organization_role_events`
+    //    (QS8-695, 0318): het spoor van rolwijzigingen, met de grens in de RPC.
+    expect(gevonden.length, 'het aantal groeibare tabellen is veranderd').toBe(38);
     // ⚠️ En zeventien werd achttien met `user_blocks` (QS8-496, 0276). Die tabel
     //    stond hierboven in REGISTER met de reden *"begrensd door het aantal
     //    mensen dat je kunt noemen"* — en die reden verviel toen `zoek_mensen()`
