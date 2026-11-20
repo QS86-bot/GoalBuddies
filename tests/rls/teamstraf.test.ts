@@ -159,6 +159,21 @@ describe.runIf(rlsTestsConfigured)('een teamstraf blijft in het team (QS8-660)',
     expect(r.error?.hint).toBe(TEAMSTRAF_HINT);
   }, TEST_TIMEOUT);
 
+  // ⚠️ Besluit V8 van Quinten (20-11-2026), op de naad met de weekbelofte van main
+  //    (0312–0314): een weekbelofte op een aandeel heeft nooit de teamgroep als
+  //    begunstigde, alleen een teamgenoot. Rood gemaakt op een lokale database door
+  //    tak 1b uit `bewaak_teamstraf()` te halen: dan wordt de rij ingevoegd.
+  it('weigert de teamgroep als begunstigde van een weekbelofte op een aandeel (besluit V8)', async () => {
+    const maandag = new Date();
+    maandag.setUTCDate(maandag.getUTCDate() - ((maandag.getUTCDay() + 6) % 7));
+    const r = await leg(bert, {
+      ...straf(aandeel[0]!, { groep: team }),
+      periode_start: maandag.toISOString().slice(0, 10),
+    });
+    expect(r.error?.code).toBe('23514');
+    expect(r.error?.hint).toBe(TEAMSTRAF_HINT);
+  }, TEST_TIMEOUT);
+
   it('weigert een vriend als getuige op een aandeel', async () => {
     const r = await leg(bert, straf(aandeel[0]!, { persoon: nina.id }));
     expect(r.error?.hint).toBe(TEAMSTRAF_HINT);
@@ -279,5 +294,29 @@ describe.runIf(rlsTestsConfigured)('een teamstraf blijft in het team (QS8-660)',
     expect(await routes()).toEqual([1, 1, 1]);
     expect(uitkomst(await rpc(cleo, 'verlaat_organisatie', { p_organization_id: org }))).toBe('ok');
     expect(await routes()).toEqual([0, 0, 0]);
+  }, TEST_TIMEOUT);
+
+  // ⚠️ Besluit V11 van Quinten (20-11-2026): verliet de eigenaar het team, dan meldt
+  //    `meld_commitment()` een verschuldigde straf op zijn aandeel niet meer in de
+  //    teamchat. Rood gemaakt op een lokale database door de regel met
+  //    `straf_teamband_klopt()` weg te halen: dan blijft het bericht komen.
+  it('meldt geen verschuldigde straf in de teamchat als de eigenaar het team verliet (besluit V11)', async () => {
+    const nieuw = await leg(bert, straf(aandeel[1]!, { groep: team }));
+    expect(nieuw.error).toBeNull();
+    const id = (nieuw.data as { id: string }).id;
+    const berichten = async (): Promise<number> => {
+      const { data, error } = await adminDb()
+        .from('chat_messages')
+        .select('id')
+        .eq('group_id', team)
+        .eq('system_event', 'commitment_due')
+        .eq('subject_id', bert.id);
+      expect(error).toBeNull();
+      return (data ?? []).length;
+    };
+    const voor = await berichten();
+    expect(uitkomst(await rpc(bert, 'verlaat_organisatie', { p_organization_id: org }))).toBe('ok');
+    expect((await adminDb().from('commitments').update({ status: 'due' } as never).eq('id', id)).error).toBeNull();
+    expect(await berichten()).toBe(voor);
   }, TEST_TIMEOUT);
 });
