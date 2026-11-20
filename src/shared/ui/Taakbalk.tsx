@@ -3,11 +3,12 @@ import { useState, useSyncExternalStore } from 'react';
 import { Dimensions, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { t, type Sleutel } from '../i18n';
-import { radius, space, useTheme } from '../theme';
+import { afstand, radius, useTheme } from '../theme';
 
 import { focusRing } from './a11y';
 import {
   actiefTabblad,
+  MENU_KOLOMBREEDTE,
   TABBLADEN,
   taakbalkVorm,
   toontTaakbalk,
@@ -122,7 +123,7 @@ interface TabProps {
  *    actieve tabblad is voor een ziend oog goud en voor een schermlezer niets,
  *    tenzij de stand er met zoveel woorden bij staat. Kleur is nooit de enige
  *    drager — ook niet voor wie de kleuren niet uit elkaar houdt: de actieve
- *    knop heeft ook een dikkere rand.
+ *    knop heeft ook een dikkere rand en een zwaarder label (QS8-728).
  *
  * ⚠️ **Rol `link` en niet `button`.** Dit zijn bestemmingen met een adres
  *    (`Link` tekent een `<a href>`), en een schermlezer die "link, huidige
@@ -166,7 +167,14 @@ function Tab({ pad, sleutel, actief, zijkant }: TabProps) {
           focusRing(theme, heeftFocus),
         ])}
       >
-        <Text style={[styles.label, { color: actief ? c.accent : c.text }]}>{t(sleutel)}</Text>
+        <Text
+          style={[
+            styles.label,
+            { color: actief ? c.accent : c.text, fontWeight: actief ? '700' : '600' },
+          ]}
+        >
+          {t(sleutel)}
+        </Text>
       </Pressable>
     </Link>
   );
@@ -177,26 +185,26 @@ const styles = StyleSheet.create({
   // ernaast. Besluit van Quinten 18-11-2026: ook op een telefoon onder elkaar.
   bovenrand: {
     flexDirection: 'column',
-    gap: space.blokGap - 5,
-    padding: space.blokGap - 3,
+    gap: afstand.s,
+    padding: afstand.m,
     borderBottomWidth: StyleSheet.hairlineWidth,
   },
   zijkant: {
-    width: 220,
-    gap: space.blokGap - 5,
-    padding: space.shell,
+    width: MENU_KOLOMBREEDTE,
+    gap: afstand.s,
+    padding: afstand.m,
     borderRightWidth: StyleSheet.hairlineWidth,
   },
   knop: {
     // 44 punten is de kleinste maat die op een telefoon betrouwbaar te raken is
     // (zelfde reden als in `Button`).
     minHeight: 44,
-    borderRadius: radius.base,
+    borderRadius: radius.md,
     justifyContent: 'center',
-    paddingHorizontal: space.blokGap + 3,
+    paddingHorizontal: afstand.l,
   },
   // Smal: vijf gelijke knoppen die een regel delen en omslaan als het niet past.
   knopRij: { alignItems: 'flex-start' },
   knopZijkant: { alignItems: 'flex-start' },
-  label: { fontSize: 15, fontWeight: '600' },
+  label: { fontSize: 15 },
 });
