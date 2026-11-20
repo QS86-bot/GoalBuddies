@@ -970,8 +970,11 @@ describe('de geplande run — QS8-707', () => {
   const ci = readFileSync(join(import.meta.dirname, '..', '..', '.github', 'workflows', 'ci.yml'), 'utf8');
   const stappen = yml.split('\n').filter((r) => !r.trim().startsWith('#'));
 
-  it('draait dagelijks en handmatig, en nooit op een push', () => {
-    expect(stappen.some((r) => /^\s+- cron: '\d+ \d+ \* \* \*'$/.test(r))).toBe(true);
+  it('draait elk uur (niet op het hele uur) en handmatig, en nooit op een push', () => {
+    // Elk uur, en niet op het hele uur (QS8-707, vervolg): een dagelijkse cron
+    // krijgt bij GitHub's throttling gemiddeld eens in de ~5 dagen een run.
+    const cron = stappen.find((r) => /^\s+- cron: /.test(r)) ?? '';
+    expect(cron).toMatch(/^\s+- cron: '([1-9]|[1-5]\d) \* \* \* \*'$/);
     expect(stappen.some((r) => r.trim() === 'workflow_dispatch:')).toBe(true);
     expect(stappen.some((r) => r.trim() === 'push:')).toBe(false);
   });
