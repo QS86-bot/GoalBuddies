@@ -7,7 +7,7 @@ name: Advisories
 #    van npm dagvers is. Sinds QS8-707 toetst een push naar `main` alleen de vorm
 #    van het register `NAGEKEKEN`. De vraag "staat er een kwetsbaarheid in de
 #    productieboom die niemand met een bouw heeft nagekeken?" wordt hier gesteld,
-#    in de strikte modus, dagelijks. Een rode run van een geplande workflow wordt
+#    in de strikte modus, elk uur (best-effort, zie hieronder). Een rode run van een geplande workflow wordt
 #    door GitHub gemaild — hetzelfde signaal als `uurjobs.yml`.
 #
 # ⚠️ De prijs die Quinten accepteerde (besluit 18-11-2026, optie A): een nieuwe
@@ -15,6 +15,15 @@ name: Advisories
 #    `docs/decisions/2026-10-05-schedule-is-best-effort-en-de-hartslag-is-de-runlijst.md`;
 #    een niet-gelopen run is niet rood. Dat is een bekende rest, geen aanname dat
 #    het dicht is.
+#
+# ⚠️ **Elk uur en niet dagelijks, sinds het vervolg van QS8-707 (20-11-2026).**
+#    📏 Gemeten: het dagelijkse schema van 05:23 UTC had zeven uur later nog niet
+#    gevuurd, terwijl de uurjobs in dezelfde repo dat wel doen, op ~18,5% van hun
+#    ritme (`docs/decisions/2026-10-05-schedule-is-best-effort-en-de-hartslag-is-de-runlijst.md`).
+#    Een dagelijkse cron krijgt bij die throttling gemiddeld eens in de ~5 dagen een
+#    run. Op de minuut `31` omdat GitHub op het hele uur het drukst is. Door de
+#    uurlijkse cron is dit nu een uurjob: `uurjobs:controle` (`uurjobs.yml`) bewaakt
+#    hem met `GETOLEREERDE_VERTRAGING_UUR`, en `hoofdrun:stand` gebruikt dezelfde grens.
 #
 # Bewust `node scripts/audit-controle.mjs` en niet `npm run audit:controle`:
 # `cidekking:controle` (`handmatigGenoemd`) weigert een controle die met de hand
@@ -25,7 +34,7 @@ name: Advisories
 
 on:
   schedule:
-    - cron: '23 5 * * *'
+    - cron: '31 * * * *'
   workflow_dispatch:
 
 concurrency:
