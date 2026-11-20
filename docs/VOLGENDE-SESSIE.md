@@ -2399,6 +2399,20 @@ de volgende bijwerking bij #650.**
 | #649 | 06-10 | QS8-648 | NAGEKEKEN: compression en source-map-js nagemeten met een bouw |
 | #650 | 06-10 | QS8-645 | rij 169: 11 van de 21 regels gaan over een grant |
 
+### 20-11-2026 — de weekbelofte beslist (QS8-759, 0313), en drie valkuilen
+
+De beslisregel staat in domeinregel 11 van `CLAUDE.md`; wat de bouw erbij koos staat in
+`docs/decisions/2026-11-20-een-weekbelofte-beslist-aan-het-einde-van-haar-week.md`. 0312 en 0313 wachten
+allebei op Quintens "backup gedaan".
+
+- ⚠️ **Een weekpas zet de week niet op `excused`.** Hij laat `missed` staan en schrijft een `spent`-rij in
+  `week_pass_events`. Wie "de week is gered" wil weten, toetst die rij en niet de status.
+- ⚠️ **`carried` is een gemiste week** (0185, 0216), en geen eigen uitkomst. Elke regel die `carried` als
+  niet-gemist leest, opent een uitweg. Voor de belofte ligt die vraag bij Quinten (QS8-759).
+- ⚠️ **De lokale stack in deze cloudsessie:** de PostgREST-binary stond niet op schijf maar was op te halen
+  (versie en checksum uit `.github/workflows/ci.yml`). Postgres draaide na `service postgresql start` op
+  **5432**, dus met `PGPORT=5432`. De opbouw gaf 316 migraties.
+
 ### 05-11-2026 — de eerste orchestratorronde, en wat er open bleef
 
 **De rolverdeling staat op `main`** (PR #652): orchestrator, bouwsessies zonder PR,

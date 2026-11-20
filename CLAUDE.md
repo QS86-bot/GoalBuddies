@@ -686,6 +686,28 @@ Voordat er één feature gebouwd wordt:
     `docs/decisions/2026-09-08-de-groepsroute-is-geen-uitweg.md`, rij 31 in
     `docs/decisions/002-domeinregel7-oppervlakken.md`.
 
+    ⚠️ **Een tweede benoemde verruiming, voor de weekbelofte (QS8-759, 20-11-2026,
+    migratie 0313; akkoord van Quinten op het besluit van poort QS8-744).** Een
+    belofte die de gebruiker vooraf zelf heeft ingesteld en bevestigd, wordt aan
+    het einde van **haar eigen week** `due` als die week gebroken is. Dat is een
+    verstreken deadline in de zin van de eerste zin: het einde van de week ligt
+    vast vanaf het aangaan, in de bevroren `commitments.tz`. **Een gemiste week
+    zelf kost nog steeds een minpunt en verder niets**: de belofte boekt geen punt
+    (A43), en zonder belofte verandert er niets.
+
+    **Gebroken** is: in die week staat een weekdoel op `missed` zonder bestede
+    weekpas, en niets op `approved`. Al het andere is **gehouden**, en gehouden
+    eindigt op `cancelled` met `actor_id null`, **nooit op `resolved`** (dat maakt
+    de tekst leesbaar voor de begunstigde). Bij twijfel niet verschuldigd. De
+    belofte beslist pas als de rollover de week heeft gesloten (geen weekdoel meer
+    op `todo` of `cancelled`), dus één run na het sluiten. Wie zijn doel binnen de
+    week afrondt, heeft haar gehouden. Zolang ze loopt, weigert
+    `zet_week_startdag()` met `weekbelofte_loopt`. Wat gehouden betekent en welke
+    uitwegen openstaan staat in
+    `docs/decisions/2026-11-20-een-weekbelofte-beslist-aan-het-einde-van-haar-week.md`.
+    **Verruim de definitie van gebroken niet als bijvangst**: elke strengere lezing
+    is een besluit onder grens 1.
+
 ## Emoji — vastgelegd 22-08-2026 (QS8-111)
 
 **De app zelf gebruikt geen emoji in tekst.** Niet in knoppen, statuslabels,

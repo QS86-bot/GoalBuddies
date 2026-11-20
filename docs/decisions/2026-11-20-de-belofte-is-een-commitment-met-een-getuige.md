@@ -2,7 +2,7 @@
 
 **Datum:** 20-11-2026 · **Issue:** QS8-744 (poort, onder epic QS8-721) · **Raakt:** domeinregel 5, 7 en 11,
 Beslisbevoegdheid grens 1, `docs/decisions/002-domeinregel7-oppervlakken.md`
-**Status:** **besloten door Quinten (19-11-2026); x.1 gebouwd in QS8-758 (migratie 0312, nog niet op productie), de rest niet.** Dit document legt het besluit vast, geeft de
+**Status:** **besloten door Quinten (19-11-2026); x.1 gebouwd in QS8-758 (migratie 0312), x.2 in QS8-759 (migratie 0313, met wat de bouw erbij koos in `docs/decisions/2026-11-20-een-weekbelofte-beslist-aan-het-einde-van-haar-week.md`); beide nog niet op productie, de rest niet gebouwd.** Dit document legt het besluit vast, geeft de
 splitsing in bouwissues als *voorstel* en benoemt wat er nog bevestigd moet worden. De poort sluit pas met Quintens
 akkoord (acceptatiecriterium 1 en 4 van het issue); dit document is de voorbereiding daarvan, geen sluiting.
 
