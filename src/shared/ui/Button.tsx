@@ -27,6 +27,8 @@ interface Props {
   readonly accessibilityLabel?: string;
   /** Waarom de knop uit staat of wat hij doet, voor wie het scherm niet ziet. */
   readonly accessibilityHint?: string | undefined;
+  /** Voor een keuzeknop: is deze gekozen? Zonder dit leest een schermlezer elke keuze als ongekozen. */
+  readonly selected?: boolean | undefined;
 }
 
 function kleuren(theme: Theme, variant: ButtonVariant) {
@@ -57,6 +59,7 @@ export function Button({
   block = false,
   accessibilityLabel,
   accessibilityHint,
+  selected,
 }: Props) {
   const theme = useTheme();
   const [heeftFocus, setFocus] = useState(false);
@@ -71,7 +74,7 @@ export function Button({
       onFocus={() => setFocus(true)}
       onBlur={() => setFocus(false)}
       accessibilityRole="button"
-      accessibilityState={{ disabled: uit, busy }}
+      accessibilityState={{ disabled: uit, busy, ...(selected === undefined ? {} : { selected }) }}
       {...(accessibilityLabel === undefined ? {} : { accessibilityLabel })}
       {...(accessibilityHint === undefined ? {} : { accessibilityHint })}
       style={({ pressed }) => [

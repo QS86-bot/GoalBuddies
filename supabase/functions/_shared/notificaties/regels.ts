@@ -238,9 +238,84 @@ const NUDGE: Readonly<Record<Taalcode, Readonly<Record<Toon, { titel: string; bo
   },
 };
 
-export function nudgeBericht(toon: Toon, taal?: Taalcode | null): Bericht {
+/**
+ * Hoe iemand zich wil voelen — de zes voorstellen van de vragenlijst (QS8-733).
+ *
+ * ⚠️ **Een kopie van `profiles_feeling_bekend` (migratie 0311) en niet de bron.**
+ *    Dit bestand wordt naar `supabase/functions/_shared` gekopieerd en mag dus
+ *    niets importeren; `tests/rls/gevoel.test.ts` legt de CHECK en deze lijst
+ *    in beide richtingen naast elkaar. `GEVOELENS` in
+ *    `src/modules/goals/vragenlijst-schemas.ts` is een tweede kopie, want de
+ *    doelenmodule importeert deze module niet; een test (`tests/beloftes/
+ *    gevoelsregels.test.ts`) legt ze naast elkaar.
+ */
+export const GEVOELENS = [
+  'calm',
+  'motivated',
+  'proud',
+  'supported',
+  'energetic',
+  'focused',
+] as const;
+export type Gevoel = (typeof GEVOELENS)[number];
+
+/**
+ * Eén vaste zin per gevoel, onder de nudge.
+ *
+ * ⚠️⚠️ **Alleen een voorstel stuurt de tekst, nooit de eigen omschrijving.**
+ *    De eigen omschrijving uit de vragenlijst (0311) is vrije tekst van de
+ *    gebruiker en komt hier niet binnen: een vrije tekst kan niet in een vaste zin worden gevoegd zonder
+ *    risico op rare of pijnlijke meldingen, en een melding staat op een
+ *    vergrendeld scherm. Besluit van Quinten, 19-11-2026 (QS8-733).
+ *
+ * ⚠️ Positief en zonder verwijzing naar een gemiste week, reeks of achterstand
+ *    (domeinregel 7); `tests/beloftes/gevoelsregels.test.ts` toetst elke variant
+ *    op woorden die falen suggereren, en één per taal en per gevoel.
+ */
+const GEVOEL_REGEL: Readonly<Record<Taalcode, Readonly<Record<Gevoel, string>>>> = {
+  nl: {
+    calm: 'Een rustige, kleine zet is genoeg.',
+    motivated: 'Eén zet houdt je motivatie in beweging.',
+    proud: 'Eén zet en je mag trots zijn op jezelf.',
+    supported: 'Je doet dit niet alleen.',
+    energetic: 'Een zet nu geeft je energie voor de rest van de dag.',
+    focused: 'Eén zet, met volle aandacht.',
+  },
+  en: {
+    calm: 'One calm, small move is enough.',
+    motivated: 'One move keeps your motivation going.',
+    proud: 'One move and you can be proud of yourself.',
+    supported: 'You are not doing this alone.',
+    energetic: 'One move now gives you energy for the rest of the day.',
+    focused: 'One move, with your full attention.',
+  },
+};
+
+/**
+ * De zin bij een gevoel, of `null` bij niets of iets onbekends.
+ *
+ * ⚠️ Een onbekende waarde geeft `null` en geen fout: de CHECK weigert hem aan
+ *    de databasekant, en een nudge die niet verstuurd wordt omdat een zin
+ *    ontbreekt is erger dan een nudge zonder zin.
+ */
+export function gevoelRegel(gevoel: string | null | undefined, taal?: Taalcode | null): string | null {
+  if (gevoel === null || gevoel === undefined) return null;
+  if (!(GEVOELENS as readonly string[]).includes(gevoel)) return null;
+  return kies(GEVOEL_REGEL, taal)[gevoel as Gevoel];
+}
+
+export function nudgeBericht(
+  toon: Toon,
+  taal?: Taalcode | null,
+  gevoel?: string | null,
+): Bericht {
   const tekst = kies(NUDGE, taal)[toon];
-  return { titel: tekst.titel, body: tekst.body, pad: '/' };
+  const regel = gevoelRegel(gevoel, taal);
+  return {
+    titel: tekst.titel,
+    body: regel === null ? tekst.body : `${tekst.body} ${regel}`,
+    pad: '/',
+  };
 }
 
 /**

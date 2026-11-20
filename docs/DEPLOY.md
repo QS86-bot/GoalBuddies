@@ -537,6 +537,14 @@ noemt.
 
 ---
 
+### 2.5b Hoe wil je je voelen (QS8-733, migratie 0311) — volgorde
+
+⚠️ **Migratie 0311 vóór `functions deploy notificaties`.** De profielquery van de job
+leest nu ook `feeling`; bestaat die kolom nog niet, dan faalt élke profielpagina en
+staat het hele meldingenverkeer stil (dezelfde val als 0310 hieronder). Na de migratie:
+`npm run types:db` en de interface `NogNietInTypes` in `src/modules/auth/profile.ts` weghalen.
+Beslisdocument: `docs/decisions/2026-11-20-hoe-wil-je-je-voelen-is-van-jou-alleen.md`.
+
 ### 2.5a De dagmelding per groep (QS8-755, migratie 0310) — volgorde en aanzetten
 
 ⚠️ **Migratie 0310 vóór `functions deploy notificaties`.** De profielquery van de job
