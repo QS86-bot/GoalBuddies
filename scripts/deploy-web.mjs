@@ -43,6 +43,7 @@ import {
   sleutelUit,
   standaardDsnUit,
 } from './dsn-controle.mjs';
+import { bezwaren as prerenderBezwaren, leesPaginas } from './prerender-controle.mjs';
 import { beoordeelAntwoorden, VERPLICHTE_PADEN } from './pwa-controle.mjs';
 
 config({ path: '.env', quiet: true });
@@ -664,6 +665,25 @@ export function achtergeblevenMaps(bestanden) {
 }
 
 /**
+ * Breekt de deploy af als een geëxporteerde pagina zichtbare tekst in de body
+ * draagt (QS8-742): die tekst hangt van de taal van de bouwmachine af en is de
+ * oorzaak van React #418. Draait na de geheimenscan en vóór het uploaden.
+ */
+export function eisEenNeutralePrerender(map = DIST) {
+  const afwijkend = prerenderBezwaren(leesPaginas(map));
+
+  if (afwijkend.length === 0) {
+    console.log("    geen zichtbare tekst in de body van de geëxporteerde pagina's.");
+    return;
+  }
+
+  fail(
+    'De prerender bevat tekst die van de taal van deze machine afhangt (React #418). Er is niets geüpload.',
+    `${afwijkend.slice(0, 5).join('\n    ')}\n    Zie docs/decisions/2026-11-19-de-prerender-is-neutraal-en-de-app-start-na-de-hydratie.md.`,
+  );
+}
+
+/**
  * Voert het verwijderen uit en breekt de deploy af als er iets achterblijft.
  *
  * ⚠️ Losgetrokken van `verwijderSourceMaps()` zodat die laatste getoetst kan
@@ -835,6 +855,13 @@ async function main() {
 
   stap('Bundel controleren op geheimen');
   scanOpGeheimen(alleBestanden(DIST));
+
+  // ⚠️ QS8-742: de prerender is hier vers gebouwd, op deze machine en met zijn
+  //    `LANG` — precies waar React-fout #418 ontstond. Staat er tekst in de
+  //    `<body>`, dan hangt wat een bezoeker krijgt af van de taal van deze machine.
+  //    Vóór het uploaden, net als de geheimenscan: er is nog niets vertrokken.
+  stap('Prerender controleren op taalafhankelijke tekst');
+  eisEenNeutralePrerender();
 
   // ⚠️ **Ná de secret-scan, met opzet.** `SENTRY_AUTH_TOKEN` begint niet met
   //    `EXPO_PUBLIC_`, dus de scan slaat erop aan als hij ooit in de bundel

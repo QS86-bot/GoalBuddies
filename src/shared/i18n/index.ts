@@ -1,3 +1,4 @@
+import { zetDocumentTaal } from './documenttaal';
 import { en } from './en';
 import { nl, type Sleutel } from './nl';
 import { weekdagPeildatum } from '../time';
@@ -55,6 +56,9 @@ export function taal(): Taal {
  */
 export function zetTaal(nieuw: string | null | undefined): Taal {
   huidig = isTaal(nieuw) ? nieuw : STANDAARDTAAL;
+  // ⚠️ QS8-741: het `lang`-attribuut van het document beweegt mee, zodat een
+  //    schermlezer de goede stem kiest. Zie `documenttaal.ts`.
+  zetDocumentTaal(huidig);
 
   // ⚠️ Een eigen keuze overstemt de regionale notatie van het toestel. Wie in de
   //    app Nederlands kiest op een Britse telefoon, wil `31-12-2026` en niet
@@ -98,6 +102,7 @@ export function opmaaktaal(): string {
  */
 export function zetTaalUitApparaat(voorkeuren: readonly string[]): Taal {
   huidig = taalUitApparaat(voorkeuren);
+  zetDocumentTaal(huidig);
   opmaakTag = apparaatOpmaaktaal();
   return huidig;
 }

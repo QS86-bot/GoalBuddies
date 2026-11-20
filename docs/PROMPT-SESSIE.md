@@ -601,3 +601,15 @@ Edge Functions en de webbundel rolt Quinten uit.
 * Of `npm run claim` de afgeleverde takken in dit model goed leest (de gelande-PR-bron van QS8-611 hangt aan de claim-commit die in de merge meekomt). Nog niet waargenomen.
 * Of Actions-minuten hier schaars zijn (§12c).
 * Of `.claude/commands/orkestrator.md` en `.claude/commands/batch.md` in een echte ronde doen wat ze beloven. Ze zijn op 05-11-2026 voor het eerst gestart; de eerste ronde is de proef.
+
+### 12g. Een lokale sessie werkt in een eigen worktree — QS8-713
+
+§12 gaat uit van een eigen werkruimte per sessie. Een cloudsessie heeft die (elk een eigen container); een **lokale** sessie niet: ze delen één map.
+
+📏 Op 18-11-2026 werd de werkmap van de bouwer van QS8-700 en QS8-701 halverwege door een parallelle lokale sessie naar `claude/qs8-702-lokaal-wip` omgeschakeld, waardoor ongecommitte wijzigingen verdwenen (later hersteld). De RLS-harnastakken van QS8-700 en QS8-702 kregen zo tegenstrijdige versies van `tests/rls/harness.ts` en `docs/DEPLOY.md`. Dat is de klasse van §4 en §5, maar dan in de werkmap in plaats van in git.
+
+1. **Elke lokale sessie werkt in een eigen worktree**, nooit in de hoofdmap. Het aanmaken doet `npm run claim` zelf (§1, QS8-717); wat hier bijkomt is dat ze begint met `git worktree list` en `git status`, en dat ze dat vóór de claim doet.
+2. **Treft een lokale sessie ongecommitte wijzigingen aan die ze niet zelf schreef, of staat de map op een tak die ze niet koos, dan stopt ze en meldt het.** Ze zet niets terug en werkt niet door.
+3. **`.env` gaat niet naar een worktree met `RLS_TEST_ALLOW_PROD=1` erin.** De oorzaak van QS8-702 was die vlag in gekopieerde `.env`-bestanden van worktrees.
+
+De startprompt voor een lokale sessie staat in `docs/VOLGENDE-SESSIE.md` (blok voor een tweede sessie). ⚠️ Het aanmaken van de worktree is sinds QS8-717 een eigenschap van `npm run claim`; de drie regels hierboven zijn procedureel en worden niet afgedwongen: de eerste kijk, de stop en de `.env`-regel kan alleen de sessie zelf naleven. **Niet gemeten:** of een lokale sessie de regel volgt zonder dat de startprompt hem noemt.
