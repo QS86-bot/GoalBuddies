@@ -43,7 +43,8 @@ export function Deelknop({ tekst, titel, label, variant = 'primair' }: Props) {
     }
 
     try {
-      await Share.share({ message: tekst, title: titel });
+      // `title` is het onderwerp op Android (EXTRA_SUBJECT); iOS leest `subject`.
+      await Share.share({ message: tekst, title: titel }, { subject: titel });
     } catch {
       // De gebruiker die het deelvenster wegtikt komt hier ook terecht; dat is
       // geen fout en verdient dus geen foutmelding.

@@ -40,15 +40,14 @@ interface Props {
   readonly onOpnieuw: () => void;
   readonly leden: number;
   /**
-   * De link om te delen, of `null` als die er niet is (ingetrokken, of de code
-   * ontbreekt). Zonder link staat er geen knop: een knop die niets kan delen
-   * liegt over wat hij doet.
+   * Het bericht om te delen, of `null` als er geen link is (ingetrokken, of de
+   * code ontbreekt). Zonder bericht staat er geen knop: een knop die niets kan
+   * delen liegt over wat hij doet.
    */
-  readonly uitnodigingsLink: string | null;
-  readonly groepsnaam: string;
+  readonly uitnodiging: { readonly tekst: string; readonly onderwerp: string } | null;
 }
 
-export function Groepskaart({ teller, onOpnieuw, leden, uitnodigingsLink, groepsnaam }: Props) {
+export function Groepskaart({ teller, onOpnieuw, leden, uitnodiging }: Props) {
   const tekst = groepskaartTeksten({
     weken: teller === 'fout' ? 0 : teller.weken,
     mijlpalen: teller === 'fout' ? 0 : teller.mijlpalen,
@@ -80,16 +79,16 @@ export function Groepskaart({ teller, onOpnieuw, leden, uitnodigingsLink, groeps
 
       {tekst.uitnodiging === null ? null : <Body muted>{tekst.uitnodiging}</Body>}
 
-      {uitnodigingsLink === null ? null : (
+      {uitnodiging === null ? null : (
         <Deelknop
           label={t('groepskaart.uitnodigen')}
-          titel={t('groepdetail.deel_titel', { groep: groepsnaam })}
-          tekst={uitnodigingsLink}
+          titel={uitnodiging.onderwerp}
+          tekst={uitnodiging.tekst}
           variant={tekst.uitnodiging === null ? 'secundair' : 'primair'}
         />
       )}
 
-      {uitnodigingsLink === null ? (
+      {uitnodiging === null ? (
         // ⚠️ Een ingetrokken (of ontbrekende) uitnodiging geeft geen knop maar wel
         //    een zin: een link die gegarandeerd niet werkt is erger dan geen link,
         //    en een kaart zonder uitleg laat de lezer raden waar hij is.
