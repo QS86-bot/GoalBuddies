@@ -19,7 +19,7 @@ import { alsVoortgang, streepProcent } from '../../src/shared/ui/paginakop-vorm'
  *    weigert: geen punten-prop, geen prop met een gebruikerssleutel.
  */
 const ROOT = join(__dirname, '..', '..');
-const lees = (p: string) => readFileSync(join(ROOT, p), 'utf8');
+const lees = (p: string) => zonderCommentaar(readFileSync(join(ROOT, p), 'utf8'));
 
 const SCHERMEN = ['index', 'doelen', 'groep', 'lijst', 'profiel'] as const;
 
@@ -54,7 +54,7 @@ describe('voortgang is een waarde van 0 tot 1 en geen score', () => {
   });
 
   it('het component kent geen punten en geen gebruiker', () => {
-    const bron = zonderCommentaar(lees('src/shared/ui/Paginakop.tsx'));
+    const bron = lees('src/shared/ui/Paginakop.tsx');
     expect(bron).not.toMatch(/\b(punten|score|userId|lid|member)\b/i);
     expect(bron).toMatch(/voortgang\?: Voortgang/);
   });
