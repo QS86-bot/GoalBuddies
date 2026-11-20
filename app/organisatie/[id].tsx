@@ -27,6 +27,7 @@ import {
   Caption,
   Card,
   Field,
+  MeerKnop,
   Screen,
   Subheading,
   useAsync,
@@ -159,6 +160,8 @@ interface LedenblokProps {
 function Ledenblok({ organisatieId, beheerder, onUitgezet }: LedenblokProps) {
   const { userId } = useSession();
   const lijst = useBladerlijst((na) => fetchOrganisatieleden(organisatieId, na), [organisatieId]);
+  // Eén rij tegelijk heeft een menu of bevestiging open; een tweede openen sluit de eerste.
+  const [actief, setActief] = useState<{ userId: string; stap: LedenStap } | null>(null);
 
   return (
     <Card>
@@ -182,7 +185,10 @@ function Ledenblok({ organisatieId, beheerder, onUitgezet }: LedenblokProps) {
                 organisatieId={organisatieId}
                 lid={lid}
                 kanUitzetten={beheerder && lid.rol === 'member' && lid.userId !== userId}
+                stap={actief?.userId === lid.userId ? actief.stap : 'dicht'}
+                onStap={(stap) => setActief(stap === 'dicht' ? null : { userId: lid.userId, stap })}
                 onUitgezet={() => {
+                  setActief(null);
                   lijst.herlaad();
                   onUitgezet();
                 }}
@@ -209,42 +215,67 @@ function uitzettenTekst(naam: string): BevestigingsTekst {
   };
 }
 
+type LedenStap = 'dicht' | 'menu' | 'bevestig';
+
+/**
+ * ⚠️ **Een rij is even hoog met en zonder knop** (QS8-773, besluit van Quinten: variant B).
+ *    De knop met drie puntjes heeft een raakvlak van 44 punten en een rij heeft
+ *    daar minstens de hoogte van; het woord "Uitzetten" staat pas in het menu
+ *    eronder. Het menu en de bevestiging staan **in** de lijst en niet erboven:
+ *    een zwevend vlak legt zich op native over de rijen eronder en vangt hun
+ *    aanrakingen.
+ *
+ * ⚠️ **Een lid krijgt hier niets.** `kanUitzetten` is de enige schakelaar, en
+ *    voor een lid is hij `false`: de rij is dan alleen naam en rol (besluit 6).
+ */
 function Ledenrij({
   organisatieId,
   lid,
   kanUitzetten,
+  stap,
+  onStap,
   onUitgezet,
 }: {
   readonly organisatieId: string;
   readonly lid: Organisatielid;
   readonly kanUitzetten: boolean;
+  readonly stap: LedenStap;
+  readonly onStap: (stap: LedenStap) => void;
   readonly onUitgezet: () => void;
 }) {
-  const [open, setOpen] = useState(false);
   const handeling = useHandeling();
 
   return (
     <View style={styles.blok}>
-      <View style={styles.rij}>
-        <Body>{lid.naam}</Body>
+      <View style={styles.ledenrij}>
+        <View style={styles.naam}>
+          <Body>{lid.naam}</Body>
+        </View>
         {lid.rol === 'admin' ? <Caption>{t('organisatie.rol_beheerder')}</Caption> : null}
-        {kanUitzetten && !open ? (
-          <Button
-            variant="stil"
-            accessibilityLabel={t('organisatie.uitzetten_label', { naam: lid.naam })}
-            onPress={() => setOpen(true)}
-          >
-            {t('organisatie.uitzetten_knop')}
-          </Button>
+        {kanUitzetten ? (
+          <MeerKnop
+            accessibilityLabel={t('organisatie.acties_label', { naam: lid.naam })}
+            open={stap !== 'dicht'}
+            onPress={() => onStap(stap === 'dicht' ? 'menu' : 'dicht')}
+          />
         ) : null}
       </View>
-      {open ? (
+      {stap === 'menu' ? (
+        <Button
+          variant="stil"
+          accessibilityLabel={t('organisatie.uitzetten_label', { naam: lid.naam })}
+          onPress={() => onStap('bevestig')}
+        >
+          {t('organisatie.uitzetten_knop')}
+        </Button>
+      ) : null}
+      {stap === 'bevestig' ? (
         <Bevestiging
           tekst={uitzettenTekst(lid.naam)}
           bezig={handeling.bezig}
           fout={handeling.fout}
           onAnnuleer={() => {
-            setOpen(false);
+            onStap('dicht');
             handeling.wisFout();
           }}
           onBevestig={() =>
@@ -546,4 +577,7 @@ const styles = StyleSheet.create({
   blokken: { gap: space.blokGap + 3 },
   blok: { gap: space.blokGap },
   rij: { flexDirection: 'row', gap: space.blokGap, alignItems: 'center', flexWrap: 'wrap' },
+  // Vaste hoogte: geen wrap en een knop van 44, zodat een rij met en zonder knop even hoog is.
+  ledenrij: { flexDirection: 'row', gap: space.blokGap, alignItems: 'center', minHeight: 48 },
+  naam: { flex: 1, minWidth: 0 },
 });
