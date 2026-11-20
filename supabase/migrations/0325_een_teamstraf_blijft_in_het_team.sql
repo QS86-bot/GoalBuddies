@@ -488,7 +488,6 @@ begin
       --    teamchat gemeld. De leesroutes eisten dat al (besluit M1, 18-11);
       --    dit bericht ontsnapte eraan. Voor elk ander doel geeft de functie
       --    `true` en verandert er niets.
-      and straf_teamband_klopt(new.goal_id, v_owner_id)
     then
       perform plaats_systeembericht(
         new.beneficiary_group_id,
