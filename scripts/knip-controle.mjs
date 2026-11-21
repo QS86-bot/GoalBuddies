@@ -206,6 +206,9 @@ export const GEEN_KNIP = {
   'scripts/migratie-hernummer.mjs:kopNummer':
     'selecteert juist de commentaarregels in plaats van ze weg te gooien — de kop van ' +
     'een migratie ís commentaar, en dit leest het nummer eruit',
+  'scripts/registerdrift-regels.mjs:bewustVallen':
+    'leest de `-- laat bewust vallen:`-regels uit het kopblok: die regels zijn de invoer ' +
+    'en niet wat weggeknipt wordt (QS8-766)',
   'scripts/rollbackpad.mjs:padOnderbroken':
     'verzamelt de `--`-kopregels om te toetsen of het rollback-pad erin staat; hij ' +
     'gooit niets weg',
