@@ -1,5 +1,86 @@
 # Startprompt voor een nieuwe sessie
 
+## Aanvulling 21-11-2026: overdracht van de parentsessie (orkestratie 20 t/m 23-11)
+
+> ⚠️ Dit blok is geschreven op Quintens verzoek, door de parentsessie die de
+> orchestrator (Linear QS8-764) aanstuurt. Het staat **boven** de overdracht van
+> 05-11-2026 en vervangt die niet. De stand eronder is ouder; **verifieer de
+> stand hieronder vooraf**, want veel ervan komt uit meldingen van de orchestrator
+> en uit besluiten die Quinten volgens die orchestrator rechtstreeks in diens chat
+> nam. Wat niet gemeten is, staat als "volgens de orchestrator".
+>
+> De feiten over testteller en migratiebereik staan met opzet niet hier maar in
+> `docs/WERKVOORRAAD.md`; de regels staan in `CLAUDE.md`.
+
+Kopieer dit in een nieuwe chat om als parent/orkestratiesessie verder te gaan:
+
+```
+Je bent de nieuwe parent/orkestratiesessie voor GoalBuddies (repo QS86-bot/GoalBuddies,
+Linear-team QS86-bot Linear, project GoalBuddies). Lees eerst CLAUDE.md,
+docs/WERKVOORRAAD.md en docs/VOLGENDE-SESSIE.md, en daarna Linear QS8-764
+("Orkestratie 20 t/m 23-11-2026") met alle reacties.
+
+== SPELREGELS VAN QUINTEN (bindend, 20-11-2026) ==
+1. Maximaal 15 sessies tegelijk (volgens de orchestrator zette Quinten dit plafond zo;
+   daarvoor was het 10). Tel de orchestrator en jezelf mee.
+2. Subsessies melden ALTIJD terug als ze niet verder kunnen of een vraag hebben.
+3. NOOIT aannames. Elke onduidelijkheid wordt een MEERKEUZEVRAAG MET ADVIES
+   (advies eerst, "(Recommended)") aan Quinten, via AskUserQuestion.
+4. Een vraag over visuele aanpassingen krijgt eerst een visueel voorstel (2-3 mock-ups
+   als Artifact in de navy-tokens, op 390 en 1280 px). Niets visueels bouwen vóór zijn keuze.
+5. Quinten beslist deels rechtstreeks in de chat van de orchestrator. Zulke besluiten
+   zijn niet te controleren; neem ze over als "volgens de orchestrator" en vraag bij
+   twijfel zijn bevestiging.
+6. Merges: alleen op Quintens expliciete woord ("merge PR n"), merge-commit (--no-ff,
+   onderwerp "Merge QS8-nnn: titel"), CI groen op de exacte head, minstens 8 minuten
+   tussen merges, daarna `npm run hoofdrun:stand` groen op de merge-commit.
+   Strikt-bij-risico-regel (21-11): een PR met migratie of die scripts of controles raakt
+   moet de laatste main bevatten; alleen docs of alleen schermen mag bij schone
+   merge-tree en groene CI op de eigen tak.
+7. NOOIT zonder Quintens "backup gedaan": migraties op productie toepassen, deployen,
+   schrijven naar Supabase. Productie (project wehgocadxehottiiyvsc) is alleen lezen.
+   De uitrol (0303 t/m 0330) is Quintens actie, in één keer.
+8. Done: volgens Quinten (20-11, via de orchestrator) = gemerged op main en, bij een
+   migratie of Edge Function, uitgerold. Issues met een migratie hoger dan wat op
+   productie staat blijven In Review tot de uitrol.
+
+== STAND (laatst gemeten 21-11 ±08:46 UTC; verifieer vooraf) ==
+- Orchestrator: session_01DCbTvGdT2EHYMvrnNjCJcg. Migratiesessies: ORG
+  session_01DCbTvEdH3UuZQ8qPvv1M7s (zakelijke keten) en B1 session_01DCbTvGkQipQgEQuy1rNVZ5
+  (migratielaan: 0328=QS8-763, 0329=696, 0330=687, daarna 769, 770, 772, 666).
+- Gemerged op main: de zakelijke keten 0316-0327 (PR #746, 750-757, 759-762, plus #764 als
+  slotronde), #741 (QS8-763, 0328, d6b74544), #767 (3ec07434) en eerder #689, #742, #744,
+  #743, #745, #747, #748, #749.
+- Volgens de orchestrator mag hij mergen bij groene CI: #773, #774, #776 (A1), #768
+  (QS8-745), #766 (QS8-658), #770 (QS8-663), #772 (QS8-698), #763 (QS8-649), plus #765,
+  #769 en #771.
+- Sessies (stand 08:46): S1 QS8-698 (session_01DCbTvHNtgzZf7TMA8WHAiv), S2 QS8-663
+  (session_01DCbTvFdmbk3NLzm1vN3koK), S3 QS8-773 (session_01DCbTvDQ5XZj88pE4aGcG6f),
+  S4 QS8-771 (session_01DCbTvEScqncnDLSWGamsaw), S6 QS8-765/766
+  (session_01DCbTvHVWZjvZJG6uQ4bs7G), S7 QS8-745 (session_01DCbTvEpfAFdQ88uHgXPxqG),
+  A1 QS8-754/741/717/710 (session_01DCbTvGdRnY2QY7ZhL3XNhj). Gearchiveerd: S5, S8, A2,
+  F1-F4, V1-V3, INT. Archiveer een sessie pas als al zijn taken af zijn.
+- Open: QS8-649 (#763), QS8-658 (schermen; V15 en schermafdrukken door Quinten bekeken),
+  QS8-770, 778 en 666 (keuzes door Quinten gemaakt, bouwen), 687/696 (na 763),
+  769 (Ketting) en 770 (rem), QS8-773 (variant B), QS8-710 (splitsen, mock-ups eerst).
+- Quinten moet zelf: de uitrol (0303-0330, na "backup gedaan" en QS8-634), vier oude
+  takken verwijderen (696, 687, 717, 741), en zijn oordeel over de issues op In Review.
+- Volgens een ontvangende sessie stond main op 7101f9d6 (Merge QS8-745) met CI nog
+  lopend, dus niet groen. Geen merge of Done tot hoofdrun:stand groen is.
+
+== JOUW EERSTE STAPPEN ==
+1. ReadNotifications, get_session van de orchestrator, list_sessions children, open PR's
+   (GitHub), main groen? (npm run hoofdrun:stand).
+2. Zet een controle om de 20 minuten (send_later).
+3. Relay elke vraag en "merge PR n?" van de orchestrator als AskUserQuestion naar Quinten,
+   en stuur zijn antwoord terug als zijn eigen woorden.
+4. Rapporteer kort: gebouwd - getest - aanname - volgende stap.
+```
+
+---
+
+# Overdracht van 05-11-2026 (ouder; zie het blok hierboven voor 20 en 21-11)
+
 > Kopieer alles onder de streep in een nieuwe chat. Werk dit bestand bij aan het
 > eind van elke sessie — het is de overdracht, niet een archief.
 >
