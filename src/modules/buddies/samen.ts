@@ -120,7 +120,9 @@ export function uitnodigingsBericht(
   groepsnaam: string,
   afzender: string | null | undefined,
 ): { readonly tekst: string; readonly onderwerp: string } {
-  const groep = groepsnaam.trim();
+  // ⚠️ QS8-771: de naam staat tussen “ ”. Een aanhalingsteken in de naam zelf
+  //    zou eruit kunnen breken, dus die worden rechte tekens.
+  const groep = groepsnaam.trim().replace(/[\u00AB\u00BB\u201C-\u201F\u2033\u2036\uFF02\u301D-\u301F]/gu, '"');
   const naam = typeof afzender === 'string' ? afzender.trim() : '';
   if (naam === '') {
     return {

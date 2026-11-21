@@ -700,6 +700,35 @@ export function schoneEneRegel(ruw: string): string {
 }
 
 /**
+ * Staat er een webadres of domeinvorm in deze tekst? — QS8-771.
+ *
+ * ⚠️ Voor een groepsnaam: die staat in een bericht dat een lid onder zijn eigen
+ *    naam verstuurt, naast een echte GoalBuddies-link. Weert `://`, `www.` en
+ *    een domeinvorm (letters, punt, minstens twee letters: `evil.example`).
+ *    Regeleinden zijn al geweerd door `schoneNaam()` (stap 2b). De database
+ *    draagt dezelfde regel als CHECK; houd de twee gelijk.
+ */
+export function bevatLinkAchtigeTekst(tekst: string): boolean {
+  // ⚠️ Een whitelist en geen blokkenlijst: na NFKC blijft alleen over wat een mens
+  //    als letter, cijfer, spatie, `-`, `:`, `/` of punt leest. Alles anders
+  //    (onzichtbare tekens, accenten, richtingstekens, opmaaktekens) verdwijnt
+  //    vóór de regexen, want `evil<LRM>.com` en `evil<U+0483>.com` lezen als
+  //    evil.com. Een lijst van te strijken tekens groeide per reviewronde.
+  //    Migratie 0329 doet hetzelfde; houd de twee gelijk.
+  const v = tekst.normalize('NFKC').replace(/[^\p{L}\p{N}\s:/\-.\u3002\uFF0E\uFF61\u2024\uFE52]/gu, '');
+  // Puntvormen die een browser (IDNA) tot een punt omzet.
+  const punt = '[.\\u3002\\uFF0E\\uFF61\\u2024\\uFE52]';
+  const domein = new RegExp(`[\\p{L}\\p{N}-]${punt}\\p{L}{2}`, 'iu');
+  // Een IP-adres: vier groepen (cijfers of 0x-hex) met punten (185.12.3.4, 0xC0.0xA8.0.1). Niet elk getal-punt-getal:
+  // "10.000 stappen" en "Versie 2.0" zijn gewone namen (besluit Quinten, 21-11-2026).
+  const g = '(?:0x[0-9a-f]+|[0-9]+)'; // een groep: cijfers of 0x-hex (besluit Quinten, 21-11-2026)
+  const ip = new RegExp(`${g}${punt}${g}${punt}${g}${punt}${g}`, 'iu');
+  return (
+    /:\/\/|www\./i.test(v) || ip.test(v) || domein.test(v) || /[\n\r\u0085\u2028\u2029]/u.test(tekst)
+  );
+}
+
+/**
  * Een naam zonder onzichtbare randen.
  *
  * ⚠️ **Randen knippen en niet alles**, zie `ONZICHTBARE_BEREIKEN`. Wat er tussen
