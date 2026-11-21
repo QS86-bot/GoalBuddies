@@ -257,7 +257,7 @@ begin
             jsonb_build_object('klassement', true), jsonb_build_object('klassement', false));
     perform plaats_systeembericht(
       p_group_id, 'leaderboard_disabled', 'Het klassement staat uit in deze groep.',
-      null, (select auth.uid()), null
+      p_subject_id => (select auth.uid())
     );
   end if;
 
