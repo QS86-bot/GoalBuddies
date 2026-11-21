@@ -1060,6 +1060,10 @@ async function sluitVerstrekenWekenAf(
 
   if (error) {
     console.error(`weken afsluiten mislukte voor een profiel: ${error.message}`);
+    // ⚠️ Ook een melding, en niet alleen een logregel (security-review op QS8-687): wordt deze
+    //    functie uitgerold vóór de migratie, dan geeft elk profiel hier een fout en sluit er
+    //    geen week af, terwijl de job 200 teruggeeft. Migratie eerst, deploy daarna (DEPLOY §2.3a).
+    await meld(new Error('weken afsluiten mislukt'), 'rollover.weken', { code: 'rollover_weken_rpc_fout' });
     return null;
   }
 
