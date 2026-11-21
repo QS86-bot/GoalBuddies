@@ -1,4 +1,4 @@
--- 0329_een_klassement_in_elke_groep.sql — QS8-666 (A57), PR 1: de poort, de kolom en besluit 45
+-- 0333_een_klassement_in_elke_groep.sql — QS8-666 (A57), PR 1: de poort, de kolom en besluit 45
 --
 -- ROLLBACK-PAD:
 --   -- 1. De twee functies terugzetten: `groep_klassement()` uit 0321, `zet_groepszichtbaarheid()` uit 0302.
@@ -14,6 +14,13 @@
 --   --    uit 0323). Rijen met 'leaderboard_changed' in `group_events` en 'leaderboard_enabled'/'leaderboard_disabled'
 --   --    in `chat_messages` moeten dan eerst weg; dat is grens 2.
 --
+--
+-- laat bewust vallen: where lid_van_open_groep(p_group_id)
+-- laat bewust vallen: -- QS8-661, besluit 22 en 25: nooit een klassement in een teamgroep, ook
+-- laat bewust vallen: -- niet in een open. Een eigen voorwaarde en niet via `lid_van_open_groep()`,
+-- laat bewust vallen: -- zodat A57 (QS8-666) hem niet stil verliest als die poort verandert.
+-- (A57 vervangt de poort `lid_van_open_groep()` door `lid_van_levende_groep()` plus de schakelaar; de teamtoets zelf is gebleven,
+--  met een nieuwe toelichting in het lichaam. Besluit Quinten 20-11-2026.)
 -- ---------------------------------------------------------------------------
 -- Waar dit vandaan komt
 -- ---------------------------------------------------------------------------

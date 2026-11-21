@@ -3,7 +3,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { adminDb, createTestUser, registreerGroep, removeTestUsers, rlsTestsConfigured, type TestUser } from './harness';
 
 /**
- * Het klassement hangt aan een schakelaar op de groep — QS8-666 (A57), migratie 0329, PR 1.
+ * Het klassement hangt aan een schakelaar op de groep — QS8-666 (A57), migratie 0333, PR 1.
  *
  * ⚠️ **De belofte is een eigenschap van het geheel:** het klassement staat alleen aan waar het aan
  *    hoort te staan, en geen enkele client kan het zelf aanzetten. Daarom toetst dit bestand de
@@ -28,7 +28,7 @@ async function maakGroep(eigenaar: TestUser, naam: string, zichtbaarheid: 'besch
   const d = g.data as unknown as { ok?: boolean; group?: { id: string; invite_code: string } };
   if (d.ok !== true || !d.group) throw new Error(`groep ${naam}: ${JSON.stringify(g.data)}`);
   registreerGroep(d.group.id);
-  // Sinds 0330 (A57 PR 2) begint een nieuwe groep met het klassement aan. Een bestaande beschermde groep staat uit
+  // Sinds 0336 (A57 PR 2) begint een nieuwe groep met het klassement aan. Een bestaande beschermde groep staat uit
   // (besluit 42); die stand zetten we hier, behalve voor `nieuw`.
   if (zichtbaarheid === 'beschermd' && !nieuw) {
     const uit = await adminDb().from('groups').update({ klassement_aan: false } as never).eq('id', d.group.id);
@@ -53,7 +53,7 @@ async function aan(groupId: string): Promise<boolean> {
   return (data as { klassement_aan: boolean } | null)?.klassement_aan === true;
 }
 
-describe.runIf(rlsTestsConfigured)('het klassement hangt aan een schakelaar (A57, 0329)', () => {
+describe.runIf(rlsTestsConfigured)('het klassement hangt aan een schakelaar (A57, 0333)', () => {
   let anna: TestUser; // beheerder van alles
   let bram: TestUser; // lid
   let cor: TestUser; // geen lid
@@ -72,7 +72,7 @@ describe.runIf(rlsTestsConfigured)('het klassement hangt aan een schakelaar (A57
     await removeTestUsers();
   }, SETUP_TIMEOUT);
 
-  it('een nieuwe groep begint met het klassement aan, ook een beschermde (besluit 42/43, 0330)', async () => {
+  it('een nieuwe groep begint met het klassement aan, ook een beschermde (besluit 42/43, 0336)', async () => {
     const nieuweBeschermde = await maakGroep(anna, 'Schakel-nieuw', 'beschermd', true);
     expect(await aan(nieuweBeschermde.id)).toBe(true);
     expect(await aan(open.id)).toBe(true);

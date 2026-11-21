@@ -101,7 +101,7 @@ export function topniveauDml(sql) {
  * @type {Record<string, { bevat: string, reden: string }[]>}
  */
 export const DML_MET_REDEN = {
-  '0329': [
+  '0333': [
     { bevat: 'update public.groups set klassement_aan = true',
       reden: '`where … and not klassement_aan` — na de run staat de kolom op true voor elke rij die erin valt, dus de tweede run matcht niets' },
   ],

@@ -194,7 +194,15 @@ const REGISTER = new Map([
   ],
   [
     'zet_groepsklassement',
-    'Beheerderspoort: `is_group_admin(p_group_id)`, ná de teamgroep- en de automatisch-toets en vóór de bevestiging (0330, QS8-666). Elke weigering laat de schakelaar en het spoor ongewijzigd en elke wissel precies één `group_events`-rij en één bericht. Bewaakt door `tests/rls/klassement-zet.test.ts`.',
+    'Beheerderspoort: `is_group_admin(p_group_id)`, ná de teamgroep- en de automatisch-toets en vóór de bevestiging (0336, QS8-666). Elke weigering laat de schakelaar en het spoor ongewijzigd en elke wissel precies één `group_events`-rij en één bericht. Bewaakt door `tests/rls/klassement-zet.test.ts`.',
+  ],
+  [
+    'sluit_verstreken_weken_af',
+    '`authenticated` mag hem niet aanroepen — gemeten: `anon=false auth=false service=true` (0335, QS8-687). ' +
+      'De grant ís hier de grendel, en `tests/rls/rollover-week-transactie.test.ts` toetst hem. ' +
+      '`p_owner_id` is vrij te kiezen, dus de functie deelt minpunten uit voor een willekeurige eigenaar; ' +
+      'enige aanroeper is de rollover-functie, die als `service_role` draait. De cyclusgrens komt van buiten ' +
+      '(`shared/time`).',
   ],
   [
     'maak_straffen_verschuldigd',
@@ -595,7 +603,7 @@ const LEESREGISTER = new Map([
   ['is_group_admin', 'Predicaat op `m.user_id = auth.uid()` plus `role = admin`.'],
   ['mag_groep_lezen', 'Predicaat op `m.user_id = auth.uid()`. ⚠️ Kijkt bewust niet naar `groups.status`: dit is de leesvariant, en een gearchiveerde groep blijft leesbaar voor wie erin zat.'],
   ['lid_van_open_groep', 'Predicaat op `m.user_id = auth.uid()` plus `zichtbaarheid = open`. Draagt de grendel van A54.'],
-  ['lid_van_levende_groep', 'Predicaat op `m.user_id = auth.uid()`, actief lid van een groep die niet gearchiveerd is (A57, 0329). Zelfde lichaam als is_group_member() (0329); een eigen naam zodat een latere versoepeling daarvan het klassement niet meeneemt.'],
+  ['lid_van_levende_groep', 'Predicaat op `m.user_id = auth.uid()`, actief lid van een groep die niet gearchiveerd is (A57, 0333). Zelfde lichaam als is_group_member() (0329); een eigen naam zodat een latere versoepeling daarvan het klassement niet meeneemt.'],
   ['shares_group_with_user', 'Predicaat op `mine.user_id = auth.uid()`; béíde kanten moeten actief lid zijn.'],
   ['shares_group_with_goal', 'Predicaat op `m.user_id = auth.uid()`; de kijker én de eigenaar moeten actief lid zijn en de groep niet gearchiveerd.'],
   ['deelt_groep_met_eigenaar', 'Leunt volledig op `shares_group_with_user()`, en die scopet op `auth.uid()`. Leest `goals` alleen om de eigenaar op te zoeken.'],
@@ -620,7 +628,7 @@ const LEESREGISTER = new Map([
   ['groep_teller', 'Lidmaatschapspoort: `where is_group_member(p_group_id)` — geen lid, nul rijen. Telt alleen omhoog (domeinregel 7).'],
   ['ketting_stand', 'Lidmaatschapspoort: `where is_group_member(p_group_id)`. Geeft `{schakels, in_aanmerking, voltallig}` en nooit een naam.'],
   ['deel_prestatie', 'Poort op `badges.user_id = auth.uid()` (alleen een prestatie die je zelf hebt) en op `is_group_member(p_group_id)`; schrijft één systeembericht zonder naam, titel of niveau. Getoetst door tests/rls/prestatie-delen.test.ts met echte JWT\'s.'],
-  ['groep_klassement', 'Poort op `lid_van_levende_groep(p_group_id)` plus de schakelaar `groups.klassement_aan` en een teamtoets (A57, 0329): nul rijen voor een niet-lid, een uitgezet lid, een gearchiveerde groep, een groep zonder klassement en een teamgroep. Geen delta en geen datum, dus geen gemiste week af te leiden.'],
+  ['groep_klassement', 'Poort op `lid_van_levende_groep(p_group_id)` plus de schakelaar `groups.klassement_aan` en een teamtoets (A57, 0333): nul rijen voor een niet-lid, een uitgezet lid, een gearchiveerde groep, een groep zonder klassement en een teamgroep. Geen delta en geen datum, dus geen gemiste week af te leiden.'],
   // ⚠️ **De enige rij in dit register waar het antwoord op de eerste vraag "ja"
   //    is, en dat is geen bezwaar maar het oppervlak zelf** (0268, QS8-477).
   //    `trigger = 'misser'` zégt dat er iets gemist is. Besluit A41 staat dat toe

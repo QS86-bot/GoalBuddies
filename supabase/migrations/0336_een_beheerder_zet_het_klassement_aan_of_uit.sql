@@ -1,18 +1,18 @@
--- 0330_een_beheerder_zet_het_klassement_aan_of_uit.sql — QS8-666 (A57), PR 2: de schakelaar
+-- 0336_een_beheerder_zet_het_klassement_aan_of_uit.sql — QS8-666 (A57), PR 2: de schakelaar
 --
 -- ROLLBACK-PAD:
 --   drop function if exists public.zet_groepsklassement(uuid, boolean, boolean);
---   -- en `zet_klassement_beginstand()` terugzetten op de vorm van 0329 (nieuwe groep: alleen aan als hij open is):
+--   -- en `zet_klassement_beginstand()` terugzetten op de vorm van 0333 (nieuwe groep: alleen aan als hij open is):
 --   --   new.klassement_aan := new.zichtbaarheid = 'open' and new.organization_id is null and not new.automatisch;
 --   -- en `zet_groepsontdekbaarheid()` terugzetten op de vorm van 0302 (zonder het uitzetten van het klassement).
 --   -- Rijen met 'leaderboard_changed' in `group_events` en 'leaderboard_enabled'/'leaderboard_disabled' in
---   -- `chat_messages` hoeven niet weg: beide typen staan sinds 0329 in de allowlists.
+--   -- `chat_messages` hoeven niet weg: beide typen staan sinds 0333 in de allowlists.
 --
 -- ---------------------------------------------------------------------------
 -- Wat dit doet
 -- ---------------------------------------------------------------------------
 --
--- PR 1 (0329) gaf de groep een schakelaar `klassement_aan` die voor geen client schrijfbaar is. Dit is de enige weg
+-- PR 1 (0333) gaf de groep een schakelaar `klassement_aan` die voor geen client schrijfbaar is. Dit is de enige weg
 -- ernaartoe voor een beheerder: `zet_groepsklassement(p_group_id, p_aan, p_bevestigd)`, met een bevestiging, een rij in
 -- `group_events` en een systeembericht, in beide richtingen (besluit 40 en 41 van het A57-document).
 --

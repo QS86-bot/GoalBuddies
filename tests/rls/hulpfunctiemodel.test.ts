@@ -164,7 +164,7 @@ const REGISTER: Readonly<Record<string, Rij>> = {
     archief: true,
     open: false,
     reden:
-      'De poort onder het klassement van A57 (0329, QS8-666): actief lid van een groep die niet ' +
+      'De poort onder het klassement van A57 (0333, QS8-666): actief lid van een groep die niet ' +
       'gearchiveerd is, ongeacht zichtbaarheid. Zelfde lichaam als is_group_member() op het ' +
       'moment van schrijven; een eigen naam zodat een latere versoepeling van die helper het ' +
       'klassement niet stil meeneemt.',

@@ -3,7 +3,7 @@
 **Datum:** 03-09-2026
 **Besluit:** A57
 **Vervangt de open rij uit:** A54 (`2026-08-31-ritme-klassement-en-kleur.md` §2)
-**Status:** besloten; **deels gebouwd** — PR 1 van QS8-666 (migratie 0329, 21-11-2026): de kolom
+**Status:** besloten; **deels gebouwd** — PR 1 van QS8-666 (migratie 0333, 21-11-2026): de kolom
 `groups.klassement_aan`, de poort `lid_van_levende_groep()` in `groep_klassement()` en besluit 45. De
 schakelaar voor een beheerder, de uitnodigingskaart en het scherm A57b volgen (PR 2 tot en met 4). De vier
 vragen uit §7 zijn op 04-11-2026 beantwoord (zie "Beantwoord op 04-11-2026" onder §7). Teksten en keuzes van
@@ -260,7 +260,7 @@ zonder organisatie; een teamgroep heeft nooit een klassement.
 
 **Besluit 46 (21-11-2026, Quinten, vraag 1 van de bouwronde): uit bij vindbaar.**
 `zet_groepsontdekbaarheid()` zet bij het vindbaar maken ook het klassement uit, met een
-`group_events`-rij en een systeembericht (alleen als het klassement aanstond; migratie 0330).
+`group_events`-rij en een systeembericht (alleen als het klassement aanstond; migratie 0336).
 Een beheerder kan het daarna apart weer aanzetten met `zet_groepsklassement()`. Onvindbaar
 maken laat het klassement zoals het is. Reden: een groep waar onbekenden bij kunnen komen
 (QS8-230) mag niet stilzwijgend een klassement houden dat voor vrienden besloten is.

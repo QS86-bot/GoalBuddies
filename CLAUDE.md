@@ -620,7 +620,7 @@ Voordat er één feature gebouwd wordt:
       rijen via `lid_van_open_groep()`. Redenering in
       `docs/decisions/2026-08-31-ritme-klassement-en-kleur.md` §2, rij 28 in 002.
 
-      ⚠️ **A57 (besluit Quinten 20-11-2026, QS8-666, migratie 0329) vervangt de
+      ⚠️ **A57 (besluit Quinten 20-11-2026, QS8-666, migratie 0333) vervangt de
       grens van A54: het klassement is niet meer van de zichtbaarheid maar van een
       schakelaar op de groep.** `groups.klassement_aan` is voor geen enkele client
       schrijfbaar; de poort van `groep_klassement()` is `lid_van_levende_groep()`
@@ -633,7 +633,7 @@ Voordat er één feature gebouwd wordt:
       hebben nooit een klassement** (CHECK's `groups_team_geen_klassement` en
       `groups_automatisch_geen_klassement`). ⚠️ `points_ledger` bewaart de
       `group_id` altijd, dus aanzetten maakt ook de al verdiende punten van die
-      groep zichtbaar: dat staat in de bevestiging van `zet_groepsklassement()` (0330, PR 2: een beheerder, met
+      groep zichtbaar: dat staat in de bevestiging van `zet_groepsklassement()` (0336, PR 2: een beheerder, met
       bevestiging, een `group_events`-rij en een bericht; geen wachttijd; nooit voor een teamgroep, een
       automatisch gevormde groep of een gearchiveerde groep). Een nieuwe groep zonder organisatie begint met het
       klassement aan, ook een beschermde (besluit 42/43). Gebouwd in vier PR's; PR 1 en 2 gaan samen uit.

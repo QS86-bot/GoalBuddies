@@ -3,7 +3,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { adminDb, createTestUser, registreerGroep, removeTestUsers, rlsTestsConfigured, type TestUser } from './harness';
 
 /**
- * Een beheerder zet het klassement aan of uit — QS8-666 (A57), migratie 0330, PR 2.
+ * Een beheerder zet het klassement aan of uit — QS8-666 (A57), migratie 0336, PR 2.
  *
  * ⚠️ **De belofte is dat dit de enige weg is en dat hij niets stilzwijgend doet:** een beheerder, een bevestiging, een
  *    rij in `group_events` en een bericht, in beide richtingen. Geen lid, geen niet-bevestigde aanroep, geen teamgroep,
@@ -55,7 +55,7 @@ async function sporen(groupId: string): Promise<{ events: number; berichten: num
   return { events: (e.data ?? []).length, berichten: (m.data ?? []).length };
 }
 
-describe.runIf(rlsTestsConfigured)('een beheerder zet het klassement aan of uit (0330)', () => {
+describe.runIf(rlsTestsConfigured)('een beheerder zet het klassement aan of uit (0336)', () => {
   let anna: TestUser; // beheerder
   let bram: TestUser; // lid
   let cor: TestUser; // buitenstaander

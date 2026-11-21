@@ -255,7 +255,7 @@ export const CENSUS = {
     //    andere kolommen wél) en `guard_group_update()` pint hem daarachter.
     //    Rij 42 in `docs/decisions/002-domeinregel7-oppervlakken.md`.
     //
-    // ⚠️ `klassement_aan` erbij op 21-11-2026 (QS8-666, 0329, A57). Een groepsgenoot mag lezen óf
+    // ⚠️ `klassement_aan` erbij op 21-11-2026 (QS8-666, 0333, A57). Een groepsgenoot mag lezen óf
     //    het klassement aanstaat; dat is informatie over de groep en niet over een lid, en het
     //    klassement zelf komt uit `groep_klassement()`. Geen grant om te schrijven (de kolom is
     //    voor geen client schrijfbaar), `pin_groepsklassement()` houdt hem vast, en twee CHECK's

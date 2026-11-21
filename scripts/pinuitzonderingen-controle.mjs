@@ -138,7 +138,7 @@ export const REGISTER = new Map([
   ],
   [
     'zet_groepsklassement',
-    'Zet alleen `klassement_aan` (0330, QS8-666, A57) en raakt geen van de gepinde kolommen aan. Actieve beheerder, ' +
+    'Zet alleen `klassement_aan` (0336, QS8-666, A57) en raakt geen van de gepinde kolommen aan. Actieve beheerder, ' +
       'bevestiging, een rij in `group_events` en een systeembericht; bewaakt door `tests/rls/klassement-zet.test.ts`.',
   ],
   [

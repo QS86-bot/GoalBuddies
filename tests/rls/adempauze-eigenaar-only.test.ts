@@ -39,11 +39,11 @@ import { psql, stackBeschikbaarOfFaal } from './psql-stack';
  *    staat er om te bewijzen dat "open" niets opent, en 8 weken terug is de
  *    pauze achteraf waarvan QS8-227 de aankondiging als rem had.
  *
- * ⚠️ **Wat dit bestand níet bewaakt:** `ketting_stand()` toont nog steeds hoeveel
- *    leden een pauze hebben (B1 in
- *    `docs/decisions/2026-11-19-de-adempauze-is-van-jou-alleen.md`). Dat is een
- *    benoemd restant en geen verzuim; de functie staat daarom in het register
- *    hieronder met die reden, en niet in een toets die het tegendeel beweert.
+ * ⚠️ **`ketting_stand()` stond hier tot 0329 als benoemd restant (B1) en staat er
+ *    niet meer:** sinds QS8-769 leest hij `breathers` niet meer en telt een lid in
+ *    een pauze mee. Dat een pauze er niet uit af te leiden is, staat in
+ *    `tests/rls/ketting-pauze-meetelt.test.ts`; het register hieronder ziet alleen
+ *    wie de tabel leest.
  *
  * IJKING: zie de PR-tekst van deze wijziging. De grendel die geijkt wordt is
  * de policy; zet je de groepstak van 0122 terug, dan vallen de groepsgenoot-
@@ -62,10 +62,10 @@ const TEST_TIMEOUT = 30_000;
 const REGISTER: Readonly<Record<string, string>> = {
   plan_adempauze:
     'SECURITY DEFINER; leest eigen rijen (`user_id = v_uid`) voor de overlapcontrole en schrijft de rij.',
+  sluit_verstreken_weken_af:
+    'SECURITY DEFINER, alleen service_role (0335, QS8-687); leest `breathers` van de eigenaar die hij afsluit, om een verstreken week vrij te stellen in plaats van gemist te boeken, en geeft geen rij terug.',
   annuleer_adempauze:
     'SECURITY DEFINER; leest en verwijdert alleen de eigen rij (`user_id = v_uid`).',
-  ketting_stand:
-    'SECURITY DEFINER; telt pauzerende leden voor De Ketting en geeft geen rij terug. Benoemd restant B1: het aantal blijft zichtbaar (zie het beslisdocument).',
 };
 
 interface Wereld {
