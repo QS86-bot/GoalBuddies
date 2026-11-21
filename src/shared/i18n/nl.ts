@@ -1066,8 +1066,6 @@ export const nl = {
   'profiel.herinnering_geen_meldingen': 'Zet meldingen hierboven aan, anders wordt er niets bezorgd.',
   'profiel.viering_titel': 'Feestelijke momenten',
   'profiel.viering_uitleg': 'Een korte felicitatie als een buddy je week bevestigt, je een mijlpaal haalt of je doel af is. Verder blijft de app rustig.',
-  'profiel.viering_aan_label': 'Feestelijke momenten aan',
-  'profiel.viering_uit_label': 'Feestelijke momenten uit',
   // ⚠️ De vier soorten die je los kunt uitzetten (QS8-92). `nudge` staat hier
   //    niet bij: die schakelaar is de herinneringkaart hierboven, en dat zegt
   //    `meldingsoort.uitleg` met zoveel woorden — zonder die zin lijkt de lijst
