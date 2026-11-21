@@ -1,4 +1,4 @@
-# Een adempauze achteraf dekt hoogstens de laatst gesloten week (QS8-770, migratie 0328)
+# Een adempauze achteraf dekt hoogstens de laatst gesloten week (QS8-770, migratie 0330)
 
 ## Het besluit
 
@@ -36,7 +36,7 @@ missen is niet gratis.
 * Dat `week_start_day` in de database dezelfde nummering gebruikt als `Weekday` in `shared/time`
   (gemeten voor 1 en 4: ze vallen samen).
 * Bestaande pauzes die verder terug liggen blijven staan; de rem kijkt alleen naar een nieuwe aanroep.
-* Productie draait 0328 nog niet.
+* Productie draait 0330 nog niet.
 
 ## Wat de security-review vond (open, besluit voor Quinten)
 
@@ -45,7 +45,7 @@ missen is niet gratis.
   `tz` naar een westelijke zone zet, krijgt hoogstens één week extra: de week van twee weken terug is dan nog
   de "laatst gesloten". 📏 Aangetoond door de reviewer op de lokale database (Amsterdam: `te_ver_terug`;
   na `tz = America/New_York`: `ok`, `hersteld 1`). Begrensd tot één week en ongeveer 26 uur, één minpunt per
-  weekdoel; vóór 0328 was er geen grens. De week-start wisselen levert niets op (`zet_week_startdag()` eist
+  weekdoel; vóór 0330 was er geen grens. De week-start wisselen levert niets op (`zet_week_startdag()` eist
   dat beide cycli vandaag bevatten).
 * **Voorlopig aanvaard als risico (optie c)**, tot Quinten kiest: (a) de grens meten op de vroegste
   kalender (UTC+14), strenger maar een lid in Honolulu kan de laatst gesloten week een deel van de dag

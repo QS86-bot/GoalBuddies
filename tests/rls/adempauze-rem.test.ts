@@ -5,7 +5,7 @@ import { addDays, userCycle, now, type IsoDate, type Weekday } from '../../src/s
 import { psql, stackBeschikbaarOfFaal } from './psql-stack';
 
 /**
- * Een adempauze achteraf dekt hoogstens de laatst gesloten week — QS8-770, migratie 0328.
+ * Een adempauze achteraf dekt hoogstens de laatst gesloten week — QS8-770, migratie 0330.
  *
  * ⚠️ **De belofte is een eigenschap van het geheel:** een gemiste week die verder terug ligt dan
  *    de laatst gesloten week kan niet met een pauze vrijgesteld worden, ook niet door
@@ -57,7 +57,7 @@ function poging(weekStartDay: number, start: IsoDate): string {
   );
 }
 
-describe.skipIf(!beschikbaar)('een pauze achteraf dekt hoogstens de laatst gesloten week (0328)', () => {
+describe.skipIf(!beschikbaar)('een pauze achteraf dekt hoogstens de laatst gesloten week (0330)', () => {
   it.each([1, 4])('week-start %i: de grens ligt waar currentUserCycle hem legt', (weekStartDay) => {
     const lopend = userCycle({ weekStartDay: weekStartDay as Weekday, tz: TZ }, now()).startDate;
 

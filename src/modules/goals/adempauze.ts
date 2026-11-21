@@ -123,7 +123,7 @@ function planMelding(reden: string | undefined): string {
     //    weigering die je zelf kunt oplossen door een andere datum te kiezen.
     case 'buiten_venster':
       return t('adempauze.buiten_venster');
-    // ⚠️ Sinds 0328 (QS8-770): een pauze achteraf dekt hoogstens de laatst gesloten week.
+    // ⚠️ Sinds 0330 (QS8-770): een pauze achteraf dekt hoogstens de laatst gesloten week.
     case 'te_ver_terug':
       return t('adempauze.te_ver_terug');
     case 'omgekeerde_periode':

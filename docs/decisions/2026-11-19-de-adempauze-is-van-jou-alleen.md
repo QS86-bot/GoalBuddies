@@ -70,7 +70,7 @@ te weten kan komen is onwaar zolang deze functie het getal geeft. Dat had in de 
 
 ### B2. De rem op een pauze met terugwerkende kracht valt weg
 
-⚠️ **Teruggebracht 20-11-2026 door migratie 0328 (QS8-770, besluit Quinten, vorm A):** een pauze achteraf dekt hoogstens de laatst gesloten week. Zie `2026-11-20-een-adempauze-achteraf-dekt-hoogstens-de-laatst-gesloten-week.md`. De tekst hieronder is bewaard als de reden.
+⚠️ **Teruggebracht 20-11-2026 door migratie 0330 (QS8-770, besluit Quinten, vorm A):** een pauze achteraf dekt hoogstens de laatst gesloten week. Zie `2026-11-20-een-adempauze-achteraf-dekt-hoogstens-de-laatst-gesloten-week.md`. De tekst hieronder is bewaard als de reden.
 
 `2026-09-06-de-adempauze-wordt-vrij.md` §3 noemde de aankondiging aan de groep als de énige rem die
 overbleef nadat de lengtegrens, `niet_vooraf` en de drie andere remmen waren opgegeven. Met dit

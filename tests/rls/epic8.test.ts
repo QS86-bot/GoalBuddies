@@ -1639,7 +1639,7 @@ describe.skipIf(!rlsTestsConfigured)('EPIC 8 — De Ketting', () => {
           ).error,
         ).toBeNull();
 
-        // ⚠️ De laatst gesloten week, want verder terug weigert 0328 (QS8-770).
+        // ⚠️ De laatst gesloten week, want verder terug weigert 0330 (QS8-770).
         const start = cyclusOverWeken(-1);
         const eind = cyclusOverWeken(-1);
 

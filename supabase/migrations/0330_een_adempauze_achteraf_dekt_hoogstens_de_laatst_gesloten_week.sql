@@ -1,4 +1,4 @@
--- 0328_een_adempauze_achteraf_dekt_hoogstens_de_laatst_gesloten_week.sql — QS8-770, nazorg op 0216 en 0307
+-- 0330_een_adempauze_achteraf_dekt_hoogstens_de_laatst_gesloten_week.sql — QS8-770, nazorg op 0216 en 0307
 --
 -- ROLLBACK-PAD:
 --   Zet `plan_adempauze()` terug op de vorm van 0216: haal het blok `te_ver_terug` en de
