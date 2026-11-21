@@ -43,7 +43,7 @@ import {
   sleutelUit,
   standaardDsnUit,
 } from './dsn-controle.mjs';
-import { bezwaren as prerenderBezwaren, leesPaginas } from './prerender-controle.mjs';
+import { bezwaren as prerenderBezwaren, kanarieFaalt, leesPaginas, zichtbareTekst } from './prerender-controle.mjs';
 import { beoordeelAntwoorden, VERPLICHTE_PADEN } from './pwa-controle.mjs';
 
 config({ path: '.env', quiet: true });
@@ -669,8 +669,20 @@ export function achtergeblevenMaps(bestanden) {
  * draagt (QS8-742): die tekst hangt van de taal van de bouwmachine af en is de
  * oorzaak van React #418. Draait na de geheimenscan en vóór het uploaden.
  */
-export function eisEenNeutralePrerender(map = DIST) {
-  const afwijkend = prerenderBezwaren(leesPaginas(map));
+export function eisEenNeutralePrerender(map = DIST, lees = zichtbareTekst) {
+  // ⚠️ QS8-767: de kanarie eerst. Een `zichtbareTekst()` die altijd `''` geeft,
+  //    meldt hieronder "geen tekst" bij elke pagina: het enige pad dat in
+  //    productie meet zou dan groen zijn. Dat deze stap de kanarie draait wordt
+  //    alleen in `tests/scripts/deploy-prerender.test.ts` bewaakt; de leeftijds-
+  //    check (`bouwIsOuderDanBron`) is hier niet nodig, want de deploy bouwt zelf.
+  if (kanarieFaalt(lees)) {
+    fail(
+      'De zoekfunctie van de prerender-controle vindt geen tekst op een pagina waar hij die móét vinden. Er is niets geüpload.',
+      'Elke uitslag zou nu "geen zichtbare tekst" zijn. Zie `zichtbareTekst()` in scripts/prerender-controle.mjs.',
+    );
+  }
+
+  const afwijkend = prerenderBezwaren(leesPaginas(map), lees);
 
   if (afwijkend.length === 0) {
     console.log("    geen zichtbare tekst in de body van de geëxporteerde pagina's.");
