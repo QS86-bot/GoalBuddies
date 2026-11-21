@@ -553,7 +553,11 @@ describe.skipIf(!rlsTestsConfigured)('EPIC 13 — open of beschermde groepen', (
         const spoor = await adminDb()
           .from('group_events')
           .select('actor_id, event_type, old_value, new_value')
-          .eq('group_id', f.groepSchakel.id);
+          .eq('group_id', f.groepSchakel.id)
+          // ⚠️ Sinds 0333 (QS8-666, besluit 45) komt er bij het openzetten ook een
+          //    `leaderboard_changed`-rij en een bericht `leaderboard_enabled`; deze toets gaat
+          //    over de zichtbaarheidswisseling zelf. Die twee staan in `klassement-schakelaar.test.ts`.
+          .eq('event_type', 'visibility_changed');
 
         expect(spoor.error).toBeNull();
         expect(spoor.data ?? []).toHaveLength(1);

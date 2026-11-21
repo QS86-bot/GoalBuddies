@@ -6,6 +6,7 @@ import { t, type Sleutel } from '../i18n';
 import { afstand, radius, useTheme } from '../theme';
 
 import { focusRing } from './a11y';
+import { useMeldingWacht } from './meldingstip';
 import {
   actiefTabblad,
   kopSleutel,
@@ -82,6 +83,7 @@ export function Taakbalk() {
   const pad = usePathname();
   const vorm = useTaakbalkVorm();
   const [open, setOpen] = useState(MENU_BEGINSTAND_OPEN);
+  const meldingWacht = useMeldingWacht();
 
   if (!toontTaakbalk(pad)) return null;
   const actief = actiefTabblad(pad);
@@ -104,7 +106,12 @@ export function Taakbalk() {
       ]}
     >
       {menuKlaptIn(vorm) ? (
-        <MenuKop actief={actief} open={open} onWissel={() => setOpen((o) => !o)} />
+        <MenuKop
+          actief={actief}
+          open={open}
+          stip={meldingWacht}
+          onWissel={() => setOpen((o) => !o)}
+        />
       ) : null}
       {toonMenuknoppen(vorm, open)
         ? TABBLADEN.map((tab) => (
@@ -114,6 +121,7 @@ export function Taakbalk() {
               sleutel={tab.sleutel}
               actief={tab.pad === actief}
               zijkant={zijkant}
+              stip={meldingWacht && tab.sleutel === 'tab.profiel'}
             />
           ))
         : null}
@@ -124,6 +132,8 @@ export function Taakbalk() {
 interface MenuKopProps {
   readonly actief: string | null;
   readonly open: boolean;
+  /** Er wacht een melding (QS8-777). Dicht is het menu de enige plek waar dat te zien is, dus de stip staat ook hier. */
+  readonly stip: boolean;
   readonly onWissel: () => void;
 }
 
@@ -139,7 +149,7 @@ interface MenuKopProps {
  *    De chevron is twee randen van een gedraaid vierkant, dus geen teken en geen
  *    emoji, en `importantForAccessibility="no"` omdat de stand al in de knop staat.
  */
-function MenuKop({ actief, open, onWissel }: MenuKopProps) {
+function MenuKop({ actief, open, stip, onWissel }: MenuKopProps) {
   const theme = useTheme();
   const [heeftFocus, setFocus] = useState(false);
   const c = theme.colors;
@@ -148,7 +158,7 @@ function MenuKop({ actief, open, onWissel }: MenuKopProps) {
   return (
     <Pressable
       accessibilityRole="button"
-      accessibilityLabel={`${t('tab.navigatie')}: ${naam}`}
+      accessibilityLabel={`${t('tab.navigatie')}: ${naam}${stip ? `, ${t('tab.melding_wacht')}` : ''}`}
       accessibilityState={{ expanded: open }}
       aria-expanded={open}
       onPress={onWissel}
@@ -161,7 +171,16 @@ function MenuKop({ actief, open, onWissel }: MenuKopProps) {
         focusRing(theme, heeftFocus),
       ])}
     >
-      <Text style={[styles.label, { color: c.accent, fontWeight: '700' }]}>{naam}</Text>
+      <View style={styles.inhoud}>
+        <Text style={[styles.label, { color: c.accent, fontWeight: '700' }]}>{naam}</Text>
+        {stip && !open ? (
+          <View
+            importantForAccessibility="no"
+            aria-hidden
+            style={[styles.stip, { backgroundColor: c.accent }]}
+          />
+        ) : null}
+      </View>
       <View
         importantForAccessibility="no"
         aria-hidden
@@ -179,6 +198,8 @@ interface TabProps {
   readonly sleutel: Sleutel;
   readonly actief: boolean;
   readonly zijkant: boolean;
+  /** Er wacht iets op dit tabblad (QS8-777): een stip naast het label en de zin in het label voor een schermlezer. */
+  readonly stip: boolean;
 }
 
 /**
@@ -196,7 +217,7 @@ interface TabProps {
  * ⚠️ Alleen themakleuren, en geen `grey` voor een inactief label: dat is voor
  *    bijschriften, en een label dat je moet raken hoort leesbaar te zijn.
  */
-function Tab({ pad, sleutel, actief, zijkant }: TabProps) {
+function Tab({ pad, sleutel, actief, zijkant, stip }: TabProps) {
   const theme = useTheme();
   const [heeftFocus, setFocus] = useState(false);
   const [ingedrukt, setIngedrukt] = useState(false);
@@ -206,6 +227,7 @@ function Tab({ pad, sleutel, actief, zijkant }: TabProps) {
     <Link href={pad} replace asChild>
       <Pressable
         accessibilityRole="link"
+        accessibilityLabel={stip ? `${t(sleutel)}, ${t('tab.melding_wacht')}` : undefined}
         accessibilityState={{ selected: actief }}
         aria-current={actief ? 'page' : undefined}
         onFocus={() => setFocus(true)}
@@ -230,14 +252,23 @@ function Tab({ pad, sleutel, actief, zijkant }: TabProps) {
           focusRing(theme, heeftFocus),
         ])}
       >
-        <Text
-          style={[
-            styles.label,
-            { color: actief ? c.accent : c.text, fontWeight: actief ? '700' : '600' },
-          ]}
-        >
-          {t(sleutel)}
-        </Text>
+        <View style={styles.inhoud}>
+          <Text
+            style={[
+              styles.label,
+              { color: actief ? c.accent : c.text, fontWeight: actief ? '700' : '600' },
+            ]}
+          >
+            {t(sleutel)}
+          </Text>
+          {stip ? (
+            <View
+              importantForAccessibility="no"
+              aria-hidden
+              style={[styles.stip, { backgroundColor: c.accent }]}
+            />
+          ) : null}
+        </View>
       </Pressable>
     </Link>
   );
@@ -269,7 +300,9 @@ const styles = StyleSheet.create({
   // Smal: vijf gelijke knoppen die een regel delen en omslaan als het niet past.
   knopRij: { alignItems: 'flex-start' },
   knopZijkant: { alignItems: 'flex-start' },
+  inhoud: { flexDirection: 'row', alignItems: 'center' },
   label: { fontSize: 15 },
+  stip: { width: 8, height: 8, borderRadius: 4, marginLeft: afstand.s },
   // De ingeklapte kop: label links, chevron rechts, dezelfde maat als een knop.
   kop: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   chevron: {

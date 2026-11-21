@@ -57,3 +57,7 @@ export {
   type Belofteaanbod,
   type Belofteperiode,
 } from './weekbelofte';
+
+export { fetchStrafKeuzes, GEEN_STRAFKEUZES } from './strafkeuzes';
+
+export { strafGroepen, type MijnGroep, type StrafGroep, type StrafKeuzes } from './strafgroepen';

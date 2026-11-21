@@ -39,6 +39,9 @@ export const en: Record<Sleutel, string> = {
   'systeembericht.huddle_day_changed':
     '{naam} moved the huddle day. The week that is running moved along with it; anything already closed stays closed.',
   'systeembericht.team_goal_created': 'There is a new team goal. Take your share if you want to join in.',
+  // ⚠️ Migration 0333 (QS8-666, A57). About the group: no {naam}, no points.
+  'systeembericht.leaderboard_enabled': 'The leaderboard is on in this group.',
+  'systeembericht.leaderboard_disabled': 'The leaderboard is off in this group.',
   'systeembericht.team_goal_completed': 'The team completed a team goal.',
 
   'systeembericht.prestatie_gedeeld': '{naam} shares an achievement: {prestatie}.',
@@ -295,8 +298,8 @@ export const en: Record<Sleutel, string> = {
   'delen.mislukt': 'Sharing does not work here. Select the link above',
   'delen.uitnodiging_onderwerp': '{naam} invites you to GoalBuddies',
   'delen.uitnodiging_onderwerp_zonder_naam': 'You are invited to GoalBuddies',
-  'delen.uitnodiging_tekst': '{naam} invites you to the group {groep} on GoalBuddies, an app for working on your goals together with others. Open the link to see the group and join:\n{link}',
-  'delen.uitnodiging_tekst_zonder_naam': 'You are invited to the group {groep} on GoalBuddies, an app for working on your goals together with others. Open the link to see the group and join:\n{link}',
+  'delen.uitnodiging_tekst': '{naam} invites you to the group “{groep}” on GoalBuddies, an app for working on your goals together with others. Open the link to see the group and join:\n{link}',
+  'delen.uitnodiging_tekst_zonder_naam': 'You are invited to the group “{groep}” on GoalBuddies, an app for working on your goals together with others. Open the link to see the group and join:\n{link}',
   'linkvoorbeeld.titel': 'GoalBuddies',
   'linkvoorbeeld.beschrijving': 'Work on your goals together with others. GoalBuddies helps you keep going, with a group that cheers you on.',
 
@@ -379,6 +382,12 @@ export const en: Record<Sleutel, string> = {
   'aanmelden.ben_nieuw': 'I am new here',
   'aanmelden.bestaand_account': 'Or use an existing account',
   'aanmelden.alleen_browser': 'Signing in with Apple or Google currently only works in the browser.',
+  // Second entry: work — QS8-663
+  'aanmelden.positionering': 'Reach goals together, without anyone feeling judged. For small teams of up to 25 people and for groups of friends.',
+  'aanmelden.werk_kop': 'I am here through work',
+  'aanmelden.werk_tekst': 'Got an invitation link or a code from your employer? Create an account first; then you join your team. Your team sees the team bar and your own share, never how far anyone else is.',
+  'aanmelden.werk_knop': 'Remember code',
+  'aanmelden.werk_onthouden': 'Your code is remembered. Create or pick your account above; then you can join with one tap.',
   'beoordeling.titel': 'Review',
   'beoordeling.leeg_titel': 'Nothing to review',
   'beoordeling.leeg_tekst': 'As soon as a buddy finishes a week, it shows up here. One line back is enough. That is the point.',
@@ -458,7 +467,10 @@ export const en: Record<Sleutel, string> = {
   'onboarding.kom_helpen': 'I came to help',
   'onboarding.klaar': 'Done',
   'groepdetail.zichtbaarheid': 'This group’s visibility: {stand}',
-  'groepdetail.titel': 'Group',
+  'groepdetail.titel': 'Your group',
+  'groepdetail.titel_naam': 'Your group: {naam}',
+  'groepdetail.titel_zonder_groep': 'Group',
+  'groepdetail.inhoud': 'On this page you will find, among others: {onderdelen}',
   'groepdetail.eyebrow': 'HUDDLE DAY {dag}',
   'groepdetail.eyebrow_vandaag': 'TODAY IS THE HUDDLE DAY',
   'groepdetail.geen_lid_titel': 'This group is not here, or not for you',
@@ -555,6 +567,7 @@ export const en: Record<Sleutel, string> = {
   'tab.doelen': 'Goals',
   'tab.groep': 'Group',
   'tab.profiel': 'Profile',
+  'tab.melding_wacht': 'a report is waiting',
   'tab.navigatie': 'Main menu',
   'vangnet.kop': 'The app could not continue',
   'vangnet.tekst': 'Something went wrong while building this screen. Go back to the start screen. If it keeps failing, restart the app.',
@@ -1028,6 +1041,7 @@ export const en: Record<Sleutel, string> = {
   'groep.aanmaken_mislukt_kort': 'Your group could not be created. Please try again.',
   'groep.onbekend_lid': 'Unknown member',
   'validatie.groepsnaam_lang': 'At most 60 characters.',
+  'validatie.groepsnaam_link': 'A group name is not a web address. Leave out the link or domain.',
   'validatie.weekdag_kort': 'Choose a day of the week.',
   'validatie.uitnodigingscode': 'This invitation code is not right. Check the link.',
 
@@ -1242,6 +1256,8 @@ export const en: Record<Sleutel, string> = {
   'doel.te_oud':
     'This goal has been around too long to delete. Archive it; then your history ' +
     'stays and it disappears from your list.',
+  // QS8-772 (decision by Quinten, 21-11-2026).
+  'doel.is_aandeel': 'You cannot throw away a share in a team goal, only unlink it.',
   'doel.gedeeld_met_groep': 'This goal is linked to a group. Unlink it first, or archive it.',
   'doel.heeft_weekdoelen':
     'Weekly goals already hang off this goal. Archive it instead of deleting it.',
@@ -1605,6 +1621,23 @@ export const en: Record<Sleutel, string> = {
     'penalty and get a notification about it, unless they have turned that kind off.',
   'straf.verder': 'Continue',
   'straf.jouw_groep': 'your group',
+  // QS8-698, Quinten's decision of 20-11-2026: three fixed rules and one button, in the weekly-promise form.
+  'straf.team.kop': 'Read this before you confirm this penalty',
+  'straf.team.haal_niet_groep':
+    'If you miss your target date, your colleagues in {groep} will see this agreement with your name on it.',
+  'straf.team.haal_niet_persoon':
+    'If you miss your target date, {naam} can read this agreement with your name on it.',
+  'straf.team.gevolg': 'The consequence: {tekst}',
+  'straf.team.wie_groep':
+    'Your colleagues in {groep} see your name and this text. That includes colleagues who join the team later.',
+  'straf.team.wie_persoon': '{naam} sees your name and this text, and nobody else.',
+  'straf.team.wanneer':
+    'This only becomes visible once your target date has passed and your goal is still not done. Until then nobody sees this, not {wie} either.',
+  'straf.team.collegas': 'your colleagues',
+  'straf.team.niet_zien':
+    'Which goal it is is not in this agreement. So do not put that goal in your penalty text yourself.',
+  'straf.team.intrekken':
+    'You can withdraw it until your target date has passed. After that the agreement stays in place. No money is ever involved.',
 
   // QS8-761 — the weekly promise. See the comment in nl.ts.
   'belofte.knop': 'Make a weekly promise',
@@ -1862,13 +1895,13 @@ export const en: Record<Sleutel, string> = {
   'adempauze.uitleg':
     'Going on holiday, ill, or just a strange month? Then pause those weeks. They cost you no ' +
     'point and your streak stays where it is; it just does not grow. You pick how long, you may ' +
-    'have several side by side, and a week that is already over is allowed too.',
+    'have several side by side, and afterwards only the past week is allowed.',
   // ⚠️ QS8-768 (decision by Quinten, 20-11-2026): replaced, the old sentence was untrue
-  //    after 0307. The last sentence (the Ketting remainder) must go in the PR of QS8-769.
+  //    after 0307. The last sentence (the Ketting remainder) is gone since 0329 (QS8-769): the
+  //    Ketting counts a member on a pause.
   'adempauze.groep_ziet':
     'Your group does not see your breather. If you want to let them know, post a message ' +
-    'yourself. The Ketting does not count members on a pause; in a small group someone can ' +
-    'infer from that that somebody is pausing.',
+    'yourself.',
   'adempauze.week_van': 'Week of {datum}',
   'adempauze.tot_en_met': ' up to and including the week of {datum}',
   'adempauze.voorbij': 'Over',
@@ -1876,12 +1909,14 @@ export const en: Record<Sleutel, string> = {
   'adempauze.ingepland': 'Scheduled',
   'adempauze.annuleren': 'Cancel',
   'adempauze.vanaf': 'From',
-  'adempauze.vanaf_hint': 'As yyyy-mm-dd. Any date works, including one that is already past.',
+  'adempauze.vanaf_hint': 'As yyyy-mm-dd. Afterwards, only the past week works.',
   'adempauze.tot': 'Up to and including',
   'adempauze.tot_hint': 'Leaving this empty means one week.',
   'adempauze.wordt_een_week': 'This becomes the week of {van}.',
   'adempauze.wordt_meer_weken':
     'This becomes {weken} weeks: from {van} up to and including the week of {tot}.',
+  // ⚠️ QS8-770 (decision by Quinten, 20-11-2026): the brake on a breather set afterwards.
+  'adempauze.te_ver_terug': 'A breather set afterwards can only cover the past week.',
   'adempauze.terugwerkend':
     'These weeks are already over. Missed weeks inside them are excused after all and the ' +
     'minus point is reversed.',
@@ -1963,11 +1998,11 @@ export const en: Record<Sleutel, string> = {
 
   'bevestiging.groep_openzetten.titel': 'Open up this group?',
   'bevestiging.groep_openzetten.uitleg':
-    'From now on everyone in this group also sees each other’s missed and carried weeks, each other’s best streak ever, who took part in each week, a leaderboard of each other’s point totals in this group, and which hero last visited whom in the past week. That includes the hero who turns up after a missed week, and it covers the weeks already there too. So this is not only about you. Everyone gets a message in the group chat, so anyone who would rather not can unlink their goal. That works for everything tied to a goal; the hero list is tied to your membership, so it stays as long as you are in the group. You can switch back at any time, immediately.',
+    'From now on everyone in this group also sees each other’s missed and carried weeks, each other’s best streak ever, who took part in each week, a leaderboard of each other’s point totals in this group, and which hero last visited whom in the past week. That includes the hero who turns up after a missed week, and it covers the weeks already there too. The leaderboard turns on, if it was off. So this is not only about you. Everyone gets a message in the group chat, so anyone who would rather not can unlink their goal. That works for everything tied to a goal; the hero list is tied to your membership, so it stays as long as you are in the group. You can switch back at any time, immediately.',
   'bevestiging.groep_openzetten.knop': 'Yes, open it up',
   'bevestiging.groep_beschermen.titel': 'Protect this group again?',
   'bevestiging.groep_beschermen.uitleg':
-    'From now on the group only sees what works out. Missed weeks become private again, retroactively too, and the leaderboard and the hero list disappear. Everyone gets a message about it.',
+    'From now on the group only sees what works out. Closed: missed and carried weeks, the best streak, who took part in each week and the hero list, retroactively too. The leaderboard stays; an admin can switch it off separately. Everyone gets a message about it.',
   'bevestiging.groep_beschermen.knop': 'Yes, protect it',
   'bevestiging.groep_ontdekbaar_maken.titel': 'Make this group discoverable?',
   'bevestiging.groep_ontdekbaar_maken.uitleg':
@@ -2229,7 +2264,7 @@ export const en: Record<Sleutel, string> = {
   'ritme.te_veel_deze_dag': "You've ticked off too much today. Try again tomorrow.",
   'klassement.kop': 'The leaderboard',
   'klassement.uitleg':
-    'You have agreed to be open with each other, so this group\u2019s points are gathered here.',
+    'The points each member has earned in this group. A missed week costs no points here.',
   'klassement.punten_een': '1 point',
   'klassement.punten_meer': '{n} points',
   'klassement.rij_label': 'Place {positie}: {naam}, {punten}',

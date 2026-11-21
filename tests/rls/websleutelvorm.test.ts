@@ -4,7 +4,7 @@ import { adminDb, createTestUser, removeTestUsers, rlsTestsConfigured, type Test
 
 /**
  * Een web-abonnement wordt alleen aangenomen als het een bruikbare sleutel is —
- * QS8-696, migratie `0329_een_websleutel_heeft_een_vorm.sql` (nummer voorlopig).
+ * QS8-696, migratie `0334_een_websleutel_heeft_een_vorm.sql` (nummer voorlopig).
  *
  * ⚠️ **De naad:** een client die een kapot abonnement registreert, krijgt een
  *    weigering met een `reason`, en er komt geen rij bij. 📏 Tot deze migratie

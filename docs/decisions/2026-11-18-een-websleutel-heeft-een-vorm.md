@@ -1,6 +1,6 @@
 # Een websleutel heeft een vorm — en de curve rekent de database zelf
 
-**Datum:** 18-11-2026 · **Issue:** QS8-696 · **Migratie:** `0329_een_websleutel_heeft_een_vorm.sql` (nummer voorlopig; zie onder)
+**Datum:** 18-11-2026 · **Issue:** QS8-696 · **Migratie:** `0334_een_websleutel_heeft_een_vorm.sql` (nummer voorlopig; zie onder)
 
 ## Aanleiding
 
@@ -36,7 +36,7 @@ Dat zijn dezelfde regels als `abonnementFout()` in de client (QS8-690). Twee hul
 
 ## Het nummer
 
-Opnieuw gebouwd op `main` van 21-11-2026 (besluit Quinten 20-11-2026: toch bouwen, op een nieuwe tak; de oude tak is verouderd en dient alleen als bron, tag `archief/qs8-696-oude-tak`). Voorlopig nummer `0329`. Wie als tweede merget, hernummert (QS8-318) met `npm run migratie:hernummer`.
+Opnieuw gebouwd op `main` van 21-11-2026 (besluit Quinten 20-11-2026: toch bouwen, op een nieuwe tak; de oude tak is verouderd en dient alleen als bron, tag `archief/qs8-696-oude-tak`). Definitief nummer `0334` (voorlopig `0329`). Wie als tweede merget, hernummert (QS8-318) met `npm run migratie:hernummer`.
 
 ## Het pad terug
 

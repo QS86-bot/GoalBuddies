@@ -118,6 +118,9 @@ export const nl = {
    */
   'systeembericht.team_goal_created': 'Er is een nieuw teamdoel. Neem je aandeel als je mee wilt doen.',
   'systeembericht.team_goal_completed': 'Het team heeft een teamdoel afgerond.',
+  // ⚠️ Migratie 0333 (QS8-666, A57, teksten van Quinten 21-11-2026). Over de groep: geen {naam}, geen punten.
+  'systeembericht.leaderboard_enabled': 'Het klassement staat aan in deze groep.',
+  'systeembericht.leaderboard_disabled': 'Het klassement staat uit in deze groep.',
 
   /** Iemand die er niet meer is. Zie oppervlak 18 in beslisdocument 002. */
   'algemeen.oud_lid': 'Een oud-lid',
@@ -466,8 +469,8 @@ export const nl = {
   'delen.mislukt': 'Delen lukt hier niet. Selecteer de link hierboven',
   'delen.uitnodiging_onderwerp': '{naam} nodigt je uit voor GoalBuddies',
   'delen.uitnodiging_onderwerp_zonder_naam': 'Je bent uitgenodigd voor GoalBuddies',
-  'delen.uitnodiging_tekst': '{naam} nodigt je uit voor de groep {groep} op GoalBuddies, een app waarmee je samen met anderen aan je doelen werkt. Open de link om de groep te zien en mee te doen:\n{link}',
-  'delen.uitnodiging_tekst_zonder_naam': 'Je bent uitgenodigd voor de groep {groep} op GoalBuddies, een app waarmee je samen met anderen aan je doelen werkt. Open de link om de groep te zien en mee te doen:\n{link}',
+  'delen.uitnodiging_tekst': '{naam} nodigt je uit voor de groep “{groep}” op GoalBuddies, een app waarmee je samen met anderen aan je doelen werkt. Open de link om de groep te zien en mee te doen:\n{link}',
+  'delen.uitnodiging_tekst_zonder_naam': 'Je bent uitgenodigd voor de groep “{groep}” op GoalBuddies, een app waarmee je samen met anderen aan je doelen werkt. Open de link om de groep te zien en mee te doen:\n{link}',
   'linkvoorbeeld.titel': 'GoalBuddies',
   'linkvoorbeeld.beschrijving': 'Werk samen met anderen aan je doelen. GoalBuddies helpt je volhouden, met een groep die meekijkt en je aanmoedigt.',
 
@@ -558,6 +561,12 @@ export const nl = {
   'aanmelden.ben_nieuw': 'Ik ben nieuw hier',
   'aanmelden.bestaand_account': 'Of gebruik een bestaand account',
   'aanmelden.alleen_browser': 'Inloggen met Apple of Google werkt op dit moment alleen in de browser.',
+  // Tweede ingang: zakelijk — QS8-663
+  'aanmelden.positionering': 'Samen doelen halen, zonder dat iemand zich beoordeeld voelt. Voor kleine teams tot 25 mensen en voor vriendengroepen.',
+  'aanmelden.werk_kop': 'Ik kom via mijn werk',
+  'aanmelden.werk_tekst': 'Heb je een uitnodigingslink of een code van je werkgever? Maak eerst een account; dan kom je bij je team. Wat je team ziet is de teambalk en jouw eigen aandeel, nooit hoe ver een ander is.',
+  'aanmelden.werk_knop': 'Code onthouden',
+  'aanmelden.werk_onthouden': 'Je code is onthouden. Maak of kies hierboven je account; daarna kun je met één druk op de knop lid worden.',
   'beoordeling.titel': 'Beoordelen',
   'beoordeling.leeg_titel': 'Niets te beoordelen',
   'beoordeling.leeg_tekst': 'Zodra een buddy een week afrondt, staat hij hier. Eén zin terug is genoeg. Daar gaat het om.',
@@ -644,7 +653,10 @@ export const nl = {
   'onboarding.kom_helpen': 'Ik kom helpen',
   'onboarding.klaar': 'Klaar',
   'groepdetail.zichtbaarheid': 'Zichtbaarheid van deze groep: {stand}',
-  'groepdetail.titel': 'Groep',
+  'groepdetail.titel': 'Jouw groep',
+  'groepdetail.titel_naam': 'Jouw groep: {naam}',
+  'groepdetail.titel_zonder_groep': 'Groep',
+  'groepdetail.inhoud': 'Op deze pagina vind je onder meer: {onderdelen}',
   'groepdetail.eyebrow': 'HUDDLEDAG {dag}',
   'groepdetail.eyebrow_vandaag': 'VANDAAG IS DE HUDDLEDAG',
   'groepdetail.geen_lid_titel': 'Deze groep is er niet, of niet voor jou',
@@ -812,11 +824,11 @@ export const nl = {
 
   'bevestiging.groep_openzetten.titel': 'Deze groep openzetten?',
   'bevestiging.groep_openzetten.uitleg':
-    'Vanaf nu ziet iedereen in deze groep ook elkaars gemiste en doorgeschoven weken, elkaars beste reeks ooit, van elke week wie er meedeed, een klassement met elkaars puntentotaal in deze groep, en welke held er de afgelopen week bij wie langs is geweest. Dat is ook de held die na een gemiste week komt, en het geldt ook voor de weken die er al staan. Dit gaat dus niet alleen over jou. Iedereen krijgt een bericht in de groepschat, zodat wie dat niet wil zijn doel kan ontkoppelen. Dat werkt voor alles wat aan een doel hangt; de heldenlijst hangt aan je lidmaatschap en blijft dus staan zolang je in de groep zit. Terugzetten kan altijd en meteen.',
+    'Vanaf nu ziet iedereen in deze groep ook elkaars gemiste en doorgeschoven weken, elkaars beste reeks ooit, van elke week wie er meedeed, een klassement met elkaars puntentotaal in deze groep, en welke held er de afgelopen week bij wie langs is geweest. Dat is ook de held die na een gemiste week komt, en het geldt ook voor de weken die er al staan. Het klassement gaat aan, als het nog uit stond. Dit gaat dus niet alleen over jou. Iedereen krijgt een bericht in de groepschat, zodat wie dat niet wil zijn doel kan ontkoppelen. Dat werkt voor alles wat aan een doel hangt; de heldenlijst hangt aan je lidmaatschap en blijft dus staan zolang je in de groep zit. Terugzetten kan altijd en meteen.',
   'bevestiging.groep_openzetten.knop': 'Ja, zet hem open',
   'bevestiging.groep_beschermen.titel': 'Deze groep weer beschermen?',
   'bevestiging.groep_beschermen.uitleg':
-    'De groep ziet vanaf nu alleen nog wat er lukt. Gemiste weken worden weer privé, ook met terugwerkende kracht, en het klassement en de heldenlijst verdwijnen. Iedereen krijgt er een bericht van.',
+    'De groep ziet vanaf nu alleen nog wat er lukt. Dicht gaat: gemiste en doorgeschoven weken, de beste reeks, wie welke week meedeed en de heldenlijst, ook met terugwerkende kracht. Het klassement blijft staan; een beheerder kan het apart uitzetten. Iedereen krijgt er een bericht van.',
   'bevestiging.groep_beschermen.knop': 'Ja, bescherm hem',
   'bevestiging.groep_ontdekbaar_maken.titel': 'Deze groep vindbaar maken?',
   'bevestiging.groep_ontdekbaar_maken.uitleg':
@@ -879,6 +891,7 @@ export const nl = {
   'tab.doelen': 'Doelen',
   'tab.groep': 'Groep',
   'tab.profiel': 'Profiel',
+  'tab.melding_wacht': 'er wacht een melding',
   'tab.navigatie': 'Hoofdmenu',
   'vangnet.kop': 'De app kon niet verder',
   'vangnet.tekst': 'Er ging iets mis bij het opbouwen van dit scherm. Ga terug naar het beginscherm. Blijft het misgaan, start de app dan opnieuw.',
@@ -1387,6 +1400,7 @@ export const nl = {
   'groep.aanmaken_mislukt_kort': 'Je groep kon niet worden aangemaakt. Probeer het opnieuw.',
   'groep.onbekend_lid': 'Onbekend lid',
   'validatie.groepsnaam_lang': 'Maximaal 60 tekens.',
+  'validatie.groepsnaam_link': 'Een groepsnaam is geen webadres. Laat de link of het domein weg.',
   'validatie.weekdag_kort': 'Kies een dag van de week.',
   'validatie.uitnodigingscode': 'Deze uitnodigingscode klopt niet. Controleer de link.',
 
@@ -1667,6 +1681,8 @@ export const nl = {
   'doel.te_oud':
     'Dit doel staat er te lang om nog te verwijderen. Archiveer het; dan blijft je ' +
     'geschiedenis staan en verdwijnt het uit je lijst.',
+  // QS8-772 (besluit Quinten, 21-11-2026): de tekst is van hem.
+  'doel.is_aandeel': 'Een aandeel in een teamdoel kun je niet weggooien, alleen loskoppelen.',
   'doel.gedeeld_met_groep': 'Dit doel is aan een groep gekoppeld. Ontkoppel het eerst, of archiveer het.',
   'doel.heeft_weekdoelen':
     'Er hangen al weekdoelen aan dit doel. Archiveer het in plaats van het te verwijderen.',
@@ -2103,6 +2119,23 @@ export const nl = {
     'en krijgt hij er een melding van, tenzij hij dat soort meldingen heeft uitgezet.',
   'straf.verder': 'Verder',
   'straf.jouw_groep': 'je groep',
+  // QS8-698, besluit van Quinten 20-11-2026: drie vaste regels en één knop, in de vorm van de weekbelofte.
+  'straf.team.kop': 'Lees dit voordat je deze straf bevestigt',
+  'straf.team.haal_niet_groep':
+    'Haal je je streefdatum niet, dan zien je collega\u2019s in {groep} deze afspraak met je naam erbij.',
+  'straf.team.haal_niet_persoon':
+    'Haal je je streefdatum niet, dan kan {naam} deze afspraak met je naam erbij lezen.',
+  'straf.team.gevolg': 'Het gevolg: {tekst}',
+  'straf.team.wie_groep':
+    'Je collega\u2019s in {groep} zien je naam en deze tekst. Dat zijn ook collega\u2019s die later bij het team komen.',
+  'straf.team.wie_persoon': '{naam} ziet je naam en deze tekst, en verder niemand.',
+  'straf.team.wanneer':
+    'Dit wordt pas zichtbaar als je streefdatum voorbij is en je doel dan niet af is. Tot dat moment ziet niemand dit, ook {wie} niet.',
+  'straf.team.collegas': 'je collega\u2019s',
+  'straf.team.niet_zien':
+    'Welk doel het is, staat niet in deze afspraak. Zet dat doel daarom ook niet zelf in je straftekst.',
+  'straf.team.intrekken':
+    'Tot je streefdatum voorbij is, kun je intrekken. Daarna blijft de afspraak staan. Er gaat nooit geld mee gemoeid.',
 
   // ⚠️ **De weekbelofte — QS8-761.** De bevestigstap noemt drie dingen (§4 van
   //    de poort QS8-744): het gevolg, de periode, en wie het ziet en wanneer. Geen
@@ -2406,8 +2439,8 @@ export const nl = {
   'adempauze.uitleg':
     'Ga je op vakantie, ben je ziek, of is het gewoon een gekke maand? Zet die weken dan stil. ' +
     'Ze kosten je geen punt en je reeks blijft staan waar hij staat; hij groeit alleen niet mee. ' +
-    'Je kiest zelf hoe lang, je mag er meerdere naast elkaar hebben, en een week die al voorbij ' +
-    'is mag ook.',
+    'Je kiest zelf hoe lang, je mag er meerdere naast elkaar hebben, en achteraf mag alleen de ' +
+    'afgelopen week nog.',
   // ⚠️ **Wat de groep ziet is de aankondiging, niet je weken.** Dit is domeinregel
   //    7's eigen uitzondering: de route loopt via jou, want je kondigt hem zelf
   //    aan. De statuskolom per week is sinds migratie 0047 dicht. Deze zin zegt
@@ -2420,11 +2453,11 @@ export const nl = {
   //    aankondigt precies dat verraadt. Zie
   //    `docs/decisions/002-domeinregel7-oppervlakken.md` rij 21 en §4a.
   // ⚠️ QS8-768 (besluit Quinten, 20-11-2026): vervangen, want de oude zin was na 0307
-  //    onwaar. De laatste zin (het Ketting-restant) moet weg in de PR van QS8-769.
+  //    onwaar. De laatste zin (het Ketting-restant) is weg sinds 0329 (QS8-769): De Ketting
+  //    telt een lid in een pauze mee.
   'adempauze.groep_ziet':
     'Je groep ziet je adempauze niet. Wil je het ze laten weten, dan plaats je zelf een ' +
-    'bericht. De Ketting telt leden in een pauze niet mee; in een kleine groep kan iemand ' +
-    'daaruit afleiden dat er iemand pauzeert.',
+    'bericht.',
   'adempauze.week_van': 'Week van {datum}',
   'adempauze.tot_en_met': ' tot en met de week van {datum}',
   'adempauze.voorbij': 'Voorbij',
@@ -2432,7 +2465,7 @@ export const nl = {
   'adempauze.ingepland': 'Ingepland',
   'adempauze.annuleren': 'Annuleren',
   'adempauze.vanaf': 'Vanaf',
-  'adempauze.vanaf_hint': 'Als jjjj-mm-dd. Elke datum mag, ook een die al voorbij is.',
+  'adempauze.vanaf_hint': 'Als jjjj-mm-dd. Achteraf kan alleen de afgelopen week.',
   'adempauze.tot': 'Tot en met',
   'adempauze.tot_hint': 'Leeg laten betekent één week.',
   // ⚠️ **Deze zin is het halve punt van de vrije datums.** De rollover werkt
@@ -2441,6 +2474,8 @@ export const nl = {
   //    de eerste keer dat je het merkt je puntentotaal.
   'adempauze.wordt_een_week': 'Dit wordt de week van {van}.',
   'adempauze.wordt_meer_weken': 'Dit wordt {weken} weken: van {van} tot en met de week van {tot}.',
+  // ⚠️ QS8-770 (besluit Quinten, 20-11-2026): de rem op een pauze achteraf, tekst van hem.
+  'adempauze.te_ver_terug': 'Een adempauze achteraf kan alleen de afgelopen week dekken.',
   'adempauze.terugwerkend':
     'Deze weken zijn al voorbij. Gemiste weken erin worden alsnog vrijgesteld en het minpunt ' +
     'wordt teruggedraaid.',
@@ -2760,7 +2795,7 @@ export const nl = {
   //    seizoensrecap in 0112 maakte, en om precies dezelfde reden.
   'klassement.kop': 'Het klassement',
   'klassement.uitleg':
-    'Jullie hebben afgesproken open te zijn, dus staan de punten van deze groep hier bij elkaar.',
+    'De punten die ieder in deze groep verdiend heeft. Een gemiste week kost hier geen punten.',
   'klassement.punten_een': '1 punt',
   'klassement.punten_meer': '{n} punten',
   'klassement.rij_label': 'Plek {positie}: {naam}, {punten}',
@@ -2793,7 +2828,7 @@ export const nl = {
   'teller.mijlpalen_een': '1 mijlpaal gehaald',
   'teller.mijlpalen_meer': '{n} mijlpalen gehaald',
 
-  'groepskaart.kop': 'Jullie groep',
+  'groepskaart.kop': 'Jouw groep',
   'groepskaart.nog_niets': 'Jullie eerste afgeronde week komt hier te staan.',
   'groepskaart.nog_geen_weken': 'Nog geen week afgerond',
   'groepskaart.leden_een': '1 lid',
@@ -2801,7 +2836,7 @@ export const nl = {
   'groepskaart.alleen': 'Een groep wordt leuker met een buddy. Nodig iemand uit om samen te beginnen.',
   'groepskaart.uitnodigen_uit': 'Uitnodigen staat nu uit voor deze groep.',
   'groepskaart.uitnodigen': 'Nodig iemand uit',
-  'groepskaart.a11y': 'Jullie groep: {teller}. {leden}.',
+  'groepskaart.a11y': 'Jouw groep: {teller}. {leden}.',
 
   // ---------------------------------------------------------------------------
   // Het persoonlijke overzicht — QS8-256

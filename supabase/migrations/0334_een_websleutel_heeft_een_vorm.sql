@@ -1,4 +1,4 @@
--- 0329_een_websleutel_heeft_een_vorm.sql — `registreer_push_token()` weigert een
+-- 0334_een_websleutel_heeft_een_vorm.sql — `registreer_push_token()` weigert een
 -- web-abonnement waarvan `p256dh` geen punt op P-256 is of `auth` geen 16 octetten.
 --
 -- ⚠️ NUMMER VOORLOPIG (QS8-696). Opnieuw gebouwd op `main` van 21-11-2026 (besluit Quinten
