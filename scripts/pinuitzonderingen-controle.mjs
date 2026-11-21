@@ -137,6 +137,11 @@ export const REGISTER = new Map([
       'hardgecodeerde waarden en dezelfde begrenzing op de brontabel.',
   ],
   [
+    'zet_groepsklassement',
+    'Zet alleen `klassement_aan` (0330, QS8-666, A57) en raakt geen van de gepinde kolommen aan. Actieve beheerder, ' +
+      'bevestiging, een rij in `group_events` en een systeembericht; bewaakt door `tests/rls/klassement-zet.test.ts`.',
+  ],
+  [
     'zet_groepszichtbaarheid',
     'Zet `zichtbaarheid` (besluit A41). De zwaarste van het register — actieve ' +
       'beheerder, expliciete bevestiging, een rij in `group_events`, een ' +

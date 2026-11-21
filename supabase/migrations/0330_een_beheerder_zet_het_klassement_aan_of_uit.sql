@@ -66,13 +66,17 @@ begin
     return jsonb_build_object('ok', false, 'reason', 'unknown_state');
   end if;
 
-  -- Teamgroep en automatisch gevormde groep eerst: zie de kop.
-  if exists (select 1 from groups g2 where g2.id = p_group_id and g2.organization_id is not null) then
-    return jsonb_build_object('ok', false, 'reason', 'teamgroep');
-  end if;
+  -- Teamgroep en automatisch gevormde groep eerst: zie de kop. ⚠️ Alleen voor wie de groep mag lezen (bevinding
+  -- security-review): een buitenstaander met een groeps-uuid leert hier anders welk soort groep het is, en krijgt
+  -- `not_admin` zoals bij elke andere groep.
+  if mag_groep_lezen(p_group_id) then
+    if exists (select 1 from groups g2 where g2.id = p_group_id and g2.organization_id is not null) then
+      return jsonb_build_object('ok', false, 'reason', 'teamgroep');
+    end if;
 
-  if exists (select 1 from groups g2 where g2.id = p_group_id and g2.automatisch) then
-    return jsonb_build_object('ok', false, 'reason', 'automatisch');
+    if exists (select 1 from groups g2 where g2.id = p_group_id and g2.automatisch) then
+      return jsonb_build_object('ok', false, 'reason', 'automatisch');
+    end if;
   end if;
 
   -- P6: een gearchiveerde groep weigert met zijn eigen reden. `is_group_admin()` is onwaar voor een archief, dus deze toets
@@ -84,6 +88,17 @@ begin
 
   if not is_group_admin(p_group_id) then
     return jsonb_build_object('ok', false, 'reason', 'not_admin');
+  end if;
+
+  -- ⚠️ Nogmaals, nu zonder ledentoets: `is_group_admin()` is sinds 0317 ook waar voor een organisatiebeheerder die geen lid
+  --    is van de teamgroep. Die komt hier, en krijgt dan de reden en geen 23514 van de CHECK `groups_team_geen_klassement`.
+  --    Wie hier komt is beheerder, dus de reden lekt niets.
+  if exists (select 1 from groups g2 where g2.id = p_group_id and g2.organization_id is not null) then
+    return jsonb_build_object('ok', false, 'reason', 'teamgroep');
+  end if;
+
+  if exists (select 1 from groups g2 where g2.id = p_group_id and g2.automatisch) then
+    return jsonb_build_object('ok', false, 'reason', 'automatisch');
   end if;
 
   if p_bevestigd is not true then

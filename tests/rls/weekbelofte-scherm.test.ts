@@ -141,7 +141,7 @@ describe.skipIf(!rlsTestsConfigured || !stackErIs)('het beloftescherm tegen de d
     if (leegId === undefined) throw new Error(`lege groep: ${JSON.stringify(leeg.data)}`);
     registreerGroep(leegId);
     const automatisch = await maakGroep(alice, 'Automatische schermgroep', dave);
-    psql(`update groups set automatisch = true, zichtbaarheid = 'beschermd', ontdekbaar = false
+    psql(`update groups set automatisch = true, zichtbaarheid = 'beschermd', ontdekbaar = false, klassement_aan = false
            where id = '${automatisch}'`);
 
     const doelen: string[] = [];

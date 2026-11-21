@@ -58,10 +58,11 @@ async function sporen(groupId: string): Promise<{ events: number; berichten: num
 describe.runIf(rlsTestsConfigured)('een beheerder zet het klassement aan of uit (0330)', () => {
   let anna: TestUser; // beheerder
   let bram: TestUser; // lid
+  let cor: TestUser; // buitenstaander
   let g: { id: string; code: string };
 
   beforeAll(async () => {
-    [anna, bram] = await Promise.all([createTestUser('zet-anna'), createTestUser('zet-bram')]);
+    [anna, bram, cor] = await Promise.all([createTestUser('zet-anna'), createTestUser('zet-bram'), createTestUser('zet-cor')]);
     g = await groep(anna, 'Zet-klassement');
     const mee = await bram.db.rpc('join_group_with_code', { code: g.code });
     expect((mee.data as { ok?: boolean } | null)?.ok).toBe(true);
@@ -95,6 +96,20 @@ describe.runIf(rlsTestsConfigured)('een beheerder zet het klassement aan of uit 
     expect(await sporen(g.id)).toEqual(voor);
   }, TEST_TIMEOUT);
 
+  it('geeft een buitenstaander `not_admin`, ook voor een gearchiveerde, een team- of een automatisch gevormde groep', async () => {
+    const voor = await sporen(g.id);
+    expect((await rpc(cor, g.id, false, true)).reason).toBe('not_admin');
+    expect((await rpc(cor, '00000000-0000-4000-8000-000000000000', false, true)).reason).toBe('not_admin');
+    const a = await groep(anna, 'Zet-buitenstaander');
+    expect((await adminDb().from('groups').update({ status: 'archived' } as never).eq('id', a.id)).error).toBeNull();
+    expect((await rpc(cor, a.id, false, true)).reason, 'een buitenstaander leert dat de groep gearchiveerd is').toBe('not_admin');
+    const b = await groep(anna, 'Zet-buitenstaander-auto');
+    expect((await adminDb().from('groups').update({ klassement_aan: false } as never).eq('id', b.id)).error).toBeNull();
+    expect((await adminDb().from('groups').update({ automatisch: true } as never).eq('id', b.id)).error).toBeNull();
+    expect((await rpc(cor, b.id, true, true)).reason, 'een buitenstaander leert dat de groep automatisch gevormd is').toBe('not_admin');
+    expect(await sporen(g.id)).toEqual(voor);
+  }, TEST_TIMEOUT);
+
   it('weigert een gearchiveerde groep (P6)', async () => {
     const a = await groep(anna, 'Zet-archief');
     expect((await adminDb().from('groups').update({ status: 'archived' } as never).eq('id', a.id)).error).toBeNull();
@@ -120,6 +135,8 @@ describe.runIf(rlsTestsConfigured)('een beheerder zet het klassement aan of uit 
       registreerGroep(team as string);
       expect((await rpc(anna, team as string, true, true)).reason).toBe('teamgroep');
       expect(await aan(team as string)).toBe(false);
+      // Een buitenstaander leert niets over het soort groep.
+      expect((await rpc(cor, team as string, true, true)).reason).toBe('not_admin');
     } finally {
       await adminDb().from('groups').delete().eq('organization_id' as never, org as never);
       await adminDb().from('organization_members' as never).delete().eq('organization_id' as never, org as never);
