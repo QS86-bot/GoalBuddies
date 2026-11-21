@@ -879,6 +879,7 @@ export const nl = {
   'tab.doelen': 'Doelen',
   'tab.groep': 'Groep',
   'tab.profiel': 'Profiel',
+  'tab.melding_wacht': 'er wacht een melding',
   'tab.navigatie': 'Hoofdmenu',
   'vangnet.kop': 'De app kon niet verder',
   'vangnet.tekst': 'Er ging iets mis bij het opbouwen van dit scherm. Ga terug naar het beginscherm. Blijft het misgaan, start de app dan opnieuw.',
@@ -1066,8 +1067,6 @@ export const nl = {
   'profiel.herinnering_geen_meldingen': 'Zet meldingen hierboven aan, anders wordt er niets bezorgd.',
   'profiel.viering_titel': 'Feestelijke momenten',
   'profiel.viering_uitleg': 'Een korte felicitatie als een buddy je week bevestigt, je een mijlpaal haalt of je doel af is. Verder blijft de app rustig.',
-  'profiel.viering_aan_label': 'Feestelijke momenten aan',
-  'profiel.viering_uit_label': 'Feestelijke momenten uit',
   // ⚠️ De vier soorten die je los kunt uitzetten (QS8-92). `nudge` staat hier
   //    niet bij: die schakelaar is de herinneringkaart hierboven, en dat zegt
   //    `meldingsoort.uitleg` met zoveel woorden — zonder die zin lijkt de lijst
@@ -3589,6 +3588,107 @@ export const nl = {
     'Ben je de enige beheerder van {naam}? Dan kan na het verwijderen niemand daar nog nieuwe leden uitnodigen. Wie er al in zit, houdt alles.',
   'organisatie.verwijder_waarschuwing_storing':
     'We konden niet nagaan of je beheerder bent van een organisatie. Ben je dat en ben je de enige, draag het beheer dan eerst over. Anders kan daarna niemand nog nieuwe leden uitnodigen.',
+  // Teamdoelen en de teambalk — QS8-658
+  'teamdoel.ingang_kop':
+    'Teamdoelen',
+  'teamdoel.ingang_uitleg':
+    'Dit is een groep van je organisatie. Hier staan de doelen die jullie samen halen.',
+  'teamdoel.ingang_knop':
+    'Teamdoelen',
+  'teamdoel.ingang_storing':
+    'We konden niet nagaan of dit een teamgroep is.',
+  'teamdoel.lijst_titel':
+    'Teamdoelen',
+  'teamdoel.lijst_eyebrow':
+    'Team',
+  'teamdoel.lijst_laden':
+    'De teamdoelen konden niet geladen worden.',
+  'teamdoel.lijst_leeg_titel':
+    'Nog geen teamdoel',
+  'teamdoel.lijst_leeg_tekst':
+    'Elk lid van het team kan een teamdoel aanmaken.',
+  'teamdoel.meer_laden':
+    'Meer teamdoelen tonen',
+  'teamdoel.meer_mislukt':
+    'Meer teamdoelen laden lukte niet. Probeer het opnieuw.',
+  'teamdoel.aanmaken_knop':
+    'Teamdoel aanmaken',
+  'teamdoel.nieuw_titel':
+    'Nieuw teamdoel',
+  'teamdoel.titel_label':
+    'Wat willen jullie samen halen?',
+  'teamdoel.titel_hint':
+    'Eén regel. Collega\'s zien deze titel.',
+  'teamdoel.titel_teller':
+    '{aantal} van {max} tekens',
+  'teamdoel.beschrijving_label':
+    'Beschrijving (optioneel)',
+  'teamdoel.beschrijving_teller':
+    '{aantal} van {max} tekens',
+  'teamdoel.datum_label':
+    'Streefdatum',
+  'teamdoel.datum_hint':
+    'Wie een aandeel neemt, krijgt dezelfde streefdatum.',
+  'teamdoel.opslaan':
+    'Teamdoel opslaan',
+  'teamdoel.titel_leeg':
+    'Geef het teamdoel een titel.',
+  'teamdoel.titel_lang':
+    'De titel is te lang: houd hem op 200 tekens of minder.',
+  'teamdoel.titel_ongeldig':
+    'Geef het teamdoel een titel van 1 tot 200 tekens.',
+  'teamdoel.beschrijving_lang':
+    'De beschrijving is te lang: houd haar op 2000 tekens of minder.',
+  'teamdoel.datum_ongeldig':
+    'Kies een streefdatum.',
+  'teamdoel.datum_voorbij':
+    'De streefdatum is al voorbij. Kies een datum vanaf vandaag.',
+  'teamdoel.tekst_ongeldig':
+    'Er staan tekens in de tekst die we niet kunnen opslaan. Haal ze weg en probeer het opnieuw.',
+  'teamdoel.daglimiet':
+    'Je hebt vandaag al tien teamdoelen aangemaakt. Morgen kan het weer.',
+  'teamdoel.niet_toegestaan':
+    'Dit lukt niet. Je zit niet in dit team, of het teamdoel bestaat niet.',
+  'teamdoel.aanmaken_mislukt':
+    'Het teamdoel aanmaken lukte niet. Probeer het opnieuw.',
+  'teamdoel.niet_gevonden_titel':
+    'Teamdoel niet gevonden',
+  'teamdoel.niet_gevonden_tekst':
+    'Dit teamdoel bestaat niet, of je hebt er geen toegang toe.',
+  'teamdoel.laden_mislukt':
+    'Het teamdoel kon niet geladen worden.',
+  'teamdoel.streefdatum':
+    'Streefdatum {datum}',
+  'teamdoel.loopt_nog':
+    'Dit teamdoel loopt nog.',
+  'teamdoel.afgerond':
+    'Dit teamdoel is afgerond.',
+  'teamdoel.balk_kop':
+    'Teambalk',
+  'teamdoel.balk_een':
+    '1 mijlpaal behaald',
+  'teamdoel.balk_meer':
+    '{n} mijlpalen behaald',
+  'teamdoel.balk_uitleg':
+    'De teller telt alleen op: samen behaalde mijlpalen van het team.',
+  'teamdoel.aandeel_kop':
+    'Jouw aandeel',
+  'teamdoel.aandeel_uitleg':
+    'Een aandeel is een persoonlijk doel; je collega\'s zien niet hoe ver je bent.',
+  'teamdoel.aandeel_nemen':
+    'Neem een aandeel',
+  'teamdoel.aandeel_bekijk':
+    'Naar jouw aandeel',
+  'teamdoel.aandeel_heb':
+    'Je hebt een aandeel in dit teamdoel.',
+  'teamdoel.aandeel_mislukt':
+    'Het aandeel nemen lukte niet. Probeer het opnieuw.',
+  'teamdoel.niet_actief':
+    'Dit teamdoel is niet meer actief, dus je kunt er geen aandeel in nemen.',
+  'teamdoel.al_aandeel':
+    'Je hebt al een aandeel in dit teamdoel.',
+  'teamdoel.streefdatum_verstreken':
+    'De streefdatum van dit teamdoel is voorbij, dus je kunt er geen aandeel meer in nemen.',
 } as const;
 
 export type Sleutel = keyof typeof nl;
