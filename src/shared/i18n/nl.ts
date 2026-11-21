@@ -644,7 +644,10 @@ export const nl = {
   'onboarding.kom_helpen': 'Ik kom helpen',
   'onboarding.klaar': 'Klaar',
   'groepdetail.zichtbaarheid': 'Zichtbaarheid van deze groep: {stand}',
-  'groepdetail.titel': 'Groep',
+  'groepdetail.titel': 'Jouw groep',
+  'groepdetail.titel_naam': 'Jouw groep: {naam}',
+  'groepdetail.titel_zonder_groep': 'Groep',
+  'groepdetail.inhoud': 'Op deze pagina vind je onder meer: {onderdelen}',
   'groepdetail.eyebrow': 'HUDDLEDAG {dag}',
   'groepdetail.eyebrow_vandaag': 'VANDAAG IS DE HUDDLEDAG',
   'groepdetail.geen_lid_titel': 'Deze groep is er niet, of niet voor jou',
@@ -2794,7 +2797,7 @@ export const nl = {
   'teller.mijlpalen_een': '1 mijlpaal gehaald',
   'teller.mijlpalen_meer': '{n} mijlpalen gehaald',
 
-  'groepskaart.kop': 'Jullie groep',
+  'groepskaart.kop': 'Jouw groep',
   'groepskaart.nog_niets': 'Jullie eerste afgeronde week komt hier te staan.',
   'groepskaart.nog_geen_weken': 'Nog geen week afgerond',
   'groepskaart.leden_een': '1 lid',
@@ -2802,7 +2805,7 @@ export const nl = {
   'groepskaart.alleen': 'Een groep wordt leuker met een buddy. Nodig iemand uit om samen te beginnen.',
   'groepskaart.uitnodigen_uit': 'Uitnodigen staat nu uit voor deze groep.',
   'groepskaart.uitnodigen': 'Nodig iemand uit',
-  'groepskaart.a11y': 'Jullie groep: {teller}. {leden}.',
+  'groepskaart.a11y': 'Jouw groep: {teller}. {leden}.',
 
   // ---------------------------------------------------------------------------
   // Het persoonlijke overzicht — QS8-256
