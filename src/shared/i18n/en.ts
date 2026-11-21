@@ -379,6 +379,12 @@ export const en: Record<Sleutel, string> = {
   'aanmelden.ben_nieuw': 'I am new here',
   'aanmelden.bestaand_account': 'Or use an existing account',
   'aanmelden.alleen_browser': 'Signing in with Apple or Google currently only works in the browser.',
+  // Second entry: work — QS8-663
+  'aanmelden.positionering': 'Reach goals together, without anyone feeling judged. For small teams of up to 25 people and for groups of friends.',
+  'aanmelden.werk_kop': 'I am here through work',
+  'aanmelden.werk_tekst': 'Got an invitation link or a code from your employer? Create an account first; then you join your team. Your team sees the team bar and your own share, never how far anyone else is.',
+  'aanmelden.werk_knop': 'Remember code',
+  'aanmelden.werk_onthouden': 'Your code is remembered. Create or pick your account above; then you can join with one tap.',
   'beoordeling.titel': 'Review',
   'beoordeling.leeg_titel': 'Nothing to review',
   'beoordeling.leeg_tekst': 'As soon as a buddy finishes a week, it shows up here. One line back is enough. That is the point.',

@@ -558,6 +558,12 @@ export const nl = {
   'aanmelden.ben_nieuw': 'Ik ben nieuw hier',
   'aanmelden.bestaand_account': 'Of gebruik een bestaand account',
   'aanmelden.alleen_browser': 'Inloggen met Apple of Google werkt op dit moment alleen in de browser.',
+  // Tweede ingang: zakelijk — QS8-663
+  'aanmelden.positionering': 'Samen doelen halen, zonder dat iemand zich beoordeeld voelt. Voor kleine teams tot 25 mensen en voor vriendengroepen.',
+  'aanmelden.werk_kop': 'Ik kom via mijn werk',
+  'aanmelden.werk_tekst': 'Heb je een uitnodigingslink of een code van je werkgever? Maak eerst een account; dan kom je bij je team. Wat je team ziet is de teambalk en jouw eigen aandeel, nooit hoe ver een ander is.',
+  'aanmelden.werk_knop': 'Code onthouden',
+  'aanmelden.werk_onthouden': 'Je code is onthouden. Maak of kies hierboven je account; daarna kun je met één druk op de knop lid worden.',
   'beoordeling.titel': 'Beoordelen',
   'beoordeling.leeg_titel': 'Niets te beoordelen',
   'beoordeling.leeg_tekst': 'Zodra een buddy een week afrondt, staat hij hier. Eén zin terug is genoeg. Daar gaat het om.',
