@@ -2798,7 +2798,7 @@ export const nl = {
   'teller.mijlpalen_een': '1 mijlpaal gehaald',
   'teller.mijlpalen_meer': '{n} mijlpalen gehaald',
 
-  'groepskaart.kop': 'Jullie groep',
+  'groepskaart.kop': 'Jouw groep',
   'groepskaart.nog_niets': 'Jullie eerste afgeronde week komt hier te staan.',
   'groepskaart.nog_geen_weken': 'Nog geen week afgerond',
   'groepskaart.leden_een': '1 lid',
@@ -2806,7 +2806,7 @@ export const nl = {
   'groepskaart.alleen': 'Een groep wordt leuker met een buddy. Nodig iemand uit om samen te beginnen.',
   'groepskaart.uitnodigen_uit': 'Uitnodigen staat nu uit voor deze groep.',
   'groepskaart.uitnodigen': 'Nodig iemand uit',
-  'groepskaart.a11y': 'Jullie groep: {teller}. {leden}.',
+  'groepskaart.a11y': 'Jouw groep: {teller}. {leden}.',
 
   // ---------------------------------------------------------------------------
   // Het persoonlijke overzicht — QS8-256
