@@ -1,4 +1,4 @@
--- 0329_een_aandeel_is_niet_weg_te_gooien_alleen_los_te_koppelen.sql — QS8-772, nazorg op 0190 en 0320
+-- 0332_een_aandeel_is_niet_weg_te_gooien_alleen_los_te_koppelen.sql — QS8-772, nazorg op 0190 en 0320
 --
 -- ROLLBACK-PAD:
 --   Zet `verwijder_doel()` terug op de vorm van 0190: haal het blok `is_aandeel` weg
@@ -116,6 +116,6 @@ $$;
 
 comment on function public.verwijder_doel(uuid) is
   'Verwijdert een eigen doel binnen de bedenktijd (0046). Weigert bij een groepskoppeling, '
-  'weekdoelen, geboekte punten en — sinds 0190 (QS8-331) — bij elke commitment aan het doel en (0329, QS8-772) bij een aandeel in een teamdoel, '
+  'weekdoelen, geboekte punten en — sinds 0190 (QS8-331) — bij elke commitment aan het doel en (0332, QS8-772) bij een aandeel in een teamdoel, '
   'ongeacht status: die is per constructie bevestigd en draagt een auditspoor dat anders '
   'meecascadeert. Voor alles daarbuiten is archiveren de weg.';

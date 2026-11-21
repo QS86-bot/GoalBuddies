@@ -1,4 +1,4 @@
-# Een aandeel is niet weg te gooien, alleen los te koppelen (QS8-772, migratie 0329)
+# Een aandeel is niet weg te gooien, alleen los te koppelen (QS8-772, migratie 0332)
 
 ## Wat er mis was
 
@@ -17,7 +17,7 @@ Quinten, 21-11-2026, variant "niet weggooien": `verwijder_doel()` weigert een do
 
 ## Wat gebouwd is
 
-* Migratie 0329: het lichaam van `verwijder_doel()` uit 0190 (laatste definitie) plus één blok, vóór de
+* Migratie 0332: het lichaam van `verwijder_doel()` uit 0190 (laatste definitie) plus één blok, vóór de
   toets op `goal_group_links`. De lus ontkoppelt eerst, dus een toets op de koppeling had het aandeel
   erdoor gelaten; `team_goal_shares` blijft staan tot het teamdoel zelf weg is.
 * `planMelding`-tegenhanger `doelVerwijderMelding()` kent `is_aandeel`; `doel.is_aandeel` in nl en en.

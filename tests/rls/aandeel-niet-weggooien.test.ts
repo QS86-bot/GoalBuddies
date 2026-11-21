@@ -3,7 +3,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { adminDb, createTestUser, registreerGroep, removeTestUsers, rlsTestsConfigured, type TestUser } from './harness';
 
 /**
- * Een aandeel in een teamdoel is niet weg te gooien, alleen los te koppelen — QS8-772, 0329.
+ * Een aandeel in een teamdoel is niet weg te gooien, alleen los te koppelen — QS8-772, 0332.
  *
  * ⚠️ **De belofte is de lus en niet de weigering.** `neem_aandeel()` → mijlpalen op `done` →
  *    ontkoppelen → `verwijder_doel()` → opnieuw nemen was elk onderdeel correct en samen

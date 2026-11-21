@@ -2,7 +2,7 @@ import { z } from 'zod';
 
 import { CATEGORIEEN } from '../../shared/categorieen';
 import { t, weekdagNaam } from '../../shared/i18n';
-import { schoneNaam, telTekens, schoneVrijeTekst } from '../../shared/tekst';
+import { bevatLinkAchtigeTekst, schoneNaam, telTekens, schoneVrijeTekst } from '../../shared/tekst';
 
 import type { Weekday } from '../../shared/time';
 
@@ -188,7 +188,8 @@ export const groepSchema = z.object({
     //    groep hij handelt. Zelfde grens als `display_name`.
     .transform(schoneNaam)
     .refine((v) => telTekens(v) >= 2, { error: () => t('groep.naam_kort') })
-    .refine((v) => telTekens(v) <= 60, { error: () => t('validatie.groepsnaam_lang') }),
+    .refine((v) => telTekens(v) <= 60, { error: () => t('validatie.groepsnaam_lang') })
+    .refine((v) => !bevatLinkAchtigeTekst(v), { error: () => t('validatie.groepsnaam_link') }),
   huddle_day: z
     .number()
     .int()

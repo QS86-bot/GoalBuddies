@@ -738,7 +738,7 @@ function doelVerwijderMelding(reden: string | undefined): string {
   switch (reden) {
     case 'te_oud':
       return t('doel.te_oud');
-    // Migratie 0329 (QS8-772): een aandeel in een teamdoel is niet weg te gooien, alleen los
+    // Migratie 0332 (QS8-772): een aandeel in een teamdoel is niet weg te gooien, alleen los
     // te koppelen. Zonder deze tak viel hij in `default` en wist de gebruiker niet waarom.
     case 'is_aandeel':
       return t('doel.is_aandeel');
