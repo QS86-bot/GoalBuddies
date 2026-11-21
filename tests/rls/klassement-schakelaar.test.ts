@@ -134,10 +134,10 @@ describe.runIf(rlsTestsConfigured)('het klassement hangt aan een schakelaar (A57
 
   it('een teamgroep heeft nooit een klassement: de CHECK weigert, ook voor service_role', async () => {
     const o = await anna.db.rpc('maak_organisatie' as never, { p_naam: 'Schakel BV' } as never);
-    const org = (o.data as { organization_id: string }).organization_id;
+    const org = (o.data as unknown as { organization_id: string }).organization_id;
     try {
       const t = await anna.db.rpc('maak_teamgroep' as never, { p_organization_id: org, p_naam: 'Team Schakel' } as never);
-      const team = (t.data as { group_id?: string } | null)?.group_id;
+      const team = (t.data as unknown as { group_id?: string } | null)?.group_id;
       expect(team, JSON.stringify(t.data)).toBeDefined();
       registreerGroep(team as string);
       expect(await aan(team as string)).toBe(false);
