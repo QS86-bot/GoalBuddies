@@ -193,6 +193,14 @@ const REGISTER = new Map([
       'gelijktijdige aanroepen niet allebei een auditrij schrijven.',
   ],
   [
+    'sluit_verstreken_weken_af',
+    '`authenticated` mag hem niet aanroepen — gemeten: `anon=false auth=false service=true` (0329, QS8-687). ' +
+      'De grant ís hier de grendel, en `tests/rls/rollover-week-transactie.test.ts` toetst hem. ' +
+      '`p_owner_id` is vrij te kiezen, dus de functie deelt minpunten uit voor een willekeurige eigenaar; ' +
+      'enige aanroeper is de rollover-functie, die als `service_role` draait. De cyclusgrens komt van buiten ' +
+      '(`shared/time`).',
+  ],
+  [
     'maak_straffen_verschuldigd',
     '`authenticated` mag hem niet aanroepen — gemeten: `anon=false auth=false service=true`. De ' +
       'grant ís hier de grendel, en die bewaakt `tests/rls/functiegrants.test.ts` (0115). Enige ' +

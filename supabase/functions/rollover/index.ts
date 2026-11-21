@@ -45,7 +45,7 @@ import { metCors } from '../_shared/cors.ts';
  *    `cancelled` — allebei "nog niets gebeurd", en allebei een gemiste week
  *    zodra de cyclus verstrijkt (A40) — en
  *    de unieke index op `points_ledger` weigert een tweede boeking voor dezelfde
- *    reden, referentie **en ronde** — en `schrijfWeekAf()` boekt altijd op de
+ *    reden, referentie **en ronde** — en `sluit_verstreken_weken_af()` (0329) boekt altijd op de
  *    standaardronde 1, dus voor deze functie komt dat op hetzelfde neer.
  *    ⚠️ Sinds 0266 (QS8-456) is "dezelfde reden en referentie" géén garantie
  *    meer als algemene uitspraak: `ronde` staat in de sleutel, zodat een week
@@ -86,14 +86,6 @@ interface Profiel {
  */
 interface Kandidaat {
   goal_id: string;
-}
-
-interface OpenWeekdoel {
-  id: string;
-  goal_id: string;
-  cycle_start_date: string;
-  points_miss: number;
-  goals: { owner_id: string } | null;
 }
 
 /**
@@ -207,7 +199,7 @@ const PROFIELEN_TEGELIJK = 8;
  *
  * ⚠️⚠️ **Het platform kan dat wél** (security-review op QS8-685). Valt de kill
  *    tussen `status = 'missed'` en het minpunt of de weekpas in
- *    `schrijfWeekAf()`, dan blijft die week voorgoed half verwerkt: volgende
+ *    het afschrijven, dan bleef die week voorgoed half verwerkt: volgende
  *    runs zoeken alleen `todo` en `cancelled`. Dat kon al bij één profiel; met
  *    acht tegelijk kan het er acht raken. De vijftig seconden marge zijn er om
  *    dat buiten bereik te houden; de echte reparatie is de week in één RPC
@@ -1034,16 +1026,26 @@ async function wikkelStraffenAf(db: Db, profiel: Profiel): Promise<number> {
 }
 
 /**
- * Sluit elke verstreken week van dit profiel af.
+ * Sluit elke verstreken week van dit profiel af, in de database — QS8-687.
  *
- * Geeft `null` terug als de weekdoelen niet op te halen waren — dat was in de
- * oude vorm een `continue` op de profiellus, en het slaat dus óók het
- * inschuiven en het herberekenen over. ⚠️ **Dat is de enige `continue` in deze
- * refactor die een heel profiel oversloeg**, en daarom is hij hier een `null`
- * geworden en geen lege telling: de aanroeper moet de rest van dit profiel
- * overslaan, en een telling van nul zou dat verschil wegpoetsen.
+ * Geeft `null` terug als de aanroep zelf mislukte — dat was in de oude vorm een
+ * `continue` op de profiellus, en het slaat dus óók het inschuiven en het
+ * herberekenen over. ⚠️ **Dat is de enige `continue` in deze refactor die een
+ * heel profiel oversloeg**, en daarom is hij hier een `null` en geen lege
+ * telling: de aanroeper moet de rest van dit profiel overslaan, en een telling
+ * van nul zou dat verschil wegpoetsen.
  *
- * `geraakteDoelen` komt uit de volledige lijst en niet uit de gemiste weken —
+ * ⚠️⚠️ **Het afschrijven staat sinds migratie 0329 in `sluit_verstreken_weken_af()`
+ *    en niet meer in deze functie.** Dezelfde stappen in dezelfde volgorde
+ *    (vrijstellen bij een adempauze, anders `missed`, dan het minpunt, dan de
+ *    weekpas — domeinregel 10), maar per week in één transactie. Tot QS8-685
+ *    waren het twee tot vier losse verzoeken per week, en een kill ertussen liet
+ *    een week voorgoed half verwerkt achter.
+ *
+ * ⚠️ **De cyclusgrens blijft hier.** `grens` is `afsluitbaar.startDate` uit
+ *    `shared/time` (correctheidsregel 7); de database rekent geen week uit.
+ *
+ * `geraakteDoelen` komt uit alles wat open stond en niet uit de gemiste weken —
  * ook een vrijgestelde week verandert de reeks.
  */
 async function sluitVerstrekenWekenAf(
@@ -1051,42 +1053,43 @@ async function sluitVerstrekenWekenAf(
   profiel: Profiel,
   grens: string,
 ): Promise<{ telling: Weekuitkomst; geraakteDoelen: ReadonlySet<string> } | null> {
-  const telling: Weekuitkomst = { gemist: 0, vrijgesteld: 0, gered: 0 };
+  const { data, error } = await db.rpc('sluit_verstreken_weken_af', {
+    p_owner_id: profiel.id,
+    p_grens: grens,
+  });
 
-  // ⚠️ `order` staat er om de uitkomst reproduceerbaar te maken. Zonder
-  //    sorteervolgorde bepaalt het queryplan welke gemiste week een weekpas
-  //    krijgt als er meer gemiste weken zijn dan passen — en dan geeft
-  //    dezelfde data twee keer een ander antwoord. Oudste eerst, zodat een
-  //    ingehaalde achterstand chronologisch wordt afgewikkeld.
-  const { data: open, error: openFout } = await db
-    .from('weekly_goals')
-    .select('id, goal_id, cycle_start_date, points_miss, goals!inner(owner_id)')
-    .eq('goals.owner_id', profiel.id)
-    // ⚠️ `cancelled` hoort hier net zo goed bij als `todo` — A40, migratie
-    //    0045. Een afgesloten weekdoel is een week die je bewust hebt
-    //    opgegeven, en die telt bij het verstrijken van de cyclus als gemist:
-    //    mét minpunt, en een weekpas kan hem redden zoals elke andere.
-    //    Precies daarom hoeft `herbereken_reeks()` niets van `cancelled` te
-    //    weten: in de lopende cyclus is hij neutraal zoals `todo`, en daarna
-    //    is hij gewoon `missed`.
-    .in('status', ['todo', 'cancelled'])
-    .lt('cycle_start_date', grens)
-    .order('cycle_start_date', { ascending: true });
-
-  if (openFout) {
-    console.error(`weekdoelen ophalen mislukte voor een profiel: ${openFout.message}`);
+  if (error) {
+    console.error(`weken afsluiten mislukte voor een profiel: ${error.message}`);
+    // ⚠️ Ook een melding, en niet alleen een logregel (security-review op QS8-687): wordt deze
+    //    functie uitgerold vóór de migratie, dan geeft elk profiel hier een fout en sluit er
+    //    geen week af, terwijl de job 200 teruggeeft. Migratie eerst, deploy daarna (DEPLOY §2.3a).
+    await meld(new Error('weken afsluiten mislukt'), 'rollover.weken', { code: 'rollover_weken_rpc_fout' });
     return null;
   }
 
-  for (const weekdoel of (open ?? []) as unknown as OpenWeekdoel[]) {
-    const uitkomst = await verwerkVerstrekenWeek(db, profiel, weekdoel);
-    telling.gemist += uitkomst.gemist;
-    telling.vrijgesteld += uitkomst.vrijgesteld;
-    telling.gered += uitkomst.gered;
+  const rij = (Array.isArray(data) ? data[0] : data) as WekenUitkomst | null | undefined;
+  if (!rij) {
+    console.error('weken afsluiten gaf geen uitkomst voor een profiel');
+    return null;
   }
 
-  const geraakteDoelen = new Set((open ?? []).map((w) => (w as unknown as OpenWeekdoel).goal_id));
-  return { telling, geraakteDoelen };
+  // ⚠️ **Een week die niet afsluit is een storing en geen weetje** (security-review
+  //    op QS8-687). De RPC draait hem terug en laat hem `todo`; faalt hij elke
+  //    run, dan krijgt hij nooit een minpunt en kan de eigenaar er nog een
+  //    voltooiing voor indienen. `count` en niet de week-id: `scrubContext()`
+  //    laat alleen toegestane sleutels door.
+  if (rij.mislukt > 0) {
+    console.error(`${rij.mislukt} week(en) niet afgesloten voor een profiel`);
+    await meld(new Error('week afsluiten mislukt'), 'rollover.weken', {
+      code: 'rollover_week_niet_afgesloten',
+      count: rij.mislukt,
+    });
+  }
+
+  return {
+    telling: { gemist: rij.gemist, vrijgesteld: rij.vrijgesteld, gered: rij.gered },
+    geraakteDoelen: new Set(rij.geraakte_doelen),
+  };
 }
 
 /** Wat één verstreken week aan de telling van de ronde toevoegt. */
@@ -1096,144 +1099,10 @@ interface Weekuitkomst {
   gered: number;
 }
 
-const GEEN_TELLING: Weekuitkomst = { gemist: 0, vrijgesteld: 0, gered: 0 };
-
-/**
- * Wikkelt één verstreken week af: vrijstellen bij een adempauze, anders
- * afschrijven met een minpunt en zo nodig een weekpas.
- *
- * ⚠️⚠️ **Uit `draaiRollover` getild in QS8-424, en de `continue`s van de oude
- *    lus zijn hier `return GEEN_TELLING` geworden.** Dat is precies dezelfde
- *    sprong — ze sloegen het rést van dít weekdoel over en niet het profiel —
- *    maar het is de plek waar deze refactor mis kón gaan, dus hij staat hier
- *    opgeschreven. Een `continue` die per ongeluk een profiel oversloeg, zou
- *    een hele gebruiker zijn minpunt schelen.
- *
- * ⚠️ De volgorde is ongewijzigd en dát is domeinregel 10: het minpunt wordt
- *    geboekt vóór de weekpas, want een pas beschermt de reeks en niet het punt.
- */
-async function verwerkVerstrekenWeek(
-  db: Db,
-  profiel: Profiel,
-  weekdoel: OpenWeekdoel,
-): Promise<Weekuitkomst> {
-  // Loopt er een adempauze over deze cyclus? Dan telt de week niet mee —
-  // niet positief en niet negatief (domeinregel 10, adempauze = 0).
-  const { data: pauze } = await db
-    .from('breathers')
-    .select('id')
-    .eq('user_id', profiel.id)
-    .eq('goal_id', weekdoel.goal_id)
-    .lte('starts_cycle', weekdoel.cycle_start_date)
-    .gte('ends_cycle', weekdoel.cycle_start_date)
-    .maybeSingle();
-
-  // ⚠️⚠️ **Hier stond tot QS8-424 een ternair met twee guards erachter**, en die
-  //    vorm bestond alleen omdat dit blok toen ín twee lussen zat: `max-depth`
-  //    liet er geen `if` in een `if` toe. De security-review op QS8-422 wees
-  //    hem aan als de plek die daardoor fragiel werd — `vrijstelFout` niet-null
-  //    ímpliceerde dat `pauze` waar was, en dat stond nergens behalve in een
-  //    comment, twintig regels boven de plek waar het minpunt geboekt wordt.
-  //
-  //    In een eigen functie is die nestingruimte er weer, dus de gewone vorm kan
-  //    terug. **Dat is de winst die deze refactor eigenlijk oplevert**: niet
-  //    kortere functies maar code die niet meer om een lintregel heen hoeft te
-  //    buigen.
-  if (pauze) {
-    const { error: vrijstelFout } = await db
-      .from('weekly_goals')
-      .update({ status: 'excused' })
-      .eq('id', weekdoel.id);
-
-    if (vrijstelFout) {
-      console.error(`vrijstellen mislukte voor ${weekdoel.id}: ${vrijstelFout.message}`);
-      return GEEN_TELLING;
-    }
-
-    return { gemist: 0, vrijgesteld: 1, gered: 0 };
-  }
-
-  return await schrijfWeekAf(db, profiel, weekdoel);
-}
-
-/**
- * Schrijft één verstreken week af: status `missed`, het minpunt, en daarna de
- * weekpas.
- *
- * ⚠️⚠️ **De volgorde is domeinregel 10 en geen stijl.** Het minpunt wordt
- *    geboekt vóór de weekpas, want een pas beschermt de reeks en niet het
- *    punt; andersom is missen gratis en zegt de score niets. En de weekpas
- *    staat ná de statuswijziging omdat `verbruik_weekpas()` zelf toetst dat de
- *    cyclus écht gemist is — andersom weigert hij en verdwijnt de bescherming
- *    zonder dat er iets stukgaat.
- */
-async function schrijfWeekAf(
-  db: Db,
-  profiel: Profiel,
-  weekdoel: OpenWeekdoel,
-): Promise<Weekuitkomst> {
-  // ⚠️ Deze drie schrijfacties controleerden hun fout niet, en dat is geen
-  //    theorie: faalt de statuswijziging en gaat de rest wél door, dan is
-  //    het minpunt geboekt terwijl `verbruik_weekpas()` daarna netjes
-  //    weigert — er is immers geen `missed`-rij. Uitkomst: punt kwijt,
-  //    bescherming niet ingezet, geen enkel signaal. Coderegel 14.
-  const { error: gemistFout } = await db
-    .from('weekly_goals')
-    .update({ status: 'missed' })
-    .eq('id', weekdoel.id);
-
-  if (gemistFout) {
-    console.error(`afschrijven mislukte voor ${weekdoel.id}: ${gemistFout.message}`);
-    return GEEN_TELLING;
-  }
-
-  // Het minpunt. De unieke index maakt dit veilig bij een tweede run.
-  const { error: puntFout } = await db.from('points_ledger').insert({
-    user_id: profiel.id,
-    goal_id: weekdoel.goal_id,
-    delta: weekdoel.points_miss,
-    reason: 'cycle_missed',
-    ref_type: 'weekly_goal',
-    ref_id: weekdoel.id,
-  });
-
-  if (puntFout) {
-    console.error(`minpunt boeken mislukte voor ${weekdoel.id}: ${puntFout.message}`);
-  }
-
-  let gered = 0;
-
-  // De weekpas — QS8-81.
-  //
-  // ⚠️ Staat ná het minpunt, en dat is de hele regel: een weekpas beschermt
-  //    de reeks, niet het punt (domeinregel 10). Zou hij ook het punt
-  //    terugdraaien, dan is missen gratis en zegt de score niets meer.
-  //
-  // ⚠️ Staat ná de statuswijziging omdat `verbruik_weekpas()` zelf
-  //    controleert dat de cyclus écht gemist is. Die volgorde is dus geen
-  //    smaak: andersom weigert de functie en verdwijnt de bescherming
-  //    zonder dat er iets stukgaat.
-  //
-  // ⚠️ Geen rekenwerk hier. De functie krijgt de cyclusdatum die al in de
-  //    rij staat; er wordt geen week afgeleid (correctheidsregel 7).
-  const { data: geredeWeek, error: pasFout } = await db.rpc('verbruik_weekpas', {
-    p_user_id: profiel.id,
-    p_goal_id: weekdoel.goal_id,
-    p_cycle_start_date: weekdoel.cycle_start_date,
-  });
-
-  if (pasFout) {
-    // Zichtbaar maar zacht. Een pas die niet ingezet kon worden kost een
-    // reeks en hoort niet stil te gebeuren, maar de rollover mag er niet op
-    // stuklopen: de andere profielen moeten nog.
-    console.error(
-      `weekpas verbruiken mislukte voor doel ${weekdoel.goal_id}: ${pasFout.message}`,
-    );
-  } else if (geredeWeek === true) {
-    gered = 1;
-  }
-
-  return { gemist: 1, vrijgesteld: 0, gered };
+/** De rij die `sluit_verstreken_weken_af()` teruggeeft. */
+interface WekenUitkomst extends Weekuitkomst {
+  geraakte_doelen: string[];
+  mislukt: number;
 }
 
 /**
