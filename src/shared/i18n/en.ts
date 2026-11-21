@@ -739,8 +739,6 @@ export const en: Record<Sleutel, string> = {
   'profiel.herinnering_geen_meldingen': 'Turn notifications on above, otherwise nothing gets delivered.',
   'profiel.viering_titel': 'Celebratory moments',
   'profiel.viering_uitleg': 'A short congratulation when a buddy confirms your week, you reach a milestone or your goal is done. Otherwise the app stays quiet.',
-  'profiel.viering_aan_label': 'Celebratory moments on',
-  'profiel.viering_uit_label': 'Celebratory moments off',
   'vindbaar.titel': 'Findable outside your groups',
   'vindbaar.uitleg': 'With this on, people who are signed in can find you by your name. They see your name and your profile photo.',
   'vindbaar.label': 'Findable',
