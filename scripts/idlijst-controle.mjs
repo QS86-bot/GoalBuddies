@@ -86,6 +86,12 @@ export const GRENZEN = {
   'src/modules/commitments/api.ts#group_id':
     '20 — de vraag erboven in `fetchMogelijkeBegunstigden()` draagt ' +
     '`.limit(MAX_GROEPEN)`, en die constante staat op 20.',
+  'src/modules/commitments/strafkeuzes.ts#id':
+    '20 — de groepen komen uit de `group_members`-vraag van `mijnGroepen()`, die ' +
+    '`.limit(MAX_GROEPEN)` draagt, en die constante staat op 20 (QS8-698).',
+  'src/modules/commitments/strafkeuzes.ts#group_id':
+    '20 — de lijst is de eigen privégroepen (hoogstens 20, uit dezelfde vraag), of ' +
+    'één teamgroep bij een aandeel. Zie `strafGroepen()` in `strafgroepen.ts` (QS8-698).',
 };
 
 /**

@@ -222,6 +222,15 @@ const TOEGESTAAN: Readonly<Record<string, string>> = {
     'avatar_url zijn leesbaar) en komen alleen via mijn_profiel bij de eigenaar; ze zijn ' +
     'niet afhankelijk van groups.zichtbaarheid. De eigen tekst komt bovendien in geen enkele ' +
     'melding (nudgeBericht() krijgt alleen de sleutel). tests/rls/gevoel.test.ts (QS8-733).',
+  'straf.team.wanneer':
+    'Gelezen in de migraties, niet in productie gemeten. De zin belooft dat een straf op een ' +
+    'teamaandeel pas zichtbaar wordt als hij verschuldigd is. commitments_select geeft de ' +
+    'begunstigde groep leesrecht pas vanaf unlocked/due/resolved, en getuigenissen() (0169, ' +
+    '0293) geeft een getuige hetzelfde. commitment_zichtbaar_voor_groep() verandert in 0325 ' +
+    'niet; bewaak_teamstraf() raakt alleen de keuze van de begunstigde, niet de leesroute. ' +
+    'Dat geldt in een open groep net zo, want de leesroute kijkt niet naar groups.zichtbaarheid. ' +
+    'Bij een teamaandeel is dat de bedoelde reden voor de straf-rol van een teamgroep (besluit 29, ' +
+    'QS8-698).',
   'straf.tot_dan':
     'Een commitment vóór de deadline. Oppervlak 20 is in EPIC 13 bewust niet opengezet: ' +
     'commitments_select geeft de begunstigde groep pas leesrecht vanaf unlocked/due/resolved. ' +

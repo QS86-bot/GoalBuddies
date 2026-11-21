@@ -27,6 +27,7 @@ export { Avatar } from './Avatar';
 export { AvatarKeuze } from './AvatarKeuze';
 export { initialen } from './naming';
 export { Button, type ButtonVariant } from './Button';
+export { MeerKnop } from './MeerKnop';
 export { Actiekaart } from './Actiekaart';
 export { Afvinkcirkel } from './Afvinkcirkel';
 export { Card } from './Card';
@@ -57,6 +58,7 @@ export { MemberRow } from './MemberRow';
 export { MilestoneProgress } from './MilestoneProgress';
 export { RisicoBadge } from './RisicoBadge';
 export { Taakbalk } from './Taakbalk';
+export { useMeldingWacht, zetMeldingWacht } from './meldingstip';
 export {
   actiefTabblad,
   BREED_VANAF,
