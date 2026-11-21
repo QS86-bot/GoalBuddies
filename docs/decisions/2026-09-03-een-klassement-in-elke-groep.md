@@ -3,7 +3,7 @@
 **Datum:** 03-09-2026
 **Besluit:** A57
 **Vervangt de open rij uit:** A54 (`2026-08-31-ritme-klassement-en-kleur.md` §2)
-**Status:** besloten; **deels gebouwd** — PR 1 van QS8-666 (migratie 0329, 21-11-2026): de kolom
+**Status:** besloten; **deels gebouwd** — PR 1 van QS8-666 (migratie 0333, 21-11-2026): de kolom
 `groups.klassement_aan`, de poort `lid_van_levende_groep()` in `groep_klassement()` en besluit 45. De
 schakelaar voor een beheerder, de uitnodigingskaart en het scherm A57b volgen (PR 2 tot en met 4). De vier
 vragen uit §7 zijn op 04-11-2026 beantwoord (zie "Beantwoord op 04-11-2026" onder §7). Teksten en keuzes van

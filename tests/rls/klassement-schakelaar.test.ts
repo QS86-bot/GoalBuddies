@@ -3,7 +3,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { adminDb, createTestUser, registreerGroep, removeTestUsers, rlsTestsConfigured, type TestUser } from './harness';
 
 /**
- * Het klassement hangt aan een schakelaar op de groep — QS8-666 (A57), migratie 0329, PR 1.
+ * Het klassement hangt aan een schakelaar op de groep — QS8-666 (A57), migratie 0333, PR 1.
  *
  * ⚠️ **De belofte is een eigenschap van het geheel:** het klassement staat alleen aan waar het aan
  *    hoort te staan, en geen enkele client kan het zelf aanzetten. Daarom toetst dit bestand de
@@ -47,7 +47,7 @@ async function aan(groupId: string): Promise<boolean> {
   return (data as { klassement_aan: boolean } | null)?.klassement_aan === true;
 }
 
-describe.runIf(rlsTestsConfigured)('het klassement hangt aan een schakelaar (A57, 0329)', () => {
+describe.runIf(rlsTestsConfigured)('het klassement hangt aan een schakelaar (A57, 0333)', () => {
   let anna: TestUser; // beheerder van alles
   let bram: TestUser; // lid
   let cor: TestUser; // geen lid

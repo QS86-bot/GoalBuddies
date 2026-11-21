@@ -620,7 +620,7 @@ Voordat er één feature gebouwd wordt:
       rijen via `lid_van_open_groep()`. Redenering in
       `docs/decisions/2026-08-31-ritme-klassement-en-kleur.md` §2, rij 28 in 002.
 
-      ⚠️ **A57 (besluit Quinten 20-11-2026, QS8-666, migratie 0329) vervangt de
+      ⚠️ **A57 (besluit Quinten 20-11-2026, QS8-666, migratie 0333) vervangt de
       grens van A54: het klassement is niet meer van de zichtbaarheid maar van een
       schakelaar op de groep.** `groups.klassement_aan` is voor geen enkele client
       schrijfbaar; de poort van `groep_klassement()` is `lid_van_levende_groep()`

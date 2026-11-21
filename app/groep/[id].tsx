@@ -24,6 +24,7 @@ import {
   type Pagina,
   type Zichtbaarheid,
   deelbaarBericht,
+  isTeamgroep,
   verlaatGroep,
   zichtbaarheidLabels,
 } from '@/modules/buddies';
@@ -36,7 +37,7 @@ import {
   type DeadlineVerzoek,
 } from '@/modules/goals';
 import { fetchIsTeamgroep } from '@/modules/organisaties';
-import { DempGroep } from '@/schermen/groep';
+import { DempGroep, groepInhoud } from '@/schermen/groep';
 import { opmaaktaal, t } from '@/shared/i18n';
 import { toonDatum } from '@/shared/time';
 import { space } from '@/shared/theme';
@@ -97,6 +98,18 @@ import {
  *    `groups_select` eist lidmaatschap, dus een niet-lid krijgt niets — en dat
  *    ziet er hetzelfde uit als een groep die niet bestaat.
  */
+/**
+ * De kop van de pagina — QS8-778. "Jouw groep" zolang de groep laadt, met de naam zodra hij er is, en neutraal
+ * "Groep" als de lading klaar is en er geen groep is (geen lid, of weg): "Jouw groep" boven "deze groep is er niet
+ * voor jou" spreekt zichzelf tegen (critical-user, 20-11-2026).
+ */
+function kopVan(stand: { readonly groep: { readonly name: string } | null } | undefined): string {
+  if (stand === undefined) return t('groepdetail.titel');
+  return stand.groep === null
+    ? t('groepdetail.titel_zonder_groep')
+    : t('groepdetail.titel_naam', { naam: stand.groep.name });
+}
+
 export default function GroepDetail() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
@@ -113,7 +126,7 @@ export default function GroepDetail() {
   return (
     <Screen
       terug={{ naar: '/groep' }}
-      title={stand?.groep?.name ?? t('groepdetail.titel')}
+      title={kopVan(stand)}
       eyebrow={
         stand?.groep
           ? // ⚠️ **De dag zelf krijgt een eigen zin en niet een dagnaam (QS8-199).**
@@ -165,6 +178,20 @@ export default function GroepDetail() {
               <Caption>
                 {t('groepdetail.zichtbaarheid', {
                   stand: zichtbaarheidLabels()[s.groep.zichtbaarheid as Zichtbaarheid],
+                })}
+              </Caption>
+            )}
+
+            {s.groep === null ? null : (
+              <Caption>
+                {t('groepdetail.inhoud', {
+                  onderdelen: groepInhoud({
+                    open: s.groep.zichtbaarheid === 'open' && !isTeamgroep(s.groep),
+                    kanUitnodigen:
+                      deelbaarBericht(s.groep, clientEnv().appUrl, profiel?.display_name) !== null,
+                  })
+                    .map((sleutel) => t(sleutel))
+                    .join(', '),
                 })}
               </Caption>
             )}
@@ -285,14 +312,14 @@ export default function GroepDetail() {
                  schandpaal. De regel zegt wát er zichtbaar is, niet wáárnaast
                  het hoort.
 
-              ⚠️ Niet meer dezelfde poort als het klassement (A57, 0329): de heldenlijst blijft aan
+              ⚠️ Niet meer dezelfde poort als het klassement (A57, 0333): de heldenlijst blijft aan
                  de zichtbaarheid hangen, het klassement aan een eigen schakelaar. In een
                  beschermde groep geeft `groep_helden()` nul rijen en rendert dit niets.
                  De regel staat in 0268, niet hier.
             */}
             <HeldenKaart
               uitkomst={s.helden}
-              open={s.groep?.zichtbaarheid === 'open'}
+              open={s.groep?.zichtbaarheid === 'open' && !isTeamgroep(s.groep)}
               onOpnieuw={herlaad}
             />
 

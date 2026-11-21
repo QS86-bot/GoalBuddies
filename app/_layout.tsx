@@ -17,6 +17,7 @@ import {
 import {
   fetchUitnodiging,
   neemDeel,
+  fetchOpenstaandeMeldingen,
   openstaandeUitnodiging,
   routeVoorUitnodiging,
   vergeetOpenstaandeUitnodiging,
@@ -27,6 +28,7 @@ import {
   registreerPushToken,
   zetPushBron,
 } from '@/modules/notifications';
+import { openstaandeWerkcode } from '@/modules/organisaties';
 import { UiterlijkProvider, useKoppelUiterlijk } from '@/modules/uiterlijk/react';
 import { clientEnv } from '@/lib/env';
 import {
@@ -38,7 +40,7 @@ import {
 } from '@/lib/observability';
 import { apparaatVoorkeuren, t, zetTaalUitApparaat } from '@/shared/i18n';
 import { useTheme } from '@/shared/theme';
-import { RootVangnet, useGehydrateerd } from '@/shared/ui';
+import { RootVangnet, useGehydrateerd, zetMeldingWacht } from '@/shared/ui';
 
 /**
  * De wortel van de app. Alles wat elk scherm nodig heeft, hangt hier.
@@ -101,7 +103,9 @@ function Shell() {
         <>
           <Routewacht />
           <Uitnodigingswacht />
+          <Werkcodewacht />
           <Pushwacht />
+          <Meldingwacht />
           <Tijdzonewacht />
           <Uiterlijkwacht />
           <Stack
@@ -252,6 +256,39 @@ zetPushBron(Platform.OS === 'web' ? maakWebPushBron() : expoPush);
 //    juistheid een eigenschap van dit bestand in plaats van van de module.
 zetTaalUitApparaat(apparaatVoorkeuren());
 
+/**
+ * Zet de stip op de tab Profiel zodra er een beheerder met een open melding is ingelogd — QS8-777.
+ *
+ * ⚠️ **Eén vraag per sessie en niet per scherm.** De RPC beslist wie mag beoordelen (`meldingstip.ts`); deze wacht kent
+ *    de rol niet. Een mislukte lading laat de stip zoals hij was: de kaart op Profiel zegt dan zelf dat het ophalen
+ *    mislukte. Bij uitloggen gaat hij uit, zodat een volgend account niet de stip van het vorige erft.
+ */
+function Meldingwacht() {
+  const { session } = useSession();
+  const userId = session?.user.id ?? null;
+
+  useEffect(() => {
+    // ⚠️ Eerst uit, voor elke gebruiker: een directe wissel van A naar B zonder tussenliggende `null` mag B niet de
+    //    stip van A laten erven als B's eigen lading mislukt (security-review QS8-777, Laag 1).
+    zetMeldingWacht(false);
+    if (userId === null) return;
+    let actueel = true;
+    fetchOpenstaandeMeldingen({ limiet: 1 }).then(
+      (rijen) => {
+        if (actueel) zetMeldingWacht(rijen.length > 0);
+      },
+      () => {
+        // De fout is al gemeld (`safety.reports_queue`); de kaart op Profiel toont de storing zelf.
+      },
+    );
+    return () => {
+      actueel = false;
+    };
+  }, [userId]);
+
+  return null;
+}
+
 function Pushwacht() {
   const { session } = useSession();
   const userId = session?.user.id ?? null;
@@ -323,6 +360,35 @@ function Routewacht() {
   useEffect(() => {
     if (bestemming !== null) router.replace(bestemming);
   }, [bestemming, router]);
+
+  return null;
+}
+
+/**
+ * Opent het lid-worden-scherm met een onthouden werkcode — QS8-663.
+ *
+ * ⚠️ Alleen openen en invullen. Lid worden blijft een druk op de knop en de code
+ *    blijft staan tot dat gelukt is of 24 uur om zijn (`organisaties/pending.ts`).
+ *    Een groepsuitnodiging gaat voor, zodat de twee wachten elkaar niet wegduwen.
+ */
+function Werkcodewacht() {
+  const { session, loading: sessieLaadt } = useSession();
+  const { profiel, loading: profielLaadt } = useProfiel();
+  const router = useRouter();
+  const geprobeerd = useRef(false);
+
+  useEffect(() => {
+    if (sessieLaadt || profielLaadt || !session || !isOnboarded(profiel)) return;
+    if (geprobeerd.current) return;
+    geprobeerd.current = true;
+
+    void (async () => {
+      // Een groepsuitnodiging gaat voor: die wacht heeft zijn eigen pad.
+      if ((await openstaandeUitnodiging()) !== null) return;
+      const code = await openstaandeWerkcode();
+      if (code !== null) router.replace(`/organisatie/deelnemen?code=${code}`);
+    })();
+  }, [sessieLaadt, profielLaadt, session, profiel, router]);
 
   return null;
 }

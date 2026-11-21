@@ -142,7 +142,7 @@ export const GEEN_OPPERVLAK = new Map([
   [
     'functie:zet_klassement_beginstand',
     'Zet de beginstand van `groups.klassement_aan` bij het aanmaken uit `zichtbaarheid` ' +
-      '(0329, QS8-666, A57): een nieuwe open groep begint met het klassement aan. Hij leest de ' +
+      '(0333, QS8-666, A57): een nieuwe open groep begint met het klassement aan. Hij leest de ' +
       'stand van de groep van de rij die wordt ingevoegd en geeft aan niemand iets terug; hij ' +
       '**varieert** dus niets wat een lid van een ánder ziet. ⚠️ Kijk hier opnieuw in PR 2 van A57, ' +
       'waar de beginstand niet meer aan `zichtbaarheid` hangt.',

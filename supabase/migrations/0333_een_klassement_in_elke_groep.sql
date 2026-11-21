@@ -1,4 +1,4 @@
--- 0329_een_klassement_in_elke_groep.sql — QS8-666 (A57), PR 1: de poort, de kolom en besluit 45
+-- 0333_een_klassement_in_elke_groep.sql — QS8-666 (A57), PR 1: de poort, de kolom en besluit 45
 --
 -- ROLLBACK-PAD:
 --   -- 1. De twee functies terugzetten: `groep_klassement()` uit 0321, `zet_groepszichtbaarheid()` uit 0302.
