@@ -879,6 +879,7 @@ export const nl = {
   'tab.doelen': 'Doelen',
   'tab.groep': 'Groep',
   'tab.profiel': 'Profiel',
+  'tab.melding_wacht': 'er wacht een melding',
   'tab.navigatie': 'Hoofdmenu',
   'vangnet.kop': 'De app kon niet verder',
   'vangnet.tekst': 'Er ging iets mis bij het opbouwen van dit scherm. Ga terug naar het beginscherm. Blijft het misgaan, start de app dan opnieuw.',

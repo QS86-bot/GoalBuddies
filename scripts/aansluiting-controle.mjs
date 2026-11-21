@@ -70,6 +70,11 @@ export const AANSLUITPUNTEN = {
  *    `zet*`/`set*`-export synchroon is maar geen modulestatus zet, hoort hij hier.
  */
 export const GEEN_AANSLUITPUNT = {
+  zetMeldingWacht:
+    'Geen injectiepunt: een stand die de app zelf zet en niet een module die de host moet aansluiten (QS8-777). ' +
+    'Hij is aangesloten (gemeten: `Meldingwacht` in `app/_layout.tsx` en `MeldingenIngang` in ' +
+    '`app/(tabs)/profiel.tsx` roepen hem aan; `tests/beloftes/de-meldingstip-volgt-de-rpc.test.ts` bewaakt beide). ' +
+    'Zonder die aanroepen blijft de stip uit, en dat is een stille fout die de test zelf rood maakt.',
   zetDocumentTaal:
     'Geen injectiepunt: het zet geen modulestatus maar het `lang`-attribuut van `document` ' +
     '(QS8-741) en is een bijwerking van `zetTaal()` en `zetTaalUitApparaat()`. Die twee ' +
