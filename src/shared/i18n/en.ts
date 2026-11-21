@@ -1244,6 +1244,8 @@ export const en: Record<Sleutel, string> = {
   'doel.te_oud':
     'This goal has been around too long to delete. Archive it; then your history ' +
     'stays and it disappears from your list.',
+  // QS8-772 (decision by Quinten, 21-11-2026).
+  'doel.is_aandeel': 'You cannot throw away a share in a team goal, only unlink it.',
   'doel.gedeeld_met_groep': 'This goal is linked to a group. Unlink it first, or archive it.',
   'doel.heeft_weekdoelen':
     'Weekly goals already hang off this goal. Archive it instead of deleting it.',

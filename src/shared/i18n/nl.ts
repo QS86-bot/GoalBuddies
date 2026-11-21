@@ -1669,6 +1669,8 @@ export const nl = {
   'doel.te_oud':
     'Dit doel staat er te lang om nog te verwijderen. Archiveer het; dan blijft je ' +
     'geschiedenis staan en verdwijnt het uit je lijst.',
+  // QS8-772 (besluit Quinten, 21-11-2026): de tekst is van hem.
+  'doel.is_aandeel': 'Een aandeel in een teamdoel kun je niet weggooien, alleen loskoppelen.',
   'doel.gedeeld_met_groep': 'Dit doel is aan een groep gekoppeld. Ontkoppel het eerst, of archiveer het.',
   'doel.heeft_weekdoelen':
     'Er hangen al weekdoelen aan dit doel. Archiveer het in plaats van het te verwijderen.',
