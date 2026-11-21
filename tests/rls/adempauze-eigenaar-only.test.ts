@@ -39,7 +39,7 @@ import { psql, stackBeschikbaarOfFaal } from './psql-stack';
  *    staat er om te bewijzen dat "open" niets opent, en 8 weken terug is de
  *    pauze achteraf waarvan QS8-227 de aankondiging als rem had.
  *
- * ⚠️ **`ketting_stand()` stond hier tot 0328 als benoemd restant (B1) en staat er
+ * ⚠️ **`ketting_stand()` stond hier tot 0329 als benoemd restant (B1) en staat er
  *    niet meer:** sinds QS8-769 leest hij `breathers` niet meer en telt een lid in
  *    een pauze mee. Dat een pauze er niet uit af te leiden is, staat in
  *    `tests/rls/ketting-pauze-meetelt.test.ts`; het register hieronder ziet alleen

@@ -1,5 +1,5 @@
 /**
- * De Ketting telt leden in een pauze mee — migratie 0328, QS8-769.
+ * De Ketting telt leden in een pauze mee — migratie 0329, QS8-769.
  *
  * ⚠️ **De belofte is een eigenschap van het geheel, niet van de functie.** Niet
  *    "`in_aanmerking` bevat geen `breathers`-clausule" maar: *een groepslid kan uit
@@ -98,7 +98,7 @@ async function schakelsZichtbaar(d: Duo): Promise<string[]> {
   return (r.data ?? []).map((x) => `${x.user_id}@${x.group_period_start}`);
 }
 
-describe.skipIf(!rlsTestsConfigured)('een pauze is niet af te leiden uit De Ketting (0328)', () => {
+describe.skipIf(!rlsTestsConfigured)('een pauze is niet af te leiden uit De Ketting (0329)', () => {
   beforeAll(async () => {
     ik = await createTestUser('ketting-pauze-ik');
     pauzerend = await createTestUser('ketting-pauze-ander');

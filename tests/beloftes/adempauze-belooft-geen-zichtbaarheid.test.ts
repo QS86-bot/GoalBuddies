@@ -5,7 +5,7 @@
  * is na 0307 onwaar), en beweert ook niets over De Ketting. Getoetst wordt op de
  * inhoud van de catalogus in beide talen, niet op een plek in een scherm.
  *
- * ⚠️ De laatste zin (het Ketting-restant) is weg sinds 0328 (QS8-769): De Ketting telt
+ * ⚠️ De laatste zin (het Ketting-restant) is weg sinds 0329 (QS8-769): De Ketting telt
  *    een lid in een pauze mee. De toets eist nu dat die zin er ook niet meer staat,
  *    want hij zou onwaar zijn.
  */

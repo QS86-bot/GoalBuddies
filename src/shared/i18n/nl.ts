@@ -2422,7 +2422,7 @@ export const nl = {
   //    aankondigt precies dat verraadt. Zie
   //    `docs/decisions/002-domeinregel7-oppervlakken.md` rij 21 en §4a.
   // ⚠️ QS8-768 (besluit Quinten, 20-11-2026): vervangen, want de oude zin was na 0307
-  //    onwaar. De laatste zin (het Ketting-restant) is weg sinds 0328 (QS8-769): De Ketting
+  //    onwaar. De laatste zin (het Ketting-restant) is weg sinds 0329 (QS8-769): De Ketting
   //    telt een lid in een pauze mee.
   'adempauze.groep_ziet':
     'Je groep ziet je adempauze niet. Wil je het ze laten weten, dan plaats je zelf een ' +

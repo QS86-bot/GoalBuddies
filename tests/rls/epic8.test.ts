@@ -506,9 +506,9 @@ describe.skipIf(!rlsTestsConfigured)('EPIC 8 — De Ketting', () => {
     );
 
     it(
-      'telt een lid met adempauze gewoon mee in de noemer (0328, QS8-769)',
+      'telt een lid met adempauze gewoon mee in de noemer (0329, QS8-769)',
       async () => {
-        // ⚠️ Omgedraaid in 0328 (QS8-769, besluit Quinten 20-11-2026): een lid in een
+        // ⚠️ Omgedraaid in 0329 (QS8-769, besluit Quinten 20-11-2026): een lid in een
         //    pauze telt mee, want het getal dat zakte was aan elk groepslid te lezen en
         //    verried wie pauzeert. De naadtoets staat in `ketting-pauze-meetelt.test.ts`;
         //    deze behoudt de oude opstelling, nu met het omgekeerde verwachte getal.

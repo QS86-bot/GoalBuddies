@@ -568,9 +568,9 @@ describe.skipIf(!rlsTestsConfigured)('ketting_stand peilt de adempauze per lid',
   }, SETUP_TIMEOUT);
 
   it(
-    'telt hem mee op de dag die hij zélf vandaag noemt (0328, QS8-769: een pauze verandert de noemer niet)',
+    'telt hem mee op de dag die hij zélf vandaag noemt (0329, QS8-769: een pauze verandert de noemer niet)',
     async () => {
-      // ⚠️ Omgedraaid in 0328: de functie leest de pauze en dus de klok van het lid niet meer.
+      // ⚠️ Omgedraaid in 0329: de functie leest de pauze en dus de klok van het lid niet meer.
       const voor = (await stand()).in_aanmerking ?? 0;
 
       await metAdempauzeOp(localDateIn(zone, now()), async () => {

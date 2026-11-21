@@ -1,4 +1,4 @@
--- 0328_de_ketting_telt_leden_in_een_pauze_mee.sql — QS8-769, nazorg op 0204 en 0307
+-- 0329_de_ketting_telt_leden_in_een_pauze_mee.sql — QS8-769, nazorg op 0204 en 0307
 --
 -- ROLLBACK-PAD:
 --   Zet `ketting_stand()` terug op de vorm van 0204: in `in_aanmerking` valt een lid
