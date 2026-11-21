@@ -68,6 +68,13 @@ const GEEN_ZONES = [
   '', // komt langs NOT NULL heen; `at time zone ''` faalt even hard
   'UTC+1', // ziet eruit als een zone en is er geen
   'Europe/Amsterdam ', // met spatie — de vergelijking is exact
+  // QS8-763 (0328): Postgres kent deze namen, Intl niet, en dan slaat de rollover
+  // het profiel over. `posix/` bestaat op productie (598 namen) en niet lokaal;
+  // lokaal weigert de gewone toets ze al, productie is alleen via het voorvoegsel
+  // gedekt. `Factory` is het geval dat lokaal wél door 0119 kwam.
+  'Factory',
+  'posix/Europe/Amsterdam',
+  'right/UTC',
 ];
 
 describe.runIf(rlsTestsConfigured)('een tz-waarde die geen tijdzone is (0119)', () => {
