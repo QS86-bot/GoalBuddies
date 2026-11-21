@@ -39,7 +39,7 @@ describe('groepSchema.name', () => {
     'evil.\u0301com',
     'Jan\u2029Admin',
     'log in via 185.12.3.4',
-    'Lopen 5.5 km',
+    '185。12。3。4',
     'Log in via evil\u200E.com',
     'evil.\u200Ecom',
     '185\u200E.12\u200E.3\u200E.4',
@@ -53,7 +53,7 @@ describe('groepSchema.name', () => {
     expect(nieuw(naam).success).toBe(false);
   });
 
-  it.each(['Sportmaatjes', 'Team 3A', 'Lopen, 5 km', 'Jan & Piet', 'e.g. wij', 'Jan’s groep'])(
+  it.each(['Sportmaatjes', 'Team 3A', 'Lopen, 5 km', 'Jan & Piet', 'e.g. wij', 'Jan’s groep', '10.000 stappen', 'Versie 2.0', 'Lopen om 7.30', 'Versie 1.2.3'])(
     'laat %s door',
     (naam) => {
       expect(nieuw(naam).success).toBe(true);

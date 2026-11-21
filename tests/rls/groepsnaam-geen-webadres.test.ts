@@ -1,6 +1,6 @@
 /**
  * De belofte van QS8-771: **de database weigert in een groepsnaam wat de client
- * weigert** — `bevat_linkachtige_tekst()` (migratie 0328) en
+ * weigert** — `bevat_linkachtige_tekst()` (migratie 0329) en
  * `bevatLinkAchtigeTekst()` geven op dezelfde lijst hetzelfde antwoord.
  *
  * ⚠️ Een pariteitstest en geen losse toets per kant: twee regexen die elkaar
@@ -34,7 +34,7 @@ const WEIGEREN = [
   'Jan\nAdmin',
   'Jan\u2029Admin',
   'log in via 185.12.3.4',
-  'Lopen 5.5 km',
+  '185。12。3。4',
   'Log in via evil\u200E.com',
   'evil.\u200Ecom',
   'evil\u200F.com',
@@ -50,7 +50,7 @@ const WEIGEREN = [
   'evil\u{13430}.com',
   '185\u064B.12\u064B.3\u064B.4',
 ];
-const TOELATEN = ['Sportmaatjes', 'Team 3A', 'Lopen, 5 km', 'Jan & Piet', 'e.g. wij', 'Jan’s groep', 'Dr. Jansen', 'Café de Paris', 'A & B'];
+const TOELATEN = ['Sportmaatjes', 'Team 3A', 'Lopen, 5 km', 'Jan & Piet', 'e.g. wij', 'Jan’s groep', '10.000 stappen', 'Versie 2.0', 'Lopen om 7.30', 'Versie 1.2.3', 'Dr. Jansen', 'Café de Paris', 'A & B'];
 
 describe.skipIf(!beschikbaar)('groepsnaam zonder webadres: client en database zijn gelijk', () => {
   const db = (tekst: string): boolean => {

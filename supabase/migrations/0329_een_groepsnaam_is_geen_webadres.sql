@@ -1,4 +1,4 @@
--- 0328_een_groepsnaam_is_geen_webadres.sql — een groepsnaam draagt geen webadres,
+-- 0329_een_groepsnaam_is_geen_webadres.sql — een groepsnaam draagt geen webadres,
 -- domeinvorm of regeleinde (QS8-771, optie 1 van Quinten, 20-11-2026).
 --
 -- ROLLBACK-PAD:
@@ -26,7 +26,7 @@
 --
 -- ⚠️ De regel spiegelt `bevatLinkAchtigeTekst()` in `src/shared/tekst`:
 --    `://`, `www.` en een domeinvorm (letter of cijfer of streepje, een punt of
---    een punt-lookalike, twee letters), en getal-punt-getal (een IP-adres).
+--    een punt-lookalike, twee letters), en vier getallen met punten (een IP-adres).
 --
 -- ⚠️ `[[:alpha:]]` hangt van de locale af. 📏 Productie meet `en_US.UTF-8` en
 --    daar dekt hij é, ā en кириллица; onder locale `C` (een lokale teststack)
@@ -53,8 +53,9 @@ as $$
     -- een domeinvorm: letter/cijfer/streepje, een punt (ook de punten die een
     -- browser tot een punt omzet: U+3002, U+FF0E, U+FF61, U+2024, U+FE52), twee letters
     or v ~* ('[[:alnum:]-][.' || U&'\3002\FF0E\FF61\2024\FE52' || '][[:alpha:]]{2}')
-    -- een IP-adres of ander getal-punt-getal (besluit Quinten, 20-11-2026)
-    or v ~ ('[0-9][.' || U&'\3002\FF0E\FF61\2024\FE52' || '][0-9]')
+    -- een IP-adres: vier groepen cijfers met punten (besluit Quinten, 21-11-2026;
+    -- "10.000 stappen" en "Versie 2.0" blijven gewone namen)
+    or v ~ ('[0-9]+[.' || U&'\3002\FF0E\FF61\2024\FE52' || '][0-9]+[.' || U&'\3002\FF0E\FF61\2024\FE52' || '][0-9]+[.' || U&'\3002\FF0E\FF61\2024\FE52' || '][0-9]+')
     or p_tekst ~ ('[' || chr(10) || chr(13) || chr(133) || chr(8232) || chr(8233) || ']'),
     false
   )
