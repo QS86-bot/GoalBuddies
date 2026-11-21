@@ -40,7 +40,9 @@
 -- ⚠️ **Dit is PR 1 van vier en hij hoort niet los naar productie.** Een groep die open wordt en daarna weer beschermd,
 --    houdt het klassement (besluit van Quinten, 18-11-2026), en de bevestiging bij beschermen belooft dat een beheerder
 --    het apart kan uitzetten. Die weg (`zet_groepsklassement()` en de schakelaar in Groepsbeheer) is PR 2. PR 1 en PR 2
---    gaan dus samen uit.
+--    gaan dus samen uit. **Besluit van Quinten, 21-11-2026:** PR 1 mag naar `main`, maar de uitrol naar productie wacht tot
+--    PR 2 er ook is; en (bevestiging van zijn besluit van 18-11) een groep die van open naar beschermd gaat, houdt het
+--    klassement aan tot een beheerder het apart uitzet.
 --
 -- ⚠️ **`points_ledger` bewaart de `group_id` altijd**, ongeacht zichtbaarheid of schakelaar (41 plekken in de
 --    migraties, statisch gemeten; tegen productie niet). Een klassement aanzetten maakt dus ook de punten
