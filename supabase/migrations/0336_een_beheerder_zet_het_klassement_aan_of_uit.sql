@@ -8,6 +8,15 @@
 --   -- Rijen met 'leaderboard_changed' in `group_events` en 'leaderboard_enabled'/'leaderboard_disabled' in
 --   -- `chat_messages` hoeven niet weg: beide typen staan sinds 0333 in de allowlists.
 --
+--
+-- laat bewust vallen: new.klassement_aan := new.zichtbaarheid = 'open'
+-- laat bewust vallen: and new.organization_id is null
+-- laat bewust vallen: select g.ontdekbaar, g.zichtbaarheid, g.categorie
+-- laat bewust vallen: into v_oud, v_zicht, v_cat
+-- laat bewust vallen: update groups set ontdekbaar = p_naar where id = p_group_id;
+-- laat bewust vallen: return jsonb_build_object('ok', true, 'ontdekbaar', p_naar);
+-- (Besluit 42/43: de beginstand hangt niet meer aan `zichtbaarheid`; besluit Quinten 21-11: `zet_groepsontdekbaarheid()` leest en
+--  zet ook `klassement_aan`, en geeft `klassement` terug. De rest van beide lichamen is dat van 0333 en 0302.)
 -- ---------------------------------------------------------------------------
 -- Wat dit doet
 -- ---------------------------------------------------------------------------
