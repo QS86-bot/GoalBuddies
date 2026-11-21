@@ -17,6 +17,7 @@ import {
 import {
   fetchUitnodiging,
   neemDeel,
+  fetchOpenstaandeMeldingen,
   openstaandeUitnodiging,
   routeVoorUitnodiging,
   vergeetOpenstaandeUitnodiging,
@@ -39,7 +40,7 @@ import {
 } from '@/lib/observability';
 import { apparaatVoorkeuren, t, zetTaalUitApparaat } from '@/shared/i18n';
 import { useTheme } from '@/shared/theme';
-import { RootVangnet, useGehydrateerd } from '@/shared/ui';
+import { RootVangnet, useGehydrateerd, zetMeldingWacht } from '@/shared/ui';
 
 /**
  * De wortel van de app. Alles wat elk scherm nodig heeft, hangt hier.
@@ -104,6 +105,7 @@ function Shell() {
           <Uitnodigingswacht />
           <Werkcodewacht />
           <Pushwacht />
+          <Meldingwacht />
           <Tijdzonewacht />
           <Uiterlijkwacht />
           <Stack
@@ -253,6 +255,39 @@ zetPushBron(Platform.OS === 'web' ? maakWebPushBron() : expoPush);
 //    overschrijven, afhankelijk van de volgorde waarin ze hier staan; dan is de
 //    juistheid een eigenschap van dit bestand in plaats van van de module.
 zetTaalUitApparaat(apparaatVoorkeuren());
+
+/**
+ * Zet de stip op de tab Profiel zodra er een beheerder met een open melding is ingelogd — QS8-777.
+ *
+ * ⚠️ **Eén vraag per sessie en niet per scherm.** De RPC beslist wie mag beoordelen (`meldingstip.ts`); deze wacht kent
+ *    de rol niet. Een mislukte lading laat de stip zoals hij was: de kaart op Profiel zegt dan zelf dat het ophalen
+ *    mislukte. Bij uitloggen gaat hij uit, zodat een volgend account niet de stip van het vorige erft.
+ */
+function Meldingwacht() {
+  const { session } = useSession();
+  const userId = session?.user.id ?? null;
+
+  useEffect(() => {
+    // ⚠️ Eerst uit, voor elke gebruiker: een directe wissel van A naar B zonder tussenliggende `null` mag B niet de
+    //    stip van A laten erven als B's eigen lading mislukt (security-review QS8-777, Laag 1).
+    zetMeldingWacht(false);
+    if (userId === null) return;
+    let actueel = true;
+    fetchOpenstaandeMeldingen({ limiet: 1 }).then(
+      (rijen) => {
+        if (actueel) zetMeldingWacht(rijen.length > 0);
+      },
+      () => {
+        // De fout is al gemeld (`safety.reports_queue`); de kaart op Profiel toont de storing zelf.
+      },
+    );
+    return () => {
+      actueel = false;
+    };
+  }, [userId]);
+
+  return null;
+}
 
 function Pushwacht() {
   const { session } = useSession();
