@@ -39,6 +39,9 @@ export const en: Record<Sleutel, string> = {
   'systeembericht.huddle_day_changed':
     '{naam} moved the huddle day. The week that is running moved along with it; anything already closed stays closed.',
   'systeembericht.team_goal_created': 'There is a new team goal. Take your share if you want to join in.',
+  // ⚠️ Migration 0329 (QS8-666, A57). About the group: no {naam}, no points.
+  'systeembericht.leaderboard_enabled': 'The leaderboard is on in this group.',
+  'systeembericht.leaderboard_disabled': 'The leaderboard is off in this group.',
   'systeembericht.team_goal_completed': 'The team completed a team goal.',
 
   'systeembericht.prestatie_gedeeld': '{naam} shares an achievement: {prestatie}.',
@@ -1964,11 +1967,11 @@ export const en: Record<Sleutel, string> = {
 
   'bevestiging.groep_openzetten.titel': 'Open up this group?',
   'bevestiging.groep_openzetten.uitleg':
-    'From now on everyone in this group also sees each other’s missed and carried weeks, each other’s best streak ever, who took part in each week, a leaderboard of each other’s point totals in this group, and which hero last visited whom in the past week. That includes the hero who turns up after a missed week, and it covers the weeks already there too. So this is not only about you. Everyone gets a message in the group chat, so anyone who would rather not can unlink their goal. That works for everything tied to a goal; the hero list is tied to your membership, so it stays as long as you are in the group. You can switch back at any time, immediately.',
+    'From now on everyone in this group also sees each other’s missed and carried weeks, each other’s best streak ever, who took part in each week, a leaderboard of each other’s point totals in this group, and which hero last visited whom in the past week. That includes the hero who turns up after a missed week, and it covers the weeks already there too. The leaderboard turns on, if it was off. So this is not only about you. Everyone gets a message in the group chat, so anyone who would rather not can unlink their goal. That works for everything tied to a goal; the hero list is tied to your membership, so it stays as long as you are in the group. You can switch back at any time, immediately.',
   'bevestiging.groep_openzetten.knop': 'Yes, open it up',
   'bevestiging.groep_beschermen.titel': 'Protect this group again?',
   'bevestiging.groep_beschermen.uitleg':
-    'From now on the group only sees what works out. Missed weeks become private again, retroactively too, and the leaderboard and the hero list disappear. Everyone gets a message about it.',
+    'From now on the group only sees what works out. Closed: missed and carried weeks, the best streak, who took part in each week and the hero list, retroactively too. The leaderboard stays; an admin can switch it off separately. Everyone gets a message about it.',
   'bevestiging.groep_beschermen.knop': 'Yes, protect it',
   'bevestiging.groep_ontdekbaar_maken.titel': 'Make this group discoverable?',
   'bevestiging.groep_ontdekbaar_maken.uitleg':
@@ -2230,7 +2233,7 @@ export const en: Record<Sleutel, string> = {
   'ritme.te_veel_deze_dag': "You've ticked off too much today. Try again tomorrow.",
   'klassement.kop': 'The leaderboard',
   'klassement.uitleg':
-    'You have agreed to be open with each other, so this group\u2019s points are gathered here.',
+    'The points each member has earned in this group. A missed week costs no points here.',
   'klassement.punten_een': '1 point',
   'klassement.punten_meer': '{n} points',
   'klassement.rij_label': 'Place {positie}: {naam}, {punten}',

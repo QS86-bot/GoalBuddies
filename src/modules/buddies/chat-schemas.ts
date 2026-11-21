@@ -173,6 +173,15 @@ export const SYSTEEM_GEBEURTENISSEN = [
    */
   'team_goal_created',
   'team_goal_completed',
+  /**
+   * ⚠️ **Toegevoegd in migratie 0329 (QS8-666, A57).** Het klassement van de groep gaat aan of uit.
+   *    Over de gróép en niet over een persoon: geen naam, geen titel, geen punten. Aan komt ook
+   *    bij het openzetten van een groep waar het nog uit stond (besluit 45, P5). Een bericht over
+   *    het uitzetten is er om dezelfde reden als bij het aanzetten: een groep waar het klassement
+   *    stilzwijgend verdwijnt, is een groep waar iemand zich afvraagt waarom.
+   */
+  'leaderboard_enabled',
+  'leaderboard_disabled',
 ] as const;
 
 export type SysteemGebeurtenis = (typeof SYSTEEM_GEBEURTENISSEN)[number];

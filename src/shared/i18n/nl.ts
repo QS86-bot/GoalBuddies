@@ -118,6 +118,9 @@ export const nl = {
    */
   'systeembericht.team_goal_created': 'Er is een nieuw teamdoel. Neem je aandeel als je mee wilt doen.',
   'systeembericht.team_goal_completed': 'Het team heeft een teamdoel afgerond.',
+  // ⚠️ Migratie 0329 (QS8-666, A57, teksten van Quinten 21-11-2026). Over de groep: geen {naam}, geen punten.
+  'systeembericht.leaderboard_enabled': 'Het klassement staat aan in deze groep.',
+  'systeembericht.leaderboard_disabled': 'Het klassement staat uit in deze groep.',
 
   /** Iemand die er niet meer is. Zie oppervlak 18 in beslisdocument 002. */
   'algemeen.oud_lid': 'Een oud-lid',
@@ -812,11 +815,11 @@ export const nl = {
 
   'bevestiging.groep_openzetten.titel': 'Deze groep openzetten?',
   'bevestiging.groep_openzetten.uitleg':
-    'Vanaf nu ziet iedereen in deze groep ook elkaars gemiste en doorgeschoven weken, elkaars beste reeks ooit, van elke week wie er meedeed, een klassement met elkaars puntentotaal in deze groep, en welke held er de afgelopen week bij wie langs is geweest. Dat is ook de held die na een gemiste week komt, en het geldt ook voor de weken die er al staan. Dit gaat dus niet alleen over jou. Iedereen krijgt een bericht in de groepschat, zodat wie dat niet wil zijn doel kan ontkoppelen. Dat werkt voor alles wat aan een doel hangt; de heldenlijst hangt aan je lidmaatschap en blijft dus staan zolang je in de groep zit. Terugzetten kan altijd en meteen.',
+    'Vanaf nu ziet iedereen in deze groep ook elkaars gemiste en doorgeschoven weken, elkaars beste reeks ooit, van elke week wie er meedeed, een klassement met elkaars puntentotaal in deze groep, en welke held er de afgelopen week bij wie langs is geweest. Dat is ook de held die na een gemiste week komt, en het geldt ook voor de weken die er al staan. Het klassement gaat aan, als het nog uit stond. Dit gaat dus niet alleen over jou. Iedereen krijgt een bericht in de groepschat, zodat wie dat niet wil zijn doel kan ontkoppelen. Dat werkt voor alles wat aan een doel hangt; de heldenlijst hangt aan je lidmaatschap en blijft dus staan zolang je in de groep zit. Terugzetten kan altijd en meteen.',
   'bevestiging.groep_openzetten.knop': 'Ja, zet hem open',
   'bevestiging.groep_beschermen.titel': 'Deze groep weer beschermen?',
   'bevestiging.groep_beschermen.uitleg':
-    'De groep ziet vanaf nu alleen nog wat er lukt. Gemiste weken worden weer privé, ook met terugwerkende kracht, en het klassement en de heldenlijst verdwijnen. Iedereen krijgt er een bericht van.',
+    'De groep ziet vanaf nu alleen nog wat er lukt. Dicht gaat: gemiste en doorgeschoven weken, de beste reeks, wie welke week meedeed en de heldenlijst, ook met terugwerkende kracht. Het klassement blijft staan; een beheerder kan het apart uitzetten. Iedereen krijgt er een bericht van.',
   'bevestiging.groep_beschermen.knop': 'Ja, bescherm hem',
   'bevestiging.groep_ontdekbaar_maken.titel': 'Deze groep vindbaar maken?',
   'bevestiging.groep_ontdekbaar_maken.uitleg':
@@ -2761,7 +2764,7 @@ export const nl = {
   //    seizoensrecap in 0112 maakte, en om precies dezelfde reden.
   'klassement.kop': 'Het klassement',
   'klassement.uitleg':
-    'Jullie hebben afgesproken open te zijn, dus staan de punten van deze groep hier bij elkaar.',
+    'De punten die ieder in deze groep verdiend heeft. Een gemiste week kost hier geen punten.',
   'klassement.punten_een': '1 punt',
   'klassement.punten_meer': '{n} punten',
   'klassement.rij_label': 'Plek {positie}: {naam}, {punten}',
