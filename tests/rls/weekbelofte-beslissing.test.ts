@@ -342,8 +342,8 @@ ${noteer(`'getuigenissen=' || count(*) from public.getuigenissen_voor((select b 
   /**
    * De rollover roept `maak_straffen_verschuldigd()` aan vóór hij de week sluit
    * (`verwerkProfiel()` in `supabase/functions/rollover/index.ts`). Hier dezelfde
-   * volgorde met de echte functie: run 1 ziet de week nog open, dan sluit de
-   * week zoals `schrijfWeekAf()` dat doet, en run 2 beslist.
+   * volgorde met de echte functies: run 1 ziet de week nog open, dan sluit
+   * `sluit_verstreken_weken_af()` (0335, QS8-687) de week, en run 2 beslist.
    */
   it.each([
     { open: 'todo', verwacht: ['run1=0', 'set', 'run2=1', 'due'] },
@@ -358,7 +358,7 @@ ${belofte(start)}
 ${weekdoel(start, open)}
 ${noteer(`'run1=' || public.maak_straffen_verschuldigd((select a from proef))`)}
 ${STAND}
-update weekly_goals set status = 'missed' where goal_id = (select g from proef);
+do $sluit$ begin perform public.sluit_verstreken_weken_af((select a from proef), (now() at time zone 'UTC')::date); end $sluit$;
 ${noteer(`'run2=' || public.maak_straffen_verschuldigd((select a from proef))`)}
 ${STAND}`);
 

@@ -62,6 +62,8 @@ const TEST_TIMEOUT = 30_000;
 const REGISTER: Readonly<Record<string, string>> = {
   plan_adempauze:
     'SECURITY DEFINER; leest eigen rijen (`user_id = v_uid`) voor de overlapcontrole en schrijft de rij.',
+  sluit_verstreken_weken_af:
+    'SECURITY DEFINER, alleen service_role (0335, QS8-687); leest `breathers` van de eigenaar die hij afsluit, om een verstreken week vrij te stellen in plaats van gemist te boeken, en geeft geen rij terug.',
   annuleer_adempauze:
     'SECURITY DEFINER; leest en verwijdert alleen de eigen rij (`user_id = v_uid`).',
 };
