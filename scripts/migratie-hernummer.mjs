@@ -712,19 +712,26 @@ async function hoofd() {
   //    als zodanig herkend wordt en niet als kaal nummer meetelt.
   const bekendeBases = bestanden.map((n) => basisUit(n)).filter((b) => b !== null);
 
-  // ⚠️ **Binnen het gekozen bestand mag het script kiezen, daarbuiten niet.** Dit
-  //    is het bestand dat je zelf hebt aangewezen en waarvan het nummer verandert;
-  //    een kaal nummer erin gaat over zijn eigen nummering. Vandaar `gedeeld:
-  //    false` — de naam van een ánder bestand blijft ook hier staan, want die
-  //    uitzondering zit in `herschrijfVerwijzingen()` zelf.
+  // ⚠️⚠️ **Ook in het gekozen bestand is een kaal nummer geen bewijs — QS8-765.**
+  //    Hier stond `gedeeld: false`, "want een kaal nummer erin gaat over zijn eigen
+  //    nummering". 📏 Op 20-11-2026 gaf dat bij 0299 → 0315 een kop met
+  //    `0315–0302`: de `0299–0302` wees naar de productiemigraties van een ander
+  //    issue. Een kaal getal is niet te onderscheiden van een verwijzing naar een
+  //    ander bestand, dus ook hier alleen de volle naam en de eigen kopregel
+  //    (`herschrijfKop`) automatisch; de rest wordt gemeld. Besluit van Quinten
+  //    (V1 = A), de prijs is een regel handwerk als de body 'Draai 0299 terug' zegt.
   const oudPad = join(MAP, oud);
   const inhoud = readFileSync(oudPad, 'utf8');
   const metKop = herschrijfKop(inhoud, nieuweBasis);
-  const { tekst: nieuweInhoud, treffers } = herschrijfVerwijzingen(metKop, {
+  const {
+    tekst: nieuweInhoud,
+    treffers,
+    gemeld: eigenGemeld,
+  } = herschrijfVerwijzingen(metKop, {
     nummer: bronNummer,
     oudeBasis,
     nieuweBasis,
-    gedeeld: false,
+    gedeeld: true,
     bekendeBases,
   });
 
@@ -735,6 +742,9 @@ async function hoofd() {
   // 2. Elke andere plek.
   const elders = [];
   const nagelopen = [];
+  if (eigenGemeld.length > 0) {
+    nagelopen.push({ pad: join(MAP, `${nieuweBasis}.sql`), gemeld: eigenGemeld });
+  }
   for (const map of DOORZOEKEN) {
     for (const pad of bestandenOnder(join(WORTEL, map))) {
       if (pad === oudPad) continue;

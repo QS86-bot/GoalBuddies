@@ -10,6 +10,7 @@ import {
   signUpWithEmail,
   type Aanmeldmodus,
 } from '@/modules/auth';
+import { bewaarWerkcode } from '@/modules/organisaties';
 import { t } from '@/shared/i18n';
 import { space } from '@/shared/theme';
 import { Body, Button, Caption, Card, Field, Screen, Subheading } from '@/shared/ui';
@@ -75,6 +76,8 @@ export default function Aanmelden() {
       title={nieuw ? t('aanmelden.titel_nieuw') : t('aanmelden.titel_terug')}
       eyebrow={t('aanmelden.eyebrow')}
     >
+      <Body muted>{t('aanmelden.positionering')}</Body>
+
       <Card>
         <Field
           label={t('aanmelden.email')}
@@ -121,6 +124,8 @@ export default function Aanmelden() {
         </Button>
       </Card>
 
+      <WerkIngang />
+
       <Card nested>
         <Subheading>{t('aanmelden.bestaand_account')}</Subheading>
         {Platform.OS === 'web' ? (
@@ -136,6 +141,41 @@ export default function Aanmelden() {
         )}
       </Card>
     </Screen>
+  );
+}
+
+/**
+ * De tweede ingang, "Ik kom via mijn werk" — QS8-663. De code wordt alleen
+ * onthouden: lid worden kan pas met een sessie en blijft een druk op de knop na
+ * de onboarding (`organisaties/pending.ts`).
+ */
+function WerkIngang() {
+  const [werkcode, setWerkcode] = useState('');
+  const [melding, setMelding] = useState<string | null>(null);
+
+  async function onthoud() {
+    setMelding(null);
+    const gelukt = await bewaarWerkcode(werkcode);
+    setMelding(gelukt ? t('aanmelden.werk_onthouden') : t('organisatie.code_ongeldig'));
+  }
+
+  return (
+    <Card nested>
+      <Subheading>{t('aanmelden.werk_kop')}</Subheading>
+      <Body muted>{t('aanmelden.werk_tekst')}</Body>
+      <Field
+        label={t('organisatie.code_label')}
+        value={werkcode}
+        onChangeText={setWerkcode}
+        autoCapitalize="characters"
+        autoCorrect={false}
+        placeholder="VYHC-2X9G-SRVH"
+      />
+      {melding === null ? null : <Caption muted={false}>{melding}</Caption>}
+      <Button variant="secundair" block onPress={() => void onthoud()}>
+        {t('aanmelden.werk_knop')}
+      </Button>
+    </Card>
   );
 }
 

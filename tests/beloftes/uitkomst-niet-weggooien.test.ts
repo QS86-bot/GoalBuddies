@@ -370,7 +370,9 @@ describe('uitloggen staat vóór de instellingen', () => {
     expect(uitloggen, 'geen <Uitloggen /> in het profielscherm').toBeGreaterThan(-1);
 
     const teVroeg = INSTELLINGEN.filter((tag) => {
-      const plek = bron.indexOf(tag);
+      // ⚠️ Met een woordgrens: `<Meldingen` is een voorvoegsel van `<MeldingenIngang` (QS8-777), en die kaart staat
+      //    met opzet bovenaan Profiel en is geen instelling.
+      const plek = bron.search(new RegExp(`${tag}\\b`));
       return plek > -1 && plek < uitloggen;
     });
 

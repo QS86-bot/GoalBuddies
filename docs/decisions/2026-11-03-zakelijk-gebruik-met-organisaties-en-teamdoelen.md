@@ -2,9 +2,12 @@
 
 **Datum:** 03-11-2026 · **Issues:** QS8-649 (de poort) en de epic QS8-650 met sub-issues QS8-651 t/m QS8-666 ·
 **Raakt:** `PRD-accountability-app.md` §2.4, domeinregel 3, 4, 7 en 10
-**Status:** **besloten door Quinten en niet gebouwd.** De spec staat als *voorstel*
-in `docs/decisions/2026-11-03-spec-organisaties-en-teamdoelen.md`; daarin wacht een
-reeks keuzes nog op Quinten. Dit document legt vast wat er beslist is en wat niet.
+**Status:** **besloten door Quinten; gebouwd en op `main`, niet op productie.** De
+migraties 0316 t/m 0327 en de bijbehorende code landden op 20-11-2026 via de keten van
+epic QS8-650 (§ "De poort QS8-649" onderaan). De schermen van QS8-658 wachten nog op
+Quintens blik. De spec staat als *voorstel* in
+`docs/decisions/2026-11-03-spec-organisaties-en-teamdoelen.md`. Dit document legt vast
+wat er beslist is en wat niet.
 
 ## Wat dit is, en wat niet
 
@@ -337,7 +340,8 @@ standaard:
   instemmingsrecht van een ondernemingsraad of een bepaalde AVG-rolverdeling bij
   hoort, is een **niet-geverifieerde veronderstelling van deze sessie en geen
   vaststelling**. Laat dat door iemand met verstand van arbeids- en privacyrecht
-  toetsen voordat het aan organisaties verkocht wordt.
+  toetsen voordat het aan organisaties verkocht wordt. Sinds 19-11-2026 is dat een
+  voorwaarde en geen datum: zie § "Herbevestigen vóór".
 
 ## Herbevestigen vóór
 
@@ -349,6 +353,21 @@ dat een organisatielaag de kosten waard is boven een buddygroep met een teamdoel
 Wordt een van beide weerlegd, dan is besluit 4 of 2 het eerste dat terug moet.
 **Herbevestigd op 04-11-2026 (besluit 31), onder de voorwaarde dat de vier bronnen eerst
 gelezen worden.**
+
+**Herbevestigd als oordeel, niet getoetst (Quinten, 19-11-2026, poortvraag 1 hieronder).**
+Van de vier bronnen onder besluit 31 is er één ontleed (`habithuddle.com`), één gelezen
+zonder uitspraak over besluit 2 en 4 (`goalsandprogress.com`), en twee ongemeten
+(`goalgeniee.com`, `habi.app`); de voorwaarde van besluit 31 heeft Quinten op 17-11
+laten vervallen. De markt is dus in geen van beide richtingen getoetst, en de
+kostenvraag van de organisatielaag blijft een oordeel. Wie dit later leest: dit is
+geen meting.
+
+⚠️ **Herbevestigen vóór de eerste organisatie live gaat** (poortvraag 4, 19-11-2026). De
+juridische toets (arbeids- en privacyrecht: instemmingsrecht van een ondernemingsraad,
+art. 27 WOR, en de AVG-rolverdeling; de vragenlijst staat in
+`docs/research/vragen-voor-de-jurist-organisaties-en-teamdoelen.md`) moet zijn uitgevoerd
+en bevestigd vóór een echte organisatie GoalBuddies gebruikt. Zolang dat niet is
+gebeurd, is bouwen toegestaan en verkopen niet (besluit 33).
 
 ## Het onderzoek erachter
 
@@ -366,3 +385,25 @@ gelezen worden.**
   over software gevonden), en de [founder-accountabilitylijst
   van Tability](https://www.tability.io/odt/articles/10-best-accountability-apps-to-keep-your-goals-on-track).
   ⚠️ **Dit is geen juridisch advies.**
+
+## De poort QS8-649: Quintens antwoorden (19-11-2026)
+
+Het beslispakket staat in
+`docs/decisions/2026-11-18-beslispakket-qs8-649-voor-de-eerste-organisatie-migratie.md`.
+Quinten koos op 19-11-2026 bij alle vier de vragen de aanbeveling; twee aanvullingen
+kwamen dezelfde dag via de orchestrator. ⚠️ De vier antwoorden heten hier *poortvraag 1
+t/m 4* en krijgen **geen besluitnummer**: de tabel hierboven loopt tot 39 en het
+A57-document nummert 39 t/m 45 door, dus een nieuw nummer zou kunnen botsen.
+
+| Poortvraag | Besluit | Waar het staat |
+|---|---|---|
+| 1. Besluit 2 en 4 | **Herbevestigd als oordeel, niet getoetst.** | § "Herbevestigen vóór" |
+| 2. Een teamgroep als enige kandidaat | **Nooit de stille enige kandidaat**: de lijst verschijnt met één optie en de knop blijft uit tot er gekozen is. Dit geldt **alleen voor teamgroepen**, niet voor een persoon die de gebruiker zelf aanwijst (aanvulling 19-11). | QS8-719, op `main` sinds 20-11-2026 (PR #751); de straf-kant hoort bij QS8-698 |
+| 3. `beginfase()` | **Beoordelen bij de review van QS8-658**: kan een doel aan beide soorten groep hangen? | vaste voorwaarde bij de PR van QS8-658 |
+| 4. De juridische toets | **Een voorwaarde in plaats van een datum** (aanvulling 19-11): uitgevoerd en bevestigd vóór de eerste echte organisatie. | § "Herbevestigen vóór" |
+
+**Wat er daarna gebeurde.** Op 20-11-2026 besloot Quinten de keten toch te hernummeren
+en te mergen terwijl deze poort nog openstond, en hij wist dat. De migraties 0316 t/m
+0327 staan op `main` (PR #746 voor QS8-652, daarna #750 tot en met #762, één PR per issue). Niets staat op
+productie: dat wacht op "backup gedaan" en QS8-634, en 0316–0327 rollen in één keer
+uit. De schermen van QS8-658 landen pas na Quintens blik (V15).

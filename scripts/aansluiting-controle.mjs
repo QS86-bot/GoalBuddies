@@ -53,6 +53,13 @@ export const AANSLUITPUNTEN = {
   zetPushBron:
     'Zonder aanroep kent de tokenlaag geen bron en registreert het toestel zich ' +
     'nooit voor meldingen. De hele push-keten hangt hieraan.',
+  zetDocumentTaal:
+    'Zonder aanroep blijft `<html lang>` op `nl` staan voor elke taal: een Engelstalige ' +
+    'gebruiker krijgt Engelse tekst met een Nederlandse schermlezerstem (QS8-741). Hij is ' +
+    'sinds de ER-rij van 20-11-2026 een aansluitpunt en geen uitzondering: hij zet geen ' +
+    'modulestatus maar het attribuut van `document`, en `src/shared/i18n/index.ts` roept ' +
+    'hem aan vanuit `zetTaal()` en `zetTaalUitApparaat()`. Raakt de aanroep uit beide weg, ' +
+    'dan wordt deze controle rood in plaats van alleen `documenttaal.test.ts`.',
   zetTaal:
     'Zonder aanroep blijft de catalogus op de standaardtaal staan, ongeacht wat ' +
     'er in `profiles.locale` staat — de dode keten van QS8-113, één laag hoger.',
@@ -70,10 +77,11 @@ export const AANSLUITPUNTEN = {
  *    `zet*`/`set*`-export synchroon is maar geen modulestatus zet, hoort hij hier.
  */
 export const GEEN_AANSLUITPUNT = {
-  zetDocumentTaal:
-    'Geen injectiepunt: het zet geen modulestatus maar het `lang`-attribuut van `document` ' +
-    '(QS8-741) en is een bijwerking van `zetTaal()` en `zetTaalUitApparaat()`. Die twee ' +
-    'zijn wel aangesloten (gemeten: `src/shared/i18n/index.ts` roept hem aan in allebei).',
+  zetMeldingWacht:
+    'Geen injectiepunt: een stand die de app zelf zet en niet een module die de host moet aansluiten (QS8-777). ' +
+    'Hij is aangesloten (gemeten: `Meldingwacht` in `app/_layout.tsx` en `MeldingenIngang` in ' +
+    '`app/(tabs)/profiel.tsx` roepen hem aan; `tests/beloftes/de-meldingstip-volgt-de-rpc.test.ts` bewaakt beide). ' +
+    'Zonder die aanroepen blijft de stip uit, en dat is een stille fout die de test zelf rood maakt.',
 };
 
 /** Alle `.ts`/`.tsx` onder `dir`. */
