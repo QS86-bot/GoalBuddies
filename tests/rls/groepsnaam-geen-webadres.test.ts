@@ -1,6 +1,6 @@
 /**
  * De belofte van QS8-771: **de database weigert in een groepsnaam wat de client
- * weigert** — `bevat_linkachtige_tekst()` (migratie 0329) en
+ * weigert** — `bevat_linkachtige_tekst()` (migratie 0331) en
  * `bevatLinkAchtigeTekst()` geven op dezelfde lijst hetzelfde antwoord.
  *
  * ⚠️ Een pariteitstest en geen losse toets per kant: twee regexen die elkaar

@@ -714,7 +714,7 @@ export function bevatLinkAchtigeTekst(tekst: string): boolean {
   //    (onzichtbare tekens, accenten, richtingstekens, opmaaktekens) verdwijnt
   //    vóór de regexen, want `evil<LRM>.com` en `evil<U+0483>.com` lezen als
   //    evil.com. Een lijst van te strijken tekens groeide per reviewronde.
-  //    Migratie 0329 doet hetzelfde; houd de twee gelijk.
+  //    Migratie 0331 doet hetzelfde; houd de twee gelijk.
   const v = tekst.normalize('NFKC').replace(/[^\p{L}\p{N}\s:/\-.\u3002\uFF0E\uFF61\u2024\uFE52]/gu, '');
   // Puntvormen die een browser (IDNA) tot een punt omzet.
   const punt = '[.\\u3002\\uFF0E\\uFF61\\u2024\\uFE52]';

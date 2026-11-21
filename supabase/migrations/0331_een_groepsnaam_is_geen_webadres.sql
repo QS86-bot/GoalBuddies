@@ -1,4 +1,4 @@
--- 0329_een_groepsnaam_is_geen_webadres.sql — een groepsnaam draagt geen webadres,
+-- 0331_een_groepsnaam_is_geen_webadres.sql — een groepsnaam draagt geen webadres,
 -- domeinvorm of regeleinde (QS8-771, optie 1 van Quinten, 20-11-2026).
 --
 -- ROLLBACK-PAD:
