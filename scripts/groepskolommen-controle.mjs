@@ -254,7 +254,13 @@ export const CENSUS = {
     //    `authenticated` heeft géén UPDATE op deze kolom (📏 nagemeten: negen
     //    andere kolommen wél) en `guard_group_update()` pint hem daarachter.
     //    Rij 42 in `docs/decisions/002-domeinregel7-oppervlakken.md`.
-    kolommen: 'id, name, icon, created_by, invite_code, invite_revoked, huddle_day, tz, evidence_policy, approval_rule, season_cadence, status, last_activity_at, created_at, zichtbaarheid, approval_quorum, ontdekbaar, categorie, omschrijving, voertaal, automatisch, organization_id',
+    //
+    // ⚠️ `klassement_aan` erbij op 21-11-2026 (QS8-666, 0333, A57). Een groepsgenoot mag lezen óf
+    //    het klassement aanstaat; dat is informatie over de groep en niet over een lid, en het
+    //    klassement zelf komt uit `groep_klassement()`. Geen grant om te schrijven (de kolom is
+    //    voor geen client schrijfbaar), `pin_groepsklassement()` houdt hem vast, en twee CHECK's
+    //    houden een teamgroep en een automatisch gevormde groep eruit.
+    kolommen: 'id, name, icon, created_by, invite_code, invite_revoked, huddle_day, tz, evidence_policy, approval_rule, season_cadence, status, last_activity_at, created_at, zichtbaarheid, approval_quorum, ontdekbaar, categorie, omschrijving, voertaal, automatisch, organization_id, klassement_aan',
   },
   goal_match_queue: {
     // ⚠️⚠️ **Niet groepszichtbaar, en dat is de hele belofte van deze tabel.**
