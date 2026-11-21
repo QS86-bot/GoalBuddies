@@ -345,9 +345,9 @@ schemaname = 'public'` gaf `41|41`. Vraag het aan de database en niet aan deze
 regel — net als bij het aantal migraties in §0.
 
 <!-- STAND:BEGIN — gegenereerd door `npm run stand` -->
-Migraties `0001` t/m `0330` staan in de map: **332 bestanden**,
+Migraties `0001` t/m `0330` staan in de map: **333 bestanden**,
 waarvan 3 met een letter-achtervoegsel (`0039a`, `0041a`, `0052a`).
-⚠️ **Er ontbreken nummers: 0329.** Zie `migraties:controle`.
+De nummering is aaneengesloten.
 <!-- STAND:EINDE -->
 
 ⚠️ **Dat blok is gegenereerd; met de hand bijwerken heeft geen zin.** Het was tot

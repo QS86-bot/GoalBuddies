@@ -558,6 +558,12 @@ export const nl = {
   'aanmelden.ben_nieuw': 'Ik ben nieuw hier',
   'aanmelden.bestaand_account': 'Of gebruik een bestaand account',
   'aanmelden.alleen_browser': 'Inloggen met Apple of Google werkt op dit moment alleen in de browser.',
+  // Tweede ingang: zakelijk — QS8-663
+  'aanmelden.positionering': 'Samen doelen halen, zonder dat iemand zich beoordeeld voelt. Voor kleine teams tot 25 mensen en voor vriendengroepen.',
+  'aanmelden.werk_kop': 'Ik kom via mijn werk',
+  'aanmelden.werk_tekst': 'Heb je een uitnodigingslink of een code van je werkgever? Maak eerst een account; dan kom je bij je team. Wat je team ziet is de teambalk en jouw eigen aandeel, nooit hoe ver een ander is.',
+  'aanmelden.werk_knop': 'Code onthouden',
+  'aanmelden.werk_onthouden': 'Je code is onthouden. Maak of kies hierboven je account; daarna kun je met één druk op de knop lid worden.',
   'beoordeling.titel': 'Beoordelen',
   'beoordeling.leeg_titel': 'Niets te beoordelen',
   'beoordeling.leeg_tekst': 'Zodra een buddy een week afrondt, staat hij hier. Eén zin terug is genoeg. Daar gaat het om.',
@@ -644,7 +650,10 @@ export const nl = {
   'onboarding.kom_helpen': 'Ik kom helpen',
   'onboarding.klaar': 'Klaar',
   'groepdetail.zichtbaarheid': 'Zichtbaarheid van deze groep: {stand}',
-  'groepdetail.titel': 'Groep',
+  'groepdetail.titel': 'Jouw groep',
+  'groepdetail.titel_naam': 'Jouw groep: {naam}',
+  'groepdetail.titel_zonder_groep': 'Groep',
+  'groepdetail.inhoud': 'Op deze pagina vind je onder meer: {onderdelen}',
   'groepdetail.eyebrow': 'HUDDLEDAG {dag}',
   'groepdetail.eyebrow_vandaag': 'VANDAAG IS DE HUDDLEDAG',
   'groepdetail.geen_lid_titel': 'Deze groep is er niet, of niet voor jou',
@@ -879,6 +888,7 @@ export const nl = {
   'tab.doelen': 'Doelen',
   'tab.groep': 'Groep',
   'tab.profiel': 'Profiel',
+  'tab.melding_wacht': 'er wacht een melding',
   'tab.navigatie': 'Hoofdmenu',
   'vangnet.kop': 'De app kon niet verder',
   'vangnet.tekst': 'Er ging iets mis bij het opbouwen van dit scherm. Ga terug naar het beginscherm. Blijft het misgaan, start de app dan opnieuw.',
@@ -1066,8 +1076,6 @@ export const nl = {
   'profiel.herinnering_geen_meldingen': 'Zet meldingen hierboven aan, anders wordt er niets bezorgd.',
   'profiel.viering_titel': 'Feestelijke momenten',
   'profiel.viering_uitleg': 'Een korte felicitatie als een buddy je week bevestigt, je een mijlpaal haalt of je doel af is. Verder blijft de app rustig.',
-  'profiel.viering_aan_label': 'Feestelijke momenten aan',
-  'profiel.viering_uit_label': 'Feestelijke momenten uit',
   // ⚠️ De vier soorten die je los kunt uitzetten (QS8-92). `nudge` staat hier
   //    niet bij: die schakelaar is de herinneringkaart hierboven, en dat zegt
   //    `meldingsoort.uitleg` met zoveel woorden — zonder die zin lijkt de lijst
@@ -2105,6 +2113,23 @@ export const nl = {
     'en krijgt hij er een melding van, tenzij hij dat soort meldingen heeft uitgezet.',
   'straf.verder': 'Verder',
   'straf.jouw_groep': 'je groep',
+  // QS8-698, besluit van Quinten 20-11-2026: drie vaste regels en één knop, in de vorm van de weekbelofte.
+  'straf.team.kop': 'Lees dit voordat je deze straf bevestigt',
+  'straf.team.haal_niet_groep':
+    'Haal je je streefdatum niet, dan zien je collega\u2019s in {groep} deze afspraak met je naam erbij.',
+  'straf.team.haal_niet_persoon':
+    'Haal je je streefdatum niet, dan kan {naam} deze afspraak met je naam erbij lezen.',
+  'straf.team.gevolg': 'Het gevolg: {tekst}',
+  'straf.team.wie_groep':
+    'Je collega\u2019s in {groep} zien je naam en deze tekst. Dat zijn ook collega\u2019s die later bij het team komen.',
+  'straf.team.wie_persoon': '{naam} ziet je naam en deze tekst, en verder niemand.',
+  'straf.team.wanneer':
+    'Dit wordt pas zichtbaar als je streefdatum voorbij is en je doel dan niet af is. Tot dat moment ziet niemand dit, ook {wie} niet.',
+  'straf.team.collegas': 'je collega\u2019s',
+  'straf.team.niet_zien':
+    'Welk doel het is, staat niet in deze afspraak. Zet dat doel daarom ook niet zelf in je straftekst.',
+  'straf.team.intrekken':
+    'Tot je streefdatum voorbij is, kun je intrekken. Daarna blijft de afspraak staan. Er gaat nooit geld mee gemoeid.',
 
   // ⚠️ **De weekbelofte — QS8-761.** De bevestigstap noemt drie dingen (§4 van
   //    de poort QS8-744): het gevolg, de periode, en wie het ziet en wanneer. Geen
@@ -2422,11 +2447,11 @@ export const nl = {
   //    aankondigt precies dat verraadt. Zie
   //    `docs/decisions/002-domeinregel7-oppervlakken.md` rij 21 en §4a.
   // ⚠️ QS8-768 (besluit Quinten, 20-11-2026): vervangen, want de oude zin was na 0307
-  //    onwaar. De laatste zin (het Ketting-restant) moet weg in de PR van QS8-769.
+  //    onwaar. De laatste zin (het Ketting-restant) is weg sinds 0329 (QS8-769): De Ketting
+  //    telt een lid in een pauze mee.
   'adempauze.groep_ziet':
     'Je groep ziet je adempauze niet. Wil je het ze laten weten, dan plaats je zelf een ' +
-    'bericht. De Ketting telt leden in een pauze niet mee; in een kleine groep kan iemand ' +
-    'daaruit afleiden dat er iemand pauzeert.',
+    'bericht.',
   'adempauze.week_van': 'Week van {datum}',
   'adempauze.tot_en_met': ' tot en met de week van {datum}',
   'adempauze.voorbij': 'Voorbij',
@@ -2797,7 +2822,7 @@ export const nl = {
   'teller.mijlpalen_een': '1 mijlpaal gehaald',
   'teller.mijlpalen_meer': '{n} mijlpalen gehaald',
 
-  'groepskaart.kop': 'Jullie groep',
+  'groepskaart.kop': 'Jouw groep',
   'groepskaart.nog_niets': 'Jullie eerste afgeronde week komt hier te staan.',
   'groepskaart.nog_geen_weken': 'Nog geen week afgerond',
   'groepskaart.leden_een': '1 lid',
@@ -2805,7 +2830,7 @@ export const nl = {
   'groepskaart.alleen': 'Een groep wordt leuker met een buddy. Nodig iemand uit om samen te beginnen.',
   'groepskaart.uitnodigen_uit': 'Uitnodigen staat nu uit voor deze groep.',
   'groepskaart.uitnodigen': 'Nodig iemand uit',
-  'groepskaart.a11y': 'Jullie groep: {teller}. {leden}.',
+  'groepskaart.a11y': 'Jouw groep: {teller}. {leden}.',
 
   // ---------------------------------------------------------------------------
   // Het persoonlijke overzicht — QS8-256
@@ -3505,6 +3530,7 @@ export const nl = {
     'Meer laden',
   'organisatie.meer_mislukt':
     'Meer laden lukte niet. Probeer het opnieuw.',
+  'organisatie.acties_label': 'Acties voor {naam}',
   'organisatie.uitzetten_label': '{naam} uit de organisatie zetten',
   'organisatie.uitzetten_knop':
     'Uitzetten',
@@ -3590,6 +3616,107 @@ export const nl = {
     'Ben je de enige beheerder van {naam}? Dan kan na het verwijderen niemand daar nog nieuwe leden uitnodigen. Wie er al in zit, houdt alles.',
   'organisatie.verwijder_waarschuwing_storing':
     'We konden niet nagaan of je beheerder bent van een organisatie. Ben je dat en ben je de enige, draag het beheer dan eerst over. Anders kan daarna niemand nog nieuwe leden uitnodigen.',
+  // Teamdoelen en de teambalk — QS8-658
+  'teamdoel.ingang_kop':
+    'Teamdoelen',
+  'teamdoel.ingang_uitleg':
+    'Dit is een groep van je organisatie. Hier staan de doelen die jullie samen halen.',
+  'teamdoel.ingang_knop':
+    'Teamdoelen',
+  'teamdoel.ingang_storing':
+    'We konden niet nagaan of dit een teamgroep is.',
+  'teamdoel.lijst_titel':
+    'Teamdoelen',
+  'teamdoel.lijst_eyebrow':
+    'Team',
+  'teamdoel.lijst_laden':
+    'De teamdoelen konden niet geladen worden.',
+  'teamdoel.lijst_leeg_titel':
+    'Nog geen teamdoel',
+  'teamdoel.lijst_leeg_tekst':
+    'Elk lid van het team kan een teamdoel aanmaken.',
+  'teamdoel.meer_laden':
+    'Meer teamdoelen tonen',
+  'teamdoel.meer_mislukt':
+    'Meer teamdoelen laden lukte niet. Probeer het opnieuw.',
+  'teamdoel.aanmaken_knop':
+    'Teamdoel aanmaken',
+  'teamdoel.nieuw_titel':
+    'Nieuw teamdoel',
+  'teamdoel.titel_label':
+    'Wat willen jullie samen halen?',
+  'teamdoel.titel_hint':
+    'Eén regel. Collega\'s zien deze titel.',
+  'teamdoel.titel_teller':
+    '{aantal} van {max} tekens',
+  'teamdoel.beschrijving_label':
+    'Beschrijving (optioneel)',
+  'teamdoel.beschrijving_teller':
+    '{aantal} van {max} tekens',
+  'teamdoel.datum_label':
+    'Streefdatum',
+  'teamdoel.datum_hint':
+    'Wie een aandeel neemt, krijgt dezelfde streefdatum.',
+  'teamdoel.opslaan':
+    'Teamdoel opslaan',
+  'teamdoel.titel_leeg':
+    'Geef het teamdoel een titel.',
+  'teamdoel.titel_lang':
+    'De titel is te lang: houd hem op 200 tekens of minder.',
+  'teamdoel.titel_ongeldig':
+    'Geef het teamdoel een titel van 1 tot 200 tekens.',
+  'teamdoel.beschrijving_lang':
+    'De beschrijving is te lang: houd haar op 2000 tekens of minder.',
+  'teamdoel.datum_ongeldig':
+    'Kies een streefdatum.',
+  'teamdoel.datum_voorbij':
+    'De streefdatum is al voorbij. Kies een datum vanaf vandaag.',
+  'teamdoel.tekst_ongeldig':
+    'Er staan tekens in de tekst die we niet kunnen opslaan. Haal ze weg en probeer het opnieuw.',
+  'teamdoel.daglimiet':
+    'Je hebt vandaag al tien teamdoelen aangemaakt. Morgen kan het weer.',
+  'teamdoel.niet_toegestaan':
+    'Dit lukt niet. Je zit niet in dit team, of het teamdoel bestaat niet.',
+  'teamdoel.aanmaken_mislukt':
+    'Het teamdoel aanmaken lukte niet. Probeer het opnieuw.',
+  'teamdoel.niet_gevonden_titel':
+    'Teamdoel niet gevonden',
+  'teamdoel.niet_gevonden_tekst':
+    'Dit teamdoel bestaat niet, of je hebt er geen toegang toe.',
+  'teamdoel.laden_mislukt':
+    'Het teamdoel kon niet geladen worden.',
+  'teamdoel.streefdatum':
+    'Streefdatum {datum}',
+  'teamdoel.loopt_nog':
+    'Dit teamdoel loopt nog.',
+  'teamdoel.afgerond':
+    'Dit teamdoel is afgerond.',
+  'teamdoel.balk_kop':
+    'Teambalk',
+  'teamdoel.balk_een':
+    '1 mijlpaal behaald',
+  'teamdoel.balk_meer':
+    '{n} mijlpalen behaald',
+  'teamdoel.balk_uitleg':
+    'De teller telt alleen op: samen behaalde mijlpalen van het team.',
+  'teamdoel.aandeel_kop':
+    'Jouw aandeel',
+  'teamdoel.aandeel_uitleg':
+    'Een aandeel is een persoonlijk doel; je collega\'s zien niet hoe ver je bent.',
+  'teamdoel.aandeel_nemen':
+    'Neem een aandeel',
+  'teamdoel.aandeel_bekijk':
+    'Naar jouw aandeel',
+  'teamdoel.aandeel_heb':
+    'Je hebt een aandeel in dit teamdoel.',
+  'teamdoel.aandeel_mislukt':
+    'Het aandeel nemen lukte niet. Probeer het opnieuw.',
+  'teamdoel.niet_actief':
+    'Dit teamdoel is niet meer actief, dus je kunt er geen aandeel in nemen.',
+  'teamdoel.al_aandeel':
+    'Je hebt al een aandeel in dit teamdoel.',
+  'teamdoel.streefdatum_verstreken':
+    'De streefdatum van dit teamdoel is voorbij, dus je kunt er geen aandeel meer in nemen.',
 } as const;
 
 export type Sleutel = keyof typeof nl;
