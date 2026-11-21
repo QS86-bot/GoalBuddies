@@ -143,4 +143,35 @@ describe.runIf(rlsTestsConfigured)('een beheerder zet het klassement aan of uit 
       await adminDb().from('organizations' as never).delete().eq('id' as never, org as never);
     }
   }, TEST_TIMEOUT);
+
+  it('vindbaar maken zet het klassement uit, met één rij en één bericht; weer onvindbaar zet het niet terug (besluit Quinten 21-11)', async () => {
+    const v = await groep(anna, 'Zet-vindbaar');
+    const gezet = await anna.db.from('groups').update({ categorie: 'fitness' } as never).eq('id', v.id);
+    expect(gezet.error).toBeNull();
+    expect(await aan(v.id)).toBe(true);
+
+    const vind = await anna.db.rpc('zet_groepsontdekbaarheid', { p_group_id: v.id, p_naar: true, p_bevestigd: true });
+    expect(vind.error).toBeNull();
+    expect(vind.data).toMatchObject({ ok: true, ontdekbaar: true, klassement: false });
+    expect(await aan(v.id)).toBe(false);
+    expect(await sporen(v.id)).toEqual({ events: 1, berichten: 1 });
+
+    // Een beheerder kan het daarna apart weer aanzetten (zet_groepsklassement), en dan staat het aan in een vindbare groep.
+    expect((await rpc(anna, v.id, true, true)).ok).toBe(true);
+    expect(await aan(v.id)).toBe(true);
+    // Onvindbaar maken laat het klassement zoals het is.
+    const weg = await anna.db.rpc('zet_groepsontdekbaarheid', { p_group_id: v.id, p_naar: false, p_bevestigd: true });
+    expect(weg.data).toMatchObject({ ok: true, ontdekbaar: false });
+    expect(await aan(v.id)).toBe(true);
+  }, TEST_TIMEOUT);
+
+  it('vindbaar maken laat geen extra spoor achter als het klassement al uit stond', async () => {
+    const v = await groep(anna, 'Zet-vindbaar-uit');
+    expect((await anna.db.from('groups').update({ categorie: 'fitness' } as never).eq('id', v.id)).error).toBeNull();
+    expect((await rpc(anna, v.id, false, true)).ok).toBe(true);
+    const voor = await sporen(v.id);
+    const vind = await anna.db.rpc('zet_groepsontdekbaarheid', { p_group_id: v.id, p_naar: true, p_bevestigd: true });
+    expect(vind.data).toMatchObject({ ok: true, klassement: false });
+    expect(await sporen(v.id)).toEqual(voor);
+  }, TEST_TIMEOUT);
 });

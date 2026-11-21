@@ -258,6 +258,14 @@ bevestigingstekst bij het openzetten noemt dat. Het gebeurt dus niet stilzwijgen
 beheerder kan het klassement daarna met de schakelaar weer uitzetten. Dit geldt voor groepen
 zonder organisatie; een teamgroep heeft nooit een klassement.
 
+**Besluit 46 (21-11-2026, Quinten, vraag 1 van de bouwronde): uit bij vindbaar.**
+`zet_groepsontdekbaarheid()` zet bij het vindbaar maken ook het klassement uit, met een
+`group_events`-rij en een systeembericht (alleen als het klassement aanstond; migratie 0330).
+Een beheerder kan het daarna apart weer aanzetten met `zet_groepsklassement()`. Onvindbaar
+maken laat het klassement zoals het is. Reden: een groep waar onbekenden bij kunnen komen
+(QS8-230) mag niet stilzwijgend een klassement houden dat voor vrienden besloten is.
+Test: `tests/rls/klassement-zet.test.ts`.
+
 ⚠️ **Nog open voor de bouwronde:** de tekst van de bevestiging bij het openzetten is niet
 geschreven en moet het klassement noemen.
 
