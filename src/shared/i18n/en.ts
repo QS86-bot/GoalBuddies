@@ -1891,11 +1891,11 @@ export const en: Record<Sleutel, string> = {
     'point and your streak stays where it is; it just does not grow. You pick how long, you may ' +
     'have several side by side, and a week that is already over is allowed too.',
   // ⚠️ QS8-768 (decision by Quinten, 20-11-2026): replaced, the old sentence was untrue
-  //    after 0307. The last sentence (the Ketting remainder) must go in the PR of QS8-769.
+  //    after 0307. The last sentence (the Ketting remainder) is gone since 0329 (QS8-769): the
+  //    Ketting counts a member on a pause.
   'adempauze.groep_ziet':
     'Your group does not see your breather. If you want to let them know, post a message ' +
-    'yourself. The Ketting does not count members on a pause; in a small group someone can ' +
-    'infer from that that somebody is pausing.',
+    'yourself.',
   'adempauze.week_van': 'Week of {datum}',
   'adempauze.tot_en_met': ' up to and including the week of {datum}',
   'adempauze.voorbij': 'Over',
