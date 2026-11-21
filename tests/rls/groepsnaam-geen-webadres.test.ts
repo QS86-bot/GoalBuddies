@@ -35,6 +35,9 @@ const WEIGEREN = [
   'Jan\u2029Admin',
   'log in via 185.12.3.4',
   '185。12。3。4',
+  '0xC0.0xA8.0.1',
+  '0XC0.0xa8.0.1',
+  '0xC0。0xA8。0。1',
   'Log in via evil\u200E.com',
   'evil.\u200Ecom',
   'evil\u200F.com',
@@ -50,7 +53,7 @@ const WEIGEREN = [
   'evil\u{13430}.com',
   '185\u064B.12\u064B.3\u064B.4',
 ];
-const TOELATEN = ['Sportmaatjes', 'Team 3A', 'Lopen, 5 km', 'Jan & Piet', 'e.g. wij', 'Jan’s groep', '10.000 stappen', 'Versie 2.0', 'Lopen om 7.30', 'Versie 1.2.3', 'Dr. Jansen', 'Café de Paris', 'A & B'];
+const TOELATEN = ['Sportmaatjes', 'Team 3A', 'Lopen, 5 km', 'Jan & Piet', 'e.g. wij', 'Jan’s groep', '10.000 stappen', 'Versie 2.0', 'Lopen om 7.30', 'Versie 1.2.3', 'Hex 0xFF.0x10 en 0x1F', 'Dr. Jansen', 'Café de Paris', 'A & B'];
 
 describe.skipIf(!beschikbaar)('groepsnaam zonder webadres: client en database zijn gelijk', () => {
   const db = (tekst: string): boolean => {

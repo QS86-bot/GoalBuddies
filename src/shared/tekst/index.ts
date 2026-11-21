@@ -719,9 +719,10 @@ export function bevatLinkAchtigeTekst(tekst: string): boolean {
   // Puntvormen die een browser (IDNA) tot een punt omzet.
   const punt = '[.\\u3002\\uFF0E\\uFF61\\u2024\\uFE52]';
   const domein = new RegExp(`[\\p{L}\\p{N}-]${punt}\\p{L}{2}`, 'iu');
-  // Een IP-adres: vier groepen cijfers met punten (185.12.3.4). Niet elk getal-punt-getal:
+  // Een IP-adres: vier groepen (cijfers of 0x-hex) met punten (185.12.3.4, 0xC0.0xA8.0.1). Niet elk getal-punt-getal:
   // "10.000 stappen" en "Versie 2.0" zijn gewone namen (besluit Quinten, 21-11-2026).
-  const ip = new RegExp(`[0-9]+${punt}[0-9]+${punt}[0-9]+${punt}[0-9]+`, 'u');
+  const g = '(?:0x[0-9a-f]+|[0-9]+)'; // een groep: cijfers of 0x-hex (besluit Quinten, 21-11-2026)
+  const ip = new RegExp(`${g}${punt}${g}${punt}${g}${punt}${g}`, 'iu');
   return (
     /:\/\/|www\./i.test(v) || ip.test(v) || domein.test(v) || /[\n\r\u0085\u2028\u2029]/u.test(tekst)
   );

@@ -53,9 +53,9 @@ as $$
     -- een domeinvorm: letter/cijfer/streepje, een punt (ook de punten die een
     -- browser tot een punt omzet: U+3002, U+FF0E, U+FF61, U+2024, U+FE52), twee letters
     or v ~* ('[[:alnum:]-][.' || U&'\3002\FF0E\FF61\2024\FE52' || '][[:alpha:]]{2}')
-    -- een IP-adres: vier groepen cijfers met punten (besluit Quinten, 21-11-2026;
+    -- een IP-adres: vier groepen (cijfers of 0x-hex) met punten (besluit Quinten, 21-11-2026;
     -- "10.000 stappen" en "Versie 2.0" blijven gewone namen)
-    or v ~ ('[0-9]+[.' || U&'\3002\FF0E\FF61\2024\FE52' || '][0-9]+[.' || U&'\3002\FF0E\FF61\2024\FE52' || '][0-9]+[.' || U&'\3002\FF0E\FF61\2024\FE52' || '][0-9]+')
+    or v ~* ('(0x[0-9a-f]+|[0-9]+)[.' || U&'\3002\FF0E\FF61\2024\FE52' || '](0x[0-9a-f]+|[0-9]+)[.' || U&'\3002\FF0E\FF61\2024\FE52' || '](0x[0-9a-f]+|[0-9]+)[.' || U&'\3002\FF0E\FF61\2024\FE52' || '](0x[0-9a-f]+|[0-9]+)')
     or p_tekst ~ ('[' || chr(10) || chr(13) || chr(133) || chr(8232) || chr(8233) || ']'),
     false
   )
