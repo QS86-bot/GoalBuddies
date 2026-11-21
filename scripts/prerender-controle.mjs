@@ -31,8 +31,8 @@
  *    staat (`kanarieFaalt()`), anders meldt een kapotte zoekfunctie bij elke run
  *    "geen tekst". (3) De bouw mag niet ouder zijn dan de bron
  *    (`bouwIsOuderDanBron()`): `npm run deploy` laat `dist/` staan, en een
- *    verouderde bouw groen meten is ongemeten als groen. Dezelfde gedachte als
- *    `KANARIES` in `bundel-controle.mjs`, dat het derde gat nog heeft.
+ *    verouderde bouw groen meten is ongemeten als groen. `bundel-controle.mjs` draagt
+ *    sinds QS8-767 dezelfde leeftijdscheck (via `bouwIsOuderDanBron`).
  *
  * ⚠️ **Twee pagina's meten niets.** `+not-found.html` en `_sitemap.html` worden
  *    zonder `RootLayout` geprerenderd (alleen `<div id="root"><div></div></div>`):
@@ -185,7 +185,12 @@ export function nieuwsteWijziging(mappen) {
       else nieuwste = Math.max(nieuwste, stat.mtimeMs);
     }
   };
-  for (const map of mappen) if (existsSync(map)) loop(map);
+  // Een los bestand (`package-lock.json`) telt ook mee, QS8-767.
+  for (const pad of mappen) {
+    if (!existsSync(pad)) continue;
+    if (statSync(pad).isDirectory()) loop(pad);
+    else nieuwste = Math.max(nieuwste, statSync(pad).mtimeMs);
+  }
   return nieuwste;
 }
 
