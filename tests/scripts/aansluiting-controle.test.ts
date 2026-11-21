@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import {
   AANSLUITPUNTEN,
   beoordeel,
+  GEEN_AANSLUITPUNT,
   injectiepuntenIn,
   wordtAangesloten,
 } from '../../scripts/aansluiting-controle.mjs';
@@ -175,5 +176,28 @@ describe('het echte register', () => {
     for (const [naam, reden] of Object.entries(AANSLUITPUNTEN as Record<string, string>)) {
       expect(reden.length, `${naam} heeft geen reden`).toBeGreaterThan(60);
     }
+  });
+
+  /**
+   * ⚠️ QS8-741 (ER-rij van 20-11-2026): `zetDocumentTaal()` staat in `AANSLUITPUNTEN` en niet in
+   *    `GEEN_AANSLUITPUNT`. In het tweede register kijkt de controle er niet meer naar, en dan houdt alleen
+   *    `documenttaal.test.ts` de keten vast. Wie hem terugzet, krijgt hier een rode test en geen stille regressie.
+   */
+  it('zetDocumentTaal is een aansluitpunt en geen uitzondering', () => {
+    expect(Object.keys(AANSLUITPUNTEN)).toContain('zetDocumentTaal');
+    expect(Object.keys(GEEN_AANSLUITPUNT)).not.toContain('zetDocumentTaal');
+  });
+
+  it('en de aanroep ervan buiten zijn eigen bestand telt: zonder die aanroep is hij een losse draad', () => {
+    const bestanden = [
+      bestand('src/shared/i18n/documenttaal.ts', 'export function zetDocumentTaal(taal: string): void {}'),
+      bestand('src/shared/i18n/index.ts', 'export function zetTaal(t: string) { return t; }'),
+    ];
+    expect(beoordeel(bestanden, { zetDocumentTaal: 'x' }, {}).losseDraden).toEqual(['zetDocumentTaal']);
+    const aangesloten = [
+      bestanden[0]!,
+      bestand('src/shared/i18n/index.ts', 'export function zetTaal(t: string) { zetDocumentTaal(t); }'),
+    ];
+    expect(beoordeel(aangesloten, { zetDocumentTaal: 'x' }, {}).losseDraden).toEqual([]);
   });
 });

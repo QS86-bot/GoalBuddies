@@ -1,5 +1,5 @@
 import { useRouter } from 'expo-router';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 
 import { signOut, useProfiel, useSession } from '@/modules/auth';
@@ -24,6 +24,7 @@ import {
   Screen,
   Subheading,
   useAsync,
+  zetMeldingWacht,
 } from '@/shared/ui';
 
 /**
@@ -57,6 +58,12 @@ export default function Profiel() {
       >
         {(p) => (
           <View style={styles.blokken}>
+            {/*
+              ⚠️ **Bovenaan en niet onderaan** — QS8-777 (besluit Quinten 20-11-2026). Wie hier komt omdat de stip op
+                 de tab het zei, moet de kaart zien zonder te scrollen. Voor wie niets mag beoordelen blijft de
+                 plek leeg: de kaart verschijnt alleen als de RPC een rij teruggeeft.
+            */}
+            <MeldingenIngang />
             <Card>
               <View style={styles.kop}>
                 <Avatar name={p.display_name} url={p.avatar_url} size={44} />
@@ -86,8 +93,6 @@ export default function Profiel() {
                  overtyp-bevestiging. Dat is met opzet moeilijk bereikbaar.
             */}
             <Uitloggen />
-
-            <MeldingenIngang />
 
             {/*
               ⚠️ Hier stond een `StreakCounter` met een hardgecodeerde `cycles={0}`.
@@ -310,6 +315,11 @@ function MeldingenIngang() {
     () => fetchOpenstaandeMeldingen({ limiet: 1 }),
     [],
   );
+
+  // ⚠️ Alleen een geslaagde lading zet de stip om (`meldingstip.ts`): een storing is geen "er wacht niets".
+  useEffect(() => {
+    if (!loading && error === null && data !== undefined) zetMeldingWacht(data.length > 0);
+  }, [loading, error, data]);
 
   if (loading) return null;
 

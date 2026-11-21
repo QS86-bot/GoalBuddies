@@ -106,7 +106,7 @@ export function Naamkaart({
       />
       <Caption>{`${telTekens(wil)}/80`}</Caption>
 
-      <Button busy={bezig} onPress={() => void bewaar()}>
+      <Button variant="primair" busy={bezig} onPress={() => void bewaar()}>
         {t('profiel.naam_bewaren')}
       </Button>
 
