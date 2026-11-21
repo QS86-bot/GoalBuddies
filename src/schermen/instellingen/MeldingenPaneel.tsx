@@ -121,7 +121,7 @@ function HerinneringBewaren({
 }) {
   return (
     <>
-      <Button busy={bezig} onPress={onBewaar}>
+      <Button variant="primair" busy={bezig} onPress={onBewaar}>
         {t('profiel.herinnering_bewaren')}
       </Button>
 

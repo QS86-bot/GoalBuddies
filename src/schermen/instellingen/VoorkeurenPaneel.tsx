@@ -1,6 +1,4 @@
 import { useState } from 'react';
-import { StyleSheet, View } from 'react-native';
-
 import {
   updateProfiel,
   userClock,
@@ -10,15 +8,14 @@ import {
 
 import { t, taal, zetTaal, type Taal } from '@/shared/i18n';
 
-import { space } from '@/shared/theme';
 import { apparaatTijdzone, type Weekday } from '@/shared/time';
 import {
   Bevestiging,
   bevestigingen,
   Body,
-  Button,
   Caption,
   Card,
+  Choice,
   Subheading,
   TaalKeuze,
   useVieringenAan,
@@ -221,30 +218,19 @@ export function VieringKeuze() {
       <Subheading>{t('profiel.viering_titel')}</Subheading>
       <Body muted>{t('profiel.viering_uitleg')}</Body>
 
-      <View style={styles.keuzes}>
-        <Button
-          variant={aan ? 'primair' : 'secundair'}
-          disabled={!geladen}
-          onPress={() => zet(true)}
-          accessibilityLabel={t('profiel.viering_aan_label')}
-        >
-          {t('profiel.aan')}
-        </Button>
-        <Button
-          variant={aan ? 'secundair' : 'primair'}
-          disabled={!geladen}
-          onPress={() => zet(false)}
-          accessibilityLabel={t('profiel.viering_uit_label')}
-        >
-          {t('profiel.uit')}
-        </Button>
-      </View>
+      <Choice
+        label={t('profiel.viering_titel')}
+        subtiel
+        opties={[
+          { waarde: 'aan', label: t('profiel.aan') },
+          { waarde: 'uit', label: t('profiel.uit') },
+        ]}
+        waarde={aan ? 'aan' : 'uit'}
+        onKies={(v) => zet(v === 'aan')}
+        disabled={!geladen}
+      />
 
       <Caption>{t('profiel.viering_beweging')}</Caption>
     </Card>
   );
 }
-
-const styles = StyleSheet.create({
-  keuzes: { flexDirection: 'row', gap: space.blokGap - 3, flexWrap: 'wrap' },
-});

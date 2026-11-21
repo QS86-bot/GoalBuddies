@@ -58,6 +58,7 @@ export { MemberRow } from './MemberRow';
 export { MilestoneProgress } from './MilestoneProgress';
 export { RisicoBadge } from './RisicoBadge';
 export { Taakbalk } from './Taakbalk';
+export { useMeldingWacht, zetMeldingWacht } from './meldingstip';
 export {
   actiefTabblad,
   BREED_VANAF,
