@@ -304,3 +304,27 @@ van erna.
   drukt; dat vraagt Quinten met een account dat `platform_beheerder` draagt.
   📏 Die kolom staat vandaag op productie op `false` voor de enige rij in
   `profiles`. Dit is een aanname en geen meting.
+
+## 21-11-2026: de voorwaarde "pas na de QS8-634-test" vervalt, behalve voor `koppelen`
+
+**Besluit van Quinten, 21-11-2026 (~23:29 UTC), via de orchestrator.** Op 18-11-2026 stond
+de voorwaarde dat een migratie pas op productie komt nadat de test van QS8-634 gedaan is
+(zie `docs/decisions/2026-11-18-beslispakket-qs8-649-voor-de-eerste-organisatie-migratie.md`
+en `docs/decisions/2026-11-03-zakelijk-gebruik-met-organisaties-en-teamdoelen.md`). Quinten
+hief die op. Zijn woorden: *"Ga verder met de uitrol van 0303 t/m 0336"*; en op de
+controlevraag: *"B: 634-voorwaarde vervalt"*.
+
+**Wat dat vastlegt:**
+- De uitrol van de migraties `0303` tot en met `0336` hoeft niet meer te wachten op de test
+  van QS8-634. Het blijft wachten op de back-up en op de vijf stappen van `docs/DEPLOY.md`
+  §2.2b.
+- **Wat níet vervalt:** de Edge Function `koppelen` blijft wachten tot de test is gedaan én
+  QS8-634 op Done staat. De voorwaarde is dus opgeheven voor de migraties en niet voor die
+  functie.
+
+**Wat dit niet is:** geen oordeel over de test zelf. Dat de migraties vooruit mogen, zegt
+niet dat de melding die in dit document staat al bewezen aankomt; die meting hoort bij
+QS8-634 en staat nog open.
+
+⚠️ **De woorden van Quinten zijn hier overgenomen zoals de orchestrator ze doorgaf**, niet
+uit zijn eigen bericht gelezen. Wie dit wil herbevestigen, doet dat op QS8-634.
