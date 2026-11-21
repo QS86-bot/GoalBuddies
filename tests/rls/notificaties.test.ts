@@ -57,8 +57,10 @@ async function registreer(
  *    draaien — precies waarvoor QS8-119 bestaat.
  */
 const WEBSLEUTELS = {
-  p256dh: 'BJ' + 'x'.repeat(85),
-  auth: 'y'.repeat(22),
+  // ⚠️ Sinds QS8-696 een echt P-256-punt (RFC 8291): de RPC weigert een sleutel
+  //    die alleen de juiste lengte heeft.
+  p256dh: 'BCVxsr7N_eNgVRqvHtD0zTZsEc6-VV-JvLexhqUzORcxaOzi6-AYWXvTBHm4bjyPjs7Vd8pZGH6SRpkNtoIAiw4',
+  auth: 'BTBZMqHH6r4Tts7J_aSIgg',
 };
 
 /**
