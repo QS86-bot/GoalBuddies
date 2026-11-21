@@ -1,8 +1,8 @@
-import { useRouter } from 'expo-router';
-import { useState } from 'react';
+import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useEffect, useState } from 'react';
 
 import { toonCode } from '@/modules/buddies';
-import { wordOrganisatielid } from '@/modules/organisaties';
+import { openstaandeWerkcode, vergeetWerkcode, wordOrganisatielid } from '@/modules/organisaties';
 import { t } from '@/shared/i18n';
 import { Button, Caption, Card, Field, Screen } from '@/shared/ui';
 
@@ -14,7 +14,9 @@ import { Button, Caption, Card, Field, Screen } from '@/shared/ui';
  */
 export default function OrganisatieDeelnemen() {
   const router = useRouter();
-  const [invoer, setInvoer] = useState('');
+  const { code } = useLocalSearchParams<{ code?: string }>();
+  const [invoer, setInvoer] = useState(typeof code === 'string' ? code : '');
+  useVoorinvulling(code, setInvoer);
   const [bezig, setBezig] = useState(false);
   const [fout, setFout] = useState<string | null>(null);
 
@@ -29,6 +31,7 @@ export default function OrganisatieDeelnemen() {
       return;
     }
 
+    await vergeetWerkcode();
     router.replace(`/organisatie/${uitkomst.waarde}`);
   }
 
@@ -58,4 +61,20 @@ export default function OrganisatieDeelnemen() {
       </Card>
     </Screen>
   );
+}
+
+/**
+ * QS8-663: een code die op het aanmeldscherm onthouden is, staat hier al
+ * ingevuld. Alleen invullen: lid worden blijft een druk op de knop.
+ */
+function useVoorinvulling(
+  code: string | undefined,
+  setInvoer: (f: (huidig: string) => string) => void,
+) {
+  useEffect(() => {
+    if (typeof code === 'string') return;
+    void openstaandeWerkcode().then((bewaard) => {
+      if (bewaard !== null) setInvoer((huidig) => (huidig === '' ? bewaard : huidig));
+    });
+  }, [code, setInvoer]);
 }

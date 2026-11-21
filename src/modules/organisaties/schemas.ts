@@ -1,7 +1,7 @@
 import { z } from 'zod';
 
 import { t } from '../../shared/i18n';
-import { schoneEneRegel, schoneNaam, schoneVrijeTekst, telTekens } from '../../shared/tekst';
+import { bevatLinkAchtigeTekst, schoneEneRegel, schoneNaam, schoneVrijeTekst, telTekens } from '../../shared/tekst';
 import { isGeldigeIsoDatum } from '../../shared/time';
 
 /**
@@ -35,7 +35,8 @@ export const teamNaamSchema = z
   .refine((v) => telTekens(v) >= TEAMNAAM_MIN, { error: () => t('groep.naam_kort') })
   .refine((v) => telTekens(v) <= TEAMNAAM_MAX, {
     error: () => t('validatie.groepsnaam_lang'),
-  });
+  })
+  .refine((v) => !bevatLinkAchtigeTekst(v), { error: () => t('validatie.groepsnaam_link') });
 
 /** Teamdoelen per pagina: de grootte van `useBladerlijst`-pagina's elders in de module. */
 export const TEAMDOELEN_PER_PAGINA = 20;

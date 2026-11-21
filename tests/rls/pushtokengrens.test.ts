@@ -215,10 +215,36 @@ const TE_LANG_MAAR_GOEDE_VORM = `ExponentPushToken[${'x'.repeat(5000)}]`;
  */
 const PAST_IN_TEKENS_NIET_IN_BYTES = `ExponentPushToken[${'漢'.repeat(981)}]`;
 
-/** 65 octetten base64url, zoals RFC 8291 voorschrijft. */
-const ECHTE_P256DH = 'B'.repeat(87);
-/** 16 octetten base64url. */
-const ECHTE_AUTH = 'A'.repeat(22);
+/**
+ * Een echt abonnement: het ongecomprimeerde P-256-punt en het 16-octets geheim
+ * uit RFC 8291, dezelfde vector als in `webpush-crypto.test.ts`.
+ *
+ * ⚠️⚠️ **Hier stond `'B'.repeat(87)` en `'A'.repeat(22)`, en sinds QS8-696 neemt
+ *    de RPC dat niet meer aan.** Dat was de juiste lengte en geen sleutel: 87
+ *    keer `B` begint toevallig wél met octet `0x04`, maar ligt niet op de
+ *    curve. 📏 En het is erger dan een testdetail: de 9 kapotte web-tokens die
+ *    QS8-690 op productie vond — 3 met eerste teken `E`, 3 met `T`, 3 van 255
+ *    tekens — zijn precies de fixtures van dit bestand. Deze suite draaide tegen
+ *    productie en liet ze achter (QS8-693).
+ */
+const ECHTE_P256DH =
+  'BCVxsr7N_eNgVRqvHtD0zTZsEc6-VV-JvLexhqUzORcxaOzi6-AYWXvTBHm4bjyPjs7Vd8pZGH6SRpkNtoIAiw4';
+const ECHTE_AUTH = 'BTBZMqHH6r4Tts7J_aSIgg';
+
+/**
+ * Twee onderscheidbare echte sleutelparen, voor de overnametests die moeten zien
+ * dát het paar verhuist. Eenmalig gemaakt met `crypto.createECDH('prime256v1')`.
+ */
+const SLEUTELPAAR = {
+  E: {
+    p256dh: 'BNDr92ixava4yKPgvtQJkh2B3Li4v0gyyYyN07OujRdNW0TexjVPmKPU8I5BdUTea1RyfY4ohzEySIsAykMi_Jo',
+    auth: 's257bb-qd8lFyx1x2N07SQ',
+  },
+  T: {
+    p256dh: 'BGvbtLE0KI4wFe4kGEHQVLF-KuM9BzL_LwnYtc8ilG2TgbfAdAQJgNfsR7bFSFsZks07hhcDkTP4q_MY04PblgQ',
+    auth: 'T5szS6Ao7ddXp6SArOE5wQ',
+  },
+} as const;
 
 let alice: TestUser;
 
@@ -374,7 +400,13 @@ describe.skipIf(!rlsTestsConfigured)('registreer_push_token() en zijn grenzen', 
         p_p256dh: opDeGrens,
         p_auth: ECHTE_AUTH,
       });
-      expect(uit(past.data), '255 hoort er nog door').toEqual({ ok: true });
+      // ⚠️ Sinds QS8-696 is 255 tekens nooit een geldige sleutel (een P-256-punt
+      //    is 87 tekens), dus de grens is hier niet meer "ok of niet" maar
+      //    "wélke weigering": op 255 komt hij langs de lengtetak en valt hij op
+      //    de vorm, op 256 valt hij op de lengte. Dat houdt de grens op dezelfde
+      //    plek als de CHECK, en mutatie G/H blijft iets zien.
+      expect(past.error).toBeNull();
+      expect(uit(past.data).reason, '255 komt langs de lengtetak').toBe('p256dh_ongeldig');
 
       const eroverheen = await alice.db.rpc('registreer_push_token', {
         p_token: `${ECHTE_WEB_ENDPOINT}-sleutelgrens2`,
@@ -755,12 +787,12 @@ describe.skipIf(!rlsTestsConfigured)('de overname van een pushtoken', () => {
    *    overname daar iets anders betekent dan bij native: er verhuist niet alleen
    *    een adres maar ook het sleutelpaar waarmee de payload versleuteld wordt.
    */
-  async function registreerWeb(wie: TestUser, endpoint: string, sleutel: string) {
+  async function registreerWeb(wie: TestUser, endpoint: string, sleutel: keyof typeof SLEUTELPAAR) {
     const { data, error } = await wie.db.rpc('registreer_push_token', {
       p_token: endpoint,
       p_platform: 'web',
-      p_p256dh: sleutel.repeat(87).slice(0, 87),
-      p_auth: sleutel.repeat(22).slice(0, 22),
+      p_p256dh: SLEUTELPAAR[sleutel].p256dh,
+      p_auth: SLEUTELPAAR[sleutel].auth,
     });
     if (error) throw new Error(`web registreren: ${error.message}`);
     return uit(data);
@@ -1058,8 +1090,8 @@ describe.skipIf(!rlsTestsConfigured)('de overname van een pushtoken', () => {
         'de rij draagt de eigenaar van de kaper en de sleutel van het slachtoffer — dat is wél een datalek',
       ).not.toBe(vanHaar?.p256dh);
       expect(naKaping?.auth).not.toBe(vanHaar?.auth);
-      expect(naKaping?.p256dh).toBe('T'.repeat(87));
-      expect(naKaping?.auth).toBe('T'.repeat(22));
+      expect(naKaping?.p256dh).toBe(SLEUTELPAAR.T.p256dh);
+      expect(naKaping?.auth).toBe(SLEUTELPAAR.T.auth);
     },
     TEST_TIMEOUT,
   );
@@ -1087,7 +1119,7 @@ describe.skipIf(!rlsTestsConfigured)('de overname van een pushtoken', () => {
 
       const terug = await rijVan(endpoint);
       expect(terug?.user_id).toBe(eerste.id);
-      expect(terug?.p256dh, 'de sleutels horen weer van haar te zijn').toBe('E'.repeat(87));
+      expect(terug?.p256dh, 'de sleutels horen weer van haar te zijn').toBe(SLEUTELPAAR.E.p256dh);
     },
     TEST_TIMEOUT,
   );

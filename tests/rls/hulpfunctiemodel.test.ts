@@ -158,6 +158,17 @@ const REGISTER: Readonly<Record<string, Rij>> = {
       'de RPC nul rijen. Eén afknijping, want het klassement gaat over de groep en ' +
       'niet over één ander lid.',
   },
+  lid_van_levende_groep: {
+    nietInactief: 1,
+    alleenActief: 0,
+    archief: true,
+    open: false,
+    reden:
+      'De poort onder het klassement van A57 (0333, QS8-666): actief lid van een groep die niet ' +
+      'gearchiveerd is, ongeacht zichtbaarheid. Zelfde lichaam als is_group_member() op het ' +
+      'moment van schrijven; een eigen naam zodat een latere versoepeling van die helper het ' +
+      'klassement niet stil meeneemt.',
+  },
   shares_group_with_goal: {
     nietInactief: 2,
     alleenActief: 0,

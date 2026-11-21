@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { psql, stackBeschikbaarOfFaal } from './psql-stack';
 
 /**
- * De rollover sluit een week in één transactie af — QS8-687, migratie 0329.
+ * De rollover sluit een week in één transactie af — QS8-687, migratie 0335.
  *
  * ⚠️⚠️ **De belofte is een eigenschap van het geheel, niet van de stappen.** Elke
  *    stap (status, minpunt, weekpas) bestond al en klopte. Wat ontbrak was dat ze

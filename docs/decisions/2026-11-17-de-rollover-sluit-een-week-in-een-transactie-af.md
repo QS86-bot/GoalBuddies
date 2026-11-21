@@ -31,7 +31,7 @@ achter, want volgende runs zoeken alleen `todo` en `cancelled`.
 * `p_grens` komt van buiten: dezelfde `afsluitbaar.startDate` uit `shared/time` die
   de edge function al gebruikte. De database rekent geen week uit.
 * Alleen `service_role`. `pg_default_acl` geeft elke nieuwe functie ook aan
-  `authenticated`; de revoke en de test erop staan in 0329.
+  `authenticated`; de revoke en de test erop staan in 0335.
 
 ## Gemeten (lokaal, Postgres 16, 302 migraties, 17-11-2026)
 
@@ -59,7 +59,7 @@ hand gebroken en de bedoelde test viel om (niet een andere):
 
 ## ⚠️ Migratienummer
 
-**0329 is voorlopig.** Opnieuw gebouwd op `main` van 21-11-2026 (besluit Quinten 20-11-2026: toch bouwen, op een nieuwe tak; de oude tak is verouderd en dient alleen als bron, tag `archief/qs8-687-oude-tak`). Wie als tweede merget, hernummert met `npm run migratie:hernummer`.
+**0335 is definitief (voorlopig 0329).** Opnieuw gebouwd op `main` van 21-11-2026 (besluit Quinten 20-11-2026: toch bouwen, op een nieuwe tak; de oude tak is verouderd en dient alleen als bron, tag `archief/qs8-687-oude-tak`). Wie als tweede merget, hernummert met `npm run migratie:hernummer`.
 
 ## Volgorde van uitrollen
 

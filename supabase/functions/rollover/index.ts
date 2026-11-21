@@ -45,7 +45,7 @@ import { metCors } from '../_shared/cors.ts';
  *    `cancelled` — allebei "nog niets gebeurd", en allebei een gemiste week
  *    zodra de cyclus verstrijkt (A40) — en
  *    de unieke index op `points_ledger` weigert een tweede boeking voor dezelfde
- *    reden, referentie **en ronde** — en `sluit_verstreken_weken_af()` (0329) boekt altijd op de
+ *    reden, referentie **en ronde** — en `sluit_verstreken_weken_af()` (0335) boekt altijd op de
  *    standaardronde 1, dus voor deze functie komt dat op hetzelfde neer.
  *    ⚠️ Sinds 0266 (QS8-456) is "dezelfde reden en referentie" géén garantie
  *    meer als algemene uitspraak: `ronde` staat in de sleutel, zodat een week
@@ -1035,7 +1035,7 @@ async function wikkelStraffenAf(db: Db, profiel: Profiel): Promise<number> {
  * telling: de aanroeper moet de rest van dit profiel overslaan, en een telling
  * van nul zou dat verschil wegpoetsen.
  *
- * ⚠️⚠️ **Het afschrijven staat sinds migratie 0329 in `sluit_verstreken_weken_af()`
+ * ⚠️⚠️ **Het afschrijven staat sinds migratie 0335 in `sluit_verstreken_weken_af()`
  *    en niet meer in deze functie.** Dezelfde stappen in dezelfde volgorde
  *    (vrijstellen bij een adempauze, anders `missed`, dan het minpunt, dan de
  *    weekpas — domeinregel 10), maar per week in één transactie. Tot QS8-685
