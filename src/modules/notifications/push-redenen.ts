@@ -19,15 +19,19 @@ import { t } from '../../shared/i18n';
  *
  * ⚠️ Het issue noemde er zes; 📏 het zijn er negen. `not_signed_in` en
  *    `onbekend_platform` ontbraken, en `token_te_lang`/`sleutel_te_lang` zijn er
- *    twee. Gemeten en niet overgenomen.
+ *    twee. Gemeten en niet overgenomen. Sinds QS8-696 elf: `p256dh_ongeldig` en
+ *    `auth_ongeldig`, voor een web-abonnement dat de juiste lengte heeft maar
+ *    geen bruikbare sleutel is.
  */
 export const PUSH_WEIGERGRONDEN = [
+  'auth_ongeldig',
   'geen_expotoken',
   'geen_pushdienst',
   'geen_token',
   'geen_websleutels',
   'not_signed_in',
   'onbekend_platform',
+  'p256dh_ongeldig',
   'sleutel_te_lang',
   'te_veel_tokens',
   'token_te_lang',
@@ -54,12 +58,18 @@ export function pushWeigerMelding(grond: string | undefined): string {
       return t('push.te_veel_tokens');
     case 'not_signed_in':
       return t('push.niet_ingelogd');
-    // ⚠️ De overige zes zeggen allemaal hetzelfde tegen een gebruiker: het
+    // ⚠️ De overige acht zeggen allemaal hetzelfde tegen een gebruiker: het
     //    apparaat gaf iets terug waar de server niets mee kan. `geen_token`,
     //    `onbekend_platform`, `token_te_lang`, `sleutel_te_lang`,
-    //    `geen_pushdienst` en `geen_expotoken` verschillen voor een ontwikkelaar
-    //    en niet voor de persoon die op de knop drukte — die kan er hetzelfde
-    //    aan doen, namelijk het opnieuw proberen of een ander apparaat pakken.
+    //    `geen_pushdienst`, `geen_expotoken`, `p256dh_ongeldig` en
+    //    `auth_ongeldig` verschillen voor een ontwikkelaar en niet voor de
+    //    persoon die op de knop drukte — die kan er hetzelfde aan doen, namelijk
+    //    het opnieuw proberen of een ander apparaat pakken.
+    //
+    // ⚠️ QS8-696: `p256dh_ongeldig` en `auth_ongeldig` krijgen bewust níét de zin
+    //    van `geen_websleutels` ("zet meldingen opnieuw aan"). Een browser die een
+    //    kapot abonnement geeft, geeft bij opnieuw aanzetten hetzelfde kapotte
+    //    abonnement; die zin zou een oplossing beloven die er niet is.
     default:
       return t('push.apparaat_niet_bruikbaar');
   }
