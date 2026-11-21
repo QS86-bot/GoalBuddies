@@ -7,7 +7,7 @@ import { adminDb, createTestUser, registreerGroep, removeTestUsers, rlsTestsConf
  *
  * ⚠️ **De belofte is de lus en niet de weigering.** `neem_aandeel()` → mijlpalen op `done` →
  *    ontkoppelen → `verwijder_doel()` → opnieuw nemen was elk onderdeel correct en samen
- *    onbeperk op te blazen (de plafonds tellen alleen rijen die nog bestaan). Daarom speelt
+ *    onbeperkt op te blazen (de plafonds tellen alleen rijen die nog bestaan). Daarom speelt
  *    deze test de lus na over het echte teampad en eindigt hij op de teller: die hoort niet te
  *    zijn gegroeid door een tweede ronde.
  *
@@ -109,7 +109,9 @@ describe.runIf(rlsTestsConfigured)('een aandeel is niet weg te gooien (QS8-772)'
     expect(voor).toBe(1);
 
     // Stap 3 van de lus: loskoppelen van de teamgroep.
-    expect((await bert.db.from('goal_group_links').delete().eq('goal_id', aandeel).eq('group_id', team)).error).toBeNull();
+    const los = await bert.db.from('goal_group_links').delete().eq('goal_id', aandeel).eq('group_id', team).select();
+    expect(los.error).toBeNull();
+    expect((los.data ?? []).length, 'loskoppelen deed niets (RLS geeft dan ook geen fout)').toBe(1);
 
     // Stap 4: weggooien. Dit is de handeling die dichtmoet.
     const weg = await rpc(bert, 'verwijder_doel', { p_goal_id: aandeel });
@@ -118,6 +120,7 @@ describe.runIf(rlsTestsConfigured)('een aandeel is niet weg te gooien (QS8-772)'
     const nog = await adminDb().from('goals').select('id').eq('id', aandeel);
     expect((nog.data ?? []).length, 'het aandeel is toch verdwenen').toBe(1);
     // Een tweede neem_aandeel levert geen tweede ronde op: het eerste aandeel bestaat nog.
+    expect(uitkomst(await rpc(bert, 'neem_aandeel', { p_team_goal_id: teamdoel }))).toBe('al_aandeel');
     expect(await balk()).toBe(voor);
   }, TEST_TIMEOUT);
 
