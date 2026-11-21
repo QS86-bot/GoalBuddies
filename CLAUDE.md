@@ -633,8 +633,10 @@ Voordat er één feature gebouwd wordt:
       hebben nooit een klassement** (CHECK's `groups_team_geen_klassement` en
       `groups_automatisch_geen_klassement`). ⚠️ `points_ledger` bewaart de
       `group_id` altijd, dus aanzetten maakt ook de al verdiende punten van die
-      groep zichtbaar: dat hoort in de bevestiging (PR 2). Gebouwd in vier PR's;
-      deze regel beschrijft de poort van PR 1.
+      groep zichtbaar: dat staat in de bevestiging van `zet_groepsklassement()` (0336, PR 2: een beheerder, met
+      bevestiging, een `group_events`-rij en een bericht; geen wachttijd; nooit voor een teamgroep, een
+      automatisch gevormde groep of een gearchiveerde groep). Een nieuwe groep zonder organisatie begint met het
+      klassement aan, ook een beschermde (besluit 42/43). Gebouwd in vier PR's; PR 1 en 2 gaan samen uit.
 
     - **Score en voortgang zijn twee dingen.** Voortgang is mijlpaalgebaseerd en loopt
       alleen omhoog; de score kan dalen. Nooit in één balk tonen.

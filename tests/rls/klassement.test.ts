@@ -119,6 +119,12 @@ async function maakGroep(eigenaar: TestUser, naam: string, zicht: string): Promi
   if (gelezen.ok !== true || !gelezen.group) {
     throw new Error(`groep ${naam} mislukte: ${JSON.stringify(data)}`);
   }
+  // ⚠️ Sinds 0336 (A57 PR 2) begint een nieuwe beschermde groep met het klassement aan. Deze toetsen gaan over een
+  //    beschermde groep zónder klassement (een bestaande groep, besluit 42), dus die stand wordt hier gezet.
+  if (zicht === 'beschermd') {
+    const uit = await adminDb().from('groups').update({ klassement_aan: false } as never).eq('id', gelezen.group.id);
+    if (uit.error) throw new Error(`klassement uitzetten: ${uit.error.message}`);
+  }
   return { id: gelezen.group.id, code: gelezen.group.invite_code };
 }
 

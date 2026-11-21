@@ -154,7 +154,7 @@ describe.skipIf(!rlsTestsConfigured || !stackErIs)('een weekbelofte aangaan (031
     const groep = await maakGroep(alice, 'Beloftegroep', [bob]);
     await maakGroep(carol, 'Andere groep', []);
     const automatisch = await maakGroep(alice, 'Automatische groep', [dave]);
-    psql(`update groups set automatisch = true, zichtbaarheid = 'beschermd', ontdekbaar = false
+    psql(`update groups set automatisch = true, zichtbaarheid = 'beschermd', ontdekbaar = false, klassement_aan = false
            where id = '${automatisch}'`);
 
     const doelen: string[] = [];

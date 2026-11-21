@@ -23,11 +23,17 @@ interface Rij {
   readonly user_id: string;
 }
 
-async function maakGroep(eigenaar: TestUser, naam: string, zichtbaarheid: 'beschermd' | 'open'): Promise<{ id: string; code: string }> {
+async function maakGroep(eigenaar: TestUser, naam: string, zichtbaarheid: 'beschermd' | 'open', nieuw = false): Promise<{ id: string; code: string }> {
   const g = await eigenaar.db.rpc('create_group', { group_name: naam, zichtbaarheid });
   const d = g.data as unknown as { ok?: boolean; group?: { id: string; invite_code: string } };
   if (d.ok !== true || !d.group) throw new Error(`groep ${naam}: ${JSON.stringify(g.data)}`);
   registreerGroep(d.group.id);
+  // Sinds 0336 (A57 PR 2) begint een nieuwe groep met het klassement aan. Een bestaande beschermde groep staat uit
+  // (besluit 42); die stand zetten we hier, behalve voor `nieuw`.
+  if (zichtbaarheid === 'beschermd' && !nieuw) {
+    const uit = await adminDb().from('groups').update({ klassement_aan: false } as never).eq('id', d.group.id);
+    if (uit.error) throw new Error(`klassement uitzetten: ${uit.error.message}`);
+  }
   return { id: d.group.id, code: d.group.invite_code };
 }
 
@@ -66,8 +72,11 @@ describe.runIf(rlsTestsConfigured)('het klassement hangt aan een schakelaar (A57
     await removeTestUsers();
   }, SETUP_TIMEOUT);
 
-  it('de beginstand volgt de zichtbaarheid van een nieuwe groep (open aan, beschermd uit)', async () => {
+  it('een nieuwe groep begint met het klassement aan, ook een beschermde (besluit 42/43, 0336)', async () => {
+    const nieuweBeschermde = await maakGroep(anna, 'Schakel-nieuw', 'beschermd', true);
+    expect(await aan(nieuweBeschermde.id)).toBe(true);
     expect(await aan(open.id)).toBe(true);
+    // Een bestaande beschermde groep (hier door de helper uitgezet) blijft uit.
     expect(await aan(dicht.id)).toBe(false);
   }, TEST_TIMEOUT);
 

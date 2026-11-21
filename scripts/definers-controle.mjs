@@ -193,6 +193,10 @@ const REGISTER = new Map([
       'gelijktijdige aanroepen niet allebei een auditrij schrijven.',
   ],
   [
+    'zet_groepsklassement',
+    'Beheerderspoort: `is_group_admin(p_group_id)`, ná de teamgroep- en de automatisch-toets en vóór de bevestiging (0336, QS8-666). Elke weigering laat de schakelaar en het spoor ongewijzigd en elke wissel precies één `group_events`-rij en één bericht. Bewaakt door `tests/rls/klassement-zet.test.ts`.',
+  ],
+  [
     'sluit_verstreken_weken_af',
     '`authenticated` mag hem niet aanroepen — gemeten: `anon=false auth=false service=true` (0335, QS8-687). ' +
       'De grant ís hier de grendel, en `tests/rls/rollover-week-transactie.test.ts` toetst hem. ' +
