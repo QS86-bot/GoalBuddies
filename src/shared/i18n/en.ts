@@ -379,6 +379,12 @@ export const en: Record<Sleutel, string> = {
   'aanmelden.ben_nieuw': 'I am new here',
   'aanmelden.bestaand_account': 'Or use an existing account',
   'aanmelden.alleen_browser': 'Signing in with Apple or Google currently only works in the browser.',
+  // Second entry: work — QS8-663
+  'aanmelden.positionering': 'Reach goals together, without anyone feeling judged. For small teams of up to 25 people and for groups of friends.',
+  'aanmelden.werk_kop': 'I am here through work',
+  'aanmelden.werk_tekst': 'Got an invitation link or a code from your employer? Create an account first; then you join your team. Your team sees the team bar and your own share, never how far anyone else is.',
+  'aanmelden.werk_knop': 'Remember code',
+  'aanmelden.werk_onthouden': 'Your code is remembered. Create or pick your account above; then you can join with one tap.',
   'beoordeling.titel': 'Review',
   'beoordeling.leeg_titel': 'Nothing to review',
   'beoordeling.leeg_tekst': 'As soon as a buddy finishes a week, it shows up here. One line back is enough. That is the point.',
@@ -458,7 +464,10 @@ export const en: Record<Sleutel, string> = {
   'onboarding.kom_helpen': 'I came to help',
   'onboarding.klaar': 'Done',
   'groepdetail.zichtbaarheid': 'This group’s visibility: {stand}',
-  'groepdetail.titel': 'Group',
+  'groepdetail.titel': 'Your group',
+  'groepdetail.titel_naam': 'Your group: {naam}',
+  'groepdetail.titel_zonder_groep': 'Group',
+  'groepdetail.inhoud': 'On this page you will find, among others: {onderdelen}',
   'groepdetail.eyebrow': 'HUDDLE DAY {dag}',
   'groepdetail.eyebrow_vandaag': 'TODAY IS THE HUDDLE DAY',
   'groepdetail.geen_lid_titel': 'This group is not here, or not for you',
@@ -555,6 +564,7 @@ export const en: Record<Sleutel, string> = {
   'tab.doelen': 'Goals',
   'tab.groep': 'Group',
   'tab.profiel': 'Profile',
+  'tab.melding_wacht': 'a report is waiting',
   'tab.navigatie': 'Main menu',
   'vangnet.kop': 'The app could not continue',
   'vangnet.tekst': 'Something went wrong while building this screen. Go back to the start screen. If it keeps failing, restart the app.',
@@ -739,8 +749,6 @@ export const en: Record<Sleutel, string> = {
   'profiel.herinnering_geen_meldingen': 'Turn notifications on above, otherwise nothing gets delivered.',
   'profiel.viering_titel': 'Celebratory moments',
   'profiel.viering_uitleg': 'A short congratulation when a buddy confirms your week, you reach a milestone or your goal is done. Otherwise the app stays quiet.',
-  'profiel.viering_aan_label': 'Celebratory moments on',
-  'profiel.viering_uit_label': 'Celebratory moments off',
   'vindbaar.titel': 'Findable outside your groups',
   'vindbaar.uitleg': 'With this on, people who are signed in can find you by your name. They see your name and your profile photo.',
   'vindbaar.label': 'Findable',
@@ -1607,6 +1615,23 @@ export const en: Record<Sleutel, string> = {
     'penalty and get a notification about it, unless they have turned that kind off.',
   'straf.verder': 'Continue',
   'straf.jouw_groep': 'your group',
+  // QS8-698, Quinten's decision of 20-11-2026: three fixed rules and one button, in the weekly-promise form.
+  'straf.team.kop': 'Read this before you confirm this penalty',
+  'straf.team.haal_niet_groep':
+    'If you miss your target date, your colleagues in {groep} will see this agreement with your name on it.',
+  'straf.team.haal_niet_persoon':
+    'If you miss your target date, {naam} can read this agreement with your name on it.',
+  'straf.team.gevolg': 'The consequence: {tekst}',
+  'straf.team.wie_groep':
+    'Your colleagues in {groep} see your name and this text. That includes colleagues who join the team later.',
+  'straf.team.wie_persoon': '{naam} sees your name and this text, and nobody else.',
+  'straf.team.wanneer':
+    'This only becomes visible once your target date has passed and your goal is still not done. Until then nobody sees this, not {wie} either.',
+  'straf.team.collegas': 'your colleagues',
+  'straf.team.niet_zien':
+    'Which goal it is is not in this agreement. So do not put that goal in your penalty text yourself.',
+  'straf.team.intrekken':
+    'You can withdraw it until your target date has passed. After that the agreement stays in place. No money is ever involved.',
 
   // QS8-761 — the weekly promise. See the comment in nl.ts.
   'belofte.knop': 'Make a weekly promise',
@@ -2975,4 +3000,105 @@ export const en: Record<Sleutel, string> = {
     'Are you the only admin of {naam}? Then nobody can invite new members there after you delete your account. Everyone already in keeps everything.',
   'organisatie.verwijder_waarschuwing_storing':
     'We could not check whether you are an admin of an organisation. If you are, and you are the only one, hand over the admin role first. Otherwise nobody can invite new members afterwards.',
+  // Teamdoelen en de teambalk — QS8-658
+  'teamdoel.ingang_kop':
+    'Team goals',
+  'teamdoel.ingang_uitleg':
+    'This is a group of your organisation. Here are the goals you reach together.',
+  'teamdoel.ingang_knop':
+    'Team goals',
+  'teamdoel.ingang_storing':
+    'We could not check whether this is a team group.',
+  'teamdoel.lijst_titel':
+    'Team goals',
+  'teamdoel.lijst_eyebrow':
+    'Team',
+  'teamdoel.lijst_laden':
+    'The team goals could not be loaded.',
+  'teamdoel.lijst_leeg_titel':
+    'No team goal yet',
+  'teamdoel.lijst_leeg_tekst':
+    'Any member of the team can create a team goal.',
+  'teamdoel.meer_laden':
+    'Show more team goals',
+  'teamdoel.meer_mislukt':
+    'Loading more team goals failed. Try again.',
+  'teamdoel.aanmaken_knop':
+    'Create a team goal',
+  'teamdoel.nieuw_titel':
+    'New team goal',
+  'teamdoel.titel_label':
+    'What do you want to reach together?',
+  'teamdoel.titel_hint':
+    'One line. Your colleagues see this title.',
+  'teamdoel.titel_teller':
+    '{aantal} of {max} characters',
+  'teamdoel.beschrijving_label':
+    'Description (optional)',
+  'teamdoel.beschrijving_teller':
+    '{aantal} of {max} characters',
+  'teamdoel.datum_label':
+    'Target date',
+  'teamdoel.datum_hint':
+    'Anyone who takes a share gets the same target date.',
+  'teamdoel.opslaan':
+    'Save team goal',
+  'teamdoel.titel_leeg':
+    'Give the team goal a title.',
+  'teamdoel.titel_lang':
+    'The title is too long: keep it to 200 characters or fewer.',
+  'teamdoel.titel_ongeldig':
+    'Give the team goal a title of 1 to 200 characters.',
+  'teamdoel.beschrijving_lang':
+    'The description is too long: keep it to 2000 characters or fewer.',
+  'teamdoel.datum_ongeldig':
+    'Pick a target date.',
+  'teamdoel.datum_voorbij':
+    'That target date has already passed. Pick a date from today.',
+  'teamdoel.tekst_ongeldig':
+    'The text contains characters we cannot save. Remove them and try again.',
+  'teamdoel.daglimiet':
+    'You have already created ten team goals today. Tomorrow it works again.',
+  'teamdoel.niet_toegestaan':
+    'This did not work. You are not in this team, or the team goal does not exist.',
+  'teamdoel.aanmaken_mislukt':
+    'Creating the team goal failed. Try again.',
+  'teamdoel.niet_gevonden_titel':
+    'Team goal not found',
+  'teamdoel.niet_gevonden_tekst':
+    'This team goal does not exist, or you do not have access to it.',
+  'teamdoel.laden_mislukt':
+    'The team goal could not be loaded.',
+  'teamdoel.streefdatum':
+    'Target date {datum}',
+  'teamdoel.loopt_nog':
+    'This team goal is still running.',
+  'teamdoel.afgerond':
+    'This team goal is complete.',
+  'teamdoel.balk_kop':
+    'Team bar',
+  'teamdoel.balk_een':
+    '1 milestone reached',
+  'teamdoel.balk_meer':
+    '{n} milestones reached',
+  'teamdoel.balk_uitleg':
+    'The counter only goes up: milestones the team reached together.',
+  'teamdoel.aandeel_kop':
+    'Your share',
+  'teamdoel.aandeel_uitleg':
+    'A share is a personal goal; your colleagues do not see how far along you are.',
+  'teamdoel.aandeel_nemen':
+    'Take a share',
+  'teamdoel.aandeel_bekijk':
+    'Go to your share',
+  'teamdoel.aandeel_heb':
+    'You have a share in this team goal.',
+  'teamdoel.aandeel_mislukt':
+    'Taking a share failed. Try again.',
+  'teamdoel.niet_actief':
+    'This team goal is no longer active, so you cannot take a share in it.',
+  'teamdoel.al_aandeel':
+    'You already have a share in this team goal.',
+  'teamdoel.streefdatum_verstreken':
+    'The target date of this team goal has passed, so you can no longer take a share in it.',
 };
