@@ -284,9 +284,10 @@ export default function GroepDetail() {
                  schandpaal. De regel zegt wát er zichtbaar is, niet wáárnaast
                  het hoort.
 
-              ⚠️ Zelfde poort als het klassement en om dezelfde reden: in een
-                 beschermde groep geeft `groep_helden()` nul rijen en rendert dit
-                 niets. De regel staat in 0268, niet hier.
+              ⚠️ Niet meer dezelfde poort als het klassement (A57, 0329): de heldenlijst blijft aan
+                 de zichtbaarheid hangen, het klassement aan een eigen schakelaar. In een
+                 beschermde groep geeft `groep_helden()` nul rijen en rendert dit niets.
+                 De regel staat in 0268, niet hier.
             */}
             <HeldenKaart
               uitkomst={s.helden}

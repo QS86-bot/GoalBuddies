@@ -31,9 +31,16 @@
 --    het klassement standaard aan voor nieuwe groepen: tot die er is, is er geen weg om een beschermde groep
 --    het klassement te geven, en dat is de veilige kant.
 --
--- ⚠️ **De poort is niet `is_group_member()` en niet `lid_van_open_groep()`.** `lid_van_levende_groep()` is het
---    lichaam van `lid_van_open_groep()` (0102) zonder de zichtbaarheidstoets: actief lid van een groep die niet
---    gearchiveerd is. `is_group_member()` zou het klassement ook in een gearchiveerde groep openen (A57 §3).
+-- ⚠️ **De poort is een eigen helper en niet `lid_van_open_groep()`.** `lid_van_levende_groep()` is het lichaam van
+--    `lid_van_open_groep()` (0102) zonder de zichtbaarheidstoets: actief lid van een groep die niet gearchiveerd is.
+--    📏 Dat is op het moment van schrijven hetzelfde lichaam als `is_group_member()` (nagemeten door de security-review);
+--    het is een eigen naam zodat een latere versoepeling van `is_group_member()` het klassement niet stil meeneemt.
+--    ⚠️ Gebruik hier nooit `mag_groep_lezen()`: die laat een gearchiveerde groep leesbaar (0153).
+--
+-- ⚠️ **Dit is PR 1 van vier en hij hoort niet los naar productie.** Een groep die open wordt en daarna weer beschermd,
+--    houdt het klassement (besluit van Quinten, 18-11-2026), en de bevestiging bij beschermen belooft dat een beheerder
+--    het apart kan uitzetten. Die weg (`zet_groepsklassement()` en de schakelaar in Groepsbeheer) is PR 2. PR 1 en PR 2
+--    gaan dus samen uit.
 --
 -- ⚠️ **`points_ledger` bewaart de `group_id` altijd**, ongeacht zichtbaarheid of schakelaar (41 plekken in de
 --    migraties, statisch gemeten; tegen productie niet). Een klassement aanzetten maakt dus ook de punten

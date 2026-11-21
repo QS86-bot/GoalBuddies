@@ -624,7 +624,7 @@ Voordat er één feature gebouwd wordt:
       grens van A54: het klassement is niet meer van de zichtbaarheid maar van een
       schakelaar op de groep.** `groups.klassement_aan` is voor geen enkele client
       schrijfbaar; de poort van `groep_klassement()` is `lid_van_levende_groep()`
-      (actief lid, niet gearchiveerd, **niet** `is_group_member()`) plus de
+      (actief lid, niet gearchiveerd; een eigen helper naast `is_group_member()`) plus de
       schakelaar plus de teamtoets. Een beschermde groep kan dus een klassement
       hebben; een bestaande beschermde groep heeft het uit tot een beheerder het
       aanzet, en een groep die open wordt krijgt het erbij (besluit 45). De drie

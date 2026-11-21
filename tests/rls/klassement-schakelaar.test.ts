@@ -124,6 +124,14 @@ describe.runIf(rlsTestsConfigured)('het klassement hangt aan een schakelaar (A57
     expect((await klassement(bram, g.id)).length).toBe(2);
   }, TEST_TIMEOUT);
 
+  it('een automatisch gevormde groep heeft nooit een klassement: de CHECK weigert (P1)', async () => {
+    const g = await maakGroep(anna, 'Schakel-automatisch', 'beschermd');
+    expect((await adminDb().from('groups').update({ automatisch: true } as never).eq('id', g.id)).error).toBeNull();
+    const zet = await adminDb().from('groups').update({ klassement_aan: true } as never).eq('id', g.id);
+    expect(zet.error?.message ?? '', 'een automatisch gevormde groep kreeg een klassement').toContain('groups_automatisch_geen_klassement');
+    expect(await aan(g.id)).toBe(false);
+  }, TEST_TIMEOUT);
+
   it('een teamgroep heeft nooit een klassement: de CHECK weigert, ook voor service_role', async () => {
     const o = await anna.db.rpc('maak_organisatie', { p_naam: 'Schakel BV' });
     const org = (o.data as { organization_id: string }).organization_id;

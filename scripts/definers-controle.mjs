@@ -591,7 +591,7 @@ const LEESREGISTER = new Map([
   ['is_group_admin', 'Predicaat op `m.user_id = auth.uid()` plus `role = admin`.'],
   ['mag_groep_lezen', 'Predicaat op `m.user_id = auth.uid()`. ⚠️ Kijkt bewust niet naar `groups.status`: dit is de leesvariant, en een gearchiveerde groep blijft leesbaar voor wie erin zat.'],
   ['lid_van_open_groep', 'Predicaat op `m.user_id = auth.uid()` plus `zichtbaarheid = open`. Draagt de grendel van A54.'],
-  ['lid_van_levende_groep', 'Predicaat op `m.user_id = auth.uid()`, actief lid van een groep die niet gearchiveerd is (A57, 0329). Niet is_group_member(): dat opent een gearchiveerde groep.'],
+  ['lid_van_levende_groep', 'Predicaat op `m.user_id = auth.uid()`, actief lid van een groep die niet gearchiveerd is (A57, 0329). Zelfde lichaam als is_group_member() (0329); een eigen naam zodat een latere versoepeling daarvan het klassement niet meeneemt.'],
   ['shares_group_with_user', 'Predicaat op `mine.user_id = auth.uid()`; béíde kanten moeten actief lid zijn.'],
   ['shares_group_with_goal', 'Predicaat op `m.user_id = auth.uid()`; de kijker én de eigenaar moeten actief lid zijn en de groep niet gearchiveerd.'],
   ['deelt_groep_met_eigenaar', 'Leunt volledig op `shares_group_with_user()`, en die scopet op `auth.uid()`. Leest `goals` alleen om de eigenaar op te zoeken.'],
