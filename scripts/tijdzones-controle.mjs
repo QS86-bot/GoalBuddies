@@ -91,6 +91,55 @@ export const ALLEEN_LOKAAL = new Map([
 ]);
 
 /**
+ * Zones die Postgres kent en `Intl` weigert — de weigerlijst van
+ * `bewaak_tijdzone()` (migratie 0328, QS8-763).
+ *
+ * 📏 Gemeten op 20-11-2026 (Node, ICU 78.3) over alle 499 namen van de lokale
+ * stack: precies drie. `localtime` en `posixrules` zijn de twee namen van
+ * `ALLEEN_LOKAAL` en bestaan op productie niet; die doen hier niet mee. `Factory`
+ * staat er wél in, want of productie hem kent is ongemeten.
+ *
+ * ⚠️ **De lijst in de migratie is een afschrift van deze meting.** De controle
+ *    hieronder weigert zodra de lokale zonelijst en deze lijst uiteenlopen, in
+ *    beide richtingen. Staat hier een naam die `Intl` wel kent, dan weigert de
+ *    trigger een echte zone; mist er een, dan slaat de rollover een profiel
+ *    stil over.
+ */
+export const ZONES_DIE_INTL_WEIGERT = new Set(['Factory']);
+
+/**
+ * Voorvoegsels waaronder productie namen kent die lokaal niet bestaan en die
+ * `Intl` weigert (`posix/`: 598 gemeten op productie; `right/`: ongemeten, maar
+ * dezelfde tzdata-familie). De lokale lijst kan ze niet voeden, dus de controle
+ * toetst één representant per voorvoegsel.
+ */
+export const GEWEIGERDE_VOORVOEGSELS = ['posix/', 'right/'];
+export const PRODUCTIEVORMEN = ['posix/Europe/Amsterdam', 'right/UTC'];
+
+/** Welke van deze namen weigert `Intl.DateTimeFormat`? */
+export function intlWeigert(zones) {
+  return [...zones].filter((naam) => {
+    try {
+      new Intl.DateTimeFormat('en-US', { timeZone: naam });
+      return false;
+    } catch {
+      return true;
+    }
+  });
+}
+
+/** Verschil tussen wat `Intl` weigert en het register, in beide richtingen. */
+export function intlVerschil(zones) {
+  const geweigerd = new Set(intlWeigert(zones));
+  return {
+    ontbreektInRegister: [...geweigerd]
+      .filter((n) => !ZONES_DIE_INTL_WEIGERT.has(n) && !ALLEEN_LOKAAL.has(n))
+      .sort(),
+    teVeelInRegister: [...ZONES_DIE_INTL_WEIGERT].filter((n) => !geweigerd.has(n)).sort(),
+  };
+}
+
+/**
  * Namen die eruitzien als een tijdzone maar het niet zijn.
  *
  * ⚠️ **Deze helft bepaalt of de controle bruikbaar is.** Het patroon matcht ook
@@ -234,6 +283,22 @@ function hoofd() {
           'daarom is hij hier niet uit te rekenen.',
         melding: fout instanceof Error ? fout.message : String(fout),
       }),
+    );
+    return 1;
+  }
+
+  const nietGeweigerd = PRODUCTIEVORMEN.filter((n) => intlWeigert([n]).length === 0);
+  if (nietGeweigerd.length > 0) {
+    console.error(`✗ Intl accepteert nu ${nietGeweigerd.join(', ')}; de voorvoegselregel van 0328 weigert ze nog.`);
+    return 1;
+  }
+  const verschil = intlVerschil(lokaleZones);
+  if (verschil.ontbreektInRegister.length + verschil.teVeelInRegister.length > 0) {
+    console.error(
+      '✗ Intl en de weigerlijst van bewaak_tijdzone() zijn het oneens.\n' +
+        `    Intl weigert, lijst mist:  ${verschil.ontbreektInRegister.join(', ') || '-'}\n` +
+        `    Lijst noemt, Intl kent:    ${verschil.teVeelInRegister.join(', ') || '-'}\n` +
+        'Werk ZONES_DIE_INTL_WEIGERT en de lijst in een nieuwe migratie bij (0328, QS8-763).',
     );
     return 1;
   }
