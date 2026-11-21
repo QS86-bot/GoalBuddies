@@ -591,6 +591,7 @@ const LEESREGISTER = new Map([
   ['is_group_admin', 'Predicaat op `m.user_id = auth.uid()` plus `role = admin`.'],
   ['mag_groep_lezen', 'Predicaat op `m.user_id = auth.uid()`. ⚠️ Kijkt bewust niet naar `groups.status`: dit is de leesvariant, en een gearchiveerde groep blijft leesbaar voor wie erin zat.'],
   ['lid_van_open_groep', 'Predicaat op `m.user_id = auth.uid()` plus `zichtbaarheid = open`. Draagt de grendel van A54.'],
+  ['lid_van_levende_groep', 'Predicaat op `m.user_id = auth.uid()`, actief lid van een groep die niet gearchiveerd is (A57, 0329). Niet is_group_member(): dat opent een gearchiveerde groep.'],
   ['shares_group_with_user', 'Predicaat op `mine.user_id = auth.uid()`; béíde kanten moeten actief lid zijn.'],
   ['shares_group_with_goal', 'Predicaat op `m.user_id = auth.uid()`; de kijker én de eigenaar moeten actief lid zijn en de groep niet gearchiveerd.'],
   ['deelt_groep_met_eigenaar', 'Leunt volledig op `shares_group_with_user()`, en die scopet op `auth.uid()`. Leest `goals` alleen om de eigenaar op te zoeken.'],
@@ -615,7 +616,7 @@ const LEESREGISTER = new Map([
   ['groep_teller', 'Lidmaatschapspoort: `where is_group_member(p_group_id)` — geen lid, nul rijen. Telt alleen omhoog (domeinregel 7).'],
   ['ketting_stand', 'Lidmaatschapspoort: `where is_group_member(p_group_id)`. Geeft `{schakels, in_aanmerking, voltallig}` en nooit een naam.'],
   ['deel_prestatie', 'Poort op `badges.user_id = auth.uid()` (alleen een prestatie die je zelf hebt) en op `is_group_member(p_group_id)`; schrijft één systeembericht zonder naam, titel of niveau. Getoetst door tests/rls/prestatie-delen.test.ts met echte JWT\'s.'],
-  ['groep_klassement', 'Poort op `lid_van_open_groep(p_group_id)`: in een beschermde groep nul rijen (A54). Geen delta en geen datum, dus geen gemiste week af te leiden.'],
+  ['groep_klassement', 'Poort op `lid_van_levende_groep(p_group_id)` plus de schakelaar `groups.klassement_aan` en een teamtoets (A57, 0329): nul rijen voor een niet-lid, een uitgezet lid, een gearchiveerde groep, een groep zonder klassement en een teamgroep. Geen delta en geen datum, dus geen gemiste week af te leiden.'],
   // ⚠️ **De enige rij in dit register waar het antwoord op de eerste vraag "ja"
   //    is, en dat is geen bezwaar maar het oppervlak zelf** (0268, QS8-477).
   //    `trigger = 'misser'` zégt dat er iets gemist is. Besluit A41 staat dat toe

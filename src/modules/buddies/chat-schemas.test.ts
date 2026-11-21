@@ -156,6 +156,9 @@ describe('domeinregel 7: falen is nooit publiek', () => {
       //    geen naam en geen titel. Er is met opzet geen bericht over een aandeel.
       'team_goal_created',
       'team_goal_completed',
+      // ⚠️ QS8-666 (migratie 0329, A57). Over de groep en niet over een persoon.
+      'leaderboard_enabled',
+      'leaderboard_disabled',
     ]);
   });
 
