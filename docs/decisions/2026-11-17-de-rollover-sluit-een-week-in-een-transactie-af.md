@@ -83,3 +83,17 @@ nagelopen. Oordeel: geen kritieke bevinding, wel aandacht.
 Niet op productie nagelezen: of `verbruik_weekpas` en
 `geen_minpunt_zonder_beoordelaar` daar gelijk zijn aan de lokale stack
 (`pg_get_functiondef()` is de waarheid).
+
+## Drie bewuste gedragsverschillen met de oude lus (security-review 21-11-2026)
+
+Alle drie zijn verbeteringen, en ze horen hier te staan omdat ze iets veranderen aan wat de rollover doet:
+
+1. **Twee overlappende adempauzes.** `breathers` heeft geen exclusion-constraint. De oude code faalde dan op
+   `.maybeSingle()`, de pauze was `null` en de week werd `missed` mét minpunt. Nu telt `exists`: de week wordt `excused`.
+2. **Een fout in het minpunt of de weekpas.** Vroeger bleef de week op `missed` staan, soms zonder punt of pas. Nu draait
+   de hele week terug naar `todo` en telt hij in `mislukt` (meldt Sentry); de volgende run probeert hem opnieuw.
+3. **De status-guard op beide updates** maakt twee rollovers die tegelijk lopen veilig: de tweede ziet `missed`, raakt geen
+   rij en boekt dus geen tweede weekpas. Dat is beredeneerd (READ COMMITTED) en niet met twee sessies gemeten.
+
+⚠️ **Uitrolvolgorde:** migratie eerst, de edge function `rollover` daarna. Omgekeerd sluit de rollover elk uur geen week af
+(de RPC bestaat dan niet); sinds de review meldt hij dat wel in Sentry (`rollover_weken_rpc_fout`).
