@@ -3503,6 +3503,7 @@ export const nl = {
     'Meer laden',
   'organisatie.meer_mislukt':
     'Meer laden lukte niet. Probeer het opnieuw.',
+  'organisatie.acties_label': 'Acties voor {naam}',
   'organisatie.uitzetten_label': '{naam} uit de organisatie zetten',
   'organisatie.uitzetten_knop':
     'Uitzetten',

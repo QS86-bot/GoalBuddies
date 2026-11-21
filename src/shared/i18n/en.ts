@@ -2889,6 +2889,7 @@ export const en: Record<Sleutel, string> = {
     'Load more',
   'organisatie.meer_mislukt':
     'Loading more did not work. Please try again.',
+  'organisatie.acties_label': 'Actions for {naam}',
   'organisatie.uitzetten_label': 'Remove {naam} from the organisation',
   'organisatie.uitzetten_knop':
     'Remove',
