@@ -1615,6 +1615,23 @@ export const en: Record<Sleutel, string> = {
     'penalty and get a notification about it, unless they have turned that kind off.',
   'straf.verder': 'Continue',
   'straf.jouw_groep': 'your group',
+  // QS8-698, Quinten's decision of 20-11-2026: three fixed rules and one button, in the weekly-promise form.
+  'straf.team.kop': 'Read this before you confirm this penalty',
+  'straf.team.haal_niet_groep':
+    'If you miss your target date, your colleagues in {groep} will see this agreement with your name on it.',
+  'straf.team.haal_niet_persoon':
+    'If you miss your target date, {naam} can read this agreement with your name on it.',
+  'straf.team.gevolg': 'The consequence: {tekst}',
+  'straf.team.wie_groep':
+    'Your colleagues in {groep} see your name and this text. That includes colleagues who join the team later.',
+  'straf.team.wie_persoon': '{naam} sees your name and this text, and nobody else.',
+  'straf.team.wanneer':
+    'This only becomes visible once your target date has passed and your goal is still not done. Until then nobody sees this, not {wie} either.',
+  'straf.team.collegas': 'your colleagues',
+  'straf.team.niet_zien':
+    'Which goal it is is not in this agreement. So do not put that goal in your penalty text yourself.',
+  'straf.team.intrekken':
+    'You can withdraw it until your target date has passed. After that the agreement stays in place. No money is ever involved.',
 
   // QS8-761 — the weekly promise. See the comment in nl.ts.
   'belofte.knop': 'Make a weekly promise',
