@@ -466,8 +466,8 @@ export const nl = {
   'delen.mislukt': 'Delen lukt hier niet. Selecteer de link hierboven',
   'delen.uitnodiging_onderwerp': '{naam} nodigt je uit voor GoalBuddies',
   'delen.uitnodiging_onderwerp_zonder_naam': 'Je bent uitgenodigd voor GoalBuddies',
-  'delen.uitnodiging_tekst': '{naam} nodigt je uit voor de groep {groep} op GoalBuddies, een app waarmee je samen met anderen aan je doelen werkt. Open de link om de groep te zien en mee te doen:\n{link}',
-  'delen.uitnodiging_tekst_zonder_naam': 'Je bent uitgenodigd voor de groep {groep} op GoalBuddies, een app waarmee je samen met anderen aan je doelen werkt. Open de link om de groep te zien en mee te doen:\n{link}',
+  'delen.uitnodiging_tekst': '{naam} nodigt je uit voor de groep “{groep}” op GoalBuddies, een app waarmee je samen met anderen aan je doelen werkt. Open de link om de groep te zien en mee te doen:\n{link}',
+  'delen.uitnodiging_tekst_zonder_naam': 'Je bent uitgenodigd voor de groep “{groep}” op GoalBuddies, een app waarmee je samen met anderen aan je doelen werkt. Open de link om de groep te zien en mee te doen:\n{link}',
   'linkvoorbeeld.titel': 'GoalBuddies',
   'linkvoorbeeld.beschrijving': 'Werk samen met anderen aan je doelen. GoalBuddies helpt je volhouden, met een groep die meekijkt en je aanmoedigt.',
 
@@ -1397,6 +1397,7 @@ export const nl = {
   'groep.aanmaken_mislukt_kort': 'Je groep kon niet worden aangemaakt. Probeer het opnieuw.',
   'groep.onbekend_lid': 'Onbekend lid',
   'validatie.groepsnaam_lang': 'Maximaal 60 tekens.',
+  'validatie.groepsnaam_link': 'Een groepsnaam is geen webadres. Laat de link of het domein weg.',
   'validatie.weekdag_kort': 'Kies een dag van de week.',
   'validatie.uitnodigingscode': 'Deze uitnodigingscode klopt niet. Controleer de link.',
 
