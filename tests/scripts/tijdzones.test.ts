@@ -2,6 +2,11 @@ import { describe, expect, it } from 'vitest';
 
 import {
   ALLEEN_LOKAAL,
+  ZONES_DIE_INTL_WEIGERT,
+  intlVerschil,
+  intlWeigert,
+  PRODUCTIEVORMEN,
+  GEWEIGERDE_VOORVOEGSELS,
   EIGEN_BESTANDEN,
   beoordeel,
   tijdzonekandidaten,
@@ -107,5 +112,40 @@ describe('het register zelf', () => {
       'scripts/tijdzones-controle.mjs',
       'tests/scripts/tijdzones.test.ts',
     ]);
+  });
+});
+
+describe('de weigerlijst van Intl (QS8-763)', () => {
+  it('Intl weigert precies de namen in het register, en geen echte zone', () => {
+    expect(intlWeigert(['Factory', 'Europe/Amsterdam', 'Pacific/Auckland']).sort()).toEqual(['Factory']);
+    for (const naam of ZONES_DIE_INTL_WEIGERT) {
+      expect(intlWeigert([naam]), `${naam} hoort door Intl geweigerd te worden`).toEqual([naam]);
+    }
+  });
+
+  it('meldt een zone die Intl weigert en het register mist, en omgekeerd', () => {
+    // De twee lokale artefacten tellen niet mee: ze zijn al van ALLEEN_LOKAAL.
+    const basis = ['Europe/Amsterdam', ...ZONES_DIE_INTL_WEIGERT, ...ALLEEN_LOKAAL.keys()];
+    expect(intlVerschil(basis)).toEqual({ ontbreektInRegister: [], teVeelInRegister: [] });
+    expect(intlVerschil([...basis, 'Bogus/Zone']).ontbreektInRegister).toEqual(['Bogus/Zone']);
+    expect(intlVerschil(['Europe/Amsterdam']).teVeelInRegister).toEqual(['Factory']);
+  });
+});
+
+describe('de productievormen die lokaal niet bestaan (QS8-763)', () => {
+  it('Intl weigert elke representant, en elk heeft een voorvoegsel in de lijst', () => {
+    for (const naam of PRODUCTIEVORMEN) {
+      expect(intlWeigert([naam]), `${naam} hoort door Intl geweigerd te worden`).toEqual([naam]);
+      expect(GEWEIGERDE_VOORVOEGSELS.some((v) => naam.startsWith(v))).toBe(true);
+    }
+  });
+
+  it('de migratie weigert dezelfde voorvoegsels', async () => {
+    const { readFileSync, readdirSync } = await import('node:fs');
+    const map = 'supabase/migrations';
+    const bestand = readdirSync(map).find((n) => n.startsWith('0328_'));
+    const sql = readFileSync(`${map}/${bestand}`, 'utf8').replace(/--[^\n]*/g, '');
+    for (const v of GEWEIGERDE_VOORVOEGSELS) expect(sql).toContain(`like '${v}%'`);
+    for (const z of ZONES_DIE_INTL_WEIGERT) expect(sql.toLowerCase()).toContain(`= '${z.toLowerCase()}'`);
   });
 });
