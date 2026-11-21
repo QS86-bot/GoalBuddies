@@ -27,6 +27,7 @@ export { Avatar } from './Avatar';
 export { AvatarKeuze } from './AvatarKeuze';
 export { initialen } from './naming';
 export { Button, type ButtonVariant } from './Button';
+export { MeerKnop } from './MeerKnop';
 export { Actiekaart } from './Actiekaart';
 export { Afvinkcirkel } from './Afvinkcirkel';
 export { Card } from './Card';
