@@ -37,7 +37,6 @@ import {
   voertaalLabels,
   VOERTALEN,
   type Voertaal,
-  zetOntdekbaar,
   zetGroepszichtbaarheid,
   zetUitnodigingIngetrokken,
   zichtbaarheidLabels,
@@ -47,6 +46,7 @@ import {
   type Zichtbaarheid,
 } from '@/modules/buddies';
 import { categorieLabels } from '@/modules/goals';
+import { KlassementSchakelaar, leesKlassementTerug, OntdekKaart } from '@/schermen/groep';
 import { CATEGORIEEN, type Categorie } from '@/shared/categorieen';
 import { opmaaktaal, t } from '@/shared/i18n';
 import { telTekens } from '@/shared/tekst';
@@ -146,7 +146,6 @@ export default function GroepBeheer() {
     | 'vernieuwen'
     | 'sluiten'
     | 'zicht'
-    | 'ontdek'
     | 'verzoek'
     | 'archief'
     | 'heropen'
@@ -173,8 +172,6 @@ export default function GroepBeheer() {
    */
   const [archiefVraag, setArchiefVraag] = useState(false);
   const [heropenVraag, setHeropenVraag] = useState(false);
-  /** Zelfde vorm en zelfde reden als `zichtVraag`: dit zet iets open voor vreemden. */
-  const [ontdekVraag, setOntdekVraag] = useState(false);
   /** De id's die deze sessie al beslist heeft. Zie `verzoeken` hieronder. */
   const [beslist, setBeslist] = useState<readonly string[]>([]);
   const [melding, setMelding] = useState<string | null>(null);
@@ -337,6 +334,9 @@ export default function GroepBeheer() {
     setMelding(t('beheer.melding_nieuwe_link'));
   }
 
+  const bijwerken = (deel: Partial<NonNullable<typeof groep>>) =>
+    setGroep((huidig) => (huidig === null ? huidig : { ...huidig, ...deel }));
+
   async function zetZichtbaarheid(naar: Zichtbaarheid) {
     if (!id) return;
     setBezig('zicht');
@@ -353,36 +353,12 @@ export default function GroepBeheer() {
 
     setZichtVraag(false);
     setGroep((huidig) => (huidig === null ? huidig : { ...huidig, zichtbaarheid: naar }));
+    // ⚠️ Een groep die open wordt krijgt het klassement erbij (besluit 45, QS8-666) en dat gebeurt in de database;
+    //    de schakelaar leest de stand daarvan terug in plaats van hem na te bouwen.
+    void leesKlassementTerug(id, (aan) => bijwerken({ klassement_aan: aan }));
     setMelding(
       naar === 'open' ? t('beheer.melding_open_gezet') : t('beheer.melding_beschermd_gezet'),
     );
-  }
-
-  /**
-   * Vindbaar maken, of juist niet — QS8-231.
-   *
-   * ⚠️ Dezelfde vorm als `zetZichtbaarheid()` en dat is geen toeval: allebei
-   *    zetten ze iets open namens mensen die het niet gevraagd hebben. De
-   *    database weigert zonder `p_bevestigd`, dus dit scherm is de tweede rem.
-   */
-  async function zetVindbaar(naar: boolean) {
-    if (!id) return;
-    setBezig('ontdek');
-    setFout(null);
-    setMelding(null);
-
-    const uitkomst = await zetOntdekbaar(id, naar, true);
-    setBezig(null);
-
-    if (!uitkomst.ok) {
-      setFout(uitkomst.melding);
-      return;
-    }
-
-    setOntdekVraag(false);
-    setGroep((huidig) => (huidig === null ? huidig : { ...huidig, ontdekbaar: uitkomst.waarde }));
-    setMelding(naar ? t('ontdek.melding_ontdekbaar') : t('ontdek.melding_verborgen'));
-
   }
 
   async function beslis(requestId: string, naar: 'accepted' | 'declined') {
@@ -706,52 +682,20 @@ export default function GroepBeheer() {
               </Card>
 
               {/*
-                ⚠️ **Een eigen kaart met een bevestiging, en om dezelfde reden als
-                   de zichtbaarheid hierboven.** Vindbaar maken doe je namens
-                   iedereen die in de groep zit; dat mag nooit meeliften op de
-                   opslaanknop van een formulier waar ook de groepsnaam in staat.
+                ⚠️ QS8-666 (A57, keuze B1). Een eigen kaart onder de zichtbaarheid, met zijn eigen bevestiging:
+                   het klassement raakt alle leden en mag nooit meeliften op een knop van een ander formulier.
+                   Alle toestand staat in het onderdeel zelf; dit scherm bewaart alleen de stand terug.
               */}
-              <Card>
-                <Subheading>{t('ontdek.beheer_titel')}</Subheading>
-                <Body muted>{g.ontdekbaar ? t('ontdek.beheer_aan') : t('ontdek.beheer_uit')}</Body>
-                <Body muted>{t('ontdek.beheer_uitleg')}</Body>
+              <KlassementSchakelaar
+                groep={g}
+                beheerder={beheerder}
+                onGewijzigd={(aan) => bijwerken({ klassement_aan: aan })}
+              />
 
-                {/*
-                  ⚠️ De twee voorwaarden staan hier als zin en in de database als
-                     CHECK (`groups_ontdekbaar_is_beschermd`,
-                     `groups_ontdekbaar_heeft_categorie`). Dit scherm legt uit
-                     waarom de knop niets doet; het is niet wat het tegenhoudt.
-                */}
-                {(g.zichtbaarheid ?? 'beschermd') !== 'beschermd' ? (
-                  <Caption danger>{t('ontdek.beheer_moet_beschermd_zijn')}</Caption>
-                ) : null}
-                {g.categorie === null ? <Caption danger>{t('ontdek.geen_categorie')}</Caption> : null}
-
-                {ontdekVraag ? (
-                  <Bevestiging
-                    tekst={
-                      g.ontdekbaar
-                        ? bevestigingen().groepVerbergen
-                        : bevestigingen().groepOntdekbaarMaken
-                    }
-                    bezig={bezig === 'ontdek'}
-                    onBevestig={() => void zetVindbaar(!g.ontdekbaar)}
-                    onAnnuleer={() => setOntdekVraag(false)}
-                  />
-                ) : (
-                  <Button
-                    variant="secundair"
-                    block
-                    disabled={
-                      !g.ontdekbaar &&
-                      ((g.zichtbaarheid ?? 'beschermd') !== 'beschermd' || g.categorie === null)
-                    }
-                    onPress={() => setOntdekVraag(true)}
-                  >
-                    {g.ontdekbaar ? t('ontdek.beheer_uitzetten') : t('ontdek.beheer_aanzetten')}
-                  </Button>
-                )}
-              </Card>
+              <OntdekKaart
+                groep={g}
+                onGewijzigd={bijwerken}
+              />
 
               {/*
                 ⚠️ **Deze kaart staat er ook als de groep niet meer vindbaar is.**
