@@ -28,9 +28,9 @@
  * Twee uitslagen, en ze zeggen iets verschillends
  * ---------------------------------------------------------------------------
  *
- * **1. Een rij noemt een productiestand die afwijkt.** Dat is een platte
- *    tegenspraak: het dossier beweert `0282` terwijl het vastgelegde getal iets
- *    anders zegt. Rood, zonder nuance.
+ * **1. Een rij noemt een productiestand zonder datum.** Tot QS8-786 was dit
+ *    *"een rij noemt een stand die afwijkt"*; sinds dan is een kaal getal zelf
+ *    de bevinding — zie het blok hieronder. Rood, zonder nuance.
  *
  * **2. Een rij zegt op de uitrol te wachten en alles wat hij noemt is geland.**
  *    Dan is de voorwaarde die hij zelf opschrijft ingetreden. Ook rood — want
@@ -40,6 +40,30 @@
  *    bij `dossierdrift:controle`: een aanraking bewijst niet dat de bevinding
  *    vervallen is, hij bewijst dat iemand moet kijken. Een controle die zelf
  *    afsluit, verplaatst het probleem naar een stillere plek.
+ *
+ * ---------------------------------------------------------------------------
+ * Een productiestand draagt een datum — QS8-786, besluit Quinten 22-11-2026
+ * ---------------------------------------------------------------------------
+ *
+ * ⚠️⚠️ **Uitslag 1 was een rekening die bij élke uitrol opnieuw kwam.** De
+ *    controle vergeleek elk kaal getal met `uitgerold.json`, dus elke uitrol
+ *    maakte rood wat de dag ervoor klopte. 📏 Op 22-11-2026 gebeurde dat twee
+ *    keer (0336 en 0337, zeven rijen), en elke keer werd per rij het getal
+ *    overgetypt — terwijl de meting eronder niet herhaald werd.
+ *
+ *    **De bewering is nu "stand van <datum>" en geen kaal getal meer.** Een
+ *    gedateerde stand is een meting op een moment en blijft waar na een uitrol;
+ *    die laat de controle met rust. Een kaal getal is rood — óók als het vandaag
+ *    gelijk is aan `uitgerold.json`, want dan is het morgen fout en dan is het
+ *    te laat om te vragen wanneer het gemeten is. Wie naar de actuele stand wil
+ *    verwijzen, noemt `supabase/uitgerold.json` en geen getal.
+ *
+ * ⚠️ **De datum hoort ván de bewering te zijn, niet ergens in de rij.** Een
+ *    rij draagt in zijn eerste kolom al een datum, en in zijn tekst meestal
+ *    tien. Een datum die overal mag staan, maakt elke rij gedateerd. Daarom
+ *    moet `stand van DD-MM-JJJJ` direct ná het getal staan (eventueel tussen
+ *    haakjes). Uitleg in
+ *    `docs/decisions/2026-11-22-een-productiestand-draagt-de-datum-van-zijn-meting.md`.
  *
  * ⚠️ **In de normale toestand is hij stil.** Tussen twee uitrollen loopt de map
  *    vóór en staan die rijen terecht open; dat is geen defect. Een controle die
@@ -66,8 +90,31 @@ const OPEN_RISICO = new Set(['Kritiek', 'Hoog', 'Middel', '**Kritiek**', '**Hoog
  *    nummers — van de lokale stack, van de map, van de reparatie. Alleen een
  *    nummer dat aan *productie* wordt opgehangen is een bewering over de
  *    uitrolstand; de rest is een verwijzing.
+ *
+ * ⚠️ **`staat nu op` hoort erbij sinds QS8-786.** 📏 Zes open rijen schreven
+ *    *"Productie staat nu op **0294**"* en die zag de controle niet: de
+ *    tegenwoordige tijd bij uitstek, onzichtbaar door één bijwoord. De
+ *    verleden tijd (`stond op`) blijft er met opzet buiten — zie rij 851.
  */
-const STANDCLAIM = /productie[^|]{0,24}?\b(?:staat op|stand)\s*\**\s*`?(0\d{3})`?/gi;
+const STANDCLAIM = /productie[^|]{0,24}?\b(?:staat (?:nu )?op|stand)\s*\**\s*`?(0\d{3})`?\**/gi;
+
+/**
+ * De datummarkering, direct na het getal: `(stand van 22-11-2026)` of
+ * `, stand van 22-11-2026`.
+ *
+ * ⚠️ **Verankerd aan het begin** (`^`): dit wordt getoetst op de tekst die
+ *    ná de bewering volgt, en een datum verderop in de rij telt niet.
+ */
+const MARKERING = /^\s*[(,]?\s*stand van (\d{2})-(\d{2})-(\d{4})\b/i;
+
+/** Een datum die echt bestaat, als `DD-MM-JJJJ`; anders `null`. */
+export function geldigeDatum(dag, maand, jaar) {
+  const d = new Date(Date.UTC(Number(jaar), Number(maand) - 1, Number(dag)));
+  const klopt =
+    d.getUTCFullYear() === Number(jaar) && d.getUTCMonth() === Number(maand) - 1 && d.getUTCDate() === Number(dag);
+
+  return klopt ? `${dag}-${maand}-${jaar}` : null;
+}
 
 /**
  * Zinnen waarmee een rij zegt dat **hijzelf** op de uitrol wacht.
@@ -95,10 +142,17 @@ export function leesStand(wortel = WORTEL) {
   return ruw.hoogste;
 }
 
-/** Elke plek in deze tekst waar een productiestand beweerd wordt. */
+/**
+ * Elke plek in deze tekst waar een productiestand beweerd wordt, met de datum
+ * van zijn meting als die er direct achter staat (anders `datum: null`).
+ */
 export function standClaims(tekst) {
   const uit = [];
-  for (const m of tekst.matchAll(STANDCLAIM)) uit.push({ citaat: m[0].trim(), nummer: m[1] });
+  for (const m of tekst.matchAll(STANDCLAIM)) {
+    const na = tekst.slice(m.index + m[0].length).match(MARKERING);
+    const datum = na ? geldigeDatum(na[1], na[2], na[3]) : null;
+    uit.push({ citaat: m[0].trim(), nummer: m[1], datum });
+  }
 
   return uit;
 }
@@ -138,33 +192,41 @@ export function openRijen(inhoud) {
   return uit;
 }
 
-/** Legt de rijen naast de vastgelegde stand. */
+/**
+ * Legt de rijen naast de vastgelegde stand.
+ *
+ * ⚠️ **Een kaal getal is rood, ook als het gelijk is aan de stand** (QS8-786).
+ *    Gelijk is het vandaag; na de volgende uitrol is het een tegenspraak, en
+ *    dan weet niemand meer wanneer het gemeten is.
+ */
 export function beoordeel(rijen, stand) {
-  const afwijkend = [];
+  const kaal = [];
   const ingehaald = [];
 
   for (const rij of rijen) {
     for (const claim of standClaims(rij.tekst)) {
-      if (claim.nummer !== stand) afwijkend.push({ ...rij, ...claim });
+      if (claim.datum === null) kaal.push({ ...rij, ...claim });
     }
 
     const { wacht, hoogste } = wachtOpUitrol(rij.tekst);
     if (wacht && hoogste !== null && hoogste <= stand) ingehaald.push({ ...rij, hoogste });
   }
 
-  return { afwijkend, ingehaald };
+  return { kaal, ingehaald };
 }
 
-function meldAfwijkend(afwijkend, stand) {
-  console.error(`✗ ${afwijkend.length} rij(en) noemen een andere productiestand dan ${STANDBESTAND}:\n`);
-  for (const a of afwijkend) {
-    console.error(`  - r${a.regel}: "${a.citaat}" — vastgelegd is ${stand}`);
-    console.error(`    ${a.titel.slice(0, 84)}`);
+function meldKaal(kaal, stand) {
+  console.error(`✗ ${kaal.length} productiestand(en) zonder de datum van hun meting:\n`);
+  for (const k of kaal) {
+    const verschil = k.nummer === stand ? '' : ` — en ${STANDBESTAND} zegt ${stand}`;
+    console.error(`  - r${k.regel}: "${k.citaat}"${verschil}`);
+    console.error(`    ${k.titel.slice(0, 84)}`);
   }
   console.error(
-    `\n  ${STANDBESTAND} is de bron; de proza hoort zich daarnaar te voegen.\n` +
-      '  Klopt het getal in de rij wél en het bestand niet, draai dan\n' +
-      '  `npm run register:controle` — dat is de kant die het écht meet.',
+    '\n  Schrijf de datum van de meting direct achter het getal:\n' +
+      '    productie staat op **0337** (stand van 22-11-2026)\n' +
+      `  of verwijs naar ${STANDBESTAND} en noem geen getal. De datum is die van\n` +
+      '  de méting, niet van vandaag — tenzij je hem vandaag gemeten hebt.',
   );
 }
 
@@ -184,18 +246,18 @@ function meldIngehaald(ingehaald, stand) {
 export function hoofd(wortel = WORTEL) {
   const stand = leesStand(wortel);
   const rijen = openRijen(readFileSync(join(wortel, DOSSIER), 'utf8'));
-  const { afwijkend, ingehaald } = beoordeel(rijen, stand);
+  const { kaal, ingehaald } = beoordeel(rijen, stand);
 
-  if (afwijkend.length > 0) meldAfwijkend(afwijkend, stand);
+  if (kaal.length > 0) meldKaal(kaal, stand);
   if (ingehaald.length > 0) {
-    if (afwijkend.length > 0) console.error('');
+    if (kaal.length > 0) console.error('');
     meldIngehaald(ingehaald, stand);
   }
-  if (afwijkend.length + ingehaald.length > 0) return 1;
+  if (kaal.length + ingehaald.length > 0) return 1;
 
   console.log(
-    `uitrolproza-controle: ${rijen.length} open rij(en) nagelopen; geen enkele noemt een andere ` +
-      `productiestand dan ${stand}, en geen enkele wacht op een uitrol die al geland is.`,
+    `uitrolproza-controle: ${rijen.length} open rij(en) nagelopen; elke productiestand draagt de datum ` +
+      `van zijn meting, en geen enkele rij wacht op een uitrol die al geland is (productie: ${stand}).`,
   );
 
   return 0;
