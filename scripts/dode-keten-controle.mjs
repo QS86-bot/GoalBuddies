@@ -339,6 +339,12 @@ export const WACHT_OP_EEN_BESLUIT = {
     'Schrijfpad van een teamafronding en de teambonus (0326, QS8-662). Het scherm is het vervolgissue van QS8-658. ' +
     '**Vraag:** krijgt hij daar een aanroeper? Zo ja, dan gaat deze rij weg zodra die er is; ' +
     'zo nee, dan hoort de RPC weg.',
+  // ⚠️ `mijn_klassementen()` (0338, QS8-666 deel 3c-db) landt vóór zijn scherm, zoals deel 2 van 666 dat deed: het scherm
+  //    "Alle klassementen" (3c-ui) volgt pas nadat de migratie op productie staat en `types:db` is gedraaid.
+  mijn_klassementen:
+    'Leesfunctie voor het scherm "Alle klassementen" (0338, QS8-666 deel 3c-db). Het scherm is 3c-ui en volgt na de uitrol. ' +
+    '**Vraag:** krijgt hij daar een aanroeper? Zo ja, dan gaat deze rij weg zodra die er is; ' +
+    'zo nee, dan hoort de RPC weg.',
 };
 
 /** Bestanden waarin een aanroep als "productie" telt. Tests en scripts niet. */

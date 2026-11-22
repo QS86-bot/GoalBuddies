@@ -629,6 +629,7 @@ const LEESREGISTER = new Map([
   ['ketting_stand', 'Lidmaatschapspoort: `where is_group_member(p_group_id)`. Geeft `{schakels, in_aanmerking, voltallig}` en nooit een naam.'],
   ['deel_prestatie', 'Poort op `badges.user_id = auth.uid()` (alleen een prestatie die je zelf hebt) en op `is_group_member(p_group_id)`; schrijft één systeembericht zonder naam, titel of niveau. Getoetst door tests/rls/prestatie-delen.test.ts met echte JWT\'s.'],
   ['groep_klassement', 'Poort op `lid_van_levende_groep(p_group_id)` plus de schakelaar `groups.klassement_aan` en een teamtoets (A57, 0333): nul rijen voor een niet-lid, een uitgezet lid, een gearchiveerde groep, een groep zonder klassement en een teamgroep. Geen delta en geen datum, dus geen gemiste week af te leiden.'],
+  ['mijn_klassementen', 'Poort op `lid_van_levende_groep(g.id)` plus `m.user_id = auth.uid()`, de schakelaar `groups.klassement_aan`, een teamtoets en een expliciete toets op automatisch gevormde groepen (A57, 0338): per groep de bovenste vijf plus de eigen plek, gepagineerd op groepen. Nul rijen voor een niet-lid, een uitgezet lid, een gearchiveerde groep, een groep zonder klassement, een teamgroep en een automatisch gevormde groep. Geen delta en geen datum, dus geen gemiste week af te leiden.'],
   // ⚠️ **De enige rij in dit register waar het antwoord op de eerste vraag "ja"
   //    is, en dat is geen bezwaar maar het oppervlak zelf** (0268, QS8-477).
   //    `trigger = 'misser'` zégt dat er iets gemist is. Besluit A41 staat dat toe
