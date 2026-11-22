@@ -18,11 +18,6 @@
  *    `profielTabs(false)` bevat ze niet — ze zijn dus niet verborgen maar
  *    afwezig. Wie ze wil tonen moet `profielTabs()` aanpassen, en dat is een
  *    rode test in `profiel.test.ts`.
- *
- * ⚠️ De functies staan nog niet in `src/lib/database.types.ts`: dat bestand is
- *    een afschrift van productie en de migratie wacht op Quintens "backup
- *    gedaan". Tot `npm run types:db` ze kent loopt de aanroep door één smalle
- *    structurele rand, zoals `modules/xp/api.ts`.
  */
 import { reportError } from '../../lib/observability';
 import { supabase } from '../../lib/supabase';
@@ -51,15 +46,6 @@ export {
 } from './profiel-lezen';
 export { PROFIEL_RPC_KOLOMMEN } from './profiel-kolommen';
 
-interface RpcRand {
-  rpc(
-    naam: string,
-    args: Record<string, unknown>,
-  ): PromiseLike<{ data: unknown; error: { message: string } | null }>;
-}
-
-const rand = () => supabase() as unknown as RpcRand;
-
 /** Het antwoord van een RPC, of een leesbare fout; de technische fout gaat naar `reportError`. */
 function uitkomst(
   antwoord: { data: unknown; error: { message: string } | null },
@@ -82,7 +68,7 @@ function uitkomst(
  */
 export async function fetchProfielVanLid(userId: string): Promise<LidProfiel | null> {
   const profiel = leesProfiel(
-    uitkomst(await rand().rpc('profiel_van_lid', { p_user: userId }), 'profiel.lid'),
+    uitkomst(await supabase().rpc('profiel_van_lid', { p_user: userId }), 'profiel.lid'),
   );
   if (profiel === null) return null;
   // ⚠️ `avatar_url` is een pad in een privébucket; zie `zoekMensen()`.
@@ -95,7 +81,7 @@ export async function fetchProfielDoelen(
   pagina = 0,
 ): Promise<{ readonly rijen: readonly ProfielDoel[]; readonly meer: boolean }> {
   const data = uitkomst(
-    await rand().rpc('profiel_doelen_van_lid', {
+    await supabase().rpc('profiel_doelen_van_lid', {
       p_user: userId,
       p_limit: PROFIEL_DOELEN_PER_PAGINA,
       p_offset: pagina * PROFIEL_DOELEN_PER_PAGINA,
@@ -108,6 +94,6 @@ export async function fetchProfielDoelen(
 
 export async function fetchProfielGroepen(userId: string): Promise<readonly GedeeldeGroep[]> {
   return leesGroepen(
-    uitkomst(await rand().rpc('profiel_groepen_van_lid', { p_user: userId }), 'profiel.groepen'),
+    uitkomst(await supabase().rpc('profiel_groepen_van_lid', { p_user: userId }), 'profiel.groepen'),
   );
 }

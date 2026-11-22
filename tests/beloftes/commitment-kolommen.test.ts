@@ -6,13 +6,10 @@ import { COMMITMENT_KOLOMMEN } from '../../src/modules/commitments/kolommen';
 /**
  * De kolomlijst van `commitments` volgt het type dat de client belooft — QS8-760.
  *
- * ⚠️ `COMMITMENT_KOLOMMEN` is een `string` en geen letterlijke tekst, zolang
- *    `periode_start` niet in de gegenereerde typen staat (zie `api.ts`). Daarmee
- *    controleert supabase-js de lijst niet meer tegen het type, en zou een
- *    vergeten kolom `undefined` op runtime zijn onder een type dat iets anders
- *    zegt. Deze toets is die controle: het `Record` hieronder compileert alleen
- *    als het precies de sleutels van {@link Commitment} noemt, en de lijst moet
- *    er precies mee overeenkomen.
+ * ⚠️ Het `Record` hieronder compileert alleen als het precies de sleutels van
+ *    {@link Commitment} noemt, en de lijst moet er precies mee overeenkomen: een
+ *    vergeten kolom zou anders `undefined` op runtime zijn onder een type dat
+ *    iets anders zegt.
  *
  * Ijking: `periode_start` uit de lijst gehaald maakt de toets rood; een sleutel
  * uit het `Record` gehaald maakt de typecheck rood.

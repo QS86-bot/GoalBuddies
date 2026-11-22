@@ -17,10 +17,6 @@ import { t } from '../../shared/i18n';
  * ⚠️ **Een weigering is een uitslag en geen fout.** `already_shared` en `rate_limited` zijn
  *    antwoorden die het scherm in gewone woorden moet geven; alleen een netwerk- of
  *    serverfout wordt een worp.
- *
- * ⚠️ De functie staat nog niet in `src/lib/database.types.ts`: de migratie wacht op Quintens
- *    "backup gedaan". Tot `npm run types:db` hem kent loopt de aanroep door één smalle
- *    structurele rand, net als `demping.ts`, en is het bestand niet met de hand bijgewerkt.
  */
 
 export const DEEL_UITSLAGEN = [
@@ -36,15 +32,6 @@ export const DEEL_UITSLAGEN = [
 
 export type DeelUitslag = (typeof DEEL_UITSLAGEN)[number];
 
-interface RpcAntwoord {
-  readonly data: unknown;
-  readonly error: { readonly message: string; readonly code?: string } | null;
-}
-
-function client(): { rpc(naam: string, args: object): PromiseLike<RpcAntwoord> } {
-  return supabase() as unknown as { rpc(naam: string, args: object): PromiseLike<RpcAntwoord> };
-}
-
 /** De uitslag uit het JSON-antwoord van de functie; alles wat we niet kennen is een fout. */
 export function leesDeelUitslag(data: unknown): DeelUitslag | null {
   if (data === null || typeof data !== 'object' || Array.isArray(data)) return null;
@@ -58,7 +45,7 @@ export function leesDeelUitslag(data: unknown): DeelUitslag | null {
 
 /** Deel één behaalde prestatie in één groep. Werpt alleen bij een fout die geen uitslag is. */
 export async function deelPrestatie(groupId: string, badge: string): Promise<DeelUitslag> {
-  const { data, error } = await client().rpc('deel_prestatie', { p_group_id: groupId, p_badge: badge });
+  const { data, error } = await supabase().rpc('deel_prestatie', { p_group_id: groupId, p_badge: badge });
 
   if (error) {
     reportError(new Error('Een prestatie delen mislukte'), 'buddies.deelPrestatie', {

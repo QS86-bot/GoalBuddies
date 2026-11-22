@@ -25,11 +25,6 @@ import { laatOrganisatieAanmaken } from './organisatie-toelating';
  * - **Criterium 12.** Dagtellers op lid worden (élke poging telt, ook een foute),
  *   op aanmaken en op een nieuwe code — mét de grens: de laatste toegestane
  *   poging lukt nog.
- *
- * ⚠️ De nieuwe tabellen en RPC's staan nog niet in `src/lib/database.types.ts`:
- *    dat bestand is een afschrift van productie, en 0316 staat daar pas na de
- *    uitrol. Vandaar de `as never` op de namen, zoals in
- *    `tests/rls/lidmaatschapsbesluit.test.ts`.
  */
 
 const SETUP_TIMEOUT = 240_000;
@@ -113,8 +108,8 @@ describe.runIf(rlsTestsConfigured)('organisaties en lidmaatschappen (QS8-652)', 
   afterAll(async () => {
     const admin = adminDb();
     if (aangemaakt.length > 0) {
-      await admin.from('organization_members' as never).delete().in('organization_id' as never, aangemaakt as never);
-      await admin.from('organizations' as never).delete().in('id' as never, aangemaakt as never);
+      await admin.from('organization_members').delete().in('organization_id', aangemaakt as never);
+      await admin.from('organizations').delete().in('id', aangemaakt as never);
     }
     await removeTestUsers();
   }, SETUP_TIMEOUT);
