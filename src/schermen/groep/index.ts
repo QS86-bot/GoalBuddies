@@ -3,3 +3,5 @@ export { KlassementSchakelaar, leesKlassementTerug } from './KlassementSchakelaa
 export { KlassementUitnodiging } from './KlassementUitnodiging';
 export { OntdekKaart } from './OntdekKaart';
 export { groepInhoud } from './inhoud';
+export { laadGroepenlijst } from './laden';
+export { type Groepsectie } from './secties';
