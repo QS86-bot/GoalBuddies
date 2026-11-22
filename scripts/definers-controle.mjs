@@ -367,6 +367,14 @@ const REGISTER = new Map([
   ['recalc_goal_max_points', 'Triggerfunctie. Rekent af op `weekly_goals`; autorisatie is de policy op die schrijfactie.'],
   ['koppeling_zet_beoordeelbaar_om', 'Triggerfunctie op `goal_group_links`; autorisatie is de policy op die tabel.'],
   [
+    'lid_zet_beoordeelbaar_om',
+    'Triggerfunctie op `group_members` (QS8-787). Schrijft in weekdoelen van een ánder lid, ' +
+      'maar alleen de grendel `beoordeelbaar`, alleen omhoog en alleen voor `todo`/`cancelled`. ' +
+      'Autorisatie is de schrijver van `group_members`: `authenticated` heeft daar geen INSERT-grant, ' +
+      'en terugkomen uit `inactive` weigert `guard_group_member_update()` buiten ' +
+      '`beslis_lidmaatschapsverzoek()` om.',
+  ],
+  [
     'noteer_ontkoppeling',
     'Triggerfunctie. ⚠️ Schrijft `goals.losgekoppeld_op` voor een `old.goal_id` die ' +
       'hij ongecontroleerd overneemt, en leunt volledig op de DELETE-policy van ' +
