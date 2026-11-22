@@ -192,6 +192,54 @@ merge, vanuit de hoofdmap: `git worktree remove <pad>`.
 werkmap staat als open punt op QS8-717. Uitleg in
 `docs/decisions/2026-11-19-elke-lokale-sessie-een-eigen-worktree.md`.
 
+⚠️⚠️ **Ook een meet- of uitrolsessie werkt in een eigen worktree, en elke lokale
+prompt van de orchestrator begint met `git worktree add` — een regel sinds
+22-11-2026 (QS8-779, besluit Quinten in de chat van de orchestrator: *"Ja, als
+regel vastleggen"*).** 📏 Op 22-11 deelden een meetsessie en de uitrolsessie één
+werkmap, en midden in de meting wisselde de map van tak: de klasse van QS8-713 en
+QS8-717 nog een keer. De regel hierboven ving dat niet, want hij hangt aan
+`npm run claim`, en een sessie die meet of uitrolt claimt niets. **Een regel die
+aan een gereedschap hangt, geldt alleen voor wie dat gereedschap gebruikt.**
+
+Een lokale prompt begint daarom zo, vóór elke andere stap:
+
+```bash
+git fetch origin
+git worktree add ../GoalBuddies-werk/<doel> origin/main   # <doel>: qs8-<nummer>, meting-<datum> of uitrol-<datum>
+cd ../GoalBuddies-werk/<doel>
+npm ci
+```
+
+Voor een bouwsessie blijft `npm run claim` de weg en maakt hij die map zelf; de
+`git worktree add` is voor de sessie die niet claimt. Opruimen na afloop, vanuit
+de hoofdmap: `git worktree remove <pad>`.
+
+**Twee leerpunten uit de uitrol van 22-11-2026, en elke lokale prompt neemt ze op:**
+
+1. **`SUPABASE_DB_URL` staat alleen in `.env`, en `.env` laadt niet vanzelf.** De
+   npm-scripts roepen `dotenv` aan op de `.env` van de map **waar je staat**; een
+   losse `psql` of `node -e` doet niets van dat al. 📏 De eerste uitrolpoging van
+   22-11 bereikte productie daardoor niet. En in een worktree staat geen `.env`
+   (§12g, punt 3), dus daar vinden ook de npm-scripts niets. Een lokale prompt
+   zet de waarde daarom **expliciet** in de omgeving, uit de `.env` van de
+   hoofdmap en alleen deze ene sleutel — `dotenv` overschrijft een waarde die al
+   in de omgeving staat niet, dus dan zien de npm-scripts en `psql` dezelfde:
+
+   ```bash
+   export SUPABASE_DB_URL="$(grep -E '^SUPABASE_DB_URL=' <hoofdmap>/.env | cut -d= -f2- | tr -d '"')"
+   node -e 'const u=new URL(process.env.SUPABASE_DB_URL); console.log(u.hostname, decodeURIComponent(u.username))'
+   ```
+
+   ⚠️ **Vóór elke schrijfactie host en ref controleren.** De ref uit `CLAUDE.md`
+   staat in de hostnaam (`db.<ref>.supabase.co`) of, bij de pooler, in de
+   gebruikersnaam (`postgres.<ref>`). Staat hij in geen van beide, of staat er
+   een andere, dan schrijft de sessie niets en meldt het. Het wachtwoord print
+   je nooit; daarom staat in de regel hierboven alleen host en gebruiker.
+2. **Na een grote `git pull` eerst `npm ci`.** 📏 De webdeploy van 22-11 faalde
+   op een `node_modules` die achterliep op `package-lock.json`. Een verse
+   worktree heeft dat niet (de `npm ci` staat in het blok hierboven); de
+   hoofdmap na een pull wel.
+
 ### 1a. Waarom niet drie, en waarom niet vijf
 
 📏 `docs/ENGINEER-REVIEW.md` wordt geraakt door **79%** van alle merges (114 van
@@ -374,6 +422,32 @@ conflict; het hoogste nummer wint en het register van de ander verdwijnt zonder
 een woord (QS8-358). **Breid je een register uit, ververs dan eerst je beeld van
 `main` en kopieer het lichaam van dáár.** `npm run registerdrift:controle` wordt
 rood zodra een herdefinitie een rij laat vallen.
+
+**Laat je een rij, voorwaarde of blok wél bewust vallen, zeg dat dan in de kop.**
+Eén regel per verloren regel, woordelijk zoals hij in de vorige definitie stond:
+
+```sql
+-- laat bewust vallen: <de regel zoals hij er stond>
+```
+
+📏 Het echte geval is `supabase/migrations/0333_een_klassement_in_elke_groep.sql`
+(QS8-666, A57). `groep_klassement()` verloor daar zijn open-poort, omdat A57 het
+klassement van de zichtbaarheid losmaakt; de oude toelichting bij de teamtoets
+ging mee, want die noemde de poort die verdween. De kop draagt daarom:
+
+```sql
+-- laat bewust vallen: where lid_van_open_groep(p_group_id)
+-- laat bewust vallen: -- QS8-661, besluit 22 en 25: nooit een klassement in een teamgroep, ook
+-- laat bewust vallen: -- niet in een open. Een eigen voorwaarde en niet via `lid_van_open_groep()`,
+-- laat bewust vallen: -- zodat A57 (QS8-666) hem niet stil verliest als die poort verandert.
+```
+
+⚠️ **Alleen wat er bewust uit gaat.** Een regel die je hier opschrijft om de
+controle groen te krijgen, zonder dat er een besluit onder ligt, is precies het
+stille verlies dat de controle moet vangen, nu met een handtekening eronder. De
+teamtoets zelf bleef in 0333 staan; alleen de poort en de oude toelichting gingen
+weg. Uitleg in
+`docs/decisions/2026-11-20-registerdrift-ziet-ook-een-voorwaarde-of-blok-dat-een-herdefinitie-laat-vallen.md`.
 
 ---
 
