@@ -28,9 +28,6 @@ import { psql, psqlParallel, stackBeschikbaarOfFaal } from './psql-stack';
  *    beheerders verlaagt, zonder lock en zonder `laatste_beheerder` — 📏 gemeten
  *    in de security-ronde, eindstand 0 beheerders. Dat is QS8-659; zie de kop van
  *    migratie 0318.
- *
- * ⚠️ De tabellen en RPC's staan nog niet in `src/lib/database.types.ts` (een
- *    afschrift van productie), vandaar `as never` op de namen.
  */
 
 const SETUP_TIMEOUT = 240_000;
@@ -101,15 +98,15 @@ describe.runIf(rlsTestsConfigured)('een organisatiebeheerder benoemen en terugtr
   afterAll(async () => {
     const admin = adminDb();
     if (aangemaakt.length > 0) {
-      await admin.from('organization_role_events' as never).delete().in('organization_id' as never, aangemaakt as never);
+      await admin.from('organization_role_events').delete().in('organization_id', aangemaakt as never);
       // De dagtellers van deze organisaties, en alleen die (tellerbereik).
       await admin
-        .from('dagtellers' as never)
+        .from('dagtellers')
         .delete()
-        .in('domein' as never, ['organisatierollen', 'organisatiecodes'] as never)
-        .in('sleutel' as never, aangemaakt as never);
-      await admin.from('organization_members' as never).delete().in('organization_id' as never, aangemaakt as never);
-      await admin.from('organizations' as never).delete().in('id' as never, aangemaakt as never);
+        .in('domein', ['organisatierollen', 'organisatiecodes'] as never)
+        .in('sleutel', aangemaakt as never);
+      await admin.from('organization_members').delete().in('organization_id', aangemaakt as never);
+      await admin.from('organizations').delete().in('id', aangemaakt as never);
     }
     await removeTestUsers();
   }, SETUP_TIMEOUT);
@@ -219,16 +216,16 @@ describe.runIf(rlsTestsConfigured)('een organisatiebeheerder benoemen en terugtr
     'elke rolwijziging laat een spoor na, en dat spoor is via de API niet leesbaar',
     async () => {
       const spoor = await adminDb()
-        .from('organization_role_events' as never)
+        .from('organization_role_events')
         .select('actor_id, subject_id, event_type')
-        .eq('organization_id' as never, org as never)
-        .order('created_at' as never);
+        .eq('organization_id', org as never)
+        .order('created_at');
       expect(spoor.data).toEqual([
         { actor_id: anna.id, subject_id: bert.id, event_type: 'beheerder_benoemd' },
         { actor_id: anna.id, subject_id: anna.id, event_type: 'beheerder_teruggetreden' },
       ]);
       for (const wie of [anna, bert, cas]) {
-        const a = await wie.db.from('organization_role_events' as never).select('event_type');
+        const a = await wie.db.from('organization_role_events').select('event_type');
         expect(a.error?.code, wie.email).toBe('42501');
       }
     },

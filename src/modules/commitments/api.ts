@@ -71,26 +71,8 @@ export type Commitment = Pick<
   | 'status'
   | 'confirmed_at'
   | 'created_at'
-> & NogNietInTypes;
-
-/**
- * De week van een weekbelofte (migratie 0312), die de gegenereerde typen nog niet
- * kennen — QS8-760.
- *
- * ⚠️ **Tijdelijk, en waarom hier en niet in het gegenereerde bestand.** De kolommen
- *    bestaan pas op productie na de uitrol van 0312, en `types:db` leest productie.
- *    Met de hand in `database.types.ts` is de vorm die bij de eerste hergeneratie
- *    stil verdwijnt (QS8-569). Zodra 0312 uitgerold is: `npm run types:db`, en dit
- *    type verdwijnt; `periode_start` komt dan uit de `Pick` hierboven. Zelfde
- *    vorm als `NogNietInTypes` in `src/modules/auth/profile.ts`.
- *
- * ⚠️ **Niet optioneel.** `fetchCommitments()` en `maak()` vragen de kolom op; een
- *    ontbrekende kolom zou een belofte als doelstraf laten lezen, en dat is
- *    precies wat dit issue weghaalt. `null` = een doelstraf of een beloning.
- */
-export interface NogNietInTypes {
-  readonly periode_start: string | null;
-}
+  | 'periode_start'
+>;
 
 export type CommitmentGebeurtenis = Tables<'commitment_events'>;
 
@@ -480,16 +462,14 @@ export async function fetchBelofteBegunstigden(): Promise<BelofteBegunstigden> {
 type CommitmentInsert = GecorrigeerdeDatabase['public']['Tables']['commitments']['Insert'];
 
 /**
- * De rij van een weekbelofte. `periode_start` staat nog niet in de gegenereerde
- * typen (zie `NogNietInTypes`); de rij wordt daarom hier opgebouwd en als
- * `Insert` teruggegeven, de vorm van `naarKolommen()` in `modules/auth`.
- * ⚠️ Verdwijnt zodra `types:db` na 0312 opnieuw gedraaid is.
+ * De rij van een weekbelofte, opgebouwd en als `Insert` teruggegeven: de vorm van
+ * `naarKolommen()` in `modules/auth`.
  * ⚠️ **Staat vóór `gaWeekbelofteAan()`, en dat draagt.** `kolomrechten:controle`
  *    leest de insert-aanroep via de eerste `const rij` in dit bestand
  *    (`velduitLokaal()`), dezelfde vorm als `naarKolommen()` en `const update`.
  */
 function belofterij(goalId: string, body: string, begunstigde: Begunstigde, start: string): CommitmentInsert {
-  const rij: CommitmentInsert & NogNietInTypes = {
+  const rij: CommitmentInsert = {
     goal_id: goalId,
     type: 'penalty',
     body,
