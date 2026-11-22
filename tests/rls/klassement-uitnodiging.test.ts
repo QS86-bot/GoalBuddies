@@ -2,6 +2,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import { klassementPlek, toonKlassementUitnodiging, type KlassementGroep } from '../../src/modules/buddies/klassement-poort';
 
+import { laatOrganisatieAanmaken } from './organisatie-toelating';
 import { adminDb, createTestUser, registreerGroep, removeTestUsers, rlsTestsConfigured, type TestUser } from './harness';
 
 /**
@@ -100,6 +101,7 @@ describe.runIf(rlsTestsConfigured)('de uitnodigingskaart volgt de poort van zet_
   }, TEST_TIMEOUT);
 
   it('een teamgroep: geen kaart, en de database weigert het aanzetten', async () => {
+    await laatOrganisatieAanmaken(anna);
     const o = await anna.db.rpc('maak_organisatie' as never, { p_naam: 'Uitn BV' } as never);
     const org = (o.data as unknown as { organization_id: string }).organization_id;
     const t = await anna.db.rpc('maak_teamgroep' as never, { p_organization_id: org, p_naam: 'Team Uitn' } as never);
