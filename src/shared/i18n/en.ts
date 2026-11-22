@@ -2892,6 +2892,8 @@ export const en: Record<Sleutel, string> = {
     'You already created three organisations today. You can try again tomorrow.',
   'organisatie.te_veel':
     'You are already in ten organisations. Leave one to make room.',
+  'organisatie.niet_toegelaten':
+    'Creating an organisation is not possible yet. You can join an organisation with an invitation or a code.',
   'organisatie.deelnemen_titel':
     'Join an organisation',
   'organisatie.code_label':

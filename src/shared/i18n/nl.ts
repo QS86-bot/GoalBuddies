@@ -3506,6 +3506,8 @@ export const nl = {
     'Je hebt vandaag al drie organisaties aangemaakt. Morgen kan het weer.',
   'organisatie.te_veel':
     'Je zit al in tien organisaties. Verlaat er een om ruimte te maken.',
+  'organisatie.niet_toegelaten':
+    'Een organisatie aanmaken kan nog niet. Je komt een organisatie binnen met een uitnodiging of een code.',
   'organisatie.deelnemen_titel':
     'Lid worden van een organisatie',
   'organisatie.code_label':

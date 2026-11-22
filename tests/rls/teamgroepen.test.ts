@@ -1,6 +1,7 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import { adminDb, createTestUser, registreerGroep, removeTestUsers, rlsTestsConfigured, type TestUser } from './harness';
+import { laatOrganisatieAanmaken } from './organisatie-toelating';
 
 /**
  * Een teamgroep hoort bij een organisatie — QS8-653, criterium 8, 9 en 15.
@@ -64,6 +65,7 @@ const organisaties: string[] = [];
 const groepen: string[] = [];
 
 async function maakOrganisatie(wie: TestUser, naam: string): Promise<string> {
+  await laatOrganisatieAanmaken(wie);
   const a = await rpc(wie, 'maak_organisatie', { p_naam: naam });
   expect(a.error).toBeNull();
   const id = (a.data as { organization_id: string }).organization_id;

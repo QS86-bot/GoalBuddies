@@ -1,6 +1,7 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import { adminDb, createTestUser, registreerGroep, removeTestUsers, rlsTestsConfigured, type TestUser } from './harness';
+import { laatOrganisatieAanmaken } from './organisatie-toelating';
 
 /**
  * Twee systeemberichten voor teams — QS8-656, criterium 11.
@@ -64,6 +65,7 @@ describe.runIf(rlsTestsConfigured)('twee systeemberichten voor teams (QS8-656)',
       createTestUser('tbericht-bert'),
       createTestUser('tbericht-cleo'),
     ]);
+    await laatOrganisatieAanmaken(anna);
     const o = await rpc(anna, 'maak_organisatie', { p_naam: 'Bericht BV' });
     const org = (o.data as { organization_id: string }).organization_id;
     organisaties.push(org);

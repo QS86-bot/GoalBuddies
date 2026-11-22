@@ -10,6 +10,7 @@ import {
   rlsTestsConfigured,
   type TestUser,
 } from './harness';
+import { laatOrganisatieAanmaken } from './organisatie-toelating';
 
 /**
  * De teams van een organisatie — QS8-657, migratie 0324.
@@ -55,9 +56,11 @@ describe.runIf(rlsTestsConfigured)('de teams van een organisatie (QS8-657)', () 
       createTestUser('orgteams-cas'),
       createTestUser('orgteams-yara'),
     ]);
+    await laatOrganisatieAanmaken(anna);
     const o = await anna.db.rpc('maak_organisatie' as never, { p_naam: 'Teams BV' } as never);
     org = (o.data as unknown as { organization_id: string }).organization_id;
     organisaties.push(org);
+    await laatOrganisatieAanmaken(yara);
     const ander = await yara.db.rpc('maak_organisatie' as never, { p_naam: 'Ander BV' } as never);
     organisaties.push((ander.data as unknown as { organization_id: string }).organization_id);
     const code = (await anna.db.rpc('organisatie_uitnodigcode' as never, { p_organization_id: org } as never)).data as unknown as {

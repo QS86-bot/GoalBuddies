@@ -1,6 +1,7 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import { adminDb, createTestUser, registreerGroep, removeTestUsers, rlsTestsConfigured, type TestUser } from './harness';
+import { laatOrganisatieAanmaken } from './organisatie-toelating';
 
 /**
  * Het klassement hangt aan een schakelaar op de groep — QS8-666 (A57), migratie 0333, PR 1.
@@ -142,6 +143,7 @@ describe.runIf(rlsTestsConfigured)('het klassement hangt aan een schakelaar (A57
   }, TEST_TIMEOUT);
 
   it('een teamgroep heeft nooit een klassement: de CHECK weigert, ook voor service_role', async () => {
+    await laatOrganisatieAanmaken(anna);
     const o = await anna.db.rpc('maak_organisatie' as never, { p_naam: 'Schakel BV' } as never);
     const org = (o.data as unknown as { organization_id: string }).organization_id;
     try {

@@ -89,6 +89,8 @@ function meldingen(): Readonly<Record<string, string>> {
   return {
     ongeldige_naam: t('organisatie.naam_ongeldig'),
     te_veel_organisaties: t('organisatie.te_veel'),
+    // maak_organisatie (0337, QS8-776): wie niet op de allowlist staat.
+    niet_toegelaten: t('organisatie.niet_toegelaten'),
     invalid: t('organisatie.code_ongeldig'),
     removed: t('organisatie.code_ongeldig'),
     geen_lid: t('organisatie.geen_lid'),

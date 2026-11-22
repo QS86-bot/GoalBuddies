@@ -118,6 +118,10 @@ const GEEN_CLIENTLEZER: Readonly<Record<string, string>> = {
     'De limiettabel achter het oningelogde uitnodigingseindpunt (0131). Hij ' +
     'bestaat juist om een niet-ingelogde bezoeker te remmen, dus leesrecht voor ' +
     'wie dan ook zou de rem meetbaar maken voor wie hem wil omzeilen.',
+  organisatie_aanmakers:
+    'De allowlist van `maak_organisatie()` (0337, QS8-776, besluit Quinten 22-11-2026). Bewust zonder ' +
+    'leesoppervlak: een client die de lijst kan lezen, weet wie er buiten de publieke route om toegang ' +
+    'heeft, en de eigen rij lezen is de "mag ik?"-RPC die Quinten afwees. Alleen `maak_organisatie()` leest hem.',
   organization_role_events:
     'Het spoor van rolwijzigingen in een organisatie (0318, QS8-695). Bewust zonder ' +
     'leesoppervlak: besluit 6 zegt dat een beheerder niet meer ziet dan een lid, en ' +

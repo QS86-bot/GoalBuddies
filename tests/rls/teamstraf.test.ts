@@ -2,6 +2,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import { TEAMSTRAF_HINT } from '../../src/modules/commitments/commitment-schemas';
 import { adminDb, createTestUser, registreerGroep, removeTestUsers, rlsTestsConfigured, type TestUser } from './harness';
+import { laatOrganisatieAanmaken } from './organisatie-toelating';
 
 /**
  * Een teamstraf blijft in het team — QS8-660, besluit 12 en 29 en de ontwerpronde
@@ -81,6 +82,7 @@ describe.runIf(rlsTestsConfigured)('een teamstraf blijft in het team (QS8-660)',
       createTestUser('tstraf-cleo'),
       createTestUser('tstraf-nina'),
     ]);
+    await laatOrganisatieAanmaken(anna);
     const o = await rpc(anna, 'maak_organisatie', { p_naam: 'Straf BV' });
     org = (o.data as { organization_id: string }).organization_id;
     organisaties.push(org);

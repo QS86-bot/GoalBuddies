@@ -1,6 +1,7 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import { adminDb, createTestUser, registreerGroep, removeTestUsers, rlsTestsConfigured, type TestUser } from './harness';
+import { laatOrganisatieAanmaken } from './organisatie-toelating';
 
 /**
  * Een beheerder zet het klassement aan of uit — QS8-666 (A57), migratie 0336, PR 2.
@@ -126,6 +127,7 @@ describe.runIf(rlsTestsConfigured)('een beheerder zet het klassement aan of uit 
   }, TEST_TIMEOUT);
 
   it('weigert een teamgroep, ook voor de organisatiebeheerder', async () => {
+    await laatOrganisatieAanmaken(anna);
     const o = await anna.db.rpc('maak_organisatie' as never, { p_naam: 'Zet BV' } as never);
     const org = (o.data as unknown as { organization_id: string }).organization_id;
     try {

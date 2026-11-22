@@ -10,6 +10,7 @@ import {
   rlsTestsConfigured,
   type TestUser,
 } from './harness';
+import { laatOrganisatieAanmaken } from './organisatie-toelating';
 import { psql, psqlParallel, stackBeschikbaarOfFaal } from './psql-stack';
 
 /**
@@ -65,6 +66,7 @@ const organisaties: string[] = [];
 const groepen: string[] = [];
 
 async function maakOrganisatie(wie: TestUser, naam: string): Promise<{ id: string; code: string }> {
+  await laatOrganisatieAanmaken(wie);
   const o = await rpc(wie, 'maak_organisatie', { p_naam: naam });
   expect(uitkomst(o)).toBe('ok');
   const id = (o.data as { organization_id: string }).organization_id;
@@ -463,6 +465,8 @@ function opzetVertrek(): string {
     insert into auth.users (id, email) values
       ('${D}', 'vertrekdl-${D}@proef.nl'), ('${V}', 'vertrekdl-${V}@proef.nl')
       on conflict (id) do nothing;
+    insert into public.organisatie_aanmakers (user_id, reden) values ('${D}', 'RLS-suite (QS8-776)')
+      on conflict (user_id) do nothing;
     select set_config('request.jwt.claims', '{"sub":"${D}","role":"authenticated"}', false);
     create temp table ijk_org as select (public.maak_organisatie('Deadlock BV')->>'organization_id')::uuid as id;
     create temp table ijk_grp as select (public.maak_teamgroep((select id from ijk_org), 'Deadlock Team')->>'group_id')::uuid as id;
