@@ -3,6 +3,8 @@ import { supabase } from '../../lib/supabase';
 import { type Pagina, type Resultaat, type RpcRij } from '../../shared/api';
 import { t } from '../../shared/i18n';
 
+import { klikUitnodigingWeg, leesUitnodigingWeg, type UitnodigingDb } from './klassement-weg';
+
 /**
  * Het klassement en de optelteller van een groep — QS8-254 (A54), sinds QS8-666 (A57) met een schakelaar.
  *
@@ -215,6 +217,35 @@ export async function zetGroepsklassement(
   }
 
   return { ok: true, waarde: uit.klassement ?? aan };
+}
+
+/**
+ * Heeft deze beheerder de uitnodigingskaart in deze groep weggeklikt? — QS8-784.
+ *
+ * ⚠️ **Een mislukte lezing is "niet weggeklikt": de kaart staat er dan.** De kaart is een weergavehint die niets zet;
+ *    bij twijfel de kant die iets laat zien, en de fout gaat naar `reportError`. Anders dan bij de demping
+ *    (`fetchGroepGedempt`), waar een schakelaar die liegt erger is dan geen schakelaar.
+ */
+export async function fetchUitnodigingWeg(groupId: string, userId: string): Promise<boolean> {
+  // Typebrug: zie `klassement-weg.ts` (de tabel komt na de uitrol in de gegenereerde typen).
+  const uit = await leesUitnodigingWeg(supabase() as unknown as UitnodigingDb, groupId, userId);
+  if (uit.ok) return uit.waarde;
+  reportError(new Error('De weggeklikte uitnodiging kon niet gelezen worden'), 'groups.leaderboard_invite_read', {
+    code: uit.code,
+    group_id: groupId,
+  });
+  return false;
+}
+
+/** Klik de uitnodigingskaart weg voor jezelf — QS8-784. De database weigert wie geen beheerder is of bij "aan". */
+export async function klikKlassementUitnodigingWeg(groupId: string, userId: string): Promise<Resultaat<true>> {
+  const uit = await klikUitnodigingWeg(supabase() as unknown as UitnodigingDb, groupId, userId);
+  if (uit.ok) return uit;
+  reportError(new Error('De uitnodiging kon niet weggeklikt worden'), 'groups.leaderboard_invite_dismiss', {
+    code: uit.code,
+    group_id: groupId,
+  });
+  return { ok: false, melding: t('klassement.uitnodiging_weg_mislukt') };
 }
 
 // ⚠️ De poortfuncties staan in `klassement-poort.ts`, zonder enige import: de RLS-toets leest ze naast de database

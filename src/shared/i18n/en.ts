@@ -2290,6 +2290,9 @@ export const en: Record<Sleutel, string> = {
   'klassement.uitnodiging_tekst':
     'The leaderboard is off. If you turn it on, members see each other’s points from this group. A missed week never shows up in it.',
   'klassement.uitnodiging_knop': 'Turn on the leaderboard',
+  'klassement.uitnodiging_weg_knop': "Don't show again",
+  'klassement.uitnodiging_weg_uitleg': 'Only for you. If someone turns the leaderboard on and off again, this card comes back.',
+  'klassement.uitnodiging_weg_mislukt': 'The card could not be dismissed. Please try again.',
   'klassement.leeg': 'No points have been earned here yet. The first wrapped-up week gets it going.',
   'klassement.van_totaal': '{getoond} of {totaal} members',
   'klassement.laden_mislukt': 'The leaderboard could not be loaded.',

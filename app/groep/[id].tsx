@@ -13,6 +13,7 @@ import {
   fetchKettingStand,
   fetchKlassement,
   fetchMijnLidmaatschap,
+  fetchUitnodigingWeg,
   huddledagLabel,
   huidigeGroepsperiode,
   isHuddledagVandaag,
@@ -187,7 +188,7 @@ export default function GroepDetail() {
               <Caption>
                 {t('groepdetail.inhoud', {
                   onderdelen: groepInhoud({
-                    klassement: klassementPlek(s.klassement, s.groep, s.beheerder) === 'lijst',
+                    klassement: klassementPlek(s.klassement, s.groep, s.beheerder, s.uitnodigingWeg) === 'lijst',
                     helden: s.groep.zichtbaarheid === 'open' && !isTeamgroep(s.groep),
                     kanUitnodigen:
                       deelbaarBericht(s.groep, clientEnv().appUrl, profiel?.display_name) !== null,
@@ -305,8 +306,8 @@ export default function GroepDetail() {
                  staat in 0333 en niet hier. Een scherm dat de regel zelf zou moeten kennen, is een regel die met
                  één verzoek aan PostgREST te omzeilen valt.
             */}
-            {klassementPlek(s.klassement, s.groep, s.beheerder) === 'uitnodiging' ? (
-              <KlassementUitnodiging groupId={s.groep?.id ?? ''} onTerug={herlaad} />
+            {klassementPlek(s.klassement, s.groep, s.beheerder, s.uitnodigingWeg) === 'uitnodiging' ? (
+              <KlassementUitnodiging groupId={s.groep?.id ?? ''} userId={userId ?? ''} onTerug={herlaad} />
             ) : (
               <KlassementKaart uitkomst={s.klassement} onOpnieuw={herlaad} />
             )}
@@ -1163,6 +1164,8 @@ interface Stand {
   readonly teller: TellerUitkomst;
   readonly klassement: KlassementUitkomst;
   readonly helden: HeldenUitkomst;
+  /** QS8-784: heeft deze beheerder de uitnodigingskaart hier weggeklikt? Een mislukte lezing is `false`. */
+  readonly uitnodigingWeg: boolean;
 }
 
 /**
@@ -1188,6 +1191,7 @@ async function laadGroep(groupId: string, userId: string): Promise<Stand> {
       teller: { staat: 'geen-lid' },
       klassement: { staat: 'ok', pagina: { rijen: [], totaal: 0, meer: false } },
       helden: { staat: 'ok', pagina: { rijen: [], totaal: 0, meer: false } },
+      uitnodigingWeg: false,
     };
   }
 
@@ -1200,7 +1204,7 @@ async function laadGroep(groupId: string, userId: string): Promise<Stand> {
   //    kaal in deze `Promise.all`, dan zette één hik in `ketting_stand()` het
   //    hele groepsoverzicht in de foutstand — ledenlijst, chat en al. Bevinding
   //    van de security- en de gebruikersreview, allebei.
-  const [overzicht, lidmaatschap, ketting, teller, klassement, helden] = await Promise.all([
+  const [overzicht, lidmaatschap, ketting, teller, klassement, helden, uitnodigingWeg] = await Promise.all([
     fetchGroepsoverzicht(groupId, periode),
     fetchMijnLidmaatschap(groupId, userId),
     fetchKettingStand(groupId, periode)
@@ -1223,6 +1227,9 @@ async function laadGroep(groupId: string, userId: string): Promise<Stand> {
     fetchGroepshelden(groupId)
       .then((pagina): HeldenUitkomst => ({ staat: 'ok', pagina }))
       .catch((): HeldenUitkomst => ({ staat: 'fout' })),
+    // ⚠️ QS8-784: één opzoeking op de primaire sleutel, voor elk lid; een niet-beheerder heeft er nooit een rij.
+    //    Werpt niet: een mislukte lezing is `false`, en dan staat de kaart er (zie `fetchUitnodigingWeg`).
+    fetchUitnodigingWeg(groupId, userId),
   ]);
 
   return {
@@ -1233,6 +1240,7 @@ async function laadGroep(groupId: string, userId: string): Promise<Stand> {
     teller,
     klassement,
     helden,
+    uitnodigingWeg,
   };
 }
 
