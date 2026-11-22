@@ -16,6 +16,7 @@ const groep = (id: string): DoelGroep => ({
   group_id: id,
   name: `Groep ${id}`,
   zichtbaarheid: 'beschermd',
+  organization_id: null,
 });
 
 describe('deelbareUitnodiging', () => {

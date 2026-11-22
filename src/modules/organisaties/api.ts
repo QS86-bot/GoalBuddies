@@ -1,9 +1,9 @@
 import { reportError } from '../../lib/observability';
+import { supabase } from '../../lib/supabase';
 import { invoerfout, type Resultaat, type RpcRij } from '../../shared/api';
 import { t } from '../../shared/i18n';
 import { codeSchema } from '../buddies';
 
-import { db } from './database';
 import {
   naamSchema,
   ORGANISATIELEDEN_PER_PAGINA,
@@ -124,7 +124,7 @@ export async function maakOrganisatie(naam: string): Promise<Resultaat<string>> 
     return { ok: false, melding: invoerfout(gevalideerd.error, t('organisatie.aanmaken_mislukt')) };
   }
 
-  const { data, error } = await db().rpc('maak_organisatie', { p_naam: gevalideerd.data });
+  const { data, error } = await supabase().rpc('maak_organisatie', { p_naam: gevalideerd.data });
   if (error) {
     reportError(error, 'organisaties.maak');
     return { ok: false, melding: t('organisatie.aanmaken_mislukt') };
@@ -150,7 +150,7 @@ export async function wordOrganisatielid(code: string): Promise<Resultaat<string
     return { ok: false, melding: invoerfout(gevalideerd.error, t('organisatie.code_ongeldig')) };
   }
 
-  const { data, error } = await db().rpc('word_organisatielid', { p_code: gevalideerd.data });
+  const { data, error } = await supabase().rpc('word_organisatielid', { p_code: gevalideerd.data });
   if (error) {
     reportError(error, 'organisaties.deelnemen');
     return { ok: false, melding: t('organisatie.deelnemen_mislukt') };
@@ -184,8 +184,8 @@ export async function wordOrganisatielid(code: string): Promise<Resultaat<string
  */
 export async function fetchMijnOrganisaties(): Promise<readonly Organisatie[]> {
   const [organisaties, lidmaatschappen] = await Promise.all([
-    db().from('organizations').select('id, name').order('name', { ascending: true }).limit(20),
-    db().from('organization_members').select('organization_id, role').limit(20),
+    supabase().from('organizations').select('id, name').order('name', { ascending: true }).limit(20),
+    supabase().from('organization_members').select('organization_id, role').limit(20),
   ]);
 
   const fout = organisaties.error ?? lidmaatschappen.error;
@@ -222,7 +222,7 @@ export async function fetchOrganisatieleden(
   organisatieId: string,
   na?: string | null,
 ): Promise<Bladzijde<Organisatielid>> {
-  const { data, error } = await db().rpc('organisatieleden', {
+  const { data, error } = await supabase().rpc('organisatieleden', {
     p_organization_id: organisatieId,
     p_limit: ORGANISATIELEDEN_PER_PAGINA,
     ...(na ? { p_na_user_id: na } : {}),
@@ -256,7 +256,7 @@ export async function fetchOrganisatieteams(
   organisatieId: string,
   na?: string | null,
 ): Promise<Bladzijde<Organisatieteam>> {
-  const { data, error } = await db().rpc('organisatieteams', {
+  const { data, error } = await supabase().rpc('organisatieteams', {
     p_organization_id: organisatieId,
     p_limit: ORGANISATIELEDEN_PER_PAGINA,
     ...(na ? { p_na_id: na } : {}),
@@ -287,7 +287,7 @@ export async function fetchOrganisatieteams(
  * bestaat — de RPC maakt die twee niet te onderscheiden).
  */
 export async function fetchUitnodigcode(organisatieId: string): Promise<Uitnodigcode | null> {
-  const { data, error } = await db().rpc('organisatie_uitnodigcode', {
+  const { data, error } = await supabase().rpc('organisatie_uitnodigcode', {
     p_organization_id: organisatieId,
   });
   if (error) {
@@ -309,7 +309,7 @@ export async function vernieuwOrganisatiecode(
   organisatieId: string,
   intrekken: boolean,
 ): Promise<Resultaat<Uitnodigcode>> {
-  const { data, error } = await db().rpc('vernieuw_organisatiecode', {
+  const { data, error } = await supabase().rpc('vernieuw_organisatiecode', {
     p_organization_id: organisatieId,
     p_intrekken: intrekken,
   });
@@ -336,7 +336,7 @@ export async function zetLidUit(organisatieId: string, userId: string): Promise<
   const ids = uuidSchema.safeParse(organisatieId).success && uuidSchema.safeParse(userId).success;
   if (!ids) return { ok: false, melding: t('organisatie.uitzetten_mislukt') };
 
-  const { data, error } = await db().rpc('zet_organisatielid_uit', {
+  const { data, error } = await supabase().rpc('zet_organisatielid_uit', {
     p_organization_id: organisatieId,
     p_user_id: userId,
   });
@@ -348,7 +348,7 @@ export async function zetLidUit(organisatieId: string, userId: string): Promise<
 }
 
 export async function verlaatOrganisatie(organisatieId: string): Promise<Resultaat<true>> {
-  const { data, error } = await db().rpc('verlaat_organisatie', {
+  const { data, error } = await supabase().rpc('verlaat_organisatie', {
     p_organization_id: organisatieId,
   });
   if (error) {
@@ -368,7 +368,7 @@ export async function maakTeam(organisatieId: string, naam: string): Promise<Res
     };
   }
 
-  const { data, error } = await db().rpc('maak_teamgroep', {
+  const { data, error } = await supabase().rpc('maak_teamgroep', {
     p_organization_id: organisatieId,
     p_naam: gevalideerd.data,
   });

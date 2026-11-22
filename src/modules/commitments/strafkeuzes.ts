@@ -10,7 +10,6 @@ import {
   type MijnGroep,
   type StrafKeuzes,
 } from './strafgroepen';
-import { teamDb } from './teamtypes.tijdelijk';
 
 /**
  * De keuzelijst van een straf, gefilterd op wat de database toelaat — QS8-698.
@@ -43,7 +42,7 @@ const MAX_LEDEN = 100;
  *    en dat is de veilige kant.
  */
 async function teamVanAandeel(goalId: string): Promise<TeamUitkomst> {
-  const db = teamDb();
+  const db = supabase();
   const aandeel = await db
     .from('team_goal_shares')
     .select('team_goal_id')
@@ -66,7 +65,7 @@ async function teamVanAandeel(goalId: string): Promise<TeamUitkomst> {
 }
 
 async function mijnGroepen(ik: string): Promise<readonly MijnGroep[]> {
-  const db = teamDb();
+  const db = supabase();
   const lid = await db
     .from('group_members')
     .select('group_id')
@@ -93,7 +92,7 @@ async function mijnGroepen(ik: string): Promise<readonly MijnGroep[]> {
 
 async function ledenVan(groepIds: readonly string[], ik: string): Promise<readonly MogelijkeBegunstigde[]> {
   if (groepIds.length === 0) return [];
-  const leden = await teamDb()
+  const leden = await supabase()
     .from('group_members')
     .select('user_id, profiles(display_name)')
     .in('group_id', [...groepIds])
