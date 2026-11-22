@@ -143,7 +143,29 @@ const VANAF = '2026-09-24';
  *
  * @type {{ pad: string, in: string, reden: string }[]}
  */
-export const HISTORISCH_JUIST = [];
+export const HISTORISCH_JUIST = [
+  {
+    pad: 'tests/beloftes/organisatie-typebrug.test.ts',
+    in: 'docs/decisions/2026-11-18-organisatieschermen.md',
+    reden:
+      'De wekker van de organisatie-typebrug (QS8-657) is weg sinds PR #787 (22-11-2026, besluit Quinten): ' +
+      'de brug en zijn toets zijn samen opgeruimd nadat de types hergenereerd waren. Het document beschrijft de stand van 18-11.',
+  },
+  {
+    pad: 'src/modules/commitments/teamtypes.tijdelijk.ts',
+    in: 'docs/decisions/2026-11-20-tijdelijk-typebestand-voor-het-strafscherm.md',
+    reden:
+      'De typebrug van het strafscherm (QS8-698) is weg sinds PR #787 (22-11-2026, besluit Quinten); ' +
+      'het document beschrijft de tijdelijke stand van 20-11.',
+  },
+  {
+    pad: 'tests/beloftes/teamtypes-typebrug.test.ts',
+    in: 'docs/decisions/2026-11-20-tijdelijk-typebestand-voor-het-strafscherm.md',
+    reden:
+      'De wekker van die typebrug is samen met de brug weg sinds PR #787 (22-11-2026); ' +
+      'het document beschrijft de stand van 20-11.',
+  },
+];
 
 /** Is dit bestand een beslisdocument — de enige plek waar `HISTORISCH_JUIST` telt? */
 const isBeslisdocument = (pad) => pad.startsWith('docs/decisions/');

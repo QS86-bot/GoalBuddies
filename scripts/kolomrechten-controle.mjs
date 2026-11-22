@@ -70,6 +70,33 @@ function isIngebed(kolom) {
   return kolom.includes('(') || kolom.includes(')');
 }
 
+/**
+ * Splitst een selectielijst op de komma's van het bovenste niveau.
+ *
+ * ⚠️ **Niet `split(',')`.** Een ingebedde bron met méér dan één kolom, zoals
+ *    `groups(name, zichtbaarheid, organization_id)`, viel daarmee uiteen in
+ *    `groups(name`, `zichtbaarheid` en `organization_id)`: alleen de middelste
+ *    leek een gewone kolom van de buitenste tabel, en dat gaf een valse melding
+ *    ("geen leesrecht op `zichtbaarheid`") op een kolom van de ándere tabel. Bij
+ *    twee kolommen viel dat niet op, want dan bevat elk stuk een haakje.
+ */
+export function splitOpBovensteNiveau(lijst) {
+  const stukken = [];
+  let diepte = 0;
+  let begin = 0;
+  for (let i = 0; i < lijst.length; i++) {
+    const teken = lijst[i];
+    if (teken === '(') diepte++;
+    else if (teken === ')') diepte = Math.max(0, diepte - 1);
+    else if (teken === ',' && diepte === 0) {
+      stukken.push(lijst.slice(begin, i));
+      begin = i + 1;
+    }
+  }
+  stukken.push(lijst.slice(begin));
+  return stukken;
+}
+
 /** `naam:title` → `title`; `title` → `title`. */
 export function kolomNaam(stuk) {
   const schoon = stuk.trim();
@@ -117,7 +144,7 @@ export function selectiesIn(pad, ruweInhoud) {
     //    ingebedde bron. De ster telt dan gewoon als "alle kolommen van déze
     //    tabel" — hem als kolomnaam behandelen leverde twee valse meldingen op,
     //    en een controle die valse meldingen geeft leer je te negeren.
-    const delen = select[1].split(',').map(kolomNaam).filter((k) => k.length > 0);
+    const delen = splitOpBovensteNiveau(select[1]).map(kolomNaam).filter((k) => k.length > 0);
     const alles = delen.includes('*');
     const kolommen = alles ? [] : delen.filter((k) => !isIngebed(k));
 

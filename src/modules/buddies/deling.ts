@@ -31,7 +31,7 @@ type Groep = Tables<'groups'>;
  *    weinig" terwijl hij precies genoeg is. Een functie die meer vraagt dan ze
  *    gebruikt, duwt haar aanroepers naar een `select('*')`.
  */
-export type KoppelbaarGroep = Pick<Groep, 'id' | 'name' | 'status' | 'zichtbaarheid'>;
+export type KoppelbaarGroep = Pick<Groep, 'id' | 'name' | 'status' | 'zichtbaarheid' | 'organization_id'>;
 
 /**
  * Eén groep waar een doel aan gekoppeld is, zoals het doelscherm hem toont.
@@ -47,6 +47,8 @@ export interface DoelGroep {
   readonly group_id: string;
   readonly name: string;
   readonly zichtbaarheid: Zichtbaarheid;
+  /** Gevuld voor een teamgroep (QS8-651); `isTeamgroep()` leest dit veld. */
+  readonly organization_id: string | null;
 }
 
 /**
@@ -75,6 +77,7 @@ export function koppelbareGroepen(
       group_id: groep.id,
       name: groep.name,
       zichtbaarheid: leesZichtbaarheid(groep.zichtbaarheid),
+      organization_id: groep.organization_id,
     }));
 }
 

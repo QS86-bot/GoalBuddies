@@ -40,6 +40,12 @@ function groep(id: string, extra: Partial<Tables<'groups'>> = {}): Tables<'group
     huddle_day: 0,
     icon: null,
     invite_code: `code-${id}`,
+    // QS8-666 (0333) — het klassement staat uit tot een beheerder het aanzet. De
+    // fixture gaat over het delen van een doel en niet over het klassement.
+    klassement_aan: false,
+    // Een groep zonder organisatie; `isTeamgroep` leest deze kolom en elke test
+    // die een teamgroep wil, zet hem zelf via `extra`.
+    organization_id: null,
     invite_revoked: false,
     last_activity_at: '2026-01-01T00:00:00Z',
     season_cadence: 'none',
@@ -51,7 +57,7 @@ function groep(id: string, extra: Partial<Tables<'groups'>> = {}): Tables<'group
 }
 
 function koppeling(id: string, zichtbaarheid: DoelGroep['zichtbaarheid'] = 'beschermd'): DoelGroep {
-  return { group_id: id, name: `Groep ${id}`, zichtbaarheid };
+  return { group_id: id, name: `Groep ${id}`, zichtbaarheid, organization_id: null };
 }
 
 describe('koppelbareGroepen', () => {

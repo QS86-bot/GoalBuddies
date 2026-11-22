@@ -444,6 +444,8 @@ export type Database = {
           goal_id: string
           id: string
           image_url: string | null
+          periode_einde: string | null
+          periode_start: string | null
           status: string
           type: string
           tz: string
@@ -457,6 +459,8 @@ export type Database = {
           goal_id: string
           id?: string
           image_url?: string | null
+          periode_einde?: string | null
+          periode_start?: string | null
           status?: string
           type: string
           tz: string
@@ -470,6 +474,8 @@ export type Database = {
           goal_id?: string
           id?: string
           image_url?: string | null
+          periode_einde?: string | null
+          periode_start?: string | null
           status?: string
           type?: string
           tz?: string
@@ -910,6 +916,51 @@ export type Database = {
           },
         ]
       }
+      gebruikersvoorkeuren: {
+        Row: {
+          bijgewerkt_op: string
+          dichtheid: string
+          emoji: boolean
+          kleurvariant: string
+          stijl: string
+          user_id: string
+          weergave: string
+        }
+        Insert: {
+          bijgewerkt_op?: string
+          dichtheid?: string
+          emoji?: boolean
+          kleurvariant?: string
+          stijl?: string
+          user_id: string
+          weergave?: string
+        }
+        Update: {
+          bijgewerkt_op?: string
+          dichtheid?: string
+          emoji?: boolean
+          kleurvariant?: string
+          stijl?: string
+          user_id?: string
+          weergave?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "gebruikersvoorkeuren_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: true
+            referencedRelation: "mijn_profiel"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "gebruikersvoorkeuren_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: true
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       goal_events: {
         Row: {
           actor_id: string
@@ -1271,6 +1322,32 @@ export type Database = {
           },
         ]
       }
+      groep_demping: {
+        Row: {
+          gedempt_op: string
+          group_id: string
+          user_id: string
+        }
+        Insert: {
+          gedempt_op?: string
+          group_id: string
+          user_id: string
+        }
+        Update: {
+          gedempt_op?: string
+          group_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "groep_demping_lid_van_groep"
+            columns: ["group_id", "user_id"]
+            isOneToOne: false
+            referencedRelation: "group_members"
+            referencedColumns: ["group_id", "user_id"]
+          },
+        ]
+      }
       group_events: {
         Row: {
           actor_id: string | null
@@ -1469,10 +1546,12 @@ export type Database = {
           id: string
           invite_code: string
           invite_revoked: boolean
+          klassement_aan: boolean
           last_activity_at: string
           name: string
           omschrijving: string | null
           ontdekbaar: boolean
+          organization_id: string | null
           season_cadence: string
           status: string
           tz: string
@@ -1492,10 +1571,12 @@ export type Database = {
           id?: string
           invite_code: string
           invite_revoked?: boolean
+          klassement_aan?: boolean
           last_activity_at?: string
           name: string
           omschrijving?: string | null
           ontdekbaar?: boolean
+          organization_id?: string | null
           season_cadence?: string
           status?: string
           tz?: string
@@ -1515,10 +1596,12 @@ export type Database = {
           id?: string
           invite_code?: string
           invite_revoked?: boolean
+          klassement_aan?: boolean
           last_activity_at?: string
           name?: string
           omschrijving?: string | null
           ontdekbaar?: boolean
+          organization_id?: string | null
           season_cadence?: string
           status?: string
           tz?: string
@@ -1538,6 +1621,13 @@ export type Database = {
             columns: ["created_by"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "groups_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
             referencedColumns: ["id"]
           },
         ]
@@ -1838,6 +1928,160 @@ export type Database = {
           },
         ]
       }
+      organization_members: {
+        Row: {
+          joined_at: string
+          organization_id: string
+          role: string
+          status: string
+          user_id: string
+        }
+        Insert: {
+          joined_at?: string
+          organization_id: string
+          role?: string
+          status?: string
+          user_id: string
+        }
+        Update: {
+          joined_at?: string
+          organization_id?: string
+          role?: string
+          status?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "organization_members_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "organization_members_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "mijn_profiel"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "organization_members_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      organization_role_events: {
+        Row: {
+          actor_id: string | null
+          created_at: string
+          event_type: string
+          id: string
+          organization_id: string
+          subject_id: string | null
+        }
+        Insert: {
+          actor_id?: string | null
+          created_at?: string
+          event_type: string
+          id?: string
+          organization_id: string
+          subject_id?: string | null
+        }
+        Update: {
+          actor_id?: string | null
+          created_at?: string
+          event_type?: string
+          id?: string
+          organization_id?: string
+          subject_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "organization_role_events_actor_id_fkey"
+            columns: ["actor_id"]
+            isOneToOne: false
+            referencedRelation: "mijn_profiel"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "organization_role_events_actor_id_fkey"
+            columns: ["actor_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "organization_role_events_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "organization_role_events_subject_id_fkey"
+            columns: ["subject_id"]
+            isOneToOne: false
+            referencedRelation: "mijn_profiel"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "organization_role_events_subject_id_fkey"
+            columns: ["subject_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      organizations: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          id: string
+          invite_code: string
+          invite_revoked: boolean
+          name: string
+          status: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          invite_code?: string
+          invite_revoked?: boolean
+          name: string
+          status?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          invite_code?: string
+          invite_revoked?: boolean
+          name?: string
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "organizations_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "mijn_profiel"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "organizations_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       points_ledger: {
         Row: {
           created_at: string
@@ -1850,6 +2094,7 @@ export type Database = {
           ref_id: string | null
           ref_type: string | null
           ronde: number
+          seizoen: string | null
           user_id: string
           zonder_beoordelaar: boolean
         }
@@ -1864,6 +2109,7 @@ export type Database = {
           ref_id?: string | null
           ref_type?: string | null
           ronde?: number
+          seizoen?: string | null
           user_id: string
           zonder_beoordelaar?: boolean
         }
@@ -1878,6 +2124,7 @@ export type Database = {
           ref_id?: string | null
           ref_type?: string | null
           ronde?: number
+          seizoen?: string | null
           user_id?: string
           zonder_beoordelaar?: boolean
         }
@@ -1931,6 +2178,8 @@ export type Database = {
           avatar_url: string | null
           created_at: string
           display_name: string
+          feeling: string | null
+          feeling_own: string | null
           focus_areas: string[]
           id: string
           locale: string | null
@@ -1939,6 +2188,7 @@ export type Database = {
           notify_approval_request: boolean
           notify_commitment_witness: boolean
           notify_cycle_summary: boolean
+          notify_group_digest: boolean
           onboarded_at: string | null
           platform_beheerder: boolean
           quiet_from: number | null
@@ -1959,6 +2209,8 @@ export type Database = {
           avatar_url?: string | null
           created_at?: string
           display_name: string
+          feeling?: string | null
+          feeling_own?: string | null
           focus_areas?: string[]
           id: string
           locale?: string | null
@@ -1967,6 +2219,7 @@ export type Database = {
           notify_approval_request?: boolean
           notify_commitment_witness?: boolean
           notify_cycle_summary?: boolean
+          notify_group_digest?: boolean
           onboarded_at?: string | null
           platform_beheerder?: boolean
           quiet_from?: number | null
@@ -1987,6 +2240,8 @@ export type Database = {
           avatar_url?: string | null
           created_at?: string
           display_name?: string
+          feeling?: string | null
+          feeling_own?: string | null
           focus_areas?: string[]
           id?: string
           locale?: string | null
@@ -1995,6 +2250,7 @@ export type Database = {
           notify_approval_request?: boolean
           notify_commitment_witness?: boolean
           notify_cycle_summary?: boolean
+          notify_group_digest?: boolean
           onboarded_at?: string | null
           platform_beheerder?: boolean
           quiet_from?: number | null
@@ -2197,6 +2453,211 @@ export type Database = {
             columns: ["group_id"]
             isOneToOne: false
             referencedRelation: "groups"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      team_goal_shares: {
+        Row: {
+          created_at: string
+          goal_id: string
+          team_goal_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          goal_id: string
+          team_goal_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          goal_id?: string
+          team_goal_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "team_goal_shares_goal_id_fkey"
+            columns: ["goal_id"]
+            isOneToOne: true
+            referencedRelation: "goal_dashboard"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "team_goal_shares_goal_id_fkey"
+            columns: ["goal_id"]
+            isOneToOne: true
+            referencedRelation: "goals"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "team_goal_shares_goal_id_fkey"
+            columns: ["goal_id"]
+            isOneToOne: true
+            referencedRelation: "mijn_doelvelden"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "team_goal_shares_team_goal_id_fkey"
+            columns: ["team_goal_id"]
+            isOneToOne: false
+            referencedRelation: "team_goals"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "team_goal_shares_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "mijn_profiel"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "team_goal_shares_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      team_goals: {
+        Row: {
+          afronding_gevraagd_door: string | null
+          afronding_gevraagd_op: string | null
+          afronding_goedgekeurd_door: string | null
+          afronding_goedgekeurd_op: string | null
+          created_at: string
+          created_by: string | null
+          description: string | null
+          group_id: string
+          id: string
+          organization_id: string
+          status: string
+          target_date: string
+          title: string
+        }
+        Insert: {
+          afronding_gevraagd_door?: string | null
+          afronding_gevraagd_op?: string | null
+          afronding_goedgekeurd_door?: string | null
+          afronding_goedgekeurd_op?: string | null
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          group_id: string
+          id?: string
+          organization_id: string
+          status?: string
+          target_date: string
+          title: string
+        }
+        Update: {
+          afronding_gevraagd_door?: string | null
+          afronding_gevraagd_op?: string | null
+          afronding_goedgekeurd_door?: string | null
+          afronding_goedgekeurd_op?: string | null
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          group_id?: string
+          id?: string
+          organization_id?: string
+          status?: string
+          target_date?: string
+          title?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "team_goals_afronding_gevraagd_door_fkey"
+            columns: ["afronding_gevraagd_door"]
+            isOneToOne: false
+            referencedRelation: "mijn_profiel"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "team_goals_afronding_gevraagd_door_fkey"
+            columns: ["afronding_gevraagd_door"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "team_goals_afronding_goedgekeurd_door_fkey"
+            columns: ["afronding_goedgekeurd_door"]
+            isOneToOne: false
+            referencedRelation: "mijn_profiel"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "team_goals_afronding_goedgekeurd_door_fkey"
+            columns: ["afronding_goedgekeurd_door"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "team_goals_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "mijn_profiel"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "team_goals_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "team_goals_group_id_fkey"
+            columns: ["group_id"]
+            isOneToOne: false
+            referencedRelation: "groups"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "team_goals_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      team_progress_events: {
+        Row: {
+          created_at: string
+          id: string
+          milestone_id: string | null
+          team_goal_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          milestone_id?: string | null
+          team_goal_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          milestone_id?: string | null
+          team_goal_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "team_progress_events_milestone_id_fkey"
+            columns: ["milestone_id"]
+            isOneToOne: false
+            referencedRelation: "milestones"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "team_progress_events_team_goal_id_fkey"
+            columns: ["team_goal_id"]
+            isOneToOne: false
+            referencedRelation: "team_goals"
             referencedColumns: ["id"]
           },
         ]
@@ -2700,6 +3161,57 @@ export type Database = {
           },
         ]
       }
+      xp_grootboek: {
+        Row: {
+          badge: string | null
+          bedrag: number
+          bron: string
+          id: string
+          teamdoel_id: string | null
+          terugwerkend: boolean
+          user_id: string
+          verdiend_op: string
+          weekdoel_id: string | null
+        }
+        Insert: {
+          badge?: string | null
+          bedrag: number
+          bron: string
+          id?: string
+          teamdoel_id?: string | null
+          terugwerkend?: boolean
+          user_id: string
+          verdiend_op?: string
+          weekdoel_id?: string | null
+        }
+        Update: {
+          badge?: string | null
+          bedrag?: number
+          bron?: string
+          id?: string
+          teamdoel_id?: string | null
+          terugwerkend?: boolean
+          user_id?: string
+          verdiend_op?: string
+          weekdoel_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "xp_grootboek_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "mijn_profiel"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "xp_grootboek_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       goal_dashboard: {
@@ -2840,6 +3352,8 @@ export type Database = {
           avatar_url: string | null
           created_at: string | null
           display_name: string | null
+          feeling: string | null
+          feeling_own: string | null
           focus_areas: string[] | null
           id: string | null
           locale: string | null
@@ -2848,6 +3362,7 @@ export type Database = {
           notify_approval_request: boolean | null
           notify_commitment_witness: boolean | null
           notify_cycle_summary: boolean | null
+          notify_group_digest: boolean | null
           onboarded_at: string | null
           platform_beheerder: boolean | null
           quiet_from: number | null
@@ -2868,6 +3383,8 @@ export type Database = {
           avatar_url?: string | null
           created_at?: string | null
           display_name?: string | null
+          feeling?: string | null
+          feeling_own?: string | null
           focus_areas?: string[] | null
           id?: string | null
           locale?: string | null
@@ -2876,6 +3393,7 @@ export type Database = {
           notify_approval_request?: boolean | null
           notify_commitment_witness?: boolean | null
           notify_cycle_summary?: boolean | null
+          notify_group_digest?: boolean | null
           onboarded_at?: string | null
           platform_beheerder?: boolean | null
           quiet_from?: number | null
@@ -2896,6 +3414,8 @@ export type Database = {
           avatar_url?: string | null
           created_at?: string | null
           display_name?: string | null
+          feeling?: string | null
+          feeling_own?: string | null
           focus_areas?: string[] | null
           id?: string | null
           locale?: string | null
@@ -2904,6 +3424,7 @@ export type Database = {
           notify_approval_request?: boolean | null
           notify_commitment_witness?: boolean | null
           notify_cycle_summary?: boolean | null
+          notify_group_digest?: boolean | null
           onboarded_at?: string | null
           platform_beheerder?: boolean | null
           quiet_from?: number | null
@@ -2924,6 +3445,11 @@ export type Database = {
       }
     }
     Functions: {
+      aandeel_wacht_op_teamgenoot: { Args: { g: string }; Returns: boolean }
+      actief_organisatielid: {
+        Args: { p_organization_id: string; p_user_id: string }
+        Returns: boolean
+      }
       activeer_weekplanstap:
         | {
             Args: { p_cycle_start_date: string; p_goal_id: string }
@@ -2982,6 +3508,19 @@ export type Database = {
         }[]
       }
       bedenktijd: { Args: never; Returns: string }
+      belofteperiode_klopt: {
+        Args: {
+          p_nu: string
+          p_start: string
+          p_startdag: number
+          p_tz: string
+        }
+        Returns: string
+      }
+      benoem_organisatiebeheerder: {
+        Args: { p_organization_id: string; p_user_id: string }
+        Returns: Json
+      }
       berichten_over: { Args: never; Returns: number }
       berichten_plafond: { Args: never; Returns: number }
       beslis_deadline_verzoek: {
@@ -2992,6 +3531,11 @@ export type Database = {
         Args: { p_naar: string; p_request_id: string }
         Returns: Json
       }
+      beslis_weekbeloftes: {
+        Args: { p_moment: string; p_owner_id: string }
+        Returns: number
+      }
+      bevat_linkachtige_tekst: { Args: { p_tekst: string }; Returns: boolean }
       bevestigingsstand: {
         Args: { p_completion_id: string }
         Returns: {
@@ -3081,6 +3625,10 @@ export type Database = {
       }
       ddl_rechten_van_service_role: { Args: never; Returns: boolean }
       deblokkeer: { Args: { p_user: string }; Returns: Json }
+      deel_prestatie: {
+        Args: { p_badge: string; p_group_id: string }
+        Returns: Json
+      }
       deelt_groep_met_eigenaar: { Args: { g: string }; Returns: boolean }
       deelt_open_groep_met_doel: { Args: { g: string }; Returns: boolean }
       definer_bewaking: {
@@ -3218,6 +3766,16 @@ export type Database = {
         }[]
       }
       groepsdatum: { Args: { gid: string }; Returns: string }
+      groepsdigest_aan: { Args: never; Returns: boolean }
+      groepsdigest_dagmax: { Args: never; Returns: number }
+      groepsdigest_gebeurtenissen: { Args: never; Returns: string[] }
+      groepsdigest_voor: {
+        Args: { p_lokale_datum: string; p_user_id: string }
+        Returns: {
+          groepsnaam: string
+          group_id: string
+        }[]
+      }
       groepsgebeurtenissen_plafond: { Args: never; Returns: number }
       groepsgebeurtenissen_telt_mee: {
         Args: { p_type: string }
@@ -3309,12 +3867,24 @@ export type Database = {
       }
       intrekvenster_minuten: { Args: never; Returns: number }
       invite_preview: { Args: { code: string }; Returns: Json }
+      is_aandeel_van_een_ander: { Args: { g: string }; Returns: boolean }
       is_expo_pushtoken: { Args: { p_token: string }; Returns: boolean }
       is_group_admin: { Args: { gid: string }; Returns: boolean }
       is_group_member: { Args: { gid: string }; Returns: boolean }
       is_kale_auth_uid: { Args: { p_uitdrukking: string }; Returns: boolean }
+      is_organisatiebeheerder: {
+        Args: { p_organization_id: string }
+        Returns: boolean
+      }
+      is_organisatielid: {
+        Args: { p_organization_id: string }
+        Returns: boolean
+      }
+      is_p256_punt: { Args: { p_punt: string }; Returns: boolean }
       is_platform_beheerder: { Args: never; Returns: boolean }
       is_pushdienst: { Args: { p_endpoint: string }; Returns: boolean }
+      is_teambeheerder: { Args: { gid: string }; Returns: boolean }
+      is_teamgroep: { Args: { p_group_id: string }; Returns: boolean }
       join_group_with_code: { Args: { code: string }; Returns: Json }
       kan_beoordeeld_worden: {
         Args: { p_goal_id: string; p_owner_id: string }
@@ -3332,6 +3902,7 @@ export type Database = {
         Args: { p_group_id: string; p_period_start: string }
         Returns: Json
       }
+      keur_teamdoel_goed: { Args: { p_team_goal_id: string }; Returns: Json }
       keur_vastgelopen_goedkeuringen_goed: {
         Args: { p_owner_ids?: string[]; p_termijn_dagen?: number }
         Returns: number
@@ -3361,6 +3932,7 @@ export type Database = {
           isSetofReturn: true
         }
       }
+      ledenplafond: { Args: { gid: string }; Returns: number }
       leesroute_bewaking: {
         Args: never
         Returns: {
@@ -3368,6 +3940,7 @@ export type Database = {
           naam: string
         }[]
       }
+      lid_van_levende_groep: { Args: { gid: string }; Returns: boolean }
       lid_van_open_groep: { Args: { gid: string }; Returns: boolean }
       lidmaatschapsverzoeken_over: { Args: never; Returns: number }
       lijn_migratieregister_uit: {
@@ -3379,6 +3952,7 @@ export type Database = {
           van: string
         }[]
       }
+      maak_organisatie: { Args: { p_naam: string }; Returns: Json }
       maak_seizoensrecaps: {
         Args: { p_group_ids?: string[]; p_op?: string }
         Returns: Json
@@ -3386,6 +3960,25 @@ export type Database = {
       maak_straffen_verschuldigd:
         | { Args: { p_owner_id: string }; Returns: number }
         | { Args: { p_owner_id: string; p_vandaag: string }; Returns: number }
+      maak_teamdoel: {
+        Args: {
+          p_beschrijving?: string
+          p_group_id: string
+          p_streefdatum: string
+          p_titel: string
+        }
+        Returns: Json
+      }
+      maak_teamgroep: {
+        Args: {
+          p_huddledag?: number
+          p_naam: string
+          p_organization_id: string
+          p_tz?: string
+          p_zichtbaarheid?: string
+        }
+        Returns: Json
+      }
       mag_bewijsfoto_lezen: { Args: { pad: string }; Returns: boolean }
       mag_groep_lezen: { Args: { gid: string }; Returns: boolean }
       mag_melding_als_beheerder: {
@@ -3433,7 +4026,20 @@ export type Database = {
         }[]
       }
       mijn_datum: { Args: never; Returns: string }
+      mijn_xp: {
+        Args: never
+        Returns: {
+          drempel_huidig: number
+          drempel_volgende: number
+          niveau: number
+          totaal: number
+        }[]
+      }
       moderatiepoort: { Args: never; Returns: boolean }
+      neem_aandeel: {
+        Args: { p_team_goal_id: string; p_titel?: string }
+        Returns: Json
+      }
       ontdek_groepen: {
         Args: {
           p_categorie?: string
@@ -3505,6 +4111,29 @@ export type Database = {
         Args: { p_alleen_dieper?: boolean; p_diepte?: number; p_expr: string }
         Returns: string[]
       }
+      organisatie_uitnodigcode: {
+        Args: { p_organization_id: string }
+        Returns: Json
+      }
+      organisatieleden: {
+        Args: {
+          p_limit?: number
+          p_na_user_id?: string
+          p_organization_id: string
+        }
+        Returns: {
+          display_name: string
+          role: string
+          user_id: string
+        }[]
+      }
+      organisatieteams: {
+        Args: { p_limit?: number; p_na_id?: string; p_organization_id: string }
+        Returns: {
+          id: string
+          name: string
+        }[]
+      }
       plaats_systeembericht: {
         Args: {
           p_actor_id?: string
@@ -3534,6 +4163,36 @@ export type Database = {
           p_starts_cycle: string
         }
         Returns: Json
+      }
+      prestatie_deelbaar: { Args: { p_badge: string }; Returns: boolean }
+      prestatie_delen_dagmax: { Args: never; Returns: number }
+      profiel_doelen_van_lid: {
+        Args: { p_limit?: number; p_offset?: number; p_user: string }
+        Returns: {
+          categorie: string
+          goal_id: string
+          mijlpalen_klaar: number
+          mijlpalen_totaal: number
+          titel: string
+          voltooid: boolean
+        }[]
+      }
+      profiel_groepen_van_lid: {
+        Args: { p_user: string }
+        Returns: {
+          group_id: string
+          icoon: string
+          naam: string
+        }[]
+      }
+      profiel_van_lid: {
+        Args: { p_user: string }
+        Returns: {
+          avatar_url: string
+          ben_ik: boolean
+          display_name: string
+          id: string
+        }[]
       }
       pushtokens_plafond: { Args: never; Returns: number }
       realtime_bewaking: {
@@ -3606,6 +4265,16 @@ export type Database = {
           naam: string
         }[]
       }
+      sluit_verstreken_weken_af: {
+        Args: { p_grens: string; p_owner_id: string }
+        Returns: {
+          gemist: number
+          geraakte_doelen: string[]
+          gered: number
+          mislukt: number
+          vrijgesteld: number
+        }[]
+      }
       sluit_weekdoel_af: { Args: { p_weekly_goal_id: string }; Returns: Json }
       standaardrechten_bewaking: {
         Args: never
@@ -3619,6 +4288,14 @@ export type Database = {
       start_weekplanstap: {
         Args: { p_cycle_start_date: string; p_step_id: string }
         Returns: Json
+      }
+      straf_teamband_klopt: {
+        Args: { p_goal_id: string; p_lezer: string }
+        Returns: boolean
+      }
+      straf_teamband_klopt_voor_mij: {
+        Args: { p_goal_id: string }
+        Returns: boolean
       }
       straffen_bij_uitstelverzoek: {
         Args: { p_goal_ids: string[] }
@@ -3636,6 +4313,8 @@ export type Database = {
           owner_name: string
         }[]
       }
+      teambalk: { Args: { p_team_goal_id: string }; Returns: number }
+      teamgroep_mag_prestatie_delen: { Args: never; Returns: boolean }
       tegenvaller_woorden: { Args: never; Returns: string[] }
       tekstgrenzen_bewaking: {
         Args: never
@@ -3673,6 +4352,10 @@ export type Database = {
       }
       tip_bevat_emoji: { Args: { p_tekst: string }; Returns: boolean }
       tip_noemt_tegenvaller: { Args: { p_tekst: string }; Returns: boolean }
+      treed_terug_als_organisatiebeheerder: {
+        Args: { p_organization_id: string }
+        Returns: Json
+      }
       trek_deadline_verzoek_in: {
         Args: { p_request_id: string }
         Returns: Json
@@ -3731,7 +4414,18 @@ export type Database = {
         }
         Returns: Json
       }
+      verlaat_organisatie: {
+        Args: { p_organization_id: string }
+        Returns: Json
+      }
       verloop_buddyzoekopdrachten: { Args: { p_nu: string }; Returns: number }
+      verlopen_bewijsfotos: {
+        Args: { p_limiet?: number }
+        Returns: {
+          pad: string
+          reden: string
+        }[]
+      }
       verlopen_chatdocs: {
         Args: { p_limiet?: number }
         Returns: {
@@ -3745,6 +4439,10 @@ export type Database = {
           pad: string
           reden: string
         }[]
+      }
+      vernieuw_organisatiecode: {
+        Args: { p_intrekken?: boolean; p_organization_id: string }
+        Returns: Json
       }
       verwachte_weekdoelstatus: {
         Args: { p_weekly_goal_id: string }
@@ -3813,6 +4511,11 @@ export type Database = {
         Args: { p_bericht?: string; p_group_id: string }
         Returns: Json
       }
+      vraag_teamdoel_afronding: {
+        Args: { p_team_goal_id: string }
+        Returns: Json
+      }
+      websleutel_octetten: { Args: { p_waarde: string }; Returns: string }
       weekafsluiting: {
         Args: { p_group_id: string; p_period_start: string }
         Returns: {
@@ -3844,6 +4547,10 @@ export type Database = {
           total_replies: number
           week_review_id: string
         }[]
+      }
+      weekbelofte_begunstigde_bekend: {
+        Args: { p_getuige: string; p_groep: string }
+        Returns: boolean
       }
       weekdoelen_over: { Args: never; Returns: number }
       weekdoelen_plafond: { Args: never; Returns: number }
@@ -3884,8 +4591,16 @@ export type Database = {
       weekreacties_plafond: { Args: never; Returns: number }
       weergavenaam: { Args: { p_user_id: string }; Returns: string }
       wikkel_commitments_af: { Args: { p_goal_id: string }; Returns: Json }
+      word_organisatielid: { Args: { p_code: string }; Returns: Json }
+      xp_bedrag_badge: { Args: { p_badge: string }; Returns: number }
+      xp_drempels: { Args: never; Returns: number[] }
+      xp_niveau: { Args: { p_totaal: number }; Returns: number }
       zet_doelstatus: {
         Args: { p_gearchiveerd: boolean; p_goal_id: string }
+        Returns: Json
+      }
+      zet_groepsklassement: {
+        Args: { p_aan: boolean; p_bevestigd?: boolean; p_group_id: string }
         Returns: Json
       }
       zet_groepsontdekbaarheid: {
@@ -3904,6 +4619,10 @@ export type Database = {
           p_nieuwe_start: string
           p_oude_start: string
         }
+        Returns: Json
+      }
+      zet_organisatielid_uit: {
+        Args: { p_organization_id: string; p_user_id: string }
         Returns: Json
       }
       zet_streefdatum: {

@@ -1,8 +1,8 @@
 {
   "$toelichting": "De migratiestand van het productieproject, geschreven door `npm run register:controle` (dat is de kant die de service-role-key heeft). Met de hand bijwerken mag, maar dan meet je het ook echt — zie docs/decisions/2026-09-17-de-uitrolstand-is-een-gegeven-en-geen-alinea.md.",
   "project": "wehgocadxehottiiyvsc",
-  "hoogste": "0302",
-  "registerrijen": 305,
-  "gemeten": "2026-11-17",
-  "bron": "supabase_migrations.schema_migrations via de Supabase-MCP (list_migrations), alleen gelezen, 17-11-2026 — QS8-641. Eindigt op 0302_de_review_vond_twee_lekken_en_drie_naden_in_de_wachtrij; de schema-vingerafdruk (scripts/schema-vingerafdruk.sql) is in alle negen soorten gelijk aan een lokale opbouw uit deze map."
+  "hoogste": "0336",
+  "registerrijen": 339,
+  "gemeten": "2026-11-22",
+  "bron": "migratieregister() via npm run register:controle"
 }
