@@ -1,22 +1,26 @@
 import { reportError } from '../../lib/observability';
 import { supabase } from '../../lib/supabase';
-import { type Pagina, type RpcRij } from '../../shared/api';
+import { type Pagina, type Resultaat, type RpcRij } from '../../shared/api';
 import { t } from '../../shared/i18n';
 
 /**
- * Het klassement en de optelteller van een groep — QS8-254, besluit A54.
+ * Het klassement en de optelteller van een groep — QS8-254 (A54), sinds QS8-666 (A57) met een schakelaar.
  *
  * ⚠️ **Twee getallen met twee verschillende regels, en dat is de hele module.**
  *    De teller is een groepstotaal zonder namen en staat in béide
  *    zichtbaarheidstanden open (dat is wat besluit A42 al toestond). Het
- *    klassement is per persoon en bestaat alleen in een **open** groep — een
- *    groep die onder A41 heeft afgesproken elkaars tegenslag te zien.
+ *    klassement is per persoon en hangt sinds 0333 aan `groups.klassement_aan`
+ *    en niet meer aan de zichtbaarheid: een beheerder zet het aan of uit met
+ *    `zet_groepsklassement()` (0336). Een teamgroep en een automatisch gevormde
+ *    groep hebben het nooit.
  *
  * ⚠️ **De grens zit in de database en niet hier.** `groep_klassement()` toetst
- *    `lid_van_open_groep()` en geeft in een beschermde groep nul rijen terug.
- *    Deze module verbergt dus niets — hij toont wat hij krijgt, en dat is precies
- *    de bedoeling: een scherm dat de regel zelf zou moeten kennen, is een regel
- *    die met één verzoek aan PostgREST te omzeilen valt.
+ *    `lid_van_levende_groep()`, de schakelaar en de teamgroep en geeft anders
+ *    nul rijen terug. Deze module verbergt dus niets: hij toont wat hij krijgt,
+ *    en dat is precies de bedoeling: een scherm dat de regel zelf zou moeten
+ *    kennen, is een regel die met één verzoek aan PostgREST te omzeilen valt.
+ *    De poortfuncties onderaan (`kanKlassementZetten`, `toonKlassementUitnodiging`)
+ *    zijn een weergavehint voor wie een knop mag zien; ze beslissen niets.
  *
  * ⚠️ **Er komt hier nooit een delta of een datum binnen.** De RPC heeft die
  *    kolommen niet (0141). Wie een verloop per lid wil tonen, kan dat niet
@@ -75,12 +79,12 @@ function naarRij(rij: RpcKlassement): Klassementsrij | null {
 }
 
 /**
- * Het klassement van een open groep.
+ * Het klassement van een groep.
  *
- * Geeft een lege pagina in een beschermde groep, en ook aan een niet-lid. Dat
+ * Geeft een lege pagina als het klassement uit staat, en ook aan een niet-lid. Dat
  * onderscheid bestaat bewust niet: allebei krijgen ze nul rijen van de RPC, en
  * een aanroeper die het verschil kon zien, zou daarmee kunnen uitlezen of een
- * groep open staat zonder er lid van te zijn.
+ * groep het klassement aan heeft zonder er lid van te zijn.
  */
 export async function fetchKlassement(
   groupId: string,
@@ -147,4 +151,102 @@ export async function fetchGroepsteller(groupId: string): Promise<Groepsteller |
   }
 
   return { weken: ruw.weken, mijlpalen: ruw.mijlpalen };
+}
+
+/**
+ * De weigerredenen van `zet_groepsklassement()` (0336), in woorden voor de beheerder.
+ *
+ * ⚠️ **Een eigen tabel en niet `meldingen()` uit `api.ts`.** Daar betekent
+ *    `not_confirmed` iets over de zichtbaarheid en `unchanged` "dit verandert wat
+ *    de groep over anderen ziet". Eén reden met twee betekenissen hoort niet in
+ *    één tabel, en `zetHuddledag()` vertaalt ze om dezelfde reden bij de aanroep.
+ *
+ * ⚠️ **Een functie en geen constante** (QS8-115): `t()` leest de taal op het
+ *    moment van aanroepen, en een constante bevriest hem bij het laden.
+ *    `tests/beloftes/klassement-zet-redenen.test.ts` legt de sleutels naast de
+ *    redenen in de laatste definitie van de RPC.
+ */
+export function klassementMeldingen(): Readonly<Record<string, string>> {
+  return {
+    not_confirmed: t('klassement.niet_bevestigd'),
+    not_admin: t('groep.geen_beheerder'),
+    teamgroep: t('klassement.teamgroep'),
+    automatisch: t('klassement.automatisch'),
+    archived: t('klassement.gearchiveerd'),
+    unchanged: t('klassement.ongewijzigd'),
+    unknown_group: t('klassement.onbekend'),
+    unknown_state: t('groep.actie_mislukt_kort'),
+  };
+}
+
+/**
+ * Zet het klassement van een groep aan of uit — migratie 0336 (QS8-666, A57).
+ *
+ * ⚠️ `bevestigd` is een parameter om dezelfde reden als bij `zetGroepszichtbaarheid()`:
+ *    de handeling raakt álle leden (aanzetten maakt ook de al verdiende punten
+ *    zichtbaar, want `points_ledger` bewaart de groep altijd), en domeinregel 5 zegt
+ *    dat zoiets expliciet bevestigd moet zijn. De database weigert zonder.
+ *
+ * Geeft de stand terug die de database nu heeft, en niet de gevraagde.
+ */
+export async function zetGroepsklassement(
+  groupId: string,
+  aan: boolean,
+  bevestigd: boolean,
+): Promise<Resultaat<boolean>> {
+  const { data, error } = await supabase().rpc('zet_groepsklassement', {
+    p_group_id: groupId,
+    p_aan: aan,
+    p_bevestigd: bevestigd,
+  });
+
+  if (error) {
+    reportError(error, 'groups.leaderboard_set', { group_id: groupId });
+    return { ok: false, melding: t('groep.actie_mislukt') };
+  }
+
+  const uit = (data ?? {}) as { ok?: boolean; reason?: string; klassement?: boolean };
+  if (uit.ok !== true) {
+    const reden = uit.reason ?? '';
+    return {
+      ok: false,
+      melding: klassementMeldingen()[reden] ?? t('groep.actie_mislukt_kort'),
+    };
+  }
+
+  return { ok: true, waarde: uit.klassement ?? aan };
+}
+
+/** De velden van een groep die bepalen of er een klassement bij hoort. */
+export interface KlassementGroep {
+  readonly status: string;
+  readonly automatisch: boolean;
+  readonly klassement_aan: boolean;
+  readonly organization_id: string | null;
+}
+
+/**
+ * Mag deze gebruiker de schakelaar zien? Een weergavehint, geen grens.
+ *
+ * ⚠️ **Dezelfde vier toetsen als de database, in dezelfde volgorde van belang:**
+ *    een teamgroep, een automatisch gevormde groep en een gearchiveerde groep hebben
+ *    geen schakelaar, ook niet voor een beheerder. De RPC weigert ze met een eigen
+ *    reden; dit voorkomt dat het scherm een knop toont die gegarandeerd faalt.
+ */
+export function kanKlassementZetten(groep: KlassementGroep, beheerder: boolean): boolean {
+  if (!beheerder) return false;
+  if (typeof groep.organization_id === 'string') return false;
+  if (groep.automatisch) return false;
+  return groep.status !== 'archived';
+}
+
+/**
+ * Toont het scherm de uitnodigingskaart: alleen een beheerder, in een groep waar het
+ * klassement kán maar uit staat.
+ *
+ * ⚠️ De poort is `klassement_aan === false` en niet "nul rijen uit de RPC": nul rijen
+ *    is ook wat een storing of een niet-lid oplevert.
+ */
+export function toonKlassementUitnodiging(groep: KlassementGroep, beheerder: boolean): boolean {
+  return kanKlassementZetten(groep, beheerder) && !groep.klassement_aan;
 }
