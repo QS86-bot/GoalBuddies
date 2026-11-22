@@ -6,7 +6,9 @@ Aanleiding: het meetverslag van QS8-745 (`docs/research/meetverslag-gat-bij-een-
 
 ## Conclusie
 
-**Klasse (a): geen fout, geen actie.** Het is ook geen historisch artefact: het is **bedoeld gedrag dat vandaag nog precies zo optreedt.** Beide weken hadden geen beoordelaar. De database slaat het minpunt dan bewust over: QS8-110, optie C, *"zonder buddy geen punten omhoog, dus ook niet omlaag"* (migratie 0065, aangescherpt in 0066).
+**Voor de twee weken: klasse (a), geen fout, geen actie.** Het is ook geen historisch artefact: het is **bedoeld gedrag dat vandaag nog precies zo optreedt.** Beide weken hadden geen beoordelaar. De database slaat het minpunt dan bewust over: QS8-110, optie C, *"zonder buddy geen punten omhoog, dus ook niet omlaag"* (migratie 0065, aangescherpt in 0066).
+
+**Bij het nalopen kwam wel een gat van klasse (b) boven, dat vandaag nog kan optreden:** komt een buddy pas bij de groep nadat het weekdoel is aangemaakt, dan blijft de grendel `false`. Een gemiste week kost dan niets, terwijl die buddy de week wél kan goedkeuren (+2). Dat is de asymmetrie die domeinregel 10 verbiedt (*"anders is missen gratis"*). De productieweken van dit issue vallen hier niet onder: daar is nooit een tweede lid geweest. Zie het hoofdstuk *Het gat: een buddy die later komt*. Voorstel voor een vervolgissue staat daar.
 
 De vraag in het issue ging uit van een aanname die niet klopt: dat `points_miss = -1` betekent dat er een rij in het grootboek hoort te staan. `points_miss` is het bedrag dat een gemiste week **zou** kosten. Of dat bedrag geboekt wordt, beslist de trigger `minpunt_alleen_met_beoordelaar` op `points_ledger`. Het grootboek is de waarheid over de score; `points_miss` wordt nergens in `src/` of `app/` getoond (alleen in de gegenereerde typen).
 
@@ -28,7 +30,7 @@ Overige standen, ook gemeten: `points_ledger` 0 rijen; `groups` 2, `group_member
 3. **Bij het sluiten van de week** zet de rollover de status op `missed` en probeert hij de rij `cycle_missed` met `delta = points_miss` te boeken (vandaag via `sluit_verstreken_weken_af()`, 0335).
 4. **De trigger `minpunt_alleen_met_beoordelaar`** (BEFORE INSERT op `points_ledger`, `tgenabled = O`) leest `weekly_goals.beoordeelbaar` via `ref_id`. Is die `false`, dan geeft `geen_minpunt_zonder_beoordelaar()` `return null`: de rij wordt stil overgeslagen, met alleen een `raise notice` in de Postgres-log. De status `missed` blijft staan, want de week ís gemist.
 
-De trigger hangt aan de tabel en niet aan de rollover. Hij geldt dus voor elke schrijver, ook voor de Edge Function-versie van de rollover die in september en oktober draaide.
+De trigger hangt aan de tabel en niet aan de rollover. Hij geldt voor elke schrijver **die naar het weekdoel verwijst** (`ref_type = 'weekly_goal'` en `ref_id` gevuld). Zonder die verwijzing laat hij de rij bewust door: bij twijfel blijft het minpunt staan. Beide rollovers vulden de verwijzing: de huidige `sluit_verstreken_weken_af()` en de Edge Function-versie die in september en oktober draaide (`ref_type: 'weekly_goal', ref_id: weekdoel.id` in de geschiedenis van `supabase/functions/rollover`; dat is nagelezen door de security-reviewer en niet door mij).
 
 **Vingerafdrukken.** `md5(pg_get_functiondef())` van zeven functies is op productie gelijk aan die op de lokaal opgebouwde database (alle 340 migratiebestanden van `origin/main`):
 
@@ -47,7 +49,7 @@ De trigger hangt aan de tabel en niet aan de rollover. Hij geldt dus voor elke s
 | Kandidaat | Uitkomst | Hoe gemeten |
 |---|---|---|
 | De weken sloten vóór de migratie die `cycle_missed` boekt | **Verworpen.** `cycle_missed` is een toegestane reden sinds 0001. De boeking zelf deed de rollover (de Edge Function, sinds 0335 via `sluit_verstreken_weken_af()`). De weken sloten na 20-09 en 06-10; `CLAUDE.md` noteert productie op 0282 op 17-09, dus 0065 en 0066 waren al actief. Ook onder de oudere vorm van 0065 (de vraag op het moment van boeken) was het antwoord `false`, want er bestond tot 18-11 geen groep. | migratievolgorde (`list_migrations`), tijdstempels van de groepen |
-| Gesloten door een pad dat niet boekt | **Nee, het boekende pad werd geweigerd.** Welk pad de status zette, is niet vast te stellen (`weekly_goals` heeft geen `updated_at` en de Postgres-log van september is weg). Dat maakt voor de uitkomst niet uit: de trigger laat bij `beoordeelbaar = false` geen enkele schrijver door. | trigger- en functiedefinities op productie; lokale proef, stap 4 |
+| Gesloten door een pad dat niet boekt | **Nee, het boekende pad werd geweigerd.** Welk pad de status zette, is niet vast te stellen (`weekly_goals` heeft geen `updated_at` en de Postgres-log van september is weg). Dat maakt voor de uitkomst niet uit: de trigger laat bij `beoordeelbaar = false` geen schrijver door die naar het weekdoel verwijst, en beide rollovers deden dat. | trigger- en functiedefinities op productie; lokale proef, stap 4 |
 | Een rij is later weggehaald | **Verworpen als verklaring.** Voor deze weken kon nooit een rij ontstaan (zie hierboven). Daarnaast: `authenticated` heeft op `points_ledger` alleen `SELECT` (één policy, `points_ledger_select`); de opruimregels in `tests/rls/punten-deze-week.test.ts` en `tests/rls/teambonus.test.ts` filteren op testgebruikers; de cascade vanuit `profiles` speelt niet, want beide eigenaars bestaan nog. | `pg_policy`, `role_table_grants`, grep in `tests/` |
 
 ⚠️ **Wel gemeten en niet verklaard, en voor deze vraag niet nodig:** `pg_stat_user_tables` toont voor `points_ledger` sinds 24-07-2026 `n_tup_ins = 2956` en `n_tup_del = 3052`. Er is dus veel in en uit dit grootboek geschreven. Waarschijnlijk is dat de RLS-suite, die tot QS8-702 (18-11) standaard tegen productie draaide. Dat het aantal deletes groter is dan het aantal inserts, komt waarschijnlijk door rijen die al vóór de reset van de statistieken bestonden. **Beide verklaringen zijn aannames.** Ze veranderen de conclusie niet, want voor deze twee weken kon geen rij ontstaan.
@@ -121,11 +123,40 @@ rollback;
 
 In een eerste versie van de proef koppelde ik C **vóór** het sluiten van de week. Toen werd `beoordeelbaar` `true` en werd het minpunt geboekt, terwijl de eigenaar het enige lid van de groep was. Oorzaak: `koppeling_zet_beoordeelbaar_om()` zet de grendel om bij elke koppeling, zonder te vragen of de groep een tweede lid heeft. `zet_beoordeelbaar_bij_insert()` vraagt dat wél.
 
-Dat is **gedocumenteerd als bewuste keuze** in de kop van 0066 §3 (*"bewust de gulle kant op … dat kan een minpunt opleveren voor een week waarin je feitelijk geen buddy had. De andere kant op fout gaan is erger: dan is missen weer gratis"*). Het verklaart de twee productieweken niet. Het staat hier omdat het de enige plek is waar een gemiste week een minpunt kost zonder dat er een beoordelaar kon zijn. Of dat zo blijft, is een besluit over punten (domeinregel 10) en geen vondst van deze meting.
+Dat is **gedocumenteerd als bewuste keuze** in de kop van 0066 §3 (*"bewust de gulle kant op … dat kan een minpunt opleveren voor een week waarin je feitelijk geen buddy had. De andere kant op fout gaan is erger: dan is missen weer gratis"*). Het verklaart de twee productieweken niet, en het is geen fout. Het is één van de plekken waar de app bewust de gulle kant op kiest: een minpunt zonder dat er een beoordelaar kon zijn. Andere plekken zijn het vertrek van je enige buddy midden in de week (0102, bewust) en, volgens de security-reviewer, een gearchiveerde groep (`kan_beoordeeld_worden()` kijkt niet naar `groups.status`; door mij niet gemeten). Deze kant op is de schade een punt te veel, geen gratis gemiste week.
+
+## Het gat: een buddy die later komt (klasse b)
+
+De gevaarlijke asymmetrie zit aan de andere kant, en de security-reviewer vond haar bij het nalopen van dit verslag. Ik heb haar zelf nagespeeld.
+
+**Volgorde:** doel koppelen aan een groep waarin je het enige lid bent → weekdoel aanmaken (`beoordeelbaar = false`, want `kan_beoordeeld_worden()` vindt geen ander lid) → een buddy komt erbij → de week wordt gemist.
+
+**Lokaal gemeten** (zelfde database, transactie teruggerold):
+
+| Moment | `beoordeelbaar` | `kan_beoordeeld_worden()` | Status | Rijen `cycle_missed` |
+|---|---|---|---|---|
+| Na de buddy, vóór het sluiten | **false** | **true** | `todo` | 0 |
+| Na `sluit_verstreken_weken_af()` | false | true | `missed`, `points_miss = -1` | **0**, met de NOTICE *"minpunt overgeslagen"* |
+
+**Oorzaak, gemeten op productie én lokaal:** geen enkele trigger op `group_members` raakt `beoordeelbaar` (0 op productie). Alleen een nieuwe rij in `goal_group_links` zet de grendel om. De goedkeuringspolicy `completion_approvals_insert` leest de grendel niet (md5 van de WITH CHECK op productie gelijk aan lokaal, `5b298150c296d6ea83c8dd96165b31ea`). Die buddy kan de week dus goedkeuren. **Halen levert +2 op, missen kost 0.** Het kolomcommentaar van 0066 belooft *"stond dit doel tijdens deze cyclus ooit in een groep met een ander niet-inactief lid"*; wat gebouwd is, houdt die belofte niet.
+
+**Hoe het optreedt:**
+- *Vanzelf, zonder kwade opzet:* groep aanmaken, doel koppelen, week plannen, vriend uitnodigen. De weken die vóór het toetreden zijn aangemaakt, kosten niets als ze gemist worden. Volgens de reviewer is het venster begrensd tot één cyclus vooruit (`weekdoel_cyclus_klopt`); dat heb ik niet zelf gemeten.
+- *Herhaalbaar, met een meewerkende buddy:* de buddy vertrekt, de eigenaar maakt het weekdoel van volgende week aan, de buddy komt terug met de code. De koppeling van de eigenaar blijft staan, dus de koppeltrigger gaat niet af. Dit is de vorm *"vertrek vrijdag, kom maandag terug"* die 0066 en 0102 moesten dichten. Deze route heb ik **niet** apart nagespeeld; de reviewer leidt hem af uit dezelfde oorzaak.
+
+**Voorstel voor een vervolgissue** (onder QS8-110; punten zijn een besluit van Quinten, dus nog niet aangemaakt):
+
+> *Een buddy die later bij de groep komt, zet de grendel op het minpunt om.*
+> Acceptatiecriteria:
+> 1. Wordt een lid van een groep actief of komt het erbij (insert, of een update van `inactive` naar een andere status), dan wordt `beoordeelbaar` `true` voor elk weekdoel op `todo` of `cancelled` van elk doel dat aan die groep gekoppeld is en van een **ander** lid is.
+> 2. Afgewikkelde weken (`missed`, `approved`, `excused`) veranderen niet (domeinregel 6).
+> 3. Een RLS-test speelt beide routes na: "buddy komt later" en "buddy vertrekt en komt terug". Beide geven een rij `cycle_missed` met `-1`, en beide worden rood met de oude trigger teruggezet.
+> 4. Een lid dat alleen zichzelf toevoegt (de eigenaar), zet niets om.
+> 5. Het beslisdocument van de grendel (`docs/decisions/2026-08-23-de-grendel-op-het-minpunt.md`) noemt de nieuwe trigger en de reden.
 
 ## Wat gemeten is en wat een aanname is
 
-**Gemeten:** de tabelstanden en grendelwaarden van beide weken; dat de groepen pas sinds 18-11 bestaan; de gedeployde trigger- en functiedefinities en hun vingerafdrukken (gelijk aan de repo); de policy en de rechten op `points_ledger`; de lokale reproductie van alle drie de scenario's en van de tweede schrijver.
+**Gemeten:** de tabelstanden en grendelwaarden van beide weken; dat de groepen pas sinds 18-11 bestaan; de gedeployde trigger- en functiedefinities en hun vingerafdrukken (gelijk aan de repo); de policy en de rechten op `points_ledger`; de lokale reproductie van alle drie de scenario's en van de tweede schrijver; het gat van de later komende buddy (lokaal), en op productie dat er geen trigger op `group_members` is en dat de goedkeuringspolicy gelijk is aan de repo.
 
 **Niet gemeten (aannames):**
 1. Welk pad de status in september en oktober op `missed` zette (geen `updated_at`, geen log meer). Voor de uitkomst maakt het niet uit: de trigger geldt voor elk pad.
@@ -133,6 +164,13 @@ Dat is **gedocumenteerd als bewuste keuze** in de kop van 0066 §3 (*"bewust de 
 3. De oorzaak van de verhouding tussen inserts en deletes in `pg_stat_user_tables` (zie hierboven).
 4. Dat de eerste week niet door een `notice` in de log is achtergebleven: de log van toen bestaat niet meer, dus de `notice` zelf is niet terug te vinden.
 
+5. Of een gearchiveerde groep goedkeuren blokkeert (zie *Een bijvangst*); niet gemeten.
+6. De herhaalbare route van het gat (vertrekken en terugkomen); afgeleid, niet apart nagespeeld.
+
 ## Volgende stap
 
-Geen bouwissue. QS8-774 kan dicht met deze verklaring. Of de koppelingstrigger strenger moet worden (zie *Een bijvangst*), is een vraag voor Quinten en hoort bij QS8-110, niet bij dit issue.
+Voor QS8-774 zelf geen bouwwerk: de twee weken zijn verklaard. Voor het gat is een besluit van Quinten nodig (punten, domeinregel 10). Er zijn drie opties:
+
+- **A (advies):** vervolgissue met de acceptatiecriteria hierboven, onder QS8-110. Dat dicht de asymmetrie aan de kant waar missen gratis is.
+- **B:** het gat accepteren als bewuste gulheid. Dan hoort de zin in het kolomcommentaar van 0066 eruit, en hoort er een regel in de agenda van de engineer-review met *Wordt zwaarder als*.
+- **C:** eerst meten hoe vaak het in productie voorkomt. Met twee profielen is dat vandaag nul, dus dit stelt het besluit uit tot er gebruikers zijn.
