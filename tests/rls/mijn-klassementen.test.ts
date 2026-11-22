@@ -105,14 +105,20 @@ describe.runIf(rlsTestsConfigured)('mijn_klassementen() volgt groep_klassement()
   let elders: Groep; // Bram, uit, met punten
 
   beforeAll(async () => {
-    [anna, bram, cor, dirk, eva, fien, gijs] = await Promise.all(
-      ['anna', 'bram', 'cor', 'dirk', 'eva', 'fien', 'gijs'].map((n) => createTestUser(`mk-${n}`)),
-    );
+    [anna, bram, cor, dirk, eva, fien, gijs] = await Promise.all([
+      createTestUser('mk-anna'),
+      createTestUser('mk-bram'),
+      createTestUser('mk-cor'),
+      createTestUser('mk-dirk'),
+      createTestUser('mk-eva'),
+      createTestUser('mk-fien'),
+      createTestUser('mk-gijs'),
+    ]);
 
     k7 = await maakGroep(anna, 'MK-zeven', 'beschermd');
     for (const lid of [bram, cor, dirk, eva, fien, gijs]) await laatMeedoen(lid, k7);
-    // Cor en Dirk staan gelijk op 4e en 4e; Anna is 7e met de minste punten.
-    for (const [wie, n] of [[gijs, 10], [fien, 9], [eva, 8], [dirk, 7], [cor, 7], [bram, 6], [anna, 2]] as const) {
+    // Bram, Cor en Dirk staan gelijk op 4e (drie gelijk over de grens van vijf heen); Anna is 7e met de minste punten.
+    for (const [wie, n] of [[gijs, 10], [fien, 9], [eva, 8], [dirk, 7], [cor, 7], [bram, 7], [anna, 2]] as const) {
       await geefPunten(wie, k7.id, n);
     }
 
@@ -184,7 +190,7 @@ describe.runIf(rlsTestsConfigured)('mijn_klassementen() volgt groep_klassement()
   it('AC5: alleen de punten van déze groep, en een groep zonder klassement komt er niet in', async () => {
     const rijen = await mijn(bram);
     const inK7 = vanGroep(rijen, k7.id).find((r) => r.user_id === bram.id);
-    expect(inK7?.punten).toBe(6);
+    expect(inK7?.punten).toBe(7);
     expect(rijen.some((r) => r.group_id === elders.id || r.group_id === uit.id), 'een groep zonder klassement stond erin').toBe(false);
   }, TEST_TIMEOUT);
 
