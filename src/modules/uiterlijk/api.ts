@@ -12,13 +12,8 @@ import type { AccountVoorkeur } from './verzoenen';
 /**
  * De clientkant van `gebruikersvoorkeuren` — QS8-729, migratie 0303.
  *
- * ⚠️ **De tabel is nog niet in `src/lib/database.types.ts` en dat is met opzet
- *    niet met de hand bijgewerkt.** Dat bestand is een afschrift van productie;
- *    de migratie wacht op Quintens "backup gedaan" (docs/PROMPT-SESSIE.md §12d).
- *    Tot `npm run types:db` hem na de uitrol kent, loopt de tabelnaam door één
- *    smalle structurele rand (`tabel()`), en niets anders in deze module raakt
- *    een ongetypeerd resultaat: elke rij gaat door `leesVoorkeur()`. Na de
- *    uitrol kan `tabel()` verdwijnen; er verandert dan niets aan het gedrag.
+ * ⚠️ Elke rij gaat door `leesVoorkeur()`: een rij die deze module niet kent is een
+ *    luide fout, geen stille standaard.
  *
  * ⚠️⚠️ **`.upsert()` werkt hier niet**, om dezelfde reden als bij `hero_profiles`
  *    (zie `helden/heldprofiel.ts`): `user_id` mag je bij het aanmaken zetten en
@@ -33,30 +28,6 @@ import type { AccountVoorkeur } from './verzoenen';
 
 const KOLOMMEN = 'stijl, kleurvariant, weergave, dichtheid, emoji, bijgewerkt_op';
 const AL_AANWEZIG = '23505';
-
-interface FoutRand {
-  readonly message: string;
-  readonly code?: string;
-}
-interface Antwoord {
-  readonly data: unknown;
-  readonly error: FoutRand | null;
-}
-interface Bouwer extends PromiseLike<Antwoord> {
-  eq(kolom: string, waarde: string): Bouwer;
-  select(kolommen: string): Bouwer;
-  single(): Bouwer;
-  maybeSingle(): Bouwer;
-}
-interface TabelRand {
-  select(kolommen: string): Bouwer;
-  insert(rij: object): Bouwer;
-  update(rij: object): Bouwer;
-}
-
-function db(): { from(naam: string): TabelRand } {
-  return supabase() as unknown as { from(naam: string): TabelRand };
-}
 
 function alsAccountVoorkeur(rij: unknown): AccountVoorkeur | null {
   if (typeof rij !== 'object' || rij === null) return null;
@@ -73,7 +44,7 @@ function alsAccountVoorkeur(rij: unknown): AccountVoorkeur | null {
  *    de twee verschillend (zie `verzoenVoorkeur`).
  */
 export async function haalAccountVoorkeur(userId: string): Promise<AccountVoorkeur | null> {
-  const { data, error } = await db()
+  const { data, error } = await supabase()
     .from('gebruikersvoorkeuren')
     .select(KOLOMMEN)
     .eq('user_id', userId)
@@ -146,7 +117,7 @@ export async function bewaarAccountVoorkeur(
 }
 
 async function maakRij(userId: string, voorkeur: Uiterlijkvoorkeur): Promise<BewaarUitkomst> {
-  const nieuw = await db()
+  const nieuw = await supabase()
     .from('gebruikersvoorkeuren')
     .insert({
       user_id: userId,
@@ -181,7 +152,7 @@ async function wijzigRij(
   //    null`. Met `return=representation` is dat een lege lijst en dus te zien.
   //    Alle vijf de kolommen gaan mee: de CHECK koppelt stijl en variant, dus
   //    een update van alleen `stijl` kan 23514 geven.
-  const bestaand = await db()
+  const bestaand = await supabase()
     .from('gebruikersvoorkeuren')
     .update({
       stijl: voorkeur.stijl,

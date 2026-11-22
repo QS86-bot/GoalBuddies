@@ -73,7 +73,7 @@ interface Belofte {
   extra?: Record<string, unknown>;
 }
 
-/** Een belofte via PostgREST. `periode_start` staat nog niet in de gegenereerde typen. */
+/** Een belofte via PostgREST. */
 function belofte(door: TestUser, doel: string, b: Belofte): PromiseLike<Uitkomst> {
   const rij: Record<string, unknown> = {
     goal_id: doel,
