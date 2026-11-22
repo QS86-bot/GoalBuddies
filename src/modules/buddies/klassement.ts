@@ -239,3 +239,6 @@ export function kanKlassementZetten(groep: KlassementGroep, beheerder: boolean):
   if (groep.automatisch) return false;
   return groep.status !== 'archived';
 }
+
+// ⚠️ Staat in `klassement-poort.ts`, zonder enige import: het groepsscherm en zijn toetsen lezen het naast de RPC.
+export { klassementPlek, type KlassementPlek, type KlassementUitkomstVorm } from './klassement-poort';

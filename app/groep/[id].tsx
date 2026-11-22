@@ -7,6 +7,7 @@ import { clientEnv } from '@/lib/env';
 import { useProfiel, useSession } from '@/modules/auth';
 import {
   fetchGroep,
+  klassementPlek,
   fetchGroepsoverzicht,
   fetchGroepsteller,
   fetchKettingStand,
@@ -186,7 +187,8 @@ export default function GroepDetail() {
               <Caption>
                 {t('groepdetail.inhoud', {
                   onderdelen: groepInhoud({
-                    open: s.groep.zichtbaarheid === 'open' && !isTeamgroep(s.groep),
+                    klassement: klassementPlek(s.klassement) === 'lijst',
+                    helden: s.groep.zichtbaarheid === 'open' && !isTeamgroep(s.groep),
                     kanUitnodigen:
                       deelbaarBericht(s.groep, clientEnv().appUrl, profiel?.display_name) !== null,
                   })
@@ -296,11 +298,12 @@ export default function GroepDetail() {
                  klassement bovenaan staan, dan is het eerste wat een lid van
                  zijn groep leest een ranglijst.
 
-              ⚠️ Dit blok staat er in élke groep, en verbergt niets. In een
-                 beschermde groep geeft `groep_klassement()` nul rijen terug en
-                 rendert het niets — de regel van besluit A54 staat in 0141 en
-                 niet hier. Een scherm dat de regel zelf zou moeten kennen, is
-                 een regel die met één verzoek aan PostgREST te omzeilen valt.
+              ⚠️ Dit blok staat er in élke groep, en verbergt niets. Sinds A57 (QS8-666) hangt het klassement
+                 aan `groups.klassement_aan` en niet meer aan de zichtbaarheid: heeft de groep het, dan geeft
+                 `groep_klassement()` rijen terug en tekent de kaart ze; heeft de groep het niet, dan geeft
+                 de RPC nul rijen en rendert de kaart niets. De regel
+                 staat in 0333 en niet hier. Een scherm dat de regel zelf zou moeten kennen, is een regel die met
+                 één verzoek aan PostgREST te omzeilen valt.
             */}
             <KlassementKaart uitkomst={s.klassement} onOpnieuw={herlaad} />
 
@@ -933,11 +936,11 @@ function KoppelDoel({
 }
 
 /**
- * Het klassement van een open groep — QS8-254, besluit A54.
+ * Het klassement van een groep die er een heeft — QS8-254 (A54), sinds QS8-666 (A57) aan `groups.klassement_aan`.
  *
  * ⚠️ **Er is geen tak voor "beschermde groep".** Dit component weet niet wat
- *    `groups.zichtbaarheid` is en hoeft dat niet te weten: in een beschermde
- *    groep komen er nul rijen binnen en rendert het niets. Zou het scherm de
+ *    `groups.zichtbaarheid` of `klassement_aan` is en hoeft dat niet te weten: heeft de
+ *    groep geen klassement, dan komen er nul rijen binnen en rendert het niets. Zou het scherm de
  *    stand zélf lezen en de kaart verbergen, dan zou de RPC hem alsnog uitleveren
  *    aan wie er rechtstreeks om vraagt.
  *
@@ -965,7 +968,7 @@ function KlassementKaart({
 
   const { rijen, totaal, meer } = uitkomst.pagina;
 
-  // Nul rijen betekent "deze groep is beschermd" of "je bent geen lid". Allebei
+  // Nul rijen betekent "deze groep heeft geen klassement" of "je bent geen lid". Allebei
   // is de juiste uitkomst niets, en niet een lege kaart met een kop erboven.
   if (rijen.length === 0) return null;
 
