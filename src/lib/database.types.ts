@@ -1928,6 +1928,39 @@ export type Database = {
           },
         ]
       }
+      organisatie_aanmakers: {
+        Row: {
+          reden: string
+          toegevoegd_op: string
+          user_id: string
+        }
+        Insert: {
+          reden: string
+          toegevoegd_op?: string
+          user_id: string
+        }
+        Update: {
+          reden?: string
+          toegevoegd_op?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "organisatie_aanmakers_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: true
+            referencedRelation: "mijn_profiel"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "organisatie_aanmakers_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: true
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       organization_members: {
         Row: {
           joined_at: string
