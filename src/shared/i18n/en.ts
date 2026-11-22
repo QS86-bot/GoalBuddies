@@ -2006,8 +2006,24 @@ export const en: Record<Sleutel, string> = {
   'bevestiging.groep_beschermen.knop': 'Yes, protect it',
   'bevestiging.groep_ontdekbaar_maken.titel': 'Make this group discoverable?',
   'bevestiging.groep_ontdekbaar_maken.uitleg':
-    'People you don’t know yet will be able to find this group and ask to join. They see the name, the topic, your description, the language, the huddle day and how many members there are. They do not see who is in it, which goals are in it, the chat, The Chain or anyone’s streak. Requests come to you and you do not have to accept a single one. Everyone in the group gets a message about it. You can undo this at any time, immediately.',
+    'People you don’t know yet will be able to find this group and ask to join. They see the name, the topic, your description, the language, the huddle day and how many members there are. They do not see who is in it, which goals are in it, the chat, The Chain or anyone’s streak. Requests come to you and you do not have to accept a single one. Everyone in the group gets a message about it. If the leaderboard is on, it turns off; an admin can turn it back on separately afterwards. You can undo this at any time, immediately.',
   'bevestiging.groep_ontdekbaar_maken.knop': 'Yes, make it discoverable',
+  // QS8-666 (A57, 0336). Turning it on also reveals the points already earned in this group (`points_ledger` always
+  // keeps the group), and the text says so (domain rule 10). It deliberately does not say "a point you lose is not
+  // shown either": a withdrawn approval books corrections with the group, so the standing can drop within the
+  // fifteen-minute window. Only a missed week is a promise the database keeps.
+  'bevestiging.klassement_aanzetten.titel': 'Turn the leaderboard on?',
+  'bevestiging.klassement_aanzetten.uitleg':
+    'From now on everyone in this group sees each other\'s rank and the points earned in this group, including those from before today. A missed week never appears in it. This applies to all members: nobody can opt out for themselves. Everyone gets a message in the group chat. You can turn it off at any time, right away.',
+  'bevestiging.klassement_aanzetten.knop': 'Yes, turn it on',
+  'bevestiging.klassement_aanzetten_vindbaar.titel': 'Turn the leaderboard on?',
+  'bevestiging.klassement_aanzetten_vindbaar.uitleg':
+    'From now on everyone in this group sees each other\'s rank and the points earned in this group, including those from before today. A missed week never appears in it. This group is discoverable: whoever joins later sees the leaderboard too. This applies to all members: nobody can opt out for themselves. Everyone gets a message in the group chat. You can turn it off at any time, right away.',
+  'bevestiging.klassement_aanzetten_vindbaar.knop': 'Yes, turn it on',
+  'bevestiging.klassement_uitzetten.titel': 'Turn the leaderboard off?',
+  'bevestiging.klassement_uitzetten.uitleg':
+    'The leaderboard disappears for everyone in this group. The points are kept and come back if you turn it on again. Everyone gets a message in the group chat.',
+  'bevestiging.klassement_uitzetten.knop': 'Yes, turn it off',
   'bevestiging.groep_verbergen.titel': 'Hide this group again?',
   'bevestiging.groep_verbergen.uitleg':
     'The group disappears from the search list and nobody can knock any more. Requests that already came in stay and you can still answer them. Nothing changes for the members.',
@@ -2273,6 +2289,19 @@ export const en: Record<Sleutel, string> = {
   'klassement.laden_mislukt': 'The leaderboard could not be loaded.',
   'klassement.teller_mislukt': 'The counter could not be loaded.',
   'klassement.opnieuw': 'Try again',
+  // The switch in group settings and its refusal reasons — QS8-666 (A57, 0336).
+  'klassement.beheer_titel': 'Leaderboard',
+  'klassement.beheer_aan': 'Is on. Members see each other\'s points from this group.',
+  'klassement.beheer_uit': 'Is off. Members do not see each other\'s points.',
+  'klassement.beheer_label': 'Leaderboard',
+  'klassement.melding_aan': 'The leaderboard is now on.',
+  'klassement.melding_uit': 'The leaderboard is now off.',
+  'klassement.niet_bevestigd': 'Confirm first that you want this.',
+  'klassement.teamgroep': 'A group that belongs to an organisation never has a leaderboard.',
+  'klassement.automatisch': 'A group that was put together automatically never has a leaderboard.',
+  'klassement.gearchiveerd': 'This group is archived. Nothing can be changed there anymore.',
+  'klassement.ongewijzigd': 'The leaderboard was already set like that.',
+  'klassement.onbekend': 'This group no longer exists.',
 
   // The hero list of an open group — QS8-493, RPC from 0268/0279.
   // ⚠️ The wording follows `bevestiging.groep_openzetten.uitleg`, which is the

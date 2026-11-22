@@ -167,8 +167,12 @@ export { fetchKettingStand } from './ketting';
 export {
   fetchGroepsteller,
   fetchKlassement,
+  kanKlassementZetten,
+  klassementMeldingen,
   KLASSEMENT_PER_PAGINA,
+  zetGroepsklassement,
   type Groepsteller,
+  type KlassementGroep,
   type Klassementsrij,
 } from './klassement';
 
