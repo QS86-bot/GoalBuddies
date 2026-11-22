@@ -44,6 +44,7 @@ import {
   standaardDsnUit,
 } from './dsn-controle.mjs';
 import { bezwaren as prerenderBezwaren, kanarieFaalt, leesPaginas, zichtbareTekst } from './prerender-controle.mjs';
+import { routeringsbezwaren } from './htaccess-routering.mjs';
 import { beoordeelAntwoorden, VERPLICHTE_PADEN } from './pwa-controle.mjs';
 
 config({ path: '.env', quiet: true });
@@ -377,6 +378,33 @@ function schrijfHtaccess() {
   const inhoud = htaccessInhoud(dynamisch);
   writeFileSync(join(DIST, '.htaccess'), inhoud, 'utf8');
   console.log(`    .htaccess geschreven, met ${dynamisch.length} regels voor dynamische routes.`);
+  eisWerkendeRouting(inhoud, alleBestanden(DIST).map((pad) => relative(DIST, pad).split(sep).join('/')));
+}
+
+/**
+ * Geeft elk adres in deze bundel een pagina, en geen 301 of 403? — QS8-789.
+ *
+ * ⚠️ **Tegen de échte `dist/`, en vóór de upload.** Welke paren van een
+ *    `.html` en een map met dezelfde naam er zijn, hangt af van de routes van
+ *    vandaag; `groep.html` naast `groep/` bestond niet toen deze generator
+ *    geschreven werd. De test voedt een vaste boom, deze stap de bouw die
+ *    vertrekt. Het model is tegen Apache geijkt; zie `scripts/htaccess-routering.mjs`.
+ *
+ * @param {string} htaccess
+ * @param {string[]} bestanden
+ */
+export function eisWerkendeRouting(htaccess, bestanden) {
+  const bezwaren = routeringsbezwaren(htaccess, bestanden);
+  if (bezwaren.length > 0) {
+    const regels = bezwaren
+      .slice(0, 10)
+      .map(({ adres, antwoord }) => `${adres} → ${antwoord.status}${antwoord.bestand ? ` ${antwoord.bestand}` : ''}`);
+    fail(
+      `${bezwaren.length} adres(sen) geven geen pagina — er is niets geüpload:\n      ${regels.join('\n      ')}`,
+      'Een route en een map met dezelfde naam gaven op Hostinger een 403 (QS8-789). Pas htaccessInhoud() aan, niet dist/.htaccess.',
+    );
+  }
+  console.log(`    ${bestanden.filter((p) => p.endsWith('.html')).length} pagina's: elk adres geeft direct een pagina.`);
 }
 
 /**
@@ -406,14 +434,31 @@ export function htaccessInhoud(dynamisch) {
 <IfModule mod_rewrite.c>
   RewriteEngine On
 
-  # Bestaat het bestand of de map echt? Dan die, en verder niets doen.
-  RewriteCond %{REQUEST_FILENAME} -f [OR]
-  RewriteCond %{REQUEST_FILENAME} -d
+  # ⚠️ QS8-789: een map wordt hier nooit doorgelaten zoals hij is. De export
+  #    maakt groep.html én een map groep/ (voor app/groep/*), en ook mappen
+  #    zonder eigen pagina (doel/, mensen/). Liet deze regel elke map door, dan
+  #    stuurde mod_dir /groep door naar /groep/, en daar staat geen index: 403.
+  #    Dat 301 is permanent, dus een browser die hem één keer zag vraagt daarna
+  #    zelf /groep/ — vandaar dat ook de vorm met een schuine streep hieronder
+  #    naar de pagina gaat.
+  <IfModule mod_dir.c>
+    DirectorySlash Off
+  </IfModule>
+
+  # Bestaat het bestand echt? Dan dat, en verder niets doen.
+  RewriteCond %{REQUEST_FILENAME} -f
   RewriteRule ^ - [L]
 
-  # Een route zonder parameter: /doelen -> doelen.html
-  RewriteCond %{REQUEST_FILENAME}.html -f
-  RewriteRule ^(.+?)/?$ /$1.html [L]
+  # Een route zonder parameter, ook als er een map met dezelfde naam is:
+  # /doelen, /groep en /groep/ -> groep.html
+  RewriteCond %{REQUEST_FILENAME} ^(.+?)/*$
+  RewriteCond %1.html -f
+  RewriteRule ^(.+?)/*$ /$1.html [L]
+
+  # Een map met een eigen index: /instellingen en /instellingen/ -> instellingen/index.html
+  RewriteCond %{REQUEST_FILENAME} ^(.+?)/*$
+  RewriteCond %1/index.html -f
+  RewriteRule ^(.+?)/*$ /$1/index.html [L]
 
 ${regels.join('\n')}
 

@@ -944,8 +944,8 @@ zodat wie de trigger ooit verzacht, ziet wát hij verzacht.
 npm run deploy
 ```
 
-Dat doet, in deze volgorde: env controleren, bouwen, de `.htaccess` schrijven,
-**de bundel op geheimen scannen**, inpakken, uploaden en live zetten op
+Dat doet, in deze volgorde: env controleren, bouwen, de `.htaccess` schrijven
+en de routering ervan tegen `dist/` meten (QS8-789), **de bundel op geheimen scannen**, inpakken, uploaden en live zetten op
 `goalbuddies.q-projects.tech`.
 
 Alleen kijken wat er zóu vertrekken, zonder iets live te zetten:
@@ -1129,6 +1129,49 @@ link deelt die niet werkt.
 
 ⚠️ **Bewerk `dist/.htaccess` niet met de hand** — hij wordt bij elke deploy
 overschreven.
+
+### Een route en een map met dezelfde naam — QS8-789
+
+⚠️⚠️ **De export maakt `groep.html` (de tab) én een map `groep/` (voor
+`app/groep/*`), en mappen zonder eigen pagina (`doel/`, `mensen/`).** De oude
+regels lieten elke bestaande map ongemoeid door. Dan stuurde Apache `/groep`
+door naar `/groep/` (een **permanente** 301 van mod_dir), en in `groep/` staat
+geen `index.html`: een 403 van Hostinger in plaats van de app. 📏 Gemeten op
+22-11-2026: `/groep` en `/doel` 301 → 403, `/mensen/` 403; `/groep/ontdek` en
+`/groep/<id>` gewoon 200.
+
+De serverregel die dat oplost staat in `htaccessInhoud()` en bestaat uit drie
+delen; elk draagt een eigen deel van de belofte:
+
+| Regel | Wat hij doet | Zonder hem |
+|---|---|---|
+| `DirectorySlash Off` (in `<IfModule mod_dir.c>`) | geen doorsturen van `/groep` naar `/groep/` | 301 — op Apache gemeten: die komt vóór de herschrijving |
+| alleen een echt **bestand** doorlaten, geen map | een map valt door naar de regels eronder | 403 |
+| `/x` en `/x/` → `x.html`, en `/x` → `x/index.html` | ook het adres mét streep krijgt de pagina | `/groep/` blijft 403 — en dat adres vragen browsers zelf, na de oude 301 |
+
+Een map zonder eigen pagina (`/doel`) valt door naar `index.html`, en de app
+toont dan zelf "niet gevonden".
+
+⚠️ **De deploy meet dit vóór de upload**, tegen de echte `dist/`: elk adres
+(elke pagina en elke map, met en zonder streep) moet direct een pagina geven,
+geen 301 en geen 403 — anders stopt hij en is er niets geüpload. Het model
+daarachter (`scripts/htaccess-routering.mjs`) is op 22-11-2026 tegen echte
+Apache 2.4 geijkt: 157 adressen, drie varianten van de regels, allemaal gelijk.
+De toetsen staan in `tests/scripts/htaccess-routering.test.ts`.
+
+⚠️ **Wat dat niet bewijst: dat Hostinger zich gedraagt als die Apache.** De
+respons komt van `hcdn`, en wat erachter draait is niet gemeten. Na de deploy
+dus nameten, uitgelogd:
+
+```bash
+for p in /groep /groep/ /doel /doel/ /mensen/ /instellingen /doelen /groep/ontdek; do
+  curl -s -o /dev/null -w "%{http_code} $p\n" "https://goalbuddies.q-projects.tech$p"
+done
+```
+
+Allemaal `200`. Een `301` op `/groep` betekent dat de server `DirectorySlash`
+negeert; de app komt dan nog steeds (via `/groep/`), maar het is een afwijking
+van het model en hoort een rij in `docs/ENGINEER-REVIEW.md`.
 
 ⚠️ Er is géén pad-voorvoegsel meer. Het subdomein heeft een eigen documentroot
 (`public_html/goalbuddies`), dus de app staat in de root van dat adres. De oude
