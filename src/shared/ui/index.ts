@@ -67,7 +67,7 @@ export {
   toontTaakbalk,
   ZONDER_TAAKBALK,
 } from './tabbladen';
-export type { Tabblad } from './tabbladen';
+export type { Tabblad, Taakbalkvorm } from './tabbladen';
 export { TabFout } from './TabFout';
 export { RootVangnet } from './RootVangnet';
 export { useGehydrateerd } from './useGehydrateerd';

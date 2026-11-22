@@ -2823,6 +2823,21 @@ export const nl = {
   'klassement.uitnodiging_tekst':
     'Het klassement staat uit. Zet je het aan, dan zien leden elkaars punten uit deze groep. Een gemiste week komt er nooit in voor.',
   'klassement.uitnodiging_knop': 'Zet het klassement aan',
+  // ⚠️ QS8-666 (A57b, 3c-ui): het scherm "Alle klassementen". Niets over verlies, dalen of laatste plaats, en geen tekst over een gemiste week: dat staat
+  //    in de bevestiging van de schakelaar en op de groepspagina, niet hier.
+  'klassementen.titel': 'Alle klassementen',
+  'klassementen.uitleg': 'Per groep de bovenste vijf en jouw plek.',
+  'klassementen.filter_label': 'Toon',
+  'klassementen.filter_alle': 'Alle ({n})',
+  'klassementen.jij': 'jij',
+  'klassementen.rij_label_jij': 'Plek {positie}: {naam} (jij), {punten}',
+  'klassementen.alle_leden': 'Alle {n} leden',
+  'klassementen.leeg_titel': 'Nog geen klassement',
+  'klassementen.leeg_tekst': 'Zodra een van je groepen een klassement heeft, staat het hier.',
+  'klassementen.naar_groepen': 'Naar je groepen',
+  'klassementen.laden_mislukt': 'De klassementen konden niet geladen worden.',
+  'klassementen.meer_groepen': 'Meer groepen laden',
+  'klassementen.meer_mislukt': 'Meer groepen laden lukte niet.',
   'klassement.leeg': 'Er zijn hier nog geen punten verdiend. De eerste afgeronde week zet hem in gang.',
   'klassement.van_totaal': '{getoond} van {totaal} leden',
   'klassement.laden_mislukt': 'Het klassement kon niet geladen worden.',

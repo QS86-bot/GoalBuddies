@@ -306,3 +306,13 @@ export type { GevondenPersoon } from './zoeken';
 
 export { fetchGroepGedempt, zetGroepGedempt } from './demping';
 export { deelPrestatie, leesDeelUitslag, type DeelUitslag } from './prestatie-delen';
+export {
+  KLASSEMENT_BOVENSTE,
+  groepeerKlassementen,
+  naarKlassementenRij,
+  toonAlleLeden,
+  uniekeKaarten,
+  type Klassementkaart,
+  type KlassementenRij,
+  type Klassementregel,
+} from './klassementen-vorm';

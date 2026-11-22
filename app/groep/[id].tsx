@@ -39,6 +39,7 @@ import {
 } from '@/modules/goals';
 import { fetchIsTeamgroep } from '@/modules/organisaties';
 import { DempGroep, groepInhoud, KlassementUitnodiging } from '@/schermen/groep';
+import { KlassementRegel } from '@/schermen/klassementen';
 import { opmaaktaal, t } from '@/shared/i18n';
 import { toonDatum } from '@/shared/time';
 import { space } from '@/shared/theme';
@@ -986,35 +987,13 @@ function KlassementKaart({
       {iedereenOpNul ? (
         <Body muted>{t('klassement.leeg')}</Body>
       ) : (
-        rijen.map((rij) => <KlassementRij key={rij.userId} rij={rij} />)
+        rijen.map((rij) => <KlassementRegel key={rij.userId} rij={rij} />)
       )}
 
       {meer ? (
         <Caption>{t('klassement.van_totaal', { getoond: rijen.length, totaal })}</Caption>
       ) : null}
     </Card>
-  );
-}
-
-/** Eén regel: plek, naam, punten. Meer valt er niet te tonen. */
-function KlassementRij({ rij }: { readonly rij: Klassementsrij }) {
-  const punten =
-    rij.punten === 1 ? t('klassement.punten_een') : t('klassement.punten_meer', { n: rij.punten });
-
-  return (
-    <View
-      style={styles.klassementRij}
-      accessible
-      accessibilityLabel={t('klassement.rij_label', {
-        positie: rij.positie,
-        naam: rij.naam,
-        punten,
-      })}
-    >
-      <Caption>{rij.positie}</Caption>
-      <Body>{rij.naam}</Body>
-      <Caption>{punten}</Caption>
-    </View>
   );
 }
 
@@ -1280,12 +1259,6 @@ const styles = StyleSheet.create({
   //    80 tekens zijn (`profiles.display_name`) en duwde de held anders van het
   //    scherm. Gevonden in de gebruikersreview.
   heldenRij: { flexDirection: 'row' },
-  klassementRij: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: space.blokGap - 3,
-  },
   knoppen: { flexDirection: 'row', gap: space.blokGap - 3, flexWrap: 'wrap' },
 });
 

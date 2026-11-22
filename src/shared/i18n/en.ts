@@ -2290,6 +2290,21 @@ export const en: Record<Sleutel, string> = {
   'klassement.uitnodiging_tekst':
     'The leaderboard is off. If you turn it on, members see each other’s points from this group. A missed week never shows up in it.',
   'klassement.uitnodiging_knop': 'Turn on the leaderboard',
+  // QS8-666 (A57b, 3c-ui): the "All leaderboards" screen. Nothing about losing, dropping or last place, and nothing about a missed week: that is in
+  // the switch's confirmation and on the group page, not here.
+  'klassementen.titel': 'All leaderboards',
+  'klassementen.uitleg': 'The top five of each group, and your place.',
+  'klassementen.filter_label': 'Show',
+  'klassementen.filter_alle': 'All ({n})',
+  'klassementen.jij': 'you',
+  'klassementen.rij_label_jij': 'Place {positie}: {naam} (you), {punten}',
+  'klassementen.alle_leden': 'All {n} members',
+  'klassementen.leeg_titel': 'No leaderboards yet',
+  'klassementen.leeg_tekst': 'Once one of your groups has a leaderboard, it shows up here.',
+  'klassementen.naar_groepen': 'Go to your groups',
+  'klassementen.laden_mislukt': 'The leaderboards could not be loaded.',
+  'klassementen.meer_groepen': 'Load more groups',
+  'klassementen.meer_mislukt': 'Could not load more groups.',
   'klassement.leeg': 'No points have been earned here yet. The first wrapped-up week gets it going.',
   'klassement.van_totaal': '{getoond} of {totaal} members',
   'klassement.laden_mislukt': 'The leaderboard could not be loaded.',
