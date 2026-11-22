@@ -929,6 +929,10 @@ export const nl = {
   //    zondag laat de lezer zelf uitrekenen dat het vandaag is, en dat is precies
   //    wat er tot 05-09 niet opviel. Wat hier telt is het nú, niet de naam.
   'groepen.huddledag_vandaag': 'Huddledag: vandaag',
+  // QS8-775: de koppen van de groepenlijst (variant A). Alleen getoond als er een teamgroep is.
+  'groepen.sectie_prive': 'Privé',
+  'groepen.sectie_werk': 'Werk',
+  'groepen.sectie_werk_naam': 'Werk · {naam}',
   'uiterlijk.laden': 'Je keuzes worden geladen.',
   'uiterlijk.stijl_kop': 'Stijl',
   'uiterlijk.stijl_uitleg': 'A en B zijn vlak, C is kleurrijk met een verloop. B is de standaard.',
