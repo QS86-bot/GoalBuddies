@@ -2,6 +2,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import { userCycle } from '../../src/shared/time';
 import { adminDb, createTestUser, registreerGroep, removeTestUsers, rlsTestsConfigured, type TestUser } from './harness';
+import { laatOrganisatieAanmaken } from './organisatie-toelating';
 import { psqlMetInvoer, stackBeschikbaarOfFaal } from './psql-stack';
 
 /**
@@ -82,6 +83,7 @@ describe.runIf(rlsTestsConfigured)('de teambalk telt alleen op (QS8-655)', () =>
       createTestUser('balk-cleo'),
       createTestUser('balk-zoe'),
     ]);
+    await laatOrganisatieAanmaken(anna);
     const o = await rpc(anna, 'maak_organisatie', { p_naam: 'Balk BV' });
     expect(o.error).toBeNull();
     org = (o.data as { organization_id: string }).organization_id;

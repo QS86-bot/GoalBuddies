@@ -3,6 +3,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { groupPeriod, userCycle } from '../../src/shared/time';
 import type { UserClock } from '../../src/shared/time';
 import { adminDb, createTestUser, registreerGroep, removeTestUsers, rlsTestsConfigured, type TestUser } from './harness';
+import { laatOrganisatieAanmaken } from './organisatie-toelating';
 import { psqlMetInvoer, stackBeschikbaarOfFaal } from './psql-stack';
 
 /**
@@ -110,6 +111,7 @@ describe.runIf(rlsTestsConfigured)('teamdoelen en aandelen (QS8-654)', () => {
       expect(r.error).toBeNull();
     }
 
+    await laatOrganisatieAanmaken(anna);
     const org = await rpc(anna, 'maak_organisatie', { p_naam: 'Teamdoel BV' });
     expect(org.error).toBeNull();
     const x = (org.data as { organization_id: string }).organization_id;

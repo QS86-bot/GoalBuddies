@@ -3,6 +3,7 @@ import { randomUUID } from 'node:crypto';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import { adminDb, createTestUser, removeTestUsers, rlsTestsConfigured, type TestUser } from './harness';
+import { laatOrganisatieAanmaken } from './organisatie-toelating';
 import { psql, psqlParallel, stackBeschikbaarOfFaal } from './psql-stack';
 
 /**
@@ -54,6 +55,7 @@ function uitkomst(a: Antwoord): string {
 const aangemaakt: string[] = [];
 
 async function maakOrganisatie(wie: TestUser, naam: string): Promise<string> {
+  await laatOrganisatieAanmaken(wie);
   const a = await rpc(wie, 'maak_organisatie', { p_naam: naam });
   expect(a.error).toBeNull();
   const id = (a.data as { organization_id: string }).organization_id;

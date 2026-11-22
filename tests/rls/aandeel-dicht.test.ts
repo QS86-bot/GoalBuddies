@@ -3,6 +3,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { groupPeriod, userCycle } from '../../src/shared/time';
 import type { UserClock } from '../../src/shared/time';
 import { adminDb, createTestUser, registreerGroep, removeTestUsers, rlsTestsConfigured, type TestUser } from './harness';
+import { laatOrganisatieAanmaken } from './organisatie-toelating';
 
 /**
  * Een aandeel blijft van zijn eigenaar — QS8-661, criterium 6(d) en 6(f).
@@ -115,6 +116,7 @@ describe.runIf(rlsTestsConfigured)('een aandeel blijft van zijn eigenaar (QS8-66
         .update({ week_start_day: KLOK.weekStartDay, tz: KLOK.tz } as never)
         .eq('id', wie.id);
     }
+    await laatOrganisatieAanmaken(anna);
     const o = await rpc(anna, 'maak_organisatie', { p_naam: 'Open Zaak' });
     const org = (o.data as { organization_id: string }).organization_id;
     organisaties.push(org);

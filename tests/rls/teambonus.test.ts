@@ -9,6 +9,7 @@ import {
   verwijderAuthGebruiker,
   type TestUser,
 } from './harness';
+import { laatOrganisatieAanmaken } from './organisatie-toelating';
 import { proefId } from './proefid';
 
 /**
@@ -147,6 +148,7 @@ describe.runIf(rlsTestsConfigured)('afronden van een teamdoel en de teambonus (Q
       createTestUser('tbonus-dirk'),
       createTestUser('tbonus-eva'),
     ]);
+    await laatOrganisatieAanmaken(anna);
     const o = await rpc(anna, 'maak_organisatie', { p_naam: 'Bonus BV' });
     org = (o.data as { organization_id: string }).organization_id;
     organisaties.push(org);
