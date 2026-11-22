@@ -38,7 +38,7 @@ import {
   type DeadlineVerzoek,
 } from '@/modules/goals';
 import { fetchIsTeamgroep } from '@/modules/organisaties';
-import { DempGroep, groepInhoud } from '@/schermen/groep';
+import { DempGroep, groepInhoud, KlassementUitnodiging } from '@/schermen/groep';
 import { opmaaktaal, t } from '@/shared/i18n';
 import { toonDatum } from '@/shared/time';
 import { space } from '@/shared/theme';
@@ -187,7 +187,7 @@ export default function GroepDetail() {
               <Caption>
                 {t('groepdetail.inhoud', {
                   onderdelen: groepInhoud({
-                    klassement: klassementPlek(s.klassement) === 'lijst',
+                    klassement: klassementPlek(s.klassement, s.groep, s.beheerder) === 'lijst',
                     helden: s.groep.zichtbaarheid === 'open' && !isTeamgroep(s.groep),
                     kanUitnodigen:
                       deelbaarBericht(s.groep, clientEnv().appUrl, profiel?.display_name) !== null,
@@ -301,11 +301,15 @@ export default function GroepDetail() {
               ⚠️ Dit blok staat er in élke groep, en verbergt niets. Sinds A57 (QS8-666) hangt het klassement
                  aan `groups.klassement_aan` en niet meer aan de zichtbaarheid: heeft de groep het, dan geeft
                  `groep_klassement()` rijen terug en tekent de kaart ze; heeft de groep het niet, dan geeft
-                 de RPC nul rijen en rendert de kaart niets. De regel
+                 de RPC nul rijen en komt er voor een beheerder een uitnodiging voor in de plaats. De regel
                  staat in 0333 en niet hier. Een scherm dat de regel zelf zou moeten kennen, is een regel die met
                  één verzoek aan PostgREST te omzeilen valt.
             */}
-            <KlassementKaart uitkomst={s.klassement} onOpnieuw={herlaad} />
+            {klassementPlek(s.klassement, s.groep, s.beheerder) === 'uitnodiging' ? (
+              <KlassementUitnodiging groupId={s.groep?.id ?? ''} onTerug={herlaad} />
+            ) : (
+              <KlassementKaart uitkomst={s.klassement} onOpnieuw={herlaad} />
+            )}
 
             {/*
               ⚠⚠ Een éígen kaart, en met opzet niet in of naast het klassement.
