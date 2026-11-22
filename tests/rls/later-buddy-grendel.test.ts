@@ -111,10 +111,10 @@ describe.skipIf(!rlsTestsConfigured)('QS8-787 — een buddy die later komt, zet 
     return data.id;
   }
 
-  /** Een al afgewikkelde week. Opbouw via `adminDb()`; zie de kop. */
+  /** Een week met een status die de eigenaar niet zelf zet. Opbouw via `adminDb()`; zie de kop. */
   async function afgewikkeldeWeek(
     goalId: string,
-    status: 'missed' | 'approved' | 'excused',
+    status: 'missed' | 'approved' | 'excused' | 'cancelled',
     start: string,
   ): Promise<string> {
     const { data, error } = await adminDb()
@@ -284,17 +284,20 @@ describe.skipIf(!rlsTestsConfigured)('QS8-787 — een buddy die later komt, zet 
       await koppel(eigenaar, doel, groep);
 
       const open = await planWeek(eigenaar, doel, 'open week');
+      // `cancelled` staat in het predicaat en gaat dus óók om.
+      const geannuleerd = await afgewikkeldeWeek(doel, 'cancelled', addDays(cycle.startDate, -28));
       const gemist = await afgewikkeldeWeek(doel, 'missed', addDays(cycle.startDate, -21));
       const gehaald = await afgewikkeldeWeek(doel, 'approved', addDays(cycle.startDate, -14));
       const vrij = await afgewikkeldeWeek(doel, 'excused', addDays(cycle.startDate, -7));
 
-      for (const w of [open, gemist, gehaald, vrij]) {
+      for (const w of [open, geannuleerd, gemist, gehaald, vrij]) {
         expect(await grendel(w), 'vóór de buddy staat alles op false').toBe(false);
       }
 
       await doeMee(buddy, groep);
 
       expect(await grendel(open), 'de open week gaat om').toBe(true);
+      expect(await grendel(geannuleerd), 'cancelled gaat ook om').toBe(true);
       expect(await grendel(gemist), 'missed blijft staan').toBe(false);
       expect(await grendel(gehaald), 'approved blijft staan').toBe(false);
       expect(await grendel(vrij), 'excused blijft staan').toBe(false);
@@ -372,6 +375,43 @@ describe.skipIf(!rlsTestsConfigured)('QS8-787 — een buddy die later komt, zet 
       if (erin.error) throw new Error(`inactief lid: ${erin.error.message}`);
 
       expect(await grendel(week)).toBe(false);
+    },
+    TEST_TIMEOUT,
+  );
+
+  it(
+    'raakt alleen de doelen die aan díe groep hangen, en niet de rest van de eigenaar of van de app',
+    async () => {
+      // ⚠️ Gevonden door de security-review: zonder de groepsfilter zet één
+      //    toetreding de grendel om voor elk gekoppeld open weekdoel in de hele
+      //    database, en geen van de toetsen hierboven ziet dat (één groep, één doel).
+      const eigenaar = await createTestUser('later-g-eigenaar');
+      const buddy = await createTestUser('later-g-buddy');
+      const vreemde = await createTestUser('later-g-vreemde');
+
+      const groep = await maakGroep(eigenaar, 'Later g');
+      const andereGroep = await maakGroep(eigenaar, 'Later g ander');
+      const vreemdeGroep = await maakGroep(vreemde, 'Later g vreemd');
+
+      const hier = await maakDoel(eigenaar, 'Doel in de groep');
+      const elders = await maakDoel(eigenaar, 'Doel in een andere groep');
+      const solo = await maakDoel(eigenaar, 'Doel zonder groep');
+      const vanEenAnder = await maakDoel(vreemde, 'Doel van een vreemde');
+      await koppel(eigenaar, hier, groep);
+      await koppel(eigenaar, elders, andereGroep);
+      await koppel(vreemde, vanEenAnder, vreemdeGroep);
+
+      const wHier = await planWeek(eigenaar, hier, 'week hier');
+      const wElders = await planWeek(eigenaar, elders, 'week elders');
+      const wSolo = await planWeek(eigenaar, solo, 'week solo');
+      const wVreemd = await planWeek(vreemde, vanEenAnder, 'week vreemd');
+
+      await doeMee(buddy, groep);
+
+      expect(await grendel(wHier), 'het doel in de groep').toBe(true);
+      expect(await grendel(wElders), 'een doel in een andere groep').toBe(false);
+      expect(await grendel(wSolo), 'een doel zonder groep').toBe(false);
+      expect(await grendel(wVreemd), 'een doel van iemand buiten de groep').toBe(false);
     },
     TEST_TIMEOUT,
   );

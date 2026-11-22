@@ -215,8 +215,10 @@ van de ander, en kan de grendel `false` blijven. Datzelfde raam staat open bij
 `koppeling_zet_beoordeelbaar_om()`.
 
 **Bewijs:** `tests/rls/later-buddy-grendel.test.ts`, met echte JWT's op de stappen
-van de gebruiker. Elke grendel is met de hand gebroken. De statusfilter, de
-eigenaarsfilter, de inactief-toets en de UPDATE-tak maken elk precies hun eigen
-toets rood. De trigger droppen maakt de drie routes en de toets op afgewikkelde
+van de gebruiker. Elke grendel is met de hand gebroken. De groepsfilter, de
+statusfilter (ook alleen `cancelled` eruit), de eigenaarsfilter, de
+inactief-toets en de UPDATE-tak maken elk precies hun eigen toets rood. De
+groepsfilter kwam uit de security-review: zonder die filter zette één
+toetreding de grendel om voor elk gekoppeld open weekdoel in de app. De trigger droppen maakt de drie routes en de toets op afgewikkelde
 weken rood. Eén mutant blijft groen: de UPDATE-tak ruimer maken. Dat is
 gelijkwaardig, want elke status behalve `inactive` telt al mee.
