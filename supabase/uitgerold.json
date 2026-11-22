@@ -1,8 +1,8 @@
 {
   "$toelichting": "De migratiestand van het productieproject, geschreven door `npm run register:controle` (dat is de kant die de service-role-key heeft). Met de hand bijwerken mag, maar dan meet je het ook echt — zie docs/decisions/2026-09-17-de-uitrolstand-is-een-gegeven-en-geen-alinea.md.",
   "project": "wehgocadxehottiiyvsc",
-  "hoogste": "0336",
-  "registerrijen": 339,
+  "hoogste": "0337",
+  "registerrijen": 340,
   "gemeten": "2026-11-22",
   "bron": "migratieregister() via npm run register:controle"
 }
