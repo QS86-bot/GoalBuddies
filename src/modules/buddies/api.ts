@@ -88,6 +88,8 @@ export type Lijstgroep = Pick<
   | 'created_at'
   | 'created_by'
   | 'zichtbaarheid'
+  // QS8-651: `isTeamgroep()` leest dit veld; zonder gaat een teamgroep als enige kandidaat stil door voor een keuze.
+  | 'organization_id'
 >;
 export type Lidmaatschap = Tables<'group_members'>;
 
@@ -231,7 +233,7 @@ function uitkomstVan(data: unknown): RpcUitkomst {
 export async function fetchMijnGroepen(): Promise<readonly Lijstgroep[]> {
   const { data, error } = await supabase()
     .from('groups')
-    .select('id, name, icon, huddle_day, tz, status, created_at, created_by, zichtbaarheid')
+    .select('id, name, icon, huddle_day, tz, status, created_at, created_by, zichtbaarheid, organization_id')
     // ⚠️ **Deze filter is er sinds 0153 en hij is dragend, geen vangnet.** Tot die
     //    migratie gaf `groups_select` een gearchiveerde groep helemaal niet terug,
     //    dus elke aanroeper kreeg vanzelf alleen levende groepen. Nu niet meer, en
@@ -1215,7 +1217,7 @@ export async function ontkoppelDoelVanGroep(
 export async function fetchGroepenVanDoel(goalId: string): Promise<readonly DoelGroep[]> {
   const { data, error } = await supabase()
     .from('goal_group_links')
-    .select('group_id, linked_at, groups(name, zichtbaarheid)')
+    .select('group_id, linked_at, groups(name, zichtbaarheid, organization_id)')
     .eq('goal_id', goalId)
     .order('linked_at', { ascending: true })
     .limit(20);
@@ -1229,6 +1231,8 @@ export async function fetchGroepenVanDoel(goalId: string): Promise<readonly Doel
     group_id: rij.group_id,
     name: rij.groups?.name ?? t('groep.naamloos'),
     zichtbaarheid: leesZichtbaarheid(rij.groups?.zichtbaarheid),
+    // QS8-651: de hulpvraag leest `DoelGroep` en niet de rij; zonder dit veld is een teamgroep niet te herkennen.
+    organization_id: rij.groups?.organization_id ?? null,
   }));
 }
 

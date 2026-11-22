@@ -57,7 +57,7 @@ function groep(id: string, extra: Partial<Tables<'groups'>> = {}): Tables<'group
 }
 
 function koppeling(id: string, zichtbaarheid: DoelGroep['zichtbaarheid'] = 'beschermd'): DoelGroep {
-  return { group_id: id, name: `Groep ${id}`, zichtbaarheid };
+  return { group_id: id, name: `Groep ${id}`, zichtbaarheid, organization_id: null };
 }
 
 describe('koppelbareGroepen', () => {
