@@ -33,3 +33,29 @@ Wil de engineer één bron, dan is de nette vorm een interne helper die beide fu
 - `group_name` gaat mee, een icoon niet; een lid kan beide al lezen.
 - Niet gemeten: het queryplan op echte datavolumes en de vergelijking met productie (`functies:controle`, `register:controle`, `adviseur:controle`): dat kan pas na de uitrol.
   Een index op `points_ledger (group_id, user_id)` is niet toegevoegd; er staat een ER-rij met de voorwaarde waaronder dat nodig wordt.
+
+## 3c-ui: het scherm (toegevoegd 22-11-2026, nog niet gebouwd tot de uitrol)
+
+Het scherm "Alle klassementen" (variant A van A57b) volgt na de uitrol van 0338 en `npm run types:db`, als één PR met de voorbereiding eronder (de pure vorm,
+het filter, de kaart en het raster).
+
+### Besluiten van Quinten (22-11-2026, meerkeuze in de chat van de orchestrator; mijn voorstel was elke keer de gekozen optie)
+- **A1: drie kolommen binnen de bestaande inhoudsbreedte van 620 px**, geen bredere schermvariant. Op een smal scherm één kolom; bij minder dan drie kaarten
+  evenveel kolommen als kaarten (geen lege kolommen).
+- **A4: "Alle N leden" leidt naar `/groep/[id]`**, de bestaande klassementkaart op het groepsscherm. Een eigen gepagineerd klassement per groep is een vervolgissue.
+- **A5: de knop "Alle klassementen" staat bovenaan Mijn groepen zodra er minstens één groep is.** Of er klassementen zijn bepaalt de database (de RPC); een leeg scherm
+  legt uit waarom het leeg is en het filtert niet op `klassement_aan` in de client.
+- Eerder (zelfde dag): variant A, een groep zonder klassement krijgt geen regel, en de twee ingangen (onder de klassementkaart van een groep en bovenaan Mijn groepen).
+
+### Onderbouwing van meer dan 15 bestanden (een afweging, geen poort)
+De orchestrator besliste (22-11-2026) om 3c-ui-a (vorm, weergave, componenten, teksten, toetsen) **niet apart te landen** en onder 3c-ui-b te stapelen: apart landen had het
+plafond van `BEKENDE_ONBEREIKBAAR` in `dode-exports-controle.mjs` tijdelijk moeten verhogen omdat de vormfuncties pas met het scherm een aanroeper krijgen, en een
+ratel verhogen om een tussenstand te landen is wat dat plafond wil voorkomen. Het geheel raakt daarom ongeveer twintig bestanden in één PR. Dat is verantwoord doordat
+het twee lagen zijn die elkaar nodig hebben (een vorm zonder scherm heeft geen aanroeper, een scherm zonder vorm heeft niets te tonen), en doordat de voorbereiding al
+met eigen toetsen en mutaties is gebouwd en nagelopen voordat het scherm erbij komt.
+
+### Aannames (3c-ui)
+- De paginagrootte is tien groepen (de standaard van de RPC), het maximum twintig.
+- "Jij" is een tekst en geen kleur; er komen geen nieuwe kleuren (huisstijlregel van 19-11-2026).
+- Eén lege staat voor "geen groepen" en "geen klassementen", omdat de RPC die twee niet onderscheidt.
+- De schermafdrukken (390 en 1280, navy en navy licht) gaan vóór de merge naar Quinten, via de orchestrator.
