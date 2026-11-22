@@ -1,10 +1,10 @@
 import { reportError } from '../../lib/observability';
+import { supabase } from '../../lib/supabase';
 import { invoerfout, type Resultaat } from '../../shared/api';
 import { t } from '../../shared/i18n';
 import { daysBetween, type IsoDate } from '../../shared/time';
 
 import { volgendeCursor, type Bladzijde } from './api';
-import { db } from './database';
 import {
   teamdoelBeschrijvingSchema,
   TEAMDOELEN_PER_PAGINA,
@@ -145,7 +145,7 @@ export function toonAandeelkaart(
 
 /** Is dit een groep van een organisatie? Een niet-lid en een onbekende groep geven allebei `false`. */
 export async function fetchIsTeamgroep(groupId: string): Promise<boolean> {
-  const { data, error } = await db()
+  const { data, error } = await supabase()
     .from('groups')
     .select('organization_id')
     .eq('id', groupId)
@@ -161,7 +161,7 @@ export async function fetchTeamdoelen(
   groupId: string,
   na?: string | null,
 ): Promise<Bladzijde<Teamdoel>> {
-  const basis = db()
+  const basis = supabase()
     .from('team_goals')
     .select(TEAMDOEL_KOLOMMEN)
     .eq('group_id', groupId)
@@ -197,9 +197,9 @@ export async function laadTeamdoel(id: string, userId: string): Promise<Teamdoel
   if (!uuidSchema.safeParse(id).success) return null;
 
   const [teamdoel, balk, aandeel] = await Promise.all([
-    db().from('team_goals').select(TEAMDOEL_KOLOMMEN).eq('id', id).maybeSingle(),
-    db().rpc('teambalk', { p_team_goal_id: id }),
-    db()
+    supabase().from('team_goals').select(TEAMDOEL_KOLOMMEN).eq('id', id).maybeSingle(),
+    supabase().rpc('teambalk', { p_team_goal_id: id }),
+    supabase()
       .from('team_goal_shares')
       .select('goal_id')
       .eq('team_goal_id', id)
@@ -285,7 +285,7 @@ export async function maakTeamdoel(
     return { ok: false, melding: invoerfout(geparst.beschrijving.error, terugval) };
   }
 
-  const { data, error } = await db().rpc('maak_teamdoel', {
+  const { data, error } = await supabase().rpc('maak_teamdoel', {
     p_group_id: geparst.groep.data,
     p_titel: geparst.titel.data,
     p_streefdatum: geparst.datum.data,
@@ -313,7 +313,7 @@ export async function neemAandeel(teamGoalId: string): Promise<Resultaat<string>
   const terugval = t('teamdoel.aandeel_mislukt');
   if (!uuidSchema.safeParse(teamGoalId).success) return { ok: false, melding: terugval };
 
-  const { data, error } = await db().rpc('neem_aandeel', { p_team_goal_id: teamGoalId });
+  const { data, error } = await supabase().rpc('neem_aandeel', { p_team_goal_id: teamGoalId });
   if (error) {
     reportError(error, 'teamdoelen.aandeel', { team_goal_id: teamGoalId });
     return { ok: false, melding: terugval };
