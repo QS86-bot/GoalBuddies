@@ -24,16 +24,13 @@ import { laatOrganisatieAanmaken } from './organisatie-toelating';
  *   met de echte id precies wat een verzonnen id geeft: nul rijen.
  * - **Id en naam, en verder niets.**
  * - Gepagineerd op id, zonder iemand over te slaan.
- *
- * ⚠️ De RPC staat nog niet in `src/lib/database.types.ts` (een afschrift van
- *    productie), vandaar `as never` op de naam.
  */
 
 const SETUP_TIMEOUT = 240_000;
 const TEST_TIMEOUT = 60_000;
 
 async function teams(wie: TestUser, org: string, extra: Record<string, unknown> = {}): Promise<unknown> {
-  const { data, error } = await wie.db.rpc('organisatieteams' as never, { p_organization_id: org, ...extra } as never);
+  const { data, error } = await wie.db.rpc('organisatieteams', { p_organization_id: org, ...extra } as never);
   expect(error).toBeNull();
   return data;
 }
@@ -57,21 +54,21 @@ describe.runIf(rlsTestsConfigured)('de teams van een organisatie (QS8-657)', () 
       createTestUser('orgteams-yara'),
     ]);
     await laatOrganisatieAanmaken(anna);
-    const o = await anna.db.rpc('maak_organisatie' as never, { p_naam: 'Teams BV' } as never);
+    const o = await anna.db.rpc('maak_organisatie', { p_naam: 'Teams BV' } as never);
     org = (o.data as unknown as { organization_id: string }).organization_id;
     organisaties.push(org);
     await laatOrganisatieAanmaken(yara);
-    const ander = await yara.db.rpc('maak_organisatie' as never, { p_naam: 'Ander BV' } as never);
+    const ander = await yara.db.rpc('maak_organisatie', { p_naam: 'Ander BV' } as never);
     organisaties.push((ander.data as unknown as { organization_id: string }).organization_id);
-    const code = (await anna.db.rpc('organisatie_uitnodigcode' as never, { p_organization_id: org } as never)).data as unknown as {
+    const code = (await anna.db.rpc('organisatie_uitnodigcode', { p_organization_id: org } as never)).data as unknown as {
       code: string;
     };
     for (const wie of [bert, cas]) {
-      const w = await wie.db.rpc('word_organisatielid' as never, { p_code: code.code } as never);
+      const w = await wie.db.rpc('word_organisatielid', { p_code: code.code } as never);
       expect((w.data as unknown as { ok: boolean }).ok).toBe(true);
     }
     for (const naam of ['Team Een', 'Team Twee', 'Team Drie']) {
-      const t = await anna.db.rpc('maak_teamgroep' as never, { p_organization_id: org, p_naam: naam } as never);
+      const t = await anna.db.rpc('maak_teamgroep', { p_organization_id: org, p_naam: naam } as never);
       expect(t.error).toBeNull();
       const id = (t.data as unknown as { group_id: string }).group_id;
       team.push(id);
@@ -90,8 +87,8 @@ describe.runIf(rlsTestsConfigured)('de teams van een organisatie (QS8-657)', () 
       await admin.from('groups').delete().in('id', groepen);
     }
     if (organisaties.length > 0) {
-      await admin.from('organization_members' as never).delete().in('organization_id' as never, organisaties as never);
-      await admin.from('organizations' as never).delete().in('id' as never, organisaties as never);
+      await admin.from('organization_members').delete().in('organization_id', organisaties as never);
+      await admin.from('organizations').delete().in('id', organisaties as never);
     }
     await removeTestUsers();
   }, SETUP_TIMEOUT);
@@ -155,7 +152,7 @@ describe.runIf(rlsTestsConfigured)('de teams van een organisatie (QS8-657)', () 
   it(
     'wie de organisatie verlaat, ziet de teams niet meer',
     async () => {
-      const v = await cas.db.rpc('verlaat_organisatie' as never, { p_organization_id: org } as never);
+      const v = await cas.db.rpc('verlaat_organisatie', { p_organization_id: org } as never);
       expect((v.data as unknown as { ok: boolean }).ok).toBe(true);
       expect(await teams(cas, org)).toEqual([]);
     },
@@ -168,9 +165,9 @@ describe.runIf(rlsTestsConfigured)('de teams van een organisatie (QS8-657)', () 
       // Er is nog geen archiveer-RPC voor een organisatie (keuze 7 van 0316);
       // service_role zet de stand, zoals een latere RPC dat zou doen.
       const z = await adminDb()
-        .from('organizations' as never)
+        .from('organizations')
         .update({ status: 'archived' } as never)
-        .eq('id' as never, org as never);
+        .eq('id', org as never);
       expect(z.error).toBeNull();
       expect(await teams(anna, org)).toEqual([]);
       expect(await teams(bert, org)).toEqual([]);

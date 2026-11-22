@@ -146,6 +146,84 @@ describe.runIf(rlsTestsConfigured)('een beheerder zet het klassement aan of uit 
     }
   }, TEST_TIMEOUT);
 
+  /**
+   * ⚠️ **De belofte onder de zin "de punten blijven bewaard" in het uitzetblad.** Uitzetten verbergt het klassement
+   *    en wist niets: `points_ledger` houdt zijn rijen mét `group_id`, en aanzetten brengt precies dezelfde stand
+   *    terug. Een zin in een bevestigingsblad die dit belooft zonder dat een toets het vastlegt, is een aanname.
+   *
+   * IJKING (met de hand, 22-11-2026): `delete from points_ledger where group_id = p_group_id` in
+   * `zet_groepsklassement()` laat deze toets vallen op de telling tijdens "uit".
+   */
+  it('houdt de punten bewaard: uitzetten raakt het grootboek niet en aanzetten geeft dezelfde stand terug', async () => {
+    const b = await groep(anna, 'Zet-bewaard');
+    const mee = await bram.db.rpc('join_group_with_code', { code: b.code });
+    expect((mee.data as { ok?: boolean } | null)?.ok).toBe(true);
+
+    const doel = await anna.db
+      .from('goals')
+      .insert({ owner_id: anna.id, title: 'ZET bewaard doel', target_date: '2027-06-30' })
+      .select('id')
+      .single();
+    expect(doel.error, 'doel').toBeNull();
+    const week = await anna.db
+      .from('weekly_goals')
+      .insert({
+        goal_id: doel.data?.id as string,
+        title: 'ZET bewaard week',
+        floor_text: 'Een keer',
+        ceiling_text: 'Drie keer',
+        cycle_start_date: '2026-11-16',
+      })
+      .select('id')
+      .single();
+    expect(week.error, 'weekdoel').toBeNull();
+
+    // Een correctie met groep is de rij die het grootboek mag dragen; het gaat hier om wat er mee gebeurt
+    // bij het omzetten, en niet om hoe de punten verdiend zijn (dat dekt klassement.test.ts).
+    for (const [wie, delta] of [
+      [anna, 5],
+      [bram, 3],
+    ] as const) {
+      const boek = await adminDb().from('points_ledger').insert({
+        user_id: wie.id,
+        goal_id: doel.data?.id as string,
+        group_id: b.id,
+        delta,
+        reason: 'correction',
+        ref_type: 'weekly_goal',
+        ref_id: week.data?.id as string,
+      });
+      expect(boek.error, `boeken: ${boek.error?.message}`).toBeNull();
+    }
+
+    const stand = async (): Promise<Record<string, number>> => {
+      const { data, error } = await bram.db.rpc('groep_klassement' as never, { p_group_id: b.id } as never);
+      expect(error).toBeNull();
+      return Object.fromEntries(
+        ((data ?? []) as unknown as { user_id: string; punten: number }[]).map((r) => [r.user_id, r.punten]),
+      );
+    };
+    const rijen = async (): Promise<number> => {
+      const { count } = await adminDb()
+        .from('points_ledger')
+        .select('id', { count: 'exact', head: true })
+        .eq('group_id', b.id);
+      return count ?? -1;
+    };
+
+    const voor = await stand();
+    expect(voor).toEqual({ [anna.id]: 5, [bram.id]: 3 });
+    const aantal = await rijen();
+    expect(aantal).toBe(2);
+
+    expect((await rpc(anna, b.id, false, true)).ok).toBe(true);
+    expect(await rijen(), 'uitzetten raakte het grootboek').toBe(aantal);
+    expect(await stand(), 'uit hoort niets te tonen').toEqual({});
+
+    expect((await rpc(anna, b.id, true, true)).ok).toBe(true);
+    expect(await stand(), 'aanzetten gaf niet dezelfde stand terug').toEqual(voor);
+  }, TEST_TIMEOUT);
+
   it('vindbaar maken zet het klassement uit, met één rij en één bericht; weer onvindbaar zet het niet terug (besluit Quinten 21-11)', async () => {
     const v = await groep(anna, 'Zet-vindbaar');
     const gezet = await anna.db.from('groups').update({ categorie: 'fitness' } as never).eq('id', v.id);

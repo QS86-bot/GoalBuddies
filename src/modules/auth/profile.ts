@@ -18,7 +18,7 @@ import { invoerfout } from '../../shared/api';
  *    iets mee gaat rekenen (CLAUDE.md, correctheidsregel 7).
  */
 
-export type Profiel = Tables<'profiles'> & NogNietInTypes;
+export type Profiel = Tables<'profiles'>;
 
 /**
  * Je eigen profiel.
@@ -87,17 +87,6 @@ export async function fetchProfiel(userId: string): Promise<Profiel | null> {
 }
 
 /**
- * ⚠️ **Tijdelijk: de twee kolommen van 0311 staan nog niet in `database.types.ts`.**
- *    Dat bestand is een afschrift van productie en 0311 wacht op Quintens "backup
- *    gedaan". Zodra de migratie uitgerold is: `npm run types:db`, en dit type en
- *    zijn gebruik verdwijnen (niet met de hand in het gegenereerde bestand: QS8-569).
- */
-export interface NogNietInTypes {
-  feeling?: string | null;
-  feeling_own?: string | null;
-}
-
-/**
  * De gevalideerde patch omzetten naar de kolommen die PostgREST krijgt.
  *
  * ⚠️ **Veld voor veld, en niet `update(gevalideerd.data)`.** Zod maakt van een
@@ -112,7 +101,7 @@ export interface NogNietInTypes {
  *    `notify_*`-velden.
  */
 function naarKolommen(velden: ProfielPatch): TablesUpdate<'profiles'> {
-  const update: TablesUpdate<'profiles'> & NogNietInTypes = {};
+  const update: TablesUpdate<'profiles'> = {};
   if (velden.display_name !== undefined) update.display_name = velden.display_name;
   if (velden.tz !== undefined) update.tz = velden.tz;
   if (velden.reminder_time !== undefined) update.reminder_time = velden.reminder_time;

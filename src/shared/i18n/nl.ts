@@ -832,8 +832,26 @@ export const nl = {
   'bevestiging.groep_beschermen.knop': 'Ja, bescherm hem',
   'bevestiging.groep_ontdekbaar_maken.titel': 'Deze groep vindbaar maken?',
   'bevestiging.groep_ontdekbaar_maken.uitleg':
-    'Mensen die je nog niet kent kunnen deze groep dan vinden en lidmaatschap aanvragen. Zij zien de naam, het onderwerp, je omschrijving, de voertaal, de huddledag en hoeveel leden er zijn. Zij zien niet wie erin zitten, welke doelen erin staan, de chat, De Ketting of iemands reeks. Aanvragen komen bij jou binnen en je hoeft er geen enkele aan te nemen. Iedereen in de groep krijgt er een bericht van. Terugzetten kan altijd en meteen.',
+    'Mensen die je nog niet kent kunnen deze groep dan vinden en lidmaatschap aanvragen. Zij zien de naam, het onderwerp, je omschrijving, de voertaal, de huddledag en hoeveel leden er zijn. Zij zien niet wie erin zitten, welke doelen erin staan, de chat, De Ketting of iemands reeks. Aanvragen komen bij jou binnen en je hoeft er geen enkele aan te nemen. Iedereen in de groep krijgt er een bericht van. Staat het klassement aan, dan gaat het uit; een beheerder kan het daarna apart weer aanzetten. Terugzetten kan altijd en meteen.',
   'bevestiging.groep_ontdekbaar_maken.knop': 'Ja, maak hem vindbaar',
+  // ⚠️ QS8-666 (A57, 0336). Aanzetten maakt ook de al verdiende punten zichtbaar (`points_ledger` bewaart de groep
+  //    altijd), en de uitleg zegt dat met zoveel woorden (domeinregel 10). Er staat bewust niet "een punt dat je
+  //    verliest komt er ook niet in": een ingetrokken goedkeuring boekt correcties mét groep, dus de stand kan binnen
+  //    het venster van vijftien minuten dalen. Alleen de gemiste week is een belofte die de database houdt.
+  'bevestiging.klassement_aanzetten.titel': 'Het klassement aanzetten?',
+  'bevestiging.klassement_aanzetten.uitleg':
+    'Vanaf nu ziet iedereen in deze groep elkaars plek en de punten die in deze groep verdiend zijn, ook die van vóór vandaag. Een gemiste week komt er nooit in voor. Dit geldt voor alle leden: niemand kan er voor zichzelf tussenuit. Iedereen krijgt een bericht in de groepschat. Uitzetten kan altijd en meteen.',
+  'bevestiging.klassement_aanzetten.knop': 'Ja, zet het aan',
+  // In een vindbare groep komt er één zin bij: wie er later bij komt, leest het klassement ook (QS8-230, besluit
+  // Quinten 22-11-2026: 'uit bij vindbaar' maakt het aanzetten een bewuste handeling van de beheerder).
+  'bevestiging.klassement_aanzetten_vindbaar.titel': 'Het klassement aanzetten?',
+  'bevestiging.klassement_aanzetten_vindbaar.uitleg':
+    'Vanaf nu ziet iedereen in deze groep elkaars plek en de punten die in deze groep verdiend zijn, ook die van vóór vandaag. Een gemiste week komt er nooit in voor. Deze groep is vindbaar: wie er later bij komt, ziet het klassement ook. Dit geldt voor alle leden: niemand kan er voor zichzelf tussenuit. Iedereen krijgt een bericht in de groepschat. Uitzetten kan altijd en meteen.',
+  'bevestiging.klassement_aanzetten_vindbaar.knop': 'Ja, zet het aan',
+  'bevestiging.klassement_uitzetten.titel': 'Het klassement uitzetten?',
+  'bevestiging.klassement_uitzetten.uitleg':
+    'Het klassement verdwijnt voor iedereen in deze groep. De punten blijven bewaard en komen terug als je het weer aanzet. Iedereen krijgt een bericht in de groepschat.',
+  'bevestiging.klassement_uitzetten.knop': 'Ja, zet het uit',
   'bevestiging.groep_verbergen.titel': 'Deze groep weer verbergen?',
   'bevestiging.groep_verbergen.uitleg':
     'De groep verdwijnt uit de zoeklijst en er kan niemand meer aankloppen. Aanvragen die al binnen zijn blijven staan en kun je gewoon beantwoorden. Voor de leden verandert er niets.',
@@ -2799,11 +2817,30 @@ export const nl = {
   'klassement.punten_een': '1 punt',
   'klassement.punten_meer': '{n} punten',
   'klassement.rij_label': 'Plek {positie}: {naam}, {punten}',
+  // ⚠️ QS8-666 (3b-2): de uitnodigingskaart voor een beheerder. Belooft niet meer dan besluit 2: alleen "een gemiste week komt
+  //    er nooit in voor". De punten van vóór vandaag staan in het bevestigingsblad van de schakelaar, niet hier.
+  'klassement.uitnodiging_titel': 'Een klassement voor deze groep',
+  'klassement.uitnodiging_tekst':
+    'Het klassement staat uit. Zet je het aan, dan zien leden elkaars punten uit deze groep. Een gemiste week komt er nooit in voor.',
+  'klassement.uitnodiging_knop': 'Zet het klassement aan',
   'klassement.leeg': 'Er zijn hier nog geen punten verdiend. De eerste afgeronde week zet hem in gang.',
   'klassement.van_totaal': '{getoond} van {totaal} leden',
   'klassement.laden_mislukt': 'Het klassement kon niet geladen worden.',
   'klassement.teller_mislukt': 'De teller kon niet geladen worden.',
   'klassement.opnieuw': 'Opnieuw proberen',
+  // De schakelaar in Groepsbeheer en zijn weigerredenen — QS8-666 (A57, 0336).
+  'klassement.beheer_titel': 'Klassement',
+  'klassement.beheer_aan': 'Staat aan. Leden zien elkaars punten uit deze groep.',
+  'klassement.beheer_uit': 'Staat uit. Leden zien geen punten van elkaar.',
+  'klassement.beheer_label': 'Klassement',
+  'klassement.melding_aan': 'Het klassement staat nu aan.',
+  'klassement.melding_uit': 'Het klassement staat nu uit.',
+  'klassement.niet_bevestigd': 'Bevestig eerst dat je dit wilt.',
+  'klassement.teamgroep': 'Een groep van een organisatie heeft nooit een klassement.',
+  'klassement.automatisch': 'Een groep die automatisch is samengesteld heeft nooit een klassement.',
+  'klassement.gearchiveerd': 'Deze groep is gearchiveerd. Daar valt niets meer aan te veranderen.',
+  'klassement.ongewijzigd': 'Het klassement stond al zo.',
+  'klassement.onbekend': 'Deze groep bestaat niet meer.',
 
   // De heldenlijst van een open groep — QS8-493, RPC uit 0268/0279.
   // ⚠⚠ **De kop noemt de held en niet de persoon**, want de rij doet dat ook.

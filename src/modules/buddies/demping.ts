@@ -11,11 +11,6 @@ import { t } from '../../shared/i18n';
  * de database zelf — `te_beoordelen_voor()` geeft een gedempte groep niet
  * terug aan de meldingenjob — dus deze module is niet de grens maar de knop.
  *
- * ⚠️ **De tabel is nog niet in `src/lib/database.types.ts` en dat is met opzet
- *    niet met de hand bijgewerkt** (onwrikbaar: een gegenereerd bestand). De
- *    migratie wacht op Quintens "backup gedaan"; tot `npm run types:db` de
- *    tabel kent loopt de naam door één smalle structurele rand.
- *
  * ⚠️ **Een mislukte lezing is geen "niet gedempt".** `fetchGroepGedempt` werpt;
  *    het scherm toont dan een fout en geen schakelaar die uit staat, want een
  *    schakelaar die liegt over een demping is erger dan geen schakelaar.
@@ -23,32 +18,9 @@ import { t } from '../../shared/i18n';
 
 const AL_AANWEZIG = '23505';
 
-interface FoutRand {
-  readonly message: string;
-  readonly code?: string;
-}
-interface Antwoord {
-  readonly data: unknown;
-  readonly error: FoutRand | null;
-}
-interface Bouwer extends PromiseLike<Antwoord> {
-  eq(kolom: string, waarde: string): Bouwer;
-  select(kolommen: string): Bouwer;
-  maybeSingle(): Bouwer;
-}
-interface TabelRand {
-  select(kolommen: string): Bouwer;
-  insert(rij: object): Bouwer;
-  delete(): Bouwer;
-}
-
-function db(): { from(naam: string): TabelRand } {
-  return supabase() as unknown as { from(naam: string): TabelRand };
-}
-
 /** Is deze groep door jou gedempt? Werpt bij een fout. */
 export async function fetchGroepGedempt(groupId: string, userId: string): Promise<boolean> {
-  const { data, error } = await db()
+  const { data, error } = await supabase()
     .from('groep_demping')
     .select('group_id')
     .eq('user_id', userId)
@@ -79,8 +51,8 @@ export async function zetGroepGedempt(
   gedempt: boolean,
 ): Promise<void> {
   const antwoord = gedempt
-    ? await db().from('groep_demping').insert({ user_id: userId, group_id: groupId })
-    : await db().from('groep_demping').delete().eq('user_id', userId).eq('group_id', groupId);
+    ? await supabase().from('groep_demping').insert({ user_id: userId, group_id: groupId })
+    : await supabase().from('groep_demping').delete().eq('user_id', userId).eq('group_id', groupId);
 
   const fout = antwoord.error;
   if (fout && !(gedempt && fout.code === AL_AANWEZIG)) {
