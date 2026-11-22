@@ -30,6 +30,7 @@ import {
   schrijfacties,
   schrijfIn,
   selectiesIn,
+  splitOpBovensteNiveau,
   velduitLokaal,
   verlopenRegels,
   zodSchemas,
@@ -69,6 +70,12 @@ describe('lezen wat er in de code staat', () => {
 
     expect(uit[0]?.alles).toBe(true);
     expect(uit[0]?.kolommen).toEqual([]);
+  });
+
+  it('laat een ingebedde bron met drie kolommen één stuk blijven', () => {
+    const uit = selectiesIn('a.ts', `.from('goal_group_links').select('group_id, groups(name, zichtbaarheid, organization_id)')`);
+    expect(uit[0]?.kolommen).toEqual(['group_id']);
+    expect(splitOpBovensteNiveau('a, b(c, d, e), f')).toEqual(['a', ' b(c, d, e)', ' f']);
   });
 
   it('laat ingebedde bronnen staan — die lopen over de rechten van een andere tabel', () => {
