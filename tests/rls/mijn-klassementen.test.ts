@@ -162,7 +162,9 @@ describe.runIf(rlsTestsConfigured)('mijn_klassementen() volgt groep_klassement()
     const archief = await maakGroep(anna, 'MK-archief', 'beschermd');
     await adminDb().from('groups').update({ status: 'archived' } as never).eq('id', archief.id);
     const auto = await maakGroep(anna, 'MK-auto', 'beschermd', false);
-    await adminDb().from('groups').update({ automatisch: true } as never).eq('id', auto.id);
+    // De CHECK `groups_automatisch_geen_klassement` houdt een automatisch gevormde groep met klassement tegen; zonder die CHECK zou
+    // `groep_klassement()` er rijen voor geven en `mijn_klassementen()` niet, en wordt de vergelijking hieronder rood (bedoeld alarm).
+    expect((await adminDb().from('groups').update({ automatisch: true } as never).eq('id', auto.id)).error).toBeNull();
     const verlaten = await maakGroep(bram, 'MK-verlaten', 'beschermd');
     await laatMeedoen(anna, verlaten);
     await adminDb().from('group_members').update({ status: 'inactive' } as never).eq('group_id', verlaten.id).eq('user_id', anna.id);
@@ -235,10 +237,30 @@ describe.runIf(rlsTestsConfigured)('mijn_klassementen() volgt groep_klassement()
     }
   }, TEST_TIMEOUT);
 
+  it('AC12: een uitgezet lid van een groep staat er niet in en telt niet mee in total_members, net als in groep_klassement()', async () => {
+    const g = await maakGroep(anna, 'MK-inactief', 'beschermd');
+    await laatMeedoen(bram, g);
+    await laatMeedoen(cor, g);
+    await geefPunten(anna, g.id, 3);
+    await geefPunten(bram, g.id, 2);
+    await geefPunten(cor, g.id, 9);
+    const uitgezet = await adminDb().from('group_members').update({ status: 'inactive' } as never).eq('group_id', g.id).eq('user_id', cor.id);
+    expect(uitgezet.error).toBeNull();
+
+    const rijen = vanGroep(await mijn(anna), g.id);
+    expect(rijen.map((r) => r.user_id).sort()).toEqual([anna.id, bram.id].sort());
+    expect(rijen.every((r) => r.total_members === 2), 'een uitgezet lid telt mee in total_members').toBe(true);
+    expect(await klassement(anna, g.id)).toHaveLength(2);
+  }, TEST_TIMEOUT);
+
   it('AC11: een buitenstaander ziet niets van een groep waar hij geen lid van is', async () => {
     const vreemde = await createTestUser('mk-buiten');
     expect(await mijn(vreemde)).toEqual([]);
-    // En de lijst van Anna noemt een groep die hij niet kent nergens.
-    expect((await mijn(vreemde)).some((r) => r.group_id === k7.id)).toBe(false);
+    // Een buitenstaander die wél lid is van een eigen groep met klassement, ziet daar K7 niet tussen.
+    const eigen = await maakGroep(vreemde, 'MK-buiten-eigen', 'beschermd');
+    const zijnLijst = await mijn(vreemde);
+    expect(zijnLijst.length).toBeGreaterThan(0);
+    expect(zijnLijst.every((r) => r.group_id === eigen.id)).toBe(true);
+    expect(zijnLijst.some((r) => r.group_id === k7.id)).toBe(false);
   }, TEST_TIMEOUT);
 });

@@ -12,8 +12,9 @@ import { describe, expect, it } from 'vitest';
  *    poort of de volgorde van de ene aanpast, ziet hier dat de andere hem ook nodig heeft. Dit draait zonder database en is dus
  *    de enige grendel die ook in een cloudsessie meetelt; `tests/rls/mijn-klassementen.test.ts` meet het op de database.
  *
- * IJKING (met de hand, 22-11-2026): `lid_van_levende_groep(` uit één van beide halen, de tiebreak `uid asc` weghalen of
- * `least(coalesce(p_limit, 10), 20)` veranderen -> de bijbehorende toets valt om.
+ * IJKING (met de hand, 22-11-2026): `lid_van_levende_groep(` uit `mijn_klassementen` halen, de tiebreak `uid asc` weghalen of
+ * `least(coalesce(p_limit, 10), 20)` veranderen -> de bijbehorende toets valt om; `status <> 'inactive'` uit één van beide halen of
+ * `organization_id is null` omdraaien -> de toets op het uitgezette lid, resp. de teamgrens valt om.
  */
 const MIGRATIES = fileURLToPath(new URL('../../supabase/migrations/', import.meta.url));
 
@@ -21,14 +22,14 @@ function laatsteDefinitie(functie: string): { readonly naam: string; readonly li
   const bestanden = readdirSync(MIGRATIES).filter((n) => n.endsWith('.sql')).sort();
   let gevonden: { naam: string; lichaam: string; bestand: string } | null = null;
   for (const naam of bestanden) {
-    const sql = readFileSync(join(MIGRATIES, naam), 'utf8');
+    const inhoud = readFileSync(join(MIGRATIES, naam), 'utf8');
     const kop = new RegExp(`create (?:or replace )?function public\\.${functie}\\(`, 'g');
     let m: RegExpExecArray | null;
-    while ((m = kop.exec(sql)) !== null) {
-      const start = sql.indexOf('$function$', m.index);
-      const eind = sql.indexOf('$function$', start + 10);
+    while ((m = kop.exec(inhoud)) !== null) {
+      const start = inhoud.indexOf('$function$', m.index);
+      const eind = inhoud.indexOf('$function$', start + 10);
       if (start === -1 || eind === -1) continue;
-      gevonden = { naam, lichaam: sql.slice(start, eind), bestand: sql };
+      gevonden = { naam, lichaam: inhoud.slice(start, eind), bestand: inhoud };
     }
   }
   if (gevonden === null) throw new Error(`geen definitie van ${functie}`);
@@ -47,7 +48,18 @@ describe('mijn_klassementen() en groep_klassement() delen één poort en één v
     const sql = zonderCommentaar(d.lichaam);
     expect(sql).toMatch(/lid_van_levende_groep\(/);
     expect(sql).toMatch(/klassement_aan/);
-    expect(sql).toMatch(/organization_id is (not )?null/);
+  });
+
+  it('de teamgrens heeft in elke functie zijn eigen, vaste vorm (een omgedraaide voorwaarde laat alleen teamgroepen door)', () => {
+    expect(zonderCommentaar(groep.lichaam)).toMatch(/not exists \(select 1 from groups gr\s+where gr\.id = p_group_id and gr\.organization_id is not null\)/);
+    expect(zonderCommentaar(mijn.lichaam)).toMatch(/and g\.organization_id is null/);
+  });
+
+  it.each([
+    ['groep_klassement', groep],
+    ['mijn_klassementen', mijn],
+  ])("%s: een uitgezet lid (status inactive) telt niet mee", (_naam, d) => {
+    expect(zonderCommentaar(d.lichaam)).toMatch(/status <> 'inactive'/);
   });
 
   it.each([
