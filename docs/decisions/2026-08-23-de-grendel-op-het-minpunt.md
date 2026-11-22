@@ -161,3 +161,64 @@ richtingen:
 En één die de review zelf niet kon zien: de repo mist nog steeds de migraties
 0057 t/m 0061, dus `supabase/migrations/` kan het project niet reconstrueren.
 Dat staat in `2026-08-22-rls-suite-tegen-productie.md` en blijft open.
+
+## Aanvulling 22-11-2026: een buddy die later komt (QS8-787)
+
+De tabel bovenaan noemde twee momenten waarop de grendel omgaat. Het derde
+ontbrak: **er komt een lid bij een groep waar het doel al aan hangt.** Dan bleef
+`beoordeelbaar` op `false`, en sloeg `geen_minpunt_zonder_beoordelaar()` het
+minpunt over. Die nieuwe buddy kon de week wél goedkeuren (+2), want
+`completion_approvals_insert` vraagt alleen of de goedkeurder een niet-inactief
+lid is en of het doel aan de groep hangt. **Halen leverde +2 op en missen kostte
+0**: dezelfde asymmetrie als K1 hierboven, langs een andere weg. Gevonden bij
+QS8-774 (`docs/research/meetverslag-minpunt-zonder-grootboekrij.md`, § Het gat).
+Op productie is het 0 keer opgetreden. Quinten besloot op 22-11 dat het gedicht
+wordt.
+
+| gebeurtenis | grendel |
+|---|---|
+| er komt een lid bij een groep waar het doel aan hangt (INSERT) | gaat om |
+| een uitgezet lid wordt weer toegelaten (`inactive` → `active`) | gaat om |
+| de eigenaar komt zelf (weer) in die groep | blijft staan |
+| het lid komt binnen als `inactive` | blijft staan |
+
+**De trigger** (migratie 0339): `group_members_zet_beoordeelbaar_om`, AFTER INSERT OR UPDATE OF
+status op `group_members`, met de functie `lid_zet_beoordeelbaar_om()`.
+
+- **Het predicaat is dat van `kan_beoordeeld_worden()`** (M1 hierboven), met het
+  nieuwe lid ingevuld: een niet-inactief lid dat niet de eigenaar is, in een
+  groep waaraan het doel gekoppeld is. Twee definities van "telt mee als
+  medebeoordelaar" is hoe 0064 en 0066 uit elkaar liepen.
+  **Besluit Quinten 22-11-2026 (optie A):** precies dit predicaat, zonder
+  extra toets op gearchiveerde groepen. Die staat ook niet in
+  `kan_beoordeeld_worden()`, en `join_group_with_code()` weigert een
+  gearchiveerde groep met `archived`.
+- **Alleen `todo` en `cancelled`**, dezelfde grens als de koppeltrigger.
+  Afgewikkelde weken veranderen niet (domeinregel 6). 📏 Een week op `pending`
+  kan in de gewone gang van zaken niet terug naar `todo`: dat doet alleen
+  `herstel_weekdoelstatus()`, en die heeft geen aanroeper.
+- **De twee routes:** (a) groep, doel koppelen, week plannen, vriend uitnodigen;
+  (b) de buddy vertrekt (`verlaat_groep()` verwijdert de rij), de week wordt
+  gepland, de buddy komt terug via de code. Dat is een INSERT. Alleen terugkomen
+  na een uitzetting is een UPDATE, en die loopt via
+  `beslis_lidmaatschapsverzoek()`.
+
+**De bewust gulle kant, ook hier.** Komt een buddy erbij en vertrekt hij weer
+binnen dezelfde week, dan blijft de grendel staan. Dat geldt ook voor een buddy
+die na het einde van de week maar vóór de rollover toetreedt. Dat kan een
+minpunt opleveren voor een week waarin niemand meer kon goedkeuren. Net als
+hierboven is dat de goede kant om fout te gaan.
+
+**Een bekend raam, niet gedicht.** Wordt een weekdoel tegelijk aangemaakt met
+een toetreding, dan ziet onder READ COMMITTED geen van beide transacties de rij
+van de ander, en kan de grendel `false` blijven. Datzelfde raam staat open bij
+`koppeling_zet_beoordeelbaar_om()`.
+
+**Bewijs:** `tests/rls/later-buddy-grendel.test.ts`, met echte JWT's op de stappen
+van de gebruiker. Elke grendel is met de hand gebroken. De groepsfilter, de
+statusfilter (ook alleen `cancelled` eruit), de eigenaarsfilter, de
+inactief-toets en de UPDATE-tak maken elk precies hun eigen toets rood. De
+groepsfilter kwam uit de security-review: zonder die filter zette één
+toetreding de grendel om voor elk gekoppeld open weekdoel in de app. De trigger droppen maakt de drie routes en de toets op afgewikkelde
+weken rood. Eén mutant blijft groen: de UPDATE-tak ruimer maken. Dat is
+gelijkwaardig, want elke status behalve `inactive` telt al mee.

@@ -54,16 +54,19 @@ const BEKENDE_SLEUTELS = [
 ];
 
 /**
- * De gemeten stand van 18-11-2026: alles verklaard, niets te ruim.
+ * De gemeten stand van 22-11-2026: alles verklaard, niets te ruim.
  *
  * 📏 Zes bevindingen met een eigen sleutel, één oningelogde definer-functie
- *    (`invite_preview`) en **81** die `authenticated` mag aanroepen — gemeten met
- *    `get_advisors` op productie. Op 24-09-2026 waren het er 76; de vijf erbij
- *    zijn `buddyzoekopdrachten_over()`, `zoek_buddies_aan()`, `zoek_buddies_uit()`
- *    en `buddyzoek_stand()` in twee handtekeningen (buddywachtrij van QS8-233, migraties 0299, 0301, 0302 en 0306 op `main`).
+ *    (`invite_preview`) en **105** die `authenticated` mag aanroepen — gemeten met
+ *    `get_advisors` op productie (op 0337). Op 18-11-2026 waren het er 81; de 24
+ *    erbij komen uit 0309 t/m 0336 en staan bij naam en handtekening in de reden
+ *    van de ALLOWLIST-rij en in
+ *    `docs/decisions/2026-11-22-het-plafond-van-de-definer-ratel-staat-op-105.md`.
+ *    De toets "noemt elke functie die er sinds 18-11 bij kwam" hieronder houdt
+ *    die namen in de reden.
  *
  * ⚠️ `auth_leaked_password_protection` staat er niet meer in: de adviseur meldt
- *    hem op 18-11 niet meer, en een rij die niets aanwijst is per ontwerp rood.
+ *    hem sinds 18-11 niet meer, en een rij die niets aanwijst is per ontwerp rood.
  *    *Niet meer gemeld* is niet hetzelfde als *gerepareerd* (QS8-411) — de
  *    schakelaar zelf kan hier niemand lezen, en dat staat op QS8-141. Komt de
  *    bevinding terug, dan is hij nieuw en wordt hij rood: zie de toets hieronder.
@@ -76,7 +79,7 @@ function gemetenStand() {
       cache_key: 'anon_security_definer_function_executable_public_invite_preview_code text',
     }),
   );
-  for (let i = 0; i < 81; i += 1) {
+  for (let i = 0; i < 105; i += 1) {
     rijen.push(
       bevinding({
         name: 'authenticated_security_definer_function_executable',
@@ -116,7 +119,7 @@ describe('normaliseer', () => {
 });
 
 describe('beoordeel — wat er met rust gelaten moet worden', () => {
-  it('meldt niets bij de gemeten stand van 18-11-2026', () => {
+  it('meldt niets bij de gemeten stand van 22-11-2026', () => {
     const { onverwacht, verouderd } = beoordeel(gemetenStand(), ALLOWLIST);
     expect(onverwacht).toEqual([]);
     expect(verouderd).toEqual([]);
@@ -172,7 +175,7 @@ describe('beoordeel — wat er gevonden moet worden', () => {
     expect(onverwacht.at(0)?.detail).toContain('hoogstens 1');
   });
 
-  it('meldt een 82e definer-functie — het plafond staat op 81', () => {
+  it('meldt een 106e definer-functie — het plafond staat op 105', () => {
     const rijen = [
       ...gemetenStand(),
       bevinding({
@@ -183,8 +186,59 @@ describe('beoordeel — wat er gevonden moet worden', () => {
     const { onverwacht } = beoordeel(rijen, ALLOWLIST);
     expect(onverwacht).toHaveLength(1);
     expect(onverwacht.at(0)?.niveau).toBe('RATEL');
-    expect(onverwacht.at(0)?.detail).toContain('hoogstens 81');
-    expect(onverwacht.at(0)?.detail).toContain('82 keer');
+    expect(onverwacht.at(0)?.detail).toContain('hoogstens 105');
+    expect(onverwacht.at(0)?.detail).toContain('106 keer');
+  });
+});
+
+describe('de reden van het definer-plafond — elke functie bij naam', () => {
+  /**
+   * De 24 die er tussen 18-11-2026 (81) en 22-11-2026 (105) bij kwamen, met de
+   * handtekening zoals `get_advisors` hem op 22-11 meldde.
+   *
+   * ⚠️ De ratel telt aantallen en geen namen (ER-rij van PR #742). Deze toets
+   *    maakt dat niet goed — hij leest de reden, niet productie — maar hij houdt
+   *    vast dat elke functie waar het plafond voor omhoog ging in de reden staat,
+   *    zodat het getal en zijn verantwoording niet uit elkaar lopen.
+   */
+  const ERBIJ_SINDS_18_11 = [
+    'deel_prestatie(p_group_id uuid, p_badge text)',
+    'weekbelofte_begunstigde_bekend(p_groep uuid, p_getuige uuid)',
+    'is_organisatielid(p_organization_id uuid)',
+    'maak_organisatie(p_naam text)',
+    'organisatie_uitnodigcode(p_organization_id uuid)',
+    'organisatieleden(p_organization_id uuid, p_limit integer, p_na_user_id uuid)',
+    'verlaat_organisatie(p_organization_id uuid)',
+    'vernieuw_organisatiecode(p_organization_id uuid, p_intrekken boolean)',
+    'word_organisatielid(p_code text)',
+    'zet_organisatielid_uit(p_organization_id uuid, p_user_id uuid)',
+    'maak_teamgroep(p_organization_id uuid, p_naam text, p_huddledag smallint, p_tz text, p_zichtbaarheid text)',
+    'benoem_organisatiebeheerder(p_organization_id uuid, p_user_id uuid)',
+    'treed_terug_als_organisatiebeheerder(p_organization_id uuid)',
+    'maak_teamdoel(p_group_id uuid, p_titel text, p_streefdatum date, p_beschrijving text)',
+    'neem_aandeel(p_team_goal_id uuid, p_titel text)',
+    'teambalk(p_team_goal_id uuid)',
+    'aandeel_wacht_op_teamgenoot(g uuid)',
+    'is_aandeel_van_een_ander(g uuid)',
+    'organisatieteams(p_organization_id uuid, p_limit integer, p_na_id uuid)',
+    'straf_teamband_klopt_voor_mij(p_goal_id uuid)',
+    'keur_teamdoel_goed(p_team_goal_id uuid)',
+    'vraag_teamdoel_afronding(p_team_goal_id uuid)',
+    'lid_van_levende_groep(gid uuid)',
+    'zet_groepsklassement(p_group_id uuid, p_aan boolean, p_bevestigd boolean)',
+  ];
+
+  const rij = ALLOWLIST.find(
+    (r) => r.regel === 'authenticated_security_definer_function_executable',
+  );
+
+  it('telt 24 functies, het verschil tussen 81 en 105', () => {
+    expect(new Set(ERBIJ_SINDS_18_11).size).toBe(24);
+    expect(rij?.hoogstens).toBe(81 + ERBIJ_SINDS_18_11.length);
+  });
+
+  it.each(ERBIJ_SINDS_18_11)('noemt %s in de reden', (handtekening) => {
+    expect(rij?.reden).toContain(handtekening);
   });
 });
 
@@ -200,8 +254,8 @@ describe('beoordeel — de lijst rot ook de andere kant op', () => {
     ]);
   });
 
-  it('meldt een daling van 81 naar 80 — het plafond moet mee omlaag', () => {
-    // ⚠️ De ratel slaat twee kanten op: 81 mag, 82 niet (hierboven), en 80 is
+  it('meldt een daling van 105 naar 104 — het plafond moet mee omlaag', () => {
+    // ⚠️ De ratel slaat twee kanten op: 105 mag, 106 niet (hierboven), en 104 is
     //    "te ruim" zodat de vrijgekomen plek niet stil door de volgende
     //    definer-functie wordt opgevuld.
     const rijen = gemetenStand().slice(0, -1);
@@ -211,7 +265,7 @@ describe('beoordeel — de lijst rot ook de andere kant op', () => {
       expect.objectContaining({
         soort: 'te-ruim',
         sleutel: 'authenticated_security_definer_function_executable',
-        reden: expect.stringContaining('hoogstens 81 en komt nog 80 keer voor'),
+        reden: expect.stringContaining('hoogstens 105 en komt nog 104 keer voor'),
       }),
     ]);
   });
