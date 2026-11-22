@@ -182,13 +182,17 @@ wordt.
 | de eigenaar komt zelf (weer) in die groep | blijft staan |
 | het lid komt binnen als `inactive` | blijft staan |
 
-**De trigger:** `group_members_zet_beoordeelbaar_om`, AFTER INSERT OR UPDATE OF
+**De trigger** (migratie 0339): `group_members_zet_beoordeelbaar_om`, AFTER INSERT OR UPDATE OF
 status op `group_members`, met de functie `lid_zet_beoordeelbaar_om()`.
 
 - **Het predicaat is dat van `kan_beoordeeld_worden()`** (M1 hierboven), met het
   nieuwe lid ingevuld: een niet-inactief lid dat niet de eigenaar is, in een
   groep waaraan het doel gekoppeld is. Twee definities van "telt mee als
   medebeoordelaar" is hoe 0064 en 0066 uit elkaar liepen.
+  **Besluit Quinten 22-11-2026 (optie A):** precies dit predicaat, zonder
+  extra toets op gearchiveerde groepen. Die staat ook niet in
+  `kan_beoordeeld_worden()`, en `join_group_with_code()` weigert een
+  gearchiveerde groep met `archived`.
 - **Alleen `todo` en `cancelled`**, dezelfde grens als de koppeltrigger.
   Afgewikkelde weken veranderen niet (domeinregel 6). 📏 Een week op `pending`
   kan in de gewone gang van zaken niet terug naar `todo`: dat doet alleen
