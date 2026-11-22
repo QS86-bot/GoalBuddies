@@ -122,20 +122,49 @@ export const ALLOWLIST = [
   },
   {
     regel: 'authenticated_security_definer_function_executable',
-    hoogstens: 81,
+    hoogstens: 105,
     reden:
-      'Bekend en open — QS8-181. 📏 Gemeten op 18-11-2026 (get_advisors op ' +
-      'productie, alleen lezen): de adviseur meldt er **81**. Op 24-09-2026 ' +
-      'waren het er 76, en het plafond van 47 was met 29 overschreden voordat ' +
-      'iemand het zag. De vijf erbij zijn de buddywachtrij van QS8-233: ' +
-      '`buddyzoekopdrachten_over()`, `zoek_buddies_aan()`, `zoek_buddies_uit()` ' +
-      'en `buddyzoek_stand()` in twee handtekeningen. Hun migraties staan op ' +
-      '`main` (0299, 0301, 0302 en 0306), en productie stond op 18-11 op 0302. Elk is per ' +
-      'functie nagelopen: een `grant` die een migratie met zoveel woorden geeft, ' +
-      'een toets op `auth.uid()`, alleen eigen rijen, en geen tegenslag van een ' +
-      'ander. ⚠️ Dat precies deze vijf het verschil met 76 zijn is afgeleid uit ' +
-      'het getal en niet per naam vergeleken: de lijst van 24-09 is er niet ' +
-      'meer. ⚠️ Dit getal is een ratel en geen constante: `beoordeel()` faalt ' +
+      'Bekend en open — QS8-181. 📏 Gemeten op 22-11-2026 (get_advisors op ' +
+      'productie, alleen lezen, productie op 0337): de adviseur meldt er **105**. ' +
+      'Op 18-11-2026 waren het er 81 (productie op 0302), op 24-09-2026 76. ' +
+      'De 24 erbij, per migratie die de `grant ... to authenticated` met zoveel ' +
+      'woorden geeft: ' +
+      '0309 `deel_prestatie(p_group_id uuid, p_badge text)`; ' +
+      '0314 `weekbelofte_begunstigde_bekend(p_groep uuid, p_getuige uuid)`; ' +
+      '0316 `is_organisatielid(p_organization_id uuid)`, `maak_organisatie(p_naam text)` ' +
+      '(grant herhaald in 0337), `organisatie_uitnodigcode(p_organization_id uuid)`, ' +
+      '`organisatieleden(p_organization_id uuid, p_limit integer, p_na_user_id uuid)`, ' +
+      '`verlaat_organisatie(p_organization_id uuid)`, ' +
+      '`vernieuw_organisatiecode(p_organization_id uuid, p_intrekken boolean)`, ' +
+      '`word_organisatielid(p_code text)`, ' +
+      '`zet_organisatielid_uit(p_organization_id uuid, p_user_id uuid)`; ' +
+      '0317 `maak_teamgroep(p_organization_id uuid, p_naam text, p_huddledag smallint, p_tz text, p_zichtbaarheid text)`; ' +
+      '0318 `benoem_organisatiebeheerder(p_organization_id uuid, p_user_id uuid)`, ' +
+      '`treed_terug_als_organisatiebeheerder(p_organization_id uuid)`; ' +
+      '0319 `maak_teamdoel(p_group_id uuid, p_titel text, p_streefdatum date, p_beschrijving text)`, ' +
+      '`neem_aandeel(p_team_goal_id uuid, p_titel text)`; ' +
+      '0320 `teambalk(p_team_goal_id uuid)`; ' +
+      '0321 `aandeel_wacht_op_teamgenoot(g uuid)`, `is_aandeel_van_een_ander(g uuid)`; ' +
+      '0324 `organisatieteams(p_organization_id uuid, p_limit integer, p_na_id uuid)`; ' +
+      '0325 `straf_teamband_klopt_voor_mij(p_goal_id uuid)`; ' +
+      '0326 `keur_teamdoel_goed(p_team_goal_id uuid)`, `vraag_teamdoel_afronding(p_team_goal_id uuid)`; ' +
+      '0333 `lid_van_levende_groep(gid uuid)`; ' +
+      '0336 `zet_groepsklassement(p_group_id uuid, p_aan boolean, p_bevestigd boolean)`. ' +
+      'Elk is op 22-11 met `pg_get_functiondef()` op productie nagelopen: `set search_path`, ' +
+      'niet uitvoerbaar door `anon`, een toets op `auth.uid()` of op lidmaatschap ' +
+      '(groep of organisatie), en voor 23 van de 24 geen tegenslag van een ander lid in wat ' +
+      'eruit komt. ⚠️ `teambalk()` is de uitzondering: in een team van twee leest een lid ' +
+      'de stilstand van de ander af. Bewust geaccepteerd door Quinten (18-11) en open als ' +
+      'Middel in de engineer-review; niet "niets over een ander". ' +
+      'De tabel per functie staat in ' +
+      'docs/decisions/2026-11-22-het-plafond-van-de-definer-ratel-staat-op-105.md, ' +
+      'samen met de volledige lijst van 105 namen zodat de volgende meting per naam ' +
+      'kan vergelijken. ⚠️ Twee zijn policyhelpers die één bit over een doel-uuid ' +
+      'geven zonder eigen lidmaatschapstoets (`is_aandeel_van_een_ander`, ' +
+      '`straf_teamband_klopt_voor_mij`); de grant is nodig omdat de invoker-functie ' +
+      '`group_overview()` en de policies op `commitments` ze aanroepen, en het orakel ' +
+      'is een open punt voor de engineer-review. ' +
+      '⚠️ Dit getal is een ratel en geen constante: `beoordeel()` faalt ' +
       'óók als het aantal zákt zonder dat het plafond meezakt, zodat er geen ' +
       'ruimte vrijkomt waar de volgende definer-functie stil in glijdt.',
   },
