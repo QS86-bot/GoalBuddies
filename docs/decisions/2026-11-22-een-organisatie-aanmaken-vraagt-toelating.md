@@ -33,9 +33,14 @@ Er lagen twee meerkeuzevragen onder grens 1, want wie een organisatie mag aanmak
 
 ## Wat er gebouwd is
 
-- **`organisatie_aanmakers`:** RLS aan en **geen policy**, dus deny-all voor iedereen buiten de eigenaar. De vorm en
-  de reden zijn dezelfde als bij `opslag_dagtellers` (0233). Daarnaast staat er
-  `revoke all … from public, anon, authenticated` (regel 4: `authenticated` met zoveel woorden). De primaire sleutel
+- **`organisatie_aanmakers`:** RLS aan, met **vier policies die `false` zijn** (SELECT, INSERT, UPDATE en DELETE)
+  en `revoke all … from public, anon, authenticated` (regel 4: `authenticated` met zoveel woorden). Dat is de vorm
+  van `organization_role_events` (0318).
+  - *Waarom niet de vorm "geen policy" van `opslag_dagtellers` (0233).* Dat was de eerste versie. Die volgt regel 1
+    niet, want die eist policies voor alle vier de handelingen. Bovendien maakte ze `adviseurdrift:controle` rood:
+    📏 die is tegen productie geijkt op precies drie tabellen zonder policy.
+
+  De primaire sleutel
   is `user_id` en verwijst naar `profiles(id)` met `on delete cascade`. Daarmee is die sleutel ook de index op de
   foreign key (regel 11), en een verwijderd account neemt zijn toelating mee.
 - **`maak_organisatie(text)`:** het lichaam is woordelijk dat van 0316, de laatste definitie op `main`, plus één

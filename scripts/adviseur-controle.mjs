@@ -99,15 +99,6 @@ export const ALLOWLIST = [
       'tests/rls/bewijsfotobucket.test.ts.',
   },
   {
-    sleutel: 'rls_enabled_no_policy_public_organisatie_aanmakers',
-    reden:
-      'Bewust en getest — 0337, QS8-776 (besluit Quinten 22-11-2026). De allowlist van ' +
-      'maak_organisatie(): geen policy is deny-all, geen grant voor anon of authenticated, ' +
-      'alleen te vullen als postgres of service_role. De enige lezer is maak_organisatie() ' +
-      '(security definer). Onder test in tests/rls/organisatie-aanmaken.test.ts en ' +
-      'tests/rls/anonleesrecht.test.ts.',
-  },
-  {
     sleutel: 'rls_enabled_no_policy_public_invite_events',
     reden:
       'Bewust en getest. Geen policy is deny-all; tests/rls/policies.test.ts ' +
