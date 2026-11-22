@@ -61,7 +61,7 @@ die na een `revoke ... from public, anon, authenticated` met zoveel woorden
 | `treed_terug_als_organisatiebeheerder(p_organization_id uuid)` | 0318 | `is_organisatiebeheerder()`, niet de laatste | eigen rol naar lid | idem | bedoeld |
 | `maak_teamdoel(p_group_id uuid, p_titel text, p_streefdatum date, p_beschrijving text)` | 0319 | `is_group_member()` van een teamgroep, één antwoord voor geen-lid en geen-team | maakt een teamdoel | niets over een ander | bedoeld |
 | `neem_aandeel(p_team_goal_id uuid, p_titel text)` | 0319 | `is_group_member()`, eigen lidmaatschap `for share` | maakt een eigen doel als aandeel | het aandeel blijft van de eigenaar (0321) | bedoeld |
-| `teambalk(p_team_goal_id uuid)` | 0320 | `mag_groep_lezen()`; anders `null` | één getal: gedane stappen van het team | ⚠️ **niet schoon:** in een team van twee trekt een lid zijn eigen stappen af en leest hij de voortgang, en dus ook de stilstand, van de ander (security-review M1). Door Quinten op 18-11 geaccepteerd als "alleen goed nieuws"; de voorwaarde die het Laag hield is met 0321 uitgekomen, en `docs/ENGINEER-REVIEW.md` voert het sindsdien als **Middel** (rij "`teambalk()` in een team van twee") | bewust geaccepteerd, niet "niets over een ander"; voorgelegd aan de orchestrator, zie §4a |
+| `teambalk(p_team_goal_id uuid)` | 0320 | `mag_groep_lezen()`; anders `null` | één getal: gedane stappen van het team | ⚠️ **niet schoon:** in een team van twee trekt een lid zijn eigen stappen af en leest hij de voortgang, en dus ook de stilstand, van de ander (security-review M1). Door Quinten op 18-11 geaccepteerd als "alleen goed nieuws"; de voorwaarde die het Laag hield is met 0321 uitgekomen, en `docs/ENGINEER-REVIEW.md` voert het sindsdien als **Middel** (rij "`teambalk()` in een team van twee") | bewust geaccepteerd, niet "niets over een ander"; telt mee in de 105 op besluit van Quinten (22-11), zie §4a |
 | `aandeel_wacht_op_teamgenoot(g uuid)` | 0321 | aanroeper én eigenaar actief lid van de teamgroep, niet het eigen doel | boolean: wacht dit aandeel op een goedkeuring | `pending` is een positief signaal; het goedkeurvenster van besluit 5 | bedoeld |
 | `is_aandeel_van_een_ander(g uuid)` | 0321 | `auth.uid()` alleen om zichzelf uit te sluiten; **geen lidmaatschapstoets** | boolean: is dit doel een aandeel van iemand anders | geen stand, geen voortgang; `true` sluit juist af | bedoeld, zie §4 |
 | `organisatieteams(p_organization_id uuid, p_limit integer, p_na_id uuid)` | 0324 | `is_organisatielid()`, gepagineerd | id en naam van niet-gearchiveerde teams | niets over een lid | bedoeld |
@@ -116,9 +116,11 @@ bevinding. Het is besloten (Quinten, 18-11), staat open als Middel in
 `docs/ENGINEER-REVIEW.md`, en de grant is de functie zelf: zonder grant is er
 geen teambalk.
 
-Het plafond staat in deze tak op 105, mét `teambalk()`. Of het 104 moet zijn
-(en `adviseur:controle` rood blijft tot het besluit herzien is), is aan de
-orchestrator voorgelegd; deze tak merget niet vóór dat antwoord.
+**Besluit van Quinten, 22-11-2026 (meerkeuze via de orchestrator, optie A):**
+het plafond is **105**, met `teambalk()` erin als *bewust geaccepteerd, Middel
+open*. Het alternatief (104, en `adviseur:controle` rood tot het besluit van
+18-11 herzien is) is afgewezen. De revoke-migratie voor
+`lid_van_levende_groep()` (§4b) is níet besloten en niet gebouwd.
 
 ## 4b. Twee bijvangsten van de review
 
