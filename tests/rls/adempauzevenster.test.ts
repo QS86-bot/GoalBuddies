@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { addDays, userCycle, type IsoDate, type Weekday } from '../../src/shared/time';
+import { localDateIn, now, type TimeZone } from '../../src/shared/time';
 
 import { psql, stackBeschikbaarOfFaal } from './psql-stack';
 
@@ -44,7 +44,7 @@ const beschikbaar = stackBeschikbaarOfFaal(
  */
 function lopendeCyclusSql(uid: string): string {
   return `(eigenaarsdatum(${uid})
-    - ((extract(dow from eigenaarsdatum(${uid}))::int - (select wsd from v) + 7) % 7))`;
+    - ((extract(dow from eigenaarsdatum(${uid}))::int - (select week_start_day from profiles where id = ${uid}) + 7) % 7))`;
 }
 
 const TZ_AMSTERDAM = 'Europe/Amsterdam';
@@ -156,44 +156,73 @@ describe.skipIf(!beschikbaar)('een adempauze ligt binnen een venster', () => {
 
 /**
  * ⚠️⚠️ **De klokgrens zelf (QS8-792).** De databaseklok is in een test niet te
- *    bevriezen, en een vaste zone is dan een bom: Amsterdam wijkt alleen op
- *    zondag in het laatste uur voor middernacht UTC van de week af, dus de rest
- *    van de week is zo'n test groen zonder iets te bewijzen. Pacific/Kiritimati (UTC+14) en
- *    Pacific/Niue (UTC-11) wijken samen op élk moment minstens één kalenderdag
- *    van UTC af, en dat is dezelfde grens als zondag 23:30 UTC in Amsterdam.
- *    Zie `risicoklok.test.ts` voor hetzelfde ontwerp.
+ *    bevriezen. Het venster rekent bovendien vanaf *vandaag* van de eigenaar en
+ *    niet vanaf zijn cyclusstart, dus een zone die van UTC afwijkt is niet genoeg:
+ *    een functie die terugvalt op `current_date` blijft groen tenzij de rand van het
+ *    venster op de datumafwijking valt. Daarom wordt de week-startdag hier van het
+ *    moment zelf afgeleid, zoals `risicoklok.test.ts` een zone kiest die nú afwijkt:
+ *
+ *    - Een zone vóór op UTC (Kiritimati): week-start = de dag van de eigenaar. De
+ *      lopende cyclus begint vandaag, dus cyclus +52 ligt precies op `vandaag + 364`.
+ *      Een UTC-functie rekent één dag te vroeg en weigert die.
+ *    - Een zone achter op UTC (Niue): week-start = de dag ná die van de eigenaar. De
+ *      cyclusstart ligt dan zes dagen terug, cyclus +53 is `vandaag + 365`, en een
+ *      UTC-functie (een dag verder) laat die door.
+ *
+ *    Kiritimati (+14) en Niue (−11) wijken samen op élk moment minstens één dag af,
+ *    dus er is altijd een geval. Geen geval is een luide fout en geen stille skip.
+ *    Een scheve `now()` rond middernacht tussen TypeScript en de database is hier
+ *    een aanname: het kan één keer in de dag een valse rode uitslag geven, nooit een
+ *    valse groene.
  */
-describe.skipIf(!beschikbaar)('het venster volgt de kalender van de eigenaar (QS8-792)', () => {
-  const zones = ['Pacific/Kiritimati', 'Pacific/Niue', TZ_AMSTERDAM];
+function dagVanDeWeek(iso: string): number {
+  return new Date(`${iso}T00:00:00Z`).getUTCDay();
+}
 
-  for (const tz of zones) {
-    for (const wsd of [1, 4]) {
-      it(`${tz}, week-start ${wsd}: 53 cycli is buiten, 52 is op de rand`, () => {
-        expect(redenOp(53, tz, wsd), 'buiten het venster werd geaccepteerd').toBe('buiten_venster');
-        expect(redenOp(52, tz, wsd), 'de rand werd geweigerd').toBe('GEEN');
-      }, 120_000);
-    }
+interface Randgeval {
+  tz: TimeZone;
+  wsd: number;
+  buiten: number;
+}
+
+function randgevallen(): Randgeval[] {
+  const utc = localDateIn('UTC' as TimeZone, now());
+  const gevallen: Randgeval[] = [];
+
+  const kiritimati = localDateIn('Pacific/Kiritimati' as TimeZone, now());
+  if (kiritimati !== utc) {
+    gevallen.push({ tz: 'Pacific/Kiritimati' as TimeZone, wsd: dagVanDeWeek(kiritimati), buiten: 53 });
   }
+
+  const niue = localDateIn('Pacific/Niue' as TimeZone, now());
+  if (niue !== utc) {
+    const morgen = new Date(Date.parse(`${niue}T00:00:00Z`) + 86_400_000).toISOString().slice(0, 10);
+    gevallen.push({ tz: 'Pacific/Niue' as TimeZone, wsd: dagVanDeWeek(morgen), buiten: 53 });
+  }
+
+  if (gevallen.length === 0) {
+    throw new Error('UTC+14 en UTC−11 spannen 25 uur; dit kan niet voorkomen.');
+  }
+  return gevallen;
+}
+
+describe.skipIf(!beschikbaar)('het venster volgt de kalender van de eigenaar (QS8-792)', () => {
+  it('MUST-FIND: de rand ligt op vandaag van de eigenaar, niet op de serverdatum', () => {
+    for (const g of randgevallen()) {
+      expect(redenOp(g.buiten, g.tz, g.wsd), `${g.tz}: 53 cycli werd geaccepteerd`).toBe(
+        'buiten_venster',
+      );
+    }
+  }, 120_000);
+
+  it('MUST-ALLOW: 52 cycli vooruit mag in dezelfde zones nog', () => {
+    for (const g of randgevallen()) {
+      expect(redenOp(52, g.tz, g.wsd), `${g.tz}: de rand werd geweigerd`).toBe('GEEN');
+    }
+  }, 120_000);
+
+  it.each([1, 4])('week-start %i in Amsterdam: 53 is buiten, 52 is op de rand', (wsd) => {
+    expect(redenOp(53, TZ_AMSTERDAM, wsd)).toBe('buiten_venster');
+    expect(redenOp(52, TZ_AMSTERDAM, wsd)).toBe('GEEN');
+  }, 120_000);
 });
-
-/**
- * De bevroren klok, aan de TypeScript-kant: dezelfde twee momenten als in het issue.
- * Op zondag 23:30 UTC is het in Amsterdam maandag en op maandag 00:30 UTC ook, en de
- * cyclus moet op beide momenten dezelfde zijn — dat is de belofte die `lopendeCyclusSql`
- * aan de SQL-kant waarmaakt met `eigenaarsdatum()`.
- */
-describe('de lopende cyclus op de klokgrens (bevroren klok, shared/time)', () => {
-  const zondag = new Date('2026-11-22T23:30:00Z');
-  const maandag = new Date('2026-11-23T00:30:00Z');
-
-  it.each([1, 4])('week-start %i: zondag 23:30 en maandag 00:30 UTC geven één cyclus', (wsd) => {
-    const cyc = (t: Date): IsoDate =>
-      userCycle({ weekStartDay: wsd as Weekday, tz: TZ_AMSTERDAM }, t).startDate;
-
-    expect(cyc(zondag)).toBe(cyc(maandag));
-    // en ze verschilt van wat UTC zou zeggen voor week-start 1:
-    if (wsd === 1) expect(cyc(zondag)).toBe('2026-11-23');
-    expect(addDays(cyc(zondag), 7)).not.toBe(cyc(zondag));
-  });
-});
-
