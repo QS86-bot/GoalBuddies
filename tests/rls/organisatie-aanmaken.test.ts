@@ -181,9 +181,11 @@ describe.runIf(rlsTestsConfigured)('maak_organisatie() vraagt toelating (QS8-776
         .insert({ user_id: gewoon.id, reden: 'anoniem' } as never);
       expect(zet.error?.code).toBe('42501');
 
+      // ⚠️ De weigering moet het recht zijn en niet de inlogtoets in het lichaam: die geeft óók 42501
+      //    ('Niet ingelogd'), dus alleen op de code toetsen blijft groen als anon ooit EXECUTE krijgt.
       const rpc = await anon.rpc('maak_organisatie' as never, { p_naam: 'Anoniem BV' } as never);
-      expect(rpc.error).not.toBeNull();
       expect(rpc.data).toBeNull();
+      expect(rpc.error?.message ?? '').toMatch(/permission denied for function maak_organisatie/);
     },
     TEST_TIMEOUT,
   );

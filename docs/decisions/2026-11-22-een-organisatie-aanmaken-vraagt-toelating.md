@@ -49,6 +49,16 @@ Een weigering verbruikt niets: geen advisory lock en geen telling in `organisati
 voor wie niet op de lijst staat altijd `niet_toegelaten`, ook bij een lege naam. De weigering zegt dus niets over
 naam, plafond of dagteller. De conservatieve kant: wie later wordt toegelaten, begint met een lege teller.
 
+### Wat de RPC wél over jezelf zegt (security-review, laag)
+
+`maak_organisatie('')` geeft `niet_toegelaten` aan wie niet op de lijst staat, en `ongeldige_naam` aan wie er wel
+op staat. Die tweede probe maakt niets aan en telt niet. Een gebruiker kan dus aan de RPC zien of hij zelf mag.
+Over een ander zegt hij niets. Dat schuurt licht met "geen RPC die de client vertelt of hij mag", maar er is geen
+manier om iemand te weigeren zonder het hem te vertellen. Het is niet afgedekt.
+
+**Wordt zwaarder als:** de lijst ooit iets anders gaat betekenen dan "mag een organisatie aanmaken", bijvoorbeeld
+een betaalstatus of een rol die je niet over jezelf hoort te weten.
+
 ### Waarom geen lezen voor de gebruiker zelf
 
 Een policy "je mag je eigen rij lezen" zou de client laten weten of hij mag. Daarmee bouw je de RPC van optie 2.1,
