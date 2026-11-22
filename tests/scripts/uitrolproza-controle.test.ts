@@ -1,6 +1,7 @@
-import { readFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
 // ⚠️ Een `.mjs` zonder eigen typings; TypeScript leidt ze af via `allowJs`.
 //    Zelfde patroon als `rls-dekking.test.ts` — dus zonder `@ts-expect-error`,
@@ -8,6 +9,7 @@ import { describe, expect, it } from 'vitest';
 import {
   beoordeel,
   geldigeDatum,
+  hoofd,
   openRijen,
   standClaims,
   wachtOpUitrol,
@@ -119,6 +121,11 @@ describe('standClaims — de datum van de meting (QS8-786)', () => {
     expect(datum('productie staat op `0337` (stand van 22-11-2026)')).toEqual(['22-11-2026']);
   });
 
+  it('leest hem na een gedachtestreepje of puntkomma', () => {
+    expect(datum('productie staat op **0337** — stand van 22-11-2026')).toEqual(['22-11-2026']);
+    expect(datum('productie staat op **0337**; stand van 22-11-2026')).toEqual(['22-11-2026']);
+  });
+
   it('leest hem zonder haakjes, ook na een komma', () => {
     expect(datum('productie staat op 0337, stand van 22-11-2026')).toEqual(['22-11-2026']);
     expect(datum('productie staat op 0337 stand van 22-11-2026')).toEqual(['22-11-2026']);
@@ -153,6 +160,15 @@ describe('standClaims — de datum van de meting (QS8-786)', () => {
     expect(standClaims('Productie staat nu op **0294** en loopt gelijk').map((c: { nummer: string }) => c.nummer)).toEqual(
       ['0294'],
     );
+  });
+
+  /** 📏 Gevonden door code-critic op QS8-786: deze vormen ontsnapten. */
+  it('vindt "productiestand" en een ander bijwoord dan "nu"', () => {
+    const nummers = (t: string) => standClaims(t).map((c: { nummer: string }) => c.nummer);
+
+    expect(nummers('de productiestand **0337** is gemeten')).toEqual(['0337']);
+    expect(nummers('productie staat al op **0337**')).toEqual(['0337']);
+    expect(nummers('productie staat sinds 24-11 op **0337**')).toEqual(['0337']);
   });
 
   it('ziet een verwijzing naar uitgerold.json zonder getal niet als bewering', () => {
@@ -258,7 +274,36 @@ describe('het echte dossier', () => {
   it('heeft geen kale productiestand, ook niet als productie hoger staat', () => {
     const inhoud = readFileSync(join(__dirname, '../../docs/ENGINEER-REVIEW.md'), 'utf8');
 
-    expect(beoordeel(openRijen(inhoud), '0339').kaal).toEqual([]);
-    expect(beoordeel(openRijen(inhoud), '0999').kaal).toEqual([]);
+    expect(beoordeel(openRijen(inhoud), '0339')).toEqual({ kaal: [], ingehaald: [] });
+  });
+});
+
+/**
+ * ⚠️ **`hoofd()` is de enige plek waar rood écht rood wordt**: de exitcode.
+ *    Zonder deze toets bleef de suite groen met `return 0` op de rode tak.
+ */
+describe('hoofd — de exitcode', () => {
+  const wortel = (tekst: string, hoogste = '0337') => {
+    const map = mkdtempSync(join(tmpdir(), 'uitrolproza-'));
+    mkdirSync(join(map, 'docs'));
+    mkdirSync(join(map, 'supabase'));
+    writeFileSync(join(map, 'docs/ENGINEER-REVIEW.md'), `${rij(tekst)}\n`);
+    writeFileSync(join(map, 'supabase/uitgerold.json'), JSON.stringify({ hoogste }));
+
+    return map;
+  };
+
+  it('geeft 1 op een kaal getal', () => {
+    const fout = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+
+    expect(hoofd(wortel('productie staat op **0337**'))).toBe(1);
+    fout.mockRestore();
+  });
+
+  it('geeft 0 op een gedateerde stand, ook na een uitrol', () => {
+    const log = vi.spyOn(console, 'log').mockImplementation(() => undefined);
+
+    expect(hoofd(wortel('productie staat op **0337** (stand van 22-11-2026)', '0339'))).toBe(0);
+    log.mockRestore();
   });
 });

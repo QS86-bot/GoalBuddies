@@ -91,21 +91,22 @@ const OPEN_RISICO = new Set(['Kritiek', 'Hoog', 'Middel', '**Kritiek**', '**Hoog
  *    nummer dat aan *productie* wordt opgehangen is een bewering over de
  *    uitrolstand; de rest is een verwijzing.
  *
- * ⚠️ **`staat nu op` hoort erbij sinds QS8-786.** 📏 Zes open rijen schreven
- *    *"Productie staat nu op **0294**"* en die zag de controle niet: de
- *    tegenwoordige tijd bij uitstek, onzichtbaar door één bijwoord. De
- *    verleden tijd (`stond op`) blijft er met opzet buiten — zie rij 851.
+ * ⚠️ **`staat nu op` hoort erbij sinds QS8-786**, en met hem elk bijwoord
+ *    (`staat al op`, `staat sinds 24-11 op`) en `productiestand`. 📏 Zes open
+ *    rijen schreven *"Productie staat nu op **0294**"* en die zag de controle
+ *    niet: de tegenwoordige tijd bij uitstek, onzichtbaar door één bijwoord.
+ *    De verleden tijd (`stond op`) blijft er met opzet buiten — zie rij 851.
  */
-const STANDCLAIM = /productie[^|]{0,24}?\b(?:staat (?:nu )?op|stand)\s*\**\s*`?(0\d{3})`?\**/gi;
+const STANDCLAIM = /productie(?:stand\b|[^|]{0,24}?\b(?:staat(?: [\w-]+){0,2} op|stand))\s*\**\s*`?(0\d{3})`?\**/gi;
 
 /**
- * De datummarkering, direct na het getal: `(stand van 22-11-2026)` of
- * `, stand van 22-11-2026`.
+ * De datummarkering, direct na het getal: `(stand van 22-11-2026)`, of na
+ * één scheidingsteken (`,` `;` `—` `–` `-`).
  *
  * ⚠️ **Verankerd aan het begin** (`^`): dit wordt getoetst op de tekst die
  *    ná de bewering volgt, en een datum verderop in de rij telt niet.
  */
-const MARKERING = /^\s*[(,]?\s*stand van (\d{2})-(\d{2})-(\d{4})\b/i;
+const MARKERING = /^\s*[(,;—–-]?\s*stand van (\d{2})-(\d{2})-(\d{4})\b/i;
 
 /** Een datum die echt bestaat, als `DD-MM-JJJJ`; anders `null`. */
 export function geldigeDatum(dag, maand, jaar) {
