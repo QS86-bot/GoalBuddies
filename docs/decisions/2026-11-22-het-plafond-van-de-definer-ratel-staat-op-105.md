@@ -61,7 +61,7 @@ die na een `revoke ... from public, anon, authenticated` met zoveel woorden
 | `treed_terug_als_organisatiebeheerder(p_organization_id uuid)` | 0318 | `is_organisatiebeheerder()`, niet de laatste | eigen rol naar lid | idem | bedoeld |
 | `maak_teamdoel(p_group_id uuid, p_titel text, p_streefdatum date, p_beschrijving text)` | 0319 | `is_group_member()` van een teamgroep, één antwoord voor geen-lid en geen-team | maakt een teamdoel | niets over een ander | bedoeld |
 | `neem_aandeel(p_team_goal_id uuid, p_titel text)` | 0319 | `is_group_member()`, eigen lidmaatschap `for share` | maakt een eigen doel als aandeel | het aandeel blijft van de eigenaar (0321) | bedoeld |
-| `teambalk(p_team_goal_id uuid)` | 0320 | `mag_groep_lezen()`; anders `null` | één getal: gedane stappen van het team | telt alleen op en bevat geen persoon (besluit 21) | bedoeld |
+| `teambalk(p_team_goal_id uuid)` | 0320 | `mag_groep_lezen()`; anders `null` | één getal: gedane stappen van het team | ⚠️ **niet schoon:** in een team van twee trekt een lid zijn eigen stappen af en leest hij de voortgang, en dus ook de stilstand, van de ander (security-review M1). Door Quinten op 18-11 geaccepteerd als "alleen goed nieuws"; de voorwaarde die het Laag hield is met 0321 uitgekomen, en `docs/ENGINEER-REVIEW.md` voert het sindsdien als **Middel** (rij "`teambalk()` in een team van twee") | bewust geaccepteerd, niet "niets over een ander"; voorgelegd aan de orchestrator, zie §4a |
 | `aandeel_wacht_op_teamgenoot(g uuid)` | 0321 | aanroeper én eigenaar actief lid van de teamgroep, niet het eigen doel | boolean: wacht dit aandeel op een goedkeuring | `pending` is een positief signaal; het goedkeurvenster van besluit 5 | bedoeld |
 | `is_aandeel_van_een_ander(g uuid)` | 0321 | `auth.uid()` alleen om zichzelf uit te sluiten; **geen lidmaatschapstoets** | boolean: is dit doel een aandeel van iemand anders | geen stand, geen voortgang; `true` sluit juist af | bedoeld, zie §4 |
 | `organisatieteams(p_organization_id uuid, p_limit integer, p_na_id uuid)` | 0324 | `is_organisatielid()`, gepagineerd | id en naam van niet-gearchiveerde teams | niets over een lid | bedoeld |
@@ -71,10 +71,10 @@ die na een `revoke ... from public, anon, authenticated` met zoveel woorden
 | `lid_van_levende_groep(gid uuid)` | 0333 | `auth.uid()`, actief lid, niet gearchiveerd | boolean over de aanroeper zelf | niets over een ander | bedoeld |
 | `zet_groepsklassement(p_group_id uuid, p_aan boolean, p_bevestigd boolean)` | 0336 | `is_group_admin()`, bevestiging verplicht, soortreden alleen voor wie mag lezen | zet het klassement aan of uit, met spoor en bericht | het bericht noemt geen punten of titel; de drie grendels van A57 blijven | bedoeld |
 
-Geen van de 24 gaf aanleiding om het plafond voor die functie niet te
-verhogen: elke grant is besloten, elk heeft een toets op `auth.uid()` of op
-lidmaatschap, en geen geeft een gemiste week, een verbroken reeks of een
-achterstand van een ander lid terug.
+Voor 23 van de 24 geldt: de grant is besloten, er is een toets op `auth.uid()`
+of op lidmaatschap, en er komt geen gemiste week, verbroken reeks of
+achterstand van een ander lid uit. **`teambalk()` haalt de laatste toets niet
+zonder voorbehoud** (§4a).
 
 ## 4. Twee policyhelpers die één bit over een uuid geven
 
@@ -91,15 +91,46 @@ Waarom dat hier toch "bedoeld" heet:
   `commitments_select` en `commitments_insert` roepen
   `straf_teamband_klopt_voor_mij()` aan. Beide lopen onder de rol van de
   aanroeper; zonder `execute` voor `authenticated` breken ze.
-- **Het bit is geen tegenslag.** Het zegt iets over de soort van een doel,
-  niet over de stand ervan. Een uuid is niet te raden.
-- **Het faalt dicht in de richting van privacy.** `true` sluit een doel af in
-  `shares_group_with_goal()`, `deelt_open_groep_met_doel()` en
-  `group_overview()`.
+- **Het bit is geen stand.** Het zegt iets over de soort van een doel, niet
+  over de voortgang ervan.
 
-⚠️ Het is wel een orakel zonder eigen poort, en dat is het soort vraag waar
-deze rij voor bestaat. Een lidmaatschapstoets erin zetten is een migratie en
-valt buiten deze opdracht; staat als ER-rij in de afleverregel.
+⚠️ **Twee argumenten die in de eerste versie stonden, houden geen stand**
+(security-review L1). "Faalt dicht" gaat over hoe een policy de uitkomst
+gebruikt; het orakel zit in de rechtstreekse RPC. En "een uuid is niet te
+raden" doet er niet toe: doel-uuids staan in `goal_group_links`, en in het
+goedkeurvenster van 0321 is de `goals`-rij van een aandeel met `owner_id`
+leesbaar. Een (oud-)teamgenoot kan zo afleiden wie een aandeel heeft en wie
+niet meedoet, en het bit blijft `true` na loskoppelen (0332). Daarmee is de
+voorwaarde van de bestaande Laag-rij "`is_aandeel_van_een_ander()` is
+uitvoerbaar voor `authenticated`" in `docs/ENGINEER-REVIEW.md` waarschijnlijk
+al uitgekomen; `straf_teamband_klopt_voor_mij()` heeft daar nog geen rij. Een
+vast antwoord voor wie geen lid en geen eigenaar is, is een migratie en een
+besluit, geen bijvangst: ER-rij in de afleverregel.
+
+## 4a. `teambalk()` en de opdracht
+
+De opdracht zegt: een functie die geen tegenslag-toets haalt is een bevinding
+en geen plafondverhoging. `teambalk()` is dat strikt genomen: in een team van
+twee is de stilstand van de ander af te lezen. Maar het is geen nieuwe
+bevinding. Het is besloten (Quinten, 18-11), staat open als Middel in
+`docs/ENGINEER-REVIEW.md`, en de grant is de functie zelf: zonder grant is er
+geen teambalk.
+
+Het plafond staat in deze tak op 105, mét `teambalk()`. Of het 104 moet zijn
+(en `adviseur:controle` rood blijft tot het besluit herzien is), is aan de
+orchestrator voorgelegd; deze tak merget niet vóór dat antwoord.
+
+## 4b. Twee bijvangsten van de review
+
+- **`lid_van_levende_groep(gid uuid)` heeft de grant niet nodig.** 📏 Op
+  productie (22-11) roept alleen `groep_klassement()` hem aan, en die is
+  definer; geen policy gebruikt hem. Een `revoke ... from authenticated` in een
+  vervolgmigratie brengt het plafond naar 104. Geen migratie in deze opdracht.
+- **`zet_groepsklassement()` heeft geen dagteller** (📏 productie, 22-11). Een
+  beheerder kan onbeperkt aan en uit zetten, met elke keer een systeembericht.
+  Blijft binnen de eigen groep.
+
+Beide als ER-rij in de afleverregel.
 
 ## 5. Wat er veranderd is, en de ijking
 

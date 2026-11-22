@@ -152,14 +152,18 @@ export const ALLOWLIST = [
       '0336 `zet_groepsklassement(p_group_id uuid, p_aan boolean, p_bevestigd boolean)`. ' +
       'Elk is op 22-11 met `pg_get_functiondef()` op productie nagelopen: `set search_path`, ' +
       'niet uitvoerbaar door `anon`, een toets op `auth.uid()` of op lidmaatschap ' +
-      '(groep of organisatie), en geen tegenslag van een ander lid in wat eruit komt. ' +
+      '(groep of organisatie), en voor 23 van de 24 geen tegenslag van een ander lid in wat ' +
+      'eruit komt. ⚠️ `teambalk()` is de uitzondering: in een team van twee leest een lid ' +
+      'de stilstand van de ander af. Bewust geaccepteerd door Quinten (18-11) en open als ' +
+      'Middel in de engineer-review; niet "niets over een ander". ' +
       'De tabel per functie staat in ' +
       'docs/decisions/2026-11-22-het-plafond-van-de-definer-ratel-staat-op-105.md, ' +
       'samen met de volledige lijst van 105 namen zodat de volgende meting per naam ' +
       'kan vergelijken. ⚠️ Twee zijn policyhelpers die één bit over een doel-uuid ' +
       'geven zonder eigen lidmaatschapstoets (`is_aandeel_van_een_ander`, ' +
       '`straf_teamband_klopt_voor_mij`); de grant is nodig omdat de invoker-functie ' +
-      '`group_overview()` en de policies op `commitments` ze aanroepen. ' +
+      '`group_overview()` en de policies op `commitments` ze aanroepen, en het orakel ' +
+      'is een open punt voor de engineer-review. ' +
       '⚠️ Dit getal is een ratel en geen constante: `beoordeel()` faalt ' +
       'óók als het aantal zákt zonder dat het plafond meezakt, zodat er geen ' +
       'ruimte vrijkomt waar de volgende definer-functie stil in glijdt.',
