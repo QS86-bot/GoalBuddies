@@ -1,6 +1,6 @@
--- 0338_een_beheerder_klikt_de_klassementuitnodiging_weg.sql — QS8-784 (A57, P3 c): de uitnodigingskaart per beheerder wegklikken
+-- 0340_een_beheerder_klikt_de_klassementuitnodiging_weg.sql — QS8-784 (A57, P3 c): de uitnodigingskaart per beheerder wegklikken
 --
--- ⚠️ TIJDELIJK NUMMER: het echte nummer komt op sein van de hoofdorchestrator via `npm run migratie:nieuw`.
+-- ⚠️ Nummer 0340 op sein van de hoofdorchestrator (22-11-2026): 0338 (QS8-666 3c-db) en 0339 (QS8-787) landen eerst.
 --
 -- ROLLBACK-PAD (de tabel is bij het landen leeg; daarna staan er alleen weergavevoorkeuren in, die bij een rollback
 -- verloren gaan: elke beheerder ziet de kaart dan weer. Geen gebruikersdata van waarde, maar wel eerst `pg_dump`):
@@ -100,6 +100,10 @@ create policy klassement_uitnodiging_weg_insert on public.klassement_uitnodiging
       select 1 from public.groups g
       where g.id = group_id
         and not g.klassement_aan
+        -- Dezelfde poort als het scherm (`kanKlassementZetten`): een teamgroep en een automatisch gevormde groep tonen de
+        -- kaart nooit, dus daar valt niets weg te klikken (security-review QS8-784, laag; de database spiegelt de hint).
+        and g.organization_id is null
+        and not g.automatisch
     )
   );
 

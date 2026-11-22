@@ -4,6 +4,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { klassementPlek, type KlassementGroep } from '../../src/modules/buddies/klassement-poort';
 import { klikUitnodigingWeg, leesUitnodigingWeg, type UitnodigingDb } from '../../src/modules/buddies/klassement-weg';
 
+import { laatOrganisatieAanmaken } from './organisatie-toelating';
 import {
   adminDb,
   anonDb,
@@ -16,7 +17,7 @@ import {
 } from './harness';
 
 /**
- * De uitnodigingskaart wegklikken, per beheerder — QS8-784 (A57, P3 c), migratie 0338.
+ * De uitnodigingskaart wegklikken, per beheerder — QS8-784 (A57, P3 c), migratie 0340.
  *
  * ⚠️ **Twee beloftes, en de toets staat op de naad.**
  *    1. *Domeinregel 7:* alleen de eigen rij. `cor` is een tweede beheerder van dezelfde groep en `bram` een gewoon
@@ -31,6 +32,8 @@ import {
  *   - INSERT-policy `is_group_member` i.p.v. `is_group_admin` -> 'een gewoon lid kan niet wegklikken' valt om (plus twee
  *     volgtests die op het aantal rijen leunen).
  *   - INSERT-policy zonder `not g.klassement_aan` -> 'wegklikken bij aan wordt geweigerd' valt om.
+ *   - INSERT-policy zonder `organization_id is null and not automatisch` -> 'geen wegklik in een automatisch gevormde
+ *     groep of een teamgroep' valt om.
  *   - DELETE-policy `using (is_group_member(group_id))` alléén -> blijft GROEN, en dat is gemeten en geen gat: een
  *     `delete … where` raakt alleen rijen die de SELECT-policy toont, dus de eigen-rij-SELECT is een tweede slot op het
  *     wissen. Met SELECT `using (true)` erbij valt 'een andere beheerder wist de rij niet' om.
@@ -180,5 +183,24 @@ describe.runIf(rlsTestsConfigured)('klassement_uitnodiging_weg (QS8-784)', () =>
     await zet(false);
     expect(await alleRijen()).toEqual([]);
     expect(await plek(anna, true)).toBe('uitnodiging');
+  }, TEST_TIMEOUT);
+
+  it('geen wegklik in een automatisch gevormde groep of een teamgroep, waar het scherm de kaart nooit toont', async () => {
+    const r = await anna.db.rpc('create_group', { group_name: 'Uitnodiging weg auto' });
+    const auto = (r.data as unknown as { group: { id: string } }).group.id;
+    registreerGroep(auto);
+    const uit = await anna.db.rpc('zet_groepsklassement' as never, { p_group_id: auto, p_aan: false, p_bevestigd: true } as never);
+    expect((uit.data as { ok?: boolean } | null)?.ok).toBe(true);
+    expect((await adminDb().from('groups').update({ automatisch: true } as never).eq('id', auto)).error).toBeNull();
+    expect(await klikUitnodigingWeg(db(anna.db), auto, anna.id)).toEqual({ ok: false, code: '42501' });
+
+    await laatOrganisatieAanmaken(anna);
+    const o = await anna.db.rpc('maak_organisatie' as never, { p_naam: 'Uweg BV' } as never);
+    const org = (o.data as unknown as { organization_id: string }).organization_id;
+    const t = await anna.db.rpc('maak_teamgroep' as never, { p_organization_id: org, p_naam: 'Team Uweg' } as never);
+    const team = (t.data as unknown as { group_id?: string } | null)?.group_id;
+    expect(team, JSON.stringify(t.data)).toBeDefined();
+    registreerGroep(team ?? '');
+    expect(await klikUitnodigingWeg(db(anna.db), team ?? '', anna.id)).toEqual({ ok: false, code: '42501' });
   }, TEST_TIMEOUT);
 });

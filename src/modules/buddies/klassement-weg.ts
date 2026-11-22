@@ -3,6 +3,8 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 /**
  * De uitnodigingskaart van het klassement wegklikken, per beheerder — QS8-784 (A57, P3 c).
  *
+ * ⚠️ De tabelnaam staat letterlijk in elke keten: `kolomrechten:controle` en `eenrij:controle` lezen `.from('…')`.
+ *
  * ⚠️ **Alleen type-imports**, zodat `tests/rls/klassement-uitnodiging-weg.test.ts` precies deze twee verzoeken onder een
  *    echte JWT afspeelt: de toets raakt de naad tussen het scherm en de RLS, en niet een kopie van de query.
  *    `klassement.ts` legt er de foutmelding en `reportError` omheen.
@@ -18,7 +20,6 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 
 export type UitnodigingDb = Pick<SupabaseClient, 'from'>;
 
-const TABEL = 'klassement_uitnodiging_weg';
 const AL_AANWEZIG = '23505';
 
 export type WegUitkomst<T> = { readonly ok: true; readonly waarde: T } | { readonly ok: false; readonly code: string | null };
@@ -30,7 +31,7 @@ export async function leesUitnodigingWeg(
   userId: string,
 ): Promise<WegUitkomst<boolean>> {
   const { data, error } = await db
-    .from(TABEL)
+    .from('klassement_uitnodiging_weg')
     .select('group_id')
     .eq('user_id', userId)
     .eq('group_id', groupId)
@@ -48,7 +49,7 @@ export async function klikUitnodigingWeg(
   groupId: string,
   userId: string,
 ): Promise<WegUitkomst<true>> {
-  const { error } = await db.from(TABEL).insert({ user_id: userId, group_id: groupId });
+  const { error } = await db.from('klassement_uitnodiging_weg').insert({ user_id: userId, group_id: groupId });
   if (error && error.code !== AL_AANWEZIG) return { ok: false, code: error.code ?? null };
   return { ok: true, waarde: true };
 }

@@ -32,11 +32,14 @@ function useWegklikken(groupId: string, userId: string) {
   const wegklikken = useCallback(() => {
     setFout(null);
     setVerborgen(true);
-    void klikKlassementUitnodigingWeg(groupId, userId).then((uit) => {
-      if (uit.ok) return;
-      setVerborgen(false);
-      setFout(uit.melding);
-    });
+    // ⚠️ Ook een worp (bv. een client die niet start) zet de kaart terug met een foutregel: nooit stil weg.
+    void klikKlassementUitnodigingWeg(groupId, userId)
+      .catch(() => ({ ok: false as const, melding: t('klassement.uitnodiging_weg_mislukt') }))
+      .then((uit) => {
+        if (uit.ok) return;
+        setVerborgen(false);
+        setFout(uit.melding);
+      });
   }, [groupId, userId]);
 
   return { verborgen, fout, wegklikken };
