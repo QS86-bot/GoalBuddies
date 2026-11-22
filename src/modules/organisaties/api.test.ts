@@ -65,6 +65,7 @@ describe('redenen worden catalogustekst', () => {
     ['maak_organisatie', 'ongeldige_naam', 'organisatie.naam_ongeldig'],
     ['maak_organisatie', 'rate_limited', 'organisatie.rate_limited_aanmaken'],
     ['maak_organisatie', 'te_veel_organisaties', 'organisatie.te_veel'],
+    ['maak_organisatie', 'niet_toegelaten', 'organisatie.niet_toegelaten'],
     ['word_organisatielid', 'invalid', 'organisatie.code_ongeldig'],
     ['word_organisatielid', 'removed', 'organisatie.code_ongeldig'],
     ['word_organisatielid', 'rate_limited', 'organisatie.rate_limited_deelnemen'],

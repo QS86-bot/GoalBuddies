@@ -1,6 +1,7 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import { adminDb, createTestUser, registreerGroep, removeTestUsers, rlsTestsConfigured, type TestUser } from './harness';
+import { laatOrganisatieAanmaken } from './organisatie-toelating';
 
 /**
  * Een aandeel in een teamdoel is niet weg te gooien, alleen los te koppelen — QS8-772, 0332.
@@ -54,6 +55,7 @@ describe.runIf(rlsTestsConfigured)('een aandeel is niet weg te gooien (QS8-772)'
 
   beforeAll(async () => {
     [anna, bert] = await Promise.all([createTestUser('weg-anna'), createTestUser('weg-bert')]);
+    await laatOrganisatieAanmaken(anna);
     const o = await rpc(anna, 'maak_organisatie', { p_naam: 'Weg BV' });
     expect(o.error).toBeNull();
     org = (o.data as { organization_id: string }).organization_id;

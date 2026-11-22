@@ -3,6 +3,7 @@ import { randomUUID } from 'node:crypto';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import { adminDb, createTestUser, removeTestUsers, rlsTestsConfigured, type TestUser } from './harness';
+import { laatOrganisatieAanmaken } from './organisatie-toelating';
 
 /**
  * Organisaties en lidmaatschappen — QS8-652, migratie 0316.
@@ -62,6 +63,7 @@ function uitkomst(a: Antwoord): string {
 const aangemaakt: string[] = [];
 
 async function maakOrganisatie(wie: TestUser, naam: string): Promise<string> {
+  await laatOrganisatieAanmaken(wie);
   const a = await rpc(wie, 'maak_organisatie', { p_naam: naam });
   expect(a.error).toBeNull();
   const id = (a.data as { organization_id?: string }).organization_id;
@@ -303,6 +305,7 @@ describe.runIf(rlsTestsConfigured)('organisaties en lidmaatschappen (QS8-652)', 
     async () => {
       const gijs = await createTestUser('org-gijs');
       for (let i = 1; i <= 3; i++) await maakOrganisatie(gijs, `Zaak ${i}`);
+      await laatOrganisatieAanmaken(gijs);
       expect(uitkomst(await rpc(gijs, 'maak_organisatie', { p_naam: 'Zaak 4' }))).toBe('rate_limited');
     },
     TEST_TIMEOUT,
@@ -332,6 +335,7 @@ describe.runIf(rlsTestsConfigured)('organisaties en lidmaatschappen (QS8-652)', 
     async () => {
       const ines = await createTestUser('org-ines');
       for (const naam of ['x'.repeat(81), '   ', '', '\u200B\u200B']) {
+        await laatOrganisatieAanmaken(ines);
         const a = await rpc(ines, 'maak_organisatie', { p_naam: naam });
         expect(a.error, JSON.stringify(naam)).toBeNull();
         expect(uitkomst(a), JSON.stringify(naam)).toBe('ongeldige_naam');
@@ -342,6 +346,7 @@ describe.runIf(rlsTestsConfigured)('organisaties en lidmaatschappen (QS8-652)', 
       const rij = await tabel(ines, 'organizations', 'name', 'id', id);
       expect(rij.data).toEqual([{ name: 'Acme' }]);
       // 80 codepunten met emoji past nog: de grens telt codepunten, geen UTF-16.
+      await laatOrganisatieAanmaken(ines);
       const lang = await rpc(ines, 'maak_organisatie', { p_naam: '\u{1F600}'.repeat(80) });
       expect(uitkomst(lang)).toBe('ok');
       aangemaakt.push((lang.data as { organization_id: string }).organization_id);
