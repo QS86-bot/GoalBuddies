@@ -832,7 +832,7 @@ export const nl = {
   'bevestiging.groep_beschermen.knop': 'Ja, bescherm hem',
   'bevestiging.groep_ontdekbaar_maken.titel': 'Deze groep vindbaar maken?',
   'bevestiging.groep_ontdekbaar_maken.uitleg':
-    'Mensen die je nog niet kent kunnen deze groep dan vinden en lidmaatschap aanvragen. Zij zien de naam, het onderwerp, je omschrijving, de voertaal, de huddledag en hoeveel leden er zijn. Zij zien niet wie erin zitten, welke doelen erin staan, de chat, De Ketting of iemands reeks. Aanvragen komen bij jou binnen en je hoeft er geen enkele aan te nemen. Iedereen in de groep krijgt er een bericht van. Terugzetten kan altijd en meteen.',
+    'Mensen die je nog niet kent kunnen deze groep dan vinden en lidmaatschap aanvragen. Zij zien de naam, het onderwerp, je omschrijving, de voertaal, de huddledag en hoeveel leden er zijn. Zij zien niet wie erin zitten, welke doelen erin staan, de chat, De Ketting of iemands reeks. Aanvragen komen bij jou binnen en je hoeft er geen enkele aan te nemen. Iedereen in de groep krijgt er een bericht van. Staat het klassement aan, dan gaat het uit; een beheerder kan het daarna apart weer aanzetten. Terugzetten kan altijd en meteen.',
   'bevestiging.groep_ontdekbaar_maken.knop': 'Ja, maak hem vindbaar',
   // ⚠️ QS8-666 (A57, 0336). Aanzetten maakt ook de al verdiende punten zichtbaar (`points_ledger` bewaart de groep
   //    altijd), en de uitleg zegt dat met zoveel woorden (domeinregel 10). Er staat bewust niet "een punt dat je

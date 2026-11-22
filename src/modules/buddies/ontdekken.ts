@@ -336,7 +336,7 @@ export async function zetOntdekbaar(
   groupId: string,
   naar: boolean,
   bevestigd: boolean,
-): Promise<Resultaat<boolean>> {
+): Promise<Resultaat<{ ontdekbaar: boolean; klassement: boolean | null }>> {
   const { data, error } = await supabase().rpc('zet_groepsontdekbaarheid', {
     p_group_id: groupId,
     p_naar: naar,
@@ -348,8 +348,15 @@ export async function zetOntdekbaar(
     return { ok: false, melding: t('ontdek.mislukt') };
   }
 
-  const uit = data as unknown as { ok?: boolean; reason?: string; ontdekbaar?: boolean };
+  const uit = data as unknown as {
+    ok?: boolean;
+    reason?: string;
+    ontdekbaar?: boolean;
+    klassement?: boolean;
+  };
   if (uit.ok !== true) return { ok: false, melding: meldingBijReden(uit.reason) };
 
-  return { ok: true, waarde: uit.ontdekbaar ?? naar };
+  // ⚠️ Sinds 0336 zet vindbaar maken ook het klassement uit en geeft de RPC zijn stand terug (`klassement`).
+  //    `null` betekent "niet gemeld": het scherm laat zijn eigen stand dan staan en verzint er geen.
+  return { ok: true, waarde: { ontdekbaar: uit.ontdekbaar ?? naar, klassement: uit.klassement ?? null } };
 }

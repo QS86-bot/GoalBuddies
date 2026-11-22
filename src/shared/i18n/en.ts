@@ -2006,7 +2006,7 @@ export const en: Record<Sleutel, string> = {
   'bevestiging.groep_beschermen.knop': 'Yes, protect it',
   'bevestiging.groep_ontdekbaar_maken.titel': 'Make this group discoverable?',
   'bevestiging.groep_ontdekbaar_maken.uitleg':
-    'People you don’t know yet will be able to find this group and ask to join. They see the name, the topic, your description, the language, the huddle day and how many members there are. They do not see who is in it, which goals are in it, the chat, The Chain or anyone’s streak. Requests come to you and you do not have to accept a single one. Everyone in the group gets a message about it. You can undo this at any time, immediately.',
+    'People you don’t know yet will be able to find this group and ask to join. They see the name, the topic, your description, the language, the huddle day and how many members there are. They do not see who is in it, which goals are in it, the chat, The Chain or anyone’s streak. Requests come to you and you do not have to accept a single one. Everyone in the group gets a message about it. If the leaderboard is on, it turns off; an admin can turn it back on separately afterwards. You can undo this at any time, immediately.',
   'bevestiging.groep_ontdekbaar_maken.knop': 'Yes, make it discoverable',
   // QS8-666 (A57, 0336). Turning it on also reveals the points already earned in this group (`points_ledger` always
   // keeps the group), and the text says so (domain rule 10). It deliberately does not say "a point you lose is not

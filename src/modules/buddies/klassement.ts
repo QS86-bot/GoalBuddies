@@ -19,7 +19,7 @@ import { t } from '../../shared/i18n';
  *    nul rijen terug. Deze module verbergt dus niets: hij toont wat hij krijgt,
  *    en dat is precies de bedoeling: een scherm dat de regel zelf zou moeten
  *    kennen, is een regel die met één verzoek aan PostgREST te omzeilen valt.
- *    De poortfuncties onderaan (`kanKlassementZetten`, `toonKlassementUitnodiging`)
+ *    De poortfuncties onderaan (`kanKlassementZetten`)
  *    zijn een weergavehint voor wie een knop mag zien; ze beslissen niets.
  *
  * ⚠️ **Er komt hier nooit een delta of een datum binnen.** De RPC heeft die
@@ -238,15 +238,4 @@ export function kanKlassementZetten(groep: KlassementGroep, beheerder: boolean):
   if (typeof groep.organization_id === 'string') return false;
   if (groep.automatisch) return false;
   return groep.status !== 'archived';
-}
-
-/**
- * Toont het scherm de uitnodigingskaart: alleen een beheerder, in een groep waar het
- * klassement kán maar uit staat.
- *
- * ⚠️ De poort is `klassement_aan === false` en niet "nul rijen uit de RPC": nul rijen
- *    is ook wat een storing of een niet-lid oplevert.
- */
-export function toonKlassementUitnodiging(groep: KlassementGroep, beheerder: boolean): boolean {
-  return kanKlassementZetten(groep, beheerder) && !groep.klassement_aan;
 }

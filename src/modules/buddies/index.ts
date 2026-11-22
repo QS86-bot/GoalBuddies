@@ -170,7 +170,6 @@ export {
   kanKlassementZetten,
   klassementMeldingen,
   KLASSEMENT_PER_PAGINA,
-  toonKlassementUitnodiging,
   zetGroepsklassement,
   type Groepsteller,
   type KlassementGroep,

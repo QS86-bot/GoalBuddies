@@ -181,6 +181,12 @@ export function bevestigingen(): Record<BevestigingsNaam, BevestigingsTekst> {
     //    wat hij ís — dus is de prijs iets om te noemen en niet om weg te nemen.
     //    De database weigert zonder `p_bevestigd`; dit scherm is de tweede rem.
     huddledagVerzetten: bouw('bevestiging.huddledag_verzetten'),
+    // ⚠️ QS8-666 (A57, 0336). Het klassement raakt álle leden, en aanzetten maakt ook de punten van vóór vandaag
+    //    zichtbaar: de uitleg noemt dat met zoveel woorden (domeinregel 10). In een vindbare groep komt er een zin
+    //    bij, want wie er later bij komt leest het klassement ook (QS8-230).
+    klassementAanzetten: bouw('bevestiging.klassement_aanzetten'),
+    klassementAanzettenVindbaar: bouw('bevestiging.klassement_aanzetten_vindbaar'),
+    klassementUitzetten: bouw('bevestiging.klassement_uitzetten'),
   };
 }
 
@@ -201,4 +207,7 @@ export type BevestigingsNaam =
   | 'doelAfronden'
   | 'weekStartVerzetten'
   | 'huddledagVerzetten'
+  | 'klassementAanzetten'
+  | 'klassementAanzettenVindbaar'
+  | 'klassementUitzetten'
   | 'taakVerwijderen';
