@@ -19,7 +19,7 @@ import { t } from '../../shared/i18n';
  *    nul rijen terug. Deze module verbergt dus niets: hij toont wat hij krijgt,
  *    en dat is precies de bedoeling: een scherm dat de regel zelf zou moeten
  *    kennen, is een regel die met één verzoek aan PostgREST te omzeilen valt.
- *    De poortfuncties onderaan (`kanKlassementZetten`)
+ *    De poortfuncties onderaan (`kanKlassementZetten`, `toonKlassementUitnodiging`)
  *    zijn een weergavehint voor wie een knop mag zien; ze beslissen niets.
  *
  * ⚠️ **Er komt hier nooit een delta of een datum binnen.** De RPC heeft die
@@ -217,28 +217,13 @@ export async function zetGroepsklassement(
   return { ok: true, waarde: uit.klassement ?? aan };
 }
 
-/** De velden van een groep die bepalen of er een klassement bij hoort. */
-export interface KlassementGroep {
-  readonly status: string;
-  readonly automatisch: boolean;
-  readonly klassement_aan: boolean;
-  readonly organization_id: string | null;
-}
-
-/**
- * Mag deze gebruiker de schakelaar zien? Een weergavehint, geen grens.
- *
- * ⚠️ **Dezelfde vier toetsen als de database, in dezelfde volgorde van belang:**
- *    een teamgroep, een automatisch gevormde groep en een gearchiveerde groep hebben
- *    geen schakelaar, ook niet voor een beheerder. De RPC weigert ze met een eigen
- *    reden; dit voorkomt dat het scherm een knop toont die gegarandeerd faalt.
- */
-export function kanKlassementZetten(groep: KlassementGroep, beheerder: boolean): boolean {
-  if (!beheerder) return false;
-  if (typeof groep.organization_id === 'string') return false;
-  if (groep.automatisch) return false;
-  return groep.status !== 'archived';
-}
-
-// ⚠️ Staat in `klassement-poort.ts`, zonder enige import: het groepsscherm en zijn toetsen lezen het naast de RPC.
-export { klassementPlek, type KlassementPlek, type KlassementUitkomstVorm } from './klassement-poort';
+// ⚠️ De poortfuncties staan in `klassement-poort.ts`, zonder enige import: de RLS-toets leest ze naast de database
+//    (`tests/rls/klassement-uitnodiging.test.ts`) en kan geen module laden die `react-native` meetrekt.
+export {
+  kanKlassementZetten,
+  klassementPlek,
+  toonKlassementUitnodiging,
+  type KlassementGroep,
+  type KlassementPlek,
+  type KlassementUitkomstVorm,
+} from './klassement-poort';

@@ -168,6 +168,7 @@ export {
   fetchGroepsteller,
   fetchKlassement,
   kanKlassementZetten,
+  toonKlassementUitnodiging,
   klassementPlek,
   type KlassementPlek,
   type KlassementUitkomstVorm,
