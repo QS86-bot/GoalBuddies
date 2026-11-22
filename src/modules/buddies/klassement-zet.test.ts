@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   kanKlassementZetten,
   klassementMeldingen,
+  toonKlassementUitnodiging,
   zetGroepsklassement,
   type KlassementGroep,
 } from './klassement';
@@ -51,6 +52,28 @@ describe('kanKlassementZetten', () => {
 
   it('biedt hem nooit voor een gearchiveerde groep', () => {
     expect(kanKlassementZetten(groep({ status: 'archived' }), true)).toBe(false);
+  });
+});
+
+describe('toonKlassementUitnodiging', () => {
+  it('toont de kaart aan een beheerder zolang het klassement uit staat', () => {
+    expect(toonKlassementUitnodiging(groep(), true)).toBe(true);
+  });
+
+  it('toont hem niet meer zodra het klassement aan staat', () => {
+    expect(toonKlassementUitnodiging(groep({ klassement_aan: true }), true)).toBe(false);
+  });
+
+  it('toont hem nooit aan een lid dat geen beheerder is', () => {
+    expect(toonKlassementUitnodiging(groep(), false)).toBe(false);
+  });
+
+  it.each([
+    ['een teamgroep', { organization_id: 'org-1' }],
+    ['een automatisch gevormde groep', { automatisch: true }],
+    ['een gearchiveerde groep', { status: 'archived' }],
+  ])('toont hem niet voor %s', (_naam, extra) => {
+    expect(toonKlassementUitnodiging(groep(extra), true)).toBe(false);
   });
 });
 

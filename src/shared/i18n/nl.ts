@@ -2817,6 +2817,12 @@ export const nl = {
   'klassement.punten_een': '1 punt',
   'klassement.punten_meer': '{n} punten',
   'klassement.rij_label': 'Plek {positie}: {naam}, {punten}',
+  // ⚠️ QS8-666 (3b): de uitnodigingskaart voor een beheerder. Belooft niet meer dan besluit 2: alleen "een gemiste week komt
+  //    er nooit in voor". De punten van vóór vandaag staan in het bevestigingsblad van de schakelaar, niet hier.
+  'klassement.uitnodiging_titel': 'Een klassement voor deze groep',
+  'klassement.uitnodiging_tekst':
+    'Het klassement staat uit. Zet je het aan, dan zien leden elkaars punten uit deze groep. Een gemiste week komt er nooit in voor.',
+  'klassement.uitnodiging_knop': 'Zet het klassement aan',
   'klassement.leeg': 'Er zijn hier nog geen punten verdiend. De eerste afgeronde week zet hem in gang.',
   'klassement.van_totaal': '{getoond} van {totaal} leden',
   'klassement.laden_mislukt': 'Het klassement kon niet geladen worden.',

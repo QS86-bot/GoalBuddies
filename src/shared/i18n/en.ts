@@ -2284,6 +2284,12 @@ export const en: Record<Sleutel, string> = {
   'klassement.punten_een': '1 point',
   'klassement.punten_meer': '{n} points',
   'klassement.rij_label': 'Place {positie}: {naam}, {punten}',
+  // QS8-666 (3b): the invitation card for an admin. It promises no more than decision 2: only "a missed week never shows up
+  // in it". The points from before today are in the switch's confirmation, not here.
+  'klassement.uitnodiging_titel': 'A leaderboard for this group',
+  'klassement.uitnodiging_tekst':
+    'The leaderboard is off. If you turn it on, members see each other’s points from this group. A missed week never shows up in it.',
+  'klassement.uitnodiging_knop': 'Turn on the leaderboard',
   'klassement.leeg': 'No points have been earned here yet. The first wrapped-up week gets it going.',
   'klassement.van_totaal': '{getoond} of {totaal} members',
   'klassement.laden_mislukt': 'The leaderboard could not be loaded.',
