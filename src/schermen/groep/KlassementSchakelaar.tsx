@@ -48,6 +48,9 @@ export function KlassementSchakelaar({ groep, beheerder, onGewijzigd }: Props) {
       (waarde) => (waarde ? t('klassement.melding_aan') : t('klassement.melding_uit')),
     );
     if (nieuw !== null) onGewijzigd(nieuw);
+    // ⚠️ Een mislukte wissel kan betekenen dat een andere beheerder net hetzelfde deed (`unchanged`): lees de stand terug
+    //    zodat de schakelaar niet op een oude stand blijft staan (security-review 3a, L1).
+    else void leesKlassementTerug(groep.id, onGewijzigd);
   }
 
   const teksten = bevestigingen();
