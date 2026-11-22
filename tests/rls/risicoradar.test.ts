@@ -116,26 +116,18 @@ const SCENARIOS: readonly Scenario[] = [
 ];
 
 /**
- * Roept `herbereken_risico()` aan.
+ * Roept `herbereken_risico()` aan, als `service_role`.
  *
- * ⚠️ Die functie staat niet in `database.types.ts`, en dat is geen omissie maar
- *    het bewijs dat migratie 0051 doet wat hij belooft: de generator neemt
- *    alleen functies op die `authenticated` mag aanroepen, en deze is daar juist
- *    voor ingetrokken. Een gebruiker die zijn eigen risicostand kan laten
- *    herberekenen is een gratis rekenopdracht op een gratis tier.
- *
- *    Vandaar deze cast, op één plek en met deze uitleg erbij — in plaats van het
- *    recht te verruimen zodat de typegenerator tevreden is.
+ * ⚠️ `authenticated` mag hem niet aanroepen (migratie 0051): een gebruiker die zijn
+ *    eigen risicostand kan laten herberekenen is een gratis rekenopdracht op een
+ *    gratis tier. 📏 Gemeten op productie op 22-11-2026: `has_function_privilege`
+ *    geeft `false` voor `authenticated` en `true` voor `service_role`. Dat de
+ *    functie in `database.types.ts` staat bewijst niets over dat recht: de generator
+ *    neemt functies op ongeacht wie ze mag aanroepen. Het recht toets je met de
+ *    grant, en niet met de aan- of afwezigheid van een type.
  */
 async function herbereken(goalId: string): Promise<{ data: string | null; error: unknown }> {
-  const db = adminDb() as unknown as {
-    rpc: (
-      naam: string,
-      args: Record<string, unknown>,
-    ) => Promise<{ data: string | null; error: unknown }>;
-  };
-
-  return db.rpc('herbereken_risico', { p_goal_id: goalId });
+  return adminDb().rpc('herbereken_risico', { p_goal_id: goalId });
 }
 
 /**
