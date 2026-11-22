@@ -41,13 +41,20 @@ daar gaf `Options -Indexes` een 403.
    `scripts/htaccess-routering.mjs` is een klein model van Apache dat de
    gegenereerde regels uitvoert op een bestandsboom. Het werpt op een directief
    die het niet kent, zodat het nooit stil een ander bestand meet dan de server.
-5. **Het model is geijkt tegen echte Apache, niet aangenomen.** 157 adressen uit
-   de echte export, drie varianten van de regels, elk antwoord vergeleken op
+5. **Het model is geijkt tegen echte Apache, niet aangenomen.** 192 adressen uit
+   de echte export (ook `/<pagina>/x` en vier met een query), vier varianten van de regels, elk antwoord vergeleken op
    status én geserveerd bestand (met een merkteken per pagina, want veel
    pagina's zijn byte-gelijk). De eerste versie week op 28 adressen af —
    `%{REQUEST_FILENAME}` laat een streep achter een niet-bestaand pad weg — en
    is daarop aangepast.
-6. **De deploy meet de echte `dist/` vóór de upload.** De test voedt een vaste
+6. **De 500 op `/<pagina>/x` gaat mee in deze PR.** De code-critic vond dat
+   `/doelen/x` in een kringloop van herschrijvingen liep; 📏 gemeten op productie
+   (500) en op Apache. Hij was ouder dan QS8-789, maar zat in dezelfde regel die
+   hier herschreven werd, en het commitbericht belooft "elk adres geeft een
+   pagina". De reparatie is één voorwaarde: het adres moet het einde van
+   `%{REQUEST_FILENAME}` zijn. Het model werpt sinds deze ronde ook op een
+   onbekende vlag of operator, niet alleen op een onbekend directief.
+7. **De deploy meet de echte `dist/` vóór de upload.** De test voedt een vaste
    boom; welke botsingen er zijn hangt af van de routes van de dag. Een bezwaar
    stopt de deploy, net als de geheimenscan.
 

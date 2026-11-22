@@ -449,13 +449,21 @@ export function htaccessInhoud(dynamisch) {
   RewriteCond %{REQUEST_FILENAME} -f
   RewriteRule ^ - [L]
 
+  # ⚠️ De eerste voorwaarde van de twee regels hieronder eist dat het adres
+  #    ($1) het einde van %{REQUEST_FILENAME} is. Bij /doelen/x vult Apache die
+  #    alleen tot /doelen (de rest is PATH_INFO); zonder deze eis vond de toets
+  #    doelen.html terwijl de herschrijving doelen/x.html maakte, en dat liep
+  #    rond tot een 500 (gemeten op productie, 22-11-2026).
+
   # Een route zonder parameter, ook als er een map met dezelfde naam is:
   # /doelen, /groep en /groep/ -> groep.html
+  RewriteCond $1#%{REQUEST_FILENAME} ^([^#]+)#.*/\\1/*$
   RewriteCond %{REQUEST_FILENAME} ^(.+?)/*$
   RewriteCond %1.html -f
   RewriteRule ^(.+?)/*$ /$1.html [L]
 
   # Een map met een eigen index: /instellingen en /instellingen/ -> instellingen/index.html
+  RewriteCond $1#%{REQUEST_FILENAME} ^([^#]+)#.*/\\1/*$
   RewriteCond %{REQUEST_FILENAME} ^(.+?)/*$
   RewriteCond %1/index.html -f
   RewriteRule ^(.+?)/*$ /$1/index.html [L]

@@ -1140,7 +1140,7 @@ geen `index.html`: een 403 van Hostinger in plaats van de app. 📏 Gemeten op
 22-11-2026: `/groep` en `/doel` 301 → 403, `/mensen/` 403; `/groep/ontdek` en
 `/groep/<id>` gewoon 200.
 
-De serverregel die dat oplost staat in `htaccessInhoud()` en bestaat uit drie
+De serverregel die dat oplost staat in `htaccessInhoud()` en bestaat uit vier
 delen; elk draagt een eigen deel van de belofte:
 
 | Regel | Wat hij doet | Zonder hem |
@@ -1148,6 +1148,7 @@ delen; elk draagt een eigen deel van de belofte:
 | `DirectorySlash Off` (in `<IfModule mod_dir.c>`) | geen doorsturen van `/groep` naar `/groep/` | 301 — op Apache gemeten: die komt vóór de herschrijving |
 | alleen een echt **bestand** doorlaten, geen map | een map valt door naar de regels eronder | 403 |
 | `/x` en `/x/` → `x.html`, en `/x` → `x/index.html` | ook het adres mét streep krijgt de pagina | `/groep/` blijft 403 — en dat adres vragen browsers zelf, na de oude 301 |
+| `RewriteCond $1#%{REQUEST_FILENAME} ^([^#]+)#.*/\1/*$` | het adres moet het einde van de bestandsnaam zijn | `/doelen/x` → 500: Apache vult de bestandsnaam alleen tot `/doelen`, de toets vond `doelen.html` en de regel maakte `doelen/x.html`, tien keer rond. 📏 Ook op productie, en ouder dan QS8-789 |
 
 Een map zonder eigen pagina (`/doel`) valt door naar `index.html`, en de app
 toont dan zelf "niet gevonden".
@@ -1156,7 +1157,8 @@ toont dan zelf "niet gevonden".
 (elke pagina en elke map, met en zonder streep) moet direct een pagina geven,
 geen 301 en geen 403 — anders stopt hij en is er niets geüpload. Het model
 daarachter (`scripts/htaccess-routering.mjs`) is op 22-11-2026 tegen echte
-Apache 2.4 geijkt: 157 adressen, drie varianten van de regels, allemaal gelijk.
+Apache 2.4 geijkt: 192 adressen (ook `/<pagina>/x` en adressen met een query),
+vier varianten van de regels, status én geserveerd bestand allemaal gelijk.
 De toetsen staan in `tests/scripts/htaccess-routering.test.ts`.
 
 ⚠️ **Wat dat niet bewijst: dat Hostinger zich gedraagt als die Apache.** De
@@ -1164,7 +1166,7 @@ respons komt van `hcdn`, en wat erachter draait is niet gemeten. Na de deploy
 dus nameten, uitgelogd:
 
 ```bash
-for p in /groep /groep/ /doel /doel/ /mensen/ /instellingen /doelen /groep/ontdek; do
+for p in /groep /groep/ /doel /doel/ /mensen/ /instellingen /doelen /groep/ontdek /doelen/x "/groep?x=1"; do
   curl -s -o /dev/null -w "%{http_code} $p\n" "https://goalbuddies.q-projects.tech$p"
 done
 ```

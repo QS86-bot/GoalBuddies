@@ -13,9 +13,10 @@
  *
  * ⚠️ **Dit is een model van Apache, en het is tegen Apache geijkt** — niet
  *    tegen Hostinger. Het kent precies de vormen die `htaccessInhoud()`
- *    schrijft: `RewriteCond` met `-f`, `-d` of een regex (met `[OR]` en `%N`),
- *    `RewriteRule` met `-` of een pad (met `$N`), en `DirectorySlash`. Een vorm
- *    die het niet kent, laat het **werpen** in plaats van overslaan: een model
+ *    schrijft: `RewriteCond` met `-f`, `-d` of een regex (met `[OR]`, `$N` en
+ *    `%N`), `RewriteRule` met `-` of een pad en de vlag `[L]`, `DirectorySlash`,
+ *    en een query die het negeert zoals Apache dat doet. Een directief, vlag of
+ *    operator die het niet kent, laat het **werpen** in plaats van overslaan: een model
  *    dat een regel negeert, meet een ander bestand dan de server leest.
  *
  * ⚠️ **Twee eigenschappen van mod_dir zijn gemeten en niet afgeleid**, met
@@ -28,25 +29,27 @@
  *    (2) een map mét schuine streep zonder `index.html` geeft 403.
  *
  * IJKING — met de hand gedraaid op 22-11-2026: de echte export (48 pagina's, 34
- * mappen) achter echte Apache 2.4, elk adres uit `teMetenAdressen()` (157) met
- * curl opgevraagd en naast `beantwoord()` gelegd. Omdat veel pagina's
- * byte-gelijk zijn (de prerender heeft een lege body, QS8-740), kreeg elke
- * `.html` in de kopie een eigen merkteken, zodat ook het géserveerde bestand
- * vergeleken is en niet alleen de status:
+ * mappen) achter echte Apache 2.4. Elk adres uit `teMetenAdressen()` (188) plus
+ * vier met een query is met curl opgevraagd en naast `beantwoord()` gelegd.
+ * Omdat veel pagina's byte-gelijk zijn (de prerender heeft een lege body,
+ * QS8-740), kreeg elke `.html` in de kopie een eigen merkteken, zodat ook het
+ * géserveerde bestand vergeleken is en niet alleen de status:
  *
- *   oude regels (`-f [OR] -d` → doorlaten)   157 van 157 gelijk; 66 bezwaren, o.a.
- *                                            /groep 301, /groep/ 403, /doel 301,
- *                                            /mensen/ 403, /instellingen 301
- *   nieuwe regels                            157 van 157 gelijk; 0 bezwaren
- *   nieuwe regels zonder `DirectorySlash`    157 van 157 gelijk; 34 bezwaren, alle
- *                                            een 301 (/groep, /instellingen, …)
+ *   oude regels (`-f [OR] -d` → doorlaten)   192 van 192 gelijk; 94 bezwaren, o.a.
+ *                                            /groep 301, /groep/ 403, /mensen/ 403,
+ *                                            /doelen/x 500
+ *   nieuwe regels                            192 van 192 gelijk; 0 bezwaren
+ *   nieuwe regels zonder `DirectorySlash`    192 van 192 gelijk; 34 bezwaren, alle 301
+ *   nieuwe regels zonder de `$1#`-eis        192 van 192 gelijk; 28 bezwaren, alle 500
  *
  *   De eerste versie van dit model week bij de oude regels op 28 adressen af —
  *   zie `bestandsnaamVoor()`. Zonder die vergelijking had het model die regels
  *   strenger beoordeeld dan de server, en dat is een ijking die je overslaat.
+ *   De 500 op `/<pagina>/x` vond de code-critic; hij stond ook op productie
+ *   (📏 `/doelen/x` → 500 op 22-11-2026) en was ouder dan QS8-789.
  *
  *   Mutatie per grendel in `tests/scripts/htaccess-routering.test.ts`: elk van
- *   de drie hierboven maakt daar een eigen toets rood.
+ *   de vier onderdelen van de regels maakt daar een eigen toets rood.
  */
 
 /** Een denkbeeldige documentroot; alleen het verschil met het verzoek telt. */
@@ -58,9 +61,16 @@ function tokens(regel) {
   return regel.trim().split(/\s+/);
 }
 
+/** De vlaggen die dit model uitvoert; elke andere laat het werpen. */
+const BEKENDE_VLAGGEN = new Set(['L', 'OR']);
+
 /** @param {string | undefined} vlaggen */
 function vlagUit(vlaggen) {
-  return new Set(String(vlaggen ?? '').replace(/^\[|\]$/g, '').split(',').filter(Boolean));
+  const set = new Set(String(vlaggen ?? '').replace(/^\[|\]$/g, '').split(',').filter(Boolean));
+  for (const vlag of set) {
+    if (!BEKENDE_VLAGGEN.has(vlag)) throw new Error(`htaccess-routering kent de vlag [${vlag}] niet`);
+  }
+  return set;
 }
 
 /**
@@ -132,6 +142,10 @@ function toets(voorwaarde, ctx) {
   if (/%\{/.test(tekst)) throw new Error(`htaccess-routering kent ${voorwaarde.test} niet`);
   const ontkend = voorwaarde.patroon.startsWith('!');
   const patroon = ontkend ? voorwaarde.patroon.slice(1) : voorwaarde.patroon;
+  // -s, -l, =, <, > en de rest zijn geen regex; als regex uitgevoerd zouden ze stil iets anders meten.
+  if (/^(-[a-zA-Z]|[=<>])/.test(patroon) && patroon !== '-f' && patroon !== '-d') {
+    throw new Error(`htaccess-routering kent de voorwaarde ${patroon} niet`);
+  }
   const binnen = tekst.startsWith(`${ROOT}/`) ? tekst.slice(ROOT.length + 1) : null;
 
   let groepen = null;
@@ -238,12 +252,15 @@ export function beantwoord(htaccess, bestanden, adres) {
   const { regels, directorySlash } = leesRegels(htaccess);
   const boom = { bestanden: new Set(bestanden), mappen: mappenUit(bestanden) };
 
-  const rel = relatief(adres);
-  if (directorySlash && rel !== '' && !adres.endsWith('/') && boom.mappen.has(rel) && !boom.bestanden.has(rel)) {
-    return { status: 301, locatie: `${adres}/` };
+  // Een RewriteRule en mod_dir zien de query niet; Apache serveert hetzelfde bestand.
+  const zonderQuery = adres.split('?')[0] ?? adres;
+  const query = adres.slice(zonderQuery.length);
+  const rel = relatief(zonderQuery);
+  if (directorySlash && rel !== '' && !zonderQuery.endsWith('/') && boom.mappen.has(rel) && !boom.bestanden.has(rel)) {
+    return { status: 301, locatie: `${zonderQuery}/${query}` };
   }
 
-  let pad = adres;
+  let pad = zonderQuery;
   for (let i = 0; i < MAX_RONDES; i += 1) {
     const volgende = ronde(regels, pad, boom);
     if (volgende === null || volgende === undefined || volgende === pad) return serveer(pad, boom);
@@ -267,6 +284,8 @@ export function teMetenAdressen(bestanden) {
     const route = pad.replace(/\.html$/, '').replace(/(^|\/)index$/, '').replace(/\[[^/\]]+\]/g, 'voorbeeld');
     if (route === '') continue;
     adressen.push({ adres: `/${route}`, verwacht: pad }, { adres: `/${route}/`, verwacht: pad });
+    // Een pagina met iets erachter (een verouderde link): de app, nooit een 500.
+    if (!pad.includes('[')) adressen.push({ adres: `/${route}/x`, verwacht: null });
   }
 
   for (const map of mappenUit(lijst)) {
