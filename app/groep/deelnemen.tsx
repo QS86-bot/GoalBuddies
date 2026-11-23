@@ -13,6 +13,7 @@ import {
   Subheading,
   useTerug,
 } from '@/shared/ui';
+import { useVolgTaal } from '@/shared/i18n/react';
 
 /**
  * Een code met de hand invoeren — QS8-53.
@@ -26,6 +27,7 @@ import {
  *    voorkomende gedrag en dat mag niet stuk op een schuine streep.
  */
 export default function Deelnemen() {
+  useVolgTaal();
   const router = useRouter();
   const terug = useTerug('/groep');
 

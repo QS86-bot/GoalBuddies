@@ -1,9 +1,11 @@
 import { t } from '@/shared/i18n';
 import { Screen } from '@/shared/ui';
 import { Statistiekscherm } from '@/schermen/statistiek';
+import { useVolgTaal } from '@/shared/i18n/react';
 
 /** Je statistieken — QS8-749. Bereikbaar vanuit Profiel; de inhoud staat in `src/schermen/statistiek`. */
 export default function Statistiek() {
+  useVolgTaal();
   return (
     <Screen title={t('statistiek.titel')} terug={{ naar: '/profiel' }}>
       <Statistiekscherm />

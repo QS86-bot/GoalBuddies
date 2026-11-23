@@ -23,6 +23,7 @@ import {
   Subheading,
   useTerug,
 } from '@/shared/ui';
+import { useVolgTaal } from '@/shared/i18n/react';
 
 /**
  * Een buddy-groep aanmaken — QS8-52.
@@ -37,6 +38,7 @@ import {
  *    niemand hem aan te raken.
  */
 export default function NieuweGroep() {
+  useVolgTaal();
   const router = useRouter();
   const terug = useTerug('/groep');
   // ⚠️ Optioneel, en dat is het punt: dit scherm is er in de eerste plaats om

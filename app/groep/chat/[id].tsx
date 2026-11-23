@@ -51,6 +51,7 @@ import {
   useDocumentOpenen,
   type Documentopener,
 } from '@/modules/buddies/react';
+import { useVolgTaal } from '@/shared/i18n/react';
 
 /** De vijf redenen met hun labels; een functie, want de taal ligt niet vast op importtijd. */
 function MELDREDEN_OPTIES(): readonly { readonly waarde: string; readonly label: string }[] {
@@ -116,6 +117,7 @@ function chatbijlage(bericht: ChatBericht, opener: Documentopener): Chatbijlage 
  *    (domeinregel 7).
  */
 export default function GroepChat() {
+  useVolgTaal();
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
   const { userId } = useSession();

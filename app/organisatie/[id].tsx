@@ -34,6 +34,7 @@ import {
   useBladerlijst,
   type BevestigingsTekst,
 } from '@/shared/ui';
+import { useVolgTaal } from '@/shared/i18n/react';
 
 /**
  * Een organisatie: leden, teams en (voor een beheerder) de uitnodigcode — QS8-657.
@@ -52,6 +53,7 @@ import {
  *    een dood eind; wie in het team zit, vindt het team bij zijn groepen.
  */
 export default function OrganisatieScherm() {
+  useVolgTaal();
   const { id } = useLocalSearchParams<{ id: string }>();
   const mijn = useAsync(() => fetchMijnOrganisaties(), [id]);
   const organisatie = mijn.data?.find((o) => o.id === id);
