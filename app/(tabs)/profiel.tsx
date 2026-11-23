@@ -26,6 +26,7 @@ import {
   useAsync,
   zetMeldingWacht,
 } from '@/shared/ui';
+import { useVolgTaal } from '@/shared/i18n/react';
 
 /**
  * Profiel — jezelf, je ingangen naar statistieken en prestaties, en de ingang naar Instellingen.
@@ -36,6 +37,7 @@ import {
  *    met domeinregel 7. De groep ziet De Ketting en mijlpalen, nooit dit scherm.
  */
 export default function Profiel() {
+  useVolgTaal();
   const { profiel, loading, error, herlaad } = useProfiel();
 
   return (
@@ -51,10 +53,7 @@ export default function Profiel() {
         data={profiel ?? undefined}
         isEmpty={() => false}
         onRetry={herlaad}
-        empty={{
-          title: t('profiel.leeg_titel'),
-          body: t('profiel.leeg_tekst'),
-        }}
+        empty={{ title: t('profiel.leeg_titel'), body: t('profiel.leeg_tekst') }}
       >
         {(p) => (
           <View style={styles.blokken}>

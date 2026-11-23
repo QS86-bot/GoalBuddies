@@ -133,6 +133,7 @@ import {
   useAsyncMetTerugval,
   Weekplanblok,
 } from '@/shared/ui';
+import { useVolgTaal } from '@/shared/i18n/react';
 
 /**
  * De lege terugval voor `useAsyncMetTerugval` — QS8-219.
@@ -169,6 +170,7 @@ const LOS_VAN_MIJLPAAL = 'los';
  *    verraadt dat het doel bestaat.
  */
 export default function DoelDetail() {
+  useVolgTaal();
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
   const { userId } = useSession();

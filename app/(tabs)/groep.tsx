@@ -23,6 +23,7 @@ import {
   TeBeoordelenKaart,
   useAsync,
 } from '@/shared/ui';
+import { useVolgTaal } from '@/shared/i18n/react';
 
 /**
  * Groep — de ingang naar je buddy-groepen.
@@ -42,6 +43,7 @@ import {
  *    uitspraak over die drie mensen.
  */
 export default function GroepTab() {
+  useVolgTaal();
   const router = useRouter();
   const teBeoordelen = useTeBeoordelen();
 
