@@ -1,4 +1,4 @@
-import { useRouter } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useRef, useState } from 'react';
 
 import { useProfiel, useSession } from '@/modules/auth';
@@ -12,6 +12,7 @@ import {
 import { doelenNaVragenlijst } from '../belofte/verwijzingsparameter';
 
 import { useAntwoorden } from './antwoorden';
+import { HERKOMST_PARAM, komtVanProfiel } from './herkomst';
 import { bewaarAlles, bewaarTussendoor } from './bewaar';
 import { eigenTeLang } from './vragen/Gevoel';
 import { beginStap, GEVOEL, isVraag, SAMENVATTING, type Stap } from './stappen';
@@ -27,6 +28,7 @@ import { useHeldkeuze } from './useHeldkeuze';
  */
 export function useVragenlijst() {
   const router = useRouter();
+  const vanProfiel = komtVanProfiel(useLocalSearchParams<Record<string, string | string[]>>()[HERKOMST_PARAM]);
   const { userId } = useSession();
   const { profiel, herlaad } = useProfiel();
   const a = useAntwoorden(profiel);
@@ -60,6 +62,9 @@ export function useVragenlijst() {
     }
 
     herlaad();
+    // ⚠️ Via de vaste ingang op Profiel terug naar Profiel, zonder de verwijzing naar
+    //    de belofte — QS8-817, besluit Quinten (ii). Zie `./herkomst.ts`.
+    if (vanProfiel) return router.replace('/profiel');
     // ⚠️ Naar de doelen en niet naar Vandaag: wie net verteld heeft waar hij zich op
     //    wil richten, hoort meteen bij de plek te komen waar hij dat vastlegt.
     // ⚠️ Met de parameter van QS8-762: alleen zo, direct na het afronden, kan de
