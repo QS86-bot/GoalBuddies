@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Pressable, StyleSheet, View } from 'react-native';
+import { Platform, Pressable, StyleSheet, View } from 'react-native';
 
 import { opmaaktaal, t, weekdagKort } from '../i18n';
 import {
@@ -17,6 +17,7 @@ import { radius, space, useTheme } from '../theme';
 
 import { focusRing } from './a11y';
 import { Button } from './Button';
+import { keuzeEigenschappen } from './keuze-aria';
 import { Caption, Subheading } from './Text';
 
 /**
@@ -366,6 +367,7 @@ function Dagvakje({
       onPress={onKies}
       accessibilityRole="button"
       accessibilityState={{ disabled: !teKiezen, selected: gekozen }}
+      {...keuzeEigenschappen(gekozen, Platform.OS === 'web').aria}
       accessibilityLabel={toonDatum(datum, opmaaktaal())}
     >
       <Caption muted={!inMaand || !teKiezen}>{nummer}</Caption>

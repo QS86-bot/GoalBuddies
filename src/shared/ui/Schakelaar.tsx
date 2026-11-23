@@ -1,9 +1,10 @@
 import { useState } from 'react';
-import { Pressable, StyleSheet, View } from 'react-native';
+import { Platform, Pressable, StyleSheet, View } from 'react-native';
 
 import { radius, useTheme } from '../theme';
 
 import { focusRing } from './a11y';
+import { standEigenschappen } from './keuze-aria';
 
 /**
  * Een aan-uitschakelaar voor een instelling van de groep — QS8-666 (A57), keuze B1 van Quinten.
@@ -46,6 +47,7 @@ export function Schakelaar({ aan, onPress, label, disabled = false }: Props) {
       accessibilityRole="switch"
       accessibilityLabel={label}
       accessibilityState={{ checked: aan, disabled }}
+      {...standEigenschappen({ checked: aan }, Platform.OS === 'web').aria}
       // De baan is 30 hoog; de rest van de 44 punten is raakvlak.
       hitSlop={{ top: 7, bottom: 7, left: 4, right: 4 }}
       style={[

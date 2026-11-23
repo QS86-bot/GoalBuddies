@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Pressable, StyleSheet } from 'react-native';
+import { Platform, Pressable, StyleSheet } from 'react-native';
 import Svg, { Circle, Path, Polyline } from 'react-native-svg';
 
 import { t } from '../i18n';
@@ -7,6 +7,7 @@ import { useTheme } from '../theme';
 
 import { focusRing } from './a11y';
 import { afvinkcirkel, CIRKEL_STAAT_SLEUTEL, type CirkelVorm, type Niveau } from './afvinkcirkel-vorm';
+import { standEigenschappen } from './keuze-aria';
 
 /**
  * De grote afvinkcirkel — QS8-727: de hoofdhandeling van een actiekaart.
@@ -84,6 +85,7 @@ export function Afvinkcirkel({ label, niveau, vandaagAfgevinkt, busy = false, ui
       accessibilityRole="checkbox"
       accessibilityLabel={`${label}. ${t(CIRKEL_STAAT_SLEUTEL[vorm.toestand])}`}
       accessibilityState={{ disabled: uit || busy, busy, checked: vandaagAfgevinkt }}
+      {...standEigenschappen({ checked: vandaagAfgevinkt, busy }, Platform.OS === 'web').aria}
       style={[styles.raak, { width: vorm.aanraak, height: vorm.aanraak, borderColor: theme.colors.panel }, focusRing(theme, heeftFocus)]}
     >
       <Tekening vorm={vorm} grootte={vorm.grootte} dik={3} />
