@@ -1,6 +1,6 @@
 import {
-  closableUserCycle,
-  isWithinGrace,
+  closableUserCycleSince,
+  isWithinGraceSince,
   now,
   previousCycle,
   userCycle,
@@ -30,14 +30,24 @@ export function huidigeCyclus(klok: UserClock): Gebruikerscyclus {
  *
  *    De UI moet erbij zeggen om welke week het gaat, anders lijkt het alsof je
  *    per ongeluk de verkeerde week afsluit.
+ *
+ * ⚠️ **`sinds` is verplicht, en dat is de grendel van QS8-806.** Het is de
+ *    `created_at` van het profiel. Een account dat pas in deze cyclus ontstond
+ *    heeft geen vorige week, dus ook geen venster: tot QS8-806 zag een account
+ *    van vijf minuten oud op maandagochtend "Je vorige week loopt nog even door"
+ *    en de kop "Week van" de vorige maandag. Optioneel was hij stil te vergeten;
+ *    verplicht is een vergeten aanroeper een fout van `tsc`.
  */
-export function afsluitbareCyclus(klok: UserClock): Gebruikerscyclus {
-  return closableUserCycle(klok, now());
+export function afsluitbareCyclus(klok: UserClock, sinds: string): Gebruikerscyclus {
+  return closableUserCycleSince(klok, now(), sinds);
 }
 
-/** Zit de gebruiker nu in de coulanceperiode? Bepaalt de tekst op het scherm. */
-export function inCoulanceperiode(klok: UserClock): boolean {
-  return isWithinGrace(klok, now());
+/**
+ * Zit de gebruiker nu in de coulanceperiode? Bepaalt de tekst op het scherm.
+ * `sinds` is de `created_at` van het profiel — zie `afsluitbareCyclus()`.
+ */
+export function inCoulanceperiode(klok: UserClock, sinds: string): boolean {
+  return isWithinGraceSince(klok, now(), sinds);
 }
 
 /**
@@ -60,7 +70,15 @@ export function inCoulanceperiode(klok: UserClock): boolean {
  * Klopt in beide standen: binnen de coulanceperiode is de afsluitbare cyclus de
  * vorige week en sloot de rollover die dáárvoor af; erbuiten is de afsluitbare
  * cyclus de lopende week en sloot hij de vorige af.
+ *
+ * ⚠️ **Eén uitzondering sinds QS8-806: een account zonder vorige cyclus.** Dan is
+ *    de afsluitbare cyclus de lopende week en geeft dit de vorige — terwijl de
+ *    rollover, die zonder het account rekent, binnen het venster de week dáárvoor
+ *    afsloot. Onschuldig zolang een nieuw account in eerdere weken geen rijen
+ *    heeft: er is in geen van beide weken een weekpas die iets gered kan hebben.
+ *    Komt er ooit een import van weekdoelen voor nieuwe accounts, kijk hier dan
+ *    opnieuw naar.
  */
-export function zojuistAfgeslotenCyclus(klok: UserClock): Gebruikerscyclus {
-  return previousCycle(afsluitbareCyclus(klok));
+export function zojuistAfgeslotenCyclus(klok: UserClock, sinds: string): Gebruikerscyclus {
+  return previousCycle(afsluitbareCyclus(klok, sinds));
 }

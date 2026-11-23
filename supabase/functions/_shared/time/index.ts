@@ -34,11 +34,14 @@ export { doelperiodeBand } from './periode.ts';
 
 export {
   closableUserCycle,
+  closableUserCycleSince,
   cyclesBetween,
+  existedBeforeCycle,
   cyclesUntil,
   groupPeriod,
   isWithinCycle,
   isWithinGrace,
+  isWithinGraceSince,
   nextCycle,
   previousCycle,
   userCycle,

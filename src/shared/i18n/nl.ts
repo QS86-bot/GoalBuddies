@@ -818,6 +818,13 @@ export const nl = {
     'Een nieuwe groep begint met een klassement: iedereen in de groep ziet de punten die ieder in deze groep verdient, ook in een beschermde groep. Een gemiste week komt er nooit in voor. Een beheerder kan het klassement uitzetten.',
   'uitnodiging.klassement_standaard':
     'Een groep begint standaard met een klassement: iedereen in de groep ziet de punten die ieder in deze groep verdient. Een gemiste week komt er nooit in voor. Een beheerder kan het uitzetten.',
+  // QS8-801 (0341): de echte stand uit `invite_preview()`.
+  'uitnodiging.klassement_aan':
+    'In deze groep staat het klassement aan: iedereen in de groep ziet de punten die ieder in deze groep verdient. Een gemiste week komt er nooit in voor. Een beheerder kan het uitzetten.',
+  'uitnodiging.klassement_uit':
+    'In deze groep staat het klassement uit. Gaat het later aan, dan ziet iedereen in de groep de punten die ieder in deze groep verdiend heeft, ook die van daarvóór. Een gemiste week komt er nooit in voor.',
+  // Besluit Quinten 23-11-2026: een teamgroep kan nooit een klassement hebben (groups_team_geen_klassement).
+  'uitnodiging.klassement_team': 'Deze groep heeft geen klassement.',
   'groepnieuw.zichtbaarheid_hint':
     'Dit is de belangrijkste keuze op dit scherm. Hij is later te wijzigen, maar niet ongemerkt: iedereen krijgt het te zien.',
 
@@ -2095,6 +2102,19 @@ export const nl = {
 
   'straf.jouw': 'Je straf',
   'straf.intrekken': 'Intrekken',
+  // ⚠️ QS8-800: alleen voor de eigenaar, op zijn eigen strafkaart. De naam komt
+  //    uit een bron die hij al mocht lezen; zonder leesrecht noemt de kaart
+  //    alleen de soort, en bij een storing zegt hij dat.
+  'straf.begunstigde.groep': 'Getuige: de groep {groep}',
+  'straf.begunstigde.persoon': 'Getuige: {naam}',
+  'straf.begunstigde.groep_onzichtbaar': 'Getuige: een groep waar je geen lid meer van bent',
+  // ⚠️ Niet alleen "wie": de persoonstak van `commitments_select` eist een
+  //    gedeelde groep (0183), dus zolang die er niet is ziet de getuige de straf
+  //    óók bij `due` niet. Een kaart die dan alleen "Getuige: …" zegt, belooft
+  //    een getuige die er niet is (security-ronde QS8-800).
+  'straf.begunstigde.persoon_onzichtbaar':
+    'Getuige: iemand met wie je geen groep meer deelt. Zolang dat zo is, krijgt die je straf niet te zien.',
+  'straf.begunstigde.fout': 'De getuige kon niet worden geladen.',
   'straf.kop': 'Straf',
   // ⚠️ **Uitleg én een uitweg, geen dood veld** (acceptatiecriterium van
   //    QS8-228). Wie hier komt heeft geen groep en dus ook geen groepsgenoot om

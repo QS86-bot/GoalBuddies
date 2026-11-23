@@ -264,6 +264,8 @@ export {
   leesGoedkeuringsregel,
   leesVoertaal,
   leesZichtbaarheid,
+  leesKlassementAan,
+  uitnodigingKlassementTekst,
   normaliseerCode,
   leesSeizoenscadans,
   QUORUM_MAX,
