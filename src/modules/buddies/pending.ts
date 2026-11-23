@@ -225,6 +225,7 @@ export function routeVoorUitnodiging(invoer: {
  *    profiel afmaakt, krijgt de gewone route.
  */
 const SLEUTEL_GROEP = 'goalbuddies.toegetreden-groep';
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 interface BewaardeGroep {
   readonly userId: string;
@@ -251,6 +252,10 @@ export async function toegetredenGroep(userId: string): Promise<string | null> {
 
     const gelezen = JSON.parse(bewaard) as Partial<BewaardeGroep>;
     if (gelezen.userId !== userId || typeof gelezen.groupId !== 'string') return null;
+    // ⚠️ Alleen een uuid: de waarde gaat als padsegment in `/groep/<id>`, en de opslag is
+    //    op het apparaat bewerkbaar (security-review QS8-805). Een pad als `x/../…` opent
+    //    anders een willekeurig scherm.
+    if (!UUID.test(gelezen.groupId)) return null;
     if (ouderDan(UITNODIGING_GELDIG_UREN, gelezen.op ?? null)) return null;
     return gelezen.groupId;
   } catch (fout) {
