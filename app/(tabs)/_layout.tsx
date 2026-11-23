@@ -1,6 +1,7 @@
 import { Tabs } from 'expo-router';
 
 import { t } from '@/shared/i18n';
+import { useVolgTaal } from '@/shared/i18n/react';
 
 /**
  * De vijf kernschermen.
@@ -77,6 +78,7 @@ import { t } from '@/shared/i18n';
  *    testronde te knellen, dan is dit de plek en is het één regel.
  */
 export default function TabsLayout() {
+  useVolgTaal();
   return (
     <Tabs
       // ⚠️ **De navigator tekent niets** — QS8-437. `Screen` doet dat, op élk

@@ -1588,6 +1588,12 @@ export const en: Record<Sleutel, string> = {
 
   'straf.jouw': 'Your penalty',
   'straf.intrekken': 'Withdraw',
+  'straf.begunstigde.groep': 'Witness: the group {groep}',
+  'straf.begunstigde.persoon': 'Witness: {naam}',
+  'straf.begunstigde.groep_onzichtbaar': 'Witness: a group you are no longer a member of',
+  'straf.begunstigde.persoon_onzichtbaar':
+    'Witness: someone you no longer share a group with. As long as that stays so, they will not see your penalty.',
+  'straf.begunstigde.fout': 'The witness could not be loaded.',
   'straf.kop': 'Penalty',
   'straf.geen_groep':
     'A penalty needs a witness: a group, or one person you share a group with. You are not ' +
@@ -1717,6 +1723,20 @@ export const en: Record<Sleutel, string> = {
   'straf.belofte_loopt': 'This goal has a weekly promise running. While it runs, you cannot add a penalty.',
   'belofte.niet_gevonden_titel': 'Goal not found',
   'belofte.niet_gevonden': 'This goal does not exist or is not yours.',
+
+  // QS8-799: withdrawing asks for a second confirmation, a short week is named,
+  // and the message for a promise that already came into effect says "promise".
+  'belofte.bevestig_kort':
+    'Note: your week ends in less than a day. This promise only covers those last hours, ' +
+    'not your next week. If you want to promise a whole week, do it once your new week has started.',
+  'belofte.intrekken_kop': 'Withdraw your promise?',
+  'belofte.intrekken_gevolg':
+    'Your promise lapses and will not come into effect, not even if you miss that week.',
+  'belofte.intrekken_getuige': 'Your witness will not see any of this: no message and no notification.',
+  'belofte.intrekken_ja': 'Yes, withdraw my promise',
+  'belofte.intrekken_nee': 'No, keep it',
+  'belofte.intrekken_uitslag': 'See the outcome',
+  'belofte.fout.al_afgegaan': 'This promise can no longer be withdrawn: it has been decided in the meantime.',
 
   // ---------------------------------------------------------------------------
   // Completing, archiving and replanning — QS8-83, QS8-32 and QS8-96
@@ -2088,6 +2108,13 @@ export const en: Record<Sleutel, string> = {
     'A new group starts with a leaderboard: everyone in the group sees the points each member earns in this group, in a protected group too. A missed week never appears in it. An admin can turn the leaderboard off.',
   'uitnodiging.klassement_standaard':
     'A group starts with a leaderboard by default: everyone in the group sees the points each member earns in this group. A missed week never appears in it. An admin can turn it off.',
+  // QS8-801 (0341): de echte stand uit `invite_preview()`.
+  'uitnodiging.klassement_aan':
+    'This group has its leaderboard on: everyone in the group sees the points each member earns in this group. A missed week never appears in it. An admin can turn it off.',
+  'uitnodiging.klassement_uit':
+    'This group has its leaderboard off. If it is turned on later, everyone in the group sees the points each member earned in this group, including points from before then. A missed week never appears in it.',
+  // Besluit Quinten 23-11-2026: een teamgroep kan nooit een klassement hebben (groups_team_geen_klassement).
+  'uitnodiging.klassement_team': 'This group has no leaderboard.',
   'groepnieuw.zichtbaarheid_hint':
     'This is the most important choice on this screen. It can be changed later, but never quietly: everyone gets told.',
 

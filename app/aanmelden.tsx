@@ -14,6 +14,7 @@ import { bewaarWerkcode } from '@/modules/organisaties';
 import { t } from '@/shared/i18n';
 import { space } from '@/shared/theme';
 import { Body, Button, Caption, Card, Field, Screen, Subheading } from '@/shared/ui';
+import { useVolgTaal } from '@/shared/i18n/react';
 
 /**
  * Aanmelden en inloggen. Eén scherm, want twee schermen betekent dat iemand op
@@ -30,6 +31,7 @@ import { Body, Button, Caption, Card, Field, Screen, Subheading } from '@/shared
  *    grendel in `tests/beloftes/aanmeldscherm.test.ts` rood, en terecht.
  */
 export default function Aanmelden() {
+  useVolgTaal();
   const parameters = useLocalSearchParams();
   const [modus, setModus] = useState<Aanmeldmodus>(() => beginModus(parameters));
 

@@ -38,6 +38,7 @@ import {
   Subheading,
   useAsync,
 } from '@/shared/ui';
+import { useVolgTaal } from '@/shared/i18n/react';
 
 /**
  * De vervolgpagina's van één zoekterm.
@@ -99,6 +100,7 @@ function Gevonden({ personen, meer, opMeer }: {
 }
 
 export default function MensenZoeken() {
+  useVolgTaal();
   const [term, setTerm] = useState('');
 
   /**

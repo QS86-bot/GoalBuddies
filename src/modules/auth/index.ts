@@ -56,6 +56,7 @@ export {
 } from './schemas';
 
 export { bestemmingVoor, NA_ONBOARDING_BEREIKBAAR, type Bestemming, type Routestand } from './routewacht';
+export { useRoutebestemming } from './useRoutebestemming';
 
 export {
   andereModus,

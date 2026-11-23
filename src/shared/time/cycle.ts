@@ -140,6 +140,22 @@ export function isWithinGrace(
   return at.getTime() < current.startsAt.getTime() + graceHours * 3_600_000;
 }
 
+/**
+ * Eindigt de lopende cyclus van de gebruiker binnen `uren` uur na `at`? — QS8-799.
+ *
+ * Gemeten tegen `endsAt`: het UTC-moment waarop de volgende cyclus begint, in de
+ * tijdzone en op de week-startdag van de gebruiker. Een korte week is dus "minder
+ * dan `uren` uur over", nooit "het is de laatste kalenderdag": op een dag met een
+ * zomertijdwissel scheelt dat een uur, en dat uur hoort hier en niet in een scherm
+ * (correctheidsregel 7).
+ *
+ * ⚠️ Strikt kleiner: met precies `uren` uur over is de week niet kort.
+ */
+export function userCycleEndsWithin(clock: UserClock, at: Date, uren: number): boolean {
+  const current = userCycle(clock, at);
+  return current.endsAt.getTime() - at.getTime() < uren * 3_600_000;
+}
+
 // ---------------------------------------------------------------------------
 // Het account telt mee — QS8-806
 // ---------------------------------------------------------------------------

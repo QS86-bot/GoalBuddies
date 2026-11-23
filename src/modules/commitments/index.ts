@@ -18,10 +18,12 @@ export {
   fetchStrafDoelen,
   gaWeekbelofteAan,
   herstelStuurlozeStraf,
+  trekBelofteIn,
   trekIn,
   zetBeloning,
   zetStraf,
   type Begunstigde,
+  type BelofteIntrekking,
   type BelofteBegunstigden,
   type BelofteStand,
   type Commitment,
@@ -29,6 +31,9 @@ export {
   type Getuigenis,
   type MogelijkeBegunstigde,
 } from './api';
+
+export { fetchBegunstigdeNaam, type BegunstigdeNaam } from './begunstigde';
+export { begunstigdeVan, BEGUNSTIGDE_BRON } from './begunstigde-bron';
 
 export {
   COMMITMENT_STANDEN,
@@ -52,6 +57,8 @@ export {
   belofteperiode,
   belofteweek,
   heeftOpenDoelstraf,
+  isKorteWeek,
+  KORTE_WEEK_UREN,
   vorigeVerschuldigd,
   wachtOpBeslissing,
   type Belofteaanbod,

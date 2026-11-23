@@ -23,6 +23,7 @@ import {
   Subheading,
   useAsync,
 } from '@/shared/ui';
+import { useVolgTaal } from '@/shared/i18n/react';
 
 /**
  * Meldingen — QS8-586, migratie 0296.
@@ -57,6 +58,7 @@ const LIMIET = 20;
 type Uitkomst = 'reviewed' | 'dismissed';
 
 export default function Meldingen() {
+  useVolgTaal();
   const { profiel } = useProfiel();
 
   /**
