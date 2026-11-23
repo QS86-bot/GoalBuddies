@@ -1,9 +1,10 @@
 import { useState } from 'react';
-import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { radius, space, useTheme, type Theme } from '../theme';
 
 import { focusRing } from './a11y';
+import { keuzeEigenschappen } from './keuze-aria';
 
 /**
  * De knop.
@@ -27,8 +28,11 @@ interface Props {
   readonly accessibilityLabel?: string;
   /** Waarom de knop uit staat of wat hij doet, voor wie het scherm niet ziet. */
   readonly accessibilityHint?: string | undefined;
-  /** Voor een keuzeknop: is deze gekozen? Zonder dit leest een schermlezer elke keuze als ongekozen. */
-  readonly selected?: boolean | undefined;
+  /**
+   * Voor een keuzeknop: is deze gekozen? Zonder dit leest een schermlezer elke keuze als ongekozen. Op web
+   * komt dit als `aria-pressed` in de DOM, op native als `accessibilityState.selected`; zie `keuze-aria.ts`.
+   */
+  readonly gekozen?: boolean | undefined;
 }
 
 function kleuren(theme: Theme, variant: ButtonVariant) {
@@ -59,13 +63,14 @@ export function Button({
   block = false,
   accessibilityLabel,
   accessibilityHint,
-  selected,
+  gekozen,
 }: Props) {
   const theme = useTheme();
   const [heeftFocus, setFocus] = useState(false);
 
   const kleur = kleuren(theme, variant);
   const uit = disabled || busy;
+  const keuzeAria = gekozen === undefined ? undefined : keuzeEigenschappen(gekozen, Platform.OS === 'web');
 
   return (
     <Pressable
@@ -74,7 +79,8 @@ export function Button({
       onFocus={() => setFocus(true)}
       onBlur={() => setFocus(false)}
       accessibilityRole="button"
-      accessibilityState={{ disabled: uit, busy, ...(selected === undefined ? {} : { selected }) }}
+      accessibilityState={{ disabled: uit, busy, ...keuzeAria?.state }}
+      {...keuzeAria?.aria}
       {...(accessibilityLabel === undefined ? {} : { accessibilityLabel })}
       {...(accessibilityHint === undefined ? {} : { accessibilityHint })}
       style={({ pressed }) => [

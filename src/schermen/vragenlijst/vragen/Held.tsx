@@ -1,3 +1,5 @@
+import { View } from 'react-native';
+
 import {
   heldoptieTekstSleutel,
   HELDVRAAGOPTIES,
@@ -7,6 +9,8 @@ import {
 } from '@/modules/helden';
 import { t } from '@/shared/i18n';
 import { Button, Caption, Card, Subheading } from '@/shared/ui';
+
+import { stijlen } from '../stijlen';
 
 /**
  * Eén heldenvraag: zes knoppen, één antwoord.
@@ -32,17 +36,20 @@ export function Held({
       <Subheading>{t(heldvraagTekstSleutel(vraag, 'vraag'))}</Subheading>
       <Caption>{t(heldvraagTekstSleutel(vraag, 'toelichting'))}</Caption>
 
-      {HELDVRAAGOPTIES[vraag].map((held) => (
-        <Button
-          key={held}
-          variant={waarde === held ? 'secundair' : 'stil'}
-          selected={waarde === held}
-          block
-          onPress={() => onKies(held)}
-        >
-          {t(heldoptieTekstSleutel(vraag, held))}
-        </Button>
-      ))}
+      {/* Eén groep met de vraag als naam, zodat een schermlezer weet waar de zes knoppen over gaan (QS8-794). */}
+      <View style={stijlen.heldkeuzes} role="group" aria-label={t(heldvraagTekstSleutel(vraag, 'vraag'))}>
+        {HELDVRAAGOPTIES[vraag].map((held) => (
+          <Button
+            key={held}
+            variant={waarde === held ? 'secundair' : 'stil'}
+            gekozen={waarde === held}
+            block
+            onPress={() => onKies(held)}
+          >
+            {t(heldoptieTekstSleutel(vraag, held))}
+          </Button>
+        ))}
+      </View>
     </Card>
   );
 }
