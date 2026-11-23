@@ -6,6 +6,8 @@ import { act, createElement, useEffect } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { afterAll, afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { zonderCommentaar } from '../../../scripts/zonder-commentaar.mjs';
+
 import type { Profiel } from './profile';
 import { ProfielProvider, useProfiel } from './ProfielProvider';
 import type { Bestemming } from './routewacht';
@@ -226,10 +228,7 @@ describe('een bestaand account, in een nieuwe sessie', () => {
  */
 describe('de schermen gebruiken deze naad', () => {
   const WORTEL = join(__dirname, '..', '..', '..');
-  const code = (pad: string) =>
-    readFileSync(join(WORTEL, pad), 'utf8')
-      .replace(/\/\*[\s\S]*?\*\//g, '')
-      .replace(/^\s*\/\/.*$/gm, '');
+  const code = (pad: string) => zonderCommentaar(readFileSync(join(WORTEL, pad), 'utf8'));
 
   /**
    * ⚠️ Alleen het stuk ná `rondOnboardingAf()` tot het einde van `bewaar()`: daar
