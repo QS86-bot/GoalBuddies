@@ -26,9 +26,10 @@
  *    op een radio betekenisloos.
  *
  * ⚠️ **Een radio is nog geen goede radio op web.** `role="radio"`, `"switch"` en `"checkbox"` maken van de
- *    `<button>` een `<div>`, en react-native-web laat de spatiebalk dan niet door (`isValidKeyPress`). Dat zit
- *    al in `Choice`, `Schakelaar` en `Afvinkcirkel` en lost deze helper niet op; zie
- *    `docs/decisions/2026-11-23-een-gekozen-keuzeknop-is-een-wisselknop-of-een-radio.md`.
+ *    `<button>` een `<div>`, en react-native-web laat de spatiebalk dan niet door (`isValidKeyPress`). Sinds
+ *    QS8-804 vangt `spatieActiveert()` hieronder dat op; zie
+ *    `docs/decisions/2026-11-23-een-gekozen-keuzeknop-is-een-wisselknop-of-een-radio.md` en
+ *    `docs/decisions/2026-11-23-de-spatiebalk-op-een-rol-die-geen-knop-is.md`.
  *
  * Het bestand importeert geen `react-native`, zodat het zonder renderer te toetsen is.
  */
@@ -84,4 +85,63 @@ export interface KeuzeEigenschappen {
 export function keuzeEigenschappen(gekozen: boolean, web: boolean): KeuzeEigenschappen {
   const pressed = standEigenschappen({ selected: gekozen }, web).aria['aria-pressed'];
   return { state: { selected: gekozen }, aria: pressed === undefined ? {} : { 'aria-pressed': pressed } };
+}
+
+/**
+ * Wat een toetsaanslag van react-native-web meegeeft; structureel getypt, zodat dit bestand geen `react-native`
+ * importeert.
+ */
+export interface Toetsaanslag {
+  readonly key: string;
+  readonly repeat?: boolean;
+  readonly altKey?: boolean;
+  readonly ctrlKey?: boolean;
+  readonly metaKey?: boolean;
+  readonly nativeEvent?: { readonly isComposing?: boolean } | undefined;
+  preventDefault(): void;
+  stopPropagation(): void;
+}
+
+/**
+ * Is dit een spatie die van de knop is? Niet met Ctrl, Alt of Meta (dat is een sneltoets van het systeem) en
+ * niet tijdens het samenstellen van een teken (IME). Shift+Spatie wel, zoals op een `<button>`.
+ */
+export function isSpatie(e: Toetsaanslag): boolean {
+  if (e.key !== ' ' && e.key !== 'Spacebar') return false;
+  if (e.altKey === true || e.ctrlKey === true || e.metaKey === true) return false;
+  return e.nativeEvent?.isComposing !== true;
+}
+
+/**
+ * De spatiebalk voor een knop met rol `radio`, `switch` of `checkbox` op web — QS8-804.
+ *
+ * ⚠️ **Waarom dit nodig is.** react-native-web 0.21 maakt alleen bij rol `button` een `<button>`
+ *    (`propsToAccessibilityComponent`), en laat de spatie alleen op een `<button>` of rol `button` door
+ *    (`PressResponder.isValidKeyPress`). Op deze drie rollen werkte dus alleen Enter, en scrolde een spatie de
+ *    pagina. De rol blijft staan: een `<button role="radio">` is via `Pressable` niet te maken.
+ *
+ * ⚠️ **Alleen de spatie.** Enter loopt via react-native-web zelf; zou deze helper hem ook afhandelen, dan
+ *    activeert Enter twee keer.
+ *
+ * ⚠️ **Activeren op keydown, één keer.** Een ingedrukt gehouden spatie (`repeat`) activeert niet opnieuw, en
+ *    een uitgeschakelde of bezige knop activeert niet. Beide krijgen wél `preventDefault()`: de focus kan op een
+ *    knop staan die net bezig werd, en dan mag de pagina evenmin scrollen.
+ *
+ * Op native geeft dit niets: daar is geen spatiebalk die react-native-web wegfiltert.
+ */
+export function spatieActiveert(
+  onPress: () => void,
+  uitgeschakeld: boolean,
+  web: boolean,
+): { readonly onKeyDown?: (e: Toetsaanslag) => void } {
+  if (!web) return {};
+  return {
+    onKeyDown: (e: Toetsaanslag) => {
+      if (!isSpatie(e)) return;
+      e.preventDefault();
+      e.stopPropagation();
+      if (e.repeat === true || uitgeschakeld) return;
+      onPress();
+    },
+  };
 }
