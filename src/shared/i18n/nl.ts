@@ -232,8 +232,6 @@ export const nl = {
     'Een afspraak op een teamaandeel heeft alleen je team of een teamgenoot als getuige. ' +
     'En een team is alleen getuige van een teamaandeel. Kies een andere getuige.',
   'commitment.fout.intrekken': 'Intrekken lukte niet.',
-  'commitment.fout.al_afgegaan':
-    'Dit commitment is al in werking getreden en kan niet meer worden ingetrokken.',
   'commitment.fout.laden': 'De beloning en straf konden niet geladen worden.',
   'stuurloos.kop': 'Je getuige is er niet meer',
   'stuurloos.uitleg':
@@ -524,7 +522,7 @@ export const nl = {
   'uitnodiging.pas_bij_meedoen': 'Waar ze aan werken zie je zodra je meedoet. Dat is met opzet: wat mensen hier delen, delen ze met hun groep en niet met iedereen die de link krijgt.',
   'uitnodiging.wat_je_doet': 'Wat je hier gaat doen',
   'uitnodiging.uitleg_kern': 'Je kiest één doel met een datum erop. Elke week bepaal je wat je af wilt hebben, en één van je buddy’s keurt goed dat het gelukt is. Meer niet.',
-  'uitnodiging.uitleg_missen_beschermd': 'Een week missen kost een punt en verder niets. Niemand in de groep ziet het.',
+  'uitnodiging.uitleg_missen_beschermd': 'Een week missen kost een punt en verder niets. De groep ziet de week niet, alleen dat je reeks opnieuw begint.',
   'uitnodiging.uitleg_missen_open': 'Een week missen kost een punt en verder niets. In deze groep zien de anderen het wel. Dat is wat "open" hierboven betekent.',
   'uitnodiging.al_lid': 'Je zit in de groep',
   'uitnodiging.doorsturen': 'Je wordt doorgestuurd naar de groep.',
@@ -633,7 +631,7 @@ export const nl = {
    *    beschermd is. Vandaar de vorm "standaard niet, en je ziet het staan" in
    *    plaats van een belofte die de app later moet breken (besluit A41).
    */
-  'onboarding.stap4.b': 'Een week missen kost je één punt en verder niets. In een beschermde groep, en dat is de standaard, ziet niemand het. Kiest een groep bewust voor open, dan staat dat erbij vóór je meedoet.',
+  'onboarding.stap4.b': 'Een week missen kost je één punt en verder niets. In een beschermde groep, en dat is de standaard, ziet de groep de week niet, alleen dat je reeks opnieuw begint. Kiest een groep bewust voor open, dan staat dat erbij vóór je meedoet.',
   'onboarding.stap_van': 'STAP {nu} VAN {totaal}',
   'onboarding.zo_ziet_eruit': 'Zo ziet dat eruit',
   'onboarding.voorbeeld_titel': 'Drie keer hardlopen',
@@ -2307,6 +2305,29 @@ export const nl = {
   'belofte.intrekken_nee': 'Nee, laat haar staan',
   'belofte.intrekken_uitslag': 'Bekijk de uitslag',
   'belofte.fout.al_afgegaan': 'Deze belofte kan niet meer worden ingetrokken: ze is intussen beslist.',
+  // QS8-815, besluit Quinten 23-11 (V3 = A en V4 = A): één regel met de uitslag van de
+  // nieuwste besliste belofte, en een vaste melding na intrekken.
+  'belofte.uitslag.gehouden':
+    'Je hebt je belofte voor de week van {start} tot en met {einde} gehouden. Ze gaat niet in werking.',
+  'belofte.uitslag.in_werking':
+    'Je hebt je belofte voor de week van {start} tot en met {einde} niet gehouden. Ze is in werking en je getuige kan haar lezen.',
+  'belofte.uitslag.ingetrokken':
+    'Je hebt je belofte voor de week van {start} tot en met {einde} ingetrokken. Ze gaat niet in werking.',
+  'belofte.ingetrokken_melding': 'Je belofte is ingetrokken.',
+
+  // QS8-814: een doelstraf intrekken vraagt dezelfde bevestiging als een belofte
+  // (besluit Quinten 23-11-2026, 16:55 UTC). De uitstelregel staat er alleen als er
+  // een uitstelverzoek op dit doel loopt.
+  'straf.intrekken_kop': 'Je straf intrekken?',
+  'straf.intrekken_gevolg':
+    'Je straf vervalt en gaat niet meer in werking, ook niet als je je streefdatum niet haalt.',
+  'straf.intrekken_getuige': 'Je getuige krijgt hier niets van te zien: geen bericht en geen melding.',
+  'straf.intrekken_uitstel':
+    'De groep die je om uitstel vroeg, ziet dan niet meer dat er een straf op dit doel staat.',
+  'straf.intrekken_ja': 'Ja, trek mijn straf in',
+  'straf.intrekken_nee': 'Nee, laat haar staan',
+  'straf.intrekken_uitslag': 'Bekijk de uitslag',
+  'straf.fout.al_afgegaan': 'Deze straf kan niet meer worden ingetrokken: ze is intussen beslist.',
 
   // ---------------------------------------------------------------------------
   // Afronden, archiveren en herplannen — QS8-83, QS8-32 en QS8-96

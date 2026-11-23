@@ -131,8 +131,6 @@ export const en: Record<Sleutel, string> = {
     'An agreement on a team share can only have your team or a teammate as its witness. ' +
     'And a team can only witness a team share. Choose another witness.',
   'commitment.fout.intrekken': 'Withdrawing did not work.',
-  'commitment.fout.al_afgegaan':
-    'This commitment has already come into effect and can no longer be withdrawn.',
   'commitment.fout.laden': 'The reward and penalty could not be loaded.',
   'stuurloos.kop': 'Your witness is gone',
   'stuurloos.uitleg':
@@ -343,7 +341,7 @@ export const en: Record<Sleutel, string> = {
   'uitnodiging.pas_bij_meedoen': 'You will see what they are working on once you join. That is deliberate: what people share here, they share with their group and not with everyone who gets the link.',
   'uitnodiging.wat_je_doet': 'What you will be doing here',
   'uitnodiging.uitleg_kern': 'You pick one goal with a date on it. Each week you decide what you want to finish, and one of your buddies approves that you did. That is all.',
-  'uitnodiging.uitleg_missen_beschermd': 'Missing a week costs one point and nothing else. Nobody in the group sees it.',
+  'uitnodiging.uitleg_missen_beschermd': 'Missing a week costs one point and nothing else. The group does not see the missed week, only that your streak starts again.',
   'uitnodiging.uitleg_missen_open': 'Missing a week costs one point and nothing else. In this group the others do see it. That is what “open” above means.',
   'uitnodiging.al_lid': 'You are in the group',
   'uitnodiging.doorsturen': 'You are being taken to the group.',
@@ -447,7 +445,7 @@ export const en: Record<Sleutel, string> = {
   'onboarding.stap3.c': 'This is the idea the app is built around. Your streak should serve you, not the other way around.',
   'onboarding.stap4.kop': 'A buddy approves it',
   'onboarding.stap4.a': 'Someone from your group confirms that you did it. Approving yourself is not possible.',
-  'onboarding.stap4.b': 'Missing a week costs you one point and nothing else. In a protected group, and that is the default, nobody sees it. If a group deliberately chooses to be open, you are told before you join.',
+  'onboarding.stap4.b': 'Missing a week costs you one point and nothing else. In a protected group, and that is the default, the group does not see the week, only that your streak starts over. If a group deliberately chooses to be open, you are told before you join.',
   'onboarding.stap_van': 'STEP {nu} OF {totaal}',
   'onboarding.zo_ziet_eruit': 'Here is what that looks like',
   'onboarding.voorbeeld_titel': 'Run three times',
@@ -1759,6 +1757,23 @@ export const en: Record<Sleutel, string> = {
   'belofte.intrekken_nee': 'No, keep it',
   'belofte.intrekken_uitslag': 'See the outcome',
   'belofte.fout.al_afgegaan': 'This promise can no longer be withdrawn: it has been decided in the meantime.',
+  'belofte.uitslag.gehouden': 'You kept your promise for the week of {start} to {einde}. It will not take effect.',
+  'belofte.uitslag.in_werking':
+    'You did not keep your promise for the week of {start} to {einde}. It has taken effect and your witness can read it.',
+  'belofte.uitslag.ingetrokken': 'You withdrew your promise for the week of {start} to {einde}. It will not take effect.',
+  'belofte.ingetrokken_melding': 'Your promise has been withdrawn.',
+
+  // QS8-814
+  'straf.intrekken_kop': 'Withdraw your penalty?',
+  'straf.intrekken_gevolg':
+    'Your penalty lapses and will not take effect, not even if you miss your target date.',
+  'straf.intrekken_getuige': 'Your witness will not see any of this: no message and no notification.',
+  'straf.intrekken_uitstel':
+    'The group you asked for more time will then no longer see that this goal carries a penalty.',
+  'straf.intrekken_ja': 'Yes, withdraw my penalty',
+  'straf.intrekken_nee': 'No, keep it',
+  'straf.intrekken_uitslag': 'See the outcome',
+  'straf.fout.al_afgegaan': 'This penalty can no longer be withdrawn: it has been decided in the meantime.',
 
   // ---------------------------------------------------------------------------
   // Completing, archiving and replanning — QS8-83, QS8-32 and QS8-96

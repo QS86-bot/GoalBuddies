@@ -4,6 +4,7 @@ import { StyleSheet, View } from 'react-native';
 
 import { useProfiel, useSession, userClock } from '@/modules/auth';
 import { BelofteIngang } from '@/schermen/belofte';
+import { StrafIntrekken } from '@/schermen/straf';
 import {
   beslissendeGroep,
   enigeOfGekozen,
@@ -35,7 +36,6 @@ import {
   magStrafVastleggen,
   spoorLabels,
   tekstVoor,
-  trekIn,
   wordtZichtbaarBijUitstelverzoek,
   zetBeloning,
   zetStraf,
@@ -96,6 +96,7 @@ import {
   type Weekplanstap,
   type Risico,
   type Ritme,
+  uitstelGevraagd,
 } from '@/modules/goals';
 import { opmaaktaal, t } from '@/shared/i18n';
 import { schoneEneRegel, telTekens } from '@/shared/tekst';
@@ -372,6 +373,7 @@ export default function DoelDetail() {
               bestaand={commitments.find(isDoelstraf)}
               streefdatumVoorbij={!magStrafVastleggen(d.target_date, vandaag)}
               vanMij={d.owner_id === userId}
+              metUitstelverzoek={uitstelGevraagd(verzoek, besluit)}
               onKlaar={herlaad}
             />
 
@@ -488,9 +490,10 @@ function DeadlineVerzetten({
   const magVersturen = !gedeeld || groep !== undefined;
 
   // ⚠️ **`trekVerzoekIn` en niet `trekIn`, en dat is geen smaak** (QS8-340). Dit
-  //    scherm importeert óók `trekIn()` uit `@/modules/commitments` — een straf
+  //    scherm importeerde óók `trekIn()` uit `@/modules/commitments` — een straf
   //    intrekken, een heel andere handeling — en die lokale naam schaduwde de
-  //    import. Twee handelingen met één naam in één bestand is de plek waar een
+  //    import. (Sinds QS8-814 loopt een straf intrekken via `StrafIntrekken` en
+  //    `trekStrafIn()`; de naamregel blijft staan.) Twee handelingen met één naam in één bestand is de plek waar een
   //    bug zich verstopt, en hier was dat ook zo: de geïmporteerde `trekIn()`
   //    gooide zijn uitkomst weg en de grendel kon de twee niet uit elkaar houden.
   async function trekVerzoekIn() {
@@ -1230,6 +1233,7 @@ function Straf({
   bestaand,
   streefdatumVoorbij,
   vanMij,
+  metUitstelverzoek,
   onKlaar,
 }: {
   readonly goalId: string;
@@ -1237,6 +1241,8 @@ function Straf({
   readonly streefdatumVoorbij: boolean;
   /** QS8-800: de naam van de getuige staat alleen op de kaart van de eigenaar. */
   readonly vanMij: boolean;
+  /** QS8-814: is er een niet-ingetrokken uitstelverzoek op dit doel? Dan noemt de intrekvraag de groep. */
+  readonly metUitstelverzoek: boolean;
   readonly onKlaar: () => void;
 }) {
   const router = useRouter();
@@ -1270,34 +1276,6 @@ function Straf({
     const magIntrekken = isOpenstaand(bestaand);
     const straf = bestaand;
 
-    /**
-     * ⚠️ **Hier stond `void trekIn(bestaand.id).then(onKlaar)`** — QS8-340. Dat
-     *    gooide de uitkomst weg, en `trekIn()` heeft er een die de gebruiker
-     *    moet zien: `commitment.fout.al_afgegaan`, *"dit commitment is al in
-     *    werking getreden en kan niet meer worden ingetrokken"*. Die melding was
-     *    geschreven, vertaald en getest, en bereikte niemand. Werd de straf net
-     *    `due` tussen het renderen en de tik in — precies het geval waarvoor de
-     *    knop hierboven verdwijnt — dan ververste het scherm, stond de straf er
-     *    nog, en was er geen woord uitleg.
-     *
-     * ⚠️ En mét een `busy`-stand, want zonder stuurde twee keer tikken twee
-     *    verzoeken.
-     */
-    async function trekStrafIn() {
-      setBezig(true);
-      setFout(null);
-
-      const uitkomst = await trekIn(straf.id);
-      setBezig(false);
-
-      if (!uitkomst.ok) {
-        setFout(uitkomst.melding);
-        return;
-      }
-
-      onKlaar();
-    }
-
     return (
       <Card>
         <Subheading>{t('straf.jouw')}</Subheading>
@@ -1311,12 +1289,15 @@ function Straf({
              onbetrouwbaar is — en hier is het juist de bedoeling dat je merkt
              dat je er niet meer onderuit komt.
         */}
+        {/*
+          ⚠️ QS8-814: intrekken vraagt een tweede bevestiging, in de vorm van QS8-799.
+             De eerste tik schrijft niets; zie `StrafIntrekken`. QS8-340 (de uitkomst
+             van het intrekken bereikte niemand) blijft gedekt: de melding staat daar.
+             `key`: een openstaande vraag hoort nooit bij een andere straf.
+        */}
         {magIntrekken ? (
-          <Button variant="stil" busy={bezig} onPress={() => void trekStrafIn()}>
-            {t('straf.intrekken')}
-          </Button>
+          <StrafIntrekken key={straf.id} strafId={straf.id} metUitstelverzoek={metUitstelverzoek} onKlaar={onKlaar} />
         ) : null}
-        {fout === null ? null : <Caption danger>{fout}</Caption>}
         <Spoor commitmentId={bestaand.id} />
       </Card>
     );

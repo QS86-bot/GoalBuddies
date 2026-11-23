@@ -8,7 +8,7 @@ import { invoerfout, type Resultaat } from '../../shared/api';
 import { now, type UserClock } from '../../shared/time';
 
 import { commitmentSchema, TEAMSTRAF_HINT, type CommitmentInvoer } from './commitment-schemas';
-import { belofteFoutsleutel, belofteperiode, strafFoutsleutel } from './weekbelofte';
+import { belofteFoutsleutel, belofteperiode, strafFoutsleutel, type Intrekspoor } from './weekbelofte';
 
 // ⚠️ Opnieuw geëxporteerd zodat de aanroepers via `modules/<naam>/index.ts`
 //    ongemoeid blijven. De definitie staat sinds 25-08-2026 in `shared/api`;
@@ -592,7 +592,11 @@ async function maak(
 type Intrekking = 'ingetrokken' | 'storing' | 'beslist';
 
 /**
- * De ene schrijfactie achter {@link trekIn} en {@link trekBelofteIn}.
+ * De ene schrijfactie achter {@link trekBelofteIn} en {@link trekStrafIn}.
+ *
+ * ⚠️ Er stond hier ook een kale `trekIn()`, met de melding "Dit commitment is al in
+ *    werking getreden". Sinds QS8-814 roept de app hem niet meer aan, en is hij
+ *    weggehaald: zijn melding was bij nul rijen niet altijd waar.
  *
  * ⚠️ Alleen mogelijk op status `set`. Dat is geen UI-regel maar de
  *    `commitments_update`-policy: nul rijen betekent dus "niet meer op `set`".
@@ -612,20 +616,6 @@ async function zetIngetrokken(commitmentId: string): Promise<Intrekking> {
   return (data ?? []).length === 0 ? 'beslist' : 'ingetrokken';
 }
 
-/**
- * Trekt een commitment in, zolang het nog niet in werking is getreden.
- *
- * ⚠️ Alleen mogelijk op status `set`. Dat is geen UI-regel maar de
- *    `commitments_update`-policy: een straf die verschuldigd is, kun je niet
- *    wegpoetsen. Anders is een commitment device geen commitment device.
- */
-export async function trekIn(commitmentId: string): Promise<Resultaat<true>> {
-  const uitkomst = await zetIngetrokken(commitmentId);
-  if (uitkomst === 'storing') return { ok: false, melding: t('commitment.fout.intrekken') };
-  if (uitkomst === 'beslist') return { ok: false, melding: t('commitment.fout.al_afgegaan') };
-  return { ok: true, waarde: true };
-}
-
 /** De uitkomst van {@link trekBelofteIn}: bij een mislukking ook óf opnieuw proberen zin heeft. */
 export type BelofteIntrekking =
   | { readonly ok: true }
@@ -634,7 +624,7 @@ export type BelofteIntrekking =
 /**
  * Een weekbelofte intrekken — QS8-799.
  *
- * Dezelfde schrijfactie als {@link trekIn}, met twee verschillen:
+ * De schrijfactie van {@link zetIngetrokken}, met twee bijzonderheden:
  *
  * - Werd de belofte tussen renderen en tikken beslist, dan zegt de melding
  *   "Deze belofte" en niet "Dit commitment". ⚠️ Beslist en niet `due`: nul rijen
@@ -652,6 +642,24 @@ export async function trekBelofteIn(commitmentId: string): Promise<BelofteIntrek
   const uitkomst = await zetIngetrokken(commitmentId);
   if (uitkomst === 'ingetrokken') return { ok: true };
   if (uitkomst === 'beslist') return { ok: false, melding: t('belofte.fout.al_afgegaan'), beslist: true };
+  return { ok: false, melding: t('commitment.fout.intrekken'), beslist: false };
+}
+
+/**
+ * Een straf op een doel intrekken — QS8-814, in de vorm van {@link trekBelofteIn}.
+ *
+ * Dezelfde schrijfactie als {@link trekBelofteIn}. ⚠️ Werd de straf tussen renderen en
+ * tikken beslist (nul rijen), dan zegt de melding "intussen beslist" en niet "in
+ * werking getreden": nul rijen is ook een doel dat op tijd is afgerond, waarna de
+ * straf vervallen is (`cancelled` door 0238/0280). Besluit Quinten 23-11-2026.
+ *
+ * ⚠️ Het doelscherm roept alleen deze aan, en alleen vanuit de tweede bevestiging
+ *    (`tests/beloftes/straf-intrekken.test.ts`).
+ */
+export async function trekStrafIn(commitmentId: string): Promise<BelofteIntrekking> {
+  const uitkomst = await zetIngetrokken(commitmentId);
+  if (uitkomst === 'ingetrokken') return { ok: true };
+  if (uitkomst === 'beslist') return { ok: false, melding: t('straf.fout.al_afgegaan'), beslist: true };
   return { ok: false, melding: t('commitment.fout.intrekken'), beslist: false };
 }
 
@@ -685,6 +693,30 @@ export async function fetchCommitmentSpoor(
   }
 
   return data ?? [];
+}
+
+/**
+ * De laatste `cancelled`-regel uit het spoor van één belofte — QS8-815.
+ *
+ * ⚠️ Alleen de twee kolommen die `belofteuitslag()` leest, en hoogstens één rij
+ *    (regel 10). Alleen voor de eigenaar leesbaar (`commitment_events_select`):
+ *    een ander krijgt nul rijen, en dan zegt het scherm niets.
+ * ⚠️ Werpt bij een fout: "geen spoor" is een bewering en geen terugval (regel 16).
+ */
+export async function fetchIntrekspoor(commitmentId: string): Promise<Intrekspoor | undefined> {
+  const { data, error } = await supabase()
+    .from('commitment_events')
+    .select('actor_id, payload')
+    .eq('commitment_id', commitmentId)
+    .eq('event_type', 'cancelled')
+    .order('seq', { ascending: false })
+    .limit(1);
+
+  if (error) {
+    reportError(error, 'commitments.belofte.uitslag');
+    throw new Error(t('belofte.fout.laden'));
+  }
+  return data?.[0];
 }
 
 /**
