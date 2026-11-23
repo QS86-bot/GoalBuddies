@@ -18,13 +18,19 @@ niets werd er rood van. Een statisch bestand kan maar één taal dragen.
 | `app.json` iOS-fototoestemming | Engels als basis, Nederlands in `locales/nl.json` (`ios.NSPhotoLibraryUsageDescription`) | Expo's `locales` is ingebouwd en vraagt geen nieuwe dependency. |
 | F4: hint bij streefdatum van een mijlpaal | formaatnaam weg (nl en en) | Het veld is een kalenderkiezer en toont de datum in de taal van de gebruiker (01/01/2027); een hint met `yyyy-mm-dd` beloofde een invoervorm die er niet is. De adempauze-velden zijn echte tekstvelden en houden hun hint. |
 
+## Besluit van Quinten (23-11-2026, meerkeuze via de orchestrator)
+
+Quinten koos beide keren het advies: **A** tweetalig in één tekst uit de catalogus,
+zonder groepsgegevens; **B** Engels als basis met Nederlands via `locales/nl.json`,
+alleen zonder nieuwe dependency (anders alleen Engels). De drie kleine wijzigingen
+(manifest zonder `description`, sw.js zonder terugvaltekst, datumhint zonder formaat)
+zijn akkoord.
+
 ## Aanname (niet gemeten)
 
-De keuzes voor het linkvoorbeeld (tweetalig) en de fototoestemming (Engels basis plus
-`locales`) zijn voorgelegd aan de orchestrator als meerkeuzevraag met dit advies als
-eerste optie; er kwam geen antwoord, dus dit is het advies zelf. `npx expo config`
-leest `locales` correct; dat iOS er een `InfoPlist.strings` van maakt is niet te
-meten zonder native prebuild. Ook niet gemeten: de kaart in WhatsApp en Outlook.
+`npx expo config` leest `locales` en geeft de Engelse tekst als basis; dat iOS er een
+`InfoPlist.strings` van maakt is niet te meten zonder native prebuild. `package.json`
+kreeg geen dependency. Ook niet gemeten: de kaart in WhatsApp en Outlook.
 
 ## Grendel
 
