@@ -2,8 +2,6 @@
   "id": "/",
   "name": "GoalBuddies",
   "short_name": "GoalBuddies",
-  "description": "Doelen halen met je buddy's: weekdoelen met een vloer en een plafond, en een groep die meekijkt.",
-  "lang": "nl",
   "dir": "ltr",
   "start_url": "/",
   "scope": "/",

@@ -1,3 +1,4 @@
+import { en } from '../i18n/en';
 import { nl } from '../i18n/nl';
 
 /**
@@ -15,7 +16,7 @@ import { nl } from '../i18n/nl';
  *    voordeel en geen beperking — een voorbeeld dat per groep verschilt, zou
  *    precies de uitlek zijn die dit bestand uitsluit.
  *
- * ⚠️ De tekst komt uit de Nederlandse catalogus, rechtstreeks en niet via
+ * ⚠️ De tekst komt uit de catalogi (nl én en), rechtstreeks en niet via
  *    `t()`: dit draait tijdens `expo export` zonder profiel, en de pagina is
  *    één bestand voor alle talen (`<html lang="nl">`).
  */
@@ -31,10 +32,19 @@ interface Metatag {
 export const LOGO_PAD = '/icon-512.png';
 const LOGO_MAAT = 512;
 
+/**
+ * ⚠️ QS8-797: de pagina is één bestand voor alle talen, dus de beschrijving draagt
+ *    beide: de Nederlandse zin en de Engelse erachter. Een ontvanger die één van de
+ *    twee niet leest, ziet toch een zin die hij begrijpt. Titel is de merknaam.
+ */
+export function linkvoorbeeldBeschrijving(): string {
+  return `${nl['linkvoorbeeld.beschrijving']} ${en['linkvoorbeeld.beschrijving']}`;
+}
+
 export function linkvoorbeeldTags(appUrl: string): readonly Metatag[] {
   const basis = appUrl.replace(/\/+$/, '');
   const titel = nl['linkvoorbeeld.titel'];
-  const beschrijving = nl['linkvoorbeeld.beschrijving'];
+  const beschrijving = linkvoorbeeldBeschrijving();
   const logo = `${basis}${LOGO_PAD}`;
 
   return [
