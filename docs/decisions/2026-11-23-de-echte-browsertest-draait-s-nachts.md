@@ -9,11 +9,25 @@ een spatie geen klik en scrolt niet. Een test in jsdom bewijst dus alleen dat er
 handler bestaat. `playwright` stond niet in `package.json`, dus in CI sloeg de
 browserhelft zich over. De belofte van 804 was in CI **ongemeten**.
 
-## Besluit van Quinten (23-11-2026, 11:07 UTC, optie 1)
+## Besluiten
+
+### Quinten (23-11-2026, 11:07 UTC, optie 1)
 
 De echte-browsertest draait **'s nachts en via `workflow_dispatch`**, in een eigen
 workflow. **Niet bij push of PR.** De CI voor push en PR (`ci.yml`,
 `scripts/ci-controles.mjs`) verandert niet.
+
+### De orchestrator (23-11-2026, technische keuzes, meerkeuze)
+
+| Vraag | Keuze |
+| --- | --- |
+| V1 welk pakket | `playwright@1.63.0`, exact |
+| V2 waar draait `tests/browser/` | een eigen vitest-groep `browser`, en een grendel die rood wordt als het weer in `unit` valt |
+| V3 de poort | niet in deze PR; vervolgissue QS8-809 |
+| V4 de installatiemeting | als aanname, met de 404 als reden; de eerste dispatch na de merge levert het getal, via een eigen kleine PR |
+| V5 hoe vaak | één cron om 03:17 UTC, best-effort als bekende rest; hartslag in vervolgissue QS8-810 |
+| geen `--trace off` | akkoord, zie hieronder |
+| `--only-shell` zonder `--with-deps` | akkoord, zie hieronder |
 
 ## Wat er gebouwd is
 
@@ -33,6 +47,12 @@ workflow. **Niet bij push of PR.** De CI voor push en PR (`ci.yml`,
   `/opt/pw-browsers` hoort. Een andere versie vindt die browser niet. Exact, omdat de
   workflow de browser installeert die bij de bibliotheek uit de lockfile hoort. Een
   bereik laat die twee uit elkaar lopen zodra de lockfile ververst wordt.
+
+  ⚠️ **Wie de versie ophoogt, hoogt de browser mee op.** De workflow doet dat vanzelf:
+  `npx playwright install` neemt de browserrevisie van de versie uit de lockfile. De
+  cloudsessie doet het níet: daar staat `chromium-1243` vast in `/opt/pw-browsers`, en
+  een nieuwere bibliotheek vindt die revisie niet. Ophogen zonder nieuwe image betekent
+  dat `npm run test:browser` in de cloudsessie rood wordt met `Executable doesn't exist`.
 * **Grootte.** 📏 `node_modules/playwright` 5,1 MB, `node_modules/playwright-core`
   14 MB. Twee pakketten, geen verdere afhankelijkheden. 📏 Het pakket heeft **geen
   install-script**: `npm ci` downloadt geen browser, ook niet in de push-CI. De browser
@@ -53,6 +73,15 @@ QS8-270.
 `unit`. In een cloudsessie mat de poort de test van 804 eerder wel, omdat Playwright
 daar globaal staat. Hem in de poort terugzetten zonder dat de poort op elke machine
 zonder Chromium rood wordt, is een eigen vraag (zie *Volgende stap*).
+
+### De grendel op de groepsindeling
+
+`tests/beloftes/browsertests-buiten-unit.test.ts` leest `vitest.config.mts` en elk
+`*.test.ts` in `tests/browser/`. Per bestand vraagt hij wat vitest zelf vraagt: valt het
+in `include` en niet in `exclude`? Hij wordt rood als een browsertest in `unit` valt, en
+ook als hij buiten `browser` valt. Die tweede kant is de gevaarlijke: dan draait de
+nachtelijke workflow hem niet, en wordt er niets rood. De grendel draait in `unit`, dus
+in elke push-CI.
 
 ### Waarom `--only-shell` en geen `--with-deps`
 
@@ -106,7 +135,8 @@ Het getal komt dan op QS8-808 en in dit document.
 in de ~5 dagen (`advisories.yml`;
 `docs/decisions/2026-10-05-schedule-is-best-effort-en-de-hartslag-is-de-runlijst.md`).
 Een run die niet loopt, is niet rood en wordt niet gemaild. Niets bewaakt deze
-workflow met een hartslag. Wie het zeker wil weten, start hem met de hand.
+workflow met een hartslag; dat is QS8-810. Wie het zeker wil weten, start hem met de
+hand.
 
 ## Vervangen en afgewezen opties
 
@@ -137,6 +167,8 @@ Met de hand, 23-11-2026, één mutatie tegelijk. De uitslag is wat er werkelijk 
 | idem, zonder `BROWSER_TEST` | luid overslaan buiten de baan | 📏 1 skipped, met de melding ONGEMETEN |
 | `PLAYWRIGHT_BROWSERS_PATH` naar een lege map (de push-CI nagebootst) | zonder browser is de groep rood | 📏 exitcode 1, `Executable doesn't exist` |
 | `vitest run --project unit tests/browser` | `unit` raakt `tests/browser/` niet | 📏 `exclude` toont `tests/browser/**`, geen bestanden |
+| `'tests/browser/**'` weg uit de `exclude` van `unit` | grendel: niet in `unit` | 📏 1 rood: `tests/browser/rook.test.ts valt niet in de groep unit`; de andere toets blijft groen |
+| `include` van `browser` versmald naar `tests/browser/x/*.test.ts` | grendel: wel in `browser` | 📏 1 rood: `tests/browser/rook.test.ts valt in de groep browser`; de andere toets blijft groen |
 
 ⚠️ **Valkuil bij het ijken in de cloudsessie:** daar staat Playwright óók globaal
 (`NODE_PATH=/usr/local/lib/node_modules_global`). Wie alleen `node_modules/playwright`
@@ -151,8 +183,10 @@ workflow noemt geen `npm run …:controle` als stap, en hij draait niet op `main
 
 1. Na de merge één `workflow_dispatch` op `main`. Daarmee worden de installatietijd en
    de vraag of de headless shell zonder `--with-deps` start, allebei één keer gemeten.
-2. Een vervolgissue: krijgt `npm run poort` een browserstap die ongemeten en groen uit
-   elkaar houdt?
-3. Kandidaten voor de groep `browser` uit 808: de hydratatie (#418,
+2. QS8-809: krijgt `npm run poort` een browserstap die ongemeten en groen uit elkaar
+   houdt? Tot dan wordt de spatiebalktest van QS8-804 in een cloudsessie niet meer
+   vanzelf meegemeten.
+3. QS8-810: een hartslag voor deze workflow in `uurjobs:controle`.
+4. Kandidaten voor de groep `browser` uit 808: de hydratatie (#418,
    `src/shared/ui/useGehydrateerd.ts`) en de focus- en toetsenbordpaden van
    `src/shared/ui/Taakbalk.tsx`.
