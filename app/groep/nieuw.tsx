@@ -132,6 +132,7 @@ export default function NieuweGroep() {
           onKies={setZichtbaarheid}
         />
         <Caption>{zichtbaarheidUitleg()[zichtbaarheid]}</Caption>
+        <Caption>{t('groepnieuw.klassement_standaard')}</Caption>
 
         {/*
           ⚠️ **Twee verschillende zinnen, en dat is geen doublure.**

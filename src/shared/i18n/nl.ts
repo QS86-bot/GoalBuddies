@@ -721,7 +721,7 @@ export const nl = {
    *    kijkt eerst of hij nog klopt. `beloftes.test.ts` wordt rood bij een nieuwe
    *    onvoorwaardelijke onzichtbaarheidsbelofte.
    */
-  'koppel.uitleg_beschermd': 'Zolang je niets koppelt, ziet niemand hier waar je aan werkt. Koppelen deelt de titel, je mijlpaalvoortgang en je lopende en goedgekeurde weken. Niet je notities, niet een gemiste of doorgeschoven week en niet je persoonlijke puntentotaal. Heeft de groep een klassement, dan staan de punten die je in deze groep verdient daar wel in. Je kunt het altijd weer ongedaan maken.',
+  'koppel.uitleg_beschermd': 'Zolang je niets koppelt, ziet niemand hier waar je aan werkt. Koppelen deelt de titel, je mijlpaalvoortgang, je lopende en goedgekeurde weken en je huidige reeks. Niet je notities, niet een gemiste of doorgeschoven week en niet je persoonlijke puntentotaal. Een reeks die op nul staat, ziet de groep wel. Heeft de groep een klassement, dan staan de punten die je in deze groep verdient daar wel in. Je kunt het altijd weer ongedaan maken.',
   'koppel.uitleg_open': 'Zolang je niets koppelt, ziet niemand hier waar je aan werkt. Deze groep staat open: koppelen deelt de titel, je mijlpaalvoortgang én je weken, ook de weken die je niet gehaald hebt. Je notities en je persoonlijke puntentotaal blijven van jou. Je kunt het altijd weer ongedaan maken.',
   'koppel.geen_doel_titel': 'Je hebt nog geen doel om te delen',
   'koppel.geen_doel_tekst': 'Begin met één doel met een datum erop. Daarna kun je het hier aan deze groep koppelen.',
@@ -757,8 +757,9 @@ export const nl = {
    *    die stand), en dan is één zin boven de lijst voor de helft onwaar.
    */
   'deling.uitleg_beschermd':
-    'Beschermd. Deze groep ziet de titel, je mijlpaalvoortgang en je lopende en goedgekeurde weken. ' +
+    'Beschermd. Deze groep ziet de titel, je mijlpaalvoortgang, je lopende en goedgekeurde weken en je huidige reeks. ' +
     'Niet je notities, niet een gemiste of doorgeschoven week en niet je persoonlijke puntentotaal. ' +
+    'Een reeks die op nul staat, ziet de groep wel. ' +
     'Heeft de groep een klassement, dan ziet ze de punten die je in deze groep verdient.',
   'deling.uitleg_open':
     'Open. Deze groep ziet de titel, je mijlpaalvoortgang én je weken, ook de weken die je ' +
@@ -798,8 +799,8 @@ export const nl = {
   'zichtbaarheid.beschermd': 'Beschermd',
   'zichtbaarheid.open': 'Open',
   'zichtbaarheid.beschermd_uitleg':
-    'De groep ziet de titel en voortgang van wat je koppelt, en je lopende en goedgekeurde weken. Een gemiste of doorgeschoven week ziet niemand, tenzij je hem zelf deelt. ' +
-    'Heeft de groep een klassement, dan ziet iedereen de punten die je in deze groep verdiende, maar nooit een gemiste week of je persoonlijke totaal.',
+    'De groep ziet de titel en voortgang van wat je koppelt, je lopende en goedgekeurde weken en je huidige reeks. Een gemiste of doorgeschoven week ziet niemand, tenzij je hem zelf deelt. ' +
+    'Een reeks die op nul staat, ziet de groep wel. Heeft de groep een klassement, dan ziet iedereen de punten die je in deze groep verdiende, maar nooit een gemiste week of je persoonlijke totaal.',
   'zichtbaarheid.open_uitleg':
     'De groep ziet ook wat er niet lukt: gemiste en doorgeschoven weken, elkaars beste reeks, wie er in welke week meedeed, elkaars punten uit deze groep (als de groep een klassement heeft), en welke held er de afgelopen week bij wie langs is geweest. Dat is ook de held die na een gemiste week komt. Kies dit alleen als iedereen dat wil.',
   'zichtbaarheid.niet_bevestigd': 'Bevestig eerst: dit verandert wat de groep over anderen ziet.',
@@ -812,6 +813,11 @@ export const nl = {
   'zichtbaarheid.te_snel': 'Deze groep is in de afgelopen 24 uur al een keer opengezet. Beschermd blijft hij intussen gewoon; over een dag kun je het opnieuw proberen.',
 
   'groepnieuw.zichtbaarheid': 'Wat ziet de groep van elkaar?',
+  // QS8-798, besluit Quinten 23-11-2026: een nieuwe groep zonder organisatie begint met het klassement aan (0336).
+  'groepnieuw.klassement_standaard':
+    'Een nieuwe groep begint met een klassement: iedereen in de groep ziet de punten die ieder in deze groep verdient, ook in een beschermde groep. Een gemiste week komt er nooit in voor. Een beheerder kan het klassement uitzetten.',
+  'uitnodiging.klassement_standaard':
+    'Een groep begint standaard met een klassement: iedereen in de groep ziet de punten die ieder in deze groep verdient. Een gemiste week komt er nooit in voor. Een beheerder kan het uitzetten.',
   'groepnieuw.zichtbaarheid_hint':
     'Dit is de belangrijkste keuze op dit scherm. Hij is later te wijzigen, maar niet ongemerkt: iedereen krijgt het te zien.',
 

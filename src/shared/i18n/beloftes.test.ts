@@ -357,6 +357,26 @@ describe('wat Beschermd belooft en wat het niet belooft (QS8-798, A57)', () => {
     }
   });
 
+  it('zegt in elke beschermde tekst dat de groep je huidige reeks ziet, ook als die op nul staat', () => {
+    // A15, rij 2 in 002: `group_visible_streaks` geeft `current_streak` ook in een beschermde groep.
+    for (const sleutel of BESCHERMD) {
+      expect(nl[sleutel], `nl:${sleutel}`).toMatch(/huidige reeks/i);
+      expect(nl[sleutel], `nl:${sleutel}`).toMatch(/op nul staat, ziet de groep wel/i);
+      expect(en[sleutel], `en:${sleutel}`).toMatch(/current streak/i);
+      expect(en[sleutel], `en:${sleutel}`).toMatch(/streak that stands at zero/i);
+    }
+  });
+
+  it('zegt op het nieuw-groep- en uitnodigingsscherm dat het klassement standaard aan staat en uit kan', () => {
+    // Besluit Quinten 23-11-2026; 0336 zet het aan voor elke nieuwe groep zonder organisatie.
+    for (const sleutel of ['groepnieuw.klassement_standaard', 'uitnodiging.klassement_standaard'] as const) {
+      expect(nl[sleutel], `nl:${sleutel}`).toMatch(/klassement/i);
+      expect(nl[sleutel], `nl:${sleutel}`).toMatch(/beheerder/i);
+      expect(en[sleutel], `en:${sleutel}`).toMatch(/leaderboard/i);
+      expect(en[sleutel], `en:${sleutel}`).toMatch(/admin/i);
+    }
+  });
+
   it('houdt de persoonlijke totaaltelling privé en zegt dat ook', () => {
     for (const sleutel of BESCHERMD) {
       expect(nl[sleutel], `nl:${sleutel}`).toMatch(/persoonlijke (puntentotaal|totaal)/i);

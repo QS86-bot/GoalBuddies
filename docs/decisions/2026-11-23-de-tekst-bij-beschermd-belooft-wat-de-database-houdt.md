@@ -18,12 +18,26 @@ zeggen iets anders:
 Een gemiste week lekte niet; domeinregel 7 houdt. De tekst beloofde alleen meer dan hij
 waarmaakte.
 
-## De gekozen tekst (variant B)
+## De gekozen tekst (variant B, met de reeks erbij: B')
 
-De groep ziet de titel en voortgang van wat je koppelt, en je lopende en goedgekeurde
-weken. Een gemiste of doorgeschoven week ziet niemand, tenzij je hem zelf deelt. Heeft de
-groep een klassement, dan ziet iedereen de punten die je in deze groep verdiende, maar
-nooit een gemiste week of je persoonlijke totaal.
+De groep ziet de titel en voortgang van wat je koppelt, je lopende en goedgekeurde weken
+en je huidige reeks. Een gemiste of doorgeschoven week ziet niemand, tenzij je hem zelf
+deelt. Een reeks die op nul staat, ziet de groep wel. Heeft de groep een klassement, dan
+ziet iedereen de punten die je in deze groep verdiende, maar nooit een gemiste week of je
+persoonlijke totaal.
+
+Variant B zelf noemde de reeks niet. Code-critic vond dat: de groep ziet `current_streak`
+ook in een beschermde groep (A15, rij 2 in 002), en een opsomming leest als compleet.
+Quinten koos op 23-11 B' zoals voorgesteld, inclusief de zin over de reeks op nul.
+
+## Tweede besluit, zelfde dag
+
+Het nieuw-groep-scherm en het uitnodigingsscherm zeggen met zoveel woorden dat een nieuwe
+groep met een klassement begint en dat een beheerder het kan uitzetten
+(`groepnieuw.klassement_standaard`, `uitnodiging.klassement_standaard`). 0336 zet het
+klassement aan voor elke nieuwe groep zonder organisatie. ⚠️ `invite_preview()` geeft
+`klassement_aan` niet terug, dus het uitnodigingsscherm zegt de standaard en niet de stand
+van díe groep. Dat precies maken vraagt een migratie en is een vervolgissue.
 
 Afgewezen: A (alleen de harde belofte, zegt niets over wat zichtbaar is) en C (dezelfde
 inhoud als B in twee regels; vraagt een regeleinde in de uitleg).

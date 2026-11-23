@@ -514,7 +514,7 @@ export const en: Record<Sleutel, string> = {
     'We could not check whether this goal carries a penalty.',
   'koppel.ontkoppel': 'Stop sharing with this group',
   'koppel.titel': 'Share your goal with this group',
-  'koppel.uitleg_beschermd': 'As long as you link nothing, nobody here sees what you are working on. Linking shares the title, your milestone progress and your current and approved weeks. Not your notes, not a missed or carried week and not your personal point total. If the group has a leaderboard, the points you earn in this group do appear there. You can always undo it.',
+  'koppel.uitleg_beschermd': 'As long as you link nothing, nobody here sees what you are working on. Linking shares the title, your milestone progress, your current and approved weeks and your current streak. Not your notes, not a missed or carried week and not your personal point total. The group does see a streak that stands at zero. If the group has a leaderboard, the points you earn in this group do appear there. You can always undo it.',
   'koppel.uitleg_open': 'As long as you link nothing, nobody here sees what you are working on. This group is open: linking shares the title, your milestone progress and your weeks, including the weeks you did not make. Your notes and your personal point total stay yours. You can always undo it.',
   'koppel.geen_doel_titel': 'You do not have a goal to share yet',
   'koppel.geen_doel_tekst': 'Start with one goal with a date on it. After that you can link it to this group here.',
@@ -530,8 +530,9 @@ export const en: Record<Sleutel, string> = {
   'deling.koppel_kop': 'Also share with',
   'deling.koppel': 'Share with {naam}',
   'deling.uitleg_beschermd':
-    'Protected. This group sees the title, your milestone progress and your current and approved weeks. ' +
+    'Protected. This group sees the title, your milestone progress, your current and approved weeks and your current streak. ' +
     'Not your notes, not a missed or carried week and not your personal point total. ' +
+    'The group does see a streak that stands at zero. ' +
     'If the group has a leaderboard, it sees the points you earn in this group.',
   'deling.uitleg_open':
     'Open. This group sees the title, your milestone progress and your weeks, including the ' +
@@ -1991,8 +1992,8 @@ export const en: Record<Sleutel, string> = {
   'zichtbaarheid.beschermd': 'Protected',
   'zichtbaarheid.open': 'Open',
   'zichtbaarheid.beschermd_uitleg':
-    'The group sees the title and progress of what you link, and your current and approved weeks. Nobody sees a missed or carried week unless you share it yourself. ' +
-    'If the group has a leaderboard, everyone sees the points you earned in this group, but never a missed week or your personal total.',
+    'The group sees the title and progress of what you link, your current and approved weeks and your current streak. Nobody sees a missed or carried week unless you share it yourself. ' +
+    'The group does see a streak that stands at zero. If the group has a leaderboard, everyone sees the points you earned in this group, but never a missed week or your personal total.',
   'zichtbaarheid.open_uitleg':
     'The group also sees what does not work out: each other’s missed and carried weeks, each other’s best streak, who took part in which week, each other’s points from this group (if the group has a leaderboard), and which hero last visited whom in the past week. That includes the hero who turns up after a missed week. Only pick this if everyone wants it.',
   'zichtbaarheid.niet_bevestigd': 'Confirm first: this changes what the group sees about other people.',
@@ -2083,6 +2084,10 @@ export const en: Record<Sleutel, string> = {
   'zichtbaarheid.te_snel': 'This group was already opened up once in the past 24 hours. It stays protected in the meantime; you can try again in a day.',
 
   'groepnieuw.zichtbaarheid': 'What does the group see of each other?',
+  'groepnieuw.klassement_standaard':
+    'A new group starts with a leaderboard: everyone in the group sees the points each member earns in this group, in a protected group too. A missed week never appears in it. An admin can turn the leaderboard off.',
+  'uitnodiging.klassement_standaard':
+    'A group starts with a leaderboard by default: everyone in the group sees the points each member earns in this group. A missed week never appears in it. An admin can turn it off.',
   'groepnieuw.zichtbaarheid_hint':
     'This is the most important choice on this screen. It can be changed later, but never quietly: everyone gets told.',
 
