@@ -730,6 +730,14 @@ export const en: Record<Sleutel, string> = {
   'profiel.als_buddy': 'Taking part as a buddy',
   'profiel.reeks_titel': 'Your streak',
   'profiel.reeks_uitleg': 'Your streak counts weeks and appears per goal under “Your standing” on Today. A week pass protects your streak if you miss a week. Not the point, because otherwise the score means nothing.',
+  // QS8-817: the fixed entry to the questionnaire, on Profile below Settings.
+  'profiel.vragenlijst_titel': 'So the app knows you',
+  'profiel.vragenlijst_tekst_leeg':
+    'A few short questions: what you want to focus on, how much time you have and when it suits you. You can always fill them in later.',
+  'profiel.vragenlijst_tekst_ingevuld':
+    'Your answers about your focus, your time, your moment, what holds you back and how you feel. Change them whenever you like.',
+  'profiel.vragenlijst_knop_beantwoorden': 'Answer the questions',
+  'profiel.vragenlijst_knop_aanpassen': 'Change your answers',
   'profiel.verwijder_titel': 'Delete account',
   'profiel.verwijder_uitleg': 'Your goals, weeks, Daily Moves, points and memberships disappear. What stays are the approvals you gave your buddies and your messages in the group chat, without your name on them. Those are theirs.',
   'profiel.verwijder_knop': 'I want to delete my account',
@@ -1014,8 +1022,8 @@ export const en: Record<Sleutel, string> = {
     'You have tried an invitation too often today. In 24 hours it works again; ' +
     'meanwhile, ask your buddy to send the link once more.',
   'groep.ongeldige_link':
-    'This invitation link no longer works. It was withdrawn or it is wrong; ' +
-    'ask your buddy for a new one.',
+    'You cannot join with this link right now. If it is from your work, first join ' +
+    "your organisation with your employer's code.",
   'groep.vol': 'This group is full. Three to five people works best, so that is no disaster.',
   'groep.te_veel_groepen': 'You are already in ten groups. Leave one to make room.',
   'groep.naam_kort': 'Give your group a name of at least two characters.',
