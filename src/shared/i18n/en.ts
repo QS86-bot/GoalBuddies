@@ -1727,9 +1727,8 @@ export const en: Record<Sleutel, string> = {
   'belofte.intrekken_getuige': 'Your witness will not see any of this: no message and no notification.',
   'belofte.intrekken_ja': 'Yes, withdraw my promise',
   'belofte.intrekken_nee': 'No, keep it',
-  'belofte.intrekken_terug': 'Back',
-  'belofte.fout.al_afgegaan':
-    'This promise can no longer be withdrawn: it has been decided in the meantime. Refresh the screen to see how.',
+  'belofte.intrekken_uitslag': 'See the outcome',
+  'belofte.fout.al_afgegaan': 'This promise can no longer be withdrawn: it has been decided in the meantime.',
 
   // ---------------------------------------------------------------------------
   // Completing, archiving and replanning — QS8-83, QS8-32 and QS8-96

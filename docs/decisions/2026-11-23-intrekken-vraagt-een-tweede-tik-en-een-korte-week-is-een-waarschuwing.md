@@ -64,3 +64,14 @@ rollover (0313, gehouden) een gewoon pad.
      (in werking, of vervallen). Het besluit noemt de knop maar niet waarheen hij
      gaat. Herladen is de conservatiefste lezing: er wordt niets geschreven, en de
      melding vraagt de gebruiker al om te kijken hoe het beslist is.
+
+### Tweede ronde, 23-11-2026 05:35 UTC (meerkeuze, via de orchestrator)
+
+Dit vervangt de aanname hierboven:
+
+- De knop heet **"Bekijk de uitslag"** (en: "See the outcome") en herlaadt het
+  beloftescherm met de echte stand. Er staat geen knop "Terug" meer.
+- De melding is **"Deze belofte kan niet meer worden ingetrokken: ze is intussen
+  beslist."** (en: "This promise can no longer be withdrawn: it has been decided in
+  the meantime."). Het stuk "Vernieuw het scherm om te zien hoe" is eruit: de knop
+  doet dat nu.

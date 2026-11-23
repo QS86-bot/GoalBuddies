@@ -29,6 +29,8 @@ import { roeptAan, zonderCommentaar } from './roept-aan';
  *   C  `<Body muted>{t('belofte.intrekken_getuige')}</Body>` weggehaald -> rood: 'noemt de gevolgen'
  *   D  de tak `if (fout?.beslist === true)` in `Intrekken` weggehaald -> rood: 'na "beslist"'
  *   E  `beslist: false` -> `beslist: true` bij de storing in `trekBelofteIn()` -> rood: 'bij een storing'
+ *   F  " Vernieuw het scherm om te zien hoe." terug achter de nl-melding -> rood: 'de woorden van het besluit'
+ *   G  `t('belofte.intrekken_uitslag')` -> `t('straf.terug')` in `Intrekken` -> rood: 'na "beslist"'
  */
 
 vi.mock('expo-linear-gradient', () => ({ LinearGradient: () => null }));
@@ -137,14 +139,15 @@ describe('intrekken in twee stappen', () => {
     expect(onKlaar).not.toHaveBeenCalled();
   });
 
-  it('na "beslist" verdwijnt de intrekknop en komt er Terug, die het scherm herlaadt (besluit Quinten 23-11)', async () => {
+  it('na "beslist" verdwijnt de intrekknop en komt er "Bekijk de uitslag", die het scherm herlaadt (besluit Quinten 23-11)', async () => {
     rijen.waarde = [];
     const scherm = await toon();
     await scherm.klik(t('straf.intrekken'));
     await scherm.klik(t('belofte.intrekken_ja'));
     await scherm.wacht();
-    expect(scherm.knoppen()).toEqual([t('belofte.intrekken_terug')]);
-    await scherm.klik(t('belofte.intrekken_terug'));
+    expect(scherm.knoppen()).toEqual([t('belofte.intrekken_uitslag')]);
+    expect(scherm.tekst()).toContain(t('belofte.fout.al_afgegaan'));
+    await scherm.klik(t('belofte.intrekken_uitslag'));
     expect(onKlaar).toHaveBeenCalledTimes(1);
     expect(update).toHaveBeenCalledTimes(1);
   });
@@ -157,7 +160,7 @@ describe('intrekken in twee stappen', () => {
     await scherm.wacht();
     expect(scherm.tekst()).toContain(t('commitment.fout.intrekken'));
     expect(scherm.knoppen()).toContain(t('belofte.intrekken_ja'));
-    expect(scherm.knoppen()).not.toContain(t('belofte.intrekken_terug'));
+    expect(scherm.knoppen()).not.toContain(t('belofte.intrekken_uitslag'));
   });
 });
 
@@ -165,6 +168,20 @@ describe('het woord, in beide talen', () => {
   it('nl zegt "Deze belofte", en en "This promise"', () => {
     expect(nl['belofte.fout.al_afgegaan']).toMatch(/^Deze belofte /);
     expect(en['belofte.fout.al_afgegaan']).toMatch(/^This promise /);
+  });
+
+  it('de melding en de knop zijn de woorden van het besluit (Quinten, 23-11-2026, 05:35 UTC)', () => {
+    expect(nl['belofte.fout.al_afgegaan']).toBe('Deze belofte kan niet meer worden ingetrokken: ze is intussen beslist.');
+    expect(en['belofte.fout.al_afgegaan']).toBe(
+      'This promise can no longer be withdrawn: it has been decided in the meantime.',
+    );
+    expect(nl['belofte.intrekken_uitslag']).toBe('Bekijk de uitslag');
+    expect(en['belofte.intrekken_uitslag']).toBe('See the outcome');
+  });
+
+  it('er staat geen tweede knop "Terug" in de kaart: de vroegere sleutel bestaat niet meer', () => {
+    expect(Object.keys(nl)).not.toContain('belofte.intrekken_terug');
+    expect(Object.keys(en)).not.toContain('belofte.intrekken_terug');
   });
 
   it('de melding van een doelstraf blijft "commitment": dat scherm heet zo', () => {

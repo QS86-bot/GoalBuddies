@@ -96,15 +96,16 @@ function Intrekken({ belofteId, onKlaar }: { readonly belofteId: string; readonl
       </Button>
     );
   }
-  // ⚠️ Besluit Quinten 23-11-2026: is de belofte intussen beslist, dan valt er niets
-  //    meer in te trekken. Geen intrekknop meer, alleen "Terug", die het scherm
-  //    herlaadt zodat de echte stand er staat. Bij een storing blijft de knop staan.
+  // ⚠️ Besluit Quinten 23-11-2026 (twee rondes): is de belofte intussen beslist, dan
+  //    valt er niets meer in te trekken. Geen intrekknop meer, alleen "Bekijk de
+  //    uitslag", die het scherm herlaadt zodat de echte stand er staat. Bij een
+  //    storing blijft de intrekknop staan.
   if (fout?.beslist === true) {
     return (
       <View style={{ gap: afstand.s }}>
         <Caption danger>{fout.melding}</Caption>
         <Button variant="stil" onPress={onKlaar}>
-          {t('belofte.intrekken_terug')}
+          {t('belofte.intrekken_uitslag')}
         </Button>
       </View>
     );

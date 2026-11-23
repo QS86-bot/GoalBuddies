@@ -642,8 +642,8 @@ export type BelofteIntrekking =
  *   rollover (0313, gehouden) een gewoon pad. Een tekst die dan "in werking
  *   getreden" zegt, schrikt iemand af die zijn belofte juist hield.
  * - `beslist` zegt of opnieuw proberen zin heeft. Bij `true` verdwijnt de
- *   intrekknop en komt er "Terug" (besluit Quinten 23-11-2026); bij een storing
- *   blijft hij staan.
+ *   intrekknop en komt er "Bekijk de uitslag" (besluit Quinten 23-11-2026); bij
+ *   een storing blijft hij staan.
  *
  * ⚠️ Het beloftescherm roept alleen deze aan, en alleen vanuit de tweede
  *    bevestiging (`tests/beloftes/belofte-intrekken.test.ts`).
