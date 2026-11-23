@@ -721,8 +721,8 @@ export const nl = {
    *    kijkt eerst of hij nog klopt. `beloftes.test.ts` wordt rood bij een nieuwe
    *    onvoorwaardelijke onzichtbaarheidsbelofte.
    */
-  'koppel.uitleg_beschermd': 'Zolang je niets koppelt, ziet niemand hier waar je aan werkt. Koppelen deelt de titel en je mijlpaalvoortgang. Niet je notities, niet je weken en niet je punten. Je kunt het altijd weer ongedaan maken.',
-  'koppel.uitleg_open': 'Zolang je niets koppelt, ziet niemand hier waar je aan werkt. Deze groep staat open: koppelen deelt de titel, je mijlpaalvoortgang én je weken, ook de weken die je niet gehaald hebt. Je notities en je punten blijven van jou. Je kunt het altijd weer ongedaan maken.',
+  'koppel.uitleg_beschermd': 'Zolang je niets koppelt, ziet niemand hier waar je aan werkt. Koppelen deelt de titel, je mijlpaalvoortgang, je lopende en goedgekeurde weken en je huidige reeks. Niet je notities, niet een gemiste of doorgeschoven week en niet je persoonlijke puntentotaal. Een reeks die op nul staat, ziet de groep wel. Heeft de groep een klassement, dan staan de punten die je in deze groep verdient daar wel in. Je kunt het altijd weer ongedaan maken.',
+  'koppel.uitleg_open': 'Zolang je niets koppelt, ziet niemand hier waar je aan werkt. Deze groep staat open: koppelen deelt de titel, je mijlpaalvoortgang én je weken, ook de weken die je niet gehaald hebt. Je notities en je persoonlijke puntentotaal blijven van jou. Je kunt het altijd weer ongedaan maken.',
   'koppel.geen_doel_titel': 'Je hebt nog geen doel om te delen',
   'koppel.geen_doel_tekst': 'Begin met één doel met een datum erop. Daarna kun je het hier aan deze groep koppelen.',
   'koppel.nieuw_doel': 'Nieuw doel',
@@ -757,11 +757,13 @@ export const nl = {
    *    die stand), en dan is één zin boven de lijst voor de helft onwaar.
    */
   'deling.uitleg_beschermd':
-    'Beschermd. Deze groep ziet de titel en je mijlpaalvoortgang. Niet je notities, ' +
-    'niet je weken en niet je punten.',
+    'Beschermd. Deze groep ziet de titel, je mijlpaalvoortgang, je lopende en goedgekeurde weken en je huidige reeks. ' +
+    'Niet je notities, niet een gemiste of doorgeschoven week en niet je persoonlijke puntentotaal. ' +
+    'Een reeks die op nul staat, ziet de groep wel. ' +
+    'Heeft de groep een klassement, dan ziet ze de punten die je in deze groep verdient.',
   'deling.uitleg_open':
     'Open. Deze groep ziet de titel, je mijlpaalvoortgang én je weken, ook de weken die je ' +
-    'niet gehaald hebt. Je notities en je punten blijven van jou.',
+    'niet gehaald hebt. Je notities en je persoonlijke puntentotaal blijven van jou.',
   'deelnemen.titel': 'Deelnemen',
   'deelnemen.eyebrow': 'MET EEN CODE',
   'deelnemen.code_label': 'Uitnodigingscode of -link',
@@ -797,9 +799,10 @@ export const nl = {
   'zichtbaarheid.beschermd': 'Beschermd',
   'zichtbaarheid.open': 'Open',
   'zichtbaarheid.beschermd_uitleg':
-    'De groep ziet wat er lukt: afgeronde weken, mijlpalen, aanmoedigingen. Een gemiste week blijft van jou, tenzij je hem zelf deelt.',
+    'De groep ziet de titel en voortgang van wat je koppelt, je lopende en goedgekeurde weken en je huidige reeks. Een gemiste of doorgeschoven week ziet niemand, tenzij je hem zelf deelt. ' +
+    'Een reeks die op nul staat, ziet de groep wel. Heeft de groep een klassement, dan ziet iedereen de punten die je in deze groep verdiende, maar nooit een gemiste week of je persoonlijke totaal.',
   'zichtbaarheid.open_uitleg':
-    'De groep ziet ook wat er niet lukt: gemiste en doorgeschoven weken, elkaars beste reeks, wie er in welke week meedeed, elkaars puntentotaal in deze groep, en welke held er de afgelopen week bij wie langs is geweest. Dat is ook de held die na een gemiste week komt. Kies dit alleen als iedereen dat wil.',
+    'De groep ziet ook wat er niet lukt: gemiste en doorgeschoven weken, elkaars beste reeks, wie er in welke week meedeed, elkaars punten uit deze groep (als de groep een klassement heeft), en welke held er de afgelopen week bij wie langs is geweest. Dat is ook de held die na een gemiste week komt. Kies dit alleen als iedereen dat wil.',
   'zichtbaarheid.niet_bevestigd': 'Bevestig eerst: dit verandert wat de groep over anderen ziet.',
   'zichtbaarheid.onbekend': 'Die instelling bestaat niet.',
   'zichtbaarheid.ongewijzigd': 'Zo stond hij al.',
@@ -810,6 +813,11 @@ export const nl = {
   'zichtbaarheid.te_snel': 'Deze groep is in de afgelopen 24 uur al een keer opengezet. Beschermd blijft hij intussen gewoon; over een dag kun je het opnieuw proberen.',
 
   'groepnieuw.zichtbaarheid': 'Wat ziet de groep van elkaar?',
+  // QS8-798, besluit Quinten 23-11-2026: een nieuwe groep zonder organisatie begint met het klassement aan (0336).
+  'groepnieuw.klassement_standaard':
+    'Een nieuwe groep begint met een klassement: iedereen in de groep ziet de punten die ieder in deze groep verdient, ook in een beschermde groep. Een gemiste week komt er nooit in voor. Een beheerder kan het klassement uitzetten.',
+  'uitnodiging.klassement_standaard':
+    'Een groep begint standaard met een klassement: iedereen in de groep ziet de punten die ieder in deze groep verdient. Een gemiste week komt er nooit in voor. Een beheerder kan het uitzetten.',
   'groepnieuw.zichtbaarheid_hint':
     'Dit is de belangrijkste keuze op dit scherm. Hij is later te wijzigen, maar niet ongemerkt: iedereen krijgt het te zien.',
 
@@ -824,7 +832,7 @@ export const nl = {
 
   'bevestiging.groep_openzetten.titel': 'Deze groep openzetten?',
   'bevestiging.groep_openzetten.uitleg':
-    'Vanaf nu ziet iedereen in deze groep ook elkaars gemiste en doorgeschoven weken, elkaars beste reeks ooit, van elke week wie er meedeed, een klassement met elkaars puntentotaal in deze groep, en welke held er de afgelopen week bij wie langs is geweest. Dat is ook de held die na een gemiste week komt, en het geldt ook voor de weken die er al staan. Het klassement gaat aan, als het nog uit stond. Dit gaat dus niet alleen over jou. Iedereen krijgt een bericht in de groepschat, zodat wie dat niet wil zijn doel kan ontkoppelen. Dat werkt voor alles wat aan een doel hangt; de heldenlijst hangt aan je lidmaatschap en blijft dus staan zolang je in de groep zit. Terugzetten kan altijd en meteen.',
+    'Vanaf nu ziet iedereen in deze groep ook elkaars gemiste en doorgeschoven weken, elkaars beste reeks ooit, van elke week wie er meedeed, een klassement met de punten die ieder in deze groep verdiend heeft, en welke held er de afgelopen week bij wie langs is geweest. Dat is ook de held die na een gemiste week komt, en het geldt ook voor de weken die er al staan. Het klassement gaat aan, als het nog uit stond. Dit gaat dus niet alleen over jou. Iedereen krijgt een bericht in de groepschat, zodat wie dat niet wil zijn doel kan ontkoppelen. Dat werkt voor alles wat aan een doel hangt; de heldenlijst hangt aan je lidmaatschap en blijft dus staan zolang je in de groep zit. Terugzetten kan altijd en meteen.',
   'bevestiging.groep_openzetten.knop': 'Ja, zet hem open',
   'bevestiging.groep_beschermen.titel': 'Deze groep weer beschermen?',
   'bevestiging.groep_beschermen.uitleg':
@@ -1969,7 +1977,7 @@ export const nl = {
   'mijlpaalbewerken.omschrijving': 'Omschrijving',
   'mijlpaalbewerken.streefdatum': 'Streefdatum',
   'mijlpaalbewerken.streefdatum_hint':
-    'Optioneel, als jjjj-mm-dd. Leeg laten mag; deze datum is van jou en verschuift zonder overleg.',
+    'Optioneel. Leeg laten mag; deze datum is van jou en verschuift zonder overleg.',
   'mijlpaalbewerken.bewaren': 'Bewaren',
   'mijlpaalbewerken.annuleren': 'Annuleren',
   'mijlpalenblok.bewerken': 'Bewerken',
@@ -2081,6 +2089,19 @@ export const nl = {
 
   'straf.jouw': 'Je straf',
   'straf.intrekken': 'Intrekken',
+  // ⚠️ QS8-800: alleen voor de eigenaar, op zijn eigen strafkaart. De naam komt
+  //    uit een bron die hij al mocht lezen; zonder leesrecht noemt de kaart
+  //    alleen de soort, en bij een storing zegt hij dat.
+  'straf.begunstigde.groep': 'Getuige: de groep {groep}',
+  'straf.begunstigde.persoon': 'Getuige: {naam}',
+  'straf.begunstigde.groep_onzichtbaar': 'Getuige: een groep waar je geen lid meer van bent',
+  // ⚠️ Niet alleen "wie": de persoonstak van `commitments_select` eist een
+  //    gedeelde groep (0183), dus zolang die er niet is ziet de getuige de straf
+  //    óók bij `due` niet. Een kaart die dan alleen "Getuige: …" zegt, belooft
+  //    een getuige die er niet is (security-ronde QS8-800).
+  'straf.begunstigde.persoon_onzichtbaar':
+    'Getuige: iemand met wie je geen groep meer deelt. Zolang dat zo is, krijgt die je straf niet te zien.',
+  'straf.begunstigde.fout': 'De getuige kon niet worden geladen.',
   'straf.kop': 'Straf',
   // ⚠️ **Uitleg én een uitweg, geen dood veld** (acceptatiecriterium van
   //    QS8-228). Wie hier komt heeft geen groep en dus ook geen groepsgenoot om
@@ -2236,6 +2257,20 @@ export const nl = {
   'straf.belofte_loopt': 'Op dit doel loopt een weekbelofte. Zolang die loopt, kan er geen straf bij.',
   'belofte.niet_gevonden_titel': 'Doel niet gevonden',
   'belofte.niet_gevonden': 'Dit doel bestaat niet of is niet van jou.',
+
+  // QS8-799: intrekken vraagt een tweede bevestiging, een korte week wordt genoemd,
+  // en de melding bij een belofte die al in werking ging zegt "belofte".
+  'belofte.bevestig_kort':
+    'Let op: je week eindigt over minder dan een dag. Deze belofte geldt alleen voor die laatste uren, ' +
+    'niet voor je volgende week. Wil je een hele week beloven, doe dat dan als je nieuwe week begonnen is.',
+  'belofte.intrekken_kop': 'Je belofte intrekken?',
+  'belofte.intrekken_gevolg':
+    'Je belofte vervalt en gaat niet meer in werking, ook niet als je die week niet haalt.',
+  'belofte.intrekken_getuige': 'Je getuige krijgt hier niets van te zien: geen bericht en geen melding.',
+  'belofte.intrekken_ja': 'Ja, trek mijn belofte in',
+  'belofte.intrekken_nee': 'Nee, laat haar staan',
+  'belofte.intrekken_uitslag': 'Bekijk de uitslag',
+  'belofte.fout.al_afgegaan': 'Deze belofte kan niet meer worden ingetrokken: ze is intussen beslist.',
 
   // ---------------------------------------------------------------------------
   // Afronden, archiveren en herplannen — QS8-83, QS8-32 en QS8-96

@@ -16,6 +16,7 @@ import { opmaaktaal, t } from '@/shared/i18n';
 import { space } from '@/shared/theme';
 import { localDateIn, now, toonDatum, type IsoDate } from '@/shared/time';
 import { AsyncView, Body, Button, Caption, Card, Screen, Subheading, useAsync } from '@/shared/ui';
+import { useVolgTaal } from '@/shared/i18n/react';
 
 /**
  * Een teamdoel met zijn teambalk en jouw aandeel — QS8-658.
@@ -37,6 +38,7 @@ import { AsyncView, Body, Button, Caption, Card, Screen, Subheading, useAsync } 
  * Afronden is een ander issue (QS8-662): er is hier geen afrondknop.
  */
 export default function TeamdoelScherm() {
+  useVolgTaal();
   const { id } = useLocalSearchParams<{ id: string }>();
   const { userId } = useSession();
   const stand = useAsync(id && userId ? () => laadTeamdoel(id, userId) : null, [id, userId]);

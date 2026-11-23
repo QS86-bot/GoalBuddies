@@ -32,6 +32,7 @@ import {
   Subheading,
   useAsync,
 } from '@/shared/ui';
+import { useVolgTaal } from '@/shared/i18n/react';
 
 /**
  * Wie er meedoen, en wat je kunt doen als het misgaat — QS8-232.
@@ -52,6 +53,7 @@ import {
  *    reputatiescherm maken, en een melding is geen stem.
  */
 export default function GroepsLeden() {
+  useVolgTaal();
   const { id } = useLocalSearchParams<{ id: string }>();
   const { userId } = useSession();
 

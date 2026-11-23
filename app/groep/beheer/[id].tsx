@@ -67,6 +67,7 @@ import {
   useAsync,
   useTerug,
 } from '@/shared/ui';
+import { useVolgTaal } from '@/shared/i18n/react';
 
 /**
  * Groepsinstellingen voor de beheerder — QS8-52 en QS8-58.
@@ -101,6 +102,7 @@ function DeelUitnodiging({
 }
 
 export default function GroepBeheer() {
+  useVolgTaal();
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
   const terug = useTerug(`/groep/${id}`);
@@ -453,10 +455,7 @@ export default function GroepBeheer() {
         error={error}
         data={groep ?? undefined}
         isEmpty={() => false}
-        empty={{
-          title: t('beheer.leeg_titel'),
-          body: t('beheer.leeg_tekst'),
-        }}
+        empty={{ title: t('beheer.leeg_titel'), body: t('beheer.leeg_tekst') }}
       >
         {(g) =>
           /*

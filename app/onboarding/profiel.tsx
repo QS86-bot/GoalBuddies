@@ -29,6 +29,7 @@ import {
   Screen,
   WeekStartKeuze,
 } from '@/shared/ui';
+import { useVolgTaal } from '@/shared/i18n/react';
 
 /**
  * Het profiel bij de onboarding — QS8-27, QS8-28, QS8-29 en QS8-30 samen.
@@ -63,6 +64,7 @@ import {
  *    hetzelfde component zou de hooks-volgorde breken.
  */
 export default function OnboardingProfiel() {
+  useVolgTaal();
   const { profiel, loading, error, herlaad } = useProfiel();
 
   return (
