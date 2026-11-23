@@ -76,8 +76,16 @@ parameter zou de rollover-bundel veranderen voor gedrag dat de rollover niet geb
 Een aanroeper die de parameter vergeet, krijgt dan bovendien geen fout maar het oude
 gedrag.
 
-De nieuwe functies staan alleen in `src/`. Weglaten mag in de Edge-kopie, afwijken niet.
-**Geen enkele Edge Function hoeft opnieuw gedeployd te worden.**
+`closableUserCycle()` en `isWithinGrace()` blijven letterlijk zoals ze waren. De drie
+nieuwe functies gaan via `npm run edge:sync` ook in de Edge-kopie: `edge:sync:controle`
+eist dat de kopie gelijk loopt met `src/`. Een eerste versie liet ze daar weg, met de
+redenering "weglaten mag", en de poort werd er rood van.
+
+**Geen Edge Function roept de nieuwe functies aan, dus het gedrag op de server verandert
+niet.** Wel verandert de inhoud van `_shared/time`, en daarmee de bundel van elke functie
+die hem importeert: `rollover`, `notificaties`, `doelcoach` en `koppelen`. Deployen
+brengt de bundels weer gelijk met de repo; het verandert niets aan wat ze doen. Dat
+deployen doet Quinten.
 
 In `src/modules/goals/cycles.ts` is `sinds` verplicht. Een vergeten aanroeper is daar een
 fout van `tsc`.

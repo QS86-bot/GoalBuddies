@@ -147,6 +147,61 @@ export function isWithinGrace(
 }
 
 // ---------------------------------------------------------------------------
+// Het account telt mee — QS8-806
+// ---------------------------------------------------------------------------
+
+/**
+ * Bestond het account al vóór het begin van de cyclus waarin `at` valt?
+ *
+ * ⚠️ **Dit is de maatstaf voor "er is een vorige week", en niet "er stonden
+ *    weekdoelen in de vorige week".** Besloten op QS8-806 (optie A van de
+ *    orchestrator): de vraag is een eigenschap van de klok en het account, en
+ *    hoort dus hier. Een datagedreven maatstaf zou op Vandaag een query
+ *    beslissen wat een week is — precies wat correctheidsregel 7 verbiedt.
+ *
+ * ⚠️ **Vergelijkt UTC-momenten, geen kalenderdata.** Wie om 00:30 in Amsterdam
+ *    aanmaakt op de dag dat zijn week begint, maakt aan op de vorige dag in UTC.
+ *    Een vergelijking op de UTC-datum zou hem een vorige week geven die hij nooit
+ *    had. `startsAt` is lokale middernacht omgerekend naar UTC, dus dit klopt in
+ *    elke tijdzone.
+ *
+ * ⚠️ **Strikt kleiner.** Een account dat precies op de rollover ontstaat, heeft
+ *    geen seconde in de vorige cyclus doorgebracht.
+ *
+ * ⚠️ **Een onleesbare `since` geeft `true`**: het gedrag van vóór QS8-806. Dat
+ *    kost hooguit een overbodige kaart, nooit een week die je niet meer kunt
+ *    afsluiten.
+ */
+export function existedBeforeCycle(clock: UserClock, at: Date, since: string): boolean {
+  const ontstaan = new Date(since).getTime();
+  if (Number.isNaN(ontstaan)) return true;
+  return ontstaan < userCycle(clock, at).startsAt.getTime();
+}
+
+/**
+ * `closableUserCycle()`, maar een account zonder vorige cyclus krijgt de lopende.
+ *
+ * ⚠️ **Een eigen functie en geen vierde optionele parameter op
+ *    `closableUserCycle()`.** Die staat letterlijk gelijk in de Edge-kopie
+ *    (`edge-tijd:controle`) en de rollover gebruikt hem; een optionele parameter
+ *    die een aanroeper vergeet, geeft geen fout maar het oude gedrag. De
+ *    Edge-kopie krijgt deze functies via `edge:sync` mee, maar geen Edge
+ *    Function roept ze aan: de rollover rekent zoals vóór QS8-806.
+ */
+export function closableUserCycleSince(
+  clock: UserClock,
+  at: Date,
+  since: string,
+): Gebruikerscyclus {
+  return existedBeforeCycle(clock, at, since) ? closableUserCycle(clock, at) : userCycle(clock, at);
+}
+
+/** `isWithinGrace()`, maar zonder vorige cyclus is er geen coulance. Zie hierboven. */
+export function isWithinGraceSince(clock: UserClock, at: Date, since: string): boolean {
+  return existedBeforeCycle(clock, at, since) && isWithinGrace(clock, at);
+}
+
+// ---------------------------------------------------------------------------
 // Klok 2 — de groepsperiode
 // ---------------------------------------------------------------------------
 

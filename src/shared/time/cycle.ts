@@ -178,8 +178,9 @@ export function existedBeforeCycle(clock: UserClock, at: Date, since: string): b
  * ⚠️ **Een eigen functie en geen vierde optionele parameter op
  *    `closableUserCycle()`.** Die staat letterlijk gelijk in de Edge-kopie
  *    (`edge-tijd:controle`) en de rollover gebruikt hem; een optionele parameter
- *    die een aanroeper vergeet, geeft geen fout maar het oude gedrag. Deze
- *    functie staat alleen in `src/`, en dat mag: weglaten mag, afwijken niet.
+ *    die een aanroeper vergeet, geeft geen fout maar het oude gedrag. De
+ *    Edge-kopie krijgt deze functies via `edge:sync` mee, maar geen Edge
+ *    Function roept ze aan: de rollover rekent zoals vóór QS8-806.
  */
 export function closableUserCycleSince(
   clock: UserClock,
