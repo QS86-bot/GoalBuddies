@@ -1969,7 +1969,7 @@ export const nl = {
   'mijlpaalbewerken.omschrijving': 'Omschrijving',
   'mijlpaalbewerken.streefdatum': 'Streefdatum',
   'mijlpaalbewerken.streefdatum_hint':
-    'Optioneel, als jjjj-mm-dd. Leeg laten mag; deze datum is van jou en verschuift zonder overleg.',
+    'Optioneel. Leeg laten mag; deze datum is van jou en verschuift zonder overleg.',
   'mijlpaalbewerken.bewaren': 'Bewaren',
   'mijlpaalbewerken.annuleren': 'Annuleren',
   'mijlpalenblok.bewerken': 'Bewerken',

@@ -1496,7 +1496,7 @@ export const en: Record<Sleutel, string> = {
   'mijlpaalbewerken.omschrijving': 'Description',
   'mijlpaalbewerken.streefdatum': 'Target date',
   'mijlpaalbewerken.streefdatum_hint':
-    'Optional, as yyyy-mm-dd. Leaving it empty is fine; this date is yours and moves without asking anyone.',
+    'Optional. Leaving it empty is fine; this date is yours and moves without asking anyone.',
   'mijlpaalbewerken.bewaren': 'Save',
   'mijlpaalbewerken.annuleren': 'Cancel',
   'mijlpalenblok.bewerken': 'Edit',

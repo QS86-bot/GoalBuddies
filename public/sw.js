@@ -28,7 +28,7 @@ async function toonMelding(data) {
   // ⚠️ Een push zonder bruikbare inhoud mag niet in een lege melding eindigen,
   //    maar hem negeren mag ook niet: sommige browsers trekken de
   //    push-toestemming in als een worker een bericht ontvangt zonder iets te
-  //    tonen. Vandaar een neutrale tekst die niets prijsgeeft.
+  //    tonen. Vandaar alleen de titel, zonder tekst: de merknaam is taalneutraal (QS8-797).
   await self.registration.showNotification(bericht.titel, {
     body: bericht.body,
     icon: '/icon-192.png',
@@ -43,7 +43,7 @@ async function toonMelding(data) {
 function leesBericht(data) {
   const leeg = {
     titel: 'GoalBuddies',
-    body: 'Er staat iets voor je klaar.',
+    body: '',
     pad: '/',
     soort: 'algemeen',
   };

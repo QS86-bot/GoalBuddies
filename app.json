@@ -5,6 +5,9 @@
     "version": "0.1.0",
     "orientation": "portrait",
     "scheme": "goalbuddies",
+    "locales": {
+      "nl": "./locales/nl.json"
+    },
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "ios": {
@@ -25,7 +28,7 @@
       [
         "expo-image-picker",
         {
-          "photosPermission": "GoalBuddies vraagt toegang tot je foto's zodat je er een profielfoto uit kunt kiezen.",
+          "photosPermission": "GoalBuddies asks for access to your photos so you can pick a profile photo.",
           "cameraPermission": false,
           "microphonePermission": false
         }
