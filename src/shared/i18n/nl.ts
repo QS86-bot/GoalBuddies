@@ -2089,6 +2089,19 @@ export const nl = {
 
   'straf.jouw': 'Je straf',
   'straf.intrekken': 'Intrekken',
+  // ⚠️ QS8-800: alleen voor de eigenaar, op zijn eigen strafkaart. De naam komt
+  //    uit een bron die hij al mocht lezen; zonder leesrecht noemt de kaart
+  //    alleen de soort, en bij een storing zegt hij dat.
+  'straf.begunstigde.groep': 'Getuige: de groep {groep}',
+  'straf.begunstigde.persoon': 'Getuige: {naam}',
+  'straf.begunstigde.groep_onzichtbaar': 'Getuige: een groep waar je geen lid meer van bent',
+  // ⚠️ Niet alleen "wie": de persoonstak van `commitments_select` eist een
+  //    gedeelde groep (0183), dus zolang die er niet is ziet de getuige de straf
+  //    óók bij `due` niet. Een kaart die dan alleen "Getuige: …" zegt, belooft
+  //    een getuige die er niet is (security-ronde QS8-800).
+  'straf.begunstigde.persoon_onzichtbaar':
+    'Getuige: iemand met wie je geen groep meer deelt. Zolang dat zo is, krijgt die je straf niet te zien.',
+  'straf.begunstigde.fout': 'De getuige kon niet worden geladen.',
   'straf.kop': 'Straf',
   // ⚠️ **Uitleg én een uitweg, geen dood veld** (acceptatiecriterium van
   //    QS8-228). Wie hier komt heeft geen groep en dus ook geen groepsgenoot om
