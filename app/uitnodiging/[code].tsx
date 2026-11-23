@@ -234,6 +234,7 @@ export default function UitnodigingScherm() {
                 <Card nested>
                   <Subheading>{zichtbaarheidLabels()[u.zichtbaarheid]}</Subheading>
                   <Body muted>{zichtbaarheidUitleg()[u.zichtbaarheid]}</Body>
+                  <Caption>{t('uitnodiging.klassement_standaard')}</Caption>
                   {u.zichtbaarheid === 'open' ? (
                     <Caption danger>{t('uitnodiging.open_waarschuwing')}</Caption>
                   ) : null}
