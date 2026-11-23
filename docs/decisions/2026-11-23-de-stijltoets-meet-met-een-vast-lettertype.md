@@ -95,6 +95,12 @@ de nieuwe staan.
   `playwright` 1.63.0 in de lockfile (QS8-808). Wie hem ophoogt, kan deze waarden opnieuw
   moeten meten.
 
+## Vervolg
+
+📏 De dispatch na de merge (run 45187664320) was 14 van 15: de runner rondt tekstbreedtes
+af omdat font-hinting daar aan staat. Dat is gerepareerd in QS8-812, zie
+`docs/decisions/2026-11-23-browsertests-starten-met-hinting-uit.md`.
+
 ## Volgende stap
 
 Na de merge één `workflow_dispatch` van `browsertest.yml` op `main`, en de uitslag op QS8-811.

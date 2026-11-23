@@ -2,6 +2,8 @@ import { createRequire } from 'node:module';
 
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
+import { CHROMIUM_VLAGGEN } from './lettertype';
+
 /**
  * Rooktest van de browserbaan: start Chromium, drukt een spatie en ziet de klik. QS8-808.
  *
@@ -30,7 +32,7 @@ type Pagina = {
   evaluate: <T>(f: () => T) => Promise<T>;
 };
 type Browser = { newPage: () => Promise<Pagina>; close: () => Promise<void> };
-type Pw = { chromium: { launch: () => Promise<Browser> } };
+type Pw = { chromium: { launch: (o?: { args?: string[] }) => Promise<Browser> } };
 
 function laadPlaywright(): Pw | null {
   try {
@@ -50,7 +52,7 @@ describe.skipIf(pw === null)('de browserbaan', () => {
   let browser: Browser;
 
   beforeAll(async () => {
-    browser = await pw!.chromium.launch();
+    browser = await pw!.chromium.launch({ args: CHROMIUM_VLAGGEN });
   });
 
   afterAll(async () => {
