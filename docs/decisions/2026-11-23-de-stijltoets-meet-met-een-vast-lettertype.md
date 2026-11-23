@@ -95,6 +95,40 @@ de nieuwe staan.
   `playwright` 1.63.0 in de lockfile (QS8-808). Wie hem ophoogt, kan deze waarden opnieuw
   moeten meten.
 
+## Vervolg: een vast lettertype was niet genoeg, ook de rendering moet vast
+
+📏 De dispatch op `main` na de merge (run 45187664320, `917a2556`) was **14 van 15**. Het
+lettertype laadde op de runner (die toets was groen), maar de breedtes werden op hele
+pixels afgerond: `Optie A` 80 px tegen 79,94 verwacht, `Optie B` 103/78 tegen 102,94/77,95.
+
+**Oorzaak.** Met font-hinting aan rondt Chromium de breedte van tekst af op hele pixels.
+De standaard verschilt per machine: op de runner staat hinting aan, in de cloudsessie niet.
+📏 Lokaal nagemeten met de Chromium-vlag (een losse `<span>` "Optie A", 14 px, gewicht 600):
+
+| `--font-render-hinting` | breedte |
+| --- | --- |
+| geen vlag | 51,9375 |
+| `none` | 51,9375 |
+| `medium` | 52 |
+| `full` | 52 |
+
+⚠️ Via fontconfig (`hintstyle hintfull`) liet het zich **niet** nabootsen; de Chromium-vlag
+zelf wel. Een ijking die alleen fontconfig had geprobeerd, had gezegd dat hinting er niet toe
+deed.
+
+**Reparatie.** `CHROMIUM_VLAGGEN = ['--font-render-hinting=none']` in
+`tests/browser/lettertype.ts`, gebruikt door beide browsertests. De momentopname blijft
+zoals hij is, want `none` geeft lokaal dezelfde waarden als zonder vlag.
+
+| | Mutatie | Uitslag |
+| --- | --- | --- |
+| M7 | `--font-render-hinting=full` | 📏 1 rood: de stijltoets, met **precies** de waarden van de runner (`16,44,80,40` en `103,44,78,40`) |
+| M8 | `none`, met de fontconfig van M5 (alles op FreeMono) | 📏 15/15 groen |
+
+M7 is de kern: de lokale nabootsing geeft exact wat de runner gaf. Dat de runner met de vlag
+groen wordt, is nog een aanname tot de volgende dispatch.
+
 ## Volgende stap
 
-Na de merge één `workflow_dispatch` van `browsertest.yml` op `main`, en de uitslag op QS8-811.
+Na de merge van de vervolg-PR opnieuw één `workflow_dispatch` van `browsertest.yml` op `main`,
+en de uitslag op QS8-811. QS8-811 gaat pas op Done als die run groen is.
