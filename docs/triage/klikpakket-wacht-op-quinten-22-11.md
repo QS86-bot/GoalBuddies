@@ -70,6 +70,8 @@ privérepo op de gratis tier krijgt er **2.000**. Raken de minuten op, dan stopp
 de geplande workflows en draait de rollover niet meer. Dat is precies de stille
 storing waar de kop van `rollover.yml` voor waarschuwt.
 
+⚠️ **Achterhaald door een meting op 23-11-2026 (QS8-126, keuze A → QS8-819).** De 2.920 hierboven is een rekensom (elk uur, vier workflows), geen meting. 📏 Gemeten over 30 dagen (24-10 t/m 23-11, GitHub-API): de uurjobs vuren door het best-effort-schema ±4 keer per dag per workflow, en alle geplande jobs samen kostten ±600 minuten. Het verbruik zit in CI: ±21.900 minuten in 30 dagen, op het tempo van de laatste week ±84.000 per maand. Quinten koos daarom CI alleen op PR en `main`, plus een betaalmethode met een vast plafond (QS8-819). De vraag hieronder is daarmee beantwoord. Of GitHub het schema bij een privérepo net zo afknijpt, is niet bekend.
+
 Klikpad voor die dag:
 
 1. Voer eerst het besluit uit op vraag 1 in §4. Bij optie A of C laat je een
@@ -339,7 +341,7 @@ wachtpost werkt alleen zolang niemand met de hand een rij in
 
 ## 4. De meerkeuzevragen
 
-**Vraag 1 — QS8-126.** Bij een privérepo kosten de vier uurjobs minstens 2.920
+**Vraag 1 — QS8-126.** *(Beantwoord op 23-11-2026 met keuze A van een nieuwe vraag na een meting: zie de noot onder "Eerst de minuten"; de 2.920 hieronder is een schatting die de meting niet bevestigde.)* Bij een privérepo kosten de vier uurjobs minstens 2.920
 Actions-minuten per maand, terwijl de gratis tier er 2.000 geeft. Wat doen we op
 de dag dat de repo privé gaat?
 

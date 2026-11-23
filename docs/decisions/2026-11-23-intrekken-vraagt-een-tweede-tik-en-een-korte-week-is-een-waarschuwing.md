@@ -75,3 +75,16 @@ Dit vervangt de aanname hierboven:
   beslist."** (en: "This promise can no longer be withdrawn: it has been decided in
   the meantime."). Het stuk "Vernieuw het scherm om te zien hoe" is eruit: de knop
   doet dat nu.
+
+### Herbevestigd, 23-11-2026 middag (meerkeuze, via de hoofdorchestrator, slotronde week 48)
+
+De critical-user van de slotronde vroeg of intrekken nog mag ná het einde van de week en vóór de beslissende
+run, ook als de eigenaar dan al weet dat hij gemist heeft. De intrekbevestiging zegt dat met zoveel woorden
+(*"ook niet als je die week niet haalt"*). **Quinten koos A: zo laten.** Het besluit van QS8-759 blijft staan:
+een belofte is intrekbaar tot ze verschuldigd is, ook ná `periode_einde`
+(`docs/decisions/2026-11-20-een-weekbelofte-beslist-aan-het-einde-van-haar-week.md`). Wie dit wil aanscherpen,
+neemt een nieuw besluit onder grens 1; dit is geen open vraag meer.
+
+Uit dezelfde ronde kregen twee bevindingen over dit scherm en de doelstraf een eigen issue, op keuze A van
+Quinten: **QS8-814** (de doelstraf intrekken vraagt dezelfde tweede tik), **QS8-815** (na "Bekijk de uitslag" en
+na een intrekking staat er een regel met de uitkomst). Ze veranderen niets aan wat hier besloten is.
