@@ -2245,6 +2245,20 @@ export const nl = {
   'belofte.niet_gevonden_titel': 'Doel niet gevonden',
   'belofte.niet_gevonden': 'Dit doel bestaat niet of is niet van jou.',
 
+  // QS8-799: intrekken vraagt een tweede bevestiging, een korte week wordt genoemd,
+  // en de melding bij een belofte die al in werking ging zegt "belofte".
+  'belofte.bevestig_kort':
+    'Let op: je week eindigt over minder dan een dag. Deze belofte geldt alleen voor die laatste uren, ' +
+    'niet voor je volgende week. Wil je een hele week beloven, doe dat dan als je nieuwe week begonnen is.',
+  'belofte.intrekken_kop': 'Je belofte intrekken?',
+  'belofte.intrekken_gevolg':
+    'Je belofte vervalt en gaat niet meer in werking, ook niet als je die week niet haalt.',
+  'belofte.intrekken_getuige': 'Je getuige krijgt hier niets van te zien: geen bericht en geen melding.',
+  'belofte.intrekken_ja': 'Ja, trek mijn belofte in',
+  'belofte.intrekken_nee': 'Nee, laat haar staan',
+  'belofte.intrekken_uitslag': 'Bekijk de uitslag',
+  'belofte.fout.al_afgegaan': 'Deze belofte kan niet meer worden ingetrokken: ze is intussen beslist.',
+
   // ---------------------------------------------------------------------------
   // Afronden, archiveren en herplannen — QS8-83, QS8-32 en QS8-96
   // ---------------------------------------------------------------------------

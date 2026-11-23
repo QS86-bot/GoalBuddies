@@ -18,6 +18,7 @@ import type { Bevestigstap } from './keuze';
  *    voorbij is), en wie het ziet en wanneer (alleen de getuige, alleen bij een
  *    gebroken belofte, en tot dan niemand). Plus wat het níet doet: geen geld,
  *    geen extra punten (A43), en de week-startdag zit vast zolang ze loopt (0313).
+ *    Is er van de week minder dan één dag over, dan staat dat er ook (QS8-799).
  * ⚠️ **Dit is de enige plek die `gaWeekbelofteAan()` aanroept**, en alleen
  *    vanuit de knop hieronder; `tests/beloftes/belofte-bevestigen.test.ts` legt dat vast.
  */
@@ -81,6 +82,8 @@ function Bevestigtekst({ stap }: { readonly stap: Bevestigstap }) {
           einde: toonDatumLang(stap.periode.laatsteDag, taal),
         })}
       </Body>
+      {/* ⚠️ QS8-799: direct onder de periode, waar het oog de dagen leest. */}
+      {stap.korteWeek ? <Body>{t('belofte.bevestig_kort')}</Body> : null}
       <Body muted>{t('belofte.bevestig_wanneer')}</Body>
       <Body muted>{t('belofte.bevestig_wie', { getuige: stap.naam })}</Body>
       <Caption>{t('belofte.bevestig_intrekken')}</Caption>

@@ -36,6 +36,7 @@ export {
   nextCycle,
   previousCycle,
   userCycle,
+  userCycleEndsWithin,
   userCycleOn,
 } from './cycle';
 

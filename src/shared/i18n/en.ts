@@ -1718,6 +1718,20 @@ export const en: Record<Sleutel, string> = {
   'belofte.niet_gevonden_titel': 'Goal not found',
   'belofte.niet_gevonden': 'This goal does not exist or is not yours.',
 
+  // QS8-799: withdrawing asks for a second confirmation, a short week is named,
+  // and the message for a promise that already came into effect says "promise".
+  'belofte.bevestig_kort':
+    'Note: your week ends in less than a day. This promise only covers those last hours, ' +
+    'not your next week. If you want to promise a whole week, do it once your new week has started.',
+  'belofte.intrekken_kop': 'Withdraw your promise?',
+  'belofte.intrekken_gevolg':
+    'Your promise lapses and will not come into effect, not even if you miss that week.',
+  'belofte.intrekken_getuige': 'Your witness will not see any of this: no message and no notification.',
+  'belofte.intrekken_ja': 'Yes, withdraw my promise',
+  'belofte.intrekken_nee': 'No, keep it',
+  'belofte.intrekken_uitslag': 'See the outcome',
+  'belofte.fout.al_afgegaan': 'This promise can no longer be withdrawn: it has been decided in the meantime.',
+
   // ---------------------------------------------------------------------------
   // Completing, archiving and replanning — QS8-83, QS8-32 and QS8-96
   // ---------------------------------------------------------------------------
