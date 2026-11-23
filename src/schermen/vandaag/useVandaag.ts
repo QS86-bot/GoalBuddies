@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 
-import { useProfiel, useSession, userClock } from '@/modules/auth';
+import { useProfiel, useSession } from '@/modules/auth';
 import { fetchGetuigenissen } from '@/modules/commitments';
 import { laatsteVerschijning } from '@/modules/helden';
 import {
@@ -11,7 +11,6 @@ import {
   type DagZet,
 } from '@/modules/completions';
 import {
-  afsluitbareCyclus,
   doelIdsInBeeld,
   fetchBadges,
   fetchDoelnamen,
@@ -20,17 +19,14 @@ import {
   fetchIngeschovenDezeCyclus,
   fetchPuntenDezeWeek,
   fetchWeekdoelen,
-  huidigeCyclus,
-  inCoulanceperiode,
-  zojuistAfgeslotenCyclus,
   type DoelStand,
   type Doelnaam,
   type Weekdoel,
 } from '@/modules/goals';
-import { localDateIn, now } from '@/shared/time';
 import { useAsync, useAsyncMetTerugval } from '@/shared/ui';
 
 import { GEEN_WEEKDOELEN } from './constanten';
+import { tijdVan } from './tijd-vorm';
 import { laadTips } from './tips';
 
 /**
@@ -50,42 +46,12 @@ type StandenStatus = 'laden' | 'klaar' | 'fout';
 
 type Profiel = ReturnType<typeof useProfiel>['profiel'];
 
-/** De klok en de cycli van deze gebruiker, allemaal uit `shared/time`. */
+/**
+ * De klok en de cycli van deze gebruiker, allemaal uit `shared/time`.
+ * De rekenkern staat in `tijd-vorm.ts`, waar hij zonder renderer te toetsen is.
+ */
 function useTijd(profiel: Profiel) {
-  const klok = profiel ? userClock(profiel) : null;
-  const cyclus = klok ? huidigeCyclus(klok) : null;
-  const afTeSluiten = klok ? afsluitbareCyclus(klok) : null;
-  const coulance = klok ? inCoulanceperiode(klok) : false;
-
-  // ⚠️ De cyclusobjecten worden elke render opnieuw gebouwd, dus als
-  //    afhankelijkheid zijn ze waardeloos: het effect zou eindeloos herhalen.
-  //    De startdatum is wat er werkelijk verandert, en die is een string.
-  const afTeSluitenStart = afTeSluiten?.startDate ?? null;
-  const cyclusStart = cyclus?.startDate ?? null;
-
-  // ⚠️ De week die de rollover zojuist dichtzette, en dus níét `afTeSluiten`.
-  //    Die twee zijn per definitie verschillend — zie `zojuistAfgeslotenCyclus`.
-  const geslotenStart = klok ? zojuistAfgeslotenCyclus(klok).startDate : null;
-
-  /**
-   * De datum van vandaag in de tijdzone van de gebruiker — QS8-253.
-   *
-   * ⚠️ Uit `shared/time` en nergens anders (correctheidsregel 7). Welke dag het
-   *    "hier" is, bepaalt of een afvinking van vandaag is; de server toetst
-   *    alleen nog dat die datum binnen de week van het weekdoel valt.
-   */
-  const vandaagLokaal = profiel ? localDateIn(profiel.tz, now()) : null;
-
-  return {
-    klok,
-    cyclus,
-    afTeSluiten,
-    coulance,
-    afTeSluitenStart,
-    cyclusStart,
-    geslotenStart,
-    vandaagLokaal,
-  };
+  return tijdVan(profiel);
 }
 
 type Tijd = ReturnType<typeof useTijd>;
