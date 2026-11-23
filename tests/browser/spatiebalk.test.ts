@@ -3,7 +3,7 @@ import { createRequire } from 'node:module';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 
 import { bundelHarnas } from './bundel';
-import { LETTERTYPE, lettertypeStijl, wachtOpLettertype } from './lettertype';
+import { CHROMIUM_VLAGGEN, LETTERTYPE, lettertypeStijl, wachtOpLettertype } from './lettertype';
 
 /**
  * De spatiebalk op een radio, schakelaar en vinkje, in een échte browser — QS8-804.
@@ -33,7 +33,7 @@ import { LETTERTYPE, lettertypeStijl, wachtOpLettertype } from './lettertype';
 const SPATIE_WACHT_MS = 300;
 
 type Pw = {
-  chromium: { launch: () => Promise<Browser> };
+  chromium: { launch: (o?: { args?: string[] }) => Promise<Browser> };
 };
 type Browser = { newPage: () => Promise<Page>; close: () => Promise<void> };
 type Page = {
@@ -105,7 +105,7 @@ describe.skipIf(pw === null)('spatiebalk in een echte browser (QS8-804)', () => 
 
   beforeAll(async () => {
     script = await bundelHarnas('spatiebalk');
-    browser = await pw!.chromium.launch();
+    browser = await pw!.chromium.launch({ args: CHROMIUM_VLAGGEN });
   }, 120_000);
 
   afterAll(async () => {

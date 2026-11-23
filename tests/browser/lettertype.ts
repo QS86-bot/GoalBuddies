@@ -19,6 +19,17 @@ import { resolve } from 'node:path';
 
 export const LETTERTYPE = 'Harnaslettertype';
 
+/**
+ * De startvlaggen van Chromium voor elke browsertest. QS8-812.
+ *
+ * ⚠️ **Waarom `--font-render-hinting=none`.** Met hinting aan rondt Chromium de breedte van tekst af op hele
+ *    pixels. 📏 Op de runner van GitHub mat de stijltoets `Optie A` 80 px (run 45187664320); in de
+ *    cloudsessie 79,94 px. Lokaal nagebootst: met `full` of `medium` is "Optie A" 52 px, met `none` of
+ *    zonder vlag 51,9375 px. De standaard verschilt dus per machine. Een vast lettertype zonder vaste
+ *    rendering meet nog steeds de machine.
+ */
+export const CHROMIUM_VLAGGEN = ['--font-render-hinting=none'];
+
 const BESTAND = resolve(import.meta.dirname, 'harnas/lettertype/DejaVuSans-latijn.ttf');
 
 /** De `<style>` die het vaste lettertype laadt en op de hele pagina zet. */
