@@ -46,12 +46,12 @@ import { psql } from './psql-stack';
  * werkwijze, met vijf rollen (teamlid, beheerder, anon, niet-lid, uitgezet lid):
  *
  *   E  de lidtoets weg (`'teamgroep', g.organization_id is not null`)
- *      → 📏 1 rood, op "anon: teamgroep". Dat is het orakel dat 0317 met
- *        `invalid` dichthoudt.
+ *      → 📏 de teamtoets rood, met anon, niet-lid én uitgezet lid op `true`.
+ *        Dat is het orakel dat 0317 met `invalid` dichthoudt.
  *   F  `'teamgroep', false and …`
- *      → 📏 1 rood, op "teamlid: teamgroep".
+ *      → 📏 de teamtoets rood, met teamlid én beheerder op `false`.
  *   H  `actief_organisatielid()` vervangen door een `exists` zonder statustoets
- *      → 📏 1 rood, op "uitgezet organisatielid: teamgroep".
+ *      → 📏 de teamtoets rood, met alleen het uitgezette lid op `true`.
  *   I  alleen `and ingelogd` weg
  *      → 📏 0 rood, en dat is juist: `actief_organisatielid(org, null)` is al
  *        `false`. `ingelogd` is een kortsluiting en geen eigen grendel; de
@@ -232,18 +232,23 @@ describe.skipIf(!rlsTestsConfigured)('de uitnodiging noemt de stand van het klas
       ).trim();
       expect(stand, `zet_organisatielid_uit gaf ${JSON.stringify(z.data)}`).not.toBe('active');
 
-      for (const [wie, naam, verwacht] of [
+      // ⚠️ Eén vergelijking over alle rollen en geen lus met losse `expect`s: een lus stopt bij de eerste
+      //    rol die faalt, en dan zegt een ijking niet welke rollen nog meer omvielen (security-review).
+      const rollen = [
         [teamlid, 'teamlid', true],
         [eigenaar, 'organisatiebeheerder', true],
         [null, 'anon', false],
         [genodigde, 'niet-lid', false],
         [uitgezet, 'uitgezet organisatielid', false],
-      ] as const) {
+      ] as const;
+      const gelezen: Record<string, unknown> = {};
+      const verwacht: Record<string, unknown> = {};
+      for (const [wie, naam, team] of rollen) {
         const uit = await kaart(wie, teamcode);
-        expect(Object.keys(uit).sort(), naam).toEqual(SLEUTELS);
-        expect(uit.teamgroep, `${naam}: teamgroep`).toBe(verwacht);
-        expect(uit.klassement_aan, `${naam}: een teamgroep heeft nooit een klassement`).toBe(false);
+        gelezen[naam] = { sleutels: Object.keys(uit).sort(), teamgroep: uit.teamgroep, klassement_aan: uit.klassement_aan };
+        verwacht[naam] = { sleutels: SLEUTELS, teamgroep: team, klassement_aan: false };
       }
+      expect(gelezen).toEqual(verwacht);
     },
     TEST_TIMEOUT,
   );
