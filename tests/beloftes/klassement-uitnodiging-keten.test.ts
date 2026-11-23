@@ -32,9 +32,11 @@ describe('uitnodigingskaart naar schakelaar', () => {
     expect(beheer).toMatch(/<KlassementSchakelaar/);
   });
 
-  it('de kaart doet geen eigen aanroep en heeft geen wegklikknop', () => {
+  // ⚠️ QS8-784: de tweede knop is de wegklikknop, en die schrijft alleen de eigen rij via de module, nooit het klassement.
+  it('de kaart zet het klassement niet zelf: twee knoppen, en de tweede klikt alleen weg', () => {
     expect(kaart).not.toMatch(/zetGroepsklassement|rpc\(|supabase/);
-    expect(kaart.match(/<Button/g)).toHaveLength(1);
+    expect(kaart.match(/<Button/g)).toHaveLength(2);
+    expect(kaart).toMatch(/klikKlassementUitnodigingWeg\(groupId, userId\)/);
   });
 
   it('het scherm leest de groep met alle kolommen, zodat `klassement_aan` en `automatisch` er altijd zijn', () => {

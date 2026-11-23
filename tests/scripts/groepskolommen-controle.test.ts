@@ -134,7 +134,9 @@ describe('de census zelf', () => {
     //    append-only; rij 55 in `docs/decisions/002-domeinregel7-oppervlakken.md`.
     // ⚠️ **46 sinds 0305, en dat was 45.** `groep_demping` erbij (QS8-752): de eigen demping,
     //    eigenaar-only; rij 56 in `docs/decisions/002-domeinregel7-oppervlakken.md`.
-    expect(Object.keys(CENSUS)).toHaveLength(46);
+    // ⚠️ **47 sinds 0340, en dat was 46.** `klassement_uitnodiging_weg` erbij (QS8-784): de eigen wegklik van de
+    //    klassementuitnodiging, eigenaar-only zoals `groep_demping`.
+    expect(Object.keys(CENSUS)).toHaveLength(47);
   });
 
   it('heeft de vier views erin', () => {

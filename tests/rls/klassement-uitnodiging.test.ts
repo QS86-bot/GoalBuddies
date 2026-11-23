@@ -124,14 +124,14 @@ describe.runIf(rlsTestsConfigured)('de uitnodigingskaart volgt de poort van zet_
       return { staat: 'ok', pagina: { rijen: (data ?? []) as unknown[] } } as const;
     };
     expect(await klassement(bram)).toEqual(leeg);
-    expect(klassementPlek(await klassement(anna), await zoalsHetScherm(anna, g.id), true)).toBe('uitnodiging');
-    expect(klassementPlek(await klassement(bram), await zoalsHetScherm(bram, g.id), false)).toBe('niets');
+    expect(klassementPlek(await klassement(anna), await zoalsHetScherm(anna, g.id), true, false)).toBe('uitnodiging');
+    expect(klassementPlek(await klassement(bram), await zoalsHetScherm(bram, g.id), false, false)).toBe('niets');
 
     const aan = await anna.db.rpc('zet_groepsklassement' as never, { p_group_id: g.id, p_aan: true, p_bevestigd: true } as never);
     expect((aan.data as { ok?: boolean } | null)?.ok).toBe(true);
 
-    expect(klassementPlek(await klassement(anna), await zoalsHetScherm(anna, g.id), true)).toBe('lijst');
-    expect(klassementPlek(await klassement(bram), await zoalsHetScherm(bram, g.id), false)).toBe('lijst');
+    expect(klassementPlek(await klassement(anna), await zoalsHetScherm(anna, g.id), true, false)).toBe('lijst');
+    expect(klassementPlek(await klassement(bram), await zoalsHetScherm(bram, g.id), false, false)).toBe('lijst');
     expect(toonKlassementUitnodiging(await zoalsHetScherm(anna, g.id), true)).toBe(false);
   }, TEST_TIMEOUT);
 });

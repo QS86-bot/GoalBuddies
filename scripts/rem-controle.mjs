@@ -93,6 +93,13 @@ export const ZONDER_REM = {
     '📏 Gemeten 19-11-2026 (QS8-752, 0305): een tweede insert van hetzelfde paar weigert met ' +
     '23505, een namens een ander met de policy, een niet-lid met 42501 (ook bij een groep die niet bestaat). ⚠️ Verdwijnt de ' +
     'composite FK of de PK, dan is dit de eerste tabel die een rem nodig heeft.',
+  klassement_uitnodiging_weg:
+    'Begrensd door de primaire sleutel (user_id, group_id) en de composite foreign key naar ' +
+    '`group_members (group_id, user_id)`: hoogstens één rij per lidmaatschap. Alleen een actieve beheerder schrijft, ' +
+    'voor zichzelf, en alleen bij een klassement dat uit staat (insert-policy; 42501 vóór de FK). ' +
+    '📏 Gemeten 22-11-2026 (QS8-784, lokale stack): een tweede insert van hetzelfde paar weigert met 23505, ' +
+    'een gewoon lid, een vreemde en een insert namens een ander met 42501. ⚠️ Verdwijnt de ' +
+    'composite FK of de PK, dan heeft deze tabel een rem nodig.',
   gebruikersvoorkeuren:
     'Begrensd door de vijf CHECK\'s op de keuzekolommen (`gebruikersvoorkeuren_stijl_bekend` ' +
     'en de vier andere) en de primaire sleutel op `user_id` — één rij per gebruiker, en ' +

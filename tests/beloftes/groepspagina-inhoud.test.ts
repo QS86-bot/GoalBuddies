@@ -85,8 +85,8 @@ describe('Groepspagina: de rij noemt wat er in deze groep staat', () => {
   });
 
   it('klassement hangt aan de lijst en niet aan de zichtbaarheid, en de uitnodiging staat op de plek van de kaart (A57)', () => {
-    expect(pagina).toMatch(/klassement: klassementPlek\(s\.klassement, s\.groep, s\.beheerder\) === 'lijst'/);
-    expect(pagina).toMatch(/klassementPlek\(s\.klassement, s\.groep, s\.beheerder\) === 'uitnodiging' \?[\s\S]*?<KlassementUitnodiging[\s\S]*?<KlassementKaart/);
+    expect(pagina).toMatch(/klassement: klassementPlek\(s\.klassement, s\.groep, s\.beheerder, s\.uitnodigingWeg\) === 'lijst'/);
+    expect(pagina).toMatch(/klassementPlek\(s\.klassement, s\.groep, s\.beheerder, s\.uitnodigingWeg\) === 'uitnodiging' \?[\s\S]*?<KlassementUitnodiging[\s\S]*?<KlassementKaart/);
     // De kaart tekent zijn eigen kop met dezelfde sleutel als de rij.
     expect(pagina).toMatch(/t\('klassement\.kop'\)/);
   });

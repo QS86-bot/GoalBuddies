@@ -291,6 +291,11 @@ export const CENSUS = {
     groepszichtbaar: false,
     kolommen: 'user_id, group_id, gedempt_op',
   },
+  // QS8-784: wie de uitnodigingskaart van het klassement wegklikte. Alleen de eigen rij (domeinregel 7, P3 c).
+  klassement_uitnodiging_weg: {
+    groepszichtbaar: false,
+    kolommen: 'user_id, group_id, weggeklikt_op',
+  },
   xp_grootboek: {
     groepszichtbaar: false,
     // `teamdoel_id` (QS8-662, 0326): de sleutel van een teambonus-XP-rij (besluit V7, 20-11-2026).
