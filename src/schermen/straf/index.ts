@@ -1,0 +1,1 @@
+export { StrafIntrekken } from './StrafIntrekken';

@@ -53,6 +53,7 @@ export {
   beslisDeadlineVerzoek,
   fetchLaatsteBesluit,
   fetchOpenVerzoek,
+  uitstelGevraagd,
   fetchOpenVerzoekenVoorGroep,
   trekDeadlineVerzoekIn,
   VERZOEKEN_PER_PAGINA,

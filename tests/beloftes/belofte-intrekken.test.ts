@@ -15,7 +15,7 @@ import { roeptAan, zonderCommentaar } from './roept-aan';
  *
  * ⚠️⚠️ **De belofte is "de eerste tik schrijft niets", en dat wordt gemeten aan de
  *    netwerkgrens**: de Supabase-client is hier de enige mock, en de test telt of er
- *    een `update` de deur uit ging. De echte `trekBelofteIn()`, `trekIn()` en de echte
+ *    een `update` de deur uit ging. De echte `trekBelofteIn()` en de echte
  *    component draaien; alleen het netwerk is vervangen (regel 18 vraag 2).
  * ⚠️ En "Deze belofte" in plaats van "Dit commitment" wordt getoond langs dezelfde
  *    weg als in de app: nul rijen terug (de belofte werd `due` tussen renderen en
@@ -24,7 +24,7 @@ import { roeptAan, zonderCommentaar } from './roept-aan';
  * IJKING — met de hand, 23-11-2026:
  *   A  `onPress={() => setVraagt(true)}` -> `onPress={() => void bevestig()}` in `Intrekken`
  *      -> rood: 'de eerste tik schrijft niets'
- *   B  `trekBelofteIn(belofteId)` -> `trekIn(belofteId)` in `BestaandeBelofte.tsx`
+ *   B  `trekBelofteIn(belofteId)` -> `trekIn(belofteId)` in `BestaandeBelofte.tsx` (trekIn() is sinds QS8-814 weg)
  *      -> rood: 'zegt belofte' en grendel 1
  *   C  `<Body muted>{t('belofte.intrekken_getuige')}</Body>` weggehaald -> rood: 'noemt de gevolgen'
  *   D  de tak `if (fout?.beslist === true)` in `Intrekken` weggehaald -> rood: 'na "beslist"'
@@ -142,7 +142,7 @@ describe('intrekken in twee stappen', () => {
     await scherm.klik(t('belofte.intrekken_ja'));
     await scherm.wacht();
     expect(scherm.tekst()).toContain(t('belofte.fout.al_afgegaan'));
-    expect(scherm.tekst()).not.toContain(t('commitment.fout.al_afgegaan'));
+    expect(scherm.tekst()).not.toMatch(/Dit commitment|in werking getreden/);
     expect(onKlaar).not.toHaveBeenCalled();
   });
 
@@ -192,8 +192,11 @@ describe('het woord, in beide talen', () => {
     expect(Object.keys(en)).not.toContain('belofte.intrekken_terug');
   });
 
-  it('de melding van een doelstraf blijft "commitment": dat scherm heet zo', () => {
-    expect(nl['commitment.fout.al_afgegaan']).toMatch(/^Dit commitment /);
+  // QS8-814 (besluit Quinten 23-11-2026): ook de doelstraf zegt nu "intussen beslist",
+  // en de oude melding "Dit commitment is al in werking getreden" bestaat niet meer.
+  it('de oude melding "in werking getreden" is weg, ook voor de doelstraf (QS8-814)', () => {
+    expect(Object.values(nl).join('\n')).not.toMatch(/al in werking getreden en kan niet meer/);
+    expect(nl['straf.fout.al_afgegaan']).toMatch(/^Deze straf /);
   });
 });
 
