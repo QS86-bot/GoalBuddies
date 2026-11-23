@@ -43,8 +43,24 @@ hetzelfde moment als de periode. Wie de stap urenlang open laat staan, ziet de
 waarschuwing van toen; tikt hij na de weekgrens, dan weigert `gaWeekbelofteAan()`
 al (de week is dan een andere). Dat is dezelfde keuze als voor de periode zelf.
 
-**`trekBelofteIn()` en geen tweede schrijfactie.** `trekIn()` kreeg een optionele
-sleutel voor de melding bij nul rijen; `trekBelofteIn()` geeft die van de belofte
-mee. Eén `update`, twee teksten. Het beloftescherm roept alleen `trekBelofteIn()`
-aan, en alleen vanuit de tweede bevestiging; `tests/beloftes/belofte-intrekken.test.ts`
-meet dat aan de netwerkgrens (de Supabase-client is daar de enige mock).
+**`trekBelofteIn()` en geen tweede schrijfactie.** `trekIn()` en
+`trekBelofteIn()` delen één `update` (`zetIngetrokken()`), en verschillen alleen in
+wat ze teruggeven. `trekBelofteIn()` zegt bij een mislukking ook of de belofte al
+beslist is. Het beloftescherm roept alleen `trekBelofteIn()` aan, en alleen vanuit
+de tweede bevestiging; `tests/beloftes/belofte-intrekken.test.ts` meet dat aan de
+netwerkgrens (de Supabase-client is daar de enige mock).
+
+**De melding zegt "intussen beslist" en niet "in werking getreden"** (security-review).
+Nul rijen betekent "niet meer op `set`", en bij een belofte is `cancelled` door de
+rollover (0313, gehouden) een gewoon pad.
+
+## Besluiten van Quinten, 23-11-2026 (via de orchestrator, meerkeuze)
+
+1. De afdrukken zijn goedgekeurd.
+2. Na de melding "intussen beslist" verdwijnt de intrekknop en komt er een knop
+   **Terug**. Bij een storing blijft de intrekknop staan, want dan heeft opnieuw
+   proberen wel zin.
+   - ⚠️ [AANNAME] *Terug* herlaadt het beloftescherm, zodat de echte stand er staat
+     (in werking, of vervallen). Het besluit noemt de knop maar niet waarheen hij
+     gaat. Herladen is de conservatiefste lezing: er wordt niets geschreven, en de
+     melding vraagt de gebruiker al om te kijken hoe het beslist is.

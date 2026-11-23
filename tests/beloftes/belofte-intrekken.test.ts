@@ -27,19 +27,21 @@ import { roeptAan, zonderCommentaar } from './roept-aan';
  *   B  `trekBelofteIn(belofteId)` -> `trekIn(belofteId)` in `BestaandeBelofte.tsx`
  *      -> rood: 'zegt belofte' en grendel 1
  *   C  `<Body muted>{t('belofte.intrekken_getuige')}</Body>` weggehaald -> rood: 'noemt de gevolgen'
+ *   D  de tak `if (fout?.beslist === true)` in `Intrekken` weggehaald -> rood: 'na "beslist"'
+ *   E  `beslist: false` -> `beslist: true` bij de storing in `trekBelofteIn()` -> rood: 'bij een storing'
  */
 
 vi.mock('expo-linear-gradient', () => ({ LinearGradient: () => null }));
 (globalThis as { __DEV__?: boolean }).__DEV__ = false;
 
 const update = vi.fn();
-const rijen = { waarde: [{ id: 'b1' }] as readonly { id: string }[] };
+const rijen = { waarde: [{ id: 'b1' }] as readonly { id: string }[], fout: null as null | { message: string } };
 vi.mock('../../src/lib/supabase', () => ({
   supabase: () => ({
     from: () => ({
       update: (waarden: unknown) => {
         update(waarden);
-        return { eq: () => ({ select: async () => ({ data: rijen.waarde, error: null }) }) };
+        return { eq: () => ({ select: async () => (rijen.fout ? { data: null, error: rijen.fout } : { data: rijen.waarde, error: null }) }) };
       },
     }),
   }),
@@ -84,6 +86,7 @@ beforeEach(() => {
   update.mockReset();
   onKlaar.mockReset();
   rijen.waarde = [{ id: 'b1' }];
+  rijen.fout = null;
 });
 afterEach(() => ruimAllesOp());
 
@@ -132,6 +135,29 @@ describe('intrekken in twee stappen', () => {
     expect(scherm.tekst()).toContain(t('belofte.fout.al_afgegaan'));
     expect(scherm.tekst()).not.toContain(t('commitment.fout.al_afgegaan'));
     expect(onKlaar).not.toHaveBeenCalled();
+  });
+
+  it('na "beslist" verdwijnt de intrekknop en komt er Terug, die het scherm herlaadt (besluit Quinten 23-11)', async () => {
+    rijen.waarde = [];
+    const scherm = await toon();
+    await scherm.klik(t('straf.intrekken'));
+    await scherm.klik(t('belofte.intrekken_ja'));
+    await scherm.wacht();
+    expect(scherm.knoppen()).toEqual([t('belofte.intrekken_terug')]);
+    await scherm.klik(t('belofte.intrekken_terug'));
+    expect(onKlaar).toHaveBeenCalledTimes(1);
+    expect(update).toHaveBeenCalledTimes(1);
+  });
+
+  it('bij een storing blijft de intrekknop staan: opnieuw proberen heeft dan wel zin', async () => {
+    rijen.fout = { message: 'netwerk' };
+    const scherm = await toon();
+    await scherm.klik(t('straf.intrekken'));
+    await scherm.klik(t('belofte.intrekken_ja'));
+    await scherm.wacht();
+    expect(scherm.tekst()).toContain(t('commitment.fout.intrekken'));
+    expect(scherm.knoppen()).toContain(t('belofte.intrekken_ja'));
+    expect(scherm.knoppen()).not.toContain(t('belofte.intrekken_terug'));
   });
 });
 

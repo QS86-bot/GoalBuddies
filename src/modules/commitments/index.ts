@@ -23,6 +23,7 @@ export {
   zetBeloning,
   zetStraf,
   type Begunstigde,
+  type BelofteIntrekking,
   type BelofteBegunstigden,
   type BelofteStand,
   type Commitment,

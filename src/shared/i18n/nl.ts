@@ -2248,6 +2248,7 @@ export const nl = {
   'belofte.intrekken_getuige': 'Je getuige krijgt hier niets van te zien: geen bericht en geen melding.',
   'belofte.intrekken_ja': 'Ja, trek mijn belofte in',
   'belofte.intrekken_nee': 'Nee, laat haar staan',
+  'belofte.intrekken_terug': 'Terug',
   'belofte.fout.al_afgegaan':
     'Deze belofte kan niet meer worden ingetrokken: ze is intussen beslist. Vernieuw het scherm om te zien hoe.',
 

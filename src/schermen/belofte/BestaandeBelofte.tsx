@@ -78,7 +78,7 @@ function Intrekken({ belofteId, onKlaar }: { readonly belofteId: string; readonl
   const { afstand } = useTheme();
   const [vraagt, setVraagt] = useState(false);
   const [bezig, setBezig] = useState(false);
-  const [fout, setFout] = useState<string | null>(null);
+  const [fout, setFout] = useState<{ readonly melding: string; readonly beslist: boolean } | null>(null);
 
   async function bevestig() {
     setBezig(true);
@@ -86,7 +86,7 @@ function Intrekken({ belofteId, onKlaar }: { readonly belofteId: string; readonl
     const uitkomst = await trekBelofteIn(belofteId);
     setBezig(false);
     if (uitkomst.ok) onKlaar();
-    else setFout(uitkomst.melding);
+    else setFout({ melding: uitkomst.melding, beslist: uitkomst.beslist });
   }
 
   if (!vraagt) {
@@ -94,6 +94,19 @@ function Intrekken({ belofteId, onKlaar }: { readonly belofteId: string; readonl
       <Button variant="stil" onPress={() => setVraagt(true)}>
         {t('straf.intrekken')}
       </Button>
+    );
+  }
+  // ⚠️ Besluit Quinten 23-11-2026: is de belofte intussen beslist, dan valt er niets
+  //    meer in te trekken. Geen intrekknop meer, alleen "Terug", die het scherm
+  //    herlaadt zodat de echte stand er staat. Bij een storing blijft de knop staan.
+  if (fout?.beslist === true) {
+    return (
+      <View style={{ gap: afstand.s }}>
+        <Caption danger>{fout.melding}</Caption>
+        <Button variant="stil" onPress={onKlaar}>
+          {t('belofte.intrekken_terug')}
+        </Button>
+      </View>
     );
   }
   return (
@@ -107,7 +120,7 @@ function Intrekken({ belofteId, onKlaar }: { readonly belofteId: string; readonl
       <Button variant="stil" disabled={bezig} onPress={() => setVraagt(false)}>
         {t('belofte.intrekken_nee')}
       </Button>
-      {fout === null ? null : <Caption danger>{fout}</Caption>}
+      {fout === null ? null : <Caption danger>{fout.melding}</Caption>}
     </View>
   );
 }

@@ -3,7 +3,7 @@ import type { Database, Tables } from '../../lib/database.types';
 import type { Database as GecorrigeerdeDatabase } from '../../lib/database.types.correcties';
 import { reportError } from '../../lib/observability';
 import { supabase } from '../../lib/supabase';
-import { t, type Sleutel } from '../../shared/i18n';
+import { t } from '../../shared/i18n';
 import { invoerfout, type Resultaat } from '../../shared/api';
 import { now, type UserClock } from '../../shared/time';
 
@@ -588,17 +588,16 @@ async function maak(
   return { ok: true, waarde: data };
 }
 
+/** Wat een intrekpoging opleverde: gelukt, een storing, of al beslist (nul rijen). */
+type Intrekking = 'ingetrokken' | 'storing' | 'beslist';
+
 /**
- * Trekt een commitment in, zolang het nog niet in werking is getreden.
+ * De ene schrijfactie achter {@link trekIn} en {@link trekBelofteIn}.
  *
  * ⚠️ Alleen mogelijk op status `set`. Dat is geen UI-regel maar de
- *    `commitments_update`-policy: een straf die verschuldigd is, kun je niet
- *    wegpoetsen. Anders is een commitment device geen commitment device.
+ *    `commitments_update`-policy: nul rijen betekent dus "niet meer op `set`".
  */
-export async function trekIn(
-  commitmentId: string,
-  alAfgegaan: Sleutel = 'commitment.fout.al_afgegaan',
-): Promise<Resultaat<true>> {
+async function zetIngetrokken(commitmentId: string): Promise<Intrekking> {
   const { data, error } = await supabase()
     .from('commitments')
     .update({ status: 'cancelled' })
@@ -607,36 +606,53 @@ export async function trekIn(
 
   if (error) {
     reportError(error, 'commitments.cancel');
-    return { ok: false, melding: t('commitment.fout.intrekken') };
+    return 'storing';
   }
-
-  if ((data ?? []).length === 0) {
-    return {
-      ok: false,
-      melding: t(alAfgegaan),
-    };
-  }
-
   // Ook hier geen logregel: `commitments_audit` heeft hem al geschreven.
+  return (data ?? []).length === 0 ? 'beslist' : 'ingetrokken';
+}
+
+/**
+ * Trekt een commitment in, zolang het nog niet in werking is getreden.
+ *
+ * ⚠️ Alleen mogelijk op status `set`. Dat is geen UI-regel maar de
+ *    `commitments_update`-policy: een straf die verschuldigd is, kun je niet
+ *    wegpoetsen. Anders is een commitment device geen commitment device.
+ */
+export async function trekIn(commitmentId: string): Promise<Resultaat<true>> {
+  const uitkomst = await zetIngetrokken(commitmentId);
+  if (uitkomst === 'storing') return { ok: false, melding: t('commitment.fout.intrekken') };
+  if (uitkomst === 'beslist') return { ok: false, melding: t('commitment.fout.al_afgegaan') };
   return { ok: true, waarde: true };
 }
+
+/** De uitkomst van {@link trekBelofteIn}: bij een mislukking ook óf opnieuw proberen zin heeft. */
+export type BelofteIntrekking =
+  | { readonly ok: true }
+  | { readonly ok: false; readonly melding: string; readonly beslist: boolean };
 
 /**
  * Een weekbelofte intrekken — QS8-799.
  *
- * Dezelfde schrijfactie als {@link trekIn}, met één verschil: werd de belofte
- * tussen renderen en tikken beslist, dan zegt de melding "Deze belofte" en niet
- * "Dit commitment". ⚠️ Beslist en niet `due`: nul rijen betekent "niet meer op
- * `set`", en bij een belofte is `cancelled` door de rollover (0313, gehouden) een
- * gewoon pad. Een tekst die dan "in werking getreden" zegt, schrikt iemand af die
- * zijn belofte juist hield. Het beloftescherm zegt overal "belofte"; een melding in een
- * ander woord laat de gebruiker raden of het over hetzelfde gaat.
+ * Dezelfde schrijfactie als {@link trekIn}, met twee verschillen:
+ *
+ * - Werd de belofte tussen renderen en tikken beslist, dan zegt de melding
+ *   "Deze belofte" en niet "Dit commitment". ⚠️ Beslist en niet `due`: nul rijen
+ *   betekent "niet meer op `set`", en bij een belofte is `cancelled` door de
+ *   rollover (0313, gehouden) een gewoon pad. Een tekst die dan "in werking
+ *   getreden" zegt, schrikt iemand af die zijn belofte juist hield.
+ * - `beslist` zegt of opnieuw proberen zin heeft. Bij `true` verdwijnt de
+ *   intrekknop en komt er "Terug" (besluit Quinten 23-11-2026); bij een storing
+ *   blijft hij staan.
  *
  * ⚠️ Het beloftescherm roept alleen deze aan, en alleen vanuit de tweede
  *    bevestiging (`tests/beloftes/belofte-intrekken.test.ts`).
  */
-export function trekBelofteIn(commitmentId: string): Promise<Resultaat<true>> {
-  return trekIn(commitmentId, 'belofte.fout.al_afgegaan');
+export async function trekBelofteIn(commitmentId: string): Promise<BelofteIntrekking> {
+  const uitkomst = await zetIngetrokken(commitmentId);
+  if (uitkomst === 'ingetrokken') return { ok: true };
+  if (uitkomst === 'beslist') return { ok: false, melding: t('belofte.fout.al_afgegaan'), beslist: true };
+  return { ok: false, melding: t('commitment.fout.intrekken'), beslist: false };
 }
 
 /**
