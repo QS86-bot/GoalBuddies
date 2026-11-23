@@ -3,7 +3,9 @@ import { describe, expect, it } from 'vitest';
 // ⚠️ Een `.mjs` zonder eigen typings — zelfde patroon als `pinuitzonderingen-controle.test.ts`.
 import {
   beoordeel,
+  codeZonderCommentaar,
   GEEN_OPPERVLAK,
+  klassementpoort,
   ontleed,
   OPPERVLAKKEN,
 } from '../../scripts/zichtbaarheid-controle.mjs';
@@ -105,6 +107,128 @@ describe('de twee registers', () => {
   });
 });
 
+/**
+ * De poort van het klassement sinds A57 (QS8-666, 0333) — QS8-802.
+ *
+ * ⚠️ De vormen zijn uitgekleed naar de regels waar het om gaat, maar volgen de
+ *    `where` van beide functies zoals `pg_get_functiondef()` hem op een lokaal
+ *    opgebouwd schema teruggeeft — met het commentaar erin, want dat commentaar
+ *    is precies waarom de zoekvraag `groep_klassement()` vindt.
+ *
+ * ⚠️ Dezelfde `klassementpoort()` draait ook in `tests/beloftes/klassementpoort.test.ts`,
+ *    daar op de migratiebestanden. Hier gaat het om de vormen die hij moet vinden
+ *    en de vormen die hij met rust moet laten.
+ */
+const GROEP_A57 = `
+  from gerangschikt g
+  join group_members m on m.status <> 'inactive'
+  where lid_van_levende_groep(p_group_id)
+    -- ⚠️ A57 (QS8-666): het klassement hangt aan een eigen schakelaar op de groep en niet
+    --    meer aan de zichtbaarheid. Drie voorwaarden naast elkaar, elk zichtbaar:
+    and exists (select 1 from groups gr
+                 where gr.id = p_group_id and gr.klassement_aan)
+    and not exists (select 1 from groups gr
+                     where gr.id = p_group_id and gr.organization_id is not null)
+`;
+
+const MIJN_A57 = `
+    where lid_van_levende_groep(g.id)
+      and g.klassement_aan
+      and g.organization_id is null
+      -- Hier expliciet, waar \`groep_klassement()\` op de CHECK leunt.
+      and not g.automatisch
+    join group_members lm on lm.group_id = mj.gid and lm.status <> 'inactive'
+`;
+
+/** De poort van A54 (0141), zoals hij tot 0333 stond. */
+const GROEP_A54 = `
+  from gerangschikt g
+  join group_members m on m.status <> 'inactive'
+  where lid_van_open_groep(p_group_id)
+    and not exists (select 1 from groups gr
+                     where gr.id = p_group_id and gr.organization_id is not null)
+`;
+
+describe('klassementpoort', () => {
+  it('laat de poort van A57 met rust, ook met "zichtbaarheid" in het commentaar', () => {
+    expect(klassementpoort('groep_klassement', GROEP_A57)).toEqual([]);
+    expect(klassementpoort('mijn_klassementen', MIJN_A57)).toEqual([]);
+  });
+
+  it('meldt de oude poort van A54 — de terugval die het issue noemt', () => {
+    const bezwaren = klassementpoort('groep_klassement', GROEP_A54);
+
+    expect(bezwaren.some((b) => b.includes('`open_groep`'))).toBe(true);
+    expect(bezwaren.some((b) => b.includes('`klassement_aan`'))).toBe(true);
+    expect(bezwaren.some((b) => b.includes('`lid_van_levende_groep(`'))).toBe(true);
+  });
+
+  it('meldt een poort die naast de schakelaar ook nog op open filtert', () => {
+    // De sluwe variant: alle eisen staan er, en de oude toets erbij.
+    const beide = GROEP_A57.replace(
+      'and gr.klassement_aan)',
+      "and gr.klassement_aan and gr.zichtbaarheid = 'open')",
+    );
+
+    expect(beide).not.toBe(GROEP_A57);
+    expect(klassementpoort('groep_klassement', beide)).toEqual([
+      'groep_klassement: filtert op `zichtbaarheid`: de zichtbaarheid van de groep — sinds A57 niet meer de poort',
+    ]);
+  });
+
+  /** Mutatie per poortdeel, niet één mutatie voor de hele toets. */
+  it.each([
+    ['groep_klassement', GROEP_A57, 'lid_van_levende_groep(p_group_id)', 'true', 'lid_van_levende_groep('],
+    ['groep_klassement', GROEP_A57, 'and gr.klassement_aan', '', 'klassement_aan'],
+    ['groep_klassement', GROEP_A57, "status <> 'inactive'", 'status is not null', "status <> 'inactive'"],
+    ['groep_klassement', GROEP_A57, 'gr.organization_id is not null', 'false', 'organization_id is not null'],
+    ['mijn_klassementen', MIJN_A57, 'lid_van_levende_groep(g.id)', 'true', 'lid_van_levende_groep('],
+    ['mijn_klassementen', MIJN_A57, 'and g.klassement_aan', '', 'klassement_aan'],
+    ['mijn_klassementen', MIJN_A57, "lm.status <> 'inactive'", 'true', "status <> 'inactive'"],
+    ['mijn_klassementen', MIJN_A57, 'g.organization_id is null', 'g.organization_id is not null', 'g.organization_id is null'],
+    ['mijn_klassementen', MIJN_A57, 'and not g.automatisch', '', 'not g.automatisch'],
+  ])('%s: zonder `%s` precies één bezwaar', (functie, vorm, weg, ervoor, eis) => {
+    const gebroken = vorm.replace(weg, ervoor);
+
+    expect(gebroken).not.toBe(vorm);
+    const bezwaren = klassementpoort(functie, gebroken);
+    expect(bezwaren).toHaveLength(1);
+    expect(bezwaren[0]).toContain(`mist \`${eis}\``);
+  });
+
+  it('telt een eis die alleen in commentaar staat niet als aanwezig', () => {
+    const inCommentaar = MIJN_A57.replace('and g.klassement_aan', '-- and g.klassement_aan');
+
+    expect(klassementpoort('mijn_klassementen', inCommentaar)).toEqual([
+      'mijn_klassementen: mist `klassement_aan`: de schakelaar op de groep (A57, 0333)',
+    ]);
+  });
+
+  it('meldt een functie die er niet is, of geen poort heeft, in plaats van groen te zwijgen', () => {
+    expect(klassementpoort('groep_klassement', '')).toHaveLength(1);
+    expect(klassementpoort('mijn_klassementen', '\n')).toHaveLength(1);
+    expect(klassementpoort('iets_anders', GROEP_A57)).toHaveLength(1);
+  });
+});
+
+describe('codeZonderCommentaar', () => {
+  it('haalt regel- en blokcommentaar weg en laat de code staan', () => {
+    const uit = codeZonderCommentaar('a -- zichtbaarheid\nb /* open_groep */ c');
+
+    expect(uit).not.toMatch(/zichtbaarheid|open_groep/);
+    expect(uit).toMatch(/a[\s\S]*b[\s\S]*c/);
+  });
+});
+
+describe('het klassement in de registers', () => {
+  it('staat sinds A57 niet meer bij de oppervlakken van Open', () => {
+    expect((OPPERVLAKKEN as Map<string, string>).has('functie:groep_klassement')).toBe(false);
+    expect((GEEN_OPPERVLAK as Map<string, string>).get('functie:groep_klassement')).toMatch(
+      /klassement_aan/,
+    );
+  });
+});
+
 describe('de toestemmingszin', () => {
   /**
    * ⚠️ **Dit is de naad waar de hele bevinding over gaat**, en de test kan hem
@@ -148,8 +272,12 @@ describe('de toestemmingszin', () => {
 
     expect(zin).toBeTruthy();
     expect(zin).toMatch(/gemiste/i);
-    expect(zin).toMatch(/klassement/i);
     expect(zin).toMatch(/held/i);
+    // ⚠️ Sinds A57 gaat het klassement bij beschermen níet dicht (QS8-802): het
+    //    hangt aan de schakelaar. De zin moet dat zeggen, en niet alleen het woord
+    //    noemen — tot QS8-802 stond hier `/klassement/`, en dat was ook groen
+    //    geweest op "dicht gaat: … het klassement".
+    expect(zin).toMatch(/klassement blijft/i);
   });
 
   it('noemt dat het met terugwerkende kracht geldt', () => {
