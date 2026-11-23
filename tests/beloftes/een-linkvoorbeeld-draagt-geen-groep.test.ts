@@ -20,7 +20,11 @@ import { describe, expect, it } from 'vitest';
 import { zonderCommentaar } from '../../scripts/zonder-commentaar.mjs';
 import { en } from '../../src/shared/i18n/en';
 import { nl } from '../../src/shared/i18n/nl';
-import { LOGO_PAD, linkvoorbeeldTags } from '../../src/shared/web/linkvoorbeeld';
+import {
+  LOGO_PAD,
+  linkvoorbeeldBeschrijving,
+  linkvoorbeeldTags,
+} from '../../src/shared/web/linkvoorbeeld';
 import { deelbaarBericht, uitnodigingsBericht } from '../../src/modules/buddies/samen';
 
 const APP = 'https://goalbuddies.q-projects.tech';
@@ -49,7 +53,7 @@ describe('linkvoorbeeldTags', () => {
     const toegestaan = new Set<string>([
       'website',
       nl['linkvoorbeeld.titel'],
-      nl['linkvoorbeeld.beschrijving'],
+      linkvoorbeeldBeschrijving(),
       `${APP}${LOGO_PAD}`,
       '512',
       'summary',
@@ -96,7 +100,7 @@ describe('de naad tussen de tags en de webexport', () => {
   it('importeert linkvoorbeeld.ts niets dat een groep kan kennen (grendel 5)', () => {
     const bron = lees('src/shared/web/linkvoorbeeld.ts');
     const imports = [...bron.matchAll(/^import[\s\S]*?from '([^']+)'/gm)].map((m) => m[1]);
-    expect(imports).toEqual(['../i18n/nl']);
+    expect(imports).toEqual(['../i18n/en', '../i18n/nl']);
   });
 });
 
