@@ -84,8 +84,11 @@ redenering "weglaten mag", en de poort werd er rood van.
 **Geen Edge Function roept de nieuwe functies aan, dus het gedrag op de server verandert
 niet.** Wel verandert de inhoud van `_shared/time`, en daarmee de bundel van elke functie
 die hem importeert: `rollover`, `notificaties`, `doelcoach` en `koppelen`. Deployen
-brengt de bundels weer gelijk met de repo; het verandert niets aan wat ze doen. Dat
-deployen doet Quinten.
+brengt de bundels weer gelijk met de repo; het verandert niets aan wat ze doen.
+
+Na de merge deployt Quinten `rollover`, `notificaties` en `doelcoach`. **`koppelen`
+wacht op QS8-634** (aanwijzing van de orchestrator, 23-11-2026): die functie gaat pas
+uit als dat issue Done is, ook al loopt zijn bundel tot dan achter op de repo.
 
 In `src/modules/goals/cycles.ts` is `sinds` verplicht. Een vergeten aanroeper is daar een
 fout van `tsc`.
