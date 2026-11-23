@@ -21,6 +21,9 @@ import {
 } from '@/modules/buddies';
 import {
   fetchBegunstigdeNaam,
+  stuurlozeReden,
+  type BegunstigdeNaam,
+  type StuurlozeReden,
   fetchCommitments,
   fetchCommitmentSpoor,
   herstelStuurlozeStraf,
@@ -990,6 +993,7 @@ function StuurlozeStrafBevestiging({
  *    niemand om aan te wijzen, dan zegt de kaart dat, en blijft afwikkelen over.
  */
 function StuurlozeStrafKeuze({
+  reden,
   mensen,
   gekozen,
   bezig,
@@ -998,6 +1002,7 @@ function StuurlozeStrafKeuze({
   onAanwijzen,
   onAfwikkelen,
 }: {
+  readonly reden: StuurlozeReden;
   readonly mensen: readonly MogelijkeBegunstigde[];
   readonly gekozen: MogelijkeBegunstigde | undefined;
   readonly bezig: boolean;
@@ -1008,8 +1013,8 @@ function StuurlozeStrafKeuze({
 }) {
   return (
     <Card nested>
-      <Subheading>{t('stuurloos.kop')}</Subheading>
-      <Body muted>{t('stuurloos.uitleg')}</Body>
+      <Subheading>{t(reden === 'groep_verlaten' ? 'stuurloos.kop_groep' : 'stuurloos.kop')}</Subheading>
+      <Body muted>{t(reden === 'groep_verlaten' ? 'stuurloos.uitleg_groep' : 'stuurloos.uitleg')}</Body>
       {mensen.length > 0 ? (
         <>
           <Choice
@@ -1034,13 +1039,9 @@ function StuurlozeStrafKeuze({
   );
 }
 
-function StuurlozeStraf({
-  straf,
-  onKlaar,
-}: {
-  readonly straf: Commitment;
-  readonly onKlaar: () => void;
-}) {
+type StuurlozeStrafProps = { readonly straf: Commitment; readonly reden: StuurlozeReden; readonly onKlaar: () => void };
+
+function StuurlozeStraf({ straf, reden, onKlaar }: StuurlozeStrafProps) {
   const [bevestigen, setBevestigen] = useState(false);
   const [bezig, setBezig] = useState(false);
   const [fout, setFout] = useState<string | null>(null);
@@ -1079,6 +1080,7 @@ function StuurlozeStraf({
 
   return (
     <StuurlozeStrafKeuze
+      reden={reden}
       mensen={mensen}
       gekozen={nieuweGetuige}
       bezig={bezig}
@@ -1171,13 +1173,43 @@ function TeamStrafBevestiging({
  *
  * ⚠️ Apart component, want het haalt zelf op: een hook hoort niet in de tak
  *    van `Straf` die alleen bij een bestaande straf loopt.
+ *
+ * ⚠️ **QS8-820 (0343): de stuurloze kaart hangt hier ook aan.** Een groep waar de
+ *    eigenaar geen lid meer van is, maakt een verschuldigde straf stuurloos, en
+ *    dat is precies wanneer de naam niet te lezen is. Eén ophaalactie voor beide,
+ *    zodat de regel en de kaart nooit iets anders zeggen. Voor een ander dan de
+ *    eigenaar wordt niets opgehaald.
  */
-function StrafBegunstigde({ straf }: { readonly straf: Commitment }) {
+function StrafBegunstigde({
+  straf,
+  stand,
+  vanMij,
+  onKlaar,
+}: {
+  readonly straf: Commitment;
+  readonly stand: { readonly titel: string; readonly uitleg: string };
+  readonly vanMij: boolean;
+  readonly onKlaar: () => void;
+}) {
   const wie = useAsyncMetTerugval(
-    () => fetchBegunstigdeNaam(straf),
+    () => (vanMij ? fetchBegunstigdeNaam(straf) : Promise.resolve(null)),
     null,
-    [straf.id, straf.beneficiary_group_id, straf.beneficiary_user_id],
+    [straf.id, straf.beneficiary_group_id, straf.beneficiary_user_id, vanMij],
   );
+  // ⚠️ QS8-820: de stuurloze kaart leest dezelfde naam. Zie `stuurlozeReden()`.
+  const reden = stuurlozeReden(straf, wie);
+  // ⚠️ QS8-820: "de groep kan dit nu lezen" is onwaar zolang je er geen lid van bent.
+  const uitleg = reden === 'groep_verlaten' ? t('commitment.penalty.due.uitleg_groep_verlaten') : stand.uitleg;
+  return (
+    <>
+      <Caption>{t('commitment.stand', { titel: stand.titel, uitleg })}</Caption>
+      {vanMij ? <BegunstigdeRegel wie={wie} /> : null}
+      {reden === null ? null : <StuurlozeStraf straf={straf} reden={reden} onKlaar={onKlaar} />}
+    </>
+  );
+}
+
+function BegunstigdeRegel({ wie }: { readonly wie: BegunstigdeNaam | null }) {
   if (wie === null) return null;
   if (wie.fout) return <Caption>{t('straf.begunstigde.fout')}</Caption>;
   if (wie.naam === null) {
@@ -1248,8 +1280,8 @@ function Straf({
       <Card>
         <Subheading>{t('straf.jouw')}</Subheading>
         <Body>{bestaand.body}</Body>
-        <Caption>{t('commitment.stand', { titel: stand.titel, uitleg: stand.uitleg })}</Caption>
-        {vanMij ? <StrafBegunstigde straf={straf} /> : null}
+        {/* ⚠️ QS8-333 en QS8-820: de stand, de getuige en de stuurloze kaart staan hierin. */}
+        <StrafBegunstigde straf={straf} stand={stand} vanMij={vanMij} onKlaar={onKlaar} />
         {/*
           ⚠️ De knop verdwijnt zodra de straf verschuldigd is, en dat is geen
              cosmetiek: `commitments_update` weigert het dan sowieso (0057). Een
@@ -1265,12 +1297,6 @@ function Straf({
         */}
         {magIntrekken ? (
           <StrafIntrekken key={straf.id} strafId={straf.id} metUitstelverzoek={metUitstelverzoek} onKlaar={onKlaar} />
-        ) : null}
-        {/* ⚠️ QS8-333: alleen als de getuige verdwenen is. Zie StuurlozeStraf. */}
-        {straf.status === 'due' &&
-        straf.beneficiary_user_id === null &&
-        straf.beneficiary_group_id === null ? (
-          <StuurlozeStraf straf={straf} onKlaar={onKlaar} />
         ) : null}
         <Spoor commitmentId={bestaand.id} />
       </Card>

@@ -103,6 +103,8 @@ export const en: Record<Sleutel, string> = {
   'commitment.penalty.due.titel': 'Due',
   'commitment.penalty.due.uitleg':
     'Your target date has passed. The group you chose can read this now.',
+  'commitment.penalty.due.uitleg_groep_verlaten':
+    'Your target date has passed. The group you had chosen will not see this as long as you are not a member.',
   'commitment.penalty.resolved.titel': 'Settled',
   'commitment.penalty.resolved.uitleg': 'This stake has been paid.',
   'commitment.penalty.cancelled.titel': 'Expired',
@@ -133,6 +135,9 @@ export const en: Record<Sleutel, string> = {
   'stuurloos.kop': 'Your witness is gone',
   'stuurloos.uitleg':
     'The person you named as your witness has closed their account. Your stake is still open. Name someone else, or settle it if you have kept to it.',
+  'stuurloos.kop_groep': 'You are no longer in your witness group',
+  'stuurloos.uitleg_groep':
+    'Your stake is still open, but you are no longer a member of the group you chose as your witness. As long as that is the case, that group will not see it. Name someone else, or settle it if you have kept to it.',
   'stuurloos.wie': 'Who watches from now on?',
   'stuurloos.aanwijzen': 'Name this person',
   'stuurloos.kies_eerst': 'First pick who watches from now on.',
@@ -149,6 +154,8 @@ export const en: Record<Sleutel, string> = {
     'This stake still has a witness. You can only hand it over once your witness has closed their account.',
   'commitment.herstel.niet_verschuldigd':
     'This stake is not due yet. While that is the case, you can simply withdraw it.',
+  'commitment.herstel.getuige_leest_hem_niet':
+    'This person cannot see your stake, because you are no longer in the team. Settle it if you have kept to it.',
   'commitment.herstel.geen_groepsgenoot':
     'You can only pick someone you share a group with.',
   'commitment.herstel.niet_jezelf': 'You cannot be your own witness.',
@@ -1602,7 +1609,8 @@ export const en: Record<Sleutel, string> = {
   'straf.intrekken': 'Withdraw',
   'straf.begunstigde.groep': 'Witness: the group {groep}',
   'straf.begunstigde.persoon': 'Witness: {naam}',
-  'straf.begunstigde.groep_onzichtbaar': 'Witness: a group you are no longer a member of',
+  'straf.begunstigde.groep_onzichtbaar':
+    'Witness: a group you are no longer a member of. As long as that is the case, that group will not see your penalty.',
   'straf.begunstigde.persoon_onzichtbaar':
     'Witness: someone you no longer share a group with. As long as that stays so, they will not see your penalty.',
   'straf.begunstigde.fout': 'The witness could not be loaded.',

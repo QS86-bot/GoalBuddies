@@ -309,6 +309,10 @@ describe.skipIf(!beschikbaar)('de naam van een vertrokken lid staat niet in de b
         -- weigert de RPC hieronder met 'geen_beslisser'.
         insert into group_members (group_id, user_id, role, status)
           select gid, alice, 'member', 'active' from r;
+        -- ⚠️ QS8-820 (0343): \`commitment_due\` komt alleen in een begunstigde groep
+        --    waar de eigenaar lid van is. Zonder deze rij meldt 0343 terecht niets.
+        insert into group_members (group_id, user_id, role, status)
+          select gid2, alice, 'member', 'active' from r;
 
         -- ⚠️ De naam staat óók in de doeltitel: §3 belooft "geen titel", en een
         --    neutrale titel bewaakt die helft niet.

@@ -196,6 +196,25 @@ const REGISTER: Readonly<Record<string, Rij>> = {
       'Lezer én eigenaar actief, zoals shares_group_with_user(); geen archieftoets, want dit is ' +
       'de leeskant van een straf, en die blijft na archiveren leesbaar zoals elke begunstigde groep.',
   },
+  straf_groepsband_klopt: {
+    nietInactief: 1,
+    alleenActief: 0,
+    archief: false,
+    open: false,
+    reden:
+      'QS8-820 (0343): een begunstigde groep leest een straf alleen zolang de eigenaar er lid van is. ' +
+      'Zelfde grens als straf_teamband_klopt(); geen archieftoets (besluit b van Quinten, 23-11: een ' +
+      'archief verbreekt de band niet).',
+  },
+  straf_groepsband_klopt_voor_mij: {
+    nietInactief: 1,
+    alleenActief: 0,
+    archief: false,
+    open: false,
+    reden:
+      'QS8-820 (0343): de policyvariant van straf_groepsband_klopt(). De eigen toets is de vrager, ' +
+      'die zelf lid van de groep moet zijn, zodat een niet-lid geen orakel op lidmaatschap heeft.',
+  },
   aandeel_wacht_op_teamgenoot: {
     nietInactief: 2,
     alleenActief: 0,

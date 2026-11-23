@@ -34,7 +34,7 @@ export {
 } from './api';
 
 export { fetchBegunstigdeNaam, type BegunstigdeNaam } from './begunstigde';
-export { begunstigdeVan, BEGUNSTIGDE_BRON } from './begunstigde-bron';
+export { begunstigdeVan, BEGUNSTIGDE_BRON, stuurlozeReden, type StuurlozeReden } from './begunstigde-bron';
 
 export {
   COMMITMENT_STANDEN,

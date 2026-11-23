@@ -202,6 +202,9 @@ export const nl = {
   'commitment.penalty.due.titel': 'Verschuldigd',
   'commitment.penalty.due.uitleg':
     'Je streefdatum is verstreken. De groep die je gekozen hebt, kan dit nu lezen.',
+  // QS8-820 (0343): verschuldigd bij een groep waar je geen lid meer van bent.
+  'commitment.penalty.due.uitleg_groep_verlaten':
+    'Je streefdatum is verstreken. De groep die je gekozen had, krijgt dit niet te zien zolang je er geen lid van bent.',
   'commitment.penalty.resolved.titel': 'Afgehandeld',
   'commitment.penalty.resolved.uitleg': 'Deze inzet is voldaan.',
   'commitment.penalty.cancelled.titel': 'Vervallen',
@@ -233,6 +236,10 @@ export const nl = {
   'stuurloos.kop': 'Je getuige is er niet meer',
   'stuurloos.uitleg':
     'De persoon die je als getuige had aangewezen, heeft zijn account opgezegd. Je inzet staat nog open. Wijs iemand anders aan, of wikkel hem af als je hem bent nagekomen.',
+  // QS8-820 (0343): een straf bij een groep waar je geen lid meer van bent.
+  'stuurloos.kop_groep': 'Je zit niet meer in de groep die getuige is',
+  'stuurloos.uitleg_groep':
+    'Je inzet staat nog open, maar je bent geen lid meer van de groep die je als getuige had gekozen. Zolang dat zo is, krijgt die groep hem niet te zien. Wijs iemand anders aan, of wikkel hem af als je hem bent nagekomen.',
   'stuurloos.wie': 'Wie let er vanaf nu op?',
   'stuurloos.aanwijzen': 'Deze persoon aanwijzen',
   // ⚠️ QS8-651: bij twee of meer kandidaten is er geen voorgeselecteerde, en de
@@ -251,6 +258,8 @@ export const nl = {
     'Deze inzet heeft nog een getuige. Je kunt hem alleen overdragen als je getuige zijn account heeft opgezegd.',
   'commitment.herstel.niet_verschuldigd':
     'Deze inzet is nog niet verschuldigd. Zolang dat zo is, kun je hem gewoon intrekken.',
+  'commitment.herstel.getuige_leest_hem_niet':
+    'Deze persoon kan je inzet niet zien, omdat je niet meer in het team zit. Wikkel hem af als je hem bent nagekomen.',
   'commitment.herstel.geen_groepsgenoot':
     'Je kunt alleen iemand aanwijzen met wie je een groep deelt.',
   'commitment.herstel.niet_jezelf': 'Je kunt niet je eigen getuige zijn.',
@@ -2116,7 +2125,10 @@ export const nl = {
   //    alleen de soort, en bij een storing zegt hij dat.
   'straf.begunstigde.groep': 'Getuige: de groep {groep}',
   'straf.begunstigde.persoon': 'Getuige: {naam}',
-  'straf.begunstigde.groep_onzichtbaar': 'Getuige: een groep waar je geen lid meer van bent',
+  // ⚠️ QS8-820 (0343): de tweede zin is de belofte, en die houdt de database
+  //    (`commitments_select` tak 2). Woordelijk uit het issue.
+  'straf.begunstigde.groep_onzichtbaar':
+    'Getuige: een groep waar je geen lid meer van bent. Zolang dat zo is, krijgt die groep je straf niet te zien.',
   // ⚠️ Niet alleen "wie": de persoonstak van `commitments_select` eist een
   //    gedeelde groep (0183), dus zolang die er niet is ziet de getuige de straf
   //    óók bij `due` niet. Een kaart die dan alleen "Getuige: …" zegt, belooft
