@@ -220,6 +220,8 @@ export {
   MOMENTEN,
   minutenLabels,
   momentLabels,
+  beantwoordeVragen,
+  heeftVragenlijstAntwoord,
   patchUitVragenlijst,
   urenPerWeekUitMinuten,
   valkuilAntwoord,
@@ -232,6 +234,7 @@ export {
   type Moment,
   type Valkuil,
   type VragenlijstInvoer,
+  type VragenlijstVelden,
 } from './vragenlijst-schemas';
 
 export {

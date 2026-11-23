@@ -191,3 +191,51 @@ export function useSpraakUitlegGezien(actief: boolean): {
   //    hierboven.
   return { gezien: zojuist || opgeslagen.data === 'ja', geladen: !opgeslagen.loading, onthoud };
 }
+
+const SLEUTEL_VRAGENLIJSTKAART = 'goalbuddies.vragenlijstkaart-weg';
+
+/**
+ * Tikte deze gebruiker op "Niet nu" bij de kaart die de vragenlijst aanbiedt? —
+ * QS8-805.
+ *
+ * ⚠️ **Per gebruiker, en de user-id zit in de sleutel** (besluit Quinten 23-11-2026).
+ *    Twee accounts op één apparaat delen de keuze van de ander niet.
+ *
+ * ⚠️ **Op het apparaat en niet in `profiles`**, om dezelfde reden als de kop van dit
+ *    bestand: geen migratie voor een schermvoorkeur. Gevolg dat je moet weten: op een
+ *    nieuw apparaat komt de kaart één keer terug. Over toestellen heen is een kolom
+ *    en dus een vraag aan Quinten.
+ *
+ * ⚠️ Zolang `geladen` onwaar is, weet je het niet. Toon de kaart dan niet, anders
+ *    flitst hij bij elke start even op voor wie hem al wegtikte.
+ */
+export function useVragenlijstkaartWeg(userId: string | null): {
+  readonly weg: boolean;
+  readonly geladen: boolean;
+  readonly verberg: () => void;
+} {
+  // ⚠️ Het antwoord draagt de user-id waarvoor het gelezen is: wisselt het account
+  //    zonder dat het scherm opnieuw opent, dan is het vorige antwoord niet "geladen".
+  const gelezen = useAsync(
+    userId === null
+      ? null
+      : async () => ({
+          voor: userId,
+          weg: (await AsyncStorage.getItem(`${SLEUTEL_VRAGENLIJSTKAART}.${userId}`)) === 'ja',
+        }),
+    [userId],
+  );
+  const [weggeklikt, setWeggeklikt] = useState<string | null>(null);
+
+  // Een fout bij het lezen telt als gelezen en niet weggeklikt: de kaart blijft een aanbod.
+  const geladen = userId !== null && (gelezen.data?.voor === userId || gelezen.error !== null);
+  const weg = userId !== null && (weggeklikt === userId || (gelezen.data?.voor === userId && gelezen.data.weg));
+
+  const verberg = useCallback(() => {
+    if (userId === null) return;
+    setWeggeklikt(userId);
+    void AsyncStorage.setItem(`${SLEUTEL_VRAGENLIJSTKAART}.${userId}`, 'ja');
+  }, [userId]);
+
+  return { weg, geladen, verberg };
+}

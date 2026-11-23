@@ -17,6 +17,7 @@ import {
   ToevoegKnoppen,
   useVandaag,
   vandaagKop,
+  Vragenlijstkaart,
   WeekstrookBlok,
 } from '@/schermen/vandaag';
 import { useVolgTaal } from '@/shared/i18n/react';
@@ -74,6 +75,8 @@ export default function Vandaag() {
       <WeekstrookBlok v={v} />
 
       <TellersBlok v={v} />
+
+      <Vragenlijstkaart />
 
       <Meldingen v={v} />
 
