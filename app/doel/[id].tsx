@@ -1036,15 +1036,9 @@ function StuurlozeStrafKeuze({
   );
 }
 
-function StuurlozeStraf({
-  straf,
-  reden,
-  onKlaar,
-}: {
-  readonly straf: Commitment;
-  readonly reden: StuurlozeReden;
-  readonly onKlaar: () => void;
-}) {
+type StuurlozeStrafProps = { readonly straf: Commitment; readonly reden: StuurlozeReden; readonly onKlaar: () => void };
+
+function StuurlozeStraf({ straf, reden, onKlaar }: StuurlozeStrafProps) {
   const [bevestigen, setBevestigen] = useState(false);
   const [bezig, setBezig] = useState(false);
   const [fout, setFout] = useState<string | null>(null);

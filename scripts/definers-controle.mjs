@@ -614,6 +614,14 @@ const LEESREGISTER = new Map([
   ['lid_van_levende_groep', 'Predicaat op `m.user_id = auth.uid()`, actief lid van een groep die niet gearchiveerd is (A57, 0333). Zelfde lichaam als is_group_member() (0329); een eigen naam zodat een latere versoepeling daarvan het klassement niet meeneemt.'],
   ['shares_group_with_user', 'Predicaat op `mine.user_id = auth.uid()`; béíde kanten moeten actief lid zijn.'],
   ['shares_group_with_goal', 'Predicaat op `m.user_id = auth.uid()`; de kijker én de eigenaar moeten actief lid zijn en de groep niet gearchiveerd.'],
+  [
+    'straf_groepsband_klopt_voor_mij',
+    'Poort: de vrager is zelf actief lid van de groep (`m.user_id = auth.uid()`), anders `false` (QS8-820, 0343). ' +
+      'Geeft één boolean: is de eigenaar van het doel lid van die groep. Leest `goals` alleen om de eigenaar op te ' +
+      'zoeken; geen rij, geen stand, dus geen gemiste week af te leiden. Een lid leert alleen wat de ledenlijst al ' +
+      'zegt (security-review L2). Gemeten: de vragertoets weg → "geen orakel" rood in ' +
+      '`tests/rls/begunstigde-groep-band.test.ts`.',
+  ],
   ['deelt_groep_met_eigenaar', 'Leunt volledig op `shares_group_with_user()`, en die scopet op `auth.uid()`. Leest `goals` alleen om de eigenaar op te zoeken.'],
   ['deelt_open_groep_met_doel', 'Predicaat op `m.user_id = auth.uid()` in een groep met `zichtbaarheid = open`.'],
   ['weekbelofte_begunstigde_bekend', 'Predicaat op `auth.uid()` in beide takken (QS8-760, 0314): de groep is er een van de aanroeper en niet automatisch, de getuige deelt met de aanroeper een niet-automatische groep. Geen uid-argument, en het antwoord zegt alleen iets over de band van de aanroeper zelf.'],
