@@ -36,6 +36,8 @@ name: Browsertest
 #    `ubuntu-latest` levert Google Chrome mee, en dus de bibliotheken die de
 #    headless shell nodig heeft. Ontbreekt er toch één, dan valt `chromium.launch()`
 #    luid om in de stap Browsertests, en is het niet stil groen.
+#    📏 Gemeten op 23-11-2026 (run 45179652334): de shell start zonder `--with-deps`.
+#    De installatiestap duurde 4 s, de hele job 73 s.
 #
 # Geen secrets en geen database: de browsertests bundelen een harnas met vite en
 # draaien het in een lege pagina.
