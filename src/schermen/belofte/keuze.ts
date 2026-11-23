@@ -1,6 +1,7 @@
 import {
   belofteperiode,
   COMMITMENT_MIN,
+  isKorteWeek,
   type Begunstigde,
   type BelofteBegunstigden,
   type Belofteperiode,
@@ -69,6 +70,11 @@ export interface Bevestigstap {
   readonly begunstigde: Begunstigde;
   readonly naam: string;
   readonly periode: Belofteperiode;
+  /**
+   * Is er van die week minder dan één dag over? Dan zegt de stap dat met zoveel
+   * woorden (QS8-799). Vastgelegd op hetzelfde moment als `periode`.
+   */
+  readonly korteWeek: boolean;
 }
 
 /**
@@ -86,5 +92,5 @@ export function naarBevestigen(
   const tekst = schoneEneRegel(keuze.tekst);
   const getuige = gekozenGetuige(keuze, lijsten);
   if (telTekens(tekst) < COMMITMENT_MIN || getuige === null) return null;
-  return { tekst, ...getuige, periode: belofteperiode(klok, nu) };
+  return { tekst, ...getuige, periode: belofteperiode(klok, nu), korteWeek: isKorteWeek(klok, nu) };
 }

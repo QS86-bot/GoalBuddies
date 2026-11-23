@@ -27,6 +27,7 @@ import {
   Subheading,
   useTerug,
 } from '@/shared/ui';
+import { useVolgTaal } from '@/shared/i18n/react';
 
 /**
  * Een hoofddoel aanmaken — QS8-31, met de identiteitsvraag uit QS8-36.
@@ -37,6 +38,7 @@ import {
  *    is opgebouwd (voorstel §1.5).
  */
 export default function NieuwDoel() {
+  useVolgTaal();
   const router = useRouter();
   const terug = useTerug('/doelen');
   const { userId } = useSession();
