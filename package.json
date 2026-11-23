@@ -18,6 +18,7 @@
     "typecheck": "tsc --noEmit",
     "lint": "eslint . --max-warnings 0",
     "test": "vitest run --project unit",
+    "test:browser": "BROWSER_TEST=1 vitest run --project browser",
     "tellers": "node scripts/tellers.mjs",
     "test:watch": "vitest",
     "types:db": "node scripts/db-types.mjs",
@@ -163,6 +164,7 @@
     "eslint": "^9.39.5",
     "eslint-config-expo": "^57.0.1",
     "jsdom": "^31.0.1",
+    "playwright": "1.63.0",
     "typescript": "~6.0.3",
     "typescript-eslint": "^8.67.0",
     "vitest": "^4.1.10"
