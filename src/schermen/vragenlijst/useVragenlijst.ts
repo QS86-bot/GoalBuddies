@@ -2,7 +2,12 @@ import { useRouter } from 'expo-router';
 import { useRef, useState } from 'react';
 
 import { useProfiel, useSession } from '@/modules/auth';
-import { eigenGevoelSchoon, type GevoelWissen, type VragenlijstInvoer } from '@/modules/goals';
+import {
+  beantwoordeVragen,
+  eigenGevoelSchoon,
+  type GevoelWissen,
+  type VragenlijstInvoer,
+} from '@/modules/goals';
 
 import { doelenNaVragenlijst } from '../belofte/verwijzingsparameter';
 
@@ -30,7 +35,7 @@ export function useVragenlijst() {
   // ⚠️ Wat er al stond of al bewaard is: alleen dán is leegmaken een wisopdracht.
   const eerder = useRef({ feeling: profiel?.feeling != null, feeling_own: profiel?.feeling_own != null });
   const wis = (): GevoelWissen => wisUit(a.invoer, eerder.current);
-  const [stap, setStap] = useState<Stap>(() => beginStap(beantwoord(a.invoer)));
+  const [stap, setStap] = useState<Stap>(() => beginStap(beantwoordeVragen(a.invoer)));
   const [bezig, setBezig] = useState(false);
   const [fout, setFout] = useState<string | null>(null);
 
@@ -75,16 +80,6 @@ export function useVragenlijst() {
     naar: setStap,
     overslaan: () => setStap(SAMENVATTING),
     bewaar,
-  };
-}
-
-function beantwoord(invoer: ReturnType<typeof useAntwoorden>['invoer']) {
-  return {
-    focus: (invoer.focus_areas ?? []).length > 0,
-    tijd: (invoer.minutes_per_day ?? null) !== null,
-    moment: (invoer.when_i_do_it ?? null) !== null,
-    valkuil: (invoer.what_breaks_it ?? []).length > 0,
-    gevoel: (invoer.feeling ?? null) !== null || (invoer.feeling_own ?? null) !== null,
   };
 }
 

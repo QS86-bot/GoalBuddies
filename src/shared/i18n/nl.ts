@@ -1185,6 +1185,12 @@ export const nl = {
   'profiel.beginscherm_ios': 'Op iPhone en iPad werken meldingen alleen als de app op je beginscherm staat. Tik op Deel en kies Zet op beginscherm; open hem daarna vanaf je beginscherm.',
   'profiel.beginscherm_safari': 'Op iPhone en iPad werken meldingen alleen vanuit Safari. Open goalbuddies.q-projects.tech in Safari en zet hem daar op je beginscherm.',
   'vandaag.titel': 'Vandaag',
+  // QS8-805: de kaart op Vandaag voor wie de vragenlijst oversloeg.
+  'vandaag.vragenlijst_kaart_titel': 'Zodat de app je kent',
+  'vandaag.vragenlijst_kaart_tekst':
+    'Een paar korte vragen: waar je je op wilt richten, hoeveel tijd je hebt en wanneer het je uitkomt. Overslaan mag; alles blijft werken.',
+  'vandaag.vragenlijst_kaart_knop': 'Vragen beantwoorden',
+  'vandaag.vragenlijst_kaart_niet_nu': 'Niet nu',
   'vandaag.eyebrow_week': 'WEEK VAN {datum}',
   'vandaag.eyebrow_deze': 'DEZE WEEK',
   'vandaag.coulance_titel': 'Je vorige week loopt nog even door',

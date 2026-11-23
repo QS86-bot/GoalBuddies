@@ -19,12 +19,12 @@ import { useSession } from './SessionProvider';
  *    uit is**, anders stuurt een latere diepe link naar `/onboarding/profiel` in
  *    dezelfde sessie weer naar de vragenlijst in plaats van naar `/`.
  *
- * ⚠️ Dat tweede geval bestaat echt: `Werkcodewacht` en `Uitnodigingswacht` in
- *    `app/_layout.tsx` starten op dezelfde overgang naar "afgerond" en navigeren
- *    asynchroon, dus later. Wie met een openstaande uitnodiging of werkcode
- *    afrondt, landt daar en niet op de vragenlijst. Dat was vóór QS8-793 ook zo;
- *    of die persoon de vragenlijst hoort te zien is een productvraag, en geen
- *    reden om de vlag te laten hangen.
+ * ⚠️ Dat tweede geval bestaat echt: `Uitnodigingswacht` in `app/_layout.tsx`
+ *    (`useInstapwacht()`) start op dezelfde overgang naar "afgerond" en navigeert
+ *    asynchroon, dus later. Sinds QS8-805 zet het profielscherm de vlag bij zo'n
+ *    instap niet eens (besluit Quinten: eerst de groep, de vragenlijst later als
+ *    kaart op Vandaag); deze opruiming blijft voor een navigatie die toch de
+ *    onboarding uit gaat.
  *
  * @param segmenten de uitkomst van `useSegments()`: het eerste en tweede segment tellen.
  */
