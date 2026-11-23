@@ -1,5 +1,5 @@
 import { Link, usePathname } from 'expo-router';
-import { useEffect, useState, useSyncExternalStore } from 'react';
+import { useLayoutEffect, useState, useSyncExternalStore } from 'react';
 import { Dimensions, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { t, type Sleutel } from '../i18n';
@@ -85,7 +85,8 @@ export function Taakbalk() {
   const vorm = useTaakbalkVorm();
   const open = useSyncExternalStore(abonneerMenu, leesMenuOpen, () => MENU_BEGINSTAND_OPEN);
   // QS8-795: elke navigatie begint dicht, ook op een tabblad dat al gemount was.
-  useEffect(() => {
+  //    `useLayoutEffect`: vóór het tekenen, zodat het open menu van het vorige scherm niet even zichtbaar is.
+  useLayoutEffect(() => {
     menuBijNavigatie();
   }, [pad]);
   const meldingWacht = useMeldingWacht();

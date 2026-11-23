@@ -85,7 +85,11 @@ describe('de naad tussen de stand en het component', () => {
     expect(menu).toMatch(/onWissel=\{wisselMenu\}/);
   });
 
+  it('het pad komt uit usePathname, de pagina van de hele app', () => {
+    expect(menu).toMatch(/const pad = usePathname\(\)/);
+  });
+
   it('het component sluit bij een padwissel', () => {
-    expect(menu).toMatch(/useEffect\(\(\)\s*=>\s*\{\s*menuBijNavigatie\(\);\s*\},\s*\[pad\]\)/);
+    expect(menu).toMatch(/useLayoutEffect\(\(\)\s*=>\s*\{\s*menuBijNavigatie\(\);\s*\},\s*\[pad\]\)/);
   });
 });

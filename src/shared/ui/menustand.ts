@@ -11,6 +11,10 @@ import { MENU_BEGINSTAND_OPEN } from './tabbladen';
  *    Groep ook. Het besluit van QS8-728 is "start dicht", bij élke navigatie.
  *    Met één gedeelde stand is er niets om te onthouden.
  *
+ * ⚠️ **Aanname:** `usePathname()` geeft de pagina van de hele app, ook in een verborgen tabblad
+ *    (nagekeken in expo-router 57.0.13: `build/hooks/usePathname.js` en
+ *    `build/global-state/useRouteInfo.js`). Na een upgrade eenmaal met de hand: open, Groep, open, Doelen.
+ *
  * Puur en zonder React, zodat de volgorde van de tests dezelfde is als die van
  * een gebruiker. Het component leest hem met `useSyncExternalStore`.
  */
