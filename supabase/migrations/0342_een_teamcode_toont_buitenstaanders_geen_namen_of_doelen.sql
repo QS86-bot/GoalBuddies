@@ -9,6 +9,11 @@
 --     `'teamgroep', g.organization_id is not null and ingelogd and public.actief_organisatielid(…)`. Kopieer dat
 --     lichaam uit 0341. Er gaat niets verloren: dit raakt geen rij en geen kolom. ⚠️ Terugdraaien zet het lek weer open.
 --
+-- laat bewust vallen: 'teamgroep', g.organization_id is not null
+-- laat bewust vallen: and actief_organisatielid(g.organization_id, (select auth.uid())),
+--   (dezelfde uitdrukking staat nu één keer in de variabele `teamlid`, en `'teamgroep', teamlid` leest die; de
+--   uitkomst is gelijk aan 0341)
+--
 -- ⚠️ Eén `create or replace`, geen `drop`: de handtekening (`code text`) en het returntype (`jsonb`) blijven gelijk,
 --    dus de grant van 0131 (anon, authenticated) blijft staan en er komt geen functie bij. Het adviseurplafond voor
 --    `anon_security_definer_function_executable` (1) verandert niet. Idempotent: opnieuw draaien geeft dezelfde functie.
