@@ -35,6 +35,10 @@ maakt, is geen fix. Dit is **afgeleid uit de bron en niet in een browser gedraai
 een echte browser (jsdom maakt bij een spatie geen klik, dus daar is het niet te toetsen). Pas dan is hij beter
 dan deze wisselknop. Tot dan: bij twijfel een wisselknop, want die belooft minder.
 
+⚠️ **Sinds QS8-804 is die afhandeling er** voor `Choice`, `Schakelaar` en `Afvinkcirkel`, getoetst in Chromium:
+zie `docs/decisions/2026-11-23-de-spatiebalk-op-een-rol-die-geen-knop-is.md`. Held terugzetten is daarmee
+mogelijk geworden, maar niet gedaan: dat is een eigen besluit.
+
 ## Wat niet gemeten is
 
 - **De spatiebalk op een `<button>` in een echte browser.** De test legt alleen vast dat elke knop een `<button>`
