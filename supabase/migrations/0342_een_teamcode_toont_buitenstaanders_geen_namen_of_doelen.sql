@@ -45,6 +45,12 @@
 --    níet meer uitgaat: namen, doelen en de organisatie. Dicht krijg je het alleen door ook gewone groepen te
 --    veranderen, en dat valt buiten QS8-807. Staat in rij 7 van `docs/decisions/002-domeinregel7-oppervlakken.md`.
 --
+-- ⚠️⚠️ **En binnen de organisatie: nooit de titel van andermans aandeel (besluit Quinten 23-11, optie A).**
+--    📏 Gevonden in de security-review van deze migratie en nagemeten: een actieve organisatiebeheerder die géén lid
+--    van de teamgroep is, kreeg 0 rijen uit `goals` maar via `invite_preview()` "Geheim aandeel van Tom". De
+--    `goal_title`-subquery draagt daarom `and not is_aandeel_van_een_ander(gg.id)`, dezelfde regel als RLS. Namen,
+--    gewone gedeelde doelen en je eigen aandeel blijven. Een gewone groep heeft geen aandelen, dus verandert niet.
+--
 -- ⚠️ Het blok staat ná de wachttak van 0277 en ná de limiet van 0131, dus wie uitgesloten is krijgt nog steeds
 --    `null` en de teller telt zoals hij telde. De grendel is `tests/rls/uitnodiging-teamcode.test.ts`.
 -- ---------------------------------------------------------------------------
@@ -240,6 +246,12 @@ begin
           where l.group_id = g.id
             and gg.owner_id = m.user_id
             and gg.status = 'active'
+            -- ⚠️ QS8-807 (0342), besluit Quinten 23-11 (optie A): nooit de titel van
+            --    andermans aandeel, ook niet voor een actief organisatielid of medelid.
+            --    RLS verbergt die titel al (`goals_select` → `is_aandeel_van_een_ander()`,
+            --    QS8-661, besluit 21); deze definer sloeg die regel over. Binnen de
+            --    definer is `auth.uid()` de aanroeper, dus je eigen aandeel blijft staan.
+            and not public.is_aandeel_van_een_ander(gg.id)
           order by gg.target_date asc
           limit 1
         )
