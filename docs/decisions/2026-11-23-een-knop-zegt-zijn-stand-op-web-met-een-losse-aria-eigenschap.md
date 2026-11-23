@@ -32,7 +32,7 @@ naast `accessibilityState` ook `aria-expanded` op de kop en `aria-current="page"
 | `Schakelaar` | switch | `aria-checked` | `checked` |
 | `Afvinkcirkel` | checkbox, kan bezig zijn | `aria-checked`, `aria-busy` | `checked`, `busy` |
 | `MeerKnop` | opent een menu | `aria-expanded` | `expanded` |
-| `Microfoon` | luistert | `aria-busy` | `busy` |
+| `Microfoon` | luistert: aan of uit | `aria-pressed` | `busy` |
 | `Field` (wachtwoord tonen) | wisselknop | `aria-pressed` | `selected` |
 | `DatumKeuze` (dagvakje) | een gekozen dag in een rij knoppen | `aria-pressed` | `selected` |
 | `Instellingenscherm` (lijstrij) | navigatie: elk onderdeel is een route | `aria-current="page"` | `selected` |
@@ -42,14 +42,22 @@ naast `accessibilityState` ook `aria-expanded` op de kop en `aria-current="page"
 (23-11-2026, technische ARIA-keuze onder *Beslisbevoegdheid*, optie C):** de keuze is `aria-pressed`, de plek is
 `aria-current`. Zo spreekt de app één taal: een tabblad en een instellingenonderdeel zijn allebei een plek.
 
+⚠️ **Microfoon is een wisselknop, geen `aria-busy`** (orchestrator, optie A, na de review van de code-critic).
+Het issue noemde `busy`. Maar `aria-busy="true"` betekent "dit element wordt nog bijgewerkt", en sommige
+schermlezers stellen het voorlezen dan uit. Juist op dat moment wisselt het label naar "stop met inspreken". De
+knop staat aan of uit, en daar is `aria-pressed` voor. **Niet gemeten in een echte schermlezer.** Native blijft
+`accessibilityState.busy`. `aria-busy` blijft wel bij de `Afvinkcirkel`, die echt bezig is met opslaan.
+
 ⚠️ **`aria-selected` nergens.** Het komt in de DOM, maar op een knop of link zegt een schermlezer het niet. Een
 test die er dan naar zoekt, is groen terwijl niemand iets hoort. `tests/render/stand-aria.test.ts` scant `src/`
-en `app/` en wordt rood zodra een bestand `aria-selected` zet.
+en `app/` en wordt rood zodra een bestand `aria-selected` zet, of de verouderde `accessibilitySelected`, die
+react-native-web 0.21 ook omzet naar `aria-selected` (gelezen in `createDOMProps`).
 
 ⚠️ **Op native verandert niets.** `accessibilityState` staat er nog precies zoals het stond, ook bij `Choice`
 (`selected`, al zegt de vertaaltabel op web `checked`). Een native radio van `selected` naar `checked` zetten
 verandert wat VoiceOver en TalkBack zeggen, en dat is hier niet te meten. Daarom gebruiken de componenten van de
-helper alleen de `aria`-helft; `Button` (QS8-794) gebruikt beide helften.
+helper alleen de `aria`-helft; `Button` (QS8-794) gebruikt beide helften. Dat betekent twee bronnen per knop die
+uit elkaar kunnen lopen. Dat is een bewuste en bekende zwakte, en staat als ER-rij in de afleverreactie op QS8-803.
 
 ## Wat dit niet repareert
 

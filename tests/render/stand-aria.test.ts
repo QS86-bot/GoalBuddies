@@ -28,6 +28,7 @@ import { renderScherm, ruimAllesOp } from './scherm';
  *   C3 idem Afvinkcirkel                                   -> 2 rood: beide Afvinkcirkel-toetsen
  *   C4 idem MeerKnop                                       -> 1 rood: 'MeerKnop'
  *   C5 idem Microfoon                                      -> 1 rood: 'Microfoon'
+ *   C6 `aria-busy={spraak.luistert}` naast de spread in Microfoon -> 1 rood: 'Microfoon'
  *   D  Choice geeft `selected` door in plaats van `checked` -> 1 rood: 'Choice'
  *   E  `busy` weg uit de aanroep in Afvinkcirkel            -> 2 rood: beide Afvinkcirkel-toetsen (ook "niet bezig"
  *                                                            moet expliciet false zijn)
@@ -165,7 +166,7 @@ describe('expanded: een knop die iets opent', () => {
   });
 });
 
-describe('busy: een knop die bezig is', () => {
+describe('Microfoon: luisteren is een wisselknop, geen aria-busy', () => {
   class NepHerkenner {
     static laatste: NepHerkenner | null = null;
     lang = '';
@@ -189,20 +190,21 @@ describe('busy: een knop die bezig is', () => {
     NepHerkenner.laatste = null;
   });
 
-  it('Microfoon: aria-busy is false tot hij luistert, en dan true', async () => {
+  it('Microfoon: aria-pressed is false tot hij luistert, dan true, en nooit aria-busy', async () => {
     (globalThis as { webkitSpeechRecognition?: unknown }).webkitSpeechRecognition = NepHerkenner;
     const scherm = await toon(
       createElement(Microfoon, { veldlabel: 'Notitie', veld: { value: '', onChangeText: noop } }),
     );
     await scherm.wacht();
     const knop = () => een('[aria-label$=": Notitie"]');
-    expect(attr(knop(), 'aria-busy')).toBe('false');
+    expect(attr(knop(), 'aria-pressed')).toBe('false');
     await act(async () => knop().click());
     await scherm.klik(t('spraak.uitleg_akkoord'));
     expect(NepHerkenner.laatste).not.toBeNull();
-    expect(attr(knop(), 'aria-busy')).toBe('true');
+    expect(attr(knop(), 'aria-pressed')).toBe('true');
+    expect(knop().hasAttribute('aria-busy')).toBe(false);
     await act(async () => knop().click());
-    expect(attr(knop(), 'aria-busy')).toBe('false');
+    expect(attr(knop(), 'aria-pressed')).toBe('false');
   });
 });
 
@@ -250,7 +252,8 @@ describe('selected: een gekozen knop is een wisselknop (aria-pressed)', () => {
  * waarin de prop gezet wordt (`aria-selected=`, `'aria-selected':`), zodat een uitleg in commentaar mag blijven.
  *
  * IJKING — met de hand, 23-11-2026: `aria-selected={actief}` aan `Lijstrij` toegevoegd -> rood, met het pad (en ook de
- * vijf DOM-toetsen in `instellingenpanelen.test.ts`, die nergens `[aria-selected]` toestaan).
+ * vijf DOM-toetsen in `instellingenpanelen.test.ts`, die nergens `[aria-selected]` toestaan). Idem met de verouderde
+ * `accessibilitySelected` via een spread langs `tsc` heen: react-native-web zet die ook om naar `aria-selected`.
  */
 describe('nergens aria-selected', () => {
   it('geen bestand in src/ of app/ zet aria-selected', async () => {
@@ -262,7 +265,7 @@ describe('nergens aria-selected', () => {
       );
     const alleBestanden = [...bestanden('src'), ...bestanden('app')];
     expect(alleBestanden.length).toBeGreaterThan(100);
-    const zetten = alleBestanden.filter((f) => /aria-selected['"]?\s*[=:]/.test(readFileSync(f, 'utf8')));
+    const zetten = alleBestanden.filter((f) => /(aria-selected['"]?|accessibilitySelected)\s*[=:]/.test(readFileSync(f, 'utf8')));
     expect(zetten).toStrictEqual([]);
   });
 });

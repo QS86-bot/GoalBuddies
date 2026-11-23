@@ -4,8 +4,12 @@
  * ⚠️ **Op web komt alleen de losse `aria-*`-prop in de DOM.** react-native-web 0.21 leest
  *    `accessibilityState` niet. Dat geldt voor élke sleutel, niet alleen `selected`: gemeten in QS8-803 voor
  *    `selected`, `checked`, `expanded` en `busy` (alleen `disabled` komt er wel door, omdat react-native-web
- *    die uit de `disabled`-prop haalt). Op native is het omgekeerd: daar is `accessibilityState` de weg. Beide
- *    kanten staan er daarom, en elke kant heeft één bron: native leest `state`, web leest `aria`.
+ *    die uit de `disabled`-prop haalt). Op native is het omgekeerd: daar is `accessibilityState` de weg.
+ *
+ * ⚠️ **Twee bronnen per knop, en dat is een bekende zwakte.** Alleen `Button` (QS8-794) haalt beide kanten uit
+ *    deze helper. De componenten van QS8-803 nemen alleen `aria` en houden hun eigen `accessibilityState`
+ *    ernaast, omdat native in dat issue met opzet niet veranderd is: niet te meten. Die twee kunnen dus uit
+ *    elkaar lopen, en bij `Choice` doen ze dat al bewust: native `selected`, web `aria-checked`.
  *
  * ⚠️ **Eén vertaaltabel, `ARIA`.** Wie een stand aan een knop hangt, hangt hem hier aan, en nergens anders.
  *
@@ -15,10 +19,11 @@
  *    |            |                 | `role="button"` geen geldige ARIA en een schermlezer zegt hem niet   |
  *    | `checked`  | `aria-checked`  | radio, schakelaar en vinkje                                         |
  *    | `expanded` | `aria-expanded` | een knop die een menu opent                                         |
- *    | `busy`     | `aria-busy`     | een knop die iets aan het doen is                                   |
+ *    | `busy`     | `aria-busy`     | een knop die iets aan het doen is (opslaan); niet voor een stand die |
+ *    |            |                 | aan of uit staat: `aria-busy` stelt het voorlezen uit             |
  *
- * ⚠️ **Een radio geeft `checked` door, nooit `selected`.** Anders draagt hij `aria-pressed`, en dat is op een
- *    radio betekenisloos.
+ * ⚠️ **Een radio geeft op web `checked` door, nooit `selected`.** Anders draagt hij `aria-pressed`, en dat is
+ *    op een radio betekenisloos.
  *
  * ⚠️ **Een radio is nog geen goede radio op web.** `role="radio"`, `"switch"` en `"checkbox"` maken van de
  *    `<button>` een `<div>`, en react-native-web laat de spatiebalk dan niet door (`isValidKeyPress`). Dat zit
