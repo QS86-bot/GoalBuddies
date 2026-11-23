@@ -625,8 +625,11 @@ export async function trekIn(
  * Een weekbelofte intrekken — QS8-799.
  *
  * Dezelfde schrijfactie als {@link trekIn}, met één verschil: werd de belofte
- * tussen renderen en tikken `due`, dan zegt de melding "Deze belofte" en niet
- * "Dit commitment". Het beloftescherm zegt overal "belofte"; een melding in een
+ * tussen renderen en tikken beslist, dan zegt de melding "Deze belofte" en niet
+ * "Dit commitment". ⚠️ Beslist en niet `due`: nul rijen betekent "niet meer op
+ * `set`", en bij een belofte is `cancelled` door de rollover (0313, gehouden) een
+ * gewoon pad. Een tekst die dan "in werking getreden" zegt, schrikt iemand af die
+ * zijn belofte juist hield. Het beloftescherm zegt overal "belofte"; een melding in een
  * ander woord laat de gebruiker raden of het over hetzelfde gaat.
  *
  * ⚠️ Het beloftescherm roept alleen deze aan, en alleen vanuit de tweede

@@ -1723,11 +1723,12 @@ export const en: Record<Sleutel, string> = {
     'not your next week. If you want to promise a whole week, do it once your new week has started.',
   'belofte.intrekken_kop': 'Withdraw your promise?',
   'belofte.intrekken_gevolg':
-    'Your promise lapses and will not come into effect, not even if you miss this week.',
+    'Your promise lapses and will not come into effect, not even if you miss that week.',
   'belofte.intrekken_getuige': 'Your witness will not see any of this: no message and no notification.',
   'belofte.intrekken_ja': 'Yes, withdraw my promise',
   'belofte.intrekken_nee': 'No, keep it',
-  'belofte.fout.al_afgegaan': 'This promise has already come into effect and can no longer be withdrawn.',
+  'belofte.fout.al_afgegaan':
+    'This promise can no longer be withdrawn: it has been decided in the meantime. Refresh the screen to see how.',
 
   // ---------------------------------------------------------------------------
   // Completing, archiving and replanning — QS8-83, QS8-32 and QS8-96

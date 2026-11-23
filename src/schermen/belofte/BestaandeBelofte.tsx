@@ -21,7 +21,10 @@ import { Body, Button, Caption, Card, Subheading } from '@/shared/ui';
  *    Op `set` wordt het `cancelled` en hoort de getuige niets (0293 spreekt pas
  *    bij `due`). Werd de belofte `due` tussen renderen en tikken, dan geeft
  *    `commitments_update` nul rijen en toont dit `belofte.fout.al_afgegaan`;
- *    de les van QS8-340, waar die melding niemand bereikte.
+ *    de les van QS8-340, waar die melding niemand bereikte. ⚠️ Die tekst zegt
+ *    "intussen beslist" en niet "in werking getreden": nul rijen is ook een
+ *    belofte die 0313 als gehouden op `cancelled` zette (security-review QS8-799).
+ * ⚠️ `key` op `Intrekken`: een openstaande vraag hoort nooit bij een andere belofte.
  */
 export function BestaandeBelofte({
   belofte,
@@ -54,7 +57,7 @@ export function BestaandeBelofte({
       ) : (
         <Caption>{t('commitment.stand', { titel: stand.titel, uitleg: stand.uitleg })}</Caption>
       )}
-      {isOpenstaand(belofte) ? <Intrekken belofteId={belofte.id} onKlaar={onKlaar} /> : null}
+      {isOpenstaand(belofte) ? <Intrekken key={belofte.id} belofteId={belofte.id} onKlaar={onKlaar} /> : null}
       {!isOpenstaand(belofte) && belofte.periode_start === dezeWeek ? <Caption>{t('belofte.deze_week_al')}</Caption> : null}
     </Card>
   );

@@ -123,7 +123,7 @@ describe('intrekken in twee stappen', () => {
     expect(onKlaar).toHaveBeenCalledTimes(1);
   });
 
-  it('werd de belofte intussen due, dan zegt de melding "belofte" en niet "commitment"', async () => {
+  it('werd de belofte intussen beslist (due of gehouden), dan zegt de melding "belofte" en niet "commitment"', async () => {
     rijen.waarde = [];
     const scherm = await toon();
     await scherm.klik(t('straf.intrekken'));

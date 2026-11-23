@@ -2244,11 +2244,12 @@ export const nl = {
     'niet voor je volgende week. Wil je een hele week beloven, doe dat dan als je nieuwe week begonnen is.',
   'belofte.intrekken_kop': 'Je belofte intrekken?',
   'belofte.intrekken_gevolg':
-    'Je belofte vervalt en gaat niet meer in werking, ook niet als je deze week niet haalt.',
+    'Je belofte vervalt en gaat niet meer in werking, ook niet als je die week niet haalt.',
   'belofte.intrekken_getuige': 'Je getuige krijgt hier niets van te zien: geen bericht en geen melding.',
   'belofte.intrekken_ja': 'Ja, trek mijn belofte in',
   'belofte.intrekken_nee': 'Nee, laat haar staan',
-  'belofte.fout.al_afgegaan': 'Deze belofte is al in werking getreden en kan niet meer worden ingetrokken.',
+  'belofte.fout.al_afgegaan':
+    'Deze belofte kan niet meer worden ingetrokken: ze is intussen beslist. Vernieuw het scherm om te zien hoe.',
 
   // ---------------------------------------------------------------------------
   // Afronden, archiveren en herplannen — QS8-83, QS8-32 en QS8-96
