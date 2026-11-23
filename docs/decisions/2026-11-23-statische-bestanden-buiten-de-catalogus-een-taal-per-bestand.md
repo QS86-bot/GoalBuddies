@@ -42,3 +42,9 @@ bij een Nederlandse zin in `manifest.json`, `sw.js` of `app.json`, en bij een
 Zijn woordenlijst is smal met opzet: een Nederlandse zin zonder functiewoord uit de
 lijst ontsnapt. `locales/nl.json` en de catalogi zijn bewust Nederlands en staan niet
 in de lijst.
+
+## Na de code-critic
+
+- `CFBundleAllowMixedLocalizations` staat nu aan in `app.json` (Expo's `locales` raadt dat aan); of iOS de `nl.lproj` oppakt blijft te controleren bij de eerste iOS-build.
+- De Engelse helft van het linkvoorbeeld staat achteraan en wordt mogelijk afgekapt (222 tekens): aanname, niet gemeten; te toetsen in WhatsApp en Outlook.
+- De controle leest nu elk tekstbestand in `public/`, meldt geen regelnummers (de gedeelde knip vervangt blokcommentaar door een spatie) en kent zijn bekende lekken in de test: een korte zin zonder functiewoord ontsnapt.

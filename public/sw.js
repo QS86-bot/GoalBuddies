@@ -60,7 +60,7 @@ function leesBericht(data) {
     };
   } catch {
     // ⚠️ Geen lege catch (coderegel 14): de payload was geen JSON, en dan is de
-    //    neutrale melding het juiste antwoord. Niets tonen is het verkeerde.
+    //    melding met alleen de titel het juiste antwoord. Niets tonen is het verkeerde.
     return leeg;
   }
 }

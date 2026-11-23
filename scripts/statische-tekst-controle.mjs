@@ -18,15 +18,23 @@
  *    dat staat hier opgeschreven in plaats van weggelaten.
  */
 
-import { readFileSync } from 'node:fs';
+import { readdirSync, readFileSync } from 'node:fs';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 
 import { zonderCommentaar } from './zonder-commentaar.mjs';
 
 const WORTEL = fileURLToPath(new URL('..', import.meta.url));
 
+/** Elk tekstbestand in `public/`: een nieuw bestand valt zo vanzelf onder de controle. */
+function tekstBestandenInPublic() {
+  return readdirSync(`${WORTEL}public`)
+    .filter((n) => /\.(json|js|html|txt|xml|webmanifest)$/.test(n))
+    .map((n) => `public/${n}`)
+    .sort();
+}
+
 /** De bestanden die één taal dragen en buiten de catalogus staan. */
-export const BESTANDEN = ['public/manifest.json', 'public/sw.js', 'app.json'];
+export const BESTANDEN = [...tekstBestandenInPublic(), 'app.json'];
 
 /** Bestand → reden. Leeg zolang er geen bewuste keuze voor Nederlands is. */
 export const BEWUST_NEDERLANDS = {};
@@ -34,7 +42,7 @@ export const BEWUST_NEDERLANDS = {};
 /** Nederlandse functiewoorden die in een Engelse zin niet voorkomen. */
 const NEDERLANDS = new Set([
   'de', 'het', 'een', 'je', 'jouw', 'jij', 'voor', 'van', 'zodat', 'kunt', 'kun',
-  'met', 'niet', 'geen', 'er', 'staat', 'klaar', 'vraagt', 'toegang', 'tot',
+  'niet', 'geen', 'er', 'staat', 'klaar', 'vraagt', 'toegang', 'tot',
   'foto\'s', 'doelen', 'halen', 'samen', 'anderen', 'aan', 'om', 'ook', 'naar',
   'uit', 'bij', 'worden', 'wordt', 'moet', 'mag', 'dit', 'deze', 'maar', 'wel',
 ]);
@@ -45,8 +53,8 @@ function tekenreeksen(bron) {
   const uit = [];
   const patroon = /(["'`])((?:\\.|(?!\1)[^\\\n])*)\1/g;
   for (const m of zonderC.matchAll(patroon)) {
-    const regel = zonderC.slice(0, m.index).split('\n').length;
-    uit.push({ regel, tekst: m[2] });
+    // Geen regelnummer: de gedeelde knip vervangt een commentaarblok door één spatie.
+    uit.push({ tekst: m[2] });
   }
   return uit;
 }
@@ -61,7 +69,7 @@ export function isNederlandseZin(tekst) {
 /**
  * De Nederlandse zinnen in een bron.
  * @param {string} bron
- * @returns {{ regel: number, tekst: string }[]}
+ * @returns {{ tekst: string }[]}
  */
 export function treffersIn(bron) {
   return tekenreeksen(bron).filter((s) => isNederlandseZin(s.tekst));
@@ -83,7 +91,7 @@ export function hoofd() {
   for (const pad of BESTANDEN) {
     if (pad in BEWUST_NEDERLANDS) continue;
     const bron = readFileSync(`${WORTEL}${pad}`, 'utf8');
-    for (const t of treffersIn(bron)) fouten.push(`${pad}:${t.regel}  ${t.tekst.slice(0, 80)}`);
+    for (const t of treffersIn(bron)) fouten.push(`${pad}  ${t.tekst.slice(0, 80)}`);
     if (pad.endsWith('manifest.json')) {
       for (const veld of manifestVelden(bron)) fouten.push(`${pad}  veld \`${veld}\` is taalgebonden`);
     }

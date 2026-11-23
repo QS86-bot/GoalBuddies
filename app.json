@@ -12,7 +12,10 @@
     "newArchEnabled": true,
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "nl.qprojects.goalbuddies"
+      "bundleIdentifier": "nl.qprojects.goalbuddies",
+      "infoPlist": {
+        "CFBundleAllowMixedLocalizations": true
+      }
     },
     "android": {
       "package": "nl.qprojects.goalbuddies",

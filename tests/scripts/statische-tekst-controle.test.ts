@@ -20,6 +20,15 @@ describe('statische-tekst-controle', () => {
     expect(isNederlandseZin('GoalBuddies')).toBe(false);
   });
 
+  it('legt de bekende lekken vast: korte zinnen ontsnappen, Engels met `met` niet', () => {
+    expect(treffersIn("body: 'Nieuw bericht',")).toEqual([]); // ontsnapt (geen functiewoord)
+    expect(treffersIn('"x": "Nice to have met you"')).toEqual([]);
+  });
+
+  it('leest elk tekstbestand in public/', () => {
+    expect(BESTANDEN).toEqual(expect.arrayContaining(['public/manifest.json', 'public/sw.js', 'app.json']));
+  });
+
   it('weigert taalgebonden manifestvelden', () => {
     expect(manifestVelden('{"name":"x","description":"y","lang":"nl"}')).toEqual(['description', 'lang']);
     expect(manifestVelden('{"name":"x"}')).toEqual([]);
