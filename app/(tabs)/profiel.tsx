@@ -53,10 +53,7 @@ export default function Profiel() {
         data={profiel ?? undefined}
         isEmpty={() => false}
         onRetry={herlaad}
-        empty={{
-          title: t('profiel.leeg_titel'),
-          body: t('profiel.leeg_tekst'),
-        }}
+        empty={{ title: t('profiel.leeg_titel'), body: t('profiel.leeg_tekst') }}
       >
         {(p) => (
           <View style={styles.blokken}>

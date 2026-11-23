@@ -455,10 +455,7 @@ export default function GroepBeheer() {
         error={error}
         data={groep ?? undefined}
         isEmpty={() => false}
-        empty={{
-          title: t('beheer.leeg_titel'),
-          body: t('beheer.leeg_tekst'),
-        }}
+        empty={{ title: t('beheer.leeg_titel'), body: t('beheer.leeg_tekst') }}
       >
         {(g) =>
           /*
