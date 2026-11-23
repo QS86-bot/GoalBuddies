@@ -17,30 +17,35 @@ import { adminDb, createTestUser, registreerGroep, removeTestUsers, rlsTestsConf
  * dat pas na het vertrek toetrad (erik), een buitenstaander (dave), de eigenaar na
  * terugkeer, een uitgezette eigenaar (olga), en een gearchiveerde groep (W).
  *
- * ⚠️ **Met de hand gebroken vóór hij geloofd werd** (📏 23-11-2026, lokaal, telkens
- *    één mutatie met `create or replace` of `create policy` en daarna 0343
- *    opnieuw afgespeeld; zie de afleverreactie op QS8-820 voor de uitslag per stap):
+ * ⚠️ **Met de hand gebroken vóór hij geloofd werd** (📏 23-11-2026, lokaal, telkens één
+ *    mutatie in 0343, afgespeeld, dan deze suite plus `teamstraf.test.ts` en
+ *    `stuurloze-straf.test.ts`, en 0343 weer terug). De basis was vóór en ná groen.
  *
- *    De basis was vóór en ná de negen mutaties groen (12 van 12).
- *
- *    9. `or status = 'cancelled'` weg uit de getuigeregel van de WITH CHECK
- *       → alleen "een persoonlijke getuige die geen groep meer deelt" rood.
- *
- *    1. `straf_groepsband_klopt_voor_mij` weg uit tak 2 van `commitments_select`
- *       → (a), "na het vertrek verschuldigd" en "uitzetting" rood.
- *    2. `straf_groepsband_klopt` weg uit `meld_commitment()` → "na het vertrek
- *       verschuldigd" en "uitzetting" rood.
- *    3. De archieftoets weg uit `meld_commitment()` → alleen "(b) archief" rood.
- *    4. `or status = 'cancelled'` weg uit de WITH CHECK van `commitments_update`
- *       → "alice trekt … in", "uitzetting" en "(b) archief" rood.
- *    5. Blok 5b weg uit `bewaak_begunstigde()` → alleen "intrekken verzet de
- *       begunstigde niet" rood, op de `service_role`-helft. De clienthelft blijft
- *       groen, want daar houdt de kolomgrant hem tegen.
- *    6. De stuurloos-tak weg uit `herstel_stuurloze_straf()` → "(c) afwikkelen",
- *       "(c) nieuwe getuige" en "uitzetting" rood.
- *    7. Blok 5a weg uit `bewaak_begunstigde()` → alleen "nieuwe getuige" rood.
- *    8. De lidmaatschapstoets van de vrager weg uit `straf_groepsband_klopt_voor_mij`
- *       → alleen "geen orakel" rood.
+ *     1. `straf_groepsband_klopt_voor_mij` weg uit tak 2 van `commitments_select`
+ *        → (a), "na het vertrek verschuldigd" en "uitzetting" rood.
+ *     2. `straf_groepsband_klopt` weg uit `meld_commitment()` → "na het vertrek
+ *        verschuldigd" en "uitzetting" rood.
+ *     3. De archieftoets weg uit `meld_commitment()` → alleen "(b) archief" rood.
+ *     4. `or status = 'cancelled'` weg uit de groepsregel van de WITH CHECK
+ *        → "alice trekt … in", "uitzetting" en "(b) archief" rood.
+ *     5. Blok 5b weg uit `bewaak_begunstigde()` → "intrekken verzet de
+ *        begunstigde niet" rood (de `service_role`-helft; de clienthelft houdt de
+ *        kolomgrant tegen), en daarna "alice trekt … in", want de straf is dan al
+ *        ingetrokken.
+ *     6. De stuurloos-tak weg uit `herstel_stuurloze_straf()` → beide (c)-toetsen,
+ *        "na terugkeer", "uitzetting" en V11 in `teamstraf.test.ts` rood.
+ *     7. De `due → due`-uitzondering van blok 5a weg → alleen "(c) nieuwe getuige" rood.
+ *     8. De lidmaatschapstoets van de vrager weg uit `straf_groepsband_klopt_voor_mij`
+ *        → alleen "geen orakel" rood.
+ *     9. `or status = 'cancelled'` weg uit de getuigeregel van de WITH CHECK
+ *        → alleen "een persoonlijke getuige die geen groep meer deelt" rood.
+ *    10. De `due → resolved`-uitzondering van blok 5a weg → "(c) afwikkelen",
+ *        "na terugkeer", "uitzetting" en V11 rood.
+ *    11. `bewaak_intrekking()` uitgezet → alleen "alice trekt … in" rood (L1).
+ *    12. `beneficiary_group_id = null` weg uit het afwikkelen → "(c) afwikkelen"
+ *        en "na terugkeer" rood (besluit K2).
+ *    13. De teambandtoets weg uit `nieuwe_getuige` → alleen V11 in
+ *        `teamstraf.test.ts` rood (security-review M1).
  */
 
 const SETUP_TIMEOUT = 240_000;
@@ -237,6 +242,10 @@ describe.runIf(rlsTestsConfigured)('een begunstigde groep leest je straf alleen 
   it('alice trekt een straf die nog niet verschuldigd is na het vertrek in, maar bewerkt hem niet', async () => {
     const bewerk = await alice.db.from('commitments').update({ body: 'Andere tekst' } as never).eq('id', straf.getuigeD!);
     expect(bewerk.error?.code).toBe('42501');
+    // L1: intrekken en tegelijk de tekst overschrijven mag niet.
+    const metTekst = await trekIn(alice, 'intrekB', { body: 'Overschreven' });
+    expect(metTekst.error?.code).toBe('23514');
+    expect((await stand('intrekB')).status).toBe('set');
     const r = await trekIn(alice, 'intrekB');
     expect(r.error).toBeNull();
     expect((await stand('intrekB')).status).toBe('cancelled');
@@ -246,8 +255,11 @@ describe.runIf(rlsTestsConfigured)('een begunstigde groep leest je straf alleen 
     expect(uitkomst(await rpc(alice, 'herstel_stuurloze_straf', { p_commitment_id: straf.leesA, p_actie: 'afwikkelen' }))).toBe('niet_bevestigd');
     expect(uitkomst(await rpc(bob, 'herstel_stuurloze_straf', { p_commitment_id: straf.leesA, p_actie: 'afwikkelen', p_bevestigd: true }))).toBe('not_owner');
     expect(uitkomst(await rpc(alice, 'herstel_stuurloze_straf', { p_commitment_id: straf.leesA, p_actie: 'afwikkelen', p_bevestigd: true }))).toBe('ok');
-    // De groep blijft op de rij; bij terugkeer leest X hem weer, nu afgewikkeld.
-    expect(await stand('leesA')).toEqual({ status: 'resolved', beneficiary_group_id: x, beneficiary_user_id: null });
+    // Besluit K2 (Quinten, 23-11): de groep gaat eraf, zodat X na een terugkeer
+    // geen "voldaan" leest op het woord van alice. Het spoor noemt de groep.
+    expect(await stand('leesA')).toEqual({ status: 'resolved', beneficiary_group_id: null, beneficiary_user_id: null });
+    const { data } = await alice.db.from('commitment_events').select('payload').eq('commitment_id', straf.leesA!).eq('event_type', 'edited');
+    expect(JSON.stringify(data)).toContain(x);
   }, TEST_TIMEOUT);
 
   it('(c) nieuwe getuige: frank komt in de plaats van X, en leest de straf', async () => {
@@ -260,9 +272,10 @@ describe.runIf(rlsTestsConfigured)('een begunstigde groep leest je straf alleen 
     expect(JSON.stringify(data)).toContain('groep_verlaten');
   }, TEST_TIMEOUT);
 
-  it('na terugkeer leest X weer, en is de straf niet meer stuurloos', async () => {
+  it('na terugkeer leest X weer, maar niet wat alice intussen zelf afwikkelde (K2)', async () => {
     await doe(alice, codeX);
-    expect([await leest(bob, 'verschuldigdC'), await leest(carol, 'verschuldigdC'), await leest(erik, 'leesA')]).toEqual([1, 1, 1]);
+    expect([await leest(bob, 'verschuldigdC'), await leest(carol, 'verschuldigdC'), await leest(erik, 'verschuldigdC')]).toEqual([1, 1, 1]);
+    expect([await leest(bob, 'leesA'), await leest(erik, 'leesA')]).toEqual([0, 0]);
     expect(await leest(dave, 'verschuldigdC')).toBe(0);
     expect(uitkomst(await rpc(alice, 'herstel_stuurloze_straf', { p_commitment_id: straf.verschuldigdC, p_actie: 'afwikkelen', p_bevestigd: true }))).toBe('heeft_nog_een_begunstigde');
   }, TEST_TIMEOUT);

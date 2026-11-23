@@ -260,6 +260,8 @@ export const nl = {
     'Deze inzet heeft nog een getuige. Je kunt hem alleen overdragen als je getuige zijn account heeft opgezegd.',
   'commitment.herstel.niet_verschuldigd':
     'Deze inzet is nog niet verschuldigd. Zolang dat zo is, kun je hem gewoon intrekken.',
+  'commitment.herstel.getuige_leest_hem_niet':
+    'Deze persoon kan je inzet niet zien, omdat je niet meer in het team zit. Wikkel hem af als je hem bent nagekomen.',
   'commitment.herstel.geen_groepsgenoot':
     'Je kunt alleen iemand aanwijzen met wie je een groep deelt.',
   'commitment.herstel.niet_jezelf': 'Je kunt niet je eigen getuige zijn.',

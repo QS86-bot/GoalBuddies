@@ -156,6 +156,8 @@ export const en: Record<Sleutel, string> = {
     'This stake still has a witness. You can only hand it over once your witness has closed their account.',
   'commitment.herstel.niet_verschuldigd':
     'This stake is not due yet. While that is the case, you can simply withdraw it.',
+  'commitment.herstel.getuige_leest_hem_niet':
+    'This person cannot see your stake, because you are no longer in the team. Settle it if you have kept to it.',
   'commitment.herstel.geen_groepsgenoot':
     'You can only pick someone you share a group with.',
   'commitment.herstel.niet_jezelf': 'You cannot be your own witness.',

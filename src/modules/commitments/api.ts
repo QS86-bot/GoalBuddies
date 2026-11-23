@@ -752,6 +752,8 @@ function herstelMelding(reden: string | undefined): string {
   if (reden === 'heeft_nog_een_begunstigde') return t('commitment.herstel.heeft_getuige');
   if (reden === 'niet_verschuldigd') return t('commitment.herstel.niet_verschuldigd');
   if (reden === 'geen_groepsgenoot') return t('commitment.herstel.geen_groepsgenoot');
+  // QS8-820 (0343): een aandeel waarvan je het team verliet; alleen afwikkelen kan.
+  if (reden === 'getuige_leest_hem_niet') return t('commitment.herstel.getuige_leest_hem_niet');
   if (reden === 'niet_jezelf') return t('commitment.herstel.niet_jezelf');
   return t('commitment.fout.herstel');
 }

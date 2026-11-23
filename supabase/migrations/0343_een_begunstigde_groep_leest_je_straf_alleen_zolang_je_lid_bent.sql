@@ -14,6 +14,8 @@
 --     migratie (het lichaam hieronder zonder de twee blokken met QS8-820);
 --   drop function if exists public.straf_groepsband_klopt_voor_mij(uuid, uuid);
 --   drop function if exists public.straf_groepsband_klopt(uuid, uuid);
+--   drop trigger if exists commitments_intrekking on public.commitments;
+--   drop function if exists public.bewaak_intrekking();
 --
 -- laat bewust vallen: and (beneficiary_group_id is null or is_group_member(beneficiary_group_id))
 -- laat bewust vallen: and (beneficiary_user_id is null or shares_group_with_user(beneficiary_user_id))
@@ -67,6 +69,16 @@
 --       `herstel_stuurloze_straf()` de straf zoals een straf waarvan de getuige
 --       verdween (0244). De eigenaar kan hem zelf afwikkelen (met bevestiging),
 --       of een nieuwe persoonlijke getuige kiezen.
+--   (K2) **Afwikkelen haalt de groep van de straf** (besluit van Quinten, 23-11,
+--       op een bevinding van de security-review). Anders leest de groep na een
+--       terugkeer "voldaan" op het woord van de eigenaar.
+--   (aanvulling, 17:16 UTC) **Intrekken kan ook als de persoonlijke getuige geen
+--       groep meer met de eigenaar deelt.**
+--
+-- ⚠️ **Ook een beloning volgt de band** (security-review L3). De groepstak van
+--    `commitments_select` filtert niet op `type`: een `unlocked` beloning met een
+--    begunstigde groep is na het vertrek van de eigenaar ook onzichtbaar voor die
+--    groep. Dat is dezelfde regel, en geen tweede besluit.
 --
 -- ⚠️ **"Actief lid" is hier `status <> 'inactive'`, precies zoals
 --    `deelt_groep_met_eigenaar()` en `straf_teamband_klopt()` hem trekken.** Een
@@ -288,9 +300,10 @@ $function$
 --     `herstel_stuurloze_straf()` moet een nieuwe getuige kunnen zetten op een
 --     straf waarvan de eigenaar geen lid meer is van de groep, en
 --     `commitments_beneficiary_niet_allebei` (0168) eist dan dat de groep leeg
---     wordt. De uitzondering is smal: alleen `due → due`, alleen met een persoon
---     ervoor in de plaats, en alleen als de band echt weg is. Een client komt
---     hier niet: de USING van `commitments_update` eist `set`.
+--     wordt. De uitzondering is smal: alleen als de band echt weg is, en dan
+--     alleen `due → due` met een persoon ervoor in de plaats, of `due → resolved`
+--     zonder iemand ervoor in de plaats (besluit K2). Een client komt hier niet:
+--     de USING van `commitments_update` eist `set`.
 --
 -- 5b. **Een intrekking verzet de begunstigde niet.** De WITH CHECK van
 --     `commitments_update` laat `cancelled` door zonder lidmaatschap (blok 3), en
@@ -341,6 +354,15 @@ begin
          and new.beneficiary_user_id is not null
          and not public.straf_groepsband_klopt(old.goal_id, old.beneficiary_group_id) then
         null;
+      -- ⚠️ QS8-820 (5a, besluit K2 van Quinten, 23-11): wie de straf afwikkelt
+      --    terwijl hij geen lid van de groep is, haalt de groep eraf. Anders leest
+      --    de groep na een terugkeer "voldaan" op het woord van de eigenaar. Net
+      --    als bij een verdwenen getuige (0244) staat er dan niemand meer op.
+      elsif old.status = 'due' and new.status = 'resolved'
+         and old.beneficiary_user_id is null
+         and new.beneficiary_user_id is null
+         and not public.straf_groepsband_klopt(old.goal_id, old.beneficiary_group_id) then
+        v_verdwenen := true;
       elsif exists (select 1 from groups g where g.id = old.beneficiary_group_id) then
         raise exception 'De begunstigde van een commitment is niet weg te halen zolang hij bestaat'
           using errcode = 'check_violation';
@@ -406,9 +428,13 @@ $function$
 --    persoonlijke getuige die geen groep meer deelt, valt hier níet onder: dat is
 --    een ander besluit (QS8-306), en de getuige ziet de straf dan al niet meer.
 --
--- ⚠️ **Afwikkelen laat de groep op de rij staan.** Keert de eigenaar terug, dan
---    leest X de straf weer, nu als `resolved`. Een nieuwe getuige vervangt de
---    groep (5a), want een straf heeft er één (0168).
+-- ⚠️ **Afwikkelen haalt de groep eraf (besluit K2 van Quinten, 23-11).** De eerste
+--    versie liet hem staan, en de security-review mat wat daaruit volgde: de
+--    eigenaar verlaat X, wikkelt af, komt terug met de code, en X leest "deze
+--    inzet is voldaan" op zijn woord. Nu staat er, net als bij een verdwenen
+--    getuige (0244), niemand meer op. Het spoor noemt de groep. Een nieuwe getuige
+--    vervangt de groep (5a), want een straf heeft er één (0168), maar niet op een
+--    aandeel waarvan de eigenaar het team verliet: die getuige leest hem nooit.
 CREATE OR REPLACE FUNCTION public.herstel_stuurloze_straf(p_commitment_id uuid, p_actie text, p_getuige uuid DEFAULT NULL::uuid, p_bevestigd boolean DEFAULT false)
  RETURNS jsonb
  LANGUAGE plpgsql
@@ -472,6 +498,16 @@ begin
     -- Dezelfde eis als `commitments_insert` stelt bij het aanmaken.
     if not shares_group_with_user(p_getuige) then
       return jsonb_build_object('ok', false, 'reason', 'geen_groepsgenoot');
+    end if;
+
+    -- ⚠️ QS8-820 (security-review M1, gemeten): een getuige die de straf niet kan
+    --    lezen is geen getuige. Op een aandeel eist elke leesroute dat eigenaar én
+    --    lezer nu in het team zitten (besluit M1, 0325). Heeft de eigenaar het team
+    --    verlaten, dan leest geen enkele nieuwe getuige de straf, en bleef er een
+    --    straf staan die niemand ziet en die de eigenaar niet meer kon afwikkelen.
+    --    Dan blijft alleen afwikkelen over.
+    if not straf_teamband_klopt(c.goal_id, p_getuige) then
+      return jsonb_build_object('ok', false, 'reason', 'getuige_leest_hem_niet');
     end if;
 
     -- ⚠️ **De voorwaarden staan hier nóg een keer, en dat is geen dubbelop.**
@@ -538,17 +574,47 @@ begin
 
   -- ⚠️ Zelfde reden als hierboven: de voorwaarde hoort in de `where` en niet
   --    alleen in de toets ervoor. QS8-820: en de band moet nog steeds weg zijn.
-  update commitments
-     set status = 'resolved'
-   where id = p_commitment_id
-     and status = 'due'
-     and beneficiary_user_id is null
-     and beneficiary_group_id is not distinct from v_losse_groep
-     and (v_losse_groep is null
-          or not straf_groepsband_klopt(goal_id, v_losse_groep));
+  --
+  -- ⚠️ QS8-820, besluit K2 van Quinten (23-11): bij een groep zonder de eigenaar
+  --    gaat de groep er bij het afwikkelen af. Keert de eigenaar terug, dan leest
+  --    die groep geen "voldaan" op zijn woord. `bewaak_begunstigde()` (5a) laat
+  --    precies deze overgang toe.
+  --
+  -- ⚠️ Twee takken en niet één `set … = null`: noemt de update de kolom, dan
+  --    vuurt `bewaak_begunstigde()`, en bij een verdwenen getuige (beide al leeg)
+  --    weigert die dan met "een straf heeft een begunstigde nodig". Gemeten in
+  --    `tests/rls/stuurloze-straf.test.ts`.
+  if v_losse_groep is null then
+    update commitments
+       set status = 'resolved'
+     where id = p_commitment_id
+       and status = 'due'
+       and beneficiary_user_id is null
+       and beneficiary_group_id is null;
+  else
+    update commitments
+       set status = 'resolved',
+           beneficiary_group_id = null
+     where id = p_commitment_id
+       and status = 'due'
+       and beneficiary_user_id is null
+       and beneficiary_group_id = v_losse_groep
+       and not straf_groepsband_klopt(goal_id, v_losse_groep);
+  end if;
 
   if not found then
     return jsonb_build_object('ok', false, 'reason', 'intussen_veranderd');
+  end if;
+
+  -- QS8-820: het spoor (alleen voor de eigenaar) noemt welke groep er afging.
+  if v_losse_groep is not null then
+    insert into commitment_events (commitment_id, actor_id, event_type, payload)
+    values (
+      p_commitment_id,
+      auth.uid(),
+      'edited',
+      jsonb_build_object('reden', 'groep_verlaten', 'vorige_groep', v_losse_groep)
+    );
   end if;
 
   -- Hier schrijft `noteer_commitment()` zelf een `resolved`-rij met `van` en
@@ -557,3 +623,40 @@ begin
 end;
 $function$
 ;
+
+-- ---------------------------------------------------------------------------
+-- 7. Intrekken laat de tekst staan (security-review L1)
+-- ---------------------------------------------------------------------------
+--
+-- 📏 Gemeten in de security-review van 23-11: een eigenaar die de groep verliet,
+--    kon `update … set status = 'cancelled', body = '…'` in één keer doen. Het
+--    spoor schreef alleen `cancelled`, dus de oorspronkelijke tekst stond nergens
+--    meer. Voor een actief lid kon dat al; blok 3 breidde het uit naar oud-leden,
+--    en daar is de WITH CHECK het enige slot dat versoepeld is. Intrekken is één
+--    handeling: de stand, en verder niets.
+--
+-- ⚠️ Een eigen trigger en geen blok in `bewaak_begunstigde()`: die hangt aan
+--    `UPDATE OF type, beneficiary_*` en ziet een wijziging van `body` niet.
+
+create or replace function public.bewaak_intrekking()
+returns trigger
+language plpgsql
+security definer
+set search_path = public, pg_temp
+as $$
+begin
+  if new.status = 'cancelled' and old.status is distinct from 'cancelled'
+     and (new.body is distinct from old.body
+          or new.image_url is distinct from old.image_url) then
+    raise exception 'Een intrekking verandert de tekst of de foto niet'
+      using errcode = 'check_violation';
+  end if;
+  return new;
+end;
+$$;
+revoke all on function public.bewaak_intrekking() from public, anon, authenticated;
+
+drop trigger if exists commitments_intrekking on public.commitments;
+create trigger commitments_intrekking
+  before update of status, body, image_url on public.commitments
+  for each row execute function public.bewaak_intrekking();
