@@ -49,6 +49,10 @@ const ONZICHTBAARHEID = [
   // QS8-798: de herschreven vorm noemt de week niet meer als geheel maar de gemiste week.
   /niet een gemiste/i,
   /not a missed/i,
+  // QS8-816: "de groep ziet de week niet" is dezelfde belofte in de ontkennende vorm, en
+  // die herkende het register niet. Zonder deze twee viel de uitnodiging er stil buiten.
+  /ziet[^.]{0,20}week niet/i,
+  /(does not|doesn.t) see[^.]{0,20}week/i,
   /stays? private/i,
   // ⚠️⚠️ **De vier vormen hieronder ontbraken, en dat is gemeten en geen
   //    vermoeden.** De doorlichting van 09-09-2026 vond vier sleutels met een
@@ -166,10 +170,15 @@ const TOEGESTAAN: Readonly<Record<string, string>> = {
     '`koppel.uitleg_beschermd` (`weekly_goals_select` 0321, A42, klassement A57).',
   'uitnodiging.uitleg_missen_beschermd':
     'Wordt alleen getoond als de uitnodiging een beschermde groep betreft; ' +
-    'app/uitnodiging/[code].tsx kiest op invite_preview().zichtbaarheid.',
+    'app/uitnodiging/[code].tsx kiest op invite_preview().zichtbaarheid. QS8-816: de zin ' +
+    'zei "niemand in de groep ziet het", twee regels onder "een reeks die op nul staat, ' +
+    'ziet de groep wel" (QS8-798). Nu belooft hij alleen de week zelf ' +
+    '(`weekly_goals_select`, 0321) en noemt hij de reeks (A15, `group_visible_streaks`).',
   'onboarding.stap4.b':
     'Hier is nog geen groep. De zin noemt de voorwaarde zelf ("in een beschermde groep — ' +
-    'de standaard") in plaats van een belofte te doen die later gebroken wordt.',
+    'de standaard") in plaats van een belofte te doen die later gebroken wordt. QS8-816: ' +
+    'zelfde reparatie als `uitnodiging.uitleg_missen_beschermd`, want de reeks is ook in ' +
+    'een beschermde groep zichtbaar (A15).',
   'lijst.prive_uitleg':
     '⚠️ **Herschreven op 09-09-2026 toen QS8-381 delen bouwde, en deze test was ' +
     'wat dat afdwong.** De zin luidde *"niemand in je groep ziet je taken. Delen ' +
@@ -322,7 +331,7 @@ describe('wat Beschermd belooft en wat het niet belooft (QS8-798, A57)', () => {
   // De belofte is een eigenschap van het geheel: sleutel én catalogus, in beide talen.
   // Niet het schermbestand: dat kiest alleen welke sleutel getoond wordt.
   // Afgeleid en niet vast: een nieuwe `_beschermd`-sleutel valt zo vanzelf onder de eisen.
-  // Alleen de uitlegzinnen, niet knoppen als `beheer.naar_beschermd`. `uitnodiging.uitleg_missen_beschermd` gaat over een gemiste week, niet over wat de groep ziet.
+  // Alleen de uitlegzinnen, niet knoppen als `beheer.naar_beschermd`. `uitnodiging.uitleg_missen_beschermd` gaat over een gemiste week en valt onder het blok van QS8-816 hieronder.
   const GEEN_ZICHTBAARHEIDSTEKST = new Set(['uitnodiging.uitleg_missen_beschermd']);
   const BESCHERMD = [
     'zichtbaarheid.beschermd_uitleg',
@@ -415,6 +424,55 @@ describe('wat Beschermd belooft en wat het niet belooft (QS8-798, A57)', () => {
         /each other.s point totals?/i,
       );
     }
+  });
+});
+
+describe('een gemiste week in een beschermde groep: de week niet, de reeks wel (QS8-816, A15)', () => {
+  // De belofte is "missen kost een punt en de groep ziet de week niet". Hij mag niet verder
+  // gaan dan dat: `group_visible_streaks` geeft de huidige reeks ook in een beschermde groep,
+  // dus een reeks die opnieuw begint is zichtbaar. Afgeleid uit de catalogus, zodat een
+  // nieuwe zin met dezelfde belofte vanzelf onder de toets valt; de open variant zegt dat
+  // de anderen het wél zien en blijft erbuiten.
+  const missenZinnen = (catalogus: Record<string, string>, begin: RegExp) =>
+    Object.entries(catalogus).filter(
+      ([sleutel, zin]) => begin.test(zin) && !sleutel.endsWith('_open') && /punt|point/i.test(zin),
+    );
+  const NL = missenZinnen(nl, /^Een week missen/);
+  const EN = missenZinnen(en, /^Missing a week/);
+
+  it('vindt de uitnodiging en de onboarding, in beide talen', () => {
+    // Een filter dat niets meer vindt, is een toets die niets meer toetst.
+    for (const lijst of [NL, EN]) {
+      expect(lijst.map(([s]) => s).sort()).toEqual([
+        'onboarding.stap4.b',
+        'uitnodiging.uitleg_missen_beschermd',
+      ]);
+    }
+  });
+
+  it('belooft nergens dat niemand een gemiste week opmerkt', () => {
+    for (const [sleutel, zin] of NL) expect(zin, `nl:${sleutel}`).not.toMatch(/niemand/i);
+    for (const [sleutel, zin] of EN) expect(zin, `en:${sleutel}`).not.toMatch(/nobody|no one/i);
+  });
+
+  it('zegt dat de groep de week niet ziet, maar wel dat je reeks opnieuw begint', () => {
+    for (const [sleutel, zin] of NL) {
+      expect(zin, `nl:${sleutel}`).toMatch(/(de groep ziet|ziet de groep) de week niet/i);
+      expect(zin, `nl:${sleutel}`).toMatch(/je reeks opnieuw begint/i);
+    }
+    for (const [sleutel, zin] of EN) {
+      expect(zin, `en:${sleutel}`).toMatch(/does not see the (missed )?week/i);
+      expect(zin, `en:${sleutel}`).toMatch(/your streak starts (over|again)/i);
+    }
+  });
+
+  it('staat met de door Quinten gekozen zin in de uitnodiging (23-11-2026)', () => {
+    expect(nl['uitnodiging.uitleg_missen_beschermd']).toBe(
+      'Een week missen kost een punt en verder niets. De groep ziet de week niet, alleen dat je reeks opnieuw begint.',
+    );
+    expect(en['uitnodiging.uitleg_missen_beschermd']).toBe(
+      'Missing a week costs one point and nothing else. The group does not see the missed week, only that your streak starts again.',
+    );
   });
 });
 

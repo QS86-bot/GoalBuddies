@@ -515,7 +515,7 @@ export const nl = {
   'uitnodiging.pas_bij_meedoen': 'Waar ze aan werken zie je zodra je meedoet. Dat is met opzet: wat mensen hier delen, delen ze met hun groep en niet met iedereen die de link krijgt.',
   'uitnodiging.wat_je_doet': 'Wat je hier gaat doen',
   'uitnodiging.uitleg_kern': 'Je kiest één doel met een datum erop. Elke week bepaal je wat je af wilt hebben, en één van je buddy’s keurt goed dat het gelukt is. Meer niet.',
-  'uitnodiging.uitleg_missen_beschermd': 'Een week missen kost een punt en verder niets. Niemand in de groep ziet het.',
+  'uitnodiging.uitleg_missen_beschermd': 'Een week missen kost een punt en verder niets. De groep ziet de week niet, alleen dat je reeks opnieuw begint.',
   'uitnodiging.uitleg_missen_open': 'Een week missen kost een punt en verder niets. In deze groep zien de anderen het wel. Dat is wat "open" hierboven betekent.',
   'uitnodiging.al_lid': 'Je zit in de groep',
   'uitnodiging.doorsturen': 'Je wordt doorgestuurd naar de groep.',
@@ -624,7 +624,7 @@ export const nl = {
    *    beschermd is. Vandaar de vorm "standaard niet, en je ziet het staan" in
    *    plaats van een belofte die de app later moet breken (besluit A41).
    */
-  'onboarding.stap4.b': 'Een week missen kost je één punt en verder niets. In een beschermde groep, en dat is de standaard, ziet niemand het. Kiest een groep bewust voor open, dan staat dat erbij vóór je meedoet.',
+  'onboarding.stap4.b': 'Een week missen kost je één punt en verder niets. In een beschermde groep, en dat is de standaard, ziet de groep de week niet, alleen dat je reeks opnieuw begint. Kiest een groep bewust voor open, dan staat dat erbij vóór je meedoet.',
   'onboarding.stap_van': 'STAP {nu} VAN {totaal}',
   'onboarding.zo_ziet_eruit': 'Zo ziet dat eruit',
   'onboarding.voorbeeld_titel': 'Drie keer hardlopen',
