@@ -474,11 +474,17 @@ jobs:
   #    hoort hier te staan: het bewijst dat een script stárt op Windows, niet dat
   #    élk script dat doet.
   #
-  # ⚠️ **Wat dit kost.** Een Windows-runner telt bij GitHub voor **2×** de
-  #    minuten van een Linux-runner. Zolang deze repo openbaar is, is dat gratis.
-  #    Gaat hij dicht (QS8-126), dan is dit de duurste job van de vier terwijl
-  #    het de kortste is — geen build, geen database, alleen `npm ci` en dertien
-  #    scripts. Wordt dat ooit een probleem, dan is de goedkope versnelling deze
+  # ⚠️ **Wat dit kost.** Een Windows-minuut kost bij GitHub **1,67×** een
+  #    Linux-minuut ($0,010 tegen $0,006, prijzen van 23-11-2026). Zolang deze
+  #    repo openbaar is, is dat gratis. 📏 Gemeten over 30 dagen (QS8-126):
+  #    ±2,1 gefactureerde Windows-minuten per run, ±3,5 Linux-equivalent. Dat is
+  #    minder dan de RLS-job (±7,3 minuten) en meer dan de job zelf duurt, want
+  #    GitHub rondt per job naar boven af — geen build, geen database, alleen
+  #    `npm ci` en dertien scripts.
+  #
+  #    ⚠️ Quinten heeft op 23-11-2026 besloten dat deze job en de RLS-job óók op
+  #    de push naar `main` blijven draaien (QS8-819, punt 5). De doorrekening
+  #    staat in `docs/decisions/2026-11-23-ci-alleen-op-prs-en-main.md`. Wordt dat ooit een probleem, dan is de goedkope versnelling deze
   #    job beperken tot pushes op `main` en tot PR's die `scripts/` raken; niet
   #    hem weghalen, want dan is de blinde vlek terug.
   scripts_windows:

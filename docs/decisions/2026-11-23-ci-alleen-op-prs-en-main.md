@@ -127,6 +127,10 @@ testsuite, die in de poort en in CI draait. Dit issue verandert dat niet.
 
 ## Onderzocht, niet gebouwd: RLS en Windows alleen op PR's
 
+**Besluit van Quinten (23-11-2026, 17:06 UTC, meerkeuze via de hoofdorchestrator):
+niet doen.** De RLS-job en de Windows-job blijven ook op de push naar `main` draaien.
+De doorrekening hieronder blijft staan als de afweging waarop dat besluit genomen is.
+
 Acceptatiecriterium 5 vraagt of de RLS-job (±60% van de tijd) en de Windows-job alleen op
 PR's kunnen draaien en niet op de push naar `main`. De doorrekening staat ook op
 QS8-819.
@@ -163,9 +167,9 @@ QS8-819.
    niet meer starten, is onwaarschijnlijk. Maar het bedrag is ook klein: ±$3,6 tot ±$13
    per maand.
 
-**Een doorrekening, geen advies.** RLS weghalen op `main` scheelt het meeste geld
-en raakt het meeste aan wat `main` belooft. Windows weghalen scheelt weinig en raakt
-weinig. Allebei laten staan kost ±$11 tot ±$43 per maand. De keuze is aan Quinten.
+RLS weghalen op `main` scheelt het meeste geld en raakt het meeste aan wat `main`
+belooft. Windows weghalen scheelt weinig en raakt weinig. Allebei laten staan kost ±$11
+tot ±$43 per maand; dat is gekozen (zie het besluit bovenaan deze sectie).
 
 ## Het klikpad voor de dag dat de repo privé gaat
 
