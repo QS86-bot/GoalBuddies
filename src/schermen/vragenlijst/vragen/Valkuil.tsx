@@ -32,7 +32,7 @@ export function Valkuil({
         <View key={valkuil} style={stijlen.valkuil}>
           <Button
             variant={gekozen.includes(valkuil) ? 'secundair' : 'stil'}
-            keuze={{ vorm: 'wissel', gekozen: gekozen.includes(valkuil) }}
+            gekozen={gekozen.includes(valkuil)}
             block
             onPress={() => onWissel(valkuil)}
           >

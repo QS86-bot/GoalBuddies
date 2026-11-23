@@ -12,18 +12,18 @@ import { renderScherm, ruimAllesOp } from './scherm';
  *    schermlezer nooit hoorde wat gekozen was. Daarom leest deze test `document`, via de echte vragenstappen
  *    (Focus, Valkuil, Gevoel, Held) en niet via een losse `Button`: ook de keuze welke vorm waar hoort is de belofte.
  *
- * IJKING — met de hand, 23-11-2026, één mutatie per grendel, en gelezen welke test omviel:
- *   A  `{...keuzeAria?.aria}` uit `Button` halen        -> 6 van 7 rood (wat main deed): alle vier de stappen
- *   B  `Platform.OS === 'web'` -> `false` in `Button`    -> 6 van 7 rood, zelfde zes als A
- *   C  Held terug naar `vorm: 'wissel'`                  -> 2 rood: 'één radio is gechecked…' en 'een tik kiest…'
- *   D  `role="radiogroup"` van Held halen                -> 1 rood: 'één radio is gechecked…' (alleen de groepsregel)
- *   E  `aria-pressed` omkeren in `keuzeEigenschappen`    -> 4 rood: Focus, Valkuil, Gevoel en 'niets gekozen'
- *   Schoon: 7 van 7 groen. 'zonder antwoord is geen enkele radio gechecked' viel bij geen mutatie om en dekt
- *   alleen de omkering van `aria-checked`, die niet apart geijkt is.
+ * IJKING — met de hand, 23-11-2026 (uitslagen in het beslisdocument; hier de mutatie en de test die omviel):
+ *   A  `{...keuzeAria?.aria}` uit `Button` halen        -> alle stappen rood (wat main deed)
+ *   B  `Platform.OS === 'web'` -> `false` in `Button`    -> idem
+ *   C  `role="radio"` op Held                            -> 'geen radio' rood
+ *   D  `role="group"` van Held halen                     -> 'precies één is ingedrukt' rood
+ *   E  `aria-pressed` omkeren in `keuzeEigenschappen`    -> Focus, Valkuil, Gevoel, Held, 'niets gekozen' rood
+ *   F  `accessibilityState` weg uit `keuzeEigenschappen` -> 'native' rood
  */
 vi.mock('expo-linear-gradient', () => ({ LinearGradient: () => null }));
 (globalThis as { __DEV__?: boolean }).__DEV__ = false;
 
+const { keuzeEigenschappen } = await import('@/shared/ui/keuze-aria');
 const { UiterlijkProvider } = await import('@/modules/uiterlijk/react');
 const { Focus } = await import('@/schermen/vragenlijst/vragen/Focus');
 const { Valkuil } = await import('@/schermen/vragenlijst/vragen/Valkuil');
@@ -73,34 +73,43 @@ describe('wisselknoppen: aria-pressed op web', () => {
   });
 });
 
-describe('Held is een radiogroep: role=radio met aria-checked', () => {
+describe('Held: één van zes, ook een wisselknop, in een groep met een naam', () => {
   const vraag = HELDVRAGEN[0]!;
   const opties = HELDVRAAGOPTIES[vraag];
 
-  it('één radio is gechecked, de rest niet, en ze staan in een radiogroup met een naam', async () => {
+  it('precies één is ingedrukt en de groep heet naar de vraag', async () => {
     await toon(createElement(Held, { vraag, waarde: opties[1]!, onKies: noop }));
-    const radios = [...document.querySelectorAll<HTMLElement>('[role="radio"]')];
-    expect(radios).toHaveLength(opties.length);
-    expect(radios.map((e) => attr(e, 'aria-checked'))).toEqual(
-      opties.map((_, i) => (i === 1 ? 'true' : 'false')),
-    );
-    const groep = document.querySelector<HTMLElement>('[role="radiogroup"]');
+    const pressed = knoppen().map((e) => attr(e, 'aria-pressed'));
+    expect(pressed).toEqual(opties.map((_, i) => (i === 1 ? 'true' : 'false')));
+    const groep = document.querySelector<HTMLElement>('[role="group"]');
     expect(groep).not.toBeNull();
     expect((attr(groep!, 'aria-label') ?? '').length).toBeGreaterThan(3);
-    expect(groep!.querySelectorAll('[role="radio"]')).toHaveLength(opties.length);
-    expect(radios.some((e) => attr(e, 'aria-pressed') !== null)).toBe(false);
+    expect(groep!.querySelectorAll('[aria-pressed]')).toHaveLength(opties.length);
   });
 
-  it('zonder antwoord is geen enkele radio gechecked', async () => {
-    await toon(createElement(Held, { vraag, waarde: null, onKies: noop }));
-    const radios = [...document.querySelectorAll<HTMLElement>('[role="radio"]')];
-    expect(radios.every((e) => attr(e, 'aria-checked') === 'false')).toBe(true);
+  it('geen radio: die breekt de spatiebalk op web (react-native-web laat spatie alleen door op een knop)', async () => {
+    await toon(createElement(Held, { vraag, waarde: opties[0]!, onKies: noop }));
+    expect(document.querySelector('[role="radio"], [aria-checked]')).toBeNull();
+    expect(knoppen().every((e) => e.tagName === 'BUTTON')).toBe(true);
   });
 
-  it('een tik kiest nog steeds (de rol verandert het gedrag niet)', async () => {
+  it('een tik kiest (de spatiebalk niet te toetsen: jsdom maakt bij een spatie geen klik, een browser wel op een <button>)', async () => {
     const onKies = vi.fn();
     await toon(createElement(Held, { vraag, waarde: null, onKies }));
-    await act(async () => document.querySelectorAll<HTMLElement>('[role="radio"]')[2]!.click());
-    expect(onKies).toHaveBeenCalledWith(opties[2]);
+    await act(async () => knoppen()[2]!.click());
+    expect(onKies).toHaveBeenLastCalledWith(opties[2]);
+  });
+});
+
+describe('native: accessibilityState blijft, zonder aria-* ruis', () => {
+  it('gekozen en niet gekozen', () => {
+    expect(keuzeEigenschappen(true, false)).toEqual({ state: { selected: true }, aria: {} });
+    expect(keuzeEigenschappen(false, false)).toEqual({ state: { selected: false }, aria: {} });
+  });
+  it('web draagt dezelfde state en daarbij aria-pressed', () => {
+    expect(keuzeEigenschappen(true, true)).toEqual({
+      state: { selected: true },
+      aria: { 'aria-pressed': true },
+    });
   });
 });

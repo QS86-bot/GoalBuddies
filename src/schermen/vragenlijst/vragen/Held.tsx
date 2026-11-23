@@ -36,14 +36,13 @@ export function Held({
       <Subheading>{t(heldvraagTekstSleutel(vraag, 'vraag'))}</Subheading>
       <Caption>{t(heldvraagTekstSleutel(vraag, 'toelichting'))}</Caption>
 
-      {/* Eén van zes en een gekozene haal je niet weg: een radiogroep, geen zes wisselknoppen
-          (QS8-794). De groep heet naar de vraag, anders hoort een schermlezer "radio, 1 van 6" zonder waarover. */}
-      <View style={stijlen.heldkeuzes} role="radiogroup" aria-label={t(heldvraagTekstSleutel(vraag, 'vraag'))}>
+      {/* Eén groep met de vraag als naam, zodat een schermlezer weet waar de zes knoppen over gaan (QS8-794). */}
+      <View style={stijlen.heldkeuzes} role="group" aria-label={t(heldvraagTekstSleutel(vraag, 'vraag'))}>
         {HELDVRAAGOPTIES[vraag].map((held) => (
           <Button
             key={held}
             variant={waarde === held ? 'secundair' : 'stil'}
-            keuze={{ vorm: 'radio', gekozen: waarde === held }}
+            gekozen={waarde === held}
             block
             onPress={() => onKies(held)}
           >

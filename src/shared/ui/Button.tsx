@@ -4,7 +4,7 @@ import { ActivityIndicator, Platform, Pressable, StyleSheet, Text, View } from '
 import { radius, space, useTheme, type Theme } from '../theme';
 
 import { focusRing } from './a11y';
-import { keuzeEigenschappen, type Keuze } from './keuze-aria';
+import { keuzeEigenschappen } from './keuze-aria';
 
 /**
  * De knop.
@@ -29,11 +29,10 @@ interface Props {
   /** Waarom de knop uit staat of wat hij doet, voor wie het scherm niet ziet. */
   readonly accessibilityHint?: string | undefined;
   /**
-   * Voor een keuzeknop: welke vorm (`wissel` of `radio`) en is deze gekozen? Zonder dit
-   * leest een schermlezer elke keuze als ongekozen. Op web komt dit als `aria-pressed`
-   * of `role=radio` + `aria-checked` in de DOM; zie `keuze-aria.ts`.
+   * Voor een keuzeknop: is deze gekozen? Zonder dit leest een schermlezer elke keuze als ongekozen. Op web
+   * komt dit als `aria-pressed` in de DOM, op native als `accessibilityState.selected`; zie `keuze-aria.ts`.
    */
-  readonly keuze?: Keuze | undefined;
+  readonly gekozen?: boolean | undefined;
 }
 
 function kleuren(theme: Theme, variant: ButtonVariant) {
@@ -64,14 +63,14 @@ export function Button({
   block = false,
   accessibilityLabel,
   accessibilityHint,
-  keuze,
+  gekozen,
 }: Props) {
   const theme = useTheme();
   const [heeftFocus, setFocus] = useState(false);
 
   const kleur = kleuren(theme, variant);
   const uit = disabled || busy;
-  const keuzeAria = keuze === undefined ? undefined : keuzeEigenschappen(keuze, Platform.OS === 'web');
+  const keuzeAria = gekozen === undefined ? undefined : keuzeEigenschappen(gekozen, Platform.OS === 'web');
 
   return (
     <Pressable

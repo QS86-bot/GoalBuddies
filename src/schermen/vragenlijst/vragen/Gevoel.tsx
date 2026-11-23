@@ -47,7 +47,7 @@ export function Gevoel({
           <Button
             key={g}
             variant={gevoel === g ? 'secundair' : 'stil'}
-            keuze={{ vorm: 'wissel', gekozen: gevoel === g }}
+            gekozen={gevoel === g}
             block
             onPress={() => onKies(gevoel === g ? null : g)}
           >

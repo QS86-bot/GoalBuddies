@@ -1,63 +1,57 @@
-# Een gekozen keuzeknop is een wisselknop of een radio, en op web zegt alleen `aria-*` het — QS8-794
+# Een gekozen keuzeknop is op web een wisselknop met `aria-pressed`; de radio is geprobeerd en teruggedraaid — QS8-794
 
 **Datum:** 23-11-2026 · **Issue:** QS8-794 (gevonden in de klikronde van QS8-785; criterium 9 van QS8-733)
 **Raakt:** `src/shared/ui/Button.tsx`, `src/shared/ui/keuze-aria.ts`, de vier vragenlijststappen
-**Status:** gebouwd. Licht risico, geen migratie, geen datamodel, geen auth.
+**Status:** gebouwd. Licht risico, geen migratie, geen datamodel, geen auth. (Bestandsnaam heet nog "of een radio": de vraag was die twee; het antwoord staat hieronder.)
 
 ## Wat gemeten is
 
 📏 Gemeten op `main` 10116ee3. `Button` zette bij een gekozen keuzeknop alleen `accessibilityState.selected`.
 react-native-web 0.21.2 (`createDOMProps`) leest `accessibilityState` niet: alleen de losse `aria-*`-props
-(`aria-pressed`, `aria-checked`, `aria-selected`) en `role` komen in de DOM. Op web stond er dus niets, en een
-schermlezer hoorde elke keuze als ongekozen. De toets staat op de echte DOM (`tests/render/keuzeknop.test.ts`), niet op de props.
+en `role` komen in de DOM. Op web stond er dus niets, en een schermlezer hoorde elke keuze als ongekozen.
+De toets leest de echte DOM via de echte vragenstappen (`tests/render/keuzeknop.test.ts`), niet de props.
 
-## Besluit: welke vorm bij welke knop
+## Besluit
 
-"Gekozen" betekent twee dingen, en de vorm volgt uit wat de knop *doet*, niet uit hoe hij eruitziet.
+Alle vier de stappen zijn een **wisselknop met `aria-pressed`**; `Button` krijgt `gekozen?: boolean`.
 
-| Stap | Gedrag | Vorm | Waarom |
-|---|---|---|---|
-| Focus (`Focus.tsx`) | tot drie gebieden tegelijk, tik haalt weg | `wissel` → `aria-pressed` | meer dan één gekozen; een radio kent er één |
-| Valkuil (`Valkuil.tsx`) | meer antwoorden tegelijk | `wissel` → `aria-pressed` | idem |
-| Gevoel (`Gevoel.tsx`) | één voorstel, maar een tweede tik haalt de keuze weg | `wissel` → `aria-pressed` | een radio is niet uit te zetten zonder een andere te kiezen; het gedrag is dat van een wisselknop |
-| Held (`Held.tsx`) | precies één van zes, de gekozene blijft | `radio` → `role=radio` + `aria-checked`, in een `role=radiogroup` met de vraag als naam | een echte keuze uit een groep |
+| Stap | Gedrag | Vorm |
+|---|---|---|
+| Focus | tot drie gebieden tegelijk, tik haalt weg | `aria-pressed` |
+| Valkuil | meer antwoorden tegelijk | `aria-pressed` |
+| Gevoel | één voorstel, een tweede tik haalt hem weg | `aria-pressed` |
+| Held | precies één van zes | `aria-pressed`, de zes knoppen in een `role="group"` met de vraag als naam |
 
-⚠️ **De regel voor een volgende knop:** kan er meer dan één gekozen zijn, of haalt een tweede tik de keuze weg, dan is
-het `wissel`. Is het precies één uit een vaste groep en blijft die staan, dan is het `radio`, en dan hoort er een
-`radiogroup` omheen. Bij twijfel `wissel`: een wisselknop belooft minder dan een radio (een radiogroep laat een
-schermlezer pijltoetsgedrag verwachten dat hier niet gebouwd is).
+## Waarom Held geen radio is (geprobeerd en teruggedraaid)
 
-⚠️ **Een radio belooft pijltoetsen en deze groep heeft ze niet.** Een schermlezer meldt "1 van 6", maar
-pijltoets-navigatie binnen de groep is niet gebouwd en niet gemeten; Tab en Enter/spatie werken zoals voorheen.
-Dat is de prijs van `role=radio` op `Pressable`, en het staat hier zodat de volgende die dit leest het niet als
-beloofd neemt.
+Held is inhoudelijk een keuze uit een groep, en de eerste bouw was `role="radio"` + `aria-checked` in een
+`radiogroup`. De code-critic wees erop, en dat is in de bron van react-native-web 0.21.2 nagelezen
+(`PressResponder.js`, `isValidKeyPress`): de spatiebalk gaat alleen door op een `<button>` of rol `button`.
+`role="radio"` maakt van de knop een `<div>`, dus op web werkt dan alleen Enter, en bij een spatie scrolt de
+pagina. Bij een radio is de spatie juist de verwachte toets: een toegankelijkheidsfix die het toetsenbord slechter
+maakt, is geen fix. Dit is **afgeleid uit de bron en niet in een browser gedraaid.**
 
-## De vorm in code
-
-`Button` verving `selected?: boolean` door `keuze?: { vorm: 'wissel' | 'radio'; gekozen: boolean }`. Een kale
-boolean liet de aanroeper de vorm niet kiezen, en dat was de aanleiding. `keuzeEigenschappen()` in
-`src/shared/ui/keuze-aria.ts` (zonder `react-native`, dus los toetsbaar) geeft twee dingen terug: `state` voor
-`accessibilityState` (altijd; native leest dat) en `aria` voor de losse props (alleen op web). Op native blijft
-`accessibilityState` dus staan (`selected` voor een wisselknop, `checked` voor een radio), `aria-pressed` gaat daar
-niet mee omdat het niet in de typen van react-native staat.
+⚠️ **Een radio kan terug** zodra hij een eigen spatie-afhandeling heeft, mét een toets die een spatie afvuurt in
+een echte browser (jsdom maakt bij een spatie geen klik, dus daar is het niet te toetsen). Pas dan is hij beter
+dan deze wisselknop. Tot dan: bij twijfel een wisselknop, want die belooft minder.
 
 ## Wat niet gemeten is
 
-- **Native.** Niet gemeten: geen apparaat of simulator in deze sessie. `accessibilityState` is ongewijzigd voor
-  `disabled` en `busy`; `selected` blijft voor een wisselknop, en de radio kreeg `checked` in plaats van `selected`.
-  Dat laatste is een aanname over wat TalkBack en VoiceOver met `accessibilityRole="button"` + `checked` doen:
-  de rol op native blijft `button`, en het is niet bekeken of een schermlezer daar "gecontroleerd" bij zegt.
-- **Echte schermlezers** (NVDA, VoiceOver) op web zijn niet gedraaid. Gemeten is wat in de DOM staat, niet wat een lezer ervan maakt.
-- **Pijltoetsen** in de radiogroep: zie hierboven.
+- **De spatiebalk op een `<button>` in een echte browser.** De test legt alleen vast dat elke knop een `<button>`
+  blijft (waar de browser zelf een klik van maakt) en dat er geen `role=radio` is.
+- **Native.** Niet gemeten: geen apparaat of simulator. `accessibilityState` is voor `selected` ongewijzigd en
+  `disabled`/`busy` zijn niet aangeraakt; alleen op web komt `aria-pressed` erbij.
+- **Echte schermlezers** (NVDA, VoiceOver, TalkBack): niet gedraaid. Gemeten is wat in de DOM staat, niet wat
+  een lezer ervan maakt of hoe hij een `group` aankondigt.
 
-## Wat dit niet repareert, en wat apart is gemeld
+## Wat dit niet repareert
 
-Dezelfde fout (`accessibilityState` dat op web niets doet) staat nog op: `Choice` (radio met `selected`),
+Dezelfde fout (`accessibilityState` dat op web niets doet) staat nog op: `Choice` (rol radio met `selected`),
 `DatumKeuze`, `Taakbalk`, `Instellingenscherm`, `Schakelaar` (`checked`), `Afvinkcirkel` (`checked`), `Field`
-(`selected` van de zichtbaarheidsknop), `MeerKnop`/`Taakbalk` (`expanded`) en `Microfoon` (`busy`). Het issue noemt
-alleen plekken waar `Button` een gekozen stand heeft; dit is bij de bevinding gemeld als eigen issue en niet
-stilzwijgend meegenomen (`docs/PROMPT-SESSIE.md` §8).
+(`selected` van de zichtbaarheidsknop), `MeerKnop`/`Taakbalk` (`expanded`) en `Microfoon` (`busy`). Het issue
+noemt alleen plekken waar `Button` een gekozen stand heeft. Dat is een eigen issue, QS8-803 (zie ook het AFGELEVERD-bericht
+op QS8-794 voor het nummer) en is niet stilzwijgend meegenomen (`docs/PROMPT-SESSIE.md` §8).
 
 ## IJking
 
-Zie de kop van `tests/render/keuzeknop.test.ts`: vijf mutaties met de hand, elk met de test die omviel.
+Zie de kop van `tests/render/keuzeknop.test.ts`: zes mutaties met de hand (23-11-2026), elk met de tests die omvielen.
