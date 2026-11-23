@@ -27,7 +27,7 @@ export function Focus({
             <Button
               key={gebied}
               variant={gekozen.includes(gebied) ? 'secundair' : 'stil'}
-              selected={gekozen.includes(gebied)}
+              keuze={{ vorm: 'wissel', gekozen: gekozen.includes(gebied) }}
               onPress={() => onWissel(gebied)}
             >
               {labels[gebied]}

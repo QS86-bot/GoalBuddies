@@ -1,3 +1,5 @@
+import { View } from 'react-native';
+
 import {
   heldoptieTekstSleutel,
   HELDVRAAGOPTIES,
@@ -7,6 +9,8 @@ import {
 } from '@/modules/helden';
 import { t } from '@/shared/i18n';
 import { Button, Caption, Card, Subheading } from '@/shared/ui';
+
+import { stijlen } from '../stijlen';
 
 /**
  * Eén heldenvraag: zes knoppen, één antwoord.
@@ -32,17 +36,21 @@ export function Held({
       <Subheading>{t(heldvraagTekstSleutel(vraag, 'vraag'))}</Subheading>
       <Caption>{t(heldvraagTekstSleutel(vraag, 'toelichting'))}</Caption>
 
-      {HELDVRAAGOPTIES[vraag].map((held) => (
-        <Button
-          key={held}
-          variant={waarde === held ? 'secundair' : 'stil'}
-          selected={waarde === held}
-          block
-          onPress={() => onKies(held)}
-        >
-          {t(heldoptieTekstSleutel(vraag, held))}
-        </Button>
-      ))}
+      {/* Eén van zes en een gekozene haal je niet weg: een radiogroep, geen zes wisselknoppen
+          (QS8-794). De groep heet naar de vraag, anders hoort een schermlezer "radio, 1 van 6" zonder waarover. */}
+      <View style={stijlen.heldkeuzes} role="radiogroup" aria-label={t(heldvraagTekstSleutel(vraag, 'vraag'))}>
+        {HELDVRAAGOPTIES[vraag].map((held) => (
+          <Button
+            key={held}
+            variant={waarde === held ? 'secundair' : 'stil'}
+            keuze={{ vorm: 'radio', gekozen: waarde === held }}
+            block
+            onPress={() => onKies(held)}
+          >
+            {t(heldoptieTekstSleutel(vraag, held))}
+          </Button>
+        ))}
+      </View>
     </Card>
   );
 }
