@@ -47,13 +47,14 @@ const ONBOARDINGSCHERMEN: Readonly<Record<string, { readonly isOnboarded: boolea
     isOnboarded: false,
     reden: 'Het eerste scherm van de onboarding; hier staat `onboarded_at` nog niet.',
   },
-  'app/onboarding/profiel.tsx': {
-    isOnboarded: true,
-    reden:
-      'De navigatie hier komt ná `rondOnboardingAf()`. ⚠️ Dat is de regel die ' +
-      'QS8-266 opleverde: de wacht kende alleen het eerste segment, zag ' +
-      '`onboarding`, en stuurde de gebruiker op hetzelfde moment naar `/`.',
-  },
+  // ⚠️ **`app/onboarding/profiel.tsx` staat hier niet meer, en dat is QS8-793.**
+  //    Het scherm navigeerde na `rondOnboardingAf()` zelf naar de vragenlijst, en
+  //    deze test zag dat als in orde: de wacht laat de vragenlijst staan zodra je
+  //    er bént. Wat hij niet zag is de render daarvóór, waarin de route nog op
+  //    `profiel` stond en de wacht naar `/` stuurde — 📏 3 van 3 keer op de
+  //    web-export. Nu navigeert de wacht zelf; zijn bestemming na het afronden
+  //    staat in het blok hieronder, en de render-naad in
+  //    `src/modules/auth/routewacht-afronden.test.ts`.
   // ⚠️ Sinds QS8-733 staat de navigatie in de hook en niet meer in het routebestand;
   //    het register leest het bestand waar `router.replace()` echt staat.
   'src/schermen/vragenlijst/useVragenlijst.ts': {
@@ -88,6 +89,7 @@ function bijAankomst(pad: string, isOnboarded: boolean): Routestand {
     isOnboarded,
     wortel: segmenten[0] ?? '',
     tak: segmenten[1] ?? '',
+    netAfgerond: false,
   };
 }
 
@@ -188,6 +190,29 @@ describe('elke navigatie in de onboarding komt ergens aan', () => {
     const urls = ROUTES.map((r) => r.url);
     expect(urls).toContain('/doelen');
     expect(urls).toContain('/onboarding/vragenlijst');
+  });
+
+  /**
+   * ⚠️ De bestemming van de wacht zelf na Klaar (QS8-793), gelezen uit
+   *    `bestemmingVoor()` en niet opgeschreven: verandert hij, dan valt dit om.
+   */
+  describe('de routewacht na Klaar op het profiel', () => {
+    const naKlaar = bestemmingVoor({
+      ...bijAankomst('/onboarding/profiel', true),
+      netAfgerond: true,
+    });
+
+    it('stuurt ergens heen dat niet Vandaag is', () => {
+      expect(naKlaar).not.toBeNull();
+      expect(naKlaar).not.toBe('/');
+    });
+
+    it('stuurt naar een scherm dat bestaat en blijft staan, met en zonder de vlag', () => {
+      const pad = naKlaar ?? '';
+      expect(bestaatAlsRoute(pad), `de wacht stuurt naar ${pad} en daar staat geen scherm.`).toBe(true);
+      expect(bestemmingVoor({ ...bijAankomst(pad, true), netAfgerond: true })).toBeNull();
+      expect(bestemmingVoor(bijAankomst(pad, true))).toBeNull();
+    });
   });
 
   for (const [scherm, { isOnboarded, reden }] of Object.entries(ONBOARDINGSCHERMEN)) {
