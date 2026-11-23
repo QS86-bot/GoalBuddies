@@ -823,6 +823,8 @@ export const nl = {
     'In deze groep staat het klassement aan: iedereen in de groep ziet de punten die ieder in deze groep verdient. Een gemiste week komt er nooit in voor. Een beheerder kan het uitzetten.',
   'uitnodiging.klassement_uit':
     'In deze groep staat het klassement uit. Gaat het later aan, dan ziet iedereen in de groep de punten die ieder in deze groep verdiend heeft, ook die van daarvóór. Een gemiste week komt er nooit in voor.',
+  // Besluit Quinten 23-11-2026: een teamgroep kan nooit een klassement hebben (groups_team_geen_klassement).
+  'uitnodiging.klassement_team': 'Deze groep heeft geen klassement.',
   'groepnieuw.zichtbaarheid_hint':
     'Dit is de belangrijkste keuze op dit scherm. Hij is later te wijzigen, maar niet ongemerkt: iedereen krijgt het te zien.',
 

@@ -339,6 +339,15 @@ describe('de uitnodigingspagina — de stand van het klassement (QS8-801, 0341)'
     expect(tekst).not.toContain(t('uitnodiging.klassement_aan'));
   });
 
+  it('een teamgroep zegt dat er geen klassement is, niet "gaat het later aan"', async () => {
+    mocks.sessie = JAN;
+    mocks.uitnodiging = { ...GROEP, klassement_aan: false, teamgroep: true };
+
+    const tekst = (await open()).tekst();
+    expect(tekst).toContain(t('uitnodiging.klassement_team'));
+    expect(tekst).not.toContain(t('uitnodiging.klassement_uit'));
+  });
+
   it('noemt de server geen stand, dan de standaardtekst van QS8-798', async () => {
     mocks.sessie = JAN;
     mocks.uitnodiging = { ...GROEP, klassement_aan: null };

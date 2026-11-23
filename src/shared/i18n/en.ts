@@ -2093,6 +2093,8 @@ export const en: Record<Sleutel, string> = {
     'This group has its leaderboard on: everyone in the group sees the points each member earns in this group. A missed week never appears in it. An admin can turn it off.',
   'uitnodiging.klassement_uit':
     'This group has its leaderboard off. If it is turned on later, everyone in the group sees the points each member earned in this group, including points from before then. A missed week never appears in it.',
+  // Besluit Quinten 23-11-2026: een teamgroep kan nooit een klassement hebben (groups_team_geen_klassement).
+  'uitnodiging.klassement_team': 'This group has no leaderboard.',
   'groepnieuw.zichtbaarheid_hint':
     'This is the most important choice on this screen. It can be changed later, but never quietly: everyone gets told.',
 

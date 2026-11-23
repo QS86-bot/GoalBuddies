@@ -46,7 +46,7 @@ async function zinVoor(data: Record<string, unknown>): Promise<string> {
   rpc.mockResolvedValue({ data, error: null });
   const uit = await fetchUitnodiging('KLASSEMENT01');
   if (uit === null) throw new Error('geen uitnodiging');
-  return uitnodigingKlassementTekst(uit.klassement_aan);
+  return uitnodigingKlassementTekst(uit.klassement_aan, uit.teamgroep);
 }
 
 describe('de uitnodiging noemt de echte stand van het klassement (0341)', () => {
@@ -64,6 +64,22 @@ describe('de uitnodiging noemt de echte stand van het klassement (0341)', () => 
 
   it('noemt de server het niet (vóór 0341), dan de standaard en niet "uit"', async () => {
     expect(await zinVoor(groep())).toBe('uitnodiging.klassement_standaard');
+  });
+
+  it('een teamgroep (voor een organisatielid): geen klassement, wat de stand ook is', async () => {
+    for (const stand of [false, true, undefined]) {
+      expect(await zinVoor(groep({ teamgroep: true, klassement_aan: stand })), String(stand)).toBe(
+        'uitnodiging.klassement_team',
+      );
+    }
+  });
+
+  it('alleen een echte true telt als teamgroep; anders de gewone tekst', async () => {
+    for (const waarde of ['true', 1, null, false]) {
+      expect(await zinVoor(groep({ teamgroep: waarde, klassement_aan: false })), String(waarde)).toBe(
+        'uitnodiging.klassement_uit',
+      );
+    }
   });
 
   it('is het geen boolean, dan ook de standaard: geen stand verzinnen', async () => {

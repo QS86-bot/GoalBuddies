@@ -1058,6 +1058,12 @@ export interface Uitnodiging {
    * server het niet noemt (van vóór 0341): dan toont het scherm de standaard.
    */
   readonly klassement_aan: boolean | null;
+  /**
+   * Is dit een teamgroep van een organisatie waar de bezoeker actief lid van is?
+   * Migratie 0341. ⚠️ `false` voor iedereen anders, ook bij een teamgroep: zie de
+   * kop van 0341 en `join_group_with_code()` (0317). Ontbreekt hij, dan `false`.
+   */
+  readonly teamgroep: boolean;
   readonly member_count: number;
   /** Ziet deze bezoeker het volledige beeld? Alleen waar als hij ingelogd is. */
   readonly detailed: boolean;
@@ -1123,6 +1129,7 @@ export async function fetchUitnodiging(code: string): Promise<Uitnodiging | null
   const gelezen = data as unknown as Uitnodiging & {
     zichtbaarheid?: unknown;
     klassement_aan?: unknown;
+    teamgroep?: unknown;
   };
 
   // ⚠️ **Onbekend is beschermd**, en dat is geen defensieve reflex maar de kant
@@ -1133,6 +1140,7 @@ export async function fetchUitnodiging(code: string): Promise<Uitnodiging | null
     ...gelezen,
     zichtbaarheid: leesZichtbaarheid(gelezen.zichtbaarheid),
     klassement_aan: leesKlassementAan(gelezen.klassement_aan),
+    teamgroep: gelezen.teamgroep === true,
   };
 }
 

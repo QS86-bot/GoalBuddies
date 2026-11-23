@@ -392,6 +392,14 @@ describe('wat Beschermd belooft en wat het niet belooft (QS8-798, A57)', () => {
     }
   });
 
+  it('zegt bij een teamgroep dat er geen klassement is, en belooft niet dat het later aan kan (QS8-801)', () => {
+    // CHECK `groups_team_geen_klassement`: aanzetten kan in een teamgroep nooit (grens 1).
+    expect(nl['uitnodiging.klassement_team']).toBe('Deze groep heeft geen klassement.');
+    expect(en['uitnodiging.klassement_team']).toBe('This group has no leaderboard.');
+    expect(nl['uitnodiging.klassement_team']).not.toMatch(/later|aanzetten|beheerder/i);
+    expect(en['uitnodiging.klassement_team']).not.toMatch(/later|turn|admin/i);
+  });
+
   it('houdt de persoonlijke totaaltelling privé en zegt dat ook', () => {
     for (const sleutel of BESCHERMD) {
       expect(nl[sleutel], `nl:${sleutel}`).toMatch(/persoonlijke (puntentotaal|totaal)/i);

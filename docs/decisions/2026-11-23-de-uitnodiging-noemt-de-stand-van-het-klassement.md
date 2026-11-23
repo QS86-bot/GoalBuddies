@@ -34,8 +34,23 @@ schakelaar op de groep, dus "standaard" kan voor díe groep onwaar zijn.
    het ook.
 4. **De zin bij "uit" zegt niet "een beheerder kan het aanzetten".** Voor een
    teamgroep en een automatisch gevormde groep kan dat nooit (CHECK's
-   `groups_team_geen_klassement` en `groups_automatisch_geen_klassement`), en
-   het antwoord geeft met opzet niet prijs welke soort groep het is.
+   `groups_team_geen_klassement` en `groups_automatisch_geen_klassement`).
+5. **Een teamgroep krijgt een eigen zin: "Deze groep heeft geen klassement."**
+   Dat is een besluit van Quinten van 23-11-2026, genomen per meerkeuze via de
+   hoofdorchestrator. De security-review vond dat "gaat het later aan" daar iets
+   belooft wat niet kan (grens 1). Een automatisch gevormde groep krijgt nooit een
+   kaart (`invite_revoked = true`), dus die doet hier niet mee.
+
+   ⚠️⚠️ **Het veld `teamgroep` is alleen `true` voor een ingelogd, actief lid van
+   díe organisatie.** `join_group_with_code()` (0317, QS8-653 criterium 8) geeft
+   een buitenstaander met opzet `invalid`, zodat de functie geen orakel is op
+   codes van een organisatie. Een `organization_id is not null` voor iedereen zou
+   dat orakel op de leeskant openen. Nu leest ieder ander `false`, hetzelfde als
+   bij een gewone groep, en de sleutel staat er altijd, zodat ook de vorm van het
+   antwoord niets verraadt. De prijs: een teamlid dat nog niet ingelogd is, leest
+   tot de login de gewone uit-tekst. Dat is een voorwaardelijke zin en geen
+   belofte. Aan de orchestrator voorgelegd als optie A naast B (voor iedereen) en
+   C (geen veld, neutrale tekst).
 
 ## Pad terug
 

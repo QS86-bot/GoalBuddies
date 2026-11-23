@@ -1,6 +1,7 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import {
+  adminDb,
   anonDb,
   createTestUser,
   registreerGroep,
@@ -8,6 +9,7 @@ import {
   rlsTestsConfigured,
   type TestUser,
 } from './harness';
+import { laatOrganisatieAanmaken } from './organisatie-toelating';
 import { psql } from './psql-stack';
 
 /**
@@ -27,7 +29,7 @@ import { psql } from './psql-stack';
  *    gegeven een zelfgemaakte toestand, en niet de belofte "wat de beheerder
  *    instelt, staat op de uitnodiging" (regel 18, vraag 2 en 4).
  *
- * IJKING — met de hand gedraaid op 23-11-2026 tegen de lokale stack (alle 344
+ * IJKING — met de hand gedraaid op 23-11-2026 tegen de lokale stack (alle
  * migraties), mutatie per grendel, telkens op de gedeployde functie en daarna
  * hersteld (5/5 groen):
  *
@@ -39,6 +41,16 @@ import { psql } from './psql-stack';
  *      → 📏 2 rood: beide sleutelset-toetsen; de standtoetsen blijven groen.
  *   D  `grant execute on function zet_groepsklassement(…) to anon`
  *      → 📏 1 rood: alleen de plafondtoets.
+ *
+ * En voor `teamgroep` (besluit Quinten 23-11-2026), dezelfde dag, zelfde werkwijze:
+ *
+ *   E  de lidtoets weg (`'teamgroep', g.organization_id is not null`)
+ *      → 📏 1 rood: de teamtoets, op "anon hoort niet te lezen dat de code bij
+ *        een team hoort". Dat is het orakel dat 0317 met `invalid` dichthoudt.
+ *   F  `'teamgroep', false and …`
+ *      → 📏 1 rood: de teamtoets, op het organisatielid.
+ *   G  het hele veld weg
+ *      → 📏 4 rood: beide sleutelset-toetsen, "gewone groep" en de teamtoets.
  */
 
 const SETUP_TIMEOUT = 180_000;
@@ -54,6 +66,7 @@ const SLEUTELS = [
   'klassement_aan',
   'member_count',
   'members',
+  'teamgroep',
   'zichtbaarheid',
 ].sort();
 
@@ -86,9 +99,9 @@ describe.skipIf(!rlsTestsConfigured)('de uitnodiging noemt de stand van het klas
     await removeTestUsers();
   }, SETUP_TIMEOUT);
 
-  async function kaart(wie: TestUser | null): Promise<Record<string, unknown>> {
+  async function kaart(wie: TestUser | null, welke = code): Promise<Record<string, unknown>> {
     const db = wie === null ? anonDb() : wie.db;
-    const { data, error } = await db.rpc('invite_preview', { code });
+    const { data, error } = await db.rpc('invite_preview', { code: welke });
     if (error) throw new Error(`invite_preview: ${error.message}`);
     expect(data, 'geen kaart voor een geldige code').not.toBeNull();
     return data as unknown as Record<string, unknown>;
@@ -108,7 +121,7 @@ describe.skipIf(!rlsTestsConfigured)('de uitnodiging noemt de stand van het klas
   }
 
   it(
-    'anon leest precies de sleutels van vóór 0341 plus klassement_aan, en per lid niets nieuws',
+    'anon leest precies de sleutels van vóór 0341 plus klassement_aan en teamgroep, en per lid niets nieuws',
     async () => {
       const uit = await kaart(null);
       expect(Object.keys(uit).sort()).toEqual(SLEUTELS);
@@ -152,6 +165,51 @@ describe.skipIf(!rlsTestsConfigured)('de uitnodiging noemt de stand van het klas
       await zetKlassement(true);
       expect((await kaart(null)).klassement_aan).toBe(true);
       expect((await kaart(genodigde)).klassement_aan).toBe(true);
+    },
+    TEST_TIMEOUT,
+  );
+
+  it(
+    'een gewone groep is geen teamgroep, voor niemand',
+    async () => {
+      expect((await kaart(null)).teamgroep).toBe(false);
+      expect((await kaart(genodigde)).teamgroep).toBe(false);
+      expect((await kaart(eigenaar)).teamgroep).toBe(false);
+    },
+    TEST_TIMEOUT,
+  );
+
+  it(
+    'een teamgroep: alleen een actief lid van de organisatie hoort het, anon en een buitenstaander niet (0317)',
+    async () => {
+      // ⚠️⚠️ De belofte is tweezijdig. `join_group_with_code()` geeft een niet-organisatielid met opzet `invalid`
+      //    om geen orakel te zijn op codes van een organisatie; de kaart mag dat niet alsnog verraden. En wie
+      //    wél kan joinen, hoort "geen klassement" te lezen en niet "gaat het later aan" (besluit Quinten 23-11).
+      await laatOrganisatieAanmaken(eigenaar);
+      const o = await eigenaar.db.rpc('maak_organisatie' as never, { p_naam: 'Kaart BV' } as never);
+      const org = (o.data as unknown as { organization_id?: string } | null)?.organization_id;
+      expect(org, JSON.stringify(o.data)).toBeDefined();
+      const t = await eigenaar.db.rpc(
+        'maak_teamgroep' as never,
+        { p_organization_id: org, p_naam: 'Team Kaart' } as never,
+      );
+      const team = (t.data as unknown as { group_id?: string } | null)?.group_id;
+      expect(team, JSON.stringify(t.data)).toBeDefined();
+      registreerGroep(team as string);
+      const rij = await adminDb().from('groups').select('invite_code').eq('id', team as string).single();
+      const teamcode = (rij.data as { invite_code: string } | null)?.invite_code;
+      expect(teamcode, 'een teamgroep zonder code toetst niets').toBeTruthy();
+
+      const lid = await kaart(eigenaar, teamcode);
+      expect(Object.keys(lid).sort()).toEqual(SLEUTELS);
+      expect(lid.teamgroep, 'het organisatielid hoort te weten dat het een teamgroep is').toBe(true);
+      expect(lid.klassement_aan).toBe(false);
+
+      for (const [wie, naam] of [[null, 'anon'], [genodigde, 'buitenstaander']] as const) {
+        const uit = await kaart(wie, teamcode);
+        expect(Object.keys(uit).sort(), naam).toEqual(SLEUTELS);
+        expect(uit.teamgroep, `${naam} hoort niet te lezen dat de code bij een team hoort`).toBe(false);
+      }
     },
     TEST_TIMEOUT,
   );

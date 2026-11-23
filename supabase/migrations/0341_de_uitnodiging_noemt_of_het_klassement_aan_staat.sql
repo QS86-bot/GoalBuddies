@@ -4,7 +4,7 @@
 --
 -- ROLLBACK-PAD:
 --   create or replace function public.invite_preview(text) … -- terug naar de definitie uit 0277: hetzelfde
---     lichaam zónder de regel `'klassement_aan', g.klassement_aan,`. Kopieer dat lichaam uit 0277 of uit de database
+--     lichaam zónder de regels `'klassement_aan', …` en `'teamgroep', …`. Kopieer dat lichaam uit 0277 of uit de database
 --     van vóór deze migratie. Er gaat niets verloren: dit raakt geen rij en geen kolom, en de client valt bij een
 --     ontbrekend veld terug op de standaardtekst van QS8-798 (#806).
 --
@@ -34,6 +34,27 @@
 -- 2. **Is dit met één API-verzoek te lezen buiten de UI om?** Ja, door iedereen met de code, ook zonder account —
 --    precies zoals `zichtbaarheid` sinds 0080. Dat is aanvaardbaar omdat vraag 1 nee is, en omdat het feit vóór de
 --    knop "meedoen" hoort te staan: wie meedoet, laat de groep zijn in deze groep verdiende punten zien.
+--
+-- ---------------------------------------------------------------------------
+-- Het tweede veld: `teamgroep` (besluit Quinten 23-11-2026, via de hoofdorchestrator)
+-- ---------------------------------------------------------------------------
+--
+-- Een teamgroep kan nooit een klassement hebben (CHECK `groups_team_geen_klassement`), dus de uit-tekst "gaat het
+-- later aan…" belooft daar iets wat niet kan (grens 1). Het scherm toont voor een teamgroep "Deze groep heeft geen
+-- klassement", en daarvoor moet het een teamgroep herkennen.
+--
+-- 📏 Gemeten vóór dit veld: het antwoord had geen sleutel waaraan een teamgroep te herkennen is.
+--
+-- ⚠️⚠️ **`true` alleen voor een ingelogd, actief lid van díe organisatie, en dat is de hele afweging.**
+--    `join_group_with_code()` (0317, QS8-653 criterium 8) geeft een niet-organisatielid met opzet `invalid`,
+--    *"hetzelfde als bij een onbekende code: een eigen reden zou bevestigen dat de code bij een team hoort"*. Een
+--    `organization_id is not null` voor iedereen zou dat orakel op de leeskant openzetten. Nu krijgt alleen wie de
+--    groep écht kan joinen `true`, en ziet ieder ander `false`: hetzelfde antwoord als bij een gewone groep. De
+--    sleutel staat er altijd, zodat ook de vorm van het antwoord niets verraadt. De prijs: een teamlid dat nog niet
+--    ingelogd is, leest tot de login de gewone uit-tekst. Dat is een voorwaardelijke zin, geen belofte.
+--
+-- ⚠️ Een boolean, geen `organization_id` en geen naam. `actief_organisatielid()` is een definer-helper zonder
+--    `execute` voor anon of authenticated (0317); hier roept de definer hem aan, dus er komt geen grant bij.
 --
 -- ⚠️ Wat er níet bij komt: `organization_id`, `automatisch` of iets anders waaruit af te leiden valt wíe er in de
 --    groep zit of waarom het klassement uit staat. Het veld staat na de wachttak van 0277 en na de limiet van 0131,
@@ -226,6 +247,13 @@ begin
     -- de groep, ook zonder account; zie de kop van 0341 voor de twee vragen
     -- van domeinregel 7.
     'klassement_aan', g.klassement_aan,
+    -- QS8-801 (0341), besluit Quinten 23-11: een teamgroep krijgt een eigen tekst
+    -- ("heeft geen klassement"). ⚠️ Alleen `true` voor een ingelogd, actief lid
+    -- van díe organisatie; voor anon en elk ander `false`. Zie de kop: anders
+    -- bevestigt de kaart wat `join_group_with_code()` (0317) met `invalid` verbergt.
+    'teamgroep', g.organization_id is not null
+                 and ingelogd
+                 and public.actief_organisatielid(g.organization_id, (select auth.uid())),
     'member_count',  aantal,
     'detailed',      ingelogd,
     'members',       leden

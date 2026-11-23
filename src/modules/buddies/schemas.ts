@@ -134,8 +134,14 @@ export function leesKlassementAan(waarde: unknown): boolean | null {
 /**
  * De zin over het klassement op de uitnodiging: de echte stand, of de standaard
  * als de server hem niet noemt (QS8-801).
+ *
+ * ⚠️ Een teamgroep heeft nooit een klassement (CHECK `groups_team_geen_klassement`),
+ *    dus daar zegt de kaart dat en niet "gaat het later aan" (besluit Quinten
+ *    23-11-2026). `teamgroep` is alleen `true` voor een actief organisatielid
+ *    (0341); ieder ander leest de gewone tekst.
  */
-export function uitnodigingKlassementTekst(klassementAan: boolean | null): string {
+export function uitnodigingKlassementTekst(klassementAan: boolean | null, teamgroep: boolean): string {
+  if (teamgroep) return t('uitnodiging.klassement_team');
   if (klassementAan === true) return t('uitnodiging.klassement_aan');
   if (klassementAan === false) return t('uitnodiging.klassement_uit');
   return t('uitnodiging.klassement_standaard');
