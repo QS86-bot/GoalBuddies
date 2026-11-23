@@ -42,6 +42,7 @@ import {
   Subheading,
   useVertrekwacht,
 } from '@/shared/ui';
+import { useVolgTaal } from '@/shared/i18n/react';
 
 /**
  * De Weekafsluiting — QS8-73.
@@ -65,6 +66,7 @@ import {
  *    die zondag begon.
  */
 export default function Weekafsluiting() {
+  useVolgTaal();
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
   const { userId } = useSession();

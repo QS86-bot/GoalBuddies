@@ -61,6 +61,7 @@ import {
   Screen,
   Subheading,
 } from '@/shared/ui';
+import { useVolgTaal } from '@/shared/i18n/react';
 
 /**
  * Het groepsoverzicht — QS8-55, en de diepe link `goalbuddies://groep/<id>`.
@@ -113,6 +114,7 @@ function kopVan(stand: { readonly groep: { readonly name: string } | null } | un
 }
 
 export default function GroepDetail() {
+  useVolgTaal();
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
   const { userId } = useSession();

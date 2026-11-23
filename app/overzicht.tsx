@@ -30,6 +30,7 @@ import {
   Weekbalken,
   type KalenderDag,
 } from '@/shared/ui';
+import { useVolgTaal } from '@/shared/i18n/react';
 
 /**
  * Je eigen terugblik — QS8-256.
@@ -69,6 +70,7 @@ interface Stand {
 }
 
 export default function Overzicht() {
+  useVolgTaal();
   const router = useRouter();
   const { userId } = useSession();
   const { profiel } = useProfiel();

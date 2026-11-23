@@ -208,6 +208,7 @@ describe('een terugknop in de kop van de uitleg zou bouncen', () => {
     profielFout: null,
     isOnboarded: false,
     tak: '',
+    netAfgerond: false,
   };
 
   it('het aanmeldscherm stuurt een niet-onboarde sessie terug naar de uitleg', () => {

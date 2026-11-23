@@ -43,6 +43,7 @@ import {
   Subheading,
   useAsync,
 } from '@/shared/ui';
+import { useVolgTaal } from '@/shared/i18n/react';
 
 /**
  * Wie gaat dit met je meemaken — QS8-229.
@@ -78,6 +79,7 @@ import {
  *    het doelscherm — dezelfde belofte hoort niet in twee bewoordingen te bestaan.
  */
 export default function Samen() {
+  useVolgTaal();
   const { doel, groep: gevraagd } = useLocalSearchParams<{ doel?: string; groep?: string }>();
   const router = useRouter();
 

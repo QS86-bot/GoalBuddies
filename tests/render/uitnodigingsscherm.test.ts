@@ -52,6 +52,7 @@ vi.mock('@/modules/buddies', async () => {
     huddledagLabel: unknown;
     zichtbaarheidLabels: unknown;
     zichtbaarheidUitleg: unknown;
+    uitnodigingKlassementTekst: unknown;
   }>('@/modules/buddies/schemas');
   return {
     ...stand,
@@ -62,6 +63,7 @@ vi.mock('@/modules/buddies', async () => {
     huddledagLabel: schemas.huddledagLabel,
     zichtbaarheidLabels: schemas.zichtbaarheidLabels,
     zichtbaarheidUitleg: schemas.zichtbaarheidUitleg,
+    uitnodigingKlassementTekst: schemas.uitnodigingKlassementTekst,
     // De echte functie, met een teller: het scherm hoort er één per mount te maken.
     maakToetredenSlot: (...a: Parameters<typeof toetreden.maakToetredenSlot>) => {
       mocks.slotAanroepen += 1;
@@ -314,6 +316,43 @@ describe('de uitnodigingspagina — een open groep (A41)', () => {
     mocks.sessie = JAN;
 
     expect((await open()).tekst()).not.toContain(t('uitnodiging.open_waarschuwing'));
+  });
+});
+
+describe('de uitnodigingspagina — de stand van het klassement (QS8-801, 0341)', () => {
+  // De naad tussen `fetchUitnodiging()` en het scherm: de stand die de server noemt, staat er.
+  it('staat het aan, dan zegt het scherm aan', async () => {
+    mocks.sessie = JAN;
+    mocks.uitnodiging = { ...GROEP, klassement_aan: true };
+
+    const tekst = (await open()).tekst();
+    expect(tekst).toContain(t('uitnodiging.klassement_aan'));
+    expect(tekst).not.toContain(t('uitnodiging.klassement_standaard'));
+  });
+
+  it('staat het uit, dan zegt het scherm uit', async () => {
+    mocks.sessie = JAN;
+    mocks.uitnodiging = { ...GROEP, klassement_aan: false };
+
+    const tekst = (await open()).tekst();
+    expect(tekst).toContain(t('uitnodiging.klassement_uit'));
+    expect(tekst).not.toContain(t('uitnodiging.klassement_aan'));
+  });
+
+  it('een teamgroep zegt dat er geen klassement is, niet "gaat het later aan"', async () => {
+    mocks.sessie = JAN;
+    mocks.uitnodiging = { ...GROEP, klassement_aan: false, teamgroep: true };
+
+    const tekst = (await open()).tekst();
+    expect(tekst).toContain(t('uitnodiging.klassement_team'));
+    expect(tekst).not.toContain(t('uitnodiging.klassement_uit'));
+  });
+
+  it('noemt de server geen stand, dan de standaardtekst van QS8-798', async () => {
+    mocks.sessie = JAN;
+    mocks.uitnodiging = { ...GROEP, klassement_aan: null };
+
+    expect((await open()).tekst()).toContain(t('uitnodiging.klassement_standaard'));
   });
 });
 

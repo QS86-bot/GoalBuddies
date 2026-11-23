@@ -2,11 +2,14 @@ import { describe, expect, it } from 'vitest';
 
 import {
   closableUserCycle,
+  closableUserCycleSince,
   cyclesBetween,
   cyclesUntil,
+  existedBeforeCycle,
   groupPeriod,
   isWithinCycle,
   isWithinGrace,
+  isWithinGraceSince,
   nextCycle,
   previousCycle,
   userCycle,
@@ -22,6 +25,7 @@ const TOK = 'Asia/Tokyo';
 const maandag: UserClock = { weekStartDay: 1, tz: AMS };
 const zaterdag: UserClock = { weekStartDay: 6, tz: AMS };
 const woensdag: UserClock = { weekStartDay: 3, tz: AMS };
+const zondag: UserClock = { weekStartDay: 0, tz: AMS };
 
 describe('userCycle — de persoonlijke klok', () => {
   it('begint op de gekozen weekdag', () => {
@@ -385,5 +389,67 @@ describe('userCycleOn — een cyclus rond een datum die je al hebt', () => {
     expect(cyclus?.tz).toBe(TOK);
     // Maandag 00:00 in Tokio is zondag 15:00 UTC.
     expect(cyclus?.startsAt.toISOString()).toBe('2026-08-09T15:00:00.000Z');
+  });
+});
+
+describe('een account zonder vorige cyclus — QS8-806', () => {
+  // Maandag 23 november 2026, 06:00 in Amsterdam (05:00 UTC). De maandagcyclus
+  // begon om lokale middernacht: zondag 22 november 23:00 UTC.
+  const maandagochtend = new Date('2026-11-23T05:00:00Z');
+  const OUD = '2026-01-01T00:00:00Z';
+
+  it('(a) een account dat precies op de rollover ontstaat, is nieuw', () => {
+    expect(userCycle(maandag, maandagochtend).startsAt.toISOString()).toBe('2026-11-22T23:00:00.000Z');
+
+    expect(existedBeforeCycle(maandag, maandagochtend, '2026-11-22T23:00:00.000Z')).toBe(false);
+    expect(isWithinGraceSince(maandag, maandagochtend, '2026-11-22T23:00:00.000Z')).toBe(false);
+    expect(closableUserCycleSince(maandag, maandagochtend, '2026-11-22T23:00:00.000Z').startDate).toBe('2026-11-23');
+
+    // Eén milliseconde eerder bestond het in de vorige cyclus.
+    expect(existedBeforeCycle(maandag, maandagochtend, '2026-11-22T22:59:59.999Z')).toBe(true);
+    expect(isWithinGraceSince(maandag, maandagochtend, '2026-11-22T22:59:59.999Z')).toBe(true);
+    expect(closableUserCycleSince(maandag, maandagochtend, '2026-11-22T22:59:59.999Z').startDate).toBe('2026-11-16');
+  });
+
+  it('(b) hetzelfde aanmaakmoment is voor de maandag- en de zondagstarter iets anders', () => {
+    // Zondag 22 november, 02:00 in Amsterdam.
+    const aangemaakt = '2026-11-22T01:00:00Z';
+
+    // Maandagochtend: voor de maandagstarter bestond het account vóór zijn week.
+    expect(existedBeforeCycle(maandag, maandagochtend, aangemaakt)).toBe(true);
+    expect(isWithinGraceSince(maandag, maandagochtend, aangemaakt)).toBe(true);
+    // Voor de zondagstarter ontstond het ín zijn lopende week.
+    expect(existedBeforeCycle(zondag, maandagochtend, aangemaakt)).toBe(false);
+
+    // Zondagochtend 08:00 lokaal: het venster van de zondagstarter. Een oud
+    // account heeft coulance, het account van 02:00 niet.
+    const zondagochtend = new Date('2026-11-22T07:00:00Z');
+    expect(isWithinGraceSince(zondag, zondagochtend, OUD)).toBe(true);
+    expect(isWithinGraceSince(zondag, zondagochtend, aangemaakt)).toBe(false);
+    expect(closableUserCycleSince(zondag, zondagochtend, aangemaakt).startDate).toBe('2026-11-22');
+    expect(closableUserCycleSince(zondag, zondagochtend, OUD).startDate).toBe('2026-11-15');
+  });
+
+  it('(c) rond middernacht in Amsterdam telt het lokale moment, niet de UTC-datum', () => {
+    // Maandag 00:30 in Amsterdam is in UTC nog zondag 23:30. Een vergelijking op
+    // de UTC-datum gaf dit account een vorige week die het nooit had.
+    expect(existedBeforeCycle(maandag, maandagochtend, '2026-11-22T23:30:00Z')).toBe(false);
+    expect(isWithinGraceSince(maandag, maandagochtend, '2026-11-22T23:30:00Z')).toBe(false);
+
+    // Zondag 23:30 in Amsterdam (22:30 UTC): een halfuur in de vorige week.
+    expect(existedBeforeCycle(maandag, maandagochtend, '2026-11-22T22:30:00Z')).toBe(true);
+    expect(isWithinGraceSince(maandag, maandagochtend, '2026-11-22T22:30:00Z')).toBe(true);
+  });
+
+  it('valt bij een onleesbare aanmaakdatum terug op het oude gedrag', () => {
+    expect(existedBeforeCycle(maandag, maandagochtend, 'geen datum')).toBe(true);
+    expect(isWithinGraceSince(maandag, maandagochtend, 'geen datum')).toBe(isWithinGrace(maandag, maandagochtend));
+  });
+
+  it('verandert niets voor een oud account', () => {
+    for (const klok of [maandag, zondag, zaterdag, woensdag]) {
+      expect(isWithinGraceSince(klok, maandagochtend, OUD)).toBe(isWithinGrace(klok, maandagochtend));
+      expect(closableUserCycleSince(klok, maandagochtend, OUD)).toEqual(closableUserCycle(klok, maandagochtend));
+    }
   });
 });
