@@ -39,10 +39,20 @@ interface ProfielContextWaarde {
    *    won: een nieuw account zag de vragenlijst nooit. Hier gaan profiel en vlag
    *    in dezelfde batch, dus er is geen render waarin de wacht het één ziet en
    *    het ander niet. De wacht stuurt daarna zelf naar de vragenlijst.
+   *
+   * ⚠️ **`vragenlijst: false` zet het profiel zonder vlag — QS8-805.** Wie met een
+   *    uitnodiging, een werkcode of een al gedane toetreding afrondt, gaat eerst naar
+   *    zijn groep; dat doet `Uitnodigingswacht`. De vlag zou de routewacht daar
+   *    tegenin naar de vragenlijst laten sturen (📏 0,1 s in beeld op de web-export).
    */
-  readonly zetAfgerondProfiel: (profiel: Profiel) => void;
+  readonly zetAfgerondProfiel: (profiel: Profiel, opties: AfrondOpties) => void;
   /** De vragenlijst is in beeld, of de gebruiker is de onboarding uit: de vlag is gedaan. Roept de routewacht aan. */
   readonly afrondenVoorbij: () => void;
+}
+
+/** Volgt na het afronden de vragenlijst? `false` bij een instap — zie `zetAfgerondProfiel`. */
+export interface AfrondOpties {
+  readonly vragenlijst: boolean;
 }
 
 const ProfielContext = createContext<ProfielContextWaarde>({
@@ -111,9 +121,9 @@ export function ProfielProvider({ children }: { readonly children: React.ReactNo
 
   const herlaad = useCallback(() => setTeller((n) => n + 1), []);
 
-  const zetAfgerondProfiel = useCallback((afgerond: Profiel) => {
+  const zetAfgerondProfiel = useCallback((afgerond: Profiel, opties: AfrondOpties) => {
     setProfiel(afgerond);
-    setNetAfgerondVoor(afgerond.id);
+    if (opties.vragenlijst) setNetAfgerondVoor(afgerond.id);
   }, []);
   const afrondenVoorbij = useCallback(() => setNetAfgerondVoor(null), []);
 

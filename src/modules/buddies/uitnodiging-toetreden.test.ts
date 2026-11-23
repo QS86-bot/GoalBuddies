@@ -18,6 +18,7 @@ function opstelling(over: Partial<ToetredenUitvoer> = {}) {
     gemount: () => true,
     onboarded: () => true,
     vergeetCode: () => gebeurd.push('vergeet'),
+    onthoudGroep: (id) => gebeurd.push(`onthoud:${id}`),
     zetFout: (m) => gebeurd.push(`fout:${m}`),
     zetBinnen: (id) => gebeurd.push(`binnen:${id}`),
     naarGroep: (id) => gebeurd.push(`groep:${id}`),
@@ -41,10 +42,10 @@ describe('verwerkToetreding — QS8-712', () => {
     expect(gebeurd).toContain('groep:g-1');
   });
 
-  it('zonder profiel blijft het scherm staan, maar wel als lid', () => {
+  it('zonder profiel blijft het scherm staan, maar wel als lid (en de groep onthouden, QS8-805)', () => {
     const { uit, gebeurd } = opstelling({ onboarded: () => false });
     verwerkToetreding({ ok: true, waarde: 'g-1' }, uit);
-    expect(gebeurd).toEqual(['vergeet', 'binnen:g-1']);
+    expect(gebeurd).toEqual(['vergeet', 'onthoud:g-1', 'binnen:g-1']);
   });
 
   it('een mislukking wist de code en toont de melding', () => {
@@ -188,5 +189,29 @@ describe('toetredenMetSlot — QS8-716', () => {
     expect(vi.mocked(reportError).mock.calls[0]?.[1]).toBe('invite.process');
     expect(vi.mocked(reportError).mock.calls[0]?.[2]).toEqual({});
     expect(slot.begin()).toBe(true);
+  });
+});
+
+/**
+ * QS8-805: wie toetreedt vóór zijn onboarding af is, wordt niet genavigeerd — en dan
+ * moet de groep onthouden worden, anders landt hij na Klaar nooit op zijn groep.
+ */
+describe('verwerkToetreding onthoudt de groep — QS8-805', () => {
+  it('ook als het scherm al weg is: opslag heeft het scherm niet nodig', () => {
+    const { uit, gebeurd } = opstelling({ onboarded: () => false, gemount: () => false });
+    verwerkToetreding({ ok: true, waarde: 'g-1' }, uit);
+    expect(gebeurd).toEqual(['vergeet', 'onthoud:g-1']);
+  });
+
+  it('met afgeronde onboarding: niets onthouden, meteen naar de groep', () => {
+    const { uit, gebeurd } = opstelling();
+    verwerkToetreding({ ok: true, waarde: 'g-1' }, uit);
+    expect(gebeurd).not.toContain('onthoud:g-1');
+  });
+
+  it('een mislukte toetreding onthoudt niets', () => {
+    const { uit, gebeurd } = opstelling({ onboarded: () => false });
+    verwerkToetreding({ ok: false, melding: 'vol' }, uit);
+    expect(gebeurd.some((g) => g.startsWith('onthoud:'))).toBe(false);
   });
 });

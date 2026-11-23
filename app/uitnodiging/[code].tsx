@@ -5,6 +5,7 @@ import { StyleSheet, View } from 'react-native';
 import { ROUTE_AANMELDEN, useProfiel, useSession } from '@/modules/auth';
 import {
   bewaarOpenstaandeUitnodiging,
+  bewaarToegetredenGroep,
   fetchMijnLidmaatschap,
   fetchUitnodiging,
   huddledagLabel,
@@ -133,12 +134,21 @@ export default function UitnodigingScherm() {
   useEffect(() => {
     profielRef.current = profiel;
   }, [profiel]);
+  // QS8-805: zelfde reden als `profielRef` — de sessie kan binnenkomen terwijl `neemDeel` loopt.
+  const userIdRef = useRef(userId);
+  useEffect(() => {
+    userIdRef.current = userId;
+  }, [userId]);
 
   const uitvoer = useMemo<ToetredenUitvoer>(
     () => ({
       gemount: () => gemount.current,
       onboarded: () => Boolean(profielRef.current?.onboarded_at),
       vergeetCode: () => void vergeetOpenstaandeUitnodiging(),
+      // QS8-805: de wacht stuurt na de onboarding naar deze groep.
+      onthoudGroep: (groupId) => {
+        if (userIdRef.current) void bewaarToegetredenGroep(userIdRef.current, groupId);
+      },
       zetFout: setFout,
       zetBinnen: setBinnen,
       naarGroep: (groupId) => router.replace(`/groep/${groupId}`),

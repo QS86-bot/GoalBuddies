@@ -137,7 +137,7 @@ describe('een nieuw account na Klaar op het profiel', () => {
    */
   it('gaat naar de vragenlijst, ook terwijl de route nog op profiel staat', async () => {
     const vanaf = bestemmingen.length;
-    await act(async () => gezien.context.zetAfgerondProfiel(profiel(true)));
+    await act(async () => gezien.context.zetAfgerondProfiel(profiel(true), { vragenlijst: true }));
 
     const erna = bestemmingen.slice(vanaf);
     expect(erna).not.toContain('/');
@@ -145,7 +145,7 @@ describe('een nieuw account na Klaar op het profiel', () => {
   });
 
   it('blijft daarna op de vragenlijst staan, en ruimt de vlag op', async () => {
-    await act(async () => gezien.context.zetAfgerondProfiel(profiel(true)));
+    await act(async () => gezien.context.zetAfgerondProfiel(profiel(true), { vragenlijst: true }));
     await naar('onboarding', 'vragenlijst');
 
     expect(laatste()).toBeNull();
@@ -154,7 +154,7 @@ describe('een nieuw account na Klaar op het profiel', () => {
 
   /** Criterium 2: wie de vragenlijst gezien heeft, krijgt hem niet nog eens. */
   it('stuurt na de vragenlijst niet opnieuw naar de vragenlijst', async () => {
-    await act(async () => gezien.context.zetAfgerondProfiel(profiel(true)));
+    await act(async () => gezien.context.zetAfgerondProfiel(profiel(true), { vragenlijst: true }));
     await naar('onboarding', 'vragenlijst');
     await naar('onboarding', 'profiel');
 
@@ -167,7 +167,7 @@ describe('een nieuw account na Klaar op het profiel', () => {
    *    niet blijven hangen (code-critic QS8-793).
    */
   it('ruimt de vlag op als een andere wacht de gebruiker de onboarding uit stuurt', async () => {
-    await act(async () => gezien.context.zetAfgerondProfiel(profiel(true)));
+    await act(async () => gezien.context.zetAfgerondProfiel(profiel(true), { vragenlijst: true }));
     await naar('organisatie', 'deelnemen');
     expect(gezien.context.netAfgerond).toBe(false);
 
@@ -177,7 +177,7 @@ describe('een nieuw account na Klaar op het profiel', () => {
 
   /** De kop van `ProfielProvider` belooft dat de vlag niet naar een volgend account lekt. */
   it('geeft de vlag niet door aan een ander account op hetzelfde apparaat', async () => {
-    await act(async () => gezien.context.zetAfgerondProfiel(profiel(true)));
+    await act(async () => gezien.context.zetAfgerondProfiel(profiel(true), { vragenlijst: true }));
     mocks.gebruiker = ANDER;
     mocks.profiel = profiel(true, ANDER);
     await render();
@@ -242,7 +242,9 @@ describe('de schermen gebruiken deze naad', () => {
     expect(begin, 'rondOnboardingAf() niet gevonden in het profielscherm').toBeGreaterThan(-1);
     const naAfronden = bron.slice(begin, eind);
 
-    expect(naAfronden).toContain('zetAfgerondProfiel(afgerond.profiel)');
+    // QS8-805: via `afrondenMetInstap()`, die eerst de instap leest en dan dezelfde
+    // `zetAfgerondProfiel()` aanroept. De naad staat in `src/schermen/onboarding/instap-naad.test.ts`.
+    expect(naAfronden).toContain('afrondenMetInstap(afgerond.profiel, zetAfgerondProfiel)');
     expect(naAfronden).not.toContain('zetProfiel(afgerond.profiel)');
     expect(naAfronden).not.toMatch(/router\.(replace|push|navigate)\(/);
   });

@@ -203,3 +203,66 @@ export function routeVoorUitnodiging(invoer: {
   if (invoer.zichtbaarheid === 'open') return { soort: 'toon-scherm', reden: 'open-groep' };
   return { soort: 'toetreden' };
 }
+
+/**
+ * De groep waar iemand al in kwam vóór zijn onboarding af was — QS8-805.
+ *
+ * ⚠️ **Waarom dit bestaat.** Zonder e-mailbevestiging verschijnt de sessie terwijl
+ *    het uitnodigingsscherm nog onder het aanmeldscherm ligt, en dan treedt dat
+ *    scherm meteen toe (`useAutomatischToetreden`). De bewaarde code is daarna
+ *    gewist en de onboarding is nog niet af, dus er wordt niet genavigeerd. 📏 Op
+ *    de web-export landde zo iemand na Klaar op `/` (main) of op de vragenlijst
+ *    (QS8-793), en nooit op de groep waar hij lid van was. Hier staat welke groep
+ *    dat was; `Uitnodigingswacht` stuurt erheen zodra de onboarding af is.
+ *
+ * ⚠️ **De sleutel draagt de user-id, en de waarde ook.** De uitnodiging hierboven
+ *    is van het apparaat (er is dan nog geen account); dit is van een account. Een
+ *    tweede account op hetzelfde apparaat hoort niet op de groep van het eerste te
+ *    landen.
+ *
+ * ⚠️ Verloopt na `UITNODIGING_GELDIG_UREN`, om dezelfde reden als de uitnodiging:
+ *    het pad waarvoor dit bestaat duurt minuten. Wie twee dagen later pas zijn
+ *    profiel afmaakt, krijgt de gewone route.
+ */
+const SLEUTEL_GROEP = 'goalbuddies.toegetreden-groep';
+
+interface BewaardeGroep {
+  readonly userId: string;
+  readonly groupId: string;
+  readonly op: string;
+}
+
+const groepSleutel = (userId: string) => `${SLEUTEL_GROEP}.${userId}`;
+
+export async function bewaarToegetredenGroep(userId: string, groupId: string): Promise<void> {
+  try {
+    const inhoud: BewaardeGroep = { userId, groupId, op: now().toISOString() };
+    await AsyncStorage.setItem(groepSleutel(userId), JSON.stringify(inhoud));
+  } catch (fout) {
+    reportError(fout, 'invite.remember_group');
+  }
+}
+
+/** De groep, of `null` als er niets staat, het verlopen is of van een ander account is. */
+export async function toegetredenGroep(userId: string): Promise<string | null> {
+  try {
+    const bewaard = await AsyncStorage.getItem(groepSleutel(userId));
+    if (bewaard === null) return null;
+
+    const gelezen = JSON.parse(bewaard) as Partial<BewaardeGroep>;
+    if (gelezen.userId !== userId || typeof gelezen.groupId !== 'string') return null;
+    if (ouderDan(UITNODIGING_GELDIG_UREN, gelezen.op ?? null)) return null;
+    return gelezen.groupId;
+  } catch (fout) {
+    reportError(fout, 'invite.recall_group');
+    return null;
+  }
+}
+
+export async function vergeetToegetredenGroep(userId: string): Promise<void> {
+  try {
+    await AsyncStorage.removeItem(groepSleutel(userId));
+  } catch (fout) {
+    reportError(fout, 'invite.forget_group');
+  }
+}
