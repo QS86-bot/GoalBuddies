@@ -135,6 +135,9 @@ export const en: Record<Sleutel, string> = {
   'stuurloos.kop': 'Your witness is gone',
   'stuurloos.uitleg':
     'The person you named as your witness has closed their account. Your stake is still open. Name someone else, or settle it if you have kept to it.',
+  'stuurloos.kop_groep': 'You are no longer in your witness group',
+  'stuurloos.uitleg_groep':
+    'Your stake is still open, but you are no longer a member of the group you chose as your witness. As long as that is the case, that group will not see it. Name someone else, or settle it if you have kept to it.',
   'stuurloos.wie': 'Who watches from now on?',
   'stuurloos.aanwijzen': 'Name this person',
   'stuurloos.kies_eerst': 'First pick who watches from now on.',
@@ -1596,7 +1599,8 @@ export const en: Record<Sleutel, string> = {
   'straf.intrekken': 'Withdraw',
   'straf.begunstigde.groep': 'Witness: the group {groep}',
   'straf.begunstigde.persoon': 'Witness: {naam}',
-  'straf.begunstigde.groep_onzichtbaar': 'Witness: a group you are no longer a member of',
+  'straf.begunstigde.groep_onzichtbaar':
+    'Witness: a group you are no longer a member of. As long as that is the case, that group will not see your penalty.',
   'straf.begunstigde.persoon_onzichtbaar':
     'Witness: someone you no longer share a group with. As long as that stays so, they will not see your penalty.',
   'straf.begunstigde.fout': 'The witness could not be loaded.',
