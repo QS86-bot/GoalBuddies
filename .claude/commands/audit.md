@@ -5,7 +5,7 @@ description: Wekelijkse gezondheidscheck van de codebase — draai dit elke vrij
 Voer een wekelijkse audit uit. Schrijf zelf geen code; lever een rapport.
 
 <!-- AUDITKOP:BEGIN — gegenereerd door `npm run auditkop` -->
-> De meeste controles draaien in CI, bij elke push: **73 van de 85**
+> De meeste controles draaien in CI, op elke PR en op `main`: **73 van de 85**
 > (57 op de repo, 16 op de database). Deze audit hoeft die
 > niet over te doen; ga er langs als een uitkomst je verbaast, en besteed de tijd
 > aan de **12** die CI niet kan draaien.

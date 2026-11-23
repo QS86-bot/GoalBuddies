@@ -506,7 +506,7 @@ De binary is vastgepind op versie én sha256. Een binary die in CI draait haal j
 niet blind uit een release.
 
 ⚠️ Wat er **niet** in CI draait is de variant tegen productie. `SUPABASE_SERVICE_ROLE_KEY`
-omzeilt RLS en hoort niet in een runner die op elke push van elke branch draait.
+omzeilt RLS en hoort niet in een runner die op elke PR draait.
 
 ### 2.6 De lokale opstelling — wat er precies draait
 

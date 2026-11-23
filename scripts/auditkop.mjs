@@ -59,7 +59,7 @@ export function auditkopRegels(controles, register = ZONDER_CI) {
     .map((naam) => `> | \`${naam}\` | ${(register[naam] ?? '').replace(/\|/g, '\\|')} |`);
 
   return [
-    `> De meeste controles draaien in CI, bij elke push: **${inCi} van de ${controles.length}**`,
+    `> De meeste controles draaien in CI, op elke PR en op \`main\`: **${inCi} van de ${controles.length}**`,
     `> (${repo.length} op de repo, ${database.length} op de database). Deze audit hoeft die`,
     '> niet over te doen; ga er langs als een uitkomst je verbaast, en besteed de tijd',
     `> aan de **${zonder.length}** die CI niet kan draaien.`,
