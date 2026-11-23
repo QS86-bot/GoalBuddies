@@ -27,6 +27,7 @@ import {
   zetMeldingWacht,
 } from '@/shared/ui';
 import { useVolgTaal } from '@/shared/i18n/react';
+import { VragenlijstIngang } from '@/schermen/vragenlijst';
 
 /**
  * Profiel — jezelf, je ingangen naar statistieken en prestaties, en de ingang naar Instellingen.
@@ -113,6 +114,9 @@ export default function Profiel() {
             </Card>
 
             <InstellingenIngang />
+
+            {/* ⚠️ QS8-817, besluit Quinten (variant B): direct onder Instellingen, voor iedereen. */}
+            <VragenlijstIngang profiel={p} />
 
             <Ingangen />
           </View>

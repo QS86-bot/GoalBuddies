@@ -2,7 +2,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 
 import { STANDAARDTAAL, t, zetTaal } from '../../shared/i18n';
 
-import { BEGUNSTIGDE_BRON, begunstigdeVan } from './begunstigde-bron';
+import { BEGUNSTIGDE_BRON, begunstigdeVan, stuurlozeReden } from './begunstigde-bron';
 
 /**
  * QS8-800: welke begunstigde de strafkaart noemt, en in welke woorden.
@@ -53,5 +53,71 @@ describe('de teksten op de kaart', () => {
   it('zegt het in het Engels in het Engels', () => {
     zetTaal('en');
     expect(t('straf.begunstigde.groep', { groep: 'X' })).toBe('Witness: the group X');
+  });
+});
+
+/**
+ * QS8-820 (0343): wanneer de kaart een straf stuurloos noemt. Dezelfde toets als
+ * `herstel_stuurloze_straf()`; de serverkant staat in
+ * `tests/rls/begunstigde-groep-band.test.ts`.
+ */
+describe('stuurlozeReden', () => {
+  const groep = { beneficiary_group_id: 'g', beneficiary_user_id: null };
+  const kwijt = { soort: 'groep', naam: null, fout: false } as const;
+
+  it('noemt een verschuldigde straf zonder begunstigde verdwenen', () => {
+    expect(stuurlozeReden({ status: 'due', beneficiary_group_id: null, beneficiary_user_id: null }, null)).toBe('verdwenen');
+  });
+
+  it('noemt een verschuldigde straf bij een groep die de eigenaar niet meer leest groep_verlaten', () => {
+    expect(stuurlozeReden({ status: 'due', ...groep }, kwijt)).toBe('groep_verlaten');
+  });
+
+  it('niet zolang de straf niet verschuldigd is: dan kan de eigenaar intrekken', () => {
+    expect(stuurlozeReden({ status: 'set', ...groep }, kwijt)).toBeNull();
+  });
+
+  it('niet als de eigenaar de groep nog leest, of de naam nog niet geladen is', () => {
+    expect(stuurlozeReden({ status: 'due', ...groep }, { soort: 'groep', naam: 'X', fout: false })).toBeNull();
+    expect(stuurlozeReden({ status: 'due', ...groep }, null)).toBeNull();
+  });
+
+  it('niet bij een storing: bij twijfel geen knop die de server afwijst', () => {
+    expect(stuurlozeReden({ status: 'due', ...groep }, { soort: 'groep', naam: null, fout: true })).toBeNull();
+  });
+
+  it('niet bij een persoonlijke getuige die geen groep meer deelt (QS8-306 is een ander besluit)', () => {
+    expect(
+      stuurlozeReden(
+        { status: 'due', beneficiary_group_id: null, beneficiary_user_id: 'p' },
+        { soort: 'persoon', naam: null, fout: false },
+      ),
+    ).toBeNull();
+  });
+});
+
+describe('de kaarttekst bij een groep waar je geen lid meer van bent (QS8-820)', () => {
+  it('zegt woordelijk wat het issue vraagt, in het Nederlands', () => {
+    zetTaal('nl');
+    expect(t('straf.begunstigde.groep_onzichtbaar')).toBe(
+      'Getuige: een groep waar je geen lid meer van bent. Zolang dat zo is, krijgt die groep je straf niet te zien.',
+    );
+  });
+
+  it('en in het Engels', () => {
+    zetTaal('en');
+    expect(t('straf.begunstigde.groep_onzichtbaar')).toBe(
+      'Witness: a group you are no longer a member of. As long as that is the case, that group will not see your penalty.',
+    );
+  });
+
+  it.each(['nl', 'en'] as const)('heeft een eigen kop en uitleg op de stuurloze kaart in %s', (taal) => {
+    zetTaal(taal);
+    expect(t('stuurloos.kop_groep')).not.toBe(t('stuurloos.kop'));
+    expect(t('stuurloos.uitleg_groep')).not.toBe(t('stuurloos.uitleg'));
+    expect(t('stuurloos.kop_groep')).not.toBe('stuurloos.kop_groep');
+    // De standregel mag bij een verlaten groep niet zeggen dat de groep meeleest.
+    expect(t('commitment.penalty.due.uitleg_groep_verlaten')).not.toBe(t('commitment.penalty.due.uitleg'));
+    expect(t('commitment.penalty.due.uitleg_groep_verlaten')).not.toBe('commitment.penalty.due.uitleg_groep_verlaten');
   });
 });

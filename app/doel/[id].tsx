@@ -4,6 +4,7 @@ import { StyleSheet, View } from 'react-native';
 
 import { useProfiel, useSession, userClock } from '@/modules/auth';
 import { BelofteIngang } from '@/schermen/belofte';
+import { StrafIntrekken } from '@/schermen/straf';
 import {
   beslissendeGroep,
   enigeOfGekozen,
@@ -20,6 +21,9 @@ import {
 } from '@/modules/buddies';
 import {
   fetchBegunstigdeNaam,
+  stuurlozeReden,
+  type BegunstigdeNaam,
+  type StuurlozeReden,
   fetchCommitments,
   fetchCommitmentSpoor,
   herstelStuurlozeStraf,
@@ -32,7 +36,6 @@ import {
   magStrafVastleggen,
   spoorLabels,
   tekstVoor,
-  trekIn,
   wordtZichtbaarBijUitstelverzoek,
   zetBeloning,
   zetStraf,
@@ -93,6 +96,7 @@ import {
   type Weekplanstap,
   type Risico,
   type Ritme,
+  uitstelGevraagd,
 } from '@/modules/goals';
 import { opmaaktaal, t } from '@/shared/i18n';
 import { schoneEneRegel, telTekens } from '@/shared/tekst';
@@ -369,6 +373,7 @@ export default function DoelDetail() {
               bestaand={commitments.find(isDoelstraf)}
               streefdatumVoorbij={!magStrafVastleggen(d.target_date, vandaag)}
               vanMij={d.owner_id === userId}
+              metUitstelverzoek={uitstelGevraagd(verzoek, besluit)}
               onKlaar={herlaad}
             />
 
@@ -485,9 +490,10 @@ function DeadlineVerzetten({
   const magVersturen = !gedeeld || groep !== undefined;
 
   // ⚠️ **`trekVerzoekIn` en niet `trekIn`, en dat is geen smaak** (QS8-340). Dit
-  //    scherm importeert óók `trekIn()` uit `@/modules/commitments` — een straf
+  //    scherm importeerde óók `trekIn()` uit `@/modules/commitments` — een straf
   //    intrekken, een heel andere handeling — en die lokale naam schaduwde de
-  //    import. Twee handelingen met één naam in één bestand is de plek waar een
+  //    import. (Sinds QS8-814 loopt een straf intrekken via `StrafIntrekken` en
+  //    `trekStrafIn()`; de naamregel blijft staan.) Twee handelingen met één naam in één bestand is de plek waar een
   //    bug zich verstopt, en hier was dat ook zo: de geïmporteerde `trekIn()`
   //    gooide zijn uitkomst weg en de grendel kon de twee niet uit elkaar houden.
   async function trekVerzoekIn() {
@@ -987,6 +993,7 @@ function StuurlozeStrafBevestiging({
  *    niemand om aan te wijzen, dan zegt de kaart dat, en blijft afwikkelen over.
  */
 function StuurlozeStrafKeuze({
+  reden,
   mensen,
   gekozen,
   bezig,
@@ -995,6 +1002,7 @@ function StuurlozeStrafKeuze({
   onAanwijzen,
   onAfwikkelen,
 }: {
+  readonly reden: StuurlozeReden;
   readonly mensen: readonly MogelijkeBegunstigde[];
   readonly gekozen: MogelijkeBegunstigde | undefined;
   readonly bezig: boolean;
@@ -1005,8 +1013,8 @@ function StuurlozeStrafKeuze({
 }) {
   return (
     <Card nested>
-      <Subheading>{t('stuurloos.kop')}</Subheading>
-      <Body muted>{t('stuurloos.uitleg')}</Body>
+      <Subheading>{t(reden === 'groep_verlaten' ? 'stuurloos.kop_groep' : 'stuurloos.kop')}</Subheading>
+      <Body muted>{t(reden === 'groep_verlaten' ? 'stuurloos.uitleg_groep' : 'stuurloos.uitleg')}</Body>
       {mensen.length > 0 ? (
         <>
           <Choice
@@ -1031,13 +1039,9 @@ function StuurlozeStrafKeuze({
   );
 }
 
-function StuurlozeStraf({
-  straf,
-  onKlaar,
-}: {
-  readonly straf: Commitment;
-  readonly onKlaar: () => void;
-}) {
+type StuurlozeStrafProps = { readonly straf: Commitment; readonly reden: StuurlozeReden; readonly onKlaar: () => void };
+
+function StuurlozeStraf({ straf, reden, onKlaar }: StuurlozeStrafProps) {
   const [bevestigen, setBevestigen] = useState(false);
   const [bezig, setBezig] = useState(false);
   const [fout, setFout] = useState<string | null>(null);
@@ -1076,6 +1080,7 @@ function StuurlozeStraf({
 
   return (
     <StuurlozeStrafKeuze
+      reden={reden}
       mensen={mensen}
       gekozen={nieuweGetuige}
       bezig={bezig}
@@ -1168,13 +1173,43 @@ function TeamStrafBevestiging({
  *
  * ⚠️ Apart component, want het haalt zelf op: een hook hoort niet in de tak
  *    van `Straf` die alleen bij een bestaande straf loopt.
+ *
+ * ⚠️ **QS8-820 (0343): de stuurloze kaart hangt hier ook aan.** Een groep waar de
+ *    eigenaar geen lid meer van is, maakt een verschuldigde straf stuurloos, en
+ *    dat is precies wanneer de naam niet te lezen is. Eén ophaalactie voor beide,
+ *    zodat de regel en de kaart nooit iets anders zeggen. Voor een ander dan de
+ *    eigenaar wordt niets opgehaald.
  */
-function StrafBegunstigde({ straf }: { readonly straf: Commitment }) {
+function StrafBegunstigde({
+  straf,
+  stand,
+  vanMij,
+  onKlaar,
+}: {
+  readonly straf: Commitment;
+  readonly stand: { readonly titel: string; readonly uitleg: string };
+  readonly vanMij: boolean;
+  readonly onKlaar: () => void;
+}) {
   const wie = useAsyncMetTerugval(
-    () => fetchBegunstigdeNaam(straf),
+    () => (vanMij ? fetchBegunstigdeNaam(straf) : Promise.resolve(null)),
     null,
-    [straf.id, straf.beneficiary_group_id, straf.beneficiary_user_id],
+    [straf.id, straf.beneficiary_group_id, straf.beneficiary_user_id, vanMij],
   );
+  // ⚠️ QS8-820: de stuurloze kaart leest dezelfde naam. Zie `stuurlozeReden()`.
+  const reden = stuurlozeReden(straf, wie);
+  // ⚠️ QS8-820: "de groep kan dit nu lezen" is onwaar zolang je er geen lid van bent.
+  const uitleg = reden === 'groep_verlaten' ? t('commitment.penalty.due.uitleg_groep_verlaten') : stand.uitleg;
+  return (
+    <>
+      <Caption>{t('commitment.stand', { titel: stand.titel, uitleg })}</Caption>
+      {vanMij ? <BegunstigdeRegel wie={wie} /> : null}
+      {reden === null ? null : <StuurlozeStraf straf={straf} reden={reden} onKlaar={onKlaar} />}
+    </>
+  );
+}
+
+function BegunstigdeRegel({ wie }: { readonly wie: BegunstigdeNaam | null }) {
   if (wie === null) return null;
   if (wie.fout) return <Caption>{t('straf.begunstigde.fout')}</Caption>;
   if (wie.naam === null) {
@@ -1198,6 +1233,7 @@ function Straf({
   bestaand,
   streefdatumVoorbij,
   vanMij,
+  metUitstelverzoek,
   onKlaar,
 }: {
   readonly goalId: string;
@@ -1205,6 +1241,8 @@ function Straf({
   readonly streefdatumVoorbij: boolean;
   /** QS8-800: de naam van de getuige staat alleen op de kaart van de eigenaar. */
   readonly vanMij: boolean;
+  /** QS8-814: is er een niet-ingetrokken uitstelverzoek op dit doel? Dan noemt de intrekvraag de groep. */
+  readonly metUitstelverzoek: boolean;
   readonly onKlaar: () => void;
 }) {
   const router = useRouter();
@@ -1238,40 +1276,12 @@ function Straf({
     const magIntrekken = isOpenstaand(bestaand);
     const straf = bestaand;
 
-    /**
-     * ⚠️ **Hier stond `void trekIn(bestaand.id).then(onKlaar)`** — QS8-340. Dat
-     *    gooide de uitkomst weg, en `trekIn()` heeft er een die de gebruiker
-     *    moet zien: `commitment.fout.al_afgegaan`, *"dit commitment is al in
-     *    werking getreden en kan niet meer worden ingetrokken"*. Die melding was
-     *    geschreven, vertaald en getest, en bereikte niemand. Werd de straf net
-     *    `due` tussen het renderen en de tik in — precies het geval waarvoor de
-     *    knop hierboven verdwijnt — dan ververste het scherm, stond de straf er
-     *    nog, en was er geen woord uitleg.
-     *
-     * ⚠️ En mét een `busy`-stand, want zonder stuurde twee keer tikken twee
-     *    verzoeken.
-     */
-    async function trekStrafIn() {
-      setBezig(true);
-      setFout(null);
-
-      const uitkomst = await trekIn(straf.id);
-      setBezig(false);
-
-      if (!uitkomst.ok) {
-        setFout(uitkomst.melding);
-        return;
-      }
-
-      onKlaar();
-    }
-
     return (
       <Card>
         <Subheading>{t('straf.jouw')}</Subheading>
         <Body>{bestaand.body}</Body>
-        <Caption>{t('commitment.stand', { titel: stand.titel, uitleg: stand.uitleg })}</Caption>
-        {vanMij ? <StrafBegunstigde straf={straf} /> : null}
+        {/* ⚠️ QS8-333 en QS8-820: de stand, de getuige en de stuurloze kaart staan hierin. */}
+        <StrafBegunstigde straf={straf} stand={stand} vanMij={vanMij} onKlaar={onKlaar} />
         {/*
           ⚠️ De knop verdwijnt zodra de straf verschuldigd is, en dat is geen
              cosmetiek: `commitments_update` weigert het dan sowieso (0057). Een
@@ -1279,17 +1289,14 @@ function Straf({
              onbetrouwbaar is — en hier is het juist de bedoeling dat je merkt
              dat je er niet meer onderuit komt.
         */}
+        {/*
+          ⚠️ QS8-814: intrekken vraagt een tweede bevestiging, in de vorm van QS8-799.
+             De eerste tik schrijft niets; zie `StrafIntrekken`. QS8-340 (de uitkomst
+             van het intrekken bereikte niemand) blijft gedekt: de melding staat daar.
+             `key`: een openstaande vraag hoort nooit bij een andere straf.
+        */}
         {magIntrekken ? (
-          <Button variant="stil" busy={bezig} onPress={() => void trekStrafIn()}>
-            {t('straf.intrekken')}
-          </Button>
-        ) : null}
-        {fout === null ? null : <Caption danger>{fout}</Caption>}
-        {/* ⚠️ QS8-333: alleen als de getuige verdwenen is. Zie StuurlozeStraf. */}
-        {straf.status === 'due' &&
-        straf.beneficiary_user_id === null &&
-        straf.beneficiary_group_id === null ? (
-          <StuurlozeStraf straf={straf} onKlaar={onKlaar} />
+          <StrafIntrekken key={straf.id} strafId={straf.id} metUitstelverzoek={metUitstelverzoek} onKlaar={onKlaar} />
         ) : null}
         <Spoor commitmentId={bestaand.id} />
       </Card>

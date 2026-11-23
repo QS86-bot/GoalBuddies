@@ -7,12 +7,15 @@ import {
   isOpenstaand,
   trekBelofteIn,
   wachtOpBeslissing,
+  type Belofteuitslag,
   type Commitment,
 } from '@/modules/commitments';
 import { opmaaktaal, t } from '@/shared/i18n';
 import { useTheme } from '@/shared/theme';
 import { toonDatumLang, type UserClock } from '@/shared/time';
 import { Body, Button, Caption, Card, Subheading } from '@/shared/ui';
+
+import { Uitslagregel } from './Uitslagregel';
 
 /**
  * Een belofte die er al is: de tekst, de week, de stand, en intrekken op `set`.
@@ -25,17 +28,25 @@ import { Body, Button, Caption, Card, Subheading } from '@/shared/ui';
  *    "intussen beslist" en niet "in werking getreden": nul rijen is ook een
  *    belofte die 0313 als gehouden op `cancelled` zette (security-review QS8-799).
  * ⚠️ `key` op `Intrekken`: een openstaande vraag hoort nooit bij een andere belofte.
+ * ⚠️ **QS8-815:** is deze kaart de nieuwste beslissing (`due`), dan staat de
+ *    uitslagregel er in plaats van de standregel; zelfde feit, één zin (V2 = A).
+ *    Na een gelukte intrekking roept hij `onIngetrokken` aan: het scherm toont dan
+ *    de vaste melding en herlaadt (V4 = A).
  */
 export function BestaandeBelofte({
   belofte,
   klok,
   dezeWeek,
+  uitslag,
   onKlaar,
+  onIngetrokken,
 }: {
   readonly belofte: Commitment;
   readonly klok: UserClock;
   readonly dezeWeek: string;
+  readonly uitslag: Belofteuitslag | null;
   readonly onKlaar: () => void;
+  readonly onIngetrokken: () => void;
 }) {
   const stand = belofteTekstVoor(belofte);
   const week = belofteweek(klok, belofte.periode_start ?? '');
@@ -52,12 +63,16 @@ export function BestaandeBelofte({
       )}
       {/* ⚠️ Na de week en vóór de beslissing (0313 beslist één run later) zegt
           "geldt voor deze week" iets onwaars; intrekken mag dan nog (besloten op QS8-759). */}
-      {wachtOpBeslissing(belofte, dezeWeek) ? (
+      {uitslag !== null ? (
+        <Uitslagregel uitslag={uitslag} periodeStart={belofte.periode_start} klok={klok} />
+      ) : wachtOpBeslissing(belofte, dezeWeek) ? (
         <Caption>{t('belofte.week_voorbij_wacht')}</Caption>
       ) : (
         <Caption>{t('commitment.stand', { titel: stand.titel, uitleg: stand.uitleg })}</Caption>
       )}
-      {isOpenstaand(belofte) ? <Intrekken key={belofte.id} belofteId={belofte.id} onKlaar={onKlaar} /> : null}
+      {isOpenstaand(belofte) ? (
+        <Intrekken key={belofte.id} belofteId={belofte.id} onKlaar={onKlaar} onIngetrokken={onIngetrokken} />
+      ) : null}
       {!isOpenstaand(belofte) && belofte.periode_start === dezeWeek ? <Caption>{t('belofte.deze_week_al')}</Caption> : null}
     </Card>
   );
@@ -74,7 +89,9 @@ export function BestaandeBelofte({
  *    device gaat nooit stilzwijgend aan, en dus ook niet met één misser uit.
  * ⚠️ Mét een busy-stand: twee keer tikken is anders twee verzoeken.
  */
-function Intrekken({ belofteId, onKlaar }: { readonly belofteId: string; readonly onKlaar: () => void }) {
+type IntrekProps = { readonly belofteId: string; readonly onKlaar: () => void; readonly onIngetrokken: () => void };
+
+function Intrekken({ belofteId, onKlaar, onIngetrokken }: IntrekProps) {
   const { afstand } = useTheme();
   const [vraagt, setVraagt] = useState(false);
   const [bezig, setBezig] = useState(false);
@@ -85,7 +102,7 @@ function Intrekken({ belofteId, onKlaar }: { readonly belofteId: string; readonl
     setFout(null);
     const uitkomst = await trekBelofteIn(belofteId);
     setBezig(false);
-    if (uitkomst.ok) onKlaar();
+    if (uitkomst.ok) onIngetrokken();
     else setFout({ melding: uitkomst.melding, beslist: uitkomst.beslist });
   }
 

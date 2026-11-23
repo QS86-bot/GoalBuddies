@@ -322,5 +322,15 @@ describe.runIf(rlsTestsConfigured)('een teamstraf blijft in het team (QS8-660)',
     expect(uitkomst(await rpc(bert, 'verlaat_organisatie', { p_organization_id: org }))).toBe('ok');
     expect((await adminDb().from('commitments').update({ status: 'due' } as never).eq('id', id)).error).toBeNull();
     expect(await berichten()).toBe(voor);
+
+    // ⚠️ QS8-820 (0343, security-review M1): de teamgroep is nu stuurloos. Een
+    //    nieuwe getuige leest de straf nooit (besluit M1 eist dat bert in het
+    //    team zit), dus die weigert de RPC. Afwikkelen blijft over. Rood gemaakt
+    //    door de toets met `straf_teamband_klopt` uit `herstel_stuurloze_straf()`
+    //    te halen: dan geeft de eerste aanroep `ok`.
+    const getuige = await rpc(bert, 'herstel_stuurloze_straf', { p_commitment_id: id, p_actie: 'nieuwe_getuige', p_getuige: cleo.id });
+    expect(uitkomst(getuige)).toBe('getuige_leest_hem_niet');
+    const af = await rpc(bert, 'herstel_stuurloze_straf', { p_commitment_id: id, p_actie: 'afwikkelen', p_bevestigd: true });
+    expect(uitkomst(af)).toBe('ok');
   }, TEST_TIMEOUT);
 });

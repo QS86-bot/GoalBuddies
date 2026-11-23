@@ -202,6 +202,9 @@ export const nl = {
   'commitment.penalty.due.titel': 'Verschuldigd',
   'commitment.penalty.due.uitleg':
     'Je streefdatum is verstreken. De groep die je gekozen hebt, kan dit nu lezen.',
+  // QS8-820 (0343): verschuldigd bij een groep waar je geen lid meer van bent.
+  'commitment.penalty.due.uitleg_groep_verlaten':
+    'Je streefdatum is verstreken. De groep die je gekozen had, krijgt dit niet te zien zolang je er geen lid van bent.',
   'commitment.penalty.resolved.titel': 'Afgehandeld',
   'commitment.penalty.resolved.uitleg': 'Deze inzet is voldaan.',
   'commitment.penalty.cancelled.titel': 'Vervallen',
@@ -229,12 +232,14 @@ export const nl = {
     'Een afspraak op een teamaandeel heeft alleen je team of een teamgenoot als getuige. ' +
     'En een team is alleen getuige van een teamaandeel. Kies een andere getuige.',
   'commitment.fout.intrekken': 'Intrekken lukte niet.',
-  'commitment.fout.al_afgegaan':
-    'Dit commitment is al in werking getreden en kan niet meer worden ingetrokken.',
   'commitment.fout.laden': 'De beloning en straf konden niet geladen worden.',
   'stuurloos.kop': 'Je getuige is er niet meer',
   'stuurloos.uitleg':
     'De persoon die je als getuige had aangewezen, heeft zijn account opgezegd. Je inzet staat nog open. Wijs iemand anders aan, of wikkel hem af als je hem bent nagekomen.',
+  // QS8-820 (0343): een straf bij een groep waar je geen lid meer van bent.
+  'stuurloos.kop_groep': 'Je zit niet meer in de groep die getuige is',
+  'stuurloos.uitleg_groep':
+    'Je inzet staat nog open, maar je bent geen lid meer van de groep die je als getuige had gekozen. Zolang dat zo is, krijgt die groep hem niet te zien. Wijs iemand anders aan, of wikkel hem af als je hem bent nagekomen.',
   'stuurloos.wie': 'Wie let er vanaf nu op?',
   'stuurloos.aanwijzen': 'Deze persoon aanwijzen',
   // ⚠️ QS8-651: bij twee of meer kandidaten is er geen voorgeselecteerde, en de
@@ -253,6 +258,8 @@ export const nl = {
     'Deze inzet heeft nog een getuige. Je kunt hem alleen overdragen als je getuige zijn account heeft opgezegd.',
   'commitment.herstel.niet_verschuldigd':
     'Deze inzet is nog niet verschuldigd. Zolang dat zo is, kun je hem gewoon intrekken.',
+  'commitment.herstel.getuige_leest_hem_niet':
+    'Deze persoon kan je inzet niet zien, omdat je niet meer in het team zit. Wikkel hem af als je hem bent nagekomen.',
   'commitment.herstel.geen_groepsgenoot':
     'Je kunt alleen iemand aanwijzen met wie je een groep deelt.',
   'commitment.herstel.niet_jezelf': 'Je kunt niet je eigen getuige zijn.',
@@ -515,7 +522,7 @@ export const nl = {
   'uitnodiging.pas_bij_meedoen': 'Waar ze aan werken zie je zodra je meedoet. Dat is met opzet: wat mensen hier delen, delen ze met hun groep en niet met iedereen die de link krijgt.',
   'uitnodiging.wat_je_doet': 'Wat je hier gaat doen',
   'uitnodiging.uitleg_kern': 'Je kiest één doel met een datum erop. Elke week bepaal je wat je af wilt hebben, en één van je buddy’s keurt goed dat het gelukt is. Meer niet.',
-  'uitnodiging.uitleg_missen_beschermd': 'Een week missen kost een punt en verder niets. Niemand in de groep ziet het.',
+  'uitnodiging.uitleg_missen_beschermd': 'Een week missen kost een punt en verder niets. De groep ziet de week niet, alleen dat je reeks opnieuw begint.',
   'uitnodiging.uitleg_missen_open': 'Een week missen kost een punt en verder niets. In deze groep zien de anderen het wel. Dat is wat "open" hierboven betekent.',
   'uitnodiging.al_lid': 'Je zit in de groep',
   'uitnodiging.doorsturen': 'Je wordt doorgestuurd naar de groep.',
@@ -624,7 +631,7 @@ export const nl = {
    *    beschermd is. Vandaar de vorm "standaard niet, en je ziet het staan" in
    *    plaats van een belofte die de app later moet breken (besluit A41).
    */
-  'onboarding.stap4.b': 'Een week missen kost je één punt en verder niets. In een beschermde groep, en dat is de standaard, ziet niemand het. Kiest een groep bewust voor open, dan staat dat erbij vóór je meedoet.',
+  'onboarding.stap4.b': 'Een week missen kost je één punt en verder niets. In een beschermde groep, en dat is de standaard, ziet de groep de week niet, alleen dat je reeks opnieuw begint. Kiest een groep bewust voor open, dan staat dat erbij vóór je meedoet.',
   'onboarding.stap_van': 'STAP {nu} VAN {totaal}',
   'onboarding.zo_ziet_eruit': 'Zo ziet dat eruit',
   'onboarding.voorbeeld_titel': 'Drie keer hardlopen',
@@ -1091,6 +1098,14 @@ export const nl = {
   'profiel.als_buddy': 'Doet mee als buddy',
   'profiel.reeks_titel': 'Jouw reeks',
   'profiel.reeks_uitleg': 'Je reeks telt weken en staat per doel bij “Je stand” op Vandaag. Een weekpas beschermt je reeks als je een week mist. Het punt niet, want anders zegt de score niets meer.',
+  // QS8-817: de vaste ingang naar de vragenlijst, op Profiel onder Instellingen.
+  'profiel.vragenlijst_titel': 'Zodat de app je kent',
+  'profiel.vragenlijst_tekst_leeg':
+    'Een paar korte vragen: waar je je op wilt richten, hoeveel tijd je hebt en wanneer het je uitkomt. Je kunt ze altijd later invullen.',
+  'profiel.vragenlijst_tekst_ingevuld':
+    'Je antwoorden over je focus, je tijd, je moment, wat je tegenhoudt en je gevoel. Pas ze aan wanneer je wilt.',
+  'profiel.vragenlijst_knop_beantwoorden': 'Vragen beantwoorden',
+  'profiel.vragenlijst_knop_aanpassen': 'Antwoorden aanpassen',
   'profiel.verwijder_titel': 'Account verwijderen',
   'profiel.verwijder_uitleg': 'Je doelen, weken, Dagzetten, punten en lidmaatschappen verdwijnen. Wat blijft staan zijn de goedkeuringen die jij aan je buddy’s gaf en je berichten in de groepschat, zonder je naam erbij. Die zijn van hen.',
   'profiel.verwijder_knop': 'Ik wil mijn account verwijderen',
@@ -1404,9 +1419,12 @@ export const nl = {
   'groep.rate_limited':
     'Je hebt vandaag te vaak een uitnodiging geprobeerd. Over 24 uur kan het weer; ' +
     'vraag je buddy intussen om de link nog eens te sturen.',
+  // ⚠️ QS8-813: één neutrale tekst voor ieder `invalid`. De server geeft dat ook
+  //    aan een buitenstaander met een werkende teamcode (0317); "werkt niet meer"
+  //    was dan onwaar, en een eigen tekst zou de teamcode verraden.
   'groep.ongeldige_link':
-    'Deze uitnodigingslink werkt niet meer. Hij is ingetrokken of hij klopt niet; ' +
-    'vraag je buddy om een nieuwe.',
+    'Met deze link kun je nu niet meedoen. Hoort hij bij je werk, word dan eerst lid ' +
+    'van je organisatie met de code van je werkgever.',
   'groep.vol': 'Deze groep zit vol. Drie tot vijf mensen werkt het best, dus dat is geen ramp.',
   'groep.te_veel_groepen': 'Je zit al in tien groepen. Verlaat er een om ruimte te maken.',
   'groep.naam_kort': 'Geef je groep een naam van minstens twee tekens.',
@@ -2107,7 +2125,10 @@ export const nl = {
   //    alleen de soort, en bij een storing zegt hij dat.
   'straf.begunstigde.groep': 'Getuige: de groep {groep}',
   'straf.begunstigde.persoon': 'Getuige: {naam}',
-  'straf.begunstigde.groep_onzichtbaar': 'Getuige: een groep waar je geen lid meer van bent',
+  // ⚠️ QS8-820 (0343): de tweede zin is de belofte, en die houdt de database
+  //    (`commitments_select` tak 2). Woordelijk uit het issue.
+  'straf.begunstigde.groep_onzichtbaar':
+    'Getuige: een groep waar je geen lid meer van bent. Zolang dat zo is, krijgt die groep je straf niet te zien.',
   // ⚠️ Niet alleen "wie": de persoonstak van `commitments_select` eist een
   //    gedeelde groep (0183), dus zolang die er niet is ziet de getuige de straf
   //    óók bij `due` niet. Een kaart die dan alleen "Getuige: …" zegt, belooft
@@ -2284,6 +2305,29 @@ export const nl = {
   'belofte.intrekken_nee': 'Nee, laat haar staan',
   'belofte.intrekken_uitslag': 'Bekijk de uitslag',
   'belofte.fout.al_afgegaan': 'Deze belofte kan niet meer worden ingetrokken: ze is intussen beslist.',
+  // QS8-815, besluit Quinten 23-11 (V3 = A en V4 = A): één regel met de uitslag van de
+  // nieuwste besliste belofte, en een vaste melding na intrekken.
+  'belofte.uitslag.gehouden':
+    'Je hebt je belofte voor de week van {start} tot en met {einde} gehouden. Ze gaat niet in werking.',
+  'belofte.uitslag.in_werking':
+    'Je hebt je belofte voor de week van {start} tot en met {einde} niet gehouden. Ze is in werking en je getuige kan haar lezen.',
+  'belofte.uitslag.ingetrokken':
+    'Je hebt je belofte voor de week van {start} tot en met {einde} ingetrokken. Ze gaat niet in werking.',
+  'belofte.ingetrokken_melding': 'Je belofte is ingetrokken.',
+
+  // QS8-814: een doelstraf intrekken vraagt dezelfde bevestiging als een belofte
+  // (besluit Quinten 23-11-2026, 16:55 UTC). De uitstelregel staat er alleen als er
+  // een uitstelverzoek op dit doel loopt.
+  'straf.intrekken_kop': 'Je straf intrekken?',
+  'straf.intrekken_gevolg':
+    'Je straf vervalt en gaat niet meer in werking, ook niet als je je streefdatum niet haalt.',
+  'straf.intrekken_getuige': 'Je getuige krijgt hier niets van te zien: geen bericht en geen melding.',
+  'straf.intrekken_uitstel':
+    'De groep die je om uitstel vroeg, ziet dan niet meer dat er een straf op dit doel staat.',
+  'straf.intrekken_ja': 'Ja, trek mijn straf in',
+  'straf.intrekken_nee': 'Nee, laat haar staan',
+  'straf.intrekken_uitslag': 'Bekijk de uitslag',
+  'straf.fout.al_afgegaan': 'Deze straf kan niet meer worden ingetrokken: ze is intussen beslist.',
 
   // ---------------------------------------------------------------------------
   // Afronden, archiveren en herplannen — QS8-83, QS8-32 en QS8-96

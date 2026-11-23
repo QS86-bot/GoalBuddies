@@ -103,6 +103,8 @@ export const en: Record<Sleutel, string> = {
   'commitment.penalty.due.titel': 'Due',
   'commitment.penalty.due.uitleg':
     'Your target date has passed. The group you chose can read this now.',
+  'commitment.penalty.due.uitleg_groep_verlaten':
+    'Your target date has passed. The group you had chosen will not see this as long as you are not a member.',
   'commitment.penalty.resolved.titel': 'Settled',
   'commitment.penalty.resolved.uitleg': 'This stake has been paid.',
   'commitment.penalty.cancelled.titel': 'Expired',
@@ -129,12 +131,13 @@ export const en: Record<Sleutel, string> = {
     'An agreement on a team share can only have your team or a teammate as its witness. ' +
     'And a team can only witness a team share. Choose another witness.',
   'commitment.fout.intrekken': 'Withdrawing did not work.',
-  'commitment.fout.al_afgegaan':
-    'This commitment has already come into effect and can no longer be withdrawn.',
   'commitment.fout.laden': 'The reward and penalty could not be loaded.',
   'stuurloos.kop': 'Your witness is gone',
   'stuurloos.uitleg':
     'The person you named as your witness has closed their account. Your stake is still open. Name someone else, or settle it if you have kept to it.',
+  'stuurloos.kop_groep': 'You are no longer in your witness group',
+  'stuurloos.uitleg_groep':
+    'Your stake is still open, but you are no longer a member of the group you chose as your witness. As long as that is the case, that group will not see it. Name someone else, or settle it if you have kept to it.',
   'stuurloos.wie': 'Who watches from now on?',
   'stuurloos.aanwijzen': 'Name this person',
   'stuurloos.kies_eerst': 'First pick who watches from now on.',
@@ -151,6 +154,8 @@ export const en: Record<Sleutel, string> = {
     'This stake still has a witness. You can only hand it over once your witness has closed their account.',
   'commitment.herstel.niet_verschuldigd':
     'This stake is not due yet. While that is the case, you can simply withdraw it.',
+  'commitment.herstel.getuige_leest_hem_niet':
+    'This person cannot see your stake, because you are no longer in the team. Settle it if you have kept to it.',
   'commitment.herstel.geen_groepsgenoot':
     'You can only pick someone you share a group with.',
   'commitment.herstel.niet_jezelf': 'You cannot be your own witness.',
@@ -336,7 +341,7 @@ export const en: Record<Sleutel, string> = {
   'uitnodiging.pas_bij_meedoen': 'You will see what they are working on once you join. That is deliberate: what people share here, they share with their group and not with everyone who gets the link.',
   'uitnodiging.wat_je_doet': 'What you will be doing here',
   'uitnodiging.uitleg_kern': 'You pick one goal with a date on it. Each week you decide what you want to finish, and one of your buddies approves that you did. That is all.',
-  'uitnodiging.uitleg_missen_beschermd': 'Missing a week costs one point and nothing else. Nobody in the group sees it.',
+  'uitnodiging.uitleg_missen_beschermd': 'Missing a week costs one point and nothing else. The group does not see the missed week, only that your streak starts again.',
   'uitnodiging.uitleg_missen_open': 'Missing a week costs one point and nothing else. In this group the others do see it. That is what “open” above means.',
   'uitnodiging.al_lid': 'You are in the group',
   'uitnodiging.doorsturen': 'You are being taken to the group.',
@@ -440,7 +445,7 @@ export const en: Record<Sleutel, string> = {
   'onboarding.stap3.c': 'This is the idea the app is built around. Your streak should serve you, not the other way around.',
   'onboarding.stap4.kop': 'A buddy approves it',
   'onboarding.stap4.a': 'Someone from your group confirms that you did it. Approving yourself is not possible.',
-  'onboarding.stap4.b': 'Missing a week costs you one point and nothing else. In a protected group, and that is the default, nobody sees it. If a group deliberately chooses to be open, you are told before you join.',
+  'onboarding.stap4.b': 'Missing a week costs you one point and nothing else. In a protected group, and that is the default, the group does not see the week, only that your streak starts over. If a group deliberately chooses to be open, you are told before you join.',
   'onboarding.stap_van': 'STEP {nu} OF {totaal}',
   'onboarding.zo_ziet_eruit': 'Here is what that looks like',
   'onboarding.voorbeeld_titel': 'Run three times',
@@ -732,6 +737,14 @@ export const en: Record<Sleutel, string> = {
   'profiel.als_buddy': 'Taking part as a buddy',
   'profiel.reeks_titel': 'Your streak',
   'profiel.reeks_uitleg': 'Your streak counts weeks and appears per goal under “Your standing” on Today. A week pass protects your streak if you miss a week. Not the point, because otherwise the score means nothing.',
+  // QS8-817: the fixed entry to the questionnaire, on Profile below Settings.
+  'profiel.vragenlijst_titel': 'So the app knows you',
+  'profiel.vragenlijst_tekst_leeg':
+    'A few short questions: what you want to focus on, how much time you have and when it suits you. You can always fill them in later.',
+  'profiel.vragenlijst_tekst_ingevuld':
+    'Your answers about your focus, your time, your moment, what holds you back and how you feel. Change them whenever you like.',
+  'profiel.vragenlijst_knop_beantwoorden': 'Answer the questions',
+  'profiel.vragenlijst_knop_aanpassen': 'Change your answers',
   'profiel.verwijder_titel': 'Delete account',
   'profiel.verwijder_uitleg': 'Your goals, weeks, Daily Moves, points and memberships disappear. What stays are the approvals you gave your buddies and your messages in the group chat, without your name on them. Those are theirs.',
   'profiel.verwijder_knop': 'I want to delete my account',
@@ -1016,8 +1029,8 @@ export const en: Record<Sleutel, string> = {
     'You have tried an invitation too often today. In 24 hours it works again; ' +
     'meanwhile, ask your buddy to send the link once more.',
   'groep.ongeldige_link':
-    'This invitation link no longer works. It was withdrawn or it is wrong; ' +
-    'ask your buddy for a new one.',
+    'You cannot join with this link right now. If it is from your work, first join ' +
+    "your organisation with your employer's code.",
   'groep.vol': 'This group is full. Three to five people works best, so that is no disaster.',
   'groep.te_veel_groepen': 'You are already in ten groups. Leave one to make room.',
   'groep.naam_kort': 'Give your group a name of at least two characters.',
@@ -1596,7 +1609,8 @@ export const en: Record<Sleutel, string> = {
   'straf.intrekken': 'Withdraw',
   'straf.begunstigde.groep': 'Witness: the group {groep}',
   'straf.begunstigde.persoon': 'Witness: {naam}',
-  'straf.begunstigde.groep_onzichtbaar': 'Witness: a group you are no longer a member of',
+  'straf.begunstigde.groep_onzichtbaar':
+    'Witness: a group you are no longer a member of. As long as that is the case, that group will not see your penalty.',
   'straf.begunstigde.persoon_onzichtbaar':
     'Witness: someone you no longer share a group with. As long as that stays so, they will not see your penalty.',
   'straf.begunstigde.fout': 'The witness could not be loaded.',
@@ -1743,6 +1757,23 @@ export const en: Record<Sleutel, string> = {
   'belofte.intrekken_nee': 'No, keep it',
   'belofte.intrekken_uitslag': 'See the outcome',
   'belofte.fout.al_afgegaan': 'This promise can no longer be withdrawn: it has been decided in the meantime.',
+  'belofte.uitslag.gehouden': 'You kept your promise for the week of {start} to {einde}. It will not take effect.',
+  'belofte.uitslag.in_werking':
+    'You did not keep your promise for the week of {start} to {einde}. It has taken effect and your witness can read it.',
+  'belofte.uitslag.ingetrokken': 'You withdrew your promise for the week of {start} to {einde}. It will not take effect.',
+  'belofte.ingetrokken_melding': 'Your promise has been withdrawn.',
+
+  // QS8-814
+  'straf.intrekken_kop': 'Withdraw your penalty?',
+  'straf.intrekken_gevolg':
+    'Your penalty lapses and will not take effect, not even if you miss your target date.',
+  'straf.intrekken_getuige': 'Your witness will not see any of this: no message and no notification.',
+  'straf.intrekken_uitstel':
+    'The group you asked for more time will then no longer see that this goal carries a penalty.',
+  'straf.intrekken_ja': 'Yes, withdraw my penalty',
+  'straf.intrekken_nee': 'No, keep it',
+  'straf.intrekken_uitslag': 'See the outcome',
+  'straf.fout.al_afgegaan': 'This penalty can no longer be withdrawn: it has been decided in the meantime.',
 
   // ---------------------------------------------------------------------------
   // Completing, archiving and replanning — QS8-83, QS8-32 and QS8-96
