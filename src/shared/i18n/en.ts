@@ -129,8 +129,6 @@ export const en: Record<Sleutel, string> = {
     'An agreement on a team share can only have your team or a teammate as its witness. ' +
     'And a team can only witness a team share. Choose another witness.',
   'commitment.fout.intrekken': 'Withdrawing did not work.',
-  'commitment.fout.al_afgegaan':
-    'This commitment has already come into effect and can no longer be withdrawn.',
   'commitment.fout.laden': 'The reward and penalty could not be loaded.',
   'stuurloos.kop': 'Your witness is gone',
   'stuurloos.uitleg':
@@ -1751,6 +1749,23 @@ export const en: Record<Sleutel, string> = {
   'belofte.intrekken_nee': 'No, keep it',
   'belofte.intrekken_uitslag': 'See the outcome',
   'belofte.fout.al_afgegaan': 'This promise can no longer be withdrawn: it has been decided in the meantime.',
+  'belofte.uitslag.gehouden': 'You kept your promise for the week of {start} to {einde}. It will not take effect.',
+  'belofte.uitslag.in_werking':
+    'You did not keep your promise for the week of {start} to {einde}. It has taken effect and your witness can read it.',
+  'belofte.uitslag.ingetrokken': 'You withdrew your promise for the week of {start} to {einde}. It will not take effect.',
+  'belofte.ingetrokken_melding': 'Your promise has been withdrawn.',
+
+  // QS8-814
+  'straf.intrekken_kop': 'Withdraw your penalty?',
+  'straf.intrekken_gevolg':
+    'Your penalty lapses and will not take effect, not even if you miss your target date.',
+  'straf.intrekken_getuige': 'Your witness will not see any of this: no message and no notification.',
+  'straf.intrekken_uitstel':
+    'The group you asked for more time will then no longer see that this goal carries a penalty.',
+  'straf.intrekken_ja': 'Yes, withdraw my penalty',
+  'straf.intrekken_nee': 'No, keep it',
+  'straf.intrekken_uitslag': 'See the outcome',
+  'straf.fout.al_afgegaan': 'This penalty can no longer be withdrawn: it has been decided in the meantime.',
 
   // ---------------------------------------------------------------------------
   // Completing, archiving and replanning — QS8-83, QS8-32 and QS8-96

@@ -3,9 +3,13 @@ import {
   belofteaanbod,
   belofteperiode,
   fetchBelofteBegunstigden,
+  belofteuitslag,
   fetchBelofteStand,
+  fetchIntrekspoor,
+  nieuwsteBeslist,
   type Belofteaanbod,
   type BelofteBegunstigden,
+  type Belofteuitslag,
   type Commitment,
   vorigeVerschuldigd,
 } from '@/modules/commitments';
@@ -23,6 +27,12 @@ export interface Beloftegegevens {
   readonly doelGevonden: boolean;
   /** De laatste verschuldigde belofte van een vorige week: de eigenaar hoort de uitkomst. */
   readonly vorige: Commitment | undefined;
+  /**
+   * De uitslag van de nieuwste besliste belofte, of `null` — QS8-815. Alleen de
+   * nieuwste beslissing telt (V2 = A); kan het spoor het niet zeker zeggen, dan
+   * is het `null` en zegt het scherm niets (V1, terugval D).
+   */
+  readonly uitslag: { readonly soort: Belofteuitslag; readonly belofte: Commitment } | null;
   readonly dezeWeek: string;
   readonly aanbod: Belofteaanbod<Commitment>;
   readonly lijsten: BelofteBegunstigden;
@@ -47,7 +57,23 @@ async function laad(goalId: string, klok: UserClock, ik: string): Promise<Beloft
     heeftGetuige: lijsten.groepen.length > 0 || lijsten.getuigen.length > 0,
   });
   const vorige = vorigeVerschuldigd(stand.beloftes, dezeWeek);
-  return { doelGevonden: doel !== null && doel.owner_id === ik, aanbod, lijsten, klok, vorige, dezeWeek };
+  const uitslag = await laadUitslag(stand.beloftes, ik);
+  return { doelGevonden: doel !== null && doel.owner_id === ik, aanbod, lijsten, klok, vorige, dezeWeek, uitslag };
+}
+
+/**
+ * De uitslag van de nieuwste besliste belofte — QS8-815.
+ *
+ * ⚠️ Het spoor wordt alleen bij `cancelled` gelezen: daar heeft die stand drie
+ *    wegen (`belofteuitslag()`). `due` zegt het zelf. Eén extra verzoek, en
+ *    alleen als het nodig is.
+ */
+async function laadUitslag(beloftes: readonly Commitment[], ik: string): Promise<Beloftegegevens['uitslag']> {
+  const nieuwste = nieuwsteBeslist(beloftes);
+  if (nieuwste === undefined) return null;
+  const spoor = nieuwste.status === 'cancelled' ? await fetchIntrekspoor(nieuwste.id) : undefined;
+  const soort = belofteuitslag(nieuwste, spoor, ik);
+  return soort === null ? null : { soort, belofte: nieuwste };
 }
 
 /**
