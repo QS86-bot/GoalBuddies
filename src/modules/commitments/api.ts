@@ -8,7 +8,7 @@ import { invoerfout, type Resultaat } from '../../shared/api';
 import { now, type UserClock } from '../../shared/time';
 
 import { commitmentSchema, TEAMSTRAF_HINT, type CommitmentInvoer } from './commitment-schemas';
-import { belofteFoutsleutel, belofteperiode, strafFoutsleutel } from './weekbelofte';
+import { belofteFoutsleutel, belofteperiode, strafFoutsleutel, type Intrekspoor } from './weekbelofte';
 
 // ⚠️ Opnieuw geëxporteerd zodat de aanroepers via `modules/<naam>/index.ts`
 //    ongemoeid blijven. De definitie staat sinds 25-08-2026 in `shared/api`;
@@ -693,6 +693,30 @@ export async function fetchCommitmentSpoor(
   }
 
   return data ?? [];
+}
+
+/**
+ * De laatste `cancelled`-regel uit het spoor van één belofte — QS8-815.
+ *
+ * ⚠️ Alleen de twee kolommen die `belofteuitslag()` leest, en hoogstens één rij
+ *    (regel 10). Alleen voor de eigenaar leesbaar (`commitment_events_select`):
+ *    een ander krijgt nul rijen, en dan zegt het scherm niets.
+ * ⚠️ Werpt bij een fout: "geen spoor" is een bewering en geen terugval (regel 16).
+ */
+export async function fetchIntrekspoor(commitmentId: string): Promise<Intrekspoor | undefined> {
+  const { data, error } = await supabase()
+    .from('commitment_events')
+    .select('actor_id, payload')
+    .eq('commitment_id', commitmentId)
+    .eq('event_type', 'cancelled')
+    .order('seq', { ascending: false })
+    .limit(1);
+
+  if (error) {
+    reportError(error, 'commitments.belofte.uitslag');
+    throw new Error(t('belofte.fout.laden'));
+  }
+  return data?.[0];
 }
 
 /**

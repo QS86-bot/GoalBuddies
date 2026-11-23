@@ -74,19 +74,23 @@ const BELOFTE = {
 } as const;
 
 const onKlaar = vi.fn();
+const onIngetrokken = vi.fn();
 const toon = () =>
   renderScherm(() =>
     createElement(BestaandeBelofte, {
       belofte: BELOFTE as unknown as Parameters<typeof BestaandeBelofte>[0]['belofte'],
       klok: KLOK,
       dezeWeek: DEZE_WEEK,
+      uitslag: null,
       onKlaar,
+      onIngetrokken,
     }),
   );
 
 beforeEach(() => {
   update.mockReset();
   onKlaar.mockReset();
+  onIngetrokken.mockReset();
   rijen.waarde = [{ id: 'b1' }];
   rijen.fout = null;
 });
@@ -125,7 +129,10 @@ describe('intrekken in twee stappen', () => {
     await scherm.wacht();
     expect(update).toHaveBeenCalledTimes(1);
     expect(update).toHaveBeenCalledWith({ status: 'cancelled' });
-    expect(onKlaar).toHaveBeenCalledTimes(1);
+    // QS8-815: een gelukte intrekking meldt zich als intrekking (de vaste melding),
+    // en niet als het gewone herladen van "Bekijk de uitslag".
+    expect(onIngetrokken).toHaveBeenCalledTimes(1);
+    expect(onKlaar).not.toHaveBeenCalled();
   });
 
   it('werd de belofte intussen beslist (due of gehouden), dan zegt de melding "belofte" en niet "commitment"', async () => {
@@ -149,6 +156,7 @@ describe('intrekken in twee stappen', () => {
     expect(scherm.tekst()).toContain(t('belofte.fout.al_afgegaan'));
     await scherm.klik(t('belofte.intrekken_uitslag'));
     expect(onKlaar).toHaveBeenCalledTimes(1);
+    expect(onIngetrokken).not.toHaveBeenCalled();
     expect(update).toHaveBeenCalledTimes(1);
   });
 
