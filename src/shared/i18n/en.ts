@@ -129,8 +129,6 @@ export const en: Record<Sleutel, string> = {
     'An agreement on a team share can only have your team or a teammate as its witness. ' +
     'And a team can only witness a team share. Choose another witness.',
   'commitment.fout.intrekken': 'Withdrawing did not work.',
-  'commitment.fout.al_afgegaan':
-    'This commitment has already come into effect and can no longer be withdrawn.',
   'commitment.fout.laden': 'The reward and penalty could not be loaded.',
   'stuurloos.kop': 'Your witness is gone',
   'stuurloos.uitleg':

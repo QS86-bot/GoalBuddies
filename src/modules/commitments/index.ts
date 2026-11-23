@@ -20,7 +20,6 @@ export {
   herstelStuurlozeStraf,
   trekBelofteIn,
   trekStrafIn,
-  trekIn,
   zetBeloning,
   zetStraf,
   type Begunstigde,

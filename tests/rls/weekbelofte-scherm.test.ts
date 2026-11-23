@@ -16,7 +16,7 @@ import { psql, stackBeschikbaarOfFaal } from './psql-stack';
  * Het beloftescherm tegen de echte database — QS8-761 (x.4 van de poort QS8-744).
  *
  * Hier draaien de functies die het scherm aanroept (`gaWeekbelofteAan()`,
- * `trekIn()`, `fetchBelofteBegunstigden()`, `fetchBelofteStand()`) zélf, met de
+ * `trekBelofteIn()`, `fetchBelofteBegunstigden()`, `fetchBelofteStand()`) zélf, met de
  * gedeelde client vervangen door die van een testgebruiker: de vorm van
  * `tests/rls/doorloop.test.ts`. Zo toetst dit de naad en niet een kopie ervan.
  *
@@ -206,15 +206,16 @@ describe.skipIf(!rlsTestsConfigured || !stackErIs)('het beloftescherm tegen de d
 
       const eerste = await beloof(1, klok);
       if (!eerste.ok) throw new Error(eerste.melding);
-      expect(await als(w.alice, () => commitments.trekIn(eerste.waarde.id))).toEqual({ ok: true, waarde: true });
+      expect(await als(w.alice, () => commitments.trekBelofteIn(eerste.waarde.id))).toEqual({ ok: true });
       expect(psql(`select status from commitments where id = '${eerste.waarde.id}'`).trim()).toBe('cancelled');
 
       const tweede = await beloof(1, klok);
       if (!tweede.ok) throw new Error(tweede.melding);
       psql(`update commitments set status = 'due' where id = '${tweede.waarde.id}'`);
-      expect(await als(w.alice, () => commitments.trekIn(tweede.waarde.id))).toEqual({
+      expect(await als(w.alice, () => commitments.trekBelofteIn(tweede.waarde.id))).toEqual({
         ok: false,
-        melding: t('commitment.fout.al_afgegaan'),
+        melding: t('belofte.fout.al_afgegaan'),
+        beslist: true,
       });
       expect(psql(`select status from commitments where id = '${tweede.waarde.id}'`).trim()).toBe('due');
     },

@@ -61,16 +61,7 @@ export function StrafIntrekken({
   // ⚠️ Is de straf intussen beslist, dan valt er niets meer in te trekken: geen
   //    intrekknop meer, alleen "Bekijk de uitslag", die het scherm herlaadt. Bij een
   //    storing blijft de intrekknop staan, want dan heeft opnieuw proberen zin.
-  if (fout?.beslist === true) {
-    return (
-      <View style={{ gap: afstand.s }}>
-        <Caption danger>{fout.melding}</Caption>
-        <Button variant="stil" onPress={onKlaar}>
-          {t('straf.intrekken_uitslag')}
-        </Button>
-      </View>
-    );
-  }
+  if (fout?.beslist === true) return <Beslist melding={fout.melding} onKlaar={onKlaar} />;
   return (
     <View style={{ gap: afstand.s }}>
       <Subheading>{t('straf.intrekken_kop')}</Subheading>
@@ -84,6 +75,19 @@ export function StrafIntrekken({
         {t('straf.intrekken_nee')}
       </Button>
       {fout === null ? null : <Caption danger>{fout.melding}</Caption>}
+    </View>
+  );
+}
+
+/** De straf is intussen beslist: alleen de melding en "Bekijk de uitslag". */
+function Beslist({ melding, onKlaar }: { readonly melding: string; readonly onKlaar: () => void }) {
+  const { afstand } = useTheme();
+  return (
+    <View style={{ gap: afstand.s }}>
+      <Caption danger>{melding}</Caption>
+      <Button variant="stil" onPress={onKlaar}>
+        {t('straf.intrekken_uitslag')}
+      </Button>
     </View>
   );
 }

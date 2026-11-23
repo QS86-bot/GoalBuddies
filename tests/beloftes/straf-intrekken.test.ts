@@ -28,7 +28,7 @@ import { roeptAan, zonderCommentaar } from './roept-aan';
  *   C  `uitstelLoopt ? … : null` -> altijd tonen -> rood: 'zonder uitstelverzoek'
  *   D  `uitstelLoopt={verzoek !== null}` -> `uitstelLoopt={false}` in `app/doel/[id].tsx` -> rood: 'de naad'
  *   E  de tak `if (fout?.beslist === true)` weggehaald -> rood: 'na "beslist"'
- *   F  `t('straf.fout.al_afgegaan')` -> `t('commitment.fout.al_afgegaan')` in `trekStrafIn()` -> rood: 'intussen beslist'
+ *   F  `t('straf.fout.al_afgegaan')` -> `t('belofte.fout.al_afgegaan')` in `trekStrafIn()` -> rood: 'intussen beslist'
  *   G  `<StrafIntrekken …/>` in het doelscherm terug naar een knop met `trekIn(straf.id)` -> rood: grendel 2 en 'de naad'
  *   Vóór elke mutatie: 15 van 15 groen. Elke mutatie apart, en teruggezet vóór de volgende.
  */
@@ -132,7 +132,7 @@ describe('de straf is intussen beslist (nul rijen)', () => {
     await scherm.klik(t('straf.intrekken_ja'));
     await scherm.wacht();
     expect(scherm.tekst()).toContain(t('straf.fout.al_afgegaan'));
-    expect(scherm.tekst()).not.toContain(t('commitment.fout.al_afgegaan'));
+    expect(scherm.tekst()).not.toMatch(/Dit commitment|in werking getreden/);
     expect(onKlaar).not.toHaveBeenCalled();
   });
 

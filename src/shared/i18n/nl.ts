@@ -229,8 +229,6 @@ export const nl = {
     'Een afspraak op een teamaandeel heeft alleen je team of een teamgenoot als getuige. ' +
     'En een team is alleen getuige van een teamaandeel. Kies een andere getuige.',
   'commitment.fout.intrekken': 'Intrekken lukte niet.',
-  'commitment.fout.al_afgegaan':
-    'Dit commitment is al in werking getreden en kan niet meer worden ingetrokken.',
   'commitment.fout.laden': 'De beloning en straf konden niet geladen worden.',
   'stuurloos.kop': 'Je getuige is er niet meer',
   'stuurloos.uitleg':
