@@ -41,6 +41,7 @@ import {
 import { apparaatVoorkeuren, t, zetTaalUitApparaat } from '@/shared/i18n';
 import { useTheme } from '@/shared/theme';
 import { RootVangnet, useGehydrateerd, zetMeldingWacht } from '@/shared/ui';
+import { useVolgTaal } from '@/shared/i18n/react';
 
 /**
  * De wortel van de app. Alles wat elk scherm nodig heeft, hangt hier.
@@ -51,6 +52,7 @@ import { RootVangnet, useGehydrateerd, zetMeldingWacht } from '@/shared/ui';
  *    sessie is er geen profiel om te laden.
  */
 export default function RootLayout() {
+  useVolgTaal();
   // ⚠️ QS8-710: het vangnet staat BOVEN alle providers en niet erbinnen. Een fout
   //    in `ThemeProvider`, `Screen` of `Taakbalk` valt dan in een foutstaat die
   //    geen van die dingen gebruikt (`RootVangnet`).

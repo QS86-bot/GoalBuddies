@@ -29,6 +29,7 @@ import {
   Screen,
   Subheading,
 } from '@/shared/ui';
+import { useVolgTaal } from '@/shared/i18n/react';
 
 /**
  * Het dashboard met alle actieve doelen — QS8-33.
@@ -41,6 +42,7 @@ import {
  *    tweehonderd staan de dag dat je het merkt (CLAUDE.md, regel 10).
  */
 export default function Doelen() {
+  useVolgTaal();
   const router = useRouter();
   const { userId } = useSession();
   const { profiel } = useProfiel();

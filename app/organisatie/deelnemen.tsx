@@ -5,6 +5,7 @@ import { toonCode } from '@/modules/buddies';
 import { openstaandeWerkcode, vergeetWerkcode, wordOrganisatielid } from '@/modules/organisaties';
 import { t } from '@/shared/i18n';
 import { Button, Caption, Card, Field, Screen } from '@/shared/ui';
+import { useVolgTaal } from '@/shared/i18n/react';
 
 /**
  * Lid worden van een organisatie met een code — QS8-657.
@@ -13,6 +14,7 @@ import { Button, Caption, Card, Field, Screen } from '@/shared/ui';
  *    zin: de invoer is anders een orakel over wie er lid was.
  */
 export default function OrganisatieDeelnemen() {
+  useVolgTaal();
   const router = useRouter();
   const { code } = useLocalSearchParams<{ code?: string }>();
   const [invoer, setInvoer] = useState(typeof code === 'string' ? code : '');

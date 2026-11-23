@@ -5,6 +5,7 @@ import { fetchTeamdoelen, type Teamdoel } from '@/modules/organisaties';
 import { t } from '@/shared/i18n';
 import { space } from '@/shared/theme';
 import { AsyncView, Button, Caption, Card, Screen, useBladerlijst } from '@/shared/ui';
+import { useVolgTaal } from '@/shared/i18n/react';
 
 /**
  * De teamdoelen van een teamgroep — QS8-658.
@@ -23,6 +24,7 @@ import { AsyncView, Button, Caption, Card, Screen, useBladerlijst } from '@/shar
  *    lidmaatschap, en een niet-lid krijgt hier een lege lijst.
  */
 export default function Teamdoelen() {
+  useVolgTaal();
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
   const lijst = useBladerlijst((na) => fetchTeamdoelen(id, na), [id]);

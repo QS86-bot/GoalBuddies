@@ -36,6 +36,7 @@ import {
   Subheading,
   useAsync,
 } from '@/shared/ui';
+import { useVolgTaal } from '@/shared/i18n/react';
 
 /**
  * De gastvrije uitnodigingslink — QS8-59.
@@ -59,6 +60,7 @@ import {
  *    "account maken en meedoen".
  */
 export default function UitnodigingScherm() {
+  useVolgTaal();
   const { code } = useLocalSearchParams<{ code: string }>();
   const router = useRouter();
   const { session, loading: sessieLaadt } = useSession();
@@ -234,6 +236,7 @@ export default function UitnodigingScherm() {
                 <Card nested>
                   <Subheading>{zichtbaarheidLabels()[u.zichtbaarheid]}</Subheading>
                   <Body muted>{zichtbaarheidUitleg()[u.zichtbaarheid]}</Body>
+                  <Caption>{t('uitnodiging.klassement_standaard')}</Caption>
                   {u.zichtbaarheid === 'open' ? (
                     <Caption danger>{t('uitnodiging.open_waarschuwing')}</Caption>
                   ) : null}
