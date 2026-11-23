@@ -202,6 +202,9 @@ export const nl = {
   'commitment.penalty.due.titel': 'Verschuldigd',
   'commitment.penalty.due.uitleg':
     'Je streefdatum is verstreken. De groep die je gekozen hebt, kan dit nu lezen.',
+  // QS8-820 (0343): verschuldigd bij een groep waar je geen lid meer van bent.
+  'commitment.penalty.due.uitleg_groep_verlaten':
+    'Je streefdatum is verstreken. De groep die je gekozen had, krijgt dit niet te zien zolang je er geen lid van bent.',
   'commitment.penalty.resolved.titel': 'Afgehandeld',
   'commitment.penalty.resolved.uitleg': 'Deze inzet is voldaan.',
   'commitment.penalty.cancelled.titel': 'Vervallen',

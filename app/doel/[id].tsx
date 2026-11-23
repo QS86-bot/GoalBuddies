@@ -1185,10 +1185,12 @@ function TeamStrafBevestiging({
  */
 function StrafBegunstigde({
   straf,
+  stand,
   vanMij,
   onKlaar,
 }: {
   readonly straf: Commitment;
+  readonly stand: { readonly titel: string; readonly uitleg: string };
   readonly vanMij: boolean;
   readonly onKlaar: () => void;
 }) {
@@ -1199,8 +1201,11 @@ function StrafBegunstigde({
   );
   // ⚠️ QS8-820: de stuurloze kaart leest dezelfde naam. Zie `stuurlozeReden()`.
   const reden = stuurlozeReden(straf, wie);
+  // ⚠️ QS8-820: "de groep kan dit nu lezen" is onwaar zolang je er geen lid van bent.
+  const uitleg = reden === 'groep_verlaten' ? t('commitment.penalty.due.uitleg_groep_verlaten') : stand.uitleg;
   return (
     <>
+      <Caption>{t('commitment.stand', { titel: stand.titel, uitleg })}</Caption>
       {vanMij ? <BegunstigdeRegel wie={wie} /> : null}
       {reden === null ? null : <StuurlozeStraf straf={straf} reden={reden} onKlaar={onKlaar} />}
     </>
@@ -1303,9 +1308,8 @@ function Straf({
       <Card>
         <Subheading>{t('straf.jouw')}</Subheading>
         <Body>{bestaand.body}</Body>
-        <Caption>{t('commitment.stand', { titel: stand.titel, uitleg: stand.uitleg })}</Caption>
-        {/* ⚠️ QS8-333 en QS8-820: de stuurloze kaart staat hierin. Zie StuurlozeStraf. */}
-        <StrafBegunstigde straf={straf} vanMij={vanMij} onKlaar={onKlaar} />
+        {/* ⚠️ QS8-333 en QS8-820: de stand, de getuige en de stuurloze kaart staan hierin. */}
+        <StrafBegunstigde straf={straf} stand={stand} vanMij={vanMij} onKlaar={onKlaar} />
         {/*
           ⚠️ De knop verdwijnt zodra de straf verschuldigd is, en dat is geen
              cosmetiek: `commitments_update` weigert het dan sowieso (0057). Een

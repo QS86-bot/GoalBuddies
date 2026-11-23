@@ -15,6 +15,15 @@
 --   drop function if exists public.straf_groepsband_klopt_voor_mij(uuid, uuid);
 --   drop function if exists public.straf_groepsband_klopt(uuid, uuid);
 --
+-- laat bewust vallen: and (beneficiary_group_id is null or is_group_member(beneficiary_group_id))
+-- laat bewust vallen: and (beneficiary_user_id is null or shares_group_with_user(beneficiary_user_id))
+--   (beide staan er nog, met `or status = 'cancelled'` erachter: intrekken hoeft geen band, blok 3)
+-- laat bewust vallen: if exists (select 1 from groups g where g.id = old.beneficiary_group_id) then
+--   (staat er nog als `elsif exists …`, na de uitzondering van blok 5a)
+-- laat bewust vallen: set search_path = public, pg_temp
+--   (bewaak_begunstigde() is gekopieerd uit `pg_get_functiondef()`, en dat spelt hetzelfde pad als
+--   `SET search_path TO 'public', 'pg_temp'`)
+--
 --   ⚠️ Terugdraaien opent weer wat QS8-818 mat: een groep die je verliet, of die
 --      jou eruit zette, leest je straf zodra hij verschuldigd is, en ook wie pas
 --      ná je vertrek toetrad.
@@ -148,6 +157,13 @@ create policy commitments_select on public.commitments
 -- 3. Intrekken loopt niet meer stuk op `is_group_member` (besluit C en punt b)
 -- ---------------------------------------------------------------------------
 --
+-- ⚠️ **Drie gevallen, één regel** (aanvulling van Quinten, 23-11 17:16 UTC, gevonden
+--    bij QS8-814): de eigenaar verliet de groep of werd eruit gezet; de groep is
+--    gearchiveerd; de persoonlijke getuige deelt geen groep meer met de eigenaar.
+--    In alle drie liep intrekken stuk op de WITH CHECK, ook als alleen de status
+--    veranderde. De auditrij schrijft `noteer_commitment()` zelf bij de
+--    statuswissel.
+--
 -- ⚠️ **De versoepeling geldt alleen voor de stand `cancelled`.** Een straf die
 --    op `set` blijft, met een nieuwe tekst of een andere begunstigde, eist nog
 --    steeds dat je lid bent van de groep die erop staat. Dat is dezelfde eis als
@@ -182,7 +198,9 @@ create policy commitments_update on public.commitments
     -- QS8-820: intrekken kan ook nadat je de groep verliet, eruit werd gezet, of
     -- als de groep gearchiveerd is.
     and (beneficiary_group_id is null or is_group_member(beneficiary_group_id) or status = 'cancelled')
-    and (beneficiary_user_id is null or shares_group_with_user(beneficiary_user_id))
+    -- QS8-820, aanvulling van Quinten (23-11, 17:16 UTC): en ook als je getuige
+    -- geen groep meer met je deelt.
+    and (beneficiary_user_id is null or shares_group_with_user(beneficiary_user_id) or status = 'cancelled')
   );
 
 -- ---------------------------------------------------------------------------

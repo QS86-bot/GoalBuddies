@@ -21,7 +21,10 @@ import { adminDb, createTestUser, registreerGroep, removeTestUsers, rlsTestsConf
  *    één mutatie met `create or replace` of `create policy` en daarna 0343
  *    opnieuw afgespeeld; zie de afleverreactie op QS8-820 voor de uitslag per stap):
  *
- *    De basis was vóór en ná de acht mutaties groen (11 van 11).
+ *    De basis was vóór en ná de negen mutaties groen (12 van 12).
+ *
+ *    9. `or status = 'cancelled'` weg uit de getuigeregel van de WITH CHECK
+ *       → alleen "een persoonlijke getuige die geen groep meer deelt" rood.
  *
  *    1. `straf_groepsband_klopt_voor_mij` weg uit tak 2 van `commitments_select`
  *       → (a), "na het vertrek verschuldigd" en "uitzetting" rood.
@@ -76,6 +79,7 @@ describe.runIf(rlsTestsConfigured)('een begunstigde groep leest je straf alleen 
   let olga: TestUser; // eigenaar die eruit gezet wordt
   let x: string;
   let w: string;
+  let y: string;
   let codeX: string;
   const straf: Record<string, string> = {};
 
@@ -168,6 +172,7 @@ describe.runIf(rlsTestsConfigured)('een begunstigde groep leest je straf alleen 
     codeX = gx.code;
     for (const wie of [alice, carol, olga]) await doe(wie, codeX);
     const gy = await maakGroep(frank, 'Groep Y');
+    y = gy.id;
     await doe(alice, gy.code);
     const gw = await maakGroep(bob, 'Groep W');
     w = gw.id;
@@ -289,5 +294,29 @@ describe.runIf(rlsTestsConfigured)('een begunstigde groep leest je straf alleen 
     expect(await berichten(w, alice)).toBe(0);
     // De band is er nog: dit is geen stuurloze straf.
     expect(uitkomst(await rpc(alice, 'herstel_stuurloze_straf', { p_commitment_id: straf.archief2, p_actie: 'afwikkelen', p_bevestigd: true }))).toBe('heeft_nog_een_begunstigde');
+  }, TEST_TIMEOUT);
+
+  // ⚠️ Aanvulling van Quinten (23-11, 17:16 UTC): het derde geval waarin intrekken
+  //    stukliep. Alice en frank delen alleen Y; alice verlaat Y.
+  it('een persoonlijke getuige die geen groep meer deelt: alice trekt in, maar bewerkt niet', async () => {
+    const { data: d } = await alice.db
+      .from('goals')
+      .insert({ owner_id: alice.id, title: 'Doel getuige', target_date: datum(60) } as never)
+      .select('id')
+      .single();
+    const { data: c, error } = await alice.db
+      .from('commitments')
+      .insert({ goal_id: (d as { id: string }).id, type: 'penalty', body: TEKST, beneficiary_user_id: frank.id, confirmed_at: new Date().toISOString() } as never)
+      .select('id')
+      .single();
+    expect(error).toBeNull();
+    straf.persoon = (c as { id: string }).id;
+    expect(uitkomst(await rpc(alice, 'verlaat_groep', { p_group_id: y, p_bevestigd: true }))).toBe('ok');
+    const bewerk = await alice.db.from('commitments').update({ body: 'Andere tekst' } as never).eq('id', straf.persoon);
+    expect(bewerk.error?.code).toBe('42501');
+    expect((await trekIn(alice, 'persoon')).error).toBeNull();
+    expect((await stand('persoon')).status).toBe('cancelled');
+    const { data: spoor } = await alice.db.from('commitment_events').select('event_type').eq('commitment_id', straf.persoon);
+    expect((spoor as { event_type: string }[]).map((r) => r.event_type)).toContain('cancelled');
   }, TEST_TIMEOUT);
 });

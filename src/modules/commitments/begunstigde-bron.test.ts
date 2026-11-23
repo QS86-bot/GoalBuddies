@@ -116,5 +116,8 @@ describe('de kaarttekst bij een groep waar je geen lid meer van bent (QS8-820)',
     expect(t('stuurloos.kop_groep')).not.toBe(t('stuurloos.kop'));
     expect(t('stuurloos.uitleg_groep')).not.toBe(t('stuurloos.uitleg'));
     expect(t('stuurloos.kop_groep')).not.toBe('stuurloos.kop_groep');
+    // De standregel mag bij een verlaten groep niet zeggen dat de groep meeleest.
+    expect(t('commitment.penalty.due.uitleg_groep_verlaten')).not.toBe(t('commitment.penalty.due.uitleg'));
+    expect(t('commitment.penalty.due.uitleg_groep_verlaten')).not.toBe('commitment.penalty.due.uitleg_groep_verlaten');
   });
 });

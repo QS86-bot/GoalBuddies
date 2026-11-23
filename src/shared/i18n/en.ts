@@ -103,6 +103,8 @@ export const en: Record<Sleutel, string> = {
   'commitment.penalty.due.titel': 'Due',
   'commitment.penalty.due.uitleg':
     'Your target date has passed. The group you chose can read this now.',
+  'commitment.penalty.due.uitleg_groep_verlaten':
+    'Your target date has passed. The group you had chosen will not see this as long as you are not a member.',
   'commitment.penalty.resolved.titel': 'Settled',
   'commitment.penalty.resolved.uitleg': 'This stake has been paid.',
   'commitment.penalty.cancelled.titel': 'Expired',
