@@ -15,6 +15,7 @@ import { useAvatarKeuze } from '@/modules/auth/react';
 import { herinneringStandaard } from '@/modules/notifications';
 import { t } from '@/shared/i18n';
 import { space } from '@/shared/theme';
+import { afrondenMetInstap } from '@/schermen/onboarding';
 import { apparaatTijdzone, type Weekday } from '@/shared/time';
 import {
   AsyncView,
@@ -182,7 +183,12 @@ function OnboardingProfielFormulier() {
     //    vragenlijst nooit. `zetAfgerondProfiel()` zet profiel en vlag in één
     //    batch, en de wacht stuurt zelf naar de vragenlijst. Eén navigator.
     //    `src/modules/auth/routewacht-afronden.test.ts` rendert die naad.
-    zetAfgerondProfiel(afgerond.profiel);
+    //
+    // ⚠️ **Wie via een uitnodiging of werkcode instapt, krijgt de vragenlijst niet
+    //    hier maar later, als kaart op Vandaag** — besluit QS8-805. Daarom eerst de
+    //    instap lezen en dan pas het profiel zetten; `afrondenMetInstap()` legt uit
+    //    waarom die volgorde de race voorkomt.
+    await afrondenMetInstap(afgerond.profiel, zetAfgerondProfiel);
   }
 
   return (

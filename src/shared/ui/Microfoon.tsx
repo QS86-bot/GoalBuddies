@@ -1,11 +1,12 @@
 import { useState } from 'react';
-import { Pressable, StyleSheet, View } from 'react-native';
+import { Platform, Pressable, StyleSheet, View } from 'react-native';
 
 import { t } from '../i18n';
 import { space } from '../theme';
 
 import { Button } from './Button';
 import { Card } from './Card';
+import { keuzeEigenschappen } from './keuze-aria';
 import { magSpraak, microfoonSleutel, voegAan, type Veldvorm } from './spraakveld';
 import { Body, Caption, Subheading } from './Text';
 import { useSpraak } from './useSpraak';
@@ -118,6 +119,10 @@ export function Microfoon({ veld, veldlabel }: Props) {
         accessibilityRole="button"
         accessibilityLabel={`${t(microfoonSleutel(spraak.luistert))}: ${veldlabel}`}
         accessibilityState={{ busy: spraak.luistert }}
+        // ⚠️ Op web een wisselknop (`aria-pressed`) en geen `aria-busy`: dat laatste stelt bij sommige
+        //    schermlezers het voorlezen uit, en juist nu wisselt het label. Niet gemeten in een echte
+        //    schermlezer. Native blijft `busy` (QS8-803, besluit orchestrator optie A).
+        {...keuzeEigenschappen(spraak.luistert, Platform.OS === 'web').aria}
         hitSlop={8}
         style={styles.knop}
       >

@@ -4,10 +4,13 @@ import { freezeNow, unfreezeNow } from '../../shared/time';
 
 import {
   bewaarOpenstaandeUitnodiging,
+  bewaarToegetredenGroep,
   openstaandeUitnodiging,
   routeVoorUitnodiging,
+  toegetredenGroep,
   UITNODIGING_GELDIG_UREN,
   vergeetOpenstaandeUitnodiging,
+  vergeetToegetredenGroep,
 } from './pending';
 
 /**
@@ -232,3 +235,54 @@ describe('waar een bewaarde uitnodiging naartoe leidt', () => {
   });
 });
 
+
+/**
+ * De groep waar iemand al in kwam vóór zijn onboarding af was — QS8-805.
+ * De naad met de wacht staat in `src/schermen/onboarding/instap-naad.test.ts`.
+ */
+describe('een toegetreden groep', () => {
+  const A = '00000000-0000-4000-8000-00000000000a';
+  const B = '00000000-0000-4000-8000-00000000000b';
+
+  it('komt terug voor wie hem bewaarde', async () => {
+    await bewaarToegetredenGroep(A, '6f1c2a9e-0000-4000-8000-000000000001');
+    expect(await toegetredenGroep(A)).toBe('6f1c2a9e-0000-4000-8000-000000000001');
+  });
+
+  it('is niet van een ander account op hetzelfde apparaat', async () => {
+    await bewaarToegetredenGroep(A, '6f1c2a9e-0000-4000-8000-000000000001');
+    expect(await toegetredenGroep(B)).toBeNull();
+  });
+
+  it('telt niet als de waarde onder een sleutel van een ander account staat', async () => {
+    OPSLAG.set(`goalbuddies.toegetreden-groep.${B}`, JSON.stringify({ userId: A, groupId: '6f1c2a9e-0000-4000-8000-000000000001', op: new Date().toISOString() }));
+    expect(await toegetredenGroep(B)).toBeNull();
+  });
+
+  it(`verloopt na ${UITNODIGING_GELDIG_UREN} uur, net als de uitnodiging`, async () => {
+    freezeNow(new Date('2026-11-23T08:00:00Z'));
+    await bewaarToegetredenGroep(A, '6f1c2a9e-0000-4000-8000-000000000001');
+
+    freezeNow(new Date('2026-11-24T07:59:00Z'));
+    expect(await toegetredenGroep(A)).toBe('6f1c2a9e-0000-4000-8000-000000000001');
+
+    freezeNow(new Date('2026-11-24T08:01:00Z'));
+    expect(await toegetredenGroep(A)).toBeNull();
+  });
+
+  it('is weg na vergeten', async () => {
+    await bewaarToegetredenGroep(A, '6f1c2a9e-0000-4000-8000-000000000001');
+    await vergeetToegetredenGroep(A);
+    expect(await toegetredenGroep(A)).toBeNull();
+  });
+
+  it('laat alleen een uuid door: de waarde wordt een padsegment', async () => {
+    OPSLAG.set(`goalbuddies.toegetreden-groep.${A}`, JSON.stringify({ userId: A, groupId: 'x/../../uitnodiging/ABC', op: new Date().toISOString() }));
+    expect(await toegetredenGroep(A)).toBeNull();
+  });
+
+  it('geeft null bij een onleesbare waarde en werpt niet', async () => {
+    OPSLAG.set(`goalbuddies.toegetreden-groep.${A}`, '{kapot');
+    expect(await toegetredenGroep(A)).toBeNull();
+  });
+});

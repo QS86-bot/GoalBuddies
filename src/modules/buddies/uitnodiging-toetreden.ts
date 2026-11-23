@@ -26,6 +26,14 @@ export interface ToetredenUitvoer {
   readonly onboarded: () => boolean;
   /** ⚠️ Werpt nooit: vangt zelf en meldt. `verwerkToetreding` rekent erop (zie daar). */
   readonly vergeetCode: () => void;
+  /**
+   * Onthoudt de groep voor na de onboarding — QS8-805. Alleen aangeroepen bij een
+   * geslaagde toetreding zonder afgeronde onboarding: dan navigeert dit scherm
+   * niet, en zonder dit landt de gebruiker na Klaar nooit op zijn groep.
+   *
+   * ⚠️ Werpt nooit, net als `vergeetCode` (`bewaarToegetredenGroep` vangt zelf).
+   */
+  readonly onthoudGroep: (groupId: string) => void;
   readonly zetFout: (melding: string) => void;
   readonly zetBinnen: (groupId: string) => void;
   readonly naarGroep: (groupId: string) => void;
@@ -130,6 +138,12 @@ export function verwerkToetreding(uitkomst: Resultaat<string>, uit: ToetredenUit
   //    keer verzilvert — een poging uit de twintig per dag. Ook bij een fout wissen
   //    (zelfde volgorde als `Uitnodigingswacht` in `app/_layout.tsx`).
   uit.vergeetCode();
+
+  // ⚠️ QS8-805. Ook vóór de vraag of het scherm er nog is, om dezelfde reden als de
+  //    code hierboven: opslag heeft het scherm niet nodig. Het scherm ligt bij dit
+  //    pad juist onder het aanmeldscherm en de onboarding, en wordt daarna gesloten.
+  if (uitkomst.ok && !uit.onboarded()) uit.onthoudGroep(uitkomst.waarde);
+
   if (!uit.gemount()) return;
 
   if (!uitkomst.ok) {

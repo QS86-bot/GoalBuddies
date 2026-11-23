@@ -1,9 +1,10 @@
 import { useState } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { radius, space, useTheme } from '../theme';
 
 import { focusRing } from './a11y';
+import { spatieActiveert, standEigenschappen } from './keuze-aria';
 import { Caption, Subheading } from './Text';
 
 /**
@@ -91,6 +92,8 @@ function Knop<T extends string | number>({
       onBlur={() => setFocus(false)}
       accessibilityRole="radio"
       accessibilityState={{ selected: gekozen, disabled }}
+      {...standEigenschappen({ checked: gekozen }, Platform.OS === 'web').aria}
+      {...spatieActiveert(() => onKies(optie.waarde), disabled, Platform.OS === 'web')}
       style={({ pressed }) => [
         styles.knop,
         {

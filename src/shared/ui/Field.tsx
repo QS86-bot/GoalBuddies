@@ -1,10 +1,11 @@
 import { useState } from 'react';
-import { Pressable, StyleSheet, TextInput, View, type TextInputProps } from 'react-native';
+import { Platform, Pressable, StyleSheet, TextInput, View, type TextInputProps } from 'react-native';
 
 import { t } from '../i18n';
 import { radius, space, useTheme } from '../theme';
 
 import { focusRing } from './a11y';
+import { keuzeEigenschappen } from './keuze-aria';
 import { Microfoon } from './Microfoon';
 import { Caption, Subheading } from './Text';
 import { invoerProps, knopSleutel } from './wachtwoordveld';
@@ -93,6 +94,7 @@ export function Field({ label, hint, error, wachtwoord = false, ...rest }: Props
           accessibilityRole="button"
           accessibilityLabel={t(knopSleutel(zichtbaar))}
           accessibilityState={{ selected: zichtbaar }}
+          {...keuzeEigenschappen(zichtbaar, Platform.OS === 'web').aria}
           hitSlop={8}
           style={styles.spiek}
         >

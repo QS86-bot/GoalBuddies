@@ -14,10 +14,17 @@ describe('de werkcode-keten', () => {
     expect(lees('app/aanmelden.tsx')).toContain('bewaarWerkcode(');
   });
 
+  /**
+   * ⚠️ QS8-805: de wacht verhuisde van `app/_layout.tsx` naar `useInstapwacht()`, en
+   *    de keuze welke opslag hij leest naar `leesInstap()`. Deze toets volgt de schakel
+   *    naar zijn nieuwe plek, en houdt vast dat de layout hem nog aanroept. Het gedrag
+   *    zelf (na Klaar naar het lid-worden-scherm) staat in
+   *    `src/schermen/onboarding/instap-naad.test.ts`.
+   */
   it('de wacht in de layout opent het scherm met de code', () => {
-    const bron = lees('app/_layout.tsx');
-    expect(bron).toContain('openstaandeWerkcode()');
-    expect(bron).toContain('/organisatie/deelnemen?code=');
+    expect(lees('app/_layout.tsx')).toMatch(/useInstapwacht\(/);
+    expect(lees('src/schermen/onboarding/instap.ts')).toContain('openstaandeWerkcode()');
+    expect(lees('src/schermen/onboarding/useInstapwacht.ts')).toContain('/organisatie/deelnemen?code=');
   });
 
   it('het scherm vergeet de code pas na gelukt lid worden', () => {
@@ -27,6 +34,8 @@ describe('de werkcode-keten', () => {
 
   it('niets buiten het scherm roept word_organisatielid aan: lid worden blijft een druk op de knop', () => {
     expect(lees('app/_layout.tsx')).not.toContain('wordOrganisatielid');
+    expect(lees('src/schermen/onboarding/instap.ts')).not.toContain('wordOrganisatielid');
+    expect(lees('src/schermen/onboarding/useInstapwacht.ts')).not.toContain('wordOrganisatielid');
     expect(lees('src/modules/organisaties/pending.ts')).not.toContain('wordOrganisatielid');
   });
 });
