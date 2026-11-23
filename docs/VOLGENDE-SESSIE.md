@@ -2476,7 +2476,7 @@ Quinten is Linear QS8-785. Hieronder alleen wat de volgende sessie moet weten om
   upload, geijkt tegen Apache 2.4; dat Hostinger achter hcdn zich zo gedraagt is een aanname tot de meting na de deploy.
 - ⚠️ **Een bouwsessie zet een ER-rij in haar afleverreactie, niet in `docs/ENGINEER-REVIEW.md`.** QS8-805 had hem in het
   document gezet en moest hem eruit halen (commit `2c3fd753`). De slotronde vouwt de rijen in één keer in.
-- ⚠️ **"Done" volgt de uitrol, niet de merge.** Zeven issues van deze week (666 3c-db, 784, 787, 789, 801, 806, 807)
+- ⚠️ **"Done" volgt de uitrol, niet de merge.** Acht issues van deze week (666 3c-db, 784, 787, 789, 801, 806, 807 en 820)
   zijn gemerged en blijven In Review tot hun migratie of Edge Function op productie staat. Zet ze niet op Done op
   grond van een groene `main`.
 
