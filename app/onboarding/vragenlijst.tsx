@@ -1,4 +1,6 @@
-import { Vragenlijstscherm } from '@/schermen/vragenlijst';
+import { useLocalSearchParams } from 'expo-router';
+
+import { HERKOMST_PARAM, komtVanProfiel, Vragenlijstscherm } from '@/schermen/vragenlijst';
 import { t } from '@/shared/i18n';
 import { Screen } from '@/shared/ui';
 import { useVolgTaal } from '@/shared/i18n/react';
@@ -12,11 +14,14 @@ import { useVolgTaal } from '@/shared/i18n/react';
  */
 export default function Vragenlijst() {
   useVolgTaal();
+  const params = useLocalSearchParams<Record<string, string | string[]>>();
+  // ⚠️ QS8-817: via de vaste ingang op Profiel wijst de terugknop naar Profiel.
+  const terug = komtVanProfiel(params[HERKOMST_PARAM]) ? '/profiel' : '/doelen';
   return (
     <Screen
       title={t('vragenlijst.titel')}
       eyebrow={t('vragenlijst.eyebrow')}
-      terug={{ naar: '/doelen' }}
+      terug={{ naar: terug }}
     >
       <Vragenlijstscherm />
     </Screen>

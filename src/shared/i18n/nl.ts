@@ -1091,6 +1091,14 @@ export const nl = {
   'profiel.als_buddy': 'Doet mee als buddy',
   'profiel.reeks_titel': 'Jouw reeks',
   'profiel.reeks_uitleg': 'Je reeks telt weken en staat per doel bij “Je stand” op Vandaag. Een weekpas beschermt je reeks als je een week mist. Het punt niet, want anders zegt de score niets meer.',
+  // QS8-817: de vaste ingang naar de vragenlijst, op Profiel onder Instellingen.
+  'profiel.vragenlijst_titel': 'Zodat de app je kent',
+  'profiel.vragenlijst_tekst_leeg':
+    'Een paar korte vragen: waar je je op wilt richten, hoeveel tijd je hebt en wanneer het je uitkomt. Je kunt ze altijd later invullen.',
+  'profiel.vragenlijst_tekst_ingevuld':
+    'Je antwoorden over je focus, je tijd, je moment, wat je tegenhoudt en je gevoel. Pas ze aan wanneer je wilt.',
+  'profiel.vragenlijst_knop_beantwoorden': 'Vragen beantwoorden',
+  'profiel.vragenlijst_knop_aanpassen': 'Antwoorden aanpassen',
   'profiel.verwijder_titel': 'Account verwijderen',
   'profiel.verwijder_uitleg': 'Je doelen, weken, Dagzetten, punten en lidmaatschappen verdwijnen. Wat blijft staan zijn de goedkeuringen die jij aan je buddy’s gaf en je berichten in de groepschat, zonder je naam erbij. Die zijn van hen.',
   'profiel.verwijder_knop': 'Ik wil mijn account verwijderen',
@@ -1404,9 +1412,12 @@ export const nl = {
   'groep.rate_limited':
     'Je hebt vandaag te vaak een uitnodiging geprobeerd. Over 24 uur kan het weer; ' +
     'vraag je buddy intussen om de link nog eens te sturen.',
+  // ⚠️ QS8-813: één neutrale tekst voor ieder `invalid`. De server geeft dat ook
+  //    aan een buitenstaander met een werkende teamcode (0317); "werkt niet meer"
+  //    was dan onwaar, en een eigen tekst zou de teamcode verraden.
   'groep.ongeldige_link':
-    'Deze uitnodigingslink werkt niet meer. Hij is ingetrokken of hij klopt niet; ' +
-    'vraag je buddy om een nieuwe.',
+    'Met deze link kun je nu niet meedoen. Hoort hij bij je werk, word dan eerst lid ' +
+    'van je organisatie met de code van je werkgever.',
   'groep.vol': 'Deze groep zit vol. Drie tot vijf mensen werkt het best, dus dat is geen ramp.',
   'groep.te_veel_groepen': 'Je zit al in tien groepen. Verlaat er een om ruimte te maken.',
   'groep.naam_kort': 'Geef je groep een naam van minstens twee tekens.',
