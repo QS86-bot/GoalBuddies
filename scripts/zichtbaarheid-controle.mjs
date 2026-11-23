@@ -33,6 +33,7 @@ import { execFileSync } from 'node:child_process';
 import { pathToFileURL } from 'node:url';
 
 import { psqlArgumenten, verbindingsmelding } from './psql.mjs';
+import { zonderCommentaarSql } from './zonder-sql-commentaar.mjs';
 
 /**
  * De oppervlakken die met opzet variëren op `groups.zichtbaarheid`, met wat de
@@ -295,8 +296,8 @@ export const GEEN_OPPERVLAK = new Map([
  *
  * ⚠️ **Op de code, niet op het commentaar.** 📏 De body van 0333 noemt
  *    `zichtbaarheid` in een comment, en een comment dat de oude poort uitlegt
- *    mag blijven staan. `codeZonderCommentaar()` haalt regelcommentaar (`--`) en
- *    blokcommentaar eruit vóór er gezocht wordt.
+ *    mag blijven staan. De gedeelde SQL-knip `zonderCommentaarSql()` uit
+ *    `scripts/zonder-sql-commentaar.mjs` haalt het eruit vóór er gezocht wordt.
  *
  * De grendels uit CLAUDE.md, domeinregel 10 (A57), staan elk als eis: het
  * lidmaatschap en het archief via `lid_van_levende_groep()`, de schakelaar
@@ -330,17 +331,6 @@ export const KLASSEMENTPOORT = {
 };
 
 /**
- * Haalt SQL-commentaar uit een functiedefinitie.
- *
- * ⚠️ Een `--` binnen een stringliteral wordt hier ook geknipt. Dat is de
- *    voorzichtige kant: hooguit verdwijnt er een stuk tekst, en een eis die
- *    daardoor wegvalt maakt de toets rood, niet groen.
- */
-export function codeZonderCommentaar(definitie) {
-  return definitie.replace(/\/\*[\s\S]*?\*\//g, ' ').replace(/--[^\n]*/g, ' ');
-}
-
-/**
  * Toetst één definitie tegen de poort van die functie in `KLASSEMENTPOORT`.
  *
  * @param {string} functie `groep_klassement` of `mijn_klassementen`
@@ -353,7 +343,12 @@ export function klassementpoort(functie, definitie, poort = KLASSEMENTPOORT) {
   if (!definitie || !definitie.trim()) {
     return [`\`${functie}()\` bestaat niet — de poort is niet te toetsen`];
   }
-  const code = codeZonderCommentaar(definitie).toLowerCase().replace(/\s+/g, ' ');
+  // ⚠️ `pg_get_functiondef()` zet het lichaam tussen `$function$`, en de gedeelde
+  //    knip laat een dollar-quoted literal met rust — dan bleef het commentaar
+  //    erin staan. 📏 Gemeten: zonder deze regel meldt hij `zichtbaarheid` uit
+  //    het comment van 0333. Eerst de tags weg, dan knippen.
+  const zonderTags = definitie.replace(/\$[a-z_]*\$/gi, ' ');
+  const code = zonderCommentaarSql(zonderTags).toLowerCase().replace(/\s+/g, ' ');
   return [
     ...moet
       .filter(([term]) => !code.includes(term))
@@ -425,43 +420,26 @@ function psql(vraag) {
   return execFileSync('psql', psqlArgumenten(vraag), { encoding: 'utf8' });
 }
 
-function hoofd() {
-  let gevonden;
-  const definities = {};
-  try {
-    gevonden = ontleed(psql(VRAAG));
-    for (const functie of Object.keys(KLASSEMENTPOORT.functies)) {
-      definities[functie] = psql(klassementvraag(functie));
-    }
-  } catch (fout) {
-    console.error(
-      verbindingsmelding({
-        naam: 'zichtbaarheid-controle',
-        leest:
-          'Deze controle leest `pg_proc`, `pg_policies` en `pg_views`, niet de\n' +
-          'migratiebestanden.',
-        melding: fout instanceof Error ? fout.message : String(fout),
-      }),
-    );
-    return 1;
-  }
-
-  const { onbekend, verdwenen } = beoordeel(gevonden);
-  const poortbezwaren = Object.entries(definities).flatMap(([functie, definitie]) =>
+/** Meldt de bezwaren tegen de klassementpoort; geeft hun aantal terug. */
+function meldPoort(definities) {
+  const bezwaren = Object.entries(definities).flatMap(([functie, definitie]) =>
     klassementpoort(functie, definitie),
   );
+  if (bezwaren.length === 0) return 0;
 
-  if (poortbezwaren.length > 0) {
-    console.error('✗ de poort van het klassement klopt niet met A57:\n');
-    for (const b of poortbezwaren) console.error(`    ${b}`);
-    console.error(
-      '\nSinds A57 (QS8-666) hangt het klassement aan `groups.klassement_aan`, niet\n' +
-        'aan de zichtbaarheid. Een beschermde groep kan een klassement hebben; zie\n' +
-        'CLAUDE.md, domeinregel 10, en rij 28 in `docs/decisions/002-domeinregel7-oppervlakken.md`.',
-    );
-    return 1;
-  }
+  console.error('✗ de poort van het klassement klopt niet met A57:\n');
+  for (const b of bezwaren) console.error(`    ${b}`);
+  console.error(
+    '\nSinds A57 (QS8-666) hangt het klassement aan `groups.klassement_aan`, niet\n' +
+      'aan de zichtbaarheid. Een beschermde groep kan een klassement hebben; zie\n' +
+      'CLAUDE.md, domeinregel 10, en rij 28 in `docs/decisions/002-domeinregel7-oppervlakken.md`.',
+  );
+  return bezwaren.length;
+}
 
+/** Legt de gevonden plekken naast de registers en meldt wat niet klopt. */
+function meldRegister(gevonden) {
+  const { onbekend, verdwenen } = beoordeel(gevonden);
   if (onbekend.length > 0) {
     console.error(
       `✗ ${onbekend.length} plek(ken) noemen zichtbaarheid zonder classificatie:\n`,
@@ -486,6 +464,33 @@ function hoofd() {
     );
     return 1;
   }
+  return 0;
+}
+
+function hoofd() {
+  let gevonden;
+  let definities;
+  try {
+    gevonden = ontleed(psql(VRAAG));
+    definities = Object.fromEntries(
+      Object.keys(KLASSEMENTPOORT.functies).map((f) => [f, psql(klassementvraag(f))]),
+    );
+  } catch (fout) {
+    console.error(
+      verbindingsmelding({
+        naam: 'zichtbaarheid-controle',
+        leest:
+          'Deze controle leest `pg_proc`, `pg_policies` en `pg_views`, niet de\n' +
+          'migratiebestanden.',
+        melding: fout instanceof Error ? fout.message : String(fout),
+      }),
+    );
+    return 1;
+  }
+
+  if (meldPoort(definities) > 0) return 1;
+
+  if (meldRegister(gevonden) > 0) return 1;
 
   console.log(
     `zichtbaarheid-controle: ${OPPERVLAKKEN.size} oppervlakken variëren op ` +

@@ -3,7 +3,6 @@ import { describe, expect, it } from 'vitest';
 // ⚠️ Een `.mjs` zonder eigen typings — zelfde patroon als `pinuitzonderingen-controle.test.ts`.
 import {
   beoordeel,
-  codeZonderCommentaar,
   GEEN_OPPERVLAK,
   klassementpoort,
   ontleed,
@@ -196,6 +195,19 @@ describe('klassementpoort', () => {
     expect(bezwaren[0]).toContain(`mist \`${eis}\``);
   });
 
+  it('knipt het commentaar ook binnen `$function$`, zoals `pg_get_functiondef()` hem teruggeeft', () => {
+    // ⚠️ De gedeelde SQL-knip laat een dollar-quoted literal met rust, en het hele
+    //    lichaam ís er een. 📏 Zonder de tagknip meldde de controle hier
+    //    `zichtbaarheid` uit het comment van 0333 — gemeten op een lokaal schema.
+    const gedeployd =
+      'CREATE OR REPLACE FUNCTION public.groep_klassement(p_group_id uuid)\n' +
+      ' LANGUAGE sql\nAS $function$' +
+      GROEP_A57 +
+      '$function$';
+
+    expect(klassementpoort('groep_klassement', gedeployd)).toEqual([]);
+  });
+
   it('telt een eis die alleen in commentaar staat niet als aanwezig', () => {
     const inCommentaar = MIJN_A57.replace('and g.klassement_aan', '-- and g.klassement_aan');
 
@@ -208,15 +220,6 @@ describe('klassementpoort', () => {
     expect(klassementpoort('groep_klassement', '')).toHaveLength(1);
     expect(klassementpoort('mijn_klassementen', '\n')).toHaveLength(1);
     expect(klassementpoort('iets_anders', GROEP_A57)).toHaveLength(1);
-  });
-});
-
-describe('codeZonderCommentaar', () => {
-  it('haalt regel- en blokcommentaar weg en laat de code staan', () => {
-    const uit = codeZonderCommentaar('a -- zichtbaarheid\nb /* open_groep */ c');
-
-    expect(uit).not.toMatch(/zichtbaarheid|open_groep/);
-    expect(uit).toMatch(/a[\s\S]*b[\s\S]*c/);
   });
 });
 
