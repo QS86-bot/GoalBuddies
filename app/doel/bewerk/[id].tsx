@@ -23,6 +23,7 @@ import {
   useAsync,
   useTerug,
 } from '@/shared/ui';
+import { useVolgTaal } from '@/shared/i18n/react';
 
 /**
  * Een bestaand doel bewerken — de knop die bij `wijzigDoel()` ontbrak.
@@ -44,6 +45,7 @@ import {
  *    ruim vijftienhonderd regels; hetzelfde argument als bij het weekdoelscherm.
  */
 export default function DoelBewerken() {
+  useVolgTaal();
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
   const terug = useTerug(`/doel/${id}`);

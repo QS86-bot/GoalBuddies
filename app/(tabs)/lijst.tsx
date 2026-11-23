@@ -33,6 +33,7 @@ import {
   useAsync,
   useAsyncMetTerugval,
 } from '@/shared/ui';
+import { useVolgTaal } from '@/shared/i18n/react';
 
 /**
  * De Lijst — losse taken, privé — QS8-380, tabel uit migratie 0246.
@@ -54,6 +55,7 @@ import {
  *    invoer bouwt.
  */
 export default function Lijst() {
+  useVolgTaal();
   const { userId } = useSession();
   const { profiel } = useProfiel();
   const lijst = useTaken(userId);

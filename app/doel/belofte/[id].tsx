@@ -3,6 +3,7 @@ import { useLocalSearchParams } from 'expo-router';
 import { Beloftescherm } from '@/schermen/belofte';
 import { t } from '@/shared/i18n';
 import { Screen } from '@/shared/ui';
+import { useVolgTaal } from '@/shared/i18n/react';
 
 /**
  * De weekbelofte van één doel — QS8-761. Bereikbaar vanuit het doelscherm
@@ -13,6 +14,7 @@ import { Screen } from '@/shared/ui';
  *    gevonden"; een belofte op andermans doel weigert de database (42501).
  */
 export default function Belofte() {
+  useVolgTaal();
   const { id } = useLocalSearchParams<{ id: string }>();
   return (
     <Screen title={t('belofte.titel')} terug={{ naar: `/doel/${id ?? ''}` }}>

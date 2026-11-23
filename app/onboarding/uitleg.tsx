@@ -5,6 +5,7 @@ import { StyleSheet, View } from 'react-native';
 import { t } from '@/shared/i18n';
 import { space, useTheme } from '@/shared/theme';
 import { Body, Button, Card, FloorCeiling, Screen, Subheading } from '@/shared/ui';
+import { useVolgTaal } from '@/shared/i18n/react';
 
 /**
  * De uitleg vóór het eerste doel — QS8-26.
@@ -54,6 +55,7 @@ function stappen(): readonly Stap[] {
 }
 
 export default function Uitleg() {
+  useVolgTaal();
   const router = useRouter();
   const theme = useTheme();
   const [stap, setStap] = useState(0);
