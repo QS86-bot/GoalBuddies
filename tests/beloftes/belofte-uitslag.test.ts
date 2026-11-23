@@ -22,6 +22,7 @@ import { renderScherm, ruimAllesOp } from '../render/scherm';
  *   D  de regel `{ingetrokkenVoor === goalId ? (` -> `{false ? (` -> rood: 'na intrekken'
  *   E  `.eq('event_type', 'cancelled')` weg in `fetchIntrekspoor()` -> rood: 'leest alleen de cancelled-regel'
  *   F  `nieuwsteBeslist()` neemt de oudste in plaats van de nieuwste -> rood: 'alleen de nieuwste beslissing'
+ *   G  `onKlaar={onKlaar}` -> `onKlaar={herlaad}` in `Beloftescherm` -> rood: 'een nieuwe belofte aangaan wist de melding'
  */
 
 vi.mock('expo-linear-gradient', () => ({ LinearGradient: () => null }));
@@ -47,8 +48,14 @@ function bouwer(tabel: string) {
   const verzoek: Verzoek = { tabel, filters: [] };
   db.verzoeken.push(verzoek);
   let update = false;
+  let insert = false;
   const antwoord = () => {
     if (update) return { data: [{ id: 'b-loopt' }], error: null };
+    if (insert) {
+      const nieuw = belofte('b-nieuw', 'set', DEZE_WEEK);
+      db.beloftes = [nieuw, ...db.beloftes];
+      return { data: nieuw, error: null };
+    }
     if (tabel === 'commitments') {
       const periode = verzoek.filters.find(([k]) => k === 'not:periode_start');
       return { data: periode ? db.beloftes : [], error: null };
@@ -64,6 +71,8 @@ function bouwer(tabel: string) {
     return { data: [], error: null };
   };
   const b: Record<string, unknown> = {};
+  b['insert'] = () => ((insert = true), b);
+  b['single'] = () => b;
   for (const m of ['select', 'eq', 'neq', 'not', 'is', 'in', 'order', 'limit']) {
     b[m] = (k: unknown, ...rest: unknown[]) => {
       verzoek.filters.push([`${m}:${String(k)}`, rest[0]]);
@@ -137,6 +146,26 @@ function zin(soort: 'gehouden' | 'in_werking' | 'ingetrokken', start: string): s
   const week = userCycleOn(KLOK, start)!;
   const taal = opmaaktaal();
   return t(`belofte.uitslag.${soort}`, { start: toonDatumLang(week.startDate, taal), einde: toonDatumLang(week.endDate, taal) });
+}
+
+/** Typt in het veld met deze plaatshouder, zoals React het van een browser verwacht. */
+async function typ(plaatshouder: string, tekst: string) {
+  const { act } = await import('react');
+  const veld = document.querySelector<HTMLInputElement | HTMLTextAreaElement>(`[placeholder="${plaatshouder}"]`);
+  if (!veld) throw new Error(`geen veld met plaatshouder ${plaatshouder}`);
+  const zetter = Object.getOwnPropertyDescriptor(Object.getPrototypeOf(veld), 'value')!.set!;
+  await act(async () => {
+    zetter.call(veld, tekst);
+    veld.dispatchEvent(new Event('input', { bubbles: true }));
+  });
+}
+
+/** Kiest de keuzeknop (`role="radio"`) met precies deze tekst. */
+async function kies(tekst: string) {
+  const { act } = await import('react');
+  const knop = [...document.querySelectorAll<HTMLElement>('[role="radio"]')].find((e) => e.textContent === tekst);
+  if (!knop) throw new Error(`geen keuze "${tekst}"`);
+  await act(async () => knop.click());
 }
 
 const toon = () => renderScherm(() => createElement(Beloftescherm, { goalId: DOEL }));
@@ -247,6 +276,26 @@ describe('na intrekken een korte bevestiging (V4 = A)', () => {
     expect(db.updates).toEqual([{ status: 'cancelled' }]);
     expect(scherm.tekst()).toContain(t('belofte.ingetrokken_melding'));
     expect(scherm.tekst()).toContain(zin('ingetrokken', DEZE_WEEK));
+  });
+
+  it('een nieuwe belofte aangaan wist de melding: boven een lopende belofte is "ingetrokken" onwaar', async () => {
+    db.beloftes = [belofte('b-loopt', 'set', DEZE_WEEK)];
+    const scherm = await geladen();
+    await scherm.klik(t('straf.intrekken'));
+    db.beloftes = [belofte('b-loopt', 'cancelled', DEZE_WEEK)];
+    db.spoor = [regel(IK)];
+    await scherm.klik(t('belofte.intrekken_ja'));
+    for (let i = 0; i < 5; i++) await scherm.wacht();
+    expect(scherm.tekst()).toContain(t('belofte.ingetrokken_melding'));
+
+    await typ(t('belofte.voorbeeld'), 'Ik trakteer op taart');
+    await kies(t('straf.een_groep'));
+    await kies('Vrienden');
+    await scherm.klik(t('straf.verder'));
+    await scherm.klik(t('belofte.ja'));
+    for (let i = 0; i < 5; i++) await scherm.wacht();
+    expect(scherm.tekst()).toContain(t('belofte.jouw'));
+    expect(scherm.tekst()).not.toContain(t('belofte.ingetrokken_melding'));
   });
 
   it('zonder intrekking staat er geen melding, ook niet bij een ingetrokken belofte uit het verleden', async () => {

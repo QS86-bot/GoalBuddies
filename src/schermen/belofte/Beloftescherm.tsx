@@ -32,6 +32,12 @@ export function Beloftescherm({ goalId }: { readonly goalId: string }) {
     setIngetrokkenVoor(goalId);
     herlaad();
   };
+  // ⚠️ Elk ander herladen (een nieuwe belofte aangegaan, "Bekijk de uitslag") wist de
+  //    melding: boven een nieuwe belofte zegt "ingetrokken" iets onwaars (security-review).
+  const onKlaar = () => {
+    setIngetrokkenVoor(null);
+    herlaad();
+  };
 
   return (
     <View style={{ gap: afstand.l }}>
@@ -56,7 +62,7 @@ export function Beloftescherm({ goalId }: { readonly goalId: string }) {
               }
         }
       >
-        {(d) => <Inhoud d={d} goalId={goalId} onKlaar={herlaad} onIngetrokken={onIngetrokken} />}
+        {(d) => <Inhoud d={d} goalId={goalId} onKlaar={onKlaar} onIngetrokken={onIngetrokken} />}
       </AsyncView>
     </View>
   );

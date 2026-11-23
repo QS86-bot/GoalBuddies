@@ -52,6 +52,15 @@ het doel eerst op `completed` zet) naast de laatste definitie in de migraties.
 `tests/beloftes/belofte-uitslag.test.ts` rendert het echte scherm met alleen het netwerk,
 het doel en de sessie vervangen.
 
+**"Geen actor = gehouden" leunt op een afwezigheid, en daar staat een register onder**
+(security-review, Middel). Het klopt zolang de rollover de enige weg is die een
+commitment zonder JWT op `cancelled` zet. 📏 Gemeten: van alle functies in de migraties
+zetten er vandaag precies twee `commitments` op `cancelled`, `wikkel_commitments_af()` en
+`beslis_weekbeloftes()`. Ze staan met hun actor in `NAAR_CANCELLED`; een derde weg is rood
+tot iemand hem indeelt.
+
 **De melding na intrekken leeft in het scherm, niet in de gegevens.** Ze is een
 bevestiging van een handeling, geen stand: na het herladen zegt de uitslagregel
-"ingetrokken" al. Ze is bewaard per doel, zodat ze nooit bij een ander doel staat.
+"ingetrokken" al. Ze is bewaard per doel, zodat ze nooit bij een ander doel staat. Elk ander herladen
+(een nieuwe belofte aangegaan, "Bekijk de uitslag") wist haar: boven een nieuwe, lopende
+belofte zou "ingetrokken" onwaar zijn (security-review, Laag).
