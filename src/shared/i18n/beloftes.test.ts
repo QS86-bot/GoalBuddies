@@ -116,6 +116,11 @@ const TOEGESTAAN: Readonly<Record<string, string>> = {
     'groepstak, er komt geen systeembericht en geen kolom op `group_members` ' +
     '(`tests/beloftes/een-gedempte-groep-belt-niet.test.ts`, `tests/rls/groep-demping.test.ts`). ' +
     'Er is geen `_open`-tegenhanger nodig, want geen groepsoppervlak varieert.',
+  'klassement.uitnodiging_weg_uitleg':
+    'QS8-784. "Alleen voor jou" gaat over de eigen wegklik en is onvoorwaardelijk waar, ook in een open ' +
+    'groep: `klassement_uitnodiging_weg` heeft vier policies op `user_id = (select auth.uid())` zonder ' +
+    'groepstak, geen bericht en geen `group_events`-rij (`tests/rls/klassement-uitnodiging-weg.test.ts`). ' +
+    'Er is geen `_open`-tegenhanger nodig, want geen groepsoppervlak varieert.',
   'buddyzoek.bevestig_bescherming':
     'QS8-233. De zin geldt onvoorwaardelijk omdat een automatisch gevormde groep ' +
     'niet open kán worden: `groups_automatisch_is_beschermd` is een CHECK, en de ' +

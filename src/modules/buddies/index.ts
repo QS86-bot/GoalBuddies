@@ -167,7 +167,9 @@ export { fetchKettingStand } from './ketting';
 export {
   fetchGroepsteller,
   fetchKlassement,
+  fetchUitnodigingWeg,
   kanKlassementZetten,
+  klikKlassementUitnodigingWeg,
   toonKlassementUitnodiging,
   klassementPlek,
   type KlassementPlek,

@@ -2827,6 +2827,11 @@ export const nl = {
   'klassement.uitnodiging_tekst':
     'Het klassement staat uit. Zet je het aan, dan zien leden elkaars punten uit deze groep. Een gemiste week komt er nooit in voor.',
   'klassement.uitnodiging_knop': 'Zet het klassement aan',
+  // QS8-784: wegklikken per beheerder. "Niet meer tonen" en geen "sluiten": hij blijft weg tot het klassement aan en
+  //    weer uit is gezet, en dat zegt de toelichting eronder.
+  'klassement.uitnodiging_weg_knop': 'Niet meer tonen',
+  'klassement.uitnodiging_weg_uitleg': 'Alleen voor jou. Zet iemand het klassement aan en weer uit, dan komt deze kaart terug.',
+  'klassement.uitnodiging_weg_mislukt': 'De kaart kon niet weggeklikt worden. Probeer het opnieuw.',
   'klassement.leeg': 'Er zijn hier nog geen punten verdiend. De eerste afgeronde week zet hem in gang.',
   'klassement.van_totaal': '{getoond} van {totaal} leden',
   'klassement.laden_mislukt': 'Het klassement kon niet geladen worden.',
