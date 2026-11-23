@@ -46,6 +46,9 @@ const ONZICHTBAARHEID = [
   /nobody[^.]{0,40}sees/i,
   /no one[^.]{0,40}sees/i,
   /not your weeks/i,
+  // QS8-798: de herschreven vorm noemt de week niet meer als geheel maar de gemiste week.
+  /niet een gemiste/i,
+  /not a missed/i,
   /stays? private/i,
   // ⚠️⚠️ **De vier vormen hieronder ontbraken, en dat is gemeten en geen
   //    vermoeden.** De doorlichting van 09-09-2026 vond vier sleutels met een
@@ -92,6 +95,14 @@ const ONZICHTBAARHEID = [
  *    dan moet het scherm dat ook echt afdwingen.
  */
 const TOEGESTAAN: Readonly<Record<string, string>> = {
+  'zichtbaarheid.beschermd_uitleg':
+    'QS8-798, variant B (besluit Quinten 23-11-2026). De zin belooft alleen wat de database in een ' +
+    'beschermde groep dichthoudt: gemiste, doorgeschoven, geannuleerde en vrijgestelde weken ' +
+    '(`weekly_goals_select`, rij 3 in 002; getoetst in `tests/rls/epic13.test.ts`) en je persoonlijke ' +
+    'totaal (`points_ledger` eigenaar-only, A42). Wat wél zichtbaar is staat erbij: lopende en ' +
+    'goedgekeurde weken, en met een klassement (A57, `groep_klassement()`) de in die groep verdiende ' +
+    'punten. De zin is bewust niet gesplitst: hij geldt alleen voor de beschermde keuze en de open ' +
+    'tegenhanger is `zichtbaarheid.open_uitleg`.',
   'belofte.bevestig_wie':
     'QS8-761. De zin gaat over de eigen weekbelofte en is onvoorwaardelijk waar, ook in een open ' +
     'groep: `commitments_select` geeft de begunstigde pas leesrecht vanaf `due` en kijkt niet naar ' +
@@ -299,6 +310,61 @@ describe('onzichtbaarheidsbeloftes', () => {
 
       const open = sleutel.replace(/_beschermd$/, '_open');
       expect(nl[open as keyof typeof nl], sleutel).not.toBe(nl[sleutel as keyof typeof nl]);
+    }
+  });
+});
+
+describe('wat Beschermd belooft en wat het niet belooft (QS8-798, A57)', () => {
+  // De belofte is een eigenschap van het geheel: sleutel én catalogus, in beide talen.
+  // Niet het schermbestand: dat kiest alleen welke sleutel getoond wordt.
+  const BESCHERMD = [
+    'zichtbaarheid.beschermd_uitleg',
+    'koppel.uitleg_beschermd',
+    'deling.uitleg_beschermd',
+  ] as const;
+
+  it('belooft nergens meer "niet je weken" of "niet je punten", in geen enkele sleutel', () => {
+    // Sinds 0077 zijn lopende en goedgekeurde weken leesbaar voor een lid, en sinds A57
+    // (0333) heeft ook een beschermde groep een klassement.
+    for (const [taal, catalogus] of [['nl', nl], ['en', en]] as const) {
+      for (const [sleutel, zin] of Object.entries(catalogus)) {
+        // Alleen de teksten over wat een groep ziet; "een pas beschermt je reeks, niet je
+        // punten" (weekpas.uitleg) gaat over iets anders en is waar.
+        if (!/^(koppel|deling|zichtbaarheid|uitnodiging|groepnieuw|bevestiging\.groep_)/.test(sleutel)) continue;
+        expect(zin, `${taal}:${sleutel}`).not.toMatch(
+          /niet je weken|niet je punten|not your weeks|not your points/i,
+        );
+      }
+    }
+  });
+
+  it('noemt in elke beschermde tekst het klassement, in beide talen', () => {
+    for (const sleutel of BESCHERMD) {
+      expect(nl[sleutel], `nl:${sleutel}`).toMatch(/klassement/i);
+      expect(en[sleutel], `en:${sleutel}`).toMatch(/leaderboard/i);
+    }
+  });
+
+  it('noemt in elke beschermde tekst dat lopende en goedgekeurde weken zichtbaar zijn', () => {
+    for (const sleutel of BESCHERMD) {
+      expect(nl[sleutel], `nl:${sleutel}`).toMatch(/lopende en goedgekeurde weken/i);
+      expect(en[sleutel], `en:${sleutel}`).toMatch(/current and approved weeks/i);
+    }
+  });
+
+  it('houdt de persoonlijke totaaltelling privé en zegt dat ook', () => {
+    for (const sleutel of BESCHERMD) {
+      expect(nl[sleutel], `nl:${sleutel}`).toMatch(/persoonlijke (puntentotaal|totaal)/i);
+      expect(en[sleutel], `en:${sleutel}`).toMatch(/personal (point )?total/i);
+    }
+  });
+
+  it('noemt het klassement nergens een puntentotaal van elkaar', () => {
+    // Het klassement toont punten die in díe groep verdiend zijn (A54/A57), geen totaal.
+    for (const sleutel of Object.keys(nl)) {
+      if (!sleutel.startsWith('zichtbaarheid.') && !sleutel.startsWith('bevestiging.groep_')) continue;
+      expect(nl[sleutel as keyof typeof nl], `nl:${sleutel}`).not.toMatch(/elkaars puntentotaal/i);
+      expect(en[sleutel as keyof typeof en], `en:${sleutel}`).not.toMatch(/point totals/i);
     }
   });
 });
