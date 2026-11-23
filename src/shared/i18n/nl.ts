@@ -818,6 +818,13 @@ export const nl = {
     'Een nieuwe groep begint met een klassement: iedereen in de groep ziet de punten die ieder in deze groep verdient, ook in een beschermde groep. Een gemiste week komt er nooit in voor. Een beheerder kan het klassement uitzetten.',
   'uitnodiging.klassement_standaard':
     'Een groep begint standaard met een klassement: iedereen in de groep ziet de punten die ieder in deze groep verdient. Een gemiste week komt er nooit in voor. Een beheerder kan het uitzetten.',
+  // QS8-801 (0341): de echte stand uit `invite_preview()`.
+  'uitnodiging.klassement_aan':
+    'In deze groep staat het klassement aan: iedereen in de groep ziet de punten die ieder in deze groep verdient. Een gemiste week komt er nooit in voor. Een beheerder kan het uitzetten.',
+  'uitnodiging.klassement_uit':
+    'In deze groep staat het klassement uit. Gaat het later aan, dan ziet iedereen in de groep de punten die ieder in deze groep verdiend heeft, ook die van daarvóór. Een gemiste week komt er nooit in voor.',
+  // Besluit Quinten 23-11-2026: een teamgroep kan nooit een klassement hebben (groups_team_geen_klassement).
+  'uitnodiging.klassement_team': 'Deze groep heeft geen klassement.',
   'groepnieuw.zichtbaarheid_hint':
     'Dit is de belangrijkste keuze op dit scherm. Hij is later te wijzigen, maar niet ongemerkt: iedereen krijgt het te zien.',
 
@@ -1178,6 +1185,12 @@ export const nl = {
   'profiel.beginscherm_ios': 'Op iPhone en iPad werken meldingen alleen als de app op je beginscherm staat. Tik op Deel en kies Zet op beginscherm; open hem daarna vanaf je beginscherm.',
   'profiel.beginscherm_safari': 'Op iPhone en iPad werken meldingen alleen vanuit Safari. Open goalbuddies.q-projects.tech in Safari en zet hem daar op je beginscherm.',
   'vandaag.titel': 'Vandaag',
+  // QS8-805: de kaart op Vandaag voor wie de vragenlijst oversloeg.
+  'vandaag.vragenlijst_kaart_titel': 'Zodat de app je kent',
+  'vandaag.vragenlijst_kaart_tekst':
+    'Een paar korte vragen: waar je je op wilt richten, hoeveel tijd je hebt en wanneer het je uitkomt. Overslaan mag; alles blijft werken.',
+  'vandaag.vragenlijst_kaart_knop': 'Vragen beantwoorden',
+  'vandaag.vragenlijst_kaart_niet_nu': 'Niet nu',
   'vandaag.eyebrow_week': 'WEEK VAN {datum}',
   'vandaag.eyebrow_deze': 'DEZE WEEK',
   'vandaag.coulance_titel': 'Je vorige week loopt nog even door',
@@ -2089,6 +2102,19 @@ export const nl = {
 
   'straf.jouw': 'Je straf',
   'straf.intrekken': 'Intrekken',
+  // ⚠️ QS8-800: alleen voor de eigenaar, op zijn eigen strafkaart. De naam komt
+  //    uit een bron die hij al mocht lezen; zonder leesrecht noemt de kaart
+  //    alleen de soort, en bij een storing zegt hij dat.
+  'straf.begunstigde.groep': 'Getuige: de groep {groep}',
+  'straf.begunstigde.persoon': 'Getuige: {naam}',
+  'straf.begunstigde.groep_onzichtbaar': 'Getuige: een groep waar je geen lid meer van bent',
+  // ⚠️ Niet alleen "wie": de persoonstak van `commitments_select` eist een
+  //    gedeelde groep (0183), dus zolang die er niet is ziet de getuige de straf
+  //    óók bij `due` niet. Een kaart die dan alleen "Getuige: …" zegt, belooft
+  //    een getuige die er niet is (security-ronde QS8-800).
+  'straf.begunstigde.persoon_onzichtbaar':
+    'Getuige: iemand met wie je geen groep meer deelt. Zolang dat zo is, krijgt die je straf niet te zien.',
+  'straf.begunstigde.fout': 'De getuige kon niet worden geladen.',
   'straf.kop': 'Straf',
   // ⚠️ **Uitleg én een uitweg, geen dood veld** (acceptatiecriterium van
   //    QS8-228). Wie hier komt heeft geen groep en dus ook geen groepsgenoot om

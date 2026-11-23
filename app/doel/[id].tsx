@@ -19,6 +19,7 @@ import {
   type Resultaat,
 } from '@/modules/buddies';
 import {
+  fetchBegunstigdeNaam,
   fetchCommitments,
   fetchCommitmentSpoor,
   herstelStuurlozeStraf,
@@ -367,6 +368,7 @@ export default function DoelDetail() {
               goalId={d.id}
               bestaand={commitments.find(isDoelstraf)}
               streefdatumVoorbij={!magStrafVastleggen(d.target_date, vandaag)}
+              vanMij={d.owner_id === userId}
               onKlaar={herlaad}
             />
 
@@ -1156,15 +1158,53 @@ function TeamStrafBevestiging({
   );
 }
 
+/**
+ * Wie je straf te zien krijgt zodra hij verschuldigd is — QS8-800.
+ *
+ * ⚠️ **Alleen voor de eigenaar**, en dat is de aanroeper die het afdwingt
+ *    (`vanMij`) én de bron: de naam komt uit `groups` en `profiles` met de
+ *    policies van vandaag, dus niemand leest via dit blok iets wat hij vóór
+ *    QS8-800 niet al kon. Geen nieuw groepszichtbaar oppervlak (domeinregel 7).
+ *
+ * ⚠️ Apart component, want het haalt zelf op: een hook hoort niet in de tak
+ *    van `Straf` die alleen bij een bestaande straf loopt.
+ */
+function StrafBegunstigde({ straf }: { readonly straf: Commitment }) {
+  const wie = useAsyncMetTerugval(
+    () => fetchBegunstigdeNaam(straf),
+    null,
+    [straf.id, straf.beneficiary_group_id, straf.beneficiary_user_id],
+  );
+  if (wie === null) return null;
+  if (wie.fout) return <Caption>{t('straf.begunstigde.fout')}</Caption>;
+  if (wie.naam === null) {
+    return (
+      <Caption>
+        {t(wie.soort === 'groep' ? 'straf.begunstigde.groep_onzichtbaar' : 'straf.begunstigde.persoon_onzichtbaar')}
+      </Caption>
+    );
+  }
+  return (
+    <Caption>
+      {wie.soort === 'groep'
+        ? t('straf.begunstigde.groep', { groep: wie.naam })
+        : t('straf.begunstigde.persoon', { naam: wie.naam })}
+    </Caption>
+  );
+}
+
 function Straf({
   goalId,
   bestaand,
   streefdatumVoorbij,
+  vanMij,
   onKlaar,
 }: {
   readonly goalId: string;
   readonly bestaand: Commitment | undefined;
   readonly streefdatumVoorbij: boolean;
+  /** QS8-800: de naam van de getuige staat alleen op de kaart van de eigenaar. */
+  readonly vanMij: boolean;
   readonly onKlaar: () => void;
 }) {
   const router = useRouter();
@@ -1231,6 +1271,7 @@ function Straf({
         <Subheading>{t('straf.jouw')}</Subheading>
         <Body>{bestaand.body}</Body>
         <Caption>{t('commitment.stand', { titel: stand.titel, uitleg: stand.uitleg })}</Caption>
+        {vanMij ? <StrafBegunstigde straf={straf} /> : null}
         {/*
           ⚠️ De knop verdwijnt zodra de straf verschuldigd is, en dat is geen
              cosmetiek: `commitments_update` weigert het dan sowieso (0057). Een

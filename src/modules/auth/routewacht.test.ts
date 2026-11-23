@@ -11,6 +11,7 @@ function stand(over: Partial<Routestand> = {}): Routestand {
     isOnboarded: true,
     wortel: '',
     tak: '',
+    netAfgerond: false,
     ...over,
   };
 }
@@ -56,6 +57,22 @@ describe('de routewacht', () => {
   it('laat de vragenlijst staan zodra de onboarding afgerond is, en verder niets', () => {
     expect(bestemmingVoor(stand({ wortel: 'onboarding', tak: 'vragenlijst' }))).toBeNull();
     expect(bestemmingVoor(stand({ wortel: 'onboarding', tak: 'uitleg' }))).toBe('/');
+  });
+
+  /**
+   * ⚠️ **QS8-793: na Klaar stuurt de wacht zelf naar de vragenlijst**, en alleen
+   *    binnen de onboarding. De vlag `netAfgerond` mag nooit een route buiten de
+   *    onboarding overnemen: wie vanaf de vragenlijst wegtikt naar Doelen, hoort
+   *    daar te blijven, ook als de vlag nog niet opgeruimd is.
+   */
+  it('stuurt een net afgerond profiel naar de vragenlijst, en alleen binnen de onboarding', () => {
+    const net = { netAfgerond: true } as const;
+    expect(bestemmingVoor(stand({ ...net, wortel: 'onboarding', tak: 'profiel' }))).toBe('/onboarding/vragenlijst');
+    expect(bestemmingVoor(stand({ ...net, wortel: 'onboarding', tak: 'vragenlijst' }))).toBeNull();
+    expect(bestemmingVoor(stand({ ...net, wortel: '(tabs)', tak: 'doelen' }))).toBeNull();
+    expect(bestemmingVoor(stand({ ...net, wortel: 'aanmelden' }))).toBe('/');
+    // Zonder de vlag, zoals altijd: een bestaand account gaat naar Vandaag.
+    expect(bestemmingVoor(stand({ wortel: 'onboarding', tak: 'profiel' }))).toBe('/');
   });
 
   it('geldt voor elke route in de lijst, ook als er ooit een tweede bij komt', () => {

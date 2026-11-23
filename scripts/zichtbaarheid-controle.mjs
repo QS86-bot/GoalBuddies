@@ -33,13 +33,16 @@ import { execFileSync } from 'node:child_process';
 import { pathToFileURL } from 'node:url';
 
 import { psqlArgumenten, verbindingsmelding } from './psql.mjs';
+import { zonderCommentaarSql } from './zonder-sql-commentaar.mjs';
 
 /**
  * De oppervlakken die met opzet variëren op `groups.zichtbaarheid`, met wat de
  * gebruiker daarover leest.
  *
- * ⚠️ Zeven rijen, maar **zes feiten** — en dat onderscheid is de reden dat de zin
- *    voor de gebruiker niet bij elke rij meegroeit. `zichtbare_reeksen_van_groep`
+ * ⚠️ Zes rijen, maar **vijf feiten** — en dat onderscheid is de reden dat de zin
+ *    voor de gebruiker niet bij elke rij meegroeit. (Het waren er zeven en zes tot
+ *    QS8-802: het klassement varieert sinds A57 niet meer op de zichtbaarheid,
+ *    zie `KLASSEMENTPOORT` hieronder.) `zichtbare_reeksen_van_groep`
  *    (0151) is een tweede pad naar hetzelfde feit als `group_visible_streaks`,
  *    niet een eigen ding dat opengaat. Komt er een rij bij die wél een nieuw feit
  *    opent, dan wordt deze controle rood — en dán is de vraag of
@@ -72,6 +75,15 @@ import { psqlArgumenten, verbindingsmelding } from './psql.mjs';
  *    twee zinnen — die tot dat moment drie oppervlakken opsomden terwijl er vier
  *    waren en er een vijfde bij kwam. Zonder deze controle was de gebruiker de
  *    groep open blijven zetten op een zin die zijn punten niet noemde.
+ *
+ * ⚠️ **En sinds A57 staat dat klassement hier niet meer** (QS8-666, migraties
+ *    0333 en 0336; uit dit register gehaald in QS8-802). Het hangt aan de
+ *    schakelaar `groups.klassement_aan` en niet aan de zichtbaarheid: een
+ *    beschermde groep kan een klassement hebben, een open groep kan het uit
+ *    hebben. Openzetten zet de schakelaar wél aan als hij uit stond (besluit 45),
+ *    en daarom noemt `bevestiging.groep_openzetten.uitleg` het klassement nog —
+ *    maar dat is een handeling van de setter, geen oppervlak dat op de stand
+ *    varieert. De poort zelf wordt hieronder apart getoetst.
  */
 export const OPPERVLAKKEN = new Map([
   [
@@ -104,14 +116,6 @@ export const OPPERVLAKKEN = new Map([
       'maar wijkt hij ooit inhoudelijk van de view af, dan is dat wél een nieuw ' +
       'oppervlak. Die gelijkheid staat onder test in ' +
       '`tests/rls/reeksen-van-een-groep.test.ts`, in beide richtingen.',
-  ],
-  [
-    'functie:groep_klassement',
-    'Het puntenklassement per lid (migratie 0141, besluit A54). Het vijfde ' +
-      'oppervlak, en het eerste dat een besluit terúgdraait: punten stonden onder ' +
-      'A42 in §6b als bewust dicht. Wat opengaat is het groepstotaal, niet het ' +
-      'persoonlijke totaal en niet de deltas — en het kan niet dalen van een ' +
-      'gemiste week, want `cycle_missed` draagt geen groep.',
   ],
   [
     'functie:groep_helden',
@@ -195,6 +199,17 @@ export const GEEN_OPPERVLAK = new Map([
   ],
   ['functie:zet_groepszichtbaarheid', 'De setter (0076). Zet de stand, leest niets van een lid.'],
   [
+    'functie:groep_klassement',
+    '⚠️ **Een valse positief op een comment, en tot QS8-802 een rij in OPPERVLAKKEN.** ' +
+      'Het klassement varieerde onder A54 (0141) op de zichtbaarheid; sinds A57 (0333) ' +
+      'is de poort `lid_van_levende_groep()` plus de schakelaar `groups.klassement_aan` ' +
+      'plus de teamtoets. 📏 De body noemt `zichtbaarheid` alleen nog in het commentaar ' +
+      '"…en niet meer aan de zichtbaarheid", en daarom vindt de zoekvraag hem. Dat hij ' +
+      'hier staat is dus geen oordeel over de poort; die toetst `klassementpoort()` ' +
+      'apart en op de code zonder commentaar. Verdwijnt het comment, dan meldt deze ' +
+      'controle hem als verdwenen en hoort deze rij eruit.',
+  ],
+  [
     'functie:zet_huddledag',
     '⚠️ **De tweede valse positief op een naam, en de eerste sinds `sleutelzetters` ' +
       'hierboven.** Deze functie (0208, QS8-360) verzet de huddledag en de lopende ' +
@@ -259,6 +274,101 @@ export const GEEN_OPPERVLAK = new Map([
 ]);
 
 /**
+ * De poort van het klassement sinds A57 — wat er in de code van
+ * `groep_klassement()` en `mijn_klassementen()` moet staan, en wat er niet meer
+ * in mag (QS8-802).
+ *
+ * ⚠️ **Waarom een eigen toets en niet een rij in de registers hierboven.** Die
+ *    registers classificeren plekken die zichtbaarheid nóemen; ze zeggen niets
+ *    over waar een functie wél op filtert. Zet iemand `lid_van_open_groep()`
+ *    terug in het klassement, dan noemt de functie `open_groep` en staat hij
+ *    keurig in een register — en zou de controle groen blijven op precies de
+ *    terugval die A57 verbiedt. Deze toets maakt dat rood.
+ *
+ * ⚠️⚠️ **Eén lijst, twee bronnen.** Deze lijst is ook wat
+ *    `tests/beloftes/klassementpoort.test.ts` toetst, op de migratiebestanden en
+ *    zonder database; hier gaat hij over de gedéployde definitie
+ *    (`pg_get_functiondef()`). Dat verschil is de reden dat er twee toetsen zijn
+ *    en geen twee vertalingen van de regel: wie een poortdeel toevoegt, doet dat
+ *    hier en beide toetsen nemen het over. Die toets heeft daarnaast eigen,
+ *    strengere vormen (de volgorde, de knip, de exacte teamvoorwaarde) die
+ *    alleen op de bron te stellen zijn.
+ *
+ * ⚠️ **Op de code, niet op het commentaar.** 📏 De body van 0333 noemt
+ *    `zichtbaarheid` in een comment, en een comment dat de oude poort uitlegt
+ *    mag blijven staan. De gedeelde SQL-knip `zonderCommentaarSql()` uit
+ *    `scripts/zonder-sql-commentaar.mjs` haalt het eruit vóór er gezocht wordt.
+ *
+ * De grendels uit CLAUDE.md, domeinregel 10 (A57), staan elk als eis: het
+ * lidmaatschap en het archief via `lid_van_levende_groep()`, de schakelaar
+ * `klassement_aan`, en de teamgroep die nooit een klassement heeft. De teamtoets
+ * heeft per functie een eigen vorm (`not exists … is not null` tegenover
+ * `and g.organization_id is null`), en `mijn_klassementen()` toetst automatisch
+ * gevormde groepen zelf waar `groep_klassement()` op de CHECK leunt.
+ */
+const GEDEELDE_POORT = [
+  ['lid_van_levende_groep(', 'de poort voor lidmaatschap en archief (A57, 0333)'],
+  ['klassement_aan', 'de schakelaar op de groep (A57, 0333)'],
+  ["status <> 'inactive'", 'een uitgezet lid telt niet mee'],
+];
+
+export const KLASSEMENTPOORT = {
+  functies: {
+    groep_klassement: [
+      ...GEDEELDE_POORT,
+      ['organization_id is not null', 'de teamtoets: een teamgroep heeft nooit een klassement'],
+    ],
+    mijn_klassementen: [
+      ...GEDEELDE_POORT,
+      ['g.organization_id is null', 'de teamtoets: een teamgroep heeft nooit een klassement'],
+      ['not g.automatisch', 'een automatisch gevormde groep heeft nooit een klassement'],
+    ],
+  },
+  magNiet: [
+    ['open_groep', 'de poort van A54 — het klassement hangt niet meer aan open'],
+    ['zichtbaarheid', 'de zichtbaarheid van de groep — sinds A57 niet meer de poort'],
+  ],
+};
+
+/**
+ * Toetst één definitie tegen de poort van die functie in `KLASSEMENTPOORT`.
+ *
+ * @param {string} functie `groep_klassement` of `mijn_klassementen`
+ * @param {string} definitie de functiedefinitie, mét commentaar
+ * @returns {string[]} de bezwaren; leeg als de poort klopt
+ */
+export function klassementpoort(functie, definitie, poort = KLASSEMENTPOORT) {
+  const moet = poort.functies[functie];
+  if (!moet) return [`\`${functie}()\` heeft geen poort in KLASSEMENTPOORT`];
+  if (!definitie || !definitie.trim()) {
+    return [`\`${functie}()\` bestaat niet — de poort is niet te toetsen`];
+  }
+  // ⚠️ `pg_get_functiondef()` zet het lichaam tussen `$function$`, en de gedeelde
+  //    knip laat een dollar-quoted literal met rust — dan bleef het commentaar
+  //    erin staan. 📏 Gemeten: zonder deze regel meldt hij `zichtbaarheid` uit
+  //    het comment van 0333. Eerst de tags weg, dan knippen.
+  const zonderTags = definitie.replace(/\$[a-z_]*\$/gi, ' ');
+  const code = zonderCommentaarSql(zonderTags).toLowerCase().replace(/\s+/g, ' ');
+  return [
+    ...moet
+      .filter(([term]) => !code.includes(term))
+      .map(([term, reden]) => `${functie}: mist \`${term}\`: ${reden}`),
+    ...poort.magNiet
+      .filter(([term]) => code.includes(term))
+      .map(([term, reden]) => `${functie}: filtert op \`${term}\`: ${reden}`),
+  ];
+}
+
+function klassementvraag(functie) {
+  return `
+select coalesce(string_agg(pg_get_functiondef(p.oid), E'\\n'), '')
+from pg_proc p
+join pg_namespace n on n.oid = p.pronamespace
+where n.nspname = 'public' and p.proname = '${functie}';
+`;
+}
+
+/**
  * Alles wat `groups.zichtbaarheid` of een van de open-groephulpfuncties noemt.
  *
  * ⚠️ Beide zoektermen, niet één. Zie de kop: op de kolom filteren zonder de
@@ -310,25 +420,26 @@ function psql(vraag) {
   return execFileSync('psql', psqlArgumenten(vraag), { encoding: 'utf8' });
 }
 
-function hoofd() {
-  let gevonden;
-  try {
-    gevonden = ontleed(psql(VRAAG));
-  } catch (fout) {
-    console.error(
-      verbindingsmelding({
-        naam: 'zichtbaarheid-controle',
-        leest:
-          'Deze controle leest `pg_proc`, `pg_policies` en `pg_views`, niet de\n' +
-          'migratiebestanden.',
-        melding: fout instanceof Error ? fout.message : String(fout),
-      }),
-    );
-    return 1;
-  }
+/** Meldt de bezwaren tegen de klassementpoort; geeft hun aantal terug. */
+function meldPoort(definities) {
+  const bezwaren = Object.entries(definities).flatMap(([functie, definitie]) =>
+    klassementpoort(functie, definitie),
+  );
+  if (bezwaren.length === 0) return 0;
 
+  console.error('✗ de poort van het klassement klopt niet met A57:\n');
+  for (const b of bezwaren) console.error(`    ${b}`);
+  console.error(
+    '\nSinds A57 (QS8-666) hangt het klassement aan `groups.klassement_aan`, niet\n' +
+      'aan de zichtbaarheid. Een beschermde groep kan een klassement hebben; zie\n' +
+      'CLAUDE.md, domeinregel 10, en rij 28 in `docs/decisions/002-domeinregel7-oppervlakken.md`.',
+  );
+  return bezwaren.length;
+}
+
+/** Legt de gevonden plekken naast de registers en meldt wat niet klopt. */
+function meldRegister(gevonden) {
   const { onbekend, verdwenen } = beoordeel(gevonden);
-
   if (onbekend.length > 0) {
     console.error(
       `✗ ${onbekend.length} plek(ken) noemen zichtbaarheid zonder classificatie:\n`,
@@ -353,10 +464,38 @@ function hoofd() {
     );
     return 1;
   }
+  return 0;
+}
+
+function hoofd() {
+  let gevonden;
+  let definities;
+  try {
+    gevonden = ontleed(psql(VRAAG));
+    definities = Object.fromEntries(
+      Object.keys(KLASSEMENTPOORT.functies).map((f) => [f, psql(klassementvraag(f))]),
+    );
+  } catch (fout) {
+    console.error(
+      verbindingsmelding({
+        naam: 'zichtbaarheid-controle',
+        leest:
+          'Deze controle leest `pg_proc`, `pg_policies` en `pg_views`, niet de\n' +
+          'migratiebestanden.',
+        melding: fout instanceof Error ? fout.message : String(fout),
+      }),
+    );
+    return 1;
+  }
+
+  if (meldPoort(definities) > 0) return 1;
+
+  if (meldRegister(gevonden) > 0) return 1;
 
   console.log(
     `zichtbaarheid-controle: ${OPPERVLAKKEN.size} oppervlakken variëren op ` +
-      `\`groups.zichtbaarheid\`, en ${GEEN_OPPERVLAK.size} plekken noemen hem zonder er een te zijn.`,
+      `\`groups.zichtbaarheid\`, en ${GEEN_OPPERVLAK.size} plekken noemen hem zonder er een te zijn. ` +
+      'Het klassement filtert op de schakelaar (A57).',
   );
   return 0;
 }
