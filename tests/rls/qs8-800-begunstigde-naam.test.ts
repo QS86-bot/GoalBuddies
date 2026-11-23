@@ -24,7 +24,10 @@
  *    1. `groups_select` → `using (true)`: alleen "carol leest de groepsnaam niet"
  *       en "na het verlaten leest alice de groepsnaam niet meer" rood.
  *    2. `profiles_select` → `using (true)`: alleen "carol leest via de bron geen
- *       naam van alice of bob" rood.
+ *       naam van alice of bob" en "vertrekt de getuige … leest alice zijn naam
+ *       niet meer" rood.
+ *    2b. In `shares_group_with_user()` de actief-toets op de ánder weg: alleen
+ *       "vertrekt de getuige …" rood.
  *    3. `commitments_select` → `using (true)`: alleen "bob leest de straffen van
  *       alice niet zolang ze set zijn" en "carol leest de straffen van alice niet"
  *       rood.
@@ -202,6 +205,32 @@ describe.skipIf(!rlsTestsConfigured)('QS8-800: de naam van de begunstigde op de 
           .update({ status: 'active' })
           .eq('group_id', w.groepId)
           .eq('user_id', w.alice.id);
+      }
+    },
+    TEST_TIMEOUT,
+  );
+
+  it(
+    'vertrekt de getuige uit de enige gedeelde groep, dan leest alice zijn naam niet meer',
+    async () => {
+      // Security-ronde QS8-800: het spiegelgeval van de groep. Een verruiming van
+      // `shares_group_with_user()` naar "ooit lid geweest" maakt dit rood.
+      const admin = adminDb();
+      await admin
+        .from('group_members')
+        .update({ status: 'inactive' })
+        .eq('group_id', w.groepId)
+        .eq('user_id', w.bob.id);
+      try {
+        const straffen = await alleStraffen(w.alice.db);
+        expect(straffen.some((s) => s.beneficiary_user_id === w.bob.id)).toBe(true);
+        expect(await leesNaam(w.alice.db, 'persoon', w.bob.id)).toEqual([]);
+      } finally {
+        await admin
+          .from('group_members')
+          .update({ status: 'active' })
+          .eq('group_id', w.groepId)
+          .eq('user_id', w.bob.id);
       }
     },
     TEST_TIMEOUT,

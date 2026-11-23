@@ -1589,7 +1589,8 @@ export const en: Record<Sleutel, string> = {
   'straf.begunstigde.groep': 'Witness: the group {groep}',
   'straf.begunstigde.persoon': 'Witness: {naam}',
   'straf.begunstigde.groep_onzichtbaar': 'Witness: a group you are no longer a member of',
-  'straf.begunstigde.persoon_onzichtbaar': 'Witness: someone you no longer share a group with',
+  'straf.begunstigde.persoon_onzichtbaar':
+    'Witness: someone you no longer share a group with. As long as that stays so, they will not see your penalty.',
   'straf.begunstigde.fout': 'The witness could not be loaded.',
   'straf.kop': 'Penalty',
   'straf.geen_groep':

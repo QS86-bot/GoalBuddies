@@ -2087,7 +2087,12 @@ export const nl = {
   'straf.begunstigde.groep': 'Getuige: de groep {groep}',
   'straf.begunstigde.persoon': 'Getuige: {naam}',
   'straf.begunstigde.groep_onzichtbaar': 'Getuige: een groep waar je geen lid meer van bent',
-  'straf.begunstigde.persoon_onzichtbaar': 'Getuige: iemand met wie je geen groep meer deelt',
+  // ⚠️ Niet alleen "wie": de persoonstak van `commitments_select` eist een
+  //    gedeelde groep (0183), dus zolang die er niet is ziet de getuige de straf
+  //    óók bij `due` niet. Een kaart die dan alleen "Getuige: …" zegt, belooft
+  //    een getuige die er niet is (security-ronde QS8-800).
+  'straf.begunstigde.persoon_onzichtbaar':
+    'Getuige: iemand met wie je geen groep meer deelt. Zolang dat zo is, krijgt die je straf niet te zien.',
   'straf.begunstigde.fout': 'De getuige kon niet worden geladen.',
   'straf.kop': 'Straf',
   // ⚠️ **Uitleg én een uitweg, geen dood veld** (acceptatiecriterium van
