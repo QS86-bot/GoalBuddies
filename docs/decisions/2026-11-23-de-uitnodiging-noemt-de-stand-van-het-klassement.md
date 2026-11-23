@@ -49,8 +49,14 @@ schakelaar op de groep, dus "standaard" kan voor díe groep onwaar zijn.
    bij een gewone groep, en de sleutel staat er altijd, zodat ook de vorm van het
    antwoord niets verraadt. De prijs: een teamlid dat nog niet ingelogd is, leest
    tot de login de gewone uit-tekst. Dat is een voorwaardelijke zin en geen
-   belofte. Aan de orchestrator voorgelegd als optie A naast B (voor iedereen) en
-   C (geen veld, neutrale tekst).
+   belofte. **Besloten door Quinten op 23-11-2026 (meerkeuze, optie A).** De
+   alternatieven waren B (het veld voor iedereen, dus het orakel open) en C
+   (geen veld, één neutrale uit-tekst voor elke groep, waarmee ook de
+   waarschuwing over oude punten verdwijnt).
+
+   ⚠️ Er staat ook `and ingelogd` in de uitdrukking, maar dat is geen eigen
+   grendel: `actief_organisatielid(org, null)` is al `false`. De ijking laat het
+   zien (I: weghalen geeft 0 rood). De grendel tegen anon is de lidtoets.
 
 ## Pad terug
 
