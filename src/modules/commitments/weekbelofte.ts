@@ -194,3 +194,50 @@ export function belofteFoutsleutel(fout: { readonly code?: string; readonly mess
   }
   return 'commitment.fout.vastleggen';
 }
+
+/** De uitslag van een besliste belofte, zoals de eigenaar haar leest — QS8-815. */
+export type Belofteuitslag = 'gehouden' | 'in_werking' | 'ingetrokken';
+
+/** De laatste `cancelled`-regel uit het spoor van één belofte (`commitment_events`). */
+export interface Intrekspoor {
+  readonly actor_id: string | null;
+  readonly payload: unknown;
+}
+
+/** Leest `payload.doelstatus` van een spoorregel, of `null` als die er niet (leesbaar) is. */
+function doelstatusIn(payload: unknown): string | null {
+  if (payload === null || typeof payload !== 'object' || Array.isArray(payload)) return null;
+  const waarde = (payload as Record<string, unknown>)['doelstatus'];
+  return typeof waarde === 'string' ? waarde : null;
+}
+
+/**
+ * Hoe is deze belofte beslist? — QS8-815, besluit Quinten 23-11 (één regel met de uitslag).
+ *
+ * ⚠️⚠️ **`cancelled` heeft drie wegen, en alleen het spoor onderscheidt ze** (0057,
+ *    0220, 0313; de kolom `status` zegt het niet):
+ *    1. de rollover beslist de week als gehouden (`beslis_weekbeloftes()`): de
+ *       spoorregel heeft **geen actor**, want die draait zonder JWT;
+ *    2. het doel wordt binnen de week afgerond (`rond_doel_af()` →
+ *       `wikkel_commitments_af()`): de actor is de **eigenaar**, maar de payload
+ *       draagt `doelstatus: 'completed'`, want het doel staat al op `completed`
+ *       vóór de afwikkeling. Ook dit is gehouden (kop van 0313);
+ *    3. de eigenaar trekt in (`commitments_update`): de actor is de eigenaar.
+ * ⚠️ **Bij twijfel zegt het scherm niets** (`null`): geen spoorregel, of een actor
+ *    die niet de eigenaar is en geen afgerond doel. Een uitslag die niet klopt,
+ *    over een commitment device, is erger dan geen uitslag (domeinregel 5).
+ * ⚠️ `resolved` en `set` hebben hier geen regel: `set` is nog niet beslist, en
+ *    `resolved` is een afgehandelde `due` met een eigen kaarttekst.
+ */
+export function belofteuitslag(
+  belofte: { readonly status: string },
+  spoor: Intrekspoor | undefined,
+  eigenaar: string,
+): Belofteuitslag | null {
+  if (belofte.status === 'due') return 'in_werking';
+  if (belofte.status !== 'cancelled' || spoor === undefined) return null;
+  if (spoor.actor_id === null) return 'gehouden';
+  if (doelstatusIn(spoor.payload) === 'completed') return 'gehouden';
+  if (spoor.actor_id === eigenaar) return 'ingetrokken';
+  return null;
+}
