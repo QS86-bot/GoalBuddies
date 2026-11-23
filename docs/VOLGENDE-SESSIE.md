@@ -2452,6 +2452,34 @@ allebei op Quintens "backup gedaan".
   (versie en checksum uit `.github/workflows/ci.yml`). Postgres draaide na `service postgresql start` op
   **5432**, dus met `PGPORT=5432`. De opbouw gaf 316 migraties.
 
+### 21 t/m 23-11-2026 — week 48 (hoofdorchestrator QS8-785), en zes valkuilen
+
+De stand van de week (wat geland is, wat op de uitrol van 24-11 wacht en wat daarna naar Done mag) staat in
+`docs/WERKVOORRAAD.md`, in de aanvulling *week 48*, en bewust alleen daar. Het logboek met alle besluiten van
+Quinten is Linear QS8-785. Hieronder alleen wat de volgende sessie moet weten om niet hetzelfde te betalen.
+
+- ⚠️ **Een getal dat meeschuift met een stand, terwijl de datum ernaast blijft staan, is een verzonnen meting.**
+  Zes ER-rijen zeiden *"productie stond op 0302 (hermeten op 19-09-2026)"*. Op 19-09 mat QS8-566 `0284`; twee latere
+  sessies werkten het getal bij toen `supabase/uitgerold.json` veranderde, en lieten de datum staan. `uitrolproza:controle`
+  ving dat niet, want de zin stond in de verleden tijd en droeg een datum. Werk je een productiestand bij: zet een
+  nieuwe gedateerde zin erbij en laat de oude meting met rust.
+- ⚠️ **Schrijf een oorzaak pas op als hij gemeten is.** Het logboek noemde de stilstand van de mergerij (08:03 tot 11:05 UTC)
+  eerst *"waarschijnlijk een gebruikslimiet"*; gemeten bleek het een herstart van het werkproces van week 47. Zelfde
+  vorm bij de afgebroken main-run 45070292183: `cancelled` is geen `failure`, één herstart was groen, en de oorzaak is
+  ongemeten gebleven (ER-rij). Noteer *ongemeten*, niet het vermoeden.
+- ⚠️ **Een stijltoets in een echte browser meet de machine, tot je de machine vastzet.** De eerste twee dispatches van
+  `browsertest.yml` waren rood op tekstbreedtes: eerst door het lettertype (QS8-811, nu een vaste subset van DejaVu
+  Sans in het harnas), daarna door font-hinting op de runner (QS8-812, `--font-render-hinting=none`). Lokaal groen
+  zei niets over de runner. Een nieuwe browsertest start Chromium met `CHROMIUM_VLAGGEN` uit `tests/browser/lettertype.ts`.
+- ⚠️ **Een statische export kan een pagina en een map met dezelfde naam maken.** `groep.html` naast `groep/` gaf op
+  Apache een 301 en daarna een 403 bij direct laden (QS8-789). `scripts/htaccess-routering.mjs` toetst het nu vóór de
+  upload, geijkt tegen Apache 2.4; dat Hostinger achter hcdn zich zo gedraagt is een aanname tot de meting na de deploy.
+- ⚠️ **Een bouwsessie zet een ER-rij in haar afleverreactie, niet in `docs/ENGINEER-REVIEW.md`.** QS8-805 had hem in het
+  document gezet en moest hem eruit halen (commit `2c3fd753`). De slotronde vouwt de rijen in één keer in.
+- ⚠️ **"Done" volgt de uitrol, niet de merge.** Zeven issues van deze week (666 3c-db, 784, 787, 789, 801, 806, 807)
+  zijn gemerged en blijven In Review tot hun migratie of Edge Function op productie staat. Zet ze niet op Done op
+  grond van een groene `main`.
+
 ### 05-11-2026 — de eerste orchestratorronde, en wat er open bleef
 
 **De rolverdeling staat op `main`** (PR #652): orchestrator, bouwsessies zonder PR,
