@@ -42,6 +42,51 @@ let huidig: Taal = STANDAARDTAAL;
  */
 let opmaakTag: string | null = null;
 
+/**
+ * Wie wil horen dat de taal veranderde — QS8-796.
+ *
+ * ⚠️ **De taal is procesbreed, en dat bleef ze; wat erbij kwam is een bericht als
+ *    ze verandert.** Zonder dit wist React niet dat er iets te tekenen viel: een
+ *    route rendert alleen opnieuw als iets dat hij leest verandert, en de
+ *    navigator verpakt elke route in een `StaticContainer` die een render van
+ *    bovenaf tegenhoudt. 📏 Gemeten op de webexport (23-11-2026): na een
+ *    taalwissel bleven de titel en de terugknop van de route in de oude taal, en
+ *    bij direct laden met een afwijkende apparaattaal bleef de hele body van
+ *    `/groep/nieuw` in de apparaattaal terwijl `html lang` de profieltaal al had.
+ *    De abonnee aan de React-kant is `useVolgTaal()` in `react.ts`.
+ */
+const luisteraars = new Set<() => void>();
+
+/** Abonneer op een taalwissel; geeft de opzegging terug. */
+export function abonneerOpTaal(luisteraar: () => void): () => void {
+  luisteraars.add(luisteraar);
+  return () => {
+    luisteraars.delete(luisteraar);
+  };
+}
+
+/**
+ * De taal én de notatie als één waarde: wat een route moet volgen.
+ *
+ * ⚠️ **Allebei, en niet alleen de taal** (code-critic QS8-796). `zetTaal('en')`
+ *    op een Britse telefoon laat de taal staan maar zet de notatie van `en-GB`
+ *    naar `en`; een route die alleen de taal volgde, hield dan zijn oude datums.
+ */
+export function taalstand(): string {
+  return `${huidig} ${opmaaktaal()}`;
+}
+
+/**
+ * Meldt een wissel aan de abonnees, en alleen een wíssel.
+ *
+ * ⚠️ Het profiel zet bij elke lading dezelfde taal nog eens. Zou dat elke keer
+ *    melden, dan rendert elke route opnieuw voor niets.
+ */
+function meldWissel(vorige: string): void {
+  if (vorige === taalstand()) return;
+  for (const luisteraar of luisteraars) luisteraar();
+}
+
 /** De taal waarin de app nu praat. */
 export function taal(): Taal {
   return huidig;
@@ -55,6 +100,7 @@ export function taal(): Taal {
  * Nederlandse app te krijgen en geen wit scherm.
  */
 export function zetTaal(nieuw: string | null | undefined): Taal {
+  const vorige = taalstand();
   huidig = isTaal(nieuw) ? nieuw : STANDAARDTAAL;
   // ⚠️ QS8-741: het `lang`-attribuut van het document beweegt mee, zodat een
   //    schermlezer de goede stem kiest. Zie `documenttaal.ts`.
@@ -65,6 +111,7 @@ export function zetTaal(nieuw: string | null | undefined): Taal {
   //    `31/12/2026` — dat is dezelfde dag in een andere schrijfwijze, en de keuze
   //    ging over de taal van de app als geheel. Zie `opmaaktaal()`.
   opmaakTag = null;
+  meldWissel(vorige);
   return huidig;
 }
 
@@ -101,9 +148,11 @@ export function opmaaktaal(): string {
  *    de eerste voorkeur kan een taal zijn die deze app niet spreekt.
  */
 export function zetTaalUitApparaat(voorkeuren: readonly string[]): Taal {
+  const vorige = taalstand();
   huidig = taalUitApparaat(voorkeuren);
   zetDocumentTaal(huidig);
   opmaakTag = apparaatOpmaaktaal();
+  meldWissel(vorige);
   return huidig;
 }
 

@@ -1498,7 +1498,7 @@ export const en: Record<Sleutel, string> = {
   'mijlpaalbewerken.omschrijving': 'Description',
   'mijlpaalbewerken.streefdatum': 'Target date',
   'mijlpaalbewerken.streefdatum_hint':
-    'Optional, as yyyy-mm-dd. Leaving it empty is fine; this date is yours and moves without asking anyone.',
+    'Optional. Leaving it empty is fine; this date is yours and moves without asking anyone.',
   'mijlpaalbewerken.bewaren': 'Save',
   'mijlpaalbewerken.annuleren': 'Cancel',
   'mijlpalenblok.bewerken': 'Edit',
@@ -1588,6 +1588,12 @@ export const en: Record<Sleutel, string> = {
 
   'straf.jouw': 'Your penalty',
   'straf.intrekken': 'Withdraw',
+  'straf.begunstigde.groep': 'Witness: the group {groep}',
+  'straf.begunstigde.persoon': 'Witness: {naam}',
+  'straf.begunstigde.groep_onzichtbaar': 'Witness: a group you are no longer a member of',
+  'straf.begunstigde.persoon_onzichtbaar':
+    'Witness: someone you no longer share a group with. As long as that stays so, they will not see your penalty.',
+  'straf.begunstigde.fout': 'The witness could not be loaded.',
   'straf.kop': 'Penalty',
   'straf.geen_groep':
     'A penalty needs a witness: a group, or one person you share a group with. You are not ' +
@@ -1717,6 +1723,20 @@ export const en: Record<Sleutel, string> = {
   'straf.belofte_loopt': 'This goal has a weekly promise running. While it runs, you cannot add a penalty.',
   'belofte.niet_gevonden_titel': 'Goal not found',
   'belofte.niet_gevonden': 'This goal does not exist or is not yours.',
+
+  // QS8-799: withdrawing asks for a second confirmation, a short week is named,
+  // and the message for a promise that already came into effect says "promise".
+  'belofte.bevestig_kort':
+    'Note: your week ends in less than a day. This promise only covers those last hours, ' +
+    'not your next week. If you want to promise a whole week, do it once your new week has started.',
+  'belofte.intrekken_kop': 'Withdraw your promise?',
+  'belofte.intrekken_gevolg':
+    'Your promise lapses and will not come into effect, not even if you miss that week.',
+  'belofte.intrekken_getuige': 'Your witness will not see any of this: no message and no notification.',
+  'belofte.intrekken_ja': 'Yes, withdraw my promise',
+  'belofte.intrekken_nee': 'No, keep it',
+  'belofte.intrekken_uitslag': 'See the outcome',
+  'belofte.fout.al_afgegaan': 'This promise can no longer be withdrawn: it has been decided in the meantime.',
 
   // ---------------------------------------------------------------------------
   // Completing, archiving and replanning — QS8-83, QS8-32 and QS8-96

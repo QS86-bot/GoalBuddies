@@ -5,6 +5,7 @@ import { maakOrganisatie, ORGANISATIENAAM_MAX } from '@/modules/organisaties';
 import { t } from '@/shared/i18n';
 import { telTekens } from '@/shared/tekst';
 import { Button, Caption, Card, Field, Screen } from '@/shared/ui';
+import { useVolgTaal } from '@/shared/i18n/react';
 
 /**
  * Een organisatie aanmaken — QS8-657.
@@ -14,6 +15,7 @@ import { Button, Caption, Card, Field, Screen } from '@/shared/ui';
  *    alleen vooraf. Wie de maker is, wordt beheerder: dat doet de server.
  */
 export default function NieuweOrganisatie() {
+  useVolgTaal();
   const router = useRouter();
   const [naam, setNaam] = useState('');
   const [bezig, setBezig] = useState(false);

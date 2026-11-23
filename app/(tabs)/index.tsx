@@ -19,6 +19,7 @@ import {
   vandaagKop,
   WeekstrookBlok,
 } from '@/schermen/vandaag';
+import { useVolgTaal } from '@/shared/i18n/react';
 
 /**
  * Vandaag — de huidige cyclus, de weekdoelen met vloer en plafond, de Dagzet.
@@ -35,6 +36,7 @@ import {
  *    verlenging van een functie van 190 regels.
  */
 export default function Vandaag() {
+  useVolgTaal();
   const router = useRouter();
   const teBeoordelen = useTeBeoordelen();
   const v = useVandaag();

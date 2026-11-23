@@ -29,6 +29,7 @@ import {
   Subheading,
   useAsync,
 } from '@/shared/ui';
+import { useVolgTaal } from '@/shared/i18n/react';
 
 /**
  * Het profiel van een groepsgenoot, met tabs — QS8-750, migratie 0308.
@@ -45,6 +46,7 @@ import {
  *    groep: een lijst met een gat is een gemiste week (domeinregel 7).
  */
 export default function LidProfielScherm() {
+  useVolgTaal();
   const { id } = useLocalSearchParams<{ id: string }>();
   const { userId } = useSession();
   const ikZelf = id !== undefined && id === userId;

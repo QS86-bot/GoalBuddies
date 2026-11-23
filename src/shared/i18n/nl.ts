@@ -1984,7 +1984,7 @@ export const nl = {
   'mijlpaalbewerken.omschrijving': 'Omschrijving',
   'mijlpaalbewerken.streefdatum': 'Streefdatum',
   'mijlpaalbewerken.streefdatum_hint':
-    'Optioneel, als jjjj-mm-dd. Leeg laten mag; deze datum is van jou en verschuift zonder overleg.',
+    'Optioneel. Leeg laten mag; deze datum is van jou en verschuift zonder overleg.',
   'mijlpaalbewerken.bewaren': 'Bewaren',
   'mijlpaalbewerken.annuleren': 'Annuleren',
   'mijlpalenblok.bewerken': 'Bewerken',
@@ -2096,6 +2096,19 @@ export const nl = {
 
   'straf.jouw': 'Je straf',
   'straf.intrekken': 'Intrekken',
+  // ⚠️ QS8-800: alleen voor de eigenaar, op zijn eigen strafkaart. De naam komt
+  //    uit een bron die hij al mocht lezen; zonder leesrecht noemt de kaart
+  //    alleen de soort, en bij een storing zegt hij dat.
+  'straf.begunstigde.groep': 'Getuige: de groep {groep}',
+  'straf.begunstigde.persoon': 'Getuige: {naam}',
+  'straf.begunstigde.groep_onzichtbaar': 'Getuige: een groep waar je geen lid meer van bent',
+  // ⚠️ Niet alleen "wie": de persoonstak van `commitments_select` eist een
+  //    gedeelde groep (0183), dus zolang die er niet is ziet de getuige de straf
+  //    óók bij `due` niet. Een kaart die dan alleen "Getuige: …" zegt, belooft
+  //    een getuige die er niet is (security-ronde QS8-800).
+  'straf.begunstigde.persoon_onzichtbaar':
+    'Getuige: iemand met wie je geen groep meer deelt. Zolang dat zo is, krijgt die je straf niet te zien.',
+  'straf.begunstigde.fout': 'De getuige kon niet worden geladen.',
   'straf.kop': 'Straf',
   // ⚠️ **Uitleg én een uitweg, geen dood veld** (acceptatiecriterium van
   //    QS8-228). Wie hier komt heeft geen groep en dus ook geen groepsgenoot om
@@ -2251,6 +2264,20 @@ export const nl = {
   'straf.belofte_loopt': 'Op dit doel loopt een weekbelofte. Zolang die loopt, kan er geen straf bij.',
   'belofte.niet_gevonden_titel': 'Doel niet gevonden',
   'belofte.niet_gevonden': 'Dit doel bestaat niet of is niet van jou.',
+
+  // QS8-799: intrekken vraagt een tweede bevestiging, een korte week wordt genoemd,
+  // en de melding bij een belofte die al in werking ging zegt "belofte".
+  'belofte.bevestig_kort':
+    'Let op: je week eindigt over minder dan een dag. Deze belofte geldt alleen voor die laatste uren, ' +
+    'niet voor je volgende week. Wil je een hele week beloven, doe dat dan als je nieuwe week begonnen is.',
+  'belofte.intrekken_kop': 'Je belofte intrekken?',
+  'belofte.intrekken_gevolg':
+    'Je belofte vervalt en gaat niet meer in werking, ook niet als je die week niet haalt.',
+  'belofte.intrekken_getuige': 'Je getuige krijgt hier niets van te zien: geen bericht en geen melding.',
+  'belofte.intrekken_ja': 'Ja, trek mijn belofte in',
+  'belofte.intrekken_nee': 'Nee, laat haar staan',
+  'belofte.intrekken_uitslag': 'Bekijk de uitslag',
+  'belofte.fout.al_afgegaan': 'Deze belofte kan niet meer worden ingetrokken: ze is intussen beslist.',
 
   // ---------------------------------------------------------------------------
   // Afronden, archiveren en herplannen — QS8-83, QS8-32 en QS8-96
