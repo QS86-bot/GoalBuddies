@@ -1,0 +1,80 @@
+name: Browsertest
+
+# De echte-browsertest, 's nachts en op verzoek — QS8-808.
+#
+# ⚠️ Waarom dit bestaat: de tests in `tests/browser/` drukken een toets in een
+#    echte Chromium. jsdom maakt van een spatie geen klik en scrolt niet, dus de
+#    belofte van QS8-804 (de spatiebalk op een radio, schakelaar en vinkje) is in
+#    `ci.yml` ongemeten. Hier wordt hij gemeten.
+#
+# ⚠️ **Alleen `schedule` en `workflow_dispatch`, nooit `push` of `pull_request`.**
+#    Besluit Quinten, 23-11-2026, optie 1 op QS8-808. De prijs: een breuk valt
+#    binnen een etmaal op, en niet vóór de merge. De afweging en de meting staan in
+#    `docs/decisions/2026-11-23-de-echte-browsertest-draait-s-nachts.md`.
+#    Omdat hij niet op `main` draait, raakt `hoofdrun:controle` hem niet.
+#
+# ⚠️ `schedule:` is best-effort. 📏 Een dagelijkse cron vuurde hier gemiddeld
+#    eens in de ~5 dagen (`advisories.yml`, en
+#    `docs/decisions/2026-10-05-schedule-is-best-effort-en-de-hartslag-is-de-runlijst.md`).
+#    Een niet-gelopen run is niet rood en wordt niet gemaild. Wie het zeker wil
+#    weten, start hem met de hand via `workflow_dispatch`.
+#    Op een niet-hele minuut, omdat GitHub op het hele uur het drukst is.
+#
+# ⚠️ `--only-shell`: `chromium.launch()` start in headless-modus de
+#    `chromium_headless_shell`, niet de volledige Chromium. De volledige
+#    download is daarom overbodig. 📏 Op schijf: shell 277 MB, volledig 372 MB.
+#
+# ⚠️ Er staat geen `--trace off`. Dat is een vlag van de testrunner
+#    `@playwright/test`, en deze tests draaien onder vitest met de bibliotheek
+#    `playwright`. Die neemt alleen een trace op na `context.tracing.start()`, en
+#    dat roept geen test aan. Tracing staat hier dus uit zonder vlag.
+#
+# ⚠️ Geen `--with-deps`, en dat is de les van QS8-400 (`tests/scripts/ci-apt.test.ts`).
+#    `--with-deps` draait `apt-get update`, en dat eindigt met exitcode 100 zodra
+#    één APT-bron van een derde partij op de runner inconsistent is. Dat maakte
+#    `main` al eens rood zonder dat een commit iets veranderde. De runnerimage
+#    `ubuntu-latest` levert Google Chrome mee, en dus de bibliotheken die de
+#    headless shell nodig heeft. Ontbreekt er toch één, dan valt `chromium.launch()`
+#    luid om in de stap Browsertests, en is het niet stil groen.
+#
+# Geen secrets en geen database: de browsertests bundelen een harnas met vite en
+# draaien het in een lege pagina.
+
+on:
+  schedule:
+    - cron: '17 3 * * *'
+  workflow_dispatch:
+
+concurrency:
+  group: browsertest
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  browser:
+    name: Echte-browsertest (Chromium)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+
+      - name: Afhankelijkheden installeren
+        run: npm ci
+
+      # De versie komt uit de lockfile (`playwright` exact in `package.json`), zodat
+      # de browser bij de bibliotheek past. Niet gecachet: Playwright raadt dat af
+      # (playwright.dev/docs/ci), en de download is één keer gemeten, zie het
+      # beslisdocument.
+      - name: Chromium installeren
+        run: npx playwright install --only-shell chromium
+
+      - name: Browsertests
+        run: npm run test:browser
