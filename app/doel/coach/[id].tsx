@@ -43,6 +43,7 @@ import {
   Subheading,
   Wachtbalk,
 } from '@/shared/ui';
+import { useVolgTaal } from '@/shared/i18n/react';
 
 type Voorgevuld = Interviewvulling['voorgevuld'];
 
@@ -110,6 +111,7 @@ function valkuilenTekst(valkuilen: readonly string[]): string {
  *    is een doel dat je kwijtraakt.
  */
 export default function Doelcoach() {
+  useVolgTaal();
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
   const { userId } = useSession();

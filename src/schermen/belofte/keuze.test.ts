@@ -67,6 +67,7 @@ describe('de keuze op het beloftescherm', () => {
       begunstigde: { soort: 'persoon', id: 'p1' },
       naam: 'Bob',
       periode: { start: '2026-11-16', laatsteDag: '2026-11-22' },
+      korteWeek: false,
     });
   });
 
