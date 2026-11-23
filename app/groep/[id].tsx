@@ -40,7 +40,7 @@ import {
 } from '@/modules/goals';
 import { fetchIsTeamgroep } from '@/modules/organisaties';
 import { DempGroep, groepInhoud, KlassementUitnodiging } from '@/schermen/groep';
-import { KlassementRegel } from '@/schermen/klassementen';
+import { AlleKlassementenKnop, KlassementRegel } from '@/schermen/klassementen';
 import { opmaaktaal, t } from '@/shared/i18n';
 import { toonDatum } from '@/shared/time';
 import { space } from '@/shared/theme';
@@ -996,6 +996,7 @@ function KlassementKaart({
       {meer ? (
         <Caption>{t('klassement.van_totaal', { getoond: rijen.length, totaal })}</Caption>
       ) : null}
+      <AlleKlassementenKnop />
     </Card>
   );
 }

@@ -8,6 +8,7 @@ import {
 } from '@/modules/buddies';
 import { useTeBeoordelen } from '@/modules/completions';
 import { laadGroepenlijst, type Groepsectie } from '@/schermen/groep';
+import { AlleKlassementenKnop } from '@/schermen/klassementen';
 import { t } from '@/shared/i18n';
 import { space } from '@/shared/theme';
 import {
@@ -73,8 +74,11 @@ export default function GroepTab() {
           action: { label: t('groepen.aanmaken'), onPress: () => router.push('/groep/nieuw') },
         }}
       >
-        {(lijst) =>
-          lijst.secties === null ? (
+        {(lijst) => (
+          <>
+            {/* ⚠️ Alleen als er een groep is: zonder groep valt er niets te kiezen. Of er klassementen zijn bepaalt de database, niet dit scherm. */}
+            <AlleKlassementenKnop />
+            {lijst.secties === null ? (
             <Kaarten groepen={lijst.groepen} />
           ) : (
             <View style={styles.secties}>
@@ -82,8 +86,9 @@ export default function GroepTab() {
                 <Sectie key={sectie.sleutel} sectie={sectie} />
               ))}
             </View>
-          )
-        }
+            )}
+          </>
+        )}
       </AsyncView>
 
       <Groepsacties toonAanmaken={groepen?.length !== 0} />
