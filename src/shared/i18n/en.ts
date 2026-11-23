@@ -1024,8 +1024,8 @@ export const en: Record<Sleutel, string> = {
     'You have tried an invitation too often today. In 24 hours it works again; ' +
     'meanwhile, ask your buddy to send the link once more.',
   'groep.ongeldige_link':
-    'This invitation link no longer works. It was withdrawn or it is wrong; ' +
-    'ask your buddy for a new one.',
+    'You cannot join with this link right now. If it is from your work, first join ' +
+    "your organisation with your employer's code.",
   'groep.vol': 'This group is full. Three to five people works best, so that is no disaster.',
   'groep.te_veel_groepen': 'You are already in ten groups. Leave one to make room.',
   'groep.naam_kort': 'Give your group a name of at least two characters.',
