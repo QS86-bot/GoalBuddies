@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { View } from 'react-native';
 import { useRouter } from 'expo-router';
 
@@ -8,6 +9,7 @@ import { AsyncView, Body, Caption, Card, Subheading } from '@/shared/ui';
 
 import { BelofteMaken } from './BelofteMaken';
 import { BestaandeBelofte } from './BestaandeBelofte';
+import { Uitslagregel } from './Uitslagregel';
 import { useBelofte, type Beloftegegevens } from './useBelofte';
 
 /**
@@ -23,9 +25,21 @@ export function Beloftescherm({ goalId }: { readonly goalId: string }) {
   const { afstand } = useTheme();
   const { data, loading, error, herlaad } = useBelofte(goalId);
   const nietGevonden = data?.doelGevonden === false;
+  // ⚠️ QS8-815, V4 = A: de melding blijft staan tot je het scherm verlaat, ook door
+  //    het herladen heen. Bewaard per doel, zodat ze nooit bij een ander doel staat.
+  const [ingetrokkenVoor, setIngetrokkenVoor] = useState<string | null>(null);
+  const onIngetrokken = () => {
+    setIngetrokkenVoor(goalId);
+    herlaad();
+  };
 
   return (
     <View style={{ gap: afstand.l }}>
+      {ingetrokkenVoor === goalId ? (
+        <Card nested>
+          <Body accessibilityLiveRegion="polite">{t('belofte.ingetrokken_melding')}</Body>
+        </Card>
+      ) : null}
       <AsyncView
         loading={loading}
         error={error}
@@ -42,7 +56,7 @@ export function Beloftescherm({ goalId }: { readonly goalId: string }) {
               }
         }
       >
-        {(d) => <Inhoud d={d} goalId={goalId} onKlaar={herlaad} />}
+        {(d) => <Inhoud d={d} goalId={goalId} onKlaar={herlaad} onIngetrokken={onIngetrokken} />}
       </AsyncView>
     </View>
   );
@@ -55,25 +69,73 @@ const UITLEG: Readonly<Record<string, Sleutel>> = {
   doelstraf: 'belofte.doelstraf',
 };
 
+/** De uitslag, als deze belofte de nieuwste beslissing is (QS8-815). */
+function uitslagVan(d: Beloftegegevens, belofteId: string) {
+  return d.uitslag !== null && d.uitslag.belofte.id === belofteId ? d.uitslag.soort : null;
+}
+
+/**
+ * De uitslag van de vorige belofte, boven het formulier — QS8-761, QS8-815.
+ *
+ * ⚠️ `due` van een vorige week krijgt de kaart met de tekst van wat je beloofde, en
+ *    de regel staat erin (V2 = A). Gehouden of ingetrokken krijgt alleen de regel:
+ *    er valt niets meer te doen. De getuige hoorde een `due` al; de eigenaar hoort
+ *    het hier (critical-user, punt 1).
+ */
+function Vorige({
+  d,
+  onKlaar,
+  onIngetrokken,
+}: {
+  readonly d: Beloftegegevens;
+  readonly onKlaar: () => void;
+  readonly onIngetrokken: () => void;
+}) {
+  if (d.vorige !== undefined) {
+    return (
+      <BestaandeBelofte
+        belofte={d.vorige}
+        klok={d.klok}
+        dezeWeek={d.dezeWeek}
+        uitslag={uitslagVan(d, d.vorige.id)}
+        onKlaar={onKlaar}
+        onIngetrokken={onIngetrokken}
+      />
+    );
+  }
+  if (d.uitslag === null) return null;
+  return (
+    <Card nested>
+      <Uitslagregel uitslag={d.uitslag.soort} periodeStart={d.uitslag.belofte.periode_start} klok={d.klok} />
+    </Card>
+  );
+}
+
 function Inhoud({
   d,
   goalId,
   onKlaar,
+  onIngetrokken,
 }: {
   readonly d: Beloftegegevens;
   readonly goalId: string;
   readonly onKlaar: () => void;
+  readonly onIngetrokken: () => void;
 }) {
   const { aanbod } = d;
   if (aanbod.soort === 'loopt' || aanbod.soort === 'deze_week_al') {
-    return <BestaandeBelofte belofte={aanbod.belofte} klok={d.klok} dezeWeek={d.dezeWeek} onKlaar={onKlaar} />;
-  }
-  // ⚠️ De uitkomst van vorige week staat boven het formulier: de getuige hoorde het
-  //    al, de eigenaar hoort het hier (critical-user, punt 1).
-  const vorige =
-    d.vorige === undefined ? null : (
-      <BestaandeBelofte belofte={d.vorige} klok={d.klok} dezeWeek={d.dezeWeek} onKlaar={onKlaar} />
+    return (
+      <BestaandeBelofte
+        belofte={aanbod.belofte}
+        klok={d.klok}
+        dezeWeek={d.dezeWeek}
+        uitslag={uitslagVan(d, aanbod.belofte.id)}
+        onKlaar={onKlaar}
+        onIngetrokken={onIngetrokken}
+      />
     );
+  }
+  const vorige = <Vorige d={d} onKlaar={onKlaar} onIngetrokken={onIngetrokken} />;
   if (aanbod.soort === 'kan') {
     return (
       <>

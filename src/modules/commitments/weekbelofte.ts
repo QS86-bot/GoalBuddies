@@ -128,19 +128,38 @@ export function belofteaanbod<C extends AanbodCommitment>(invoer: {
 }
 
 /**
- * De laatste verschuldigde belofte van een vórige week, of `undefined` — QS8-761.
+ * De nieuwste belofte van dit doel, als die beslist is (`due` of `cancelled`) — QS8-815.
+ *
+ * ⚠️ **Alleen de nieuwste beslissing telt** (besluit Quinten 23-11, V2 = A). Loopt
+ *    er een nieuwere belofte (`set`), of is de nieuwste `resolved`, dan is er geen
+ *    uitslag om te noemen. `beloftes` is nieuwste eerst (`fetchBelofteStand()`).
+ */
+export function nieuwsteBeslist<C extends AanbodCommitment>(beloftes: readonly C[]): C | undefined {
+  const nieuwste = beloftes.find(isWeekbelofte);
+  return nieuwste !== undefined && (nieuwste.status === 'due' || nieuwste.status === 'cancelled')
+    ? nieuwste
+    : undefined;
+}
+
+/**
+ * De verschuldigde belofte van een vórige week, of `undefined` — QS8-761, QS8-815.
  *
  * ⚠️ **De eigenaar hoort de uitkomst, niet alleen de getuige** (critical-user). Een
  *    belofte die `due` werd, valt na haar week uit `belofteaanbod()` (dat kijkt naar
  *    `set` en naar deze week), en dan zag de eigenaar een leeg formulier terwijl zijn
- *    getuige een bericht kreeg. Een gehouden belofte is `cancelled` en hier niet te
- *    onderscheiden van een ingetrokken (alleen de actor in het spoor verschilt); die
- *    toont het scherm daarom niet, zie `docs/ENGINEER-REVIEW.md`.
+ *    getuige een bericht kreeg.
+ * ⚠️ **Sinds QS8-815 alleen als zij de nieuwste beslissing is** (V2 = A). Een oudere
+ *    `due` achter een nieuwere gehouden of ingetrokken week verdwijnt van het scherm;
+ *    die nieuwere week krijgt haar eigen uitslagregel (`belofteuitslag()`).
  */
 export function vorigeVerschuldigd<C extends AanbodCommitment>(beloftes: readonly C[], dezeWeek: string): C | undefined {
-  return beloftes.find(
-    (c) => isWeekbelofte(c) && c.status === 'due' && c.periode_start !== null && c.periode_start < dezeWeek,
-  );
+  const nieuwste = nieuwsteBeslist(beloftes);
+  return nieuwste !== undefined &&
+    nieuwste.status === 'due' &&
+    nieuwste.periode_start !== null &&
+    nieuwste.periode_start < dezeWeek
+    ? nieuwste
+    : undefined;
 }
 
 /** Is de week van deze belofte voorbij terwijl ze nog niet beslist is? (0313 beslist één run later.) */

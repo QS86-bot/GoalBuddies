@@ -61,6 +61,7 @@ export {
   heeftOpenDoelstraf,
   isKorteWeek,
   KORTE_WEEK_UREN,
+  nieuwsteBeslist,
   vorigeVerschuldigd,
   wachtOpBeslissing,
   type Belofteaanbod,
