@@ -6,12 +6,12 @@ import { ActivityIndicator, Platform, View } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import {
-  bestemmingVoor,
   isOnboarded,
   ProfielProvider,
   SessionProvider,
   useTijdzoneSync,
   useProfiel,
+  useRoutebestemming,
   useSession,
 } from '@/modules/auth';
 import {
@@ -333,31 +333,23 @@ function Pushwacht() {
  *    2. Geen sessie → aanmelden. Behalve op de uitnodigingspagina: die is juist
  *       bedoeld voor iemand die de app nog niet heeft.
  *    3. Wel een sessie maar geen afgeronde onboarding → de uitleg.
+ *    4. Net afgerond op het profielscherm → de vragenlijst (QS8-793). Dat doet
+ *       deze wacht en niet het scherm: twee navigatoren raceten, en de wacht won.
  */
 function Routewacht() {
-  const { session, loading: sessieLaadt } = useSession();
-  const { profiel, loading: profielLaadt, error: profielFout } = useProfiel();
   const segments = useSegments();
   const router = useRouter();
 
   // ⚠️ `useSegments()` typeert zichzelf als een tuple van één; het tweede segment
   //    bestaat wel degelijk (`/onboarding/vragenlijst`) en de wacht heeft het
   //    nodig — zie `NA_ONBOARDING_BEREIKBAAR`.
-  const [wortel = '', tak = ''] = segments as readonly string[];
-
-  // ⚠️ De beslissing zelf staat in `modules/auth/routewacht` en niet hier: er is
-  //    geen enkele test in `app/`, en deze wacht heeft op 28-08 aantoonbaar een
-  //    belofte gebroken zonder dat er iets rood werd. Als pure functie is hij
-  //    toetsbaar zonder renderer — zie `routewacht.test.ts`.
-  const bestemming = bestemmingVoor({
-    heeftSessie: session !== null,
-    sessieLaadt,
-    profielLaadt,
-    profielFout,
-    isOnboarded: isOnboarded(profiel),
-    wortel,
-    tak,
-  });
+  //
+  // ⚠️ De beslissing zelf staat in `modules/auth/routewacht` en de stand die hem
+  //    voedt in `useRoutebestemming()`, niet hier: er is geen enkele test in `app/`,
+  //    en deze wacht heeft op 28-08 en op 22-11 (QS8-793) aantoonbaar een belofte
+  //    gebroken zonder dat er iets rood werd. Buiten dit bestand is hij te toetsen
+  //    — zie `routewacht.test.ts` en `src/modules/auth/routewacht-afronden.test.ts`.
+  const bestemming = useRoutebestemming(segments as readonly string[]);
 
   useEffect(() => {
     if (bestemming !== null) router.replace(bestemming);

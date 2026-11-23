@@ -23,6 +23,26 @@ interface ProfielContextWaarde {
   readonly herlaad: () => void;
   /** Direct bijwerken na een geslaagde opslag, zonder extra netwerkronde. */
   readonly zetProfiel: (profiel: Profiel) => void;
+  /**
+   * De onboarding is in deze sessie net afgerond op het profielscherm, en de
+   * vragenlijst moet nog volgen — QS8-793. De routewacht leest dit; zie
+   * `bestemmingVoor()`.
+   */
+  readonly netAfgerond: boolean;
+  /**
+   * Het profiel bijwerken ná `rondOnboardingAf()`, in één stap met `netAfgerond`.
+   *
+   * ⚠️⚠️ **Gebruik hier niet `zetProfiel()`, en dat is een gemeten fout en geen
+   *    smaak (QS8-793).** Op de web-export kwam de navigatie van het profielscherm
+   *    één render ná het profiel binnen. In die render zag de routewacht een
+   *    afgerond profiel op `/onboarding/profiel`, stuurde naar `/`, en die replace
+   *    won: een nieuw account zag de vragenlijst nooit. Hier gaan profiel en vlag
+   *    in dezelfde batch, dus er is geen render waarin de wacht het één ziet en
+   *    het ander niet. De wacht stuurt daarna zelf naar de vragenlijst.
+   */
+  readonly zetAfgerondProfiel: (profiel: Profiel) => void;
+  /** De vragenlijst is in beeld, of de gebruiker is de onboarding uit: de vlag is gedaan. Roept de routewacht aan. */
+  readonly afrondenVoorbij: () => void;
 }
 
 const ProfielContext = createContext<ProfielContextWaarde>({
@@ -31,6 +51,9 @@ const ProfielContext = createContext<ProfielContextWaarde>({
   error: null,
   herlaad: () => undefined,
   zetProfiel: () => undefined,
+  netAfgerond: false,
+  zetAfgerondProfiel: () => undefined,
+  afrondenVoorbij: () => undefined,
 });
 
 export function ProfielProvider({ children }: { readonly children: React.ReactNode }) {
@@ -40,6 +63,9 @@ export function ProfielProvider({ children }: { readonly children: React.ReactNo
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<unknown>(null);
   const [teller, setTeller] = useState(0);
+  // ⚠️ Van wie de vlag is, en niet alleen of hij staat: zo lekt hij nooit naar
+  //    de volgende gebruiker op dit apparaat, zonder setState bij het uitloggen.
+  const [netAfgerondVoor, setNetAfgerondVoor] = useState<string | null>(null);
 
   // ⚠️ Geen `setProfiel(null)` bij uitloggen. Dat zou een setState in de
   //    effectbody zijn, en React klaagt daar terecht over: het levert een extra
@@ -85,6 +111,12 @@ export function ProfielProvider({ children }: { readonly children: React.ReactNo
 
   const herlaad = useCallback(() => setTeller((n) => n + 1), []);
 
+  const zetAfgerondProfiel = useCallback((afgerond: Profiel) => {
+    setProfiel(afgerond);
+    setNetAfgerondVoor(afgerond.id);
+  }, []);
+  const afrondenVoorbij = useCallback(() => setNetAfgerondVoor(null), []);
+
   const waarde = useMemo<ProfielContextWaarde>(
     () => ({
       // Zonder gebruiker is er geen profiel, en valt er ook niets te laden.
@@ -93,8 +125,11 @@ export function ProfielProvider({ children }: { readonly children: React.ReactNo
       error: userId ? error : null,
       herlaad,
       zetProfiel: setProfiel,
+      netAfgerond: userId !== null && netAfgerondVoor === userId,
+      zetAfgerondProfiel,
+      afrondenVoorbij,
     }),
-    [userId, profiel, loading, sessieLaadt, error, herlaad],
+    [userId, profiel, loading, sessieLaadt, error, herlaad, netAfgerondVoor, zetAfgerondProfiel, afrondenVoorbij],
   );
 
   return <ProfielContext.Provider value={waarde}>{children}</ProfielContext.Provider>;
