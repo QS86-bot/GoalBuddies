@@ -7,6 +7,7 @@ import {
   belofteperiode,
   belofteweek,
   heeftOpenDoelstraf,
+  nieuwsteBeslist,
   vorigeVerschuldigd,
   wachtOpBeslissing,
 } from './weekbelofte';
@@ -126,11 +127,23 @@ describe('heeftOpenDoelstraf()', () => {
 });
 
 describe('de uitkomst van een vorige week (critical-user)', () => {
-  it('vorigeVerschuldigd(): de nieuwste due van vóór deze week, geen doelstraf en niets van deze week', () => {
+  it('vorigeVerschuldigd(): de nieuwste belofte, als die due is en van vóór deze week; geen doelstraf', () => {
     const oud = belofte('due', '2026-11-09');
-    expect(vorigeVerschuldigd([belofte('cancelled', '2026-11-09'), oud], '2026-11-16')).toBe(oud);
+    expect(vorigeVerschuldigd([oud, belofte('cancelled', '2026-11-02')], '2026-11-16')).toBe(oud);
+    // QS8-815, V2 = A: een oudere due achter een nieuwere besliste week verdwijnt.
+    expect(vorigeVerschuldigd([belofte('cancelled', '2026-11-09'), belofte('due', '2026-11-02')], '2026-11-16')).toBeUndefined();
+    expect(vorigeVerschuldigd([belofte('set', '2026-11-16'), oud], '2026-11-16')).toBeUndefined();
     expect(vorigeVerschuldigd([belofte('due')], '2026-11-16')).toBeUndefined();
     expect(vorigeVerschuldigd([{ type: 'penalty', status: 'due', periode_start: null }], '2026-11-16')).toBeUndefined();
+  });
+
+  it('nieuwsteBeslist(): de nieuwste weekbelofte als die due of cancelled is, anders niets', () => {
+    const gehouden = belofte('cancelled', '2026-11-09');
+    expect(nieuwsteBeslist([gehouden, belofte('due', '2026-11-02')])).toBe(gehouden);
+    expect(nieuwsteBeslist([belofte('set'), gehouden])).toBeUndefined();
+    expect(nieuwsteBeslist([belofte('resolved', '2026-11-09'), gehouden])).toBeUndefined();
+    expect(nieuwsteBeslist([{ type: 'penalty', status: 'due', periode_start: null }, gehouden])).toBe(gehouden);
+    expect(nieuwsteBeslist([])).toBeUndefined();
   });
 
   it('wachtOpBeslissing(): set en de week is voorbij', () => {

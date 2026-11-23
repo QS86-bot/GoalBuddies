@@ -2295,6 +2295,15 @@ export const nl = {
   'belofte.intrekken_nee': 'Nee, laat haar staan',
   'belofte.intrekken_uitslag': 'Bekijk de uitslag',
   'belofte.fout.al_afgegaan': 'Deze belofte kan niet meer worden ingetrokken: ze is intussen beslist.',
+  // QS8-815, besluit Quinten 23-11 (V3 = A en V4 = A): één regel met de uitslag van de
+  // nieuwste besliste belofte, en een vaste melding na intrekken.
+  'belofte.uitslag.gehouden':
+    'Je hebt je belofte voor de week van {start} tot en met {einde} gehouden. Ze gaat niet in werking.',
+  'belofte.uitslag.in_werking':
+    'Je hebt je belofte voor de week van {start} tot en met {einde} niet gehouden. Ze is in werking en je getuige kan haar lezen.',
+  'belofte.uitslag.ingetrokken':
+    'Je hebt je belofte voor de week van {start} tot en met {einde} ingetrokken. Ze gaat niet in werking.',
+  'belofte.ingetrokken_melding': 'Je belofte is ingetrokken.',
 
   // ---------------------------------------------------------------------------
   // Afronden, archiveren en herplannen — QS8-83, QS8-32 en QS8-96

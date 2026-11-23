@@ -15,6 +15,7 @@ export {
   fetchMogelijkeBegunstigden,
   fetchBelofteBegunstigden,
   fetchBelofteStand,
+  fetchIntrekspoor,
   fetchStrafDoelen,
   gaWeekbelofteAan,
   herstelStuurlozeStraf,
@@ -55,14 +56,18 @@ export {
 export {
   belofteaanbod,
   belofteperiode,
+  belofteuitslag,
   belofteweek,
   heeftOpenDoelstraf,
   isKorteWeek,
   KORTE_WEEK_UREN,
+  nieuwsteBeslist,
   vorigeVerschuldigd,
   wachtOpBeslissing,
   type Belofteaanbod,
   type Belofteperiode,
+  type Belofteuitslag,
+  type Intrekspoor,
 } from './weekbelofte';
 
 export { fetchStrafKeuzes, GEEN_STRAFKEUZES } from './strafkeuzes';

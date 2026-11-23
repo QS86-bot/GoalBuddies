@@ -128,19 +128,38 @@ export function belofteaanbod<C extends AanbodCommitment>(invoer: {
 }
 
 /**
- * De laatste verschuldigde belofte van een vórige week, of `undefined` — QS8-761.
+ * De nieuwste belofte van dit doel, als die beslist is (`due` of `cancelled`) — QS8-815.
+ *
+ * ⚠️ **Alleen de nieuwste beslissing telt** (besluit Quinten 23-11, V2 = A). Loopt
+ *    er een nieuwere belofte (`set`), of is de nieuwste `resolved`, dan is er geen
+ *    uitslag om te noemen. `beloftes` is nieuwste eerst (`fetchBelofteStand()`).
+ */
+export function nieuwsteBeslist<C extends AanbodCommitment>(beloftes: readonly C[]): C | undefined {
+  const nieuwste = beloftes.find(isWeekbelofte);
+  return nieuwste !== undefined && (nieuwste.status === 'due' || nieuwste.status === 'cancelled')
+    ? nieuwste
+    : undefined;
+}
+
+/**
+ * De verschuldigde belofte van een vórige week, of `undefined` — QS8-761, QS8-815.
  *
  * ⚠️ **De eigenaar hoort de uitkomst, niet alleen de getuige** (critical-user). Een
  *    belofte die `due` werd, valt na haar week uit `belofteaanbod()` (dat kijkt naar
  *    `set` en naar deze week), en dan zag de eigenaar een leeg formulier terwijl zijn
- *    getuige een bericht kreeg. Een gehouden belofte is `cancelled` en hier niet te
- *    onderscheiden van een ingetrokken (alleen de actor in het spoor verschilt); die
- *    toont het scherm daarom niet, zie `docs/ENGINEER-REVIEW.md`.
+ *    getuige een bericht kreeg.
+ * ⚠️ **Sinds QS8-815 alleen als zij de nieuwste beslissing is** (V2 = A). Een oudere
+ *    `due` achter een nieuwere gehouden of ingetrokken week verdwijnt van het scherm;
+ *    die nieuwere week krijgt haar eigen uitslagregel (`belofteuitslag()`).
  */
 export function vorigeVerschuldigd<C extends AanbodCommitment>(beloftes: readonly C[], dezeWeek: string): C | undefined {
-  return beloftes.find(
-    (c) => isWeekbelofte(c) && c.status === 'due' && c.periode_start !== null && c.periode_start < dezeWeek,
-  );
+  const nieuwste = nieuwsteBeslist(beloftes);
+  return nieuwste !== undefined &&
+    nieuwste.status === 'due' &&
+    nieuwste.periode_start !== null &&
+    nieuwste.periode_start < dezeWeek
+    ? nieuwste
+    : undefined;
 }
 
 /** Is de week van deze belofte voorbij terwijl ze nog niet beslist is? (0313 beslist één run later.) */
@@ -193,4 +212,51 @@ export function belofteFoutsleutel(fout: { readonly code?: string; readonly mess
     if (bekend !== undefined) return bekend.sleutel;
   }
   return 'commitment.fout.vastleggen';
+}
+
+/** De uitslag van een besliste belofte, zoals de eigenaar haar leest — QS8-815. */
+export type Belofteuitslag = 'gehouden' | 'in_werking' | 'ingetrokken';
+
+/** De laatste `cancelled`-regel uit het spoor van één belofte (`commitment_events`). */
+export interface Intrekspoor {
+  readonly actor_id: string | null;
+  readonly payload: unknown;
+}
+
+/** Leest `payload.doelstatus` van een spoorregel, of `null` als die er niet (leesbaar) is. */
+function doelstatusIn(payload: unknown): string | null {
+  if (payload === null || typeof payload !== 'object' || Array.isArray(payload)) return null;
+  const waarde = (payload as Record<string, unknown>)['doelstatus'];
+  return typeof waarde === 'string' ? waarde : null;
+}
+
+/**
+ * Hoe is deze belofte beslist? — QS8-815, besluit Quinten 23-11 (één regel met de uitslag).
+ *
+ * ⚠️⚠️ **`cancelled` heeft drie wegen, en alleen het spoor onderscheidt ze** (0057,
+ *    0220, 0313; de kolom `status` zegt het niet):
+ *    1. de rollover beslist de week als gehouden (`beslis_weekbeloftes()`): de
+ *       spoorregel heeft **geen actor**, want die draait zonder JWT;
+ *    2. het doel wordt binnen de week afgerond (`rond_doel_af()` →
+ *       `wikkel_commitments_af()`): de actor is de **eigenaar**, maar de payload
+ *       draagt `doelstatus: 'completed'`, want het doel staat al op `completed`
+ *       vóór de afwikkeling. Ook dit is gehouden (kop van 0313);
+ *    3. de eigenaar trekt in (`commitments_update`): de actor is de eigenaar.
+ * ⚠️ **Bij twijfel zegt het scherm niets** (`null`): geen spoorregel, of een actor
+ *    die niet de eigenaar is en geen afgerond doel. Een uitslag die niet klopt,
+ *    over een commitment device, is erger dan geen uitslag (domeinregel 5).
+ * ⚠️ `resolved` en `set` hebben hier geen regel: `set` is nog niet beslist, en
+ *    `resolved` is een afgehandelde `due` met een eigen kaarttekst.
+ */
+export function belofteuitslag(
+  belofte: { readonly status: string },
+  spoor: Intrekspoor | undefined,
+  eigenaar: string,
+): Belofteuitslag | null {
+  if (belofte.status === 'due') return 'in_werking';
+  if (belofte.status !== 'cancelled' || spoor === undefined) return null;
+  if (spoor.actor_id === null) return 'gehouden';
+  if (doelstatusIn(spoor.payload) === 'completed') return 'gehouden';
+  if (spoor.actor_id === eigenaar) return 'ingetrokken';
+  return null;
 }
