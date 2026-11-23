@@ -272,6 +272,22 @@ export async function fetchLaatsteBesluit(goalId: string): Promise<DeadlineVerzo
   return data === null ? null : naarVerzoek(data);
 }
 
+/**
+ * Weet een groep van een straf op dit doel via een uitstelverzoek? — QS8-814.
+ *
+ * Waar als er een verzoek is dat niet ingetrokken is: het lopende (`open`) óf het
+ * laatst beslotene (`approved`/`rejected`). Dat is dezelfde grens als in
+ * `straffen_bij_uitstelverzoek()` (0218/0321: `r.status <> 'withdrawn'`), en dus
+ * wat de database de groep geeft, niet alleen wat het groepsscherm toont (dat toont
+ * alleen open verzoeken). Domeinregel 11: "ook nadat er beslist is".
+ *
+ * ⚠️ Besluit Quinten 23-11-2026 17:16 UTC (optie A). Daarvóór telde alleen een open
+ *    verzoek; de security-review vond dat smaller dan wat de RPC teruggeeft.
+ */
+export function uitstelGevraagd(lopend: DeadlineVerzoek | null, laatsteBesluit: DeadlineVerzoek | null): boolean {
+  return [lopend, laatsteBesluit].some((v) => v !== null && v.status !== 'withdrawn');
+}
+
 export const VERZOEKEN_PER_PAGINA = 20;
 
 /**

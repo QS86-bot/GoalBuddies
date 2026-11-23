@@ -17,20 +17,23 @@ import { roeptAan, zonderCommentaar } from './roept-aan';
  *    wordt gemeten aan de netwerkgrens**: de Supabase-client is hier de enige mock, en
  *    de test telt of er een `update` de deur uit ging. De echte `trekStrafIn()` en de
  *    echte component draaien (regel 18 vraag 2).
- * ⚠️ **De uitstelregel staat er alleen als er een uitstelverzoek loopt** (optie B).
- *    De component krijgt dat als `uitstelLoopt`; de naad met het doelscherm (dat het
- *    open verzoek uit `fetchOpenVerzoek()` doorgeeft) wordt onderaan op de bron
- *    getoetst, want er is geen testopzet die het hele doelscherm rendert.
+ * ⚠️ **De uitstelregel staat er alleen als er een niet-ingetrokken uitstelverzoek is**,
+ *    open óf beslist (optie B, en optie A van 17:16 UTC). Wat dat is, bepaalt de pure
+ *    `uitstelGevraagd()`, hier per geval getoetst. De component krijgt het als
+ *    `metUitstelverzoek`; de naad met het doelscherm (dat `verzoek` en `besluit`
+ *    doorgeeft) wordt onderaan op de bron getoetst, want er is geen testopzet die het
+ *    hele doelscherm rendert.
  *
  * IJKING — met de hand, 23-11-2026 (zie de afleverreactie op QS8-814):
  *   A  `onPress={() => setVraagt(true)}` -> `onPress={() => void bevestig()}` -> rood: 'de eerste tik'
  *   B  `<Body muted>{t('straf.intrekken_getuige')}</Body>` weggehaald -> rood: 'noemt de gevolgen'
- *   C  `uitstelLoopt ? … : null` -> altijd tonen -> rood: 'zonder uitstelverzoek'
- *   D  `uitstelLoopt={verzoek !== null}` -> `uitstelLoopt={false}` in `app/doel/[id].tsx` -> rood: 'de naad'
+ *   C  `metUitstelverzoek ? … : null` -> altijd tonen -> rood: 'zonder uitstelverzoek'
+ *   D  `uitstelGevraagd(verzoek, besluit)` -> `uitstelGevraagd(verzoek, null)` in `app/doel/[id].tsx` -> rood: 'de naad'
+ *   H  `[lopend, laatsteBesluit]` -> `[lopend]` in `uitstelGevraagd()` -> rood: 'een beslist verzoek telt'
  *   E  de tak `if (fout?.beslist === true)` weggehaald -> rood: 'na "beslist"'
  *   F  `t('straf.fout.al_afgegaan')` -> `t('belofte.fout.al_afgegaan')` in `trekStrafIn()` -> rood: 'intussen beslist'
  *   G  `<StrafIntrekken …/>` in het doelscherm terug naar een knop met `trekIn(straf.id)` -> rood: grendel 2 en 'de naad'
- *   Vóór elke mutatie: 15 van 15 groen. Elke mutatie apart, en teruggezet vóór de volgende.
+ *   Vóór elke mutatie: 18 van 18 groen. Elke mutatie apart, en teruggezet vóór de volgende.
  */
 
 vi.mock('expo-linear-gradient', () => ({ LinearGradient: () => null }));
@@ -51,13 +54,14 @@ vi.mock('../../src/lib/supabase', () => ({
 vi.mock('../../src/lib/observability', () => ({ reportError: () => undefined }));
 
 const { StrafIntrekken } = await import('../../src/schermen/straf');
+const { uitstelGevraagd } = await import('../../src/modules/goals');
 const { t } = await import('../../src/shared/i18n');
 const { nl } = await import('../../src/shared/i18n/nl');
 const { en } = await import('../../src/shared/i18n/en');
 
 const onKlaar = vi.fn();
-const toon = (uitstelLoopt = false) =>
-  renderScherm(() => createElement(StrafIntrekken, { strafId: 's1', uitstelLoopt, onKlaar }));
+const toon = (metUitstelverzoek = false) =>
+  renderScherm(() => createElement(StrafIntrekken, { strafId: 's1', metUitstelverzoek, onKlaar }));
 
 beforeEach(() => {
   update.mockReset();
@@ -104,7 +108,26 @@ describe('een doelstraf intrekken in twee stappen', () => {
   });
 });
 
-describe('de uitstelregel staat er alleen als er een uitstelverzoek loopt (optie B)', () => {
+type Verzoek = Parameters<typeof uitstelGevraagd>[0];
+const verzoek = (status: string) => ({ id: 'v1', goal_id: 'd1', status }) as unknown as Verzoek;
+
+describe('wanneer weet de groep via een uitstelverzoek van de straf (besluit 17:16 UTC, optie A)', () => {
+  it('een open verzoek telt', () => {
+    expect(uitstelGevraagd(verzoek('open'), null)).toBe(true);
+  });
+
+  it('een beslist verzoek telt, goedgekeurd of afgewezen: de RPC filtert alleen withdrawn', () => {
+    expect(uitstelGevraagd(null, verzoek('approved'))).toBe(true);
+    expect(uitstelGevraagd(null, verzoek('rejected'))).toBe(true);
+  });
+
+  it('een ingetrokken verzoek telt niet, en geen verzoek ook niet', () => {
+    expect(uitstelGevraagd(null, verzoek('withdrawn'))).toBe(false);
+    expect(uitstelGevraagd(null, null)).toBe(false);
+  });
+});
+
+describe('de uitstelregel staat er alleen als er een uitstelverzoek is (optie B)', () => {
   it('met een lopend uitstelverzoek noemt de vraag de groep', async () => {
     const scherm = await toon(true);
     await scherm.klik(t('straf.intrekken'));
@@ -219,13 +242,15 @@ describe('de weg naar intrekken', () => {
     expect(bron).toMatch(/<StrafIntrekken\b/);
   });
 
-  it('de naad: het doelscherm geeft het open uitstelverzoek door als uitstelLoopt', () => {
+  it('de naad: het doelscherm geeft het lopende en het laatst beslote verzoek door', () => {
     const bron = zonderCommentaar(readFileSync(join(WORTEL, DOELSCHERM), 'utf8'));
-    // `verzoek` komt uit `fetchOpenVerzoek()` (alleen status `open`), en dat is ook
-    // het enige verzoek waarop de groep de strafregel ziet (`fetchOpenVerzoekenVoorGroep()`).
+    // `verzoek` komt uit `fetchOpenVerzoek()` (`open`), `besluit` uit `fetchLaatsteBesluit()`
+    // (`approved`/`rejected`). Samen: elk niet-ingetrokken verzoek, zoals de RPC.
     expect(bron).toMatch(/fetchOpenVerzoek\(id\)/);
+    expect(bron).toMatch(/fetchLaatsteBesluit\(id\)/);
     expect(bron).toMatch(/setVerzoek\(lopend\)/);
-    expect(bron).toMatch(/<Straf\b[^>]*uitstelLoopt=\{verzoek !== null\}/);
-    expect(bron).toMatch(/<StrafIntrekken\b[^>]*uitstelLoopt=\{uitstelLoopt\}/);
+    expect(bron).toMatch(/setBesluit\(laatste\)/);
+    expect(bron).toMatch(/<Straf\b[^>]*metUitstelverzoek=\{uitstelGevraagd\(verzoek, besluit\)\}/);
+    expect(bron).toMatch(/<StrafIntrekken\b[^>]*metUitstelverzoek=\{metUitstelverzoek\}/);
   });
 });

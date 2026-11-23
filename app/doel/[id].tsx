@@ -93,6 +93,7 @@ import {
   type Weekplanstap,
   type Risico,
   type Ritme,
+  uitstelGevraagd,
 } from '@/modules/goals';
 import { opmaaktaal, t } from '@/shared/i18n';
 import { schoneEneRegel, telTekens } from '@/shared/tekst';
@@ -369,7 +370,7 @@ export default function DoelDetail() {
               bestaand={commitments.find(isDoelstraf)}
               streefdatumVoorbij={!magStrafVastleggen(d.target_date, vandaag)}
               vanMij={d.owner_id === userId}
-              uitstelLoopt={verzoek !== null}
+              metUitstelverzoek={uitstelGevraagd(verzoek, besluit)}
               onKlaar={herlaad}
             />
 
@@ -1200,7 +1201,7 @@ function Straf({
   bestaand,
   streefdatumVoorbij,
   vanMij,
-  uitstelLoopt,
+  metUitstelverzoek,
   onKlaar,
 }: {
   readonly goalId: string;
@@ -1208,8 +1209,8 @@ function Straf({
   readonly streefdatumVoorbij: boolean;
   /** QS8-800: de naam van de getuige staat alleen op de kaart van de eigenaar. */
   readonly vanMij: boolean;
-  /** QS8-814: loopt er een uitstelverzoek op dit doel? Dan noemt de intrekvraag de groep. */
-  readonly uitstelLoopt: boolean;
+  /** QS8-814: is er een niet-ingetrokken uitstelverzoek op dit doel? Dan noemt de intrekvraag de groep. */
+  readonly metUitstelverzoek: boolean;
   readonly onKlaar: () => void;
 }) {
   const router = useRouter();
@@ -1263,7 +1264,7 @@ function Straf({
              `key`: een openstaande vraag hoort nooit bij een andere straf.
         */}
         {magIntrekken ? (
-          <StrafIntrekken key={straf.id} strafId={straf.id} uitstelLoopt={uitstelLoopt} onKlaar={onKlaar} />
+          <StrafIntrekken key={straf.id} strafId={straf.id} metUitstelverzoek={metUitstelverzoek} onKlaar={onKlaar} />
         ) : null}
         {/* ⚠️ QS8-333: alleen als de getuige verdwenen is. Zie StuurlozeStraf. */}
         {straf.status === 'due' &&

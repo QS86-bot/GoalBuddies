@@ -11,7 +11,7 @@
    meer in werking, en de getuige krijgt er niets van te zien. Pas *"Ja, trek mijn
    straf in"* schrijft. Dat zit in `StrafIntrekken` (`src/schermen/straf/`), en het
    doelscherm toont alleen die component.
-2. **Loopt er een uitstelverzoek op dit doel, dan noemt de vraag de groep.** Er komt
+2. **Is er een uitstelverzoek op dit doel (open of beslist), dan noemt de vraag de groep.** Er komt
    één regel bij: *"De groep die je om uitstel vroeg, ziet dan niet meer dat er een
    straf op dit doel staat."*
 3. **Is de straf intussen beslist, dan zegt de melding dat, en verdwijnt de
@@ -35,14 +35,27 @@ Dat is als vraag aan Quinten voorgelegd, en hij koos **optie B**: de zin van 799
 blijft, plus één regel alleen als er echt een uitstelverzoek loopt. De andere twee
 opties waren de zin ongewijzigd laten (A) of "niets te zien" weghalen (C).
 
-**"Loopt" is `status = 'open'`.** De groep ziet de strafregel alleen op een open
-verzoek (`fetchOpenVerzoekenVoorGroep()` filtert op `open`). Het doelscherm heeft
-datzelfde verzoek al als `verzoek`, uit `fetchOpenVerzoek()`, en geeft
-`verzoek !== null` door. ⚠️ De RPC vraagt daarnaast dat de groep niet gearchiveerd
-is en dat de eigenaar nog actief lid is. In die randgevallen staat de regel er
-terwijl de groep hem niet meer ziet. Dan zegt de app dus iets te veel en niet te
-weinig, en dat is de veilige kant. Voor het fijnere geval zou het scherm de RPC zelf
-moeten lezen, maar die geeft de eigenaar geen antwoord over zijn eigen doel.
+**"Een uitstelverzoek" is elk verzoek dat niet ingetrokken is, open óf beslist.**
+Eerst stond hier "loopt = `open`", omdat de groep de strafregel in de app alleen op
+een open verzoek ziet (`fetchOpenVerzoekenVoorGroep()`). De security-review vond dat
+smaller dan wat de database geeft: `straffen_bij_uitstelverzoek()` filtert op
+`r.status <> 'withdrawn'`, dus een groep die al beslist heeft, kan het bit met één
+API-aanroep nog steeds lezen (domeinregel 11: "ook nadat er beslist is"). Quinten
+koos op 23-11-2026 om 17:16 UTC **optie A**: de regel volgt de database. Dat zit in
+`uitstelGevraagd()` (`src/modules/goals/deadline.ts`). Het doelscherm geeft daar
+`verzoek` (`fetchOpenVerzoek()`) en `besluit` (`fetchLaatsteBesluit()`, het laatste
+`approved`/`rejected`) aan door. Samen dekken die elk niet-ingetrokken verzoek.
+
+⚠️ De RPC vraagt daarnaast dat de groep niet gearchiveerd is en dat beide nog
+actief lid zijn. In die randgevallen staat de regel er terwijl de groep hem niet
+meer ziet. Dan zegt de app iets te veel en niet te weinig, en dat is de veilige
+kant. ⚠️ Mislukt `fetchLaatsteBesluit()`, dan geeft hij `null` en geen fout (hij is
+een extraatje op het scherm). Na een beslist verzoek ontbreekt de regel dan. Dat
+staat als aanname in de aflevering.
+
+**De prop heet `metUitstelverzoek` en niet `uitstelGevraagd`**, omdat die in het
+doelscherm de geïmporteerde functie met dezelfde naam zou overschaduwen. Dat is de
+vorm van QS8-340.
 
 **"Intussen beslist" en niet "in werking getreden".** Nul rijen betekent "niet meer
 op `set`". Bij een doelstraf is dat ook het pad waarop het doel op tijd is afgerond
@@ -58,10 +71,10 @@ met hem. De app roept hem niet meer aan.
 
 **Waar de test de naad toetst.** Er is geen testopzet die het hele doelscherm
 rendert. De component is op de netwerkgrens getoetst (de Supabase-client is de enige
-mock). De doorgifte `verzoek` → `uitstelLoopt` is op de bron getoetst
+mock). De doorgifte `verzoek` en `besluit` → `metUitstelverzoek` is op de bron getoetst
 (`tests/beloftes/straf-intrekken.test.ts`, "de naad"). Dat is een toets op een plek
 (regel 18 vraag 4), en dat is hier gekozen bij gebrek aan een renderbare route. Met
-de hand `uitstelLoopt={false}` gezet: rood op precies die test.
+de hand `uitstelGevraagd(verzoek, null)` gezet: rood op precies die test.
 
 **De Engelse uitstelregel** is een vertaling van de besloten Nederlandse zin: *"The
 group you asked for more time will then no longer see that this goal carries a
@@ -71,3 +84,12 @@ penalty."* Het woord "carries" volgt de bestaande Engelse strafregel op het verz
 **De dubbele tik binnen één frame** is hier hetzelfde als bij 799 (Laag-rij daar):
 `busy` zet pas na de render, maar een tweede verzoek krijgt nul rijen. Er gaat dus
 geen data kapot.
+
+## Wat níet in deze PR zit
+
+**Een straf intrekken lukt niet meer na een verbroken band** (security-review, Middel).
+De `with check` van `commitments_update` (0168) eist de band met de begunstigde, ook
+als alleen `status` verandert. Verlaat de eigenaar de groep, wordt die gearchiveerd,
+of deelt de getuige geen groep meer met hem, dan geeft intrekken `42501`, en de app
+toont "Intrekken lukte niet." Quinten besloot op 23-11-2026 dat dit naar **QS8-820**
+gaat: een straf die nog niet verschuldigd is, moet altijd in te trekken zijn.
