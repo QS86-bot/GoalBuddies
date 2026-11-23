@@ -133,6 +133,10 @@ function Lijstrij({
       onBlur={() => setFocus(false)}
       accessibilityRole="button"
       accessibilityState={{ selected: actief }}
+      // ⚠️ De plek en niet de keuze: elk onderdeel is een eigen route (`/instellingen/[onderdeel]`), net als een
+      //    tabblad van de Taakbalk. Op web leest react-native-web `accessibilityState` niet (QS8-803), en
+      //    `aria-selected` is op een knop geen geldige ARIA; zie `src/shared/ui/keuze-aria.ts`.
+      aria-current={actief ? 'page' : undefined}
       accessibilityLabel={t(onderdeel.titel)}
       style={({ pressed }) => [
         styles.rij,

@@ -92,6 +92,51 @@ export function eigenGevoelSchoon(tekst: string | null | undefined): string | nu
   return schoon === '' ? null : schoon;
 }
 
+/** De vijf vragenlijstvelden zoals ze op het profiel of in het formulier staan. */
+export interface VragenlijstVelden {
+  readonly focus_areas?: readonly string[] | null | undefined;
+  readonly minutes_per_day?: number | null | undefined;
+  readonly when_i_do_it?: string | null | undefined;
+  readonly what_breaks_it?: readonly string[] | null | undefined;
+  readonly feeling?: string | null | undefined;
+  readonly feeling_own?: string | null | undefined;
+}
+
+/**
+ * Welke van de vijf vragen een antwoord hebben — de énige plek die dat bepaalt.
+ *
+ * ⚠️ **Twee lezers, één lezing (QS8-805).** De vragenlijst kiest hiermee zijn
+ *    beginstap, en de kaart op Vandaag of iemand de vragenlijst oversloeg. Telden ze
+ *    verschillend, dan kon de kaart iemand naar een vragenlijst sturen die op de
+ *    samenvatting opent, of iemand met antwoorden blijven vragen.
+ *
+ * ⚠️ Een eigen omschrijving van het gevoel (vraag 5b) is een antwoord op vraag 5. Leeg
+ *    of alleen spaties is overslaan, zoals `patchUitVragenlijst` het ook leest.
+ */
+export function beantwoordeVragen(v: VragenlijstVelden): {
+  readonly focus: boolean;
+  readonly tijd: boolean;
+  readonly moment: boolean;
+  readonly valkuil: boolean;
+  readonly gevoel: boolean;
+} {
+  return {
+    focus: (v.focus_areas ?? []).length > 0,
+    tijd: (v.minutes_per_day ?? null) !== null,
+    moment: (v.when_i_do_it ?? null) !== null,
+    valkuil: (v.what_breaks_it ?? []).length > 0,
+    gevoel: (v.feeling ?? null) !== null || eigenGevoelSchoon(v.feeling_own) !== null,
+  };
+}
+
+/**
+ * Heeft iemand minstens één vraag beantwoord? Nee betekent: hij oversloeg de
+ * vragenlijst (besluit QS8-805: geen van de vijf antwoorden op het profiel).
+ */
+export function heeftVragenlijstAntwoord(v: VragenlijstVelden): boolean {
+  return Object.values(beantwoordeVragen(v)).some(Boolean);
+}
+
 export const eigenGevoelSchema = z
   .string()
   .refine((tekst) => telTekens(tekst.trim()) <= MAX_EIGEN_GEVOEL, {

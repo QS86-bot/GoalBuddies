@@ -25,7 +25,7 @@ export {
 } from './avatar';
 
 export { SessionProvider, useSession } from './SessionProvider';
-export { ProfielProvider, useProfiel } from './ProfielProvider';
+export { ProfielProvider, useProfiel, type AfrondOpties } from './ProfielProvider';
 export { useTijdzoneSync } from './useTijdzoneSync';
 export { moetSynchroniseren } from './tijdzonesync-regel';
 
@@ -56,6 +56,7 @@ export {
 } from './schemas';
 
 export { bestemmingVoor, NA_ONBOARDING_BEREIKBAAR, type Bestemming, type Routestand } from './routewacht';
+export { useRoutebestemming } from './useRoutebestemming';
 
 export {
   andereModus,

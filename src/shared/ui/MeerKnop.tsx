@@ -1,10 +1,11 @@
 import { useState } from 'react';
-import { Pressable, StyleSheet } from 'react-native';
+import { Platform, Pressable, StyleSheet } from 'react-native';
 import Svg, { Circle } from 'react-native-svg';
 
 import { radius, useTheme } from '../theme';
 
 import { focusRing } from './a11y';
+import { standEigenschappen } from './keuze-aria';
 
 /**
  * De knop met drie puntjes: opent de acties van één rij — QS8-773.
@@ -39,6 +40,7 @@ export function MeerKnop({ onPress, accessibilityLabel, open }: Props) {
       accessibilityRole="button"
       accessibilityLabel={accessibilityLabel}
       accessibilityState={{ expanded: open }}
+      {...standEigenschappen({ expanded: open }, Platform.OS === 'web').aria}
       style={({ pressed }) => [
         styles.knop,
         { borderColor: open ? theme.colors.textSecondary : theme.colors.border, opacity: pressed ? 0.82 : 1 },

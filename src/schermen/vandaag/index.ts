@@ -6,3 +6,4 @@ export { useVandaag } from './useVandaag';
 export { WeekstrookBlok } from './Weekstrook';
 export { TellersBlok } from './Tellers';
 export { vandaagKop } from './kop-vorm';
+export { Vragenlijstkaart } from './Vragenlijstkaart';

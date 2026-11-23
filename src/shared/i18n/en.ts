@@ -816,6 +816,12 @@ export const en: Record<Sleutel, string> = {
   'profiel.beginscherm_ios': 'On iPhone and iPad, notifications only work when the app is on your home screen. Tap Share and choose Add to Home Screen; then open it from there.',
   'profiel.beginscherm_safari': 'On iPhone and iPad, notifications only work from Safari. Open goalbuddies.q-projects.tech in Safari and add it to your home screen there.',
   'vandaag.titel': 'Today',
+  // QS8-805: the card on Today for whoever skipped the questionnaire.
+  'vandaag.vragenlijst_kaart_titel': 'So the app knows you',
+  'vandaag.vragenlijst_kaart_tekst':
+    'A few short questions: what you want to focus on, how much time you have and when it suits you. Skipping is fine; everything keeps working.',
+  'vandaag.vragenlijst_kaart_knop': 'Answer the questions',
+  'vandaag.vragenlijst_kaart_niet_nu': 'Not now',
   'vandaag.eyebrow_week': 'WEEK OF {datum}',
   'vandaag.eyebrow_deze': 'THIS WEEK',
   'vandaag.coulance_titel': 'Your previous week is still running',
@@ -1588,6 +1594,12 @@ export const en: Record<Sleutel, string> = {
 
   'straf.jouw': 'Your penalty',
   'straf.intrekken': 'Withdraw',
+  'straf.begunstigde.groep': 'Witness: the group {groep}',
+  'straf.begunstigde.persoon': 'Witness: {naam}',
+  'straf.begunstigde.groep_onzichtbaar': 'Witness: a group you are no longer a member of',
+  'straf.begunstigde.persoon_onzichtbaar':
+    'Witness: someone you no longer share a group with. As long as that stays so, they will not see your penalty.',
+  'straf.begunstigde.fout': 'The witness could not be loaded.',
   'straf.kop': 'Penalty',
   'straf.geen_groep':
     'A penalty needs a witness: a group, or one person you share a group with. You are not ' +
