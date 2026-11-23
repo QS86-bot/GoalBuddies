@@ -732,6 +732,14 @@ export const en: Record<Sleutel, string> = {
   'profiel.als_buddy': 'Taking part as a buddy',
   'profiel.reeks_titel': 'Your streak',
   'profiel.reeks_uitleg': 'Your streak counts weeks and appears per goal under “Your standing” on Today. A week pass protects your streak if you miss a week. Not the point, because otherwise the score means nothing.',
+  // QS8-817: the fixed entry to the questionnaire, on Profile below Settings.
+  'profiel.vragenlijst_titel': 'So the app knows you',
+  'profiel.vragenlijst_tekst_leeg':
+    'A few short questions: what you want to focus on, how much time you have and when it suits you. You can always fill them in later.',
+  'profiel.vragenlijst_tekst_ingevuld':
+    'Your answers about your focus, your time, your moment, what holds you back and how you feel. Change them whenever you like.',
+  'profiel.vragenlijst_knop_beantwoorden': 'Answer the questions',
+  'profiel.vragenlijst_knop_aanpassen': 'Change your answers',
   'profiel.verwijder_titel': 'Delete account',
   'profiel.verwijder_uitleg': 'Your goals, weeks, Daily Moves, points and memberships disappear. What stays are the approvals you gave your buddies and your messages in the group chat, without your name on them. Those are theirs.',
   'profiel.verwijder_knop': 'I want to delete my account',
