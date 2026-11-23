@@ -30,6 +30,9 @@ export {
   type MogelijkeBegunstigde,
 } from './api';
 
+export { fetchBegunstigdeNaam, type BegunstigdeNaam } from './begunstigde';
+export { begunstigdeVan, BEGUNSTIGDE_BRON } from './begunstigde-bron';
+
 export {
   COMMITMENT_STANDEN,
   isAfgegaan,

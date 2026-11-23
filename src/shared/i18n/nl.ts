@@ -2081,6 +2081,14 @@ export const nl = {
 
   'straf.jouw': 'Je straf',
   'straf.intrekken': 'Intrekken',
+  // ⚠️ QS8-800: alleen voor de eigenaar, op zijn eigen strafkaart. De naam komt
+  //    uit een bron die hij al mocht lezen; zonder leesrecht noemt de kaart
+  //    alleen de soort, en bij een storing zegt hij dat.
+  'straf.begunstigde.groep': 'Getuige: de groep {groep}',
+  'straf.begunstigde.persoon': 'Getuige: {naam}',
+  'straf.begunstigde.groep_onzichtbaar': 'Getuige: een groep waar je geen lid meer van bent',
+  'straf.begunstigde.persoon_onzichtbaar': 'Getuige: iemand met wie je geen groep meer deelt',
+  'straf.begunstigde.fout': 'De getuige kon niet worden geladen.',
   'straf.kop': 'Straf',
   // ⚠️ **Uitleg én een uitweg, geen dood veld** (acceptatiecriterium van
   //    QS8-228). Wie hier komt heeft geen groep en dus ook geen groepsgenoot om
