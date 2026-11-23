@@ -152,14 +152,18 @@ const TOEGESTAAN: Readonly<Record<string, string>> = {
     'chatbericht. Dat is acceptatiecriterium 11 van het issue, en het is de reden ' +
     'dat er geen bevestiging om die knop zit: wie eruit wil, wil eruit.',
   'koppel.uitleg_beschermd':
-    'Wordt alleen getoond als groups.zichtbaarheid = beschermd; app/groep/[id].tsx kiest.',
+    'Wordt alleen getoond als groups.zichtbaarheid = beschermd; app/groep/[id].tsx kiest. QS8-798: ' +
+    'de zin leunt op `weekly_goals_select` (status <> all(missed, carried, cancelled, excused), ' +
+    '0321) en op het persoonlijke totaal (`points_ledger` eigenaar-only, A42); het klassement ' +
+    '(A57) staat er als wél zichtbaar bij.',
   'koppel.uitleg_open':
     'De belofte gaat hier over níét koppelen, en die geldt in beide standen. De zin zegt ' +
     'daarna expliciet dat koppelen je weken wél deelt.',
   'deling.uitleg_beschermd':
     'Staat op het doelscherm bij één specifieke groep en wordt alleen gekozen als die groep ' +
     'beschermd is; app/doel/[id].tsx kiest per groep, niet één keer boven de lijst. Een doel ' +
-    'kan in een open én een beschermde groep tegelijk staan.',
+    'kan in een open én een beschermde groep tegelijk staan. QS8-798: zelfde grendels als ' +
+    '`koppel.uitleg_beschermd` (`weekly_goals_select` 0321, A42, klassement A57).',
   'uitnodiging.uitleg_missen_beschermd':
     'Wordt alleen getoond als de uitnodiging een beschermde groep betreft; ' +
     'app/uitnodiging/[code].tsx kiest op invite_preview().zichtbaarheid.',
@@ -194,7 +198,7 @@ const TOEGESTAAN: Readonly<Record<string, string>> = {
     'op risk_status. Geen enkele policy geeft een groepsgenoot een rij uit die tabel.',
   'overzicht.punten_prive':
     'points_ledger is eigenaar-only (domeinregel 10). De enige uitzondering is ' +
-    'groep_klassement() in een open groep, en die geeft wat je in díe groep verdiend hebt — ' +
+    'groep_klassement() (sinds A57 aan `klassement_aan` en niet meer aan open), en die geeft wat je in díe groep verdiend hebt — ' +
     'geen totaal, geen delta, geen datum, en cycle_missed boekt zonder group_id.',
   'melden.niet_zichtbaar':
     'reports_select geeft de rij aan de melder en aan een beheerder die niet zelf het ' +
@@ -317,22 +321,23 @@ describe('onzichtbaarheidsbeloftes', () => {
 describe('wat Beschermd belooft en wat het niet belooft (QS8-798, A57)', () => {
   // De belofte is een eigenschap van het geheel: sleutel én catalogus, in beide talen.
   // Niet het schermbestand: dat kiest alleen welke sleutel getoond wordt.
+  // Afgeleid en niet vast: een nieuwe `_beschermd`-sleutel valt zo vanzelf onder de eisen.
+  // Alleen de uitlegzinnen, niet knoppen als `beheer.naar_beschermd`. `uitnodiging.uitleg_missen_beschermd` gaat over een gemiste week, niet over wat de groep ziet.
+  const GEEN_ZICHTBAARHEIDSTEKST = new Set(['uitnodiging.uitleg_missen_beschermd']);
   const BESCHERMD = [
     'zichtbaarheid.beschermd_uitleg',
-    'koppel.uitleg_beschermd',
-    'deling.uitleg_beschermd',
-  ] as const;
+    ...Object.keys(nl).filter((k) => k.endsWith('uitleg_beschermd') && !GEEN_ZICHTBAARHEIDSTEKST.has(k)),
+  ] as (keyof typeof nl & keyof typeof en)[];
 
   it('belooft nergens meer "niet je weken" of "niet je punten", in geen enkele sleutel', () => {
     // Sinds 0077 zijn lopende en goedgekeurde weken leesbaar voor een lid, en sinds A57
     // (0333) heeft ook een beschermde groep een klassement.
     for (const [taal, catalogus] of [['nl', nl], ['en', en]] as const) {
       for (const [sleutel, zin] of Object.entries(catalogus)) {
-        // Alleen de teksten over wat een groep ziet; "een pas beschermt je reeks, niet je
-        // punten" (weekpas.uitleg) gaat over iets anders en is waar.
-        if (!/^(koppel|deling|zichtbaarheid|uitnodiging|groepnieuw|bevestiging\.groep_)/.test(sleutel)) continue;
+        // "Een pas beschermt je reeks, niet je punten" gaat over iets anders en is waar.
+        if (/^(weekpas\.uitleg|tellers\.label_vangnet)/.test(sleutel)) continue;
         expect(zin, `${taal}:${sleutel}`).not.toMatch(
-          /niet je weken|niet je punten|not your weeks|not your points/i,
+          /niet je weken|niet je punten|not your weeks|not your points|je punten blijven van jou|your points stay yours/i,
         );
       }
     }
@@ -362,9 +367,10 @@ describe('wat Beschermd belooft en wat het niet belooft (QS8-798, A57)', () => {
   it('noemt het klassement nergens een puntentotaal van elkaar', () => {
     // Het klassement toont punten die in díe groep verdiend zijn (A54/A57), geen totaal.
     for (const sleutel of Object.keys(nl)) {
-      if (!sleutel.startsWith('zichtbaarheid.') && !sleutel.startsWith('bevestiging.groep_')) continue;
       expect(nl[sleutel as keyof typeof nl], `nl:${sleutel}`).not.toMatch(/elkaars puntentotaal/i);
-      expect(en[sleutel as keyof typeof en], `en:${sleutel}`).not.toMatch(/point totals/i);
+      expect(en[sleutel as keyof typeof en], `en:${sleutel}`).not.toMatch(
+        /each other.s point totals?/i,
+      );
     }
   });
 });

@@ -46,8 +46,11 @@ boekt zonder `group_id`, dus het klassement daalt er niet van), `onboarding.stap
 `src/shared/i18n/beloftes.test.ts`, blok "wat Beschermd belooft": geen sleutel over
 groepszichtbaarheid zegt nog "niet je weken" of "niet je punten", elke beschermde tekst
 noemt het klassement, de lopende en goedgekeurde weken en het persoonlijke totaal, in nl
-én en. Met de hand gebroken (oude zin terug in `deling.uitleg_beschermd`): twee tests
-rood.
+én en. Per grendel met de hand gebroken in `deling.uitleg_beschermd` (nl), en telkens viel de
+bedoelde test om: de oude zin terug gaf het verbod op "niet je weken" én de eis
+"persoonlijk totaal"; de klassementzin weg gaf de klassementeis; "lopende en goedgekeurde
+weken" weg gaf die eis; "persoonlijke puntentotaal" weg gaf de totaaleis. De lijst van
+beschermde sleutels is afgeleid (`uitleg_beschermd`), niet vast.
 
 ## Wat dit niet is
 
