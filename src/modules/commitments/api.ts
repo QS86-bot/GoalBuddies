@@ -3,7 +3,7 @@ import type { Database, Tables } from '../../lib/database.types';
 import type { Database as GecorrigeerdeDatabase } from '../../lib/database.types.correcties';
 import { reportError } from '../../lib/observability';
 import { supabase } from '../../lib/supabase';
-import { t } from '../../shared/i18n';
+import { t, type Sleutel } from '../../shared/i18n';
 import { invoerfout, type Resultaat } from '../../shared/api';
 import { now, type UserClock } from '../../shared/time';
 
@@ -595,7 +595,10 @@ async function maak(
  *    `commitments_update`-policy: een straf die verschuldigd is, kun je niet
  *    wegpoetsen. Anders is een commitment device geen commitment device.
  */
-export async function trekIn(commitmentId: string): Promise<Resultaat<true>> {
+export async function trekIn(
+  commitmentId: string,
+  alAfgegaan: Sleutel = 'commitment.fout.al_afgegaan',
+): Promise<Resultaat<true>> {
   const { data, error } = await supabase()
     .from('commitments')
     .update({ status: 'cancelled' })
@@ -610,12 +613,27 @@ export async function trekIn(commitmentId: string): Promise<Resultaat<true>> {
   if ((data ?? []).length === 0) {
     return {
       ok: false,
-      melding: t('commitment.fout.al_afgegaan'),
+      melding: t(alAfgegaan),
     };
   }
 
   // Ook hier geen logregel: `commitments_audit` heeft hem al geschreven.
   return { ok: true, waarde: true };
+}
+
+/**
+ * Een weekbelofte intrekken — QS8-799.
+ *
+ * Dezelfde schrijfactie als {@link trekIn}, met één verschil: werd de belofte
+ * tussen renderen en tikken `due`, dan zegt de melding "Deze belofte" en niet
+ * "Dit commitment". Het beloftescherm zegt overal "belofte"; een melding in een
+ * ander woord laat de gebruiker raden of het over hetzelfde gaat.
+ *
+ * ⚠️ Het beloftescherm roept alleen deze aan, en alleen vanuit de tweede
+ *    bevestiging (`tests/beloftes/belofte-intrekken.test.ts`).
+ */
+export function trekBelofteIn(commitmentId: string): Promise<Resultaat<true>> {
+  return trekIn(commitmentId, 'belofte.fout.al_afgegaan');
 }
 
 /**
