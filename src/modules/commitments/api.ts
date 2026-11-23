@@ -656,6 +656,24 @@ export async function trekBelofteIn(commitmentId: string): Promise<BelofteIntrek
 }
 
 /**
+ * Een straf op een doel intrekken — QS8-814, in de vorm van {@link trekBelofteIn}.
+ *
+ * Dezelfde schrijfactie als {@link trekIn}. ⚠️ Werd de straf tussen renderen en
+ * tikken beslist (nul rijen), dan zegt de melding "intussen beslist" en niet "in
+ * werking getreden": nul rijen is ook een doel dat op tijd is afgerond, waarna de
+ * straf vervallen is (`cancelled` door 0238/0280). Besluit Quinten 23-11-2026.
+ *
+ * ⚠️ Het doelscherm roept alleen deze aan, en alleen vanuit de tweede bevestiging
+ *    (`tests/beloftes/straf-intrekken.test.ts`).
+ */
+export async function trekStrafIn(commitmentId: string): Promise<BelofteIntrekking> {
+  const uitkomst = await zetIngetrokken(commitmentId);
+  if (uitkomst === 'ingetrokken') return { ok: true };
+  if (uitkomst === 'beslist') return { ok: false, melding: t('straf.fout.al_afgegaan'), beslist: true };
+  return { ok: false, melding: t('commitment.fout.intrekken'), beslist: false };
+}
+
+/**
  * Het auditspoor van een commitment — QS8-84, acceptatiecriterium 7.
  *
  * Alleen voor de eigenaar leesbaar (`commitment_events_select`). De begunstigde

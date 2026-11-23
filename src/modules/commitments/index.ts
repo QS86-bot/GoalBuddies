@@ -19,6 +19,7 @@ export {
   gaWeekbelofteAan,
   herstelStuurlozeStraf,
   trekBelofteIn,
+  trekStrafIn,
   trekIn,
   zetBeloning,
   zetStraf,

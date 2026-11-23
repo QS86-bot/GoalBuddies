@@ -2285,6 +2285,20 @@ export const nl = {
   'belofte.intrekken_uitslag': 'Bekijk de uitslag',
   'belofte.fout.al_afgegaan': 'Deze belofte kan niet meer worden ingetrokken: ze is intussen beslist.',
 
+  // QS8-814: een doelstraf intrekken vraagt dezelfde bevestiging als een belofte
+  // (besluit Quinten 23-11-2026, 16:55 UTC). De uitstelregel staat er alleen als er
+  // een uitstelverzoek op dit doel loopt.
+  'straf.intrekken_kop': 'Je straf intrekken?',
+  'straf.intrekken_gevolg':
+    'Je straf vervalt en gaat niet meer in werking, ook niet als je je streefdatum niet haalt.',
+  'straf.intrekken_getuige': 'Je getuige krijgt hier niets van te zien: geen bericht en geen melding.',
+  'straf.intrekken_uitstel':
+    'De groep die je om uitstel vroeg, ziet dan niet meer dat er een straf op dit doel staat.',
+  'straf.intrekken_ja': 'Ja, trek mijn straf in',
+  'straf.intrekken_nee': 'Nee, laat haar staan',
+  'straf.intrekken_uitslag': 'Bekijk de uitslag',
+  'straf.fout.al_afgegaan': 'Deze straf kan niet meer worden ingetrokken: ze is intussen beslist.',
+
   // ---------------------------------------------------------------------------
   // Afronden, archiveren en herplannen — QS8-83, QS8-32 en QS8-96
   // ---------------------------------------------------------------------------
