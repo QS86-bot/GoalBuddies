@@ -23,6 +23,7 @@ import {
   codeSchema,
   groepPatchSchema,
   groepSchema,
+  leesKlassementAan,
   leesZichtbaarheid,
   normaliseerCode,
   type GroepInvoer,
@@ -1052,6 +1053,11 @@ export interface Uitnodiging {
    *    — overal in dit besluit dezelfde kant op.
    */
   readonly zichtbaarheid: Zichtbaarheid;
+  /**
+   * Staat het klassement in díe groep aan? Migratie 0341, QS8-801. `null` als de
+   * server het niet noemt (van vóór 0341): dan toont het scherm de standaard.
+   */
+  readonly klassement_aan: boolean | null;
   readonly member_count: number;
   /** Ziet deze bezoeker het volledige beeld? Alleen waar als hij ingelogd is. */
   readonly detailed: boolean;
@@ -1114,13 +1120,20 @@ export async function fetchUitnodiging(code: string): Promise<Uitnodiging | null
     throw new Error(t('groep.uitnodiging_te_druk'));
   }
 
-  const gelezen = data as unknown as Uitnodiging & { zichtbaarheid?: unknown };
+  const gelezen = data as unknown as Uitnodiging & {
+    zichtbaarheid?: unknown;
+    klassement_aan?: unknown;
+  };
 
   // ⚠️ **Onbekend is beschermd**, en dat is geen defensieve reflex maar de kant
   //    waar dit hele besluit op leunt. Een oudere server die dit veld nog niet
   //    stuurt, hoort geen "open" te suggereren: dan zou een bezoeker denken dat
   //    hij iets deelt wat hij niet deelt, of erger, andersom.
-  return { ...gelezen, zichtbaarheid: leesZichtbaarheid(gelezen.zichtbaarheid) };
+  return {
+    ...gelezen,
+    zichtbaarheid: leesZichtbaarheid(gelezen.zichtbaarheid),
+    klassement_aan: leesKlassementAan(gelezen.klassement_aan),
+  };
 }
 
 // ---------------------------------------------------------------------------

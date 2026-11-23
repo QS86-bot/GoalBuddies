@@ -377,6 +377,21 @@ describe('wat Beschermd belooft en wat het niet belooft (QS8-798, A57)', () => {
     }
   });
 
+  it('zegt op de uitnodiging de echte stand, aan of uit, en dat een gemiste week er nooit in staat (QS8-801)', () => {
+    // 0341: `invite_preview()` geeft `klassement_aan`. Wie uit leest, hoort ook te weten dat aanzetten
+    // de punten van daarvóór meeneemt: `points_ledger` bewaart de group_id altijd (A57).
+    expect(nl['uitnodiging.klassement_aan']).toMatch(/staat het klassement aan/i);
+    expect(en['uitnodiging.klassement_aan']).toMatch(/leaderboard on/i);
+    expect(nl['uitnodiging.klassement_uit']).toMatch(/staat het klassement uit/i);
+    expect(en['uitnodiging.klassement_uit']).toMatch(/leaderboard off/i);
+    expect(nl['uitnodiging.klassement_uit']).toMatch(/ook die van daarvóór/i);
+    expect(en['uitnodiging.klassement_uit']).toMatch(/including points from before/i);
+    for (const sleutel of ['uitnodiging.klassement_aan', 'uitnodiging.klassement_uit'] as const) {
+      expect(nl[sleutel], `nl:${sleutel}`).toMatch(/gemiste week komt er nooit in voor/i);
+      expect(en[sleutel], `en:${sleutel}`).toMatch(/missed week never appears/i);
+    }
+  });
+
   it('houdt de persoonlijke totaaltelling privé en zegt dat ook', () => {
     for (const sleutel of BESCHERMD) {
       expect(nl[sleutel], `nl:${sleutel}`).toMatch(/persoonlijke (puntentotaal|totaal)/i);

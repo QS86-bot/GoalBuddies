@@ -20,6 +20,7 @@ import {
   useAutomatischToetreden,
   vergeetOpenstaandeUitnodiging,
   zichtbaarheidLabels,
+  uitnodigingKlassementTekst,
   zichtbaarheidUitleg,
 } from '@/modules/buddies';
 import { t } from '@/shared/i18n';
@@ -234,7 +235,7 @@ export default function UitnodigingScherm() {
                 <Card nested>
                   <Subheading>{zichtbaarheidLabels()[u.zichtbaarheid]}</Subheading>
                   <Body muted>{zichtbaarheidUitleg()[u.zichtbaarheid]}</Body>
-                  <Caption>{t('uitnodiging.klassement_standaard')}</Caption>
+                  <Caption>{uitnodigingKlassementTekst(u.klassement_aan)}</Caption>
                   {u.zichtbaarheid === 'open' ? (
                     <Caption danger>{t('uitnodiging.open_waarschuwing')}</Caption>
                   ) : null}
