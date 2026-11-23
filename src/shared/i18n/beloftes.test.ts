@@ -46,6 +46,9 @@ const ONZICHTBAARHEID = [
   /nobody[^.]{0,40}sees/i,
   /no one[^.]{0,40}sees/i,
   /not your weeks/i,
+  // QS8-798: de herschreven vorm noemt de week niet meer als geheel maar de gemiste week.
+  /niet een gemiste/i,
+  /not a missed/i,
   /stays? private/i,
   // ⚠️⚠️ **De vier vormen hieronder ontbraken, en dat is gemeten en geen
   //    vermoeden.** De doorlichting van 09-09-2026 vond vier sleutels met een
@@ -92,6 +95,14 @@ const ONZICHTBAARHEID = [
  *    dan moet het scherm dat ook echt afdwingen.
  */
 const TOEGESTAAN: Readonly<Record<string, string>> = {
+  'zichtbaarheid.beschermd_uitleg':
+    'QS8-798, variant B (besluit Quinten 23-11-2026). De zin belooft alleen wat de database in een ' +
+    'beschermde groep dichthoudt: gemiste, doorgeschoven, geannuleerde en vrijgestelde weken ' +
+    '(`weekly_goals_select`, rij 3 in 002; getoetst in `tests/rls/epic13.test.ts`) en je persoonlijke ' +
+    'totaal (`points_ledger` eigenaar-only, A42). Wat wél zichtbaar is staat erbij: lopende en ' +
+    'goedgekeurde weken, en met een klassement (A57, `groep_klassement()`) de in die groep verdiende ' +
+    'punten. De zin is bewust niet gesplitst: hij geldt alleen voor de beschermde keuze en de open ' +
+    'tegenhanger is `zichtbaarheid.open_uitleg`.',
   'belofte.bevestig_wie':
     'QS8-761. De zin gaat over de eigen weekbelofte en is onvoorwaardelijk waar, ook in een open ' +
     'groep: `commitments_select` geeft de begunstigde pas leesrecht vanaf `due` en kijkt niet naar ' +
@@ -141,14 +152,18 @@ const TOEGESTAAN: Readonly<Record<string, string>> = {
     'chatbericht. Dat is acceptatiecriterium 11 van het issue, en het is de reden ' +
     'dat er geen bevestiging om die knop zit: wie eruit wil, wil eruit.',
   'koppel.uitleg_beschermd':
-    'Wordt alleen getoond als groups.zichtbaarheid = beschermd; app/groep/[id].tsx kiest.',
+    'Wordt alleen getoond als groups.zichtbaarheid = beschermd; app/groep/[id].tsx kiest. QS8-798: ' +
+    'de zin leunt op `weekly_goals_select` (status <> all(missed, carried, cancelled, excused), ' +
+    '0321) en op het persoonlijke totaal (`points_ledger` eigenaar-only, A42); het klassement ' +
+    '(A57) staat er als wél zichtbaar bij.',
   'koppel.uitleg_open':
     'De belofte gaat hier over níét koppelen, en die geldt in beide standen. De zin zegt ' +
     'daarna expliciet dat koppelen je weken wél deelt.',
   'deling.uitleg_beschermd':
     'Staat op het doelscherm bij één specifieke groep en wordt alleen gekozen als die groep ' +
     'beschermd is; app/doel/[id].tsx kiest per groep, niet één keer boven de lijst. Een doel ' +
-    'kan in een open én een beschermde groep tegelijk staan.',
+    'kan in een open én een beschermde groep tegelijk staan. QS8-798: zelfde grendels als ' +
+    '`koppel.uitleg_beschermd` (`weekly_goals_select` 0321, A42, klassement A57).',
   'uitnodiging.uitleg_missen_beschermd':
     'Wordt alleen getoond als de uitnodiging een beschermde groep betreft; ' +
     'app/uitnodiging/[code].tsx kiest op invite_preview().zichtbaarheid.',
@@ -183,7 +198,7 @@ const TOEGESTAAN: Readonly<Record<string, string>> = {
     'op risk_status. Geen enkele policy geeft een groepsgenoot een rij uit die tabel.',
   'overzicht.punten_prive':
     'points_ledger is eigenaar-only (domeinregel 10). De enige uitzondering is ' +
-    'groep_klassement() in een open groep, en die geeft wat je in díe groep verdiend hebt — ' +
+    'groep_klassement() (sinds A57 aan `klassement_aan` en niet meer aan open), en die geeft wat je in díe groep verdiend hebt — ' +
     'geen totaal, geen delta, geen datum, en cycle_missed boekt zonder group_id.',
   'melden.niet_zichtbaar':
     'reports_select geeft de rij aan de melder en aan een beheerder die niet zelf het ' +
@@ -299,6 +314,106 @@ describe('onzichtbaarheidsbeloftes', () => {
 
       const open = sleutel.replace(/_beschermd$/, '_open');
       expect(nl[open as keyof typeof nl], sleutel).not.toBe(nl[sleutel as keyof typeof nl]);
+    }
+  });
+});
+
+describe('wat Beschermd belooft en wat het niet belooft (QS8-798, A57)', () => {
+  // De belofte is een eigenschap van het geheel: sleutel én catalogus, in beide talen.
+  // Niet het schermbestand: dat kiest alleen welke sleutel getoond wordt.
+  // Afgeleid en niet vast: een nieuwe `_beschermd`-sleutel valt zo vanzelf onder de eisen.
+  // Alleen de uitlegzinnen, niet knoppen als `beheer.naar_beschermd`. `uitnodiging.uitleg_missen_beschermd` gaat over een gemiste week, niet over wat de groep ziet.
+  const GEEN_ZICHTBAARHEIDSTEKST = new Set(['uitnodiging.uitleg_missen_beschermd']);
+  const BESCHERMD = [
+    'zichtbaarheid.beschermd_uitleg',
+    ...Object.keys(nl).filter((k) => k.endsWith('uitleg_beschermd') && !GEEN_ZICHTBAARHEIDSTEKST.has(k)),
+  ] as (keyof typeof nl & keyof typeof en)[];
+
+  it('belooft nergens meer "niet je weken" of "niet je punten", in geen enkele sleutel', () => {
+    // Sinds 0077 zijn lopende en goedgekeurde weken leesbaar voor een lid, en sinds A57
+    // (0333) heeft ook een beschermde groep een klassement.
+    for (const [taal, catalogus] of [['nl', nl], ['en', en]] as const) {
+      for (const [sleutel, zin] of Object.entries(catalogus)) {
+        // "Een pas beschermt je reeks, niet je punten" gaat over iets anders en is waar.
+        if (/^(weekpas\.uitleg|tellers\.label_vangnet)/.test(sleutel)) continue;
+        expect(zin, `${taal}:${sleutel}`).not.toMatch(
+          /niet je weken|niet je punten|not your weeks|not your points|je punten blijven van jou|your points stay yours/i,
+        );
+      }
+    }
+  });
+
+  it('noemt in elke beschermde tekst het klassement, in beide talen', () => {
+    for (const sleutel of BESCHERMD) {
+      expect(nl[sleutel], `nl:${sleutel}`).toMatch(/klassement/i);
+      expect(en[sleutel], `en:${sleutel}`).toMatch(/leaderboard/i);
+    }
+  });
+
+  it('noemt in elke beschermde tekst dat lopende en goedgekeurde weken zichtbaar zijn', () => {
+    for (const sleutel of BESCHERMD) {
+      expect(nl[sleutel], `nl:${sleutel}`).toMatch(/lopende en goedgekeurde weken/i);
+      expect(en[sleutel], `en:${sleutel}`).toMatch(/current and approved weeks/i);
+    }
+  });
+
+  it('zegt in elke beschermde tekst dat de groep je huidige reeks ziet, ook als die op nul staat', () => {
+    // A15, rij 2 in 002: `group_visible_streaks` geeft `current_streak` ook in een beschermde groep.
+    for (const sleutel of BESCHERMD) {
+      expect(nl[sleutel], `nl:${sleutel}`).toMatch(/huidige reeks/i);
+      expect(nl[sleutel], `nl:${sleutel}`).toMatch(/op nul staat, ziet de groep wel/i);
+      expect(en[sleutel], `en:${sleutel}`).toMatch(/current streak/i);
+      expect(en[sleutel], `en:${sleutel}`).toMatch(/streak that stands at zero/i);
+    }
+  });
+
+  it('zegt op het nieuw-groep- en uitnodigingsscherm dat het klassement standaard aan staat en uit kan', () => {
+    // Besluit Quinten 23-11-2026; 0336 zet het aan voor elke nieuwe groep zonder organisatie.
+    for (const sleutel of ['groepnieuw.klassement_standaard', 'uitnodiging.klassement_standaard'] as const) {
+      expect(nl[sleutel], `nl:${sleutel}`).toMatch(/klassement/i);
+      expect(nl[sleutel], `nl:${sleutel}`).toMatch(/beheerder/i);
+      expect(en[sleutel], `en:${sleutel}`).toMatch(/leaderboard/i);
+      expect(en[sleutel], `en:${sleutel}`).toMatch(/admin/i);
+    }
+  });
+
+  it('zegt op de uitnodiging de echte stand, aan of uit, en dat een gemiste week er nooit in staat (QS8-801)', () => {
+    // 0341: `invite_preview()` geeft `klassement_aan`. Wie uit leest, hoort ook te weten dat aanzetten
+    // de punten van daarvóór meeneemt: `points_ledger` bewaart de group_id altijd (A57).
+    expect(nl['uitnodiging.klassement_aan']).toMatch(/staat het klassement aan/i);
+    expect(en['uitnodiging.klassement_aan']).toMatch(/leaderboard on/i);
+    expect(nl['uitnodiging.klassement_uit']).toMatch(/staat het klassement uit/i);
+    expect(en['uitnodiging.klassement_uit']).toMatch(/leaderboard off/i);
+    expect(nl['uitnodiging.klassement_uit']).toMatch(/ook die van daarvóór/i);
+    expect(en['uitnodiging.klassement_uit']).toMatch(/including points from before/i);
+    for (const sleutel of ['uitnodiging.klassement_aan', 'uitnodiging.klassement_uit'] as const) {
+      expect(nl[sleutel], `nl:${sleutel}`).toMatch(/gemiste week komt er nooit in voor/i);
+      expect(en[sleutel], `en:${sleutel}`).toMatch(/missed week never appears/i);
+    }
+  });
+
+  it('zegt bij een teamgroep dat er geen klassement is, en belooft niet dat het later aan kan (QS8-801)', () => {
+    // CHECK `groups_team_geen_klassement`: aanzetten kan in een teamgroep nooit (grens 1).
+    expect(nl['uitnodiging.klassement_team']).toBe('Deze groep heeft geen klassement.');
+    expect(en['uitnodiging.klassement_team']).toBe('This group has no leaderboard.');
+    expect(nl['uitnodiging.klassement_team']).not.toMatch(/later|aanzetten|beheerder/i);
+    expect(en['uitnodiging.klassement_team']).not.toMatch(/later|turn|admin/i);
+  });
+
+  it('houdt de persoonlijke totaaltelling privé en zegt dat ook', () => {
+    for (const sleutel of BESCHERMD) {
+      expect(nl[sleutel], `nl:${sleutel}`).toMatch(/persoonlijke (puntentotaal|totaal)/i);
+      expect(en[sleutel], `en:${sleutel}`).toMatch(/personal (point )?total/i);
+    }
+  });
+
+  it('noemt het klassement nergens een puntentotaal van elkaar', () => {
+    // Het klassement toont punten die in díe groep verdiend zijn (A54/A57), geen totaal.
+    for (const sleutel of Object.keys(nl)) {
+      expect(nl[sleutel as keyof typeof nl], `nl:${sleutel}`).not.toMatch(/elkaars puntentotaal/i);
+      expect(en[sleutel as keyof typeof en], `en:${sleutel}`).not.toMatch(
+        /each other.s point totals?/i,
+      );
     }
   });
 });

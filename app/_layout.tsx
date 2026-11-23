@@ -1,34 +1,24 @@
 import Constants from 'expo-constants';
-import { Stack, usePathname, useRouter, useSegments } from 'expo-router';
+import { Stack, usePathname, useRouter, useSegments, type Href } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import { useEffect, useRef, type ReactNode } from 'react';
+import { useCallback, useEffect, type ReactNode } from 'react';
 import { ActivityIndicator, Platform, View } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import {
-  bestemmingVoor,
-  isOnboarded,
   ProfielProvider,
   SessionProvider,
   useTijdzoneSync,
-  useProfiel,
+  useRoutebestemming,
   useSession,
 } from '@/modules/auth';
-import {
-  fetchUitnodiging,
-  neemDeel,
-  fetchOpenstaandeMeldingen,
-  openstaandeUitnodiging,
-  routeVoorUitnodiging,
-  vergeetOpenstaandeUitnodiging,
-} from '@/modules/buddies';
+import { fetchOpenstaandeMeldingen } from '@/modules/buddies';
 import {
   expoPush,
   maakWebPushBron,
   registreerPushToken,
   zetPushBron,
 } from '@/modules/notifications';
-import { openstaandeWerkcode } from '@/modules/organisaties';
 import { UiterlijkProvider, useKoppelUiterlijk } from '@/modules/uiterlijk/react';
 import { clientEnv } from '@/lib/env';
 import {
@@ -41,6 +31,8 @@ import {
 import { apparaatVoorkeuren, t, zetTaalUitApparaat } from '@/shared/i18n';
 import { useTheme } from '@/shared/theme';
 import { RootVangnet, useGehydrateerd, zetMeldingWacht } from '@/shared/ui';
+import { useInstapwacht } from '@/schermen/onboarding';
+import { useVolgTaal } from '@/shared/i18n/react';
 
 /**
  * De wortel van de app. Alles wat elk scherm nodig heeft, hangt hier.
@@ -51,6 +43,7 @@ import { RootVangnet, useGehydrateerd, zetMeldingWacht } from '@/shared/ui';
  *    sessie is er geen profiel om te laden.
  */
 export default function RootLayout() {
+  useVolgTaal();
   // ⚠️ QS8-710: het vangnet staat BOVEN alle providers en niet erbinnen. Een fout
   //    in `ThemeProvider`, `Screen` of `Taakbalk` valt dan in een foutstaat die
   //    geen van die dingen gebruikt (`RootVangnet`).
@@ -103,7 +96,6 @@ function Shell() {
         <>
           <Routewacht />
           <Uitnodigingswacht />
-          <Werkcodewacht />
           <Pushwacht />
           <Meldingwacht />
           <Tijdzonewacht />
@@ -331,31 +323,23 @@ function Pushwacht() {
  *    2. Geen sessie → aanmelden. Behalve op de uitnodigingspagina: die is juist
  *       bedoeld voor iemand die de app nog niet heeft.
  *    3. Wel een sessie maar geen afgeronde onboarding → de uitleg.
+ *    4. Net afgerond op het profielscherm → de vragenlijst (QS8-793). Dat doet
+ *       deze wacht en niet het scherm: twee navigatoren raceten, en de wacht won.
  */
 function Routewacht() {
-  const { session, loading: sessieLaadt } = useSession();
-  const { profiel, loading: profielLaadt, error: profielFout } = useProfiel();
   const segments = useSegments();
   const router = useRouter();
 
   // ⚠️ `useSegments()` typeert zichzelf als een tuple van één; het tweede segment
   //    bestaat wel degelijk (`/onboarding/vragenlijst`) en de wacht heeft het
   //    nodig — zie `NA_ONBOARDING_BEREIKBAAR`.
-  const [wortel = '', tak = ''] = segments as readonly string[];
-
-  // ⚠️ De beslissing zelf staat in `modules/auth/routewacht` en niet hier: er is
-  //    geen enkele test in `app/`, en deze wacht heeft op 28-08 aantoonbaar een
-  //    belofte gebroken zonder dat er iets rood werd. Als pure functie is hij
-  //    toetsbaar zonder renderer — zie `routewacht.test.ts`.
-  const bestemming = bestemmingVoor({
-    heeftSessie: session !== null,
-    sessieLaadt,
-    profielLaadt,
-    profielFout,
-    isOnboarded: isOnboarded(profiel),
-    wortel,
-    tak,
-  });
+  //
+  // ⚠️ De beslissing zelf staat in `modules/auth/routewacht` en de stand die hem
+  //    voedt in `useRoutebestemming()`, niet hier: er is geen enkele test in `app/`,
+  //    en deze wacht heeft op 28-08 en op 22-11 (QS8-793) aantoonbaar een belofte
+  //    gebroken zonder dat er iets rood werd. Buiten dit bestand is hij te toetsen
+  //    — zie `routewacht.test.ts` en `src/modules/auth/routewacht-afronden.test.ts`.
+  const bestemming = useRoutebestemming(segments as readonly string[]);
 
   useEffect(() => {
     if (bestemming !== null) router.replace(bestemming);
@@ -365,36 +349,8 @@ function Routewacht() {
 }
 
 /**
- * Opent het lid-worden-scherm met een onthouden werkcode — QS8-663.
- *
- * ⚠️ Alleen openen en invullen. Lid worden blijft een druk op de knop en de code
- *    blijft staan tot dat gelukt is of 24 uur om zijn (`organisaties/pending.ts`).
- *    Een groepsuitnodiging gaat voor, zodat de twee wachten elkaar niet wegduwen.
- */
-function Werkcodewacht() {
-  const { session, loading: sessieLaadt } = useSession();
-  const { profiel, loading: profielLaadt } = useProfiel();
-  const router = useRouter();
-  const geprobeerd = useRef(false);
-
-  useEffect(() => {
-    if (sessieLaadt || profielLaadt || !session || !isOnboarded(profiel)) return;
-    if (geprobeerd.current) return;
-    geprobeerd.current = true;
-
-    void (async () => {
-      // Een groepsuitnodiging gaat voor: die wacht heeft zijn eigen pad.
-      if ((await openstaandeUitnodiging()) !== null) return;
-      const code = await openstaandeWerkcode();
-      if (code !== null) router.replace(`/organisatie/deelnemen?code=${code}`);
-    })();
-  }, [sessieLaadt, profielLaadt, session, profiel, router]);
-
-  return null;
-}
-
-/**
- * Verzilvert een uitnodiging die op dit apparaat is blijven staan.
+ * Verzilvert een uitnodiging, een werkcode of een al gedane toetreding die op dit
+ * apparaat is blijven staan — QS8-805 (eerder ook `Werkcodewacht`, QS8-663).
  *
  * ⚠️ Waarom dit hier hangt en niet op het uitnodigingsscherm. Iemand tikt een
  *    link aan, drukt op "account maken", krijgt een bevestigingsmail, tikt die
@@ -403,116 +359,16 @@ function Werkcodewacht() {
  *    komt hij aan het eind op een lege groepenlijst terecht, terwijl de
  *    uitnodigingspagina hem letterlijk beloofde dat hij in de groep zou staan.
  *
- *    Met e-mailbevestiging aan is dat niet het randgeval maar het hoofdpad, en
- *    het is precies de kapotte uitnodigingslink die in de Habit
- *    Huddle-analyse stil elke uitnodiging doodde.
- *
- * ⚠️ Pas ná de onboarding. Eerder zou de routewacht de navigatie meteen weer
- *    wegduwen, en dan is de code verzilverd zonder dat iemand de groep ziet.
- *
- * ⚠️ Eén poging per app-start, bewaakt met een ref. Elke toetreding kost er één
- *    van de twintig per dag, dus een lus die het bij elke render probeert, zet
- *    een nieuwe gebruiker binnen een seconde op slot.
+ * ⚠️ **Wat hij doet staat in `useInstapwacht()`** (`src/schermen/onboarding`), en
+ *    niet hier: dit bestand laadt niet onder jsdom, en de beslissing waarheen is
+ *    dezelfde `leesInstap()` die het profielscherm bij Klaar leest. Besluit A49
+ *    (verlopen code en open groep gaan nooit vanzelf) en "één poging per start"
+ *    staan daar, met de naadtest ernaast.
  */
 function Uitnodigingswacht() {
-  const { session, loading: sessieLaadt } = useSession();
-  const { profiel, loading: profielLaadt } = useProfiel();
   const router = useRouter();
-  const geprobeerd = useRef(false);
-
-  useEffect(() => {
-    if (sessieLaadt || profielLaadt || !session || !isOnboarded(profiel)) return;
-    if (geprobeerd.current) return;
-
-    geprobeerd.current = true;
-    let levend = true;
-
-    void (async () => {
-      const wachtend = await openstaandeUitnodiging();
-      if (!levend || wachtend === null) return;
-
-      // ⚠️ **Besluit A49 (QS8-136), eerste helft: een bewaarde code verloopt.**
-      //    Deze opslag bestaat voor één pad — je tikt een uitnodigingslink aan,
-      //    maakt een account, bevestigt je mail en komt terug in een verse
-      //    sessie. Dat pad duurt minuten. Wie de link twee weken geleden opende
-      //    en toen besloot niet mee te doen, hoorde niet alsnog in die groep te
-      //    belanden zodra hij zich aanmeldde.
-      //
-      //    Niet weggooien maar tónen: de gebruiker landt op het
-      //    uitnodigingsscherm en drukt zelf. Weggooien zou de uitnodiging
-      //    doodmaken, en dat is precies wat deze opslag moest voorkomen.
-      // ⚠️ **Tweede helft: een open groep gaat nooit vanzelf.** Toetreden tot een
-      //    open groep maakt je gemiste weken, je beste reeks en je historische
-      //    aanwezigheid zichtbaar voor de anderen — dezelfde overgang als het
-      //    ópenzetten van een groep, waar een beheerder een volledig
-      //    bevestigingsblok voor doorloopt (migratie 0076, grens 3). Dan hoort
-      //    hier ook een handeling van de gebruiker zelf te staan.
-      //
-      //    `invite_preview()` draagt de zichtbaarheid sinds migratie 0080, dus
-      //    dit kost geen extra rondje: het scherm haalt hem toch al op.
-      //
-      // ⚠️ Kan de uitnodiging niet opgehaald worden (netwerk, ingetrokken link),
-      //    dan ook naar het scherm. Onbekend is hier de kant waar niets
-      //    stilzwijgend gebeurt — dezelfde keuze als bij de vervaltermijn.
-      //
-      // ⚠️ **De beslissing zelf staat in `routeVoorUitnodiging()` en niet hier**,
-      //    en dat is sinds 25-08-2026 zo. Ze stond volledig in dit bestand, en
-      //    dit bestand is niet te testen: er is geen `.test.tsx` in dit project
-      //    en vitest draait in node. De zwaarste helft van A49 was daarmee
-      //    structureel onbewaakt. Hier staat nu alleen nog wát er gebeurt, niet
-      //    wanneer.
-      //
-      // ⚠️ Alleen ophalen als het ertoe doet. Is de code verlopen, dan is de
-      //    zichtbaarheid niet meer van belang en kost een rondje naar de server
-      //    niets dan tijd.
-      const uitnodiging = wachtend.automatisch
-        ? await fetchUitnodiging(wachtend.code).catch(() => null)
-        : null;
-      if (!levend) return;
-
-      const route = routeVoorUitnodiging({
-        automatisch: wachtend.automatisch,
-        zichtbaarheid: uitnodiging?.zichtbaarheid ?? null,
-      });
-
-      if (route.soort === 'toon-scherm') {
-        router.replace(`/uitnodiging/${wachtend.code}`);
-        return;
-      }
-
-      const uitkomst = await neemDeel(wachtend.code);
-      await vergeetOpenstaandeUitnodiging();
-      if (!levend) return;
-
-      if (uitkomst.ok) {
-        router.replace(`/groep/${uitkomst.waarde}`);
-        return;
-      }
-
-      // ⚠️ **Zwijgen is hier het ergste antwoord, en dat deed deze functie tot
-      //    24-08.** Bij een mislukking gebeurde er níéts: geen melding, geen
-      //    scherm, en de bewaarde code was intussen weggegooid. Het
-      //    uitnodigingsscherm belooft "ook als je eerst je e-mail moet
-      //    bevestigen, sta je daarna gewoon in de groep" — dus wie zijn mail
-      //    bevestigde en terugkwam, stond op een leeg dashboard zonder groep en
-      //    zonder uitleg.
-      //
-      //    Sturen naar het uitnodigingsscherm en niet zelf een melding tonen:
-      //    dát scherm laadt de groep opnieuw, zegt wat er aan de hand is en heeft
-      //    een knop om het opnieuw te proberen. Deze component rendert `null` en
-      //    heeft nergens plek voor een melding.
-      //
-      //    ⚠️ Bewust géén `reportError` erbij. `neemDeel()` meldt een échte fout
-      //    al zelf; wat hier overblijft is een uitkomst — de link is ingetrokken,
-      //    de groep is vol — en dat is geen storing maar een antwoord.
-      router.replace(`/uitnodiging/${wachtend.code}`);
-    })();
-
-    return () => {
-      levend = false;
-    };
-  }, [session, profiel, sessieLaadt, profielLaadt, router]);
-
+  const naar = useCallback((pad: string) => router.replace(pad as Href), [router]);
+  useInstapwacht(naar);
   return null;
 }
 

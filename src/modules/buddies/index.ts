@@ -104,10 +104,13 @@ export { useAutomatischToetreden } from './useAutomatischToetreden';
 
 export {
   bewaarOpenstaandeUitnodiging,
+  bewaarToegetredenGroep,
   openstaandeUitnodiging,
   routeVoorUitnodiging,
+  toegetredenGroep,
   UITNODIGING_GELDIG_UREN,
   vergeetOpenstaandeUitnodiging,
+  vergeetToegetredenGroep,
   type OpenstaandeUitnodiging,
   type UitnodigingsRoute,
 } from './pending';
@@ -261,6 +264,8 @@ export {
   leesGoedkeuringsregel,
   leesVoertaal,
   leesZichtbaarheid,
+  leesKlassementAan,
+  uitnodigingKlassementTekst,
   normaliseerCode,
   leesSeizoenscadans,
   QUORUM_MAX,

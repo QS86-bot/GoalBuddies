@@ -27,6 +27,7 @@ import {
   useTerug,
   Wachtbalk,
 } from '@/shared/ui';
+import { useVolgTaal } from '@/shared/i18n/react';
 
 /**
  * Een doel uit één zin — QS8-201, de kern van epic QS8-200.
@@ -49,6 +50,7 @@ type Stand =
   | { fase: 'mislukt'; melding: string };
 
 export default function PlanUitEenZin() {
+  useVolgTaal();
   const router = useRouter();
   const terug = useTerug('/doelen');
   const { userId } = useSession();

@@ -44,10 +44,18 @@ export interface Routestand {
   readonly wortel: string;
   /** Het tweede segment van de huidige route, of `''`. */
   readonly tak: string;
+  /**
+   * De onboarding is in deze sessie net afgerond en de vragenlijst volgt nog —
+   * `netAfgerond` uit `ProfielProvider` (QS8-793).
+   */
+  readonly netAfgerond: boolean;
 }
 
 /** De route waar de wacht heen stuurt, of `null` als hij niets doet. */
-export type Bestemming = '/aanmelden' | '/onboarding/uitleg' | '/' | null;
+export type Bestemming = '/aanmelden' | '/onboarding/uitleg' | '/onboarding/vragenlijst' | '/' | null;
+
+/** Waar een net afgerond profiel heen gaat — besluit A56: de vragenlijst komt ná het afronden. */
+const NA_AFRONDEN = '/onboarding/vragenlijst' as const;
 
 export function bestemmingVoor(stand: Routestand): Bestemming {
   const opAanmelden = stand.wortel === 'aanmelden';
@@ -67,6 +75,20 @@ export function bestemmingVoor(stand: Routestand): Bestemming {
   if (stand.profielFout !== null && stand.profielFout !== undefined) return null;
 
   if (!stand.isOnboarded) return inOnboarding ? null : '/onboarding/uitleg';
+
+  // ⚠️⚠️ **De wacht stuurt zelf naar de vragenlijst, en niet het profielscherm —
+  //    QS8-793.** Twee navigatoren raceten: het scherm deed
+  //    `router.replace('/onboarding/vragenlijst')`, maar in de render die op
+  //    `zetProfiel()` volgde stond de route nog op `profiel`, en deze wacht stuurde
+  //    naar `/`. 📏 Gemeten op de web-export: 3 van 3 keer `profiel → /`, en geen
+  //    enkele render met tak `vragenlijst`. Nu is er één navigator.
+  //
+  // ⚠️ Alleen binnen de onboarding en alleen met de vlag: wie al eerder afrondde
+  //    (een nieuwe sessie, of de vragenlijst al gezien) heeft hem niet, en gaat
+  //    zoals altijd naar `/` (criterium 2).
+  if (inOnboarding && stand.netAfgerond && !NA_ONBOARDING_BEREIKBAAR.includes(stand.tak)) {
+    return NA_AFRONDEN;
+  }
 
   // ⚠️ Niet élk onboardingscherm is klaar zodra `onboarded_at` staat — zie
   //    `NA_ONBOARDING_BEREIKBAAR`.

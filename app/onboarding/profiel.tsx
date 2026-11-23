@@ -1,4 +1,3 @@
-import { useRouter } from 'expo-router';
 import { useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 
@@ -16,6 +15,7 @@ import { useAvatarKeuze } from '@/modules/auth/react';
 import { herinneringStandaard } from '@/modules/notifications';
 import { t } from '@/shared/i18n';
 import { space } from '@/shared/theme';
+import { afrondenMetInstap } from '@/schermen/onboarding';
 import { apparaatTijdzone, type Weekday } from '@/shared/time';
 import {
   AsyncView,
@@ -30,6 +30,7 @@ import {
   Screen,
   WeekStartKeuze,
 } from '@/shared/ui';
+import { useVolgTaal } from '@/shared/i18n/react';
 
 /**
  * Het profiel bij de onboarding — QS8-27, QS8-28, QS8-29 en QS8-30 samen.
@@ -64,6 +65,7 @@ import {
  *    hetzelfde component zou de hooks-volgorde breken.
  */
 export default function OnboardingProfiel() {
+  useVolgTaal();
   const { profiel, loading, error, herlaad } = useProfiel();
 
   return (
@@ -81,9 +83,8 @@ export default function OnboardingProfiel() {
 }
 
 function OnboardingProfielFormulier() {
-  const router = useRouter();
   const { userId } = useSession();
-  const { profiel, zetProfiel } = useProfiel();
+  const { profiel, zetProfiel, zetAfgerondProfiel } = useProfiel();
 
   const [naam, setNaam] = useState(profiel?.display_name ?? '');
   // ⚠️⚠️ **Geen `useState` en niet uit `profiel`, en dat is een gemeten
@@ -164,8 +165,6 @@ function OnboardingProfielFormulier() {
       return;
     }
 
-    zetProfiel(afgerond.profiel);
-
     // ⚠️ **De vragenlijst komt hierna en niet hiervóór** — besluit A56. Eerst
     //    het minimum dat de app nodig heeft om te werken (naam, tijdzone,
     //    week-startdag), dan pas de vier vragen die haar beter maken. Andersom is
@@ -174,7 +173,22 @@ function OnboardingProfielFormulier() {
     // ⚠️ En de onboarding is op dit punt al afgerond: wie de vragenlijst
     //    wegklikt, belandt in een werkende app en niet opnieuw in de onboarding.
     //    Dat is wat "overslaan mag" betekent.
-    router.replace('/onboarding/vragenlijst');
+    //
+    // ⚠️⚠️ **Dit scherm navigeert hier niet zelf, en dat is de reparatie van
+    //    QS8-793.** Hier stond `zetProfiel()` gevolgd door
+    //    `router.replace('/onboarding/vragenlijst')`. 📏 Op de web-export kwam die
+    //    navigatie één render ná het profiel binnen; in die render zag de
+    //    routewacht een afgerond profiel op `/onboarding/profiel` en stuurde naar
+    //    `/`, en die replace won — 3 van 3 keer, een nieuw account zag de
+    //    vragenlijst nooit. `zetAfgerondProfiel()` zet profiel en vlag in één
+    //    batch, en de wacht stuurt zelf naar de vragenlijst. Eén navigator.
+    //    `src/modules/auth/routewacht-afronden.test.ts` rendert die naad.
+    //
+    // ⚠️ **Wie via een uitnodiging of werkcode instapt, krijgt de vragenlijst niet
+    //    hier maar later, als kaart op Vandaag** — besluit QS8-805. Daarom eerst de
+    //    instap lezen en dan pas het profiel zetten; `afrondenMetInstap()` legt uit
+    //    waarom die volgorde de race voorkomt.
+    await afrondenMetInstap(afgerond.profiel, zetAfgerondProfiel);
   }
 
   return (

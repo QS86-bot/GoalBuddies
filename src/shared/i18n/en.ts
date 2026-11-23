@@ -514,8 +514,8 @@ export const en: Record<Sleutel, string> = {
     'We could not check whether this goal carries a penalty.',
   'koppel.ontkoppel': 'Stop sharing with this group',
   'koppel.titel': 'Share your goal with this group',
-  'koppel.uitleg_beschermd': 'As long as you link nothing, nobody here sees what you are working on. Linking shares the title and your milestone progress. Not your notes, not your weeks and not your points. You can always undo it.',
-  'koppel.uitleg_open': 'As long as you link nothing, nobody here sees what you are working on. This group is open: linking shares the title, your milestone progress and your weeks, including the weeks you did not make. Your notes and your points stay yours. You can always undo it.',
+  'koppel.uitleg_beschermd': 'As long as you link nothing, nobody here sees what you are working on. Linking shares the title, your milestone progress, your current and approved weeks and your current streak. Not your notes, not a missed or carried week and not your personal point total. The group does see a streak that stands at zero. If the group has a leaderboard, the points you earn in this group do appear there. You can always undo it.',
+  'koppel.uitleg_open': 'As long as you link nothing, nobody here sees what you are working on. This group is open: linking shares the title, your milestone progress and your weeks, including the weeks you did not make. Your notes and your personal point total stay yours. You can always undo it.',
   'koppel.geen_doel_titel': 'You do not have a goal to share yet',
   'koppel.geen_doel_tekst': 'Start with one goal with a date on it. After that you can link it to this group here.',
   'koppel.nieuw_doel': 'New goal',
@@ -530,11 +530,13 @@ export const en: Record<Sleutel, string> = {
   'deling.koppel_kop': 'Also share with',
   'deling.koppel': 'Share with {naam}',
   'deling.uitleg_beschermd':
-    'Protected. This group sees the title and your milestone progress. Not your notes, ' +
-    'not your weeks and not your points.',
+    'Protected. This group sees the title, your milestone progress, your current and approved weeks and your current streak. ' +
+    'Not your notes, not a missed or carried week and not your personal point total. ' +
+    'The group does see a streak that stands at zero. ' +
+    'If the group has a leaderboard, it sees the points you earn in this group.',
   'deling.uitleg_open':
     'Open. This group sees the title, your milestone progress and your weeks, including the ' +
-    'weeks you did not make. Your notes and your points stay yours.',
+    'weeks you did not make. Your notes and your personal point total stay yours.',
   'deling.welke_groep': 'Which group decides?',
   'deling.welke_groep_hint':
     'This goal sits in more than one group. Only the group you pick here reads your ' +
@@ -814,6 +816,12 @@ export const en: Record<Sleutel, string> = {
   'profiel.beginscherm_ios': 'On iPhone and iPad, notifications only work when the app is on your home screen. Tap Share and choose Add to Home Screen; then open it from there.',
   'profiel.beginscherm_safari': 'On iPhone and iPad, notifications only work from Safari. Open goalbuddies.q-projects.tech in Safari and add it to your home screen there.',
   'vandaag.titel': 'Today',
+  // QS8-805: the card on Today for whoever skipped the questionnaire.
+  'vandaag.vragenlijst_kaart_titel': 'So the app knows you',
+  'vandaag.vragenlijst_kaart_tekst':
+    'A few short questions: what you want to focus on, how much time you have and when it suits you. Skipping is fine; everything keeps working.',
+  'vandaag.vragenlijst_kaart_knop': 'Answer the questions',
+  'vandaag.vragenlijst_kaart_niet_nu': 'Not now',
   'vandaag.eyebrow_week': 'WEEK OF {datum}',
   'vandaag.eyebrow_deze': 'THIS WEEK',
   'vandaag.coulance_titel': 'Your previous week is still running',
@@ -1496,7 +1504,7 @@ export const en: Record<Sleutel, string> = {
   'mijlpaalbewerken.omschrijving': 'Description',
   'mijlpaalbewerken.streefdatum': 'Target date',
   'mijlpaalbewerken.streefdatum_hint':
-    'Optional, as yyyy-mm-dd. Leaving it empty is fine; this date is yours and moves without asking anyone.',
+    'Optional. Leaving it empty is fine; this date is yours and moves without asking anyone.',
   'mijlpaalbewerken.bewaren': 'Save',
   'mijlpaalbewerken.annuleren': 'Cancel',
   'mijlpalenblok.bewerken': 'Edit',
@@ -1586,6 +1594,12 @@ export const en: Record<Sleutel, string> = {
 
   'straf.jouw': 'Your penalty',
   'straf.intrekken': 'Withdraw',
+  'straf.begunstigde.groep': 'Witness: the group {groep}',
+  'straf.begunstigde.persoon': 'Witness: {naam}',
+  'straf.begunstigde.groep_onzichtbaar': 'Witness: a group you are no longer a member of',
+  'straf.begunstigde.persoon_onzichtbaar':
+    'Witness: someone you no longer share a group with. As long as that stays so, they will not see your penalty.',
+  'straf.begunstigde.fout': 'The witness could not be loaded.',
   'straf.kop': 'Penalty',
   'straf.geen_groep':
     'A penalty needs a witness: a group, or one person you share a group with. You are not ' +
@@ -1715,6 +1729,20 @@ export const en: Record<Sleutel, string> = {
   'straf.belofte_loopt': 'This goal has a weekly promise running. While it runs, you cannot add a penalty.',
   'belofte.niet_gevonden_titel': 'Goal not found',
   'belofte.niet_gevonden': 'This goal does not exist or is not yours.',
+
+  // QS8-799: withdrawing asks for a second confirmation, a short week is named,
+  // and the message for a promise that already came into effect says "promise".
+  'belofte.bevestig_kort':
+    'Note: your week ends in less than a day. This promise only covers those last hours, ' +
+    'not your next week. If you want to promise a whole week, do it once your new week has started.',
+  'belofte.intrekken_kop': 'Withdraw your promise?',
+  'belofte.intrekken_gevolg':
+    'Your promise lapses and will not come into effect, not even if you miss that week.',
+  'belofte.intrekken_getuige': 'Your witness will not see any of this: no message and no notification.',
+  'belofte.intrekken_ja': 'Yes, withdraw my promise',
+  'belofte.intrekken_nee': 'No, keep it',
+  'belofte.intrekken_uitslag': 'See the outcome',
+  'belofte.fout.al_afgegaan': 'This promise can no longer be withdrawn: it has been decided in the meantime.',
 
   // ---------------------------------------------------------------------------
   // Completing, archiving and replanning — QS8-83, QS8-32 and QS8-96
@@ -1990,9 +2018,10 @@ export const en: Record<Sleutel, string> = {
   'zichtbaarheid.beschermd': 'Protected',
   'zichtbaarheid.open': 'Open',
   'zichtbaarheid.beschermd_uitleg':
-    'The group sees what works out: finished weeks, milestones, encouragement. A missed week stays yours unless you share it yourself.',
+    'The group sees the title and progress of what you link, your current and approved weeks and your current streak. Nobody sees a missed or carried week unless you share it yourself. ' +
+    'The group does see a streak that stands at zero. If the group has a leaderboard, everyone sees the points you earned in this group, but never a missed week or your personal total.',
   'zichtbaarheid.open_uitleg':
-    'The group also sees what does not work out: each other’s missed and carried weeks, each other’s best streak, who took part in which week, each other’s point totals in this group, and which hero last visited whom in the past week. That includes the hero who turns up after a missed week. Only pick this if everyone wants it.',
+    'The group also sees what does not work out: each other’s missed and carried weeks, each other’s best streak, who took part in which week, each other’s points from this group (if the group has a leaderboard), and which hero last visited whom in the past week. That includes the hero who turns up after a missed week. Only pick this if everyone wants it.',
   'zichtbaarheid.niet_bevestigd': 'Confirm first: this changes what the group sees about other people.',
   'bevestiging.huddledag_verzetten.titel': 'Move the huddle day?',
   'bevestiging.huddledag_verzetten.uitleg':
@@ -2001,7 +2030,7 @@ export const en: Record<Sleutel, string> = {
 
   'bevestiging.groep_openzetten.titel': 'Open up this group?',
   'bevestiging.groep_openzetten.uitleg':
-    'From now on everyone in this group also sees each other’s missed and carried weeks, each other’s best streak ever, who took part in each week, a leaderboard of each other’s point totals in this group, and which hero last visited whom in the past week. That includes the hero who turns up after a missed week, and it covers the weeks already there too. The leaderboard turns on, if it was off. So this is not only about you. Everyone gets a message in the group chat, so anyone who would rather not can unlink their goal. That works for everything tied to a goal; the hero list is tied to your membership, so it stays as long as you are in the group. You can switch back at any time, immediately.',
+    'From now on everyone in this group also sees each other’s missed and carried weeks, each other’s best streak ever, who took part in each week, a leaderboard of the points each member earned in this group, and which hero last visited whom in the past week. That includes the hero who turns up after a missed week, and it covers the weeks already there too. The leaderboard turns on, if it was off. So this is not only about you. Everyone gets a message in the group chat, so anyone who would rather not can unlink their goal. That works for everything tied to a goal; the hero list is tied to your membership, so it stays as long as you are in the group. You can switch back at any time, immediately.',
   'bevestiging.groep_openzetten.knop': 'Yes, open it up',
   'bevestiging.groep_beschermen.titel': 'Protect this group again?',
   'bevestiging.groep_beschermen.uitleg':
@@ -2081,6 +2110,17 @@ export const en: Record<Sleutel, string> = {
   'zichtbaarheid.te_snel': 'This group was already opened up once in the past 24 hours. It stays protected in the meantime; you can try again in a day.',
 
   'groepnieuw.zichtbaarheid': 'What does the group see of each other?',
+  'groepnieuw.klassement_standaard':
+    'A new group starts with a leaderboard: everyone in the group sees the points each member earns in this group, in a protected group too. A missed week never appears in it. An admin can turn the leaderboard off.',
+  'uitnodiging.klassement_standaard':
+    'A group starts with a leaderboard by default: everyone in the group sees the points each member earns in this group. A missed week never appears in it. An admin can turn it off.',
+  // QS8-801 (0341): de echte stand uit `invite_preview()`.
+  'uitnodiging.klassement_aan':
+    'This group has its leaderboard on: everyone in the group sees the points each member earns in this group. A missed week never appears in it. An admin can turn it off.',
+  'uitnodiging.klassement_uit':
+    'This group has its leaderboard off. If it is turned on later, everyone in the group sees the points each member earned in this group, including points from before then. A missed week never appears in it.',
+  // Besluit Quinten 23-11-2026: een teamgroep kan nooit een klassement hebben (groups_team_geen_klassement).
+  'uitnodiging.klassement_team': 'This group has no leaderboard.',
   'groepnieuw.zichtbaarheid_hint':
     'This is the most important choice on this screen. It can be changed later, but never quietly: everyone gets told.',
 

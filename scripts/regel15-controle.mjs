@@ -124,7 +124,7 @@ export const PLAFOND = Object.freeze({
  *    vrijgekomen ruimte, precies zoals bij het aantal.
  */
 export const LANGSTE = Object.freeze({
-  'app/': 513,
+  'app/': 511,
   'src/shared/ui/': 70,
   'scripts/': 205,
   // ⚠️ Stond op 280 (`draaiRollover`) tot QS8-424 die functie splitste.

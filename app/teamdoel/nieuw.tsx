@@ -12,6 +12,7 @@ import { t } from '@/shared/i18n';
 import { telTekens } from '@/shared/tekst';
 import { localDateIn, now, type Weekday } from '@/shared/time';
 import { AsyncView, Button, Caption, Card, DatumKeuze, Field, Screen, useAsync } from '@/shared/ui';
+import { useVolgTaal } from '@/shared/i18n/react';
 
 /**
  * Een teamdoel aanmaken — QS8-658.
@@ -28,6 +29,7 @@ import { AsyncView, Button, Caption, Card, DatumKeuze, Field, Screen, useAsync }
  *    midden door.
  */
 export default function NieuwTeamdoel() {
+  useVolgTaal();
   const { groep: groepId } = useLocalSearchParams<{ groep: string }>();
   const groep = useAsync(() => fetchGroep(groepId), [groepId]);
   const { profiel, loading, error, herlaad } = useProfiel();
