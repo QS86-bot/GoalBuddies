@@ -24,7 +24,7 @@ workflow. **Niet bij push of PR.** De CI voor push en PR (`ci.yml`,
 | V1 welk pakket | `playwright@1.63.0`, exact |
 | V2 waar draait `tests/browser/` | een eigen vitest-groep `browser`, en een grendel die rood wordt als het weer in `unit` valt |
 | V3 de poort | niet in deze PR; vervolgissue QS8-809 |
-| V4 de installatiemeting | als aanname, met de 404 als reden; de eerste dispatch na de merge levert het getal, via een eigen kleine PR |
+| V4 de installatiemeting | als aanname, met de 404 als reden; de eerste dispatch na de merge levert het getal, via een eigen kleine PR. 📏 Gedaan: 4 s, run 45179652334 |
 | V5 hoe vaak | één cron om 03:17 UTC, best-effort als bekende rest; hartslag in vervolgissue QS8-810 |
 | geen `--trace off` | akkoord, zie hieronder |
 | `--only-shell` zonder `--with-deps` | akkoord, zie hieronder |
@@ -92,8 +92,9 @@ in elke push-CI.
   APT-bron van een derde partij op de runner inconsistent is. Dat maakte `main` al eens
   rood zonder dat een commit iets veranderde (QS8-400, `tests/scripts/ci-apt.test.ts`).
   `ubuntu-latest` levert Google Chrome mee, en dus de bibliotheken die de shell nodig
-  heeft. Ontbreekt er toch één, dan valt `chromium.launch()` luid om. ⚠️ **Aanname:**
-  dat die bibliotheken er zijn, is nog niet op een runner gemeten (zie hieronder).
+  heeft. Ontbreekt er toch één, dan valt `chromium.launch()` luid om. 📏 **Gemeten op
+  23-11-2026** (run 45179652334): de shell start op `ubuntu-latest` zonder `--with-deps`,
+  en 13 van de 14 tests draaiden er groen in.
 
 ### Waarom geen `--trace off`
 
@@ -112,12 +113,14 @@ vermeld.
 | rooktest alleen | 1,7 s wandklok, test 0,76 s | 📏 23-11-2026, cloudsessie |
 | groep `browser` met rooktest en de test van 804 | 9,2 s wandklok, 14/14 groen | 📏 23-11-2026, cloudsessie, een worktree van de 804-tak met de config van deze tak |
 | `npm ci` in CI | 37–58 s | 📏 808 |
-| `npx playwright install --only-shell chromium` op `ubuntu-latest` | **niet gemeten**, geschat 30–90 s | ⚠️ aanname, zie hieronder |
-| een run, geschat | ~1,5–2,5 min, gefactureerd 2–3 min | ⚠️ afgeleid |
-| per maand, nachtelijk | ~60–90 min, 3–5 % van de 2.000 gratis minuten van een privérepo | ⚠️ afgeleid, 808 variant (c) |
+| `npm ci` in de browserworkflow, eerste run zonder npm-cache | 53 s | 📏 run 45179652334 |
+| `npx playwright install --only-shell chromium` op `ubuntu-latest` | **4 s**: 114,3 MiB headless shell plus 2,3 MiB ffmpeg | 📏 run 45179652334 |
+| de stap Browsertests | 10 s (vitest 9,74 s) | 📏 run 45179652334 |
+| een run | **73 s** job (77 s van aanmaken tot klaar), gefactureerd 2 min | 📏 run 45179652334 |
+| per maand, nachtelijk | ~60 min als elke nacht vuurt, 3 % van de 2.000 gratis minuten van een privérepo; best-effort maakt het minder | afgeleid uit de run |
 | per maand, vandaag | **0**: de repo is publiek | 📏 808 |
 
-### De installatietijd is niet gemeten, en waarom niet
+### De installatietijd: eerst een aanname, daarna gemeten
 
 De opdracht was haar één keer echt te meten via `workflow_dispatch` op de eigen tak.
 📏 Dat kan niet: `POST /repos/…/actions/workflows/browsertest.yml/dispatches` met de
@@ -126,8 +129,26 @@ op de standaardtak staat. Een tijdelijke `push`-trigger voor één meetrun gaat 
 het besluit (nooit bij push). Installeren in de cloudsessie is uitgesloten en meet
 bovendien een ander netwerk.
 
-**De installatietijd blijft daarom een aanname tot de eerste dispatch na de merge.**
-Het getal komt dan op QS8-808 en in dit document.
+Daarom stond hier eerst de schatting van 30–90 s. 📏 **De eerste dispatch op `main`
+(run 45179652334, 23-11-2026 13:00 UTC, op `44fae34a`) mat 4 s.** De schatting was
+dus te ruim. De download van de CDN van Playwright is op een runner snel, en zonder
+`--with-deps` is er geen apt-stap.
+
+### De eerste run was rood, en dat is een echte bevinding
+
+📏 Run 45179652334: 13 van 14 groen. De rooktest en alle gedragstests van QS8-804
+(spatie, enter, ingedrukt gehouden, Ctrl+spatie, uitgeschakeld) slaagden in Chromium op
+de runner. Rood was de **stijltoets** van de spatiebalktest: de momentopname van tag,
+bounding box en computed style. Alleen de breedte en x van de twee `Choice`-knoppen
+verschilden (Optie A 78,09 verwacht, 77,27 gemeten). De rest was gelijk.
+
+De oorzaak: het harnas laadt geen lettertype. `"Times New Roman"` valt op de runner
+terug op een ander lettertype dan in de cloudsessie, en de breedte van een tekstknop
+volgt het lettertype. De kop van die test noemt de meting al een *momentopname op deze
+harnas, zonder geladen lettertype*. Wat de nachtrun hier vindt, is dat die momentopname
+machinegebonden is. Dat is precies wat een tweede machine hoort te vinden. Wat ermee
+gebeurt, beslist de orchestrator (V6). Tot dan is de nachtrun rood, en dat is eerlijk:
+het is geen ongemeten groen.
 
 ### Bekende rest: nachtelijk is best-effort
 
@@ -181,8 +202,9 @@ workflow noemt geen `npm run …:controle` als stap, en hij draait niet op `main
 
 ## Volgende stap
 
-1. Na de merge één `workflow_dispatch` op `main`. Daarmee worden de installatietijd en
-   de vraag of de headless shell zonder `--with-deps` start, allebei één keer gemeten.
+1. ~~Na de merge één `workflow_dispatch` op `main`.~~ Gedaan: run 45179652334. De
+   installatie kost 4 s en de shell start zonder `--with-deps`. De stijltoets van 804 is
+   op de runner rood; zie hierboven en V6.
 2. QS8-809: krijgt `npm run poort` een browserstap die ongemeten en groen uit elkaar
    houdt? Tot dan wordt de spatiebalktest van QS8-804 in een cloudsessie niet meer
    vanzelf meegemeten.
