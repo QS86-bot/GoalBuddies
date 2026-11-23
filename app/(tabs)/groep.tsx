@@ -2,12 +2,12 @@ import { useRouter } from 'expo-router';
 import { Pressable, StyleSheet, View } from 'react-native';
 
 import {
-  fetchMijnGroepen,
   huddledagLabel,
   isHuddledagVandaag,
   type Lijstgroep,
 } from '@/modules/buddies';
 import { useTeBeoordelen } from '@/modules/completions';
+import { laadGroepenlijst, type Groepsectie } from '@/schermen/groep';
 import { t } from '@/shared/i18n';
 import { space } from '@/shared/theme';
 import {
@@ -16,12 +16,14 @@ import {
   Button,
   Caption,
   Card,
+  Eyebrow,
   Paginakop,
   Screen,
   Subheading,
   TeBeoordelenKaart,
   useAsync,
 } from '@/shared/ui';
+import { useVolgTaal } from '@/shared/i18n/react';
 
 /**
  * Groep — de ingang naar je buddy-groepen.
@@ -41,10 +43,12 @@ import {
  *    uitspraak over die drie mensen.
  */
 export default function GroepTab() {
+  useVolgTaal();
   const router = useRouter();
   const teBeoordelen = useTeBeoordelen();
 
-  const { data: groepen, loading, error, herlaad } = useAsync(() => fetchMijnGroepen(), []);
+  const { data, loading, error, herlaad } = useAsync(() => laadGroepenlijst(), []);
+  const groepen = data?.groepen;
 
   return (
     <Screen title={t('groepen.titel')} kop={<Paginakop titel={t('groepen.titel')} />}>
@@ -58,8 +62,8 @@ export default function GroepTab() {
       <AsyncView
         loading={loading}
         error={error}
-        data={groepen ?? undefined}
-        isEmpty={(g) => g.length === 0}
+        data={data ?? undefined}
+        isEmpty={(d) => d.groepen.length === 0}
         onRetry={herlaad}
         empty={{
           title: t('groepen.leeg_titel'),
@@ -69,21 +73,52 @@ export default function GroepTab() {
           action: { label: t('groepen.aanmaken'), onPress: () => router.push('/groep/nieuw') },
         }}
       >
-        {(lijst) => (
-          <View style={styles.lijst}>
-            {lijst.map((groep) => (
-              <GroepKaart
-                key={groep.id}
-                groep={groep}
-                onOpen={() => router.push(`/groep/${groep.id}`)}
-              />
-            ))}
-          </View>
-        )}
+        {(lijst) =>
+          lijst.secties === null ? (
+            <Kaarten groepen={lijst.groepen} />
+          ) : (
+            <View style={styles.secties}>
+              {lijst.secties.map((sectie) => (
+                <Sectie key={sectie.sleutel} sectie={sectie} />
+              ))}
+            </View>
+          )
+        }
       </AsyncView>
 
       <Groepsacties toonAanmaken={groepen?.length !== 0} />
     </Screen>
+  );
+}
+
+/** Zonder teamgroep: precies de lijst van vóór QS8-775, zonder koppen. */
+function Kaarten({ groepen }: { readonly groepen: readonly Lijstgroep[] }) {
+  const router = useRouter();
+  return (
+    <View style={styles.lijst}>
+      {groepen.map((groep) => (
+        <GroepKaart key={groep.id} groep={groep} onOpen={() => router.push(`/groep/${groep.id}`)} />
+      ))}
+    </View>
+  );
+}
+
+/**
+ * Eén sectie van variant A: een kop en daaronder de kaarten, ongewijzigd (besluit 22-11: geen teambalk, geen tag, geen
+ * beheerkaart). De kop noemt alleen de naam van je eigen organisatie; er komt niets over een ander lid bij.
+ */
+function Sectie({ sectie }: { readonly sectie: Groepsectie }) {
+  const kop =
+    sectie.soort === 'prive'
+      ? t('groepen.sectie_prive')
+      : sectie.organisatienaam === null
+        ? t('groepen.sectie_werk')
+        : t('groepen.sectie_werk_naam', { naam: sectie.organisatienaam });
+  return (
+    <View style={styles.lijst}>
+      <Eyebrow accessibilityRole="header">{kop}</Eyebrow>
+      <Kaarten groepen={sectie.groepen} />
+    </View>
   );
 }
 
@@ -167,6 +202,7 @@ function GroepKaart({
 
 const styles = StyleSheet.create({
   lijst: { gap: space.blokGap },
+  secties: { gap: space.blokGap * 2 },
 });
 
 // ⚠️ QS8-705: een renderfout op dit tabblad is een foutstaat met herstelknop en

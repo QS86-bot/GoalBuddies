@@ -19,6 +19,9 @@ afterEach(() => unfreezeNow());
 const maandagStarter: UserClock = { weekStartDay: 1, tz: 'Europe/Amsterdam' };
 const zondagStarter: UserClock = { weekStartDay: 0, tz: 'Europe/Amsterdam' };
 
+/** Een account van ruim vóór elke cyclus hieronder: het gedrag van vóór QS8-806. */
+const OUD_ACCOUNT = '2026-01-01T00:00:00Z';
+
 describe('twee gebruikers, verschillende week-startdagen', () => {
   it('zitten op dezelfde dag in een andere cyclus', () => {
     // Woensdag 19 augustus 2026, midden op de dag.
@@ -50,8 +53,8 @@ describe('coulanceperiode van twaalf uur — QS8-51', () => {
     // om middernacht begonnen, dus we zitten 8 uur in de coulanceperiode.
     freezeNow(new Date('2026-08-17T06:00:00Z'));
 
-    expect(inCoulanceperiode(maandagStarter)).toBe(true);
-    expect(afsluitbareCyclus(maandagStarter).startDate).toBe('2026-08-10');
+    expect(inCoulanceperiode(maandagStarter, OUD_ACCOUNT)).toBe(true);
+    expect(afsluitbareCyclus(maandagStarter, OUD_ACCOUNT).startDate).toBe('2026-08-10');
     expect(huidigeCyclus(maandagStarter).startDate).toBe('2026-08-17');
   });
 
@@ -59,8 +62,8 @@ describe('coulanceperiode van twaalf uur — QS8-51', () => {
     // Maandag 17 augustus, 12:30 in Amsterdam (10:30 UTC): net voorbij.
     freezeNow(new Date('2026-08-17T10:30:00Z'));
 
-    expect(inCoulanceperiode(maandagStarter)).toBe(false);
-    expect(afsluitbareCyclus(maandagStarter).startDate).toBe('2026-08-17');
+    expect(inCoulanceperiode(maandagStarter, OUD_ACCOUNT)).toBe(false);
+    expect(afsluitbareCyclus(maandagStarter, OUD_ACCOUNT).startDate).toBe('2026-08-17');
   });
 
   it('geldt op de eigen week-startdag, niet op maandag voor iedereen', () => {
@@ -68,9 +71,35 @@ describe('coulanceperiode van twaalf uur — QS8-51', () => {
     // coulance, want er is niets omgeslagen.
     freezeNow(new Date('2026-08-17T06:00:00Z'));
 
-    expect(inCoulanceperiode(zondagStarter)).toBe(false);
-    expect(afsluitbareCyclus(zondagStarter).startDate).toBe('2026-08-16');
+    expect(inCoulanceperiode(zondagStarter, OUD_ACCOUNT)).toBe(false);
+    expect(afsluitbareCyclus(zondagStarter, OUD_ACCOUNT).startDate).toBe('2026-08-16');
   });
+});
+
+describe('een account zonder vorige week — QS8-806', () => {
+  // ⚠️ Twee klokken, elk vastgezet op zijn éígen rollover plus vier uur, met een
+  //    account dat twee uur na die rollover ontstond. Domeinregel 1.
+  const gevallen = [
+    { klok: maandagStarter, nu: '2026-08-17T02:00:00Z', aangemaakt: '2026-08-17T00:00:00Z', week: '2026-08-17' },
+    { klok: zondagStarter, nu: '2026-08-16T02:00:00Z', aangemaakt: '2026-08-16T00:00:00Z', week: '2026-08-16' },
+  ] as const;
+
+  for (const { klok, nu, aangemaakt, week } of gevallen) {
+    it(`heeft geen coulance en sluit de lopende week af (startdag ${klok.weekStartDay})`, () => {
+      freezeNow(new Date(nu));
+
+      expect(inCoulanceperiode(klok, aangemaakt)).toBe(false);
+      expect(afsluitbareCyclus(klok, aangemaakt).startDate).toBe(week);
+      expect(afsluitbareCyclus(klok, aangemaakt).startDate).toBe(huidigeCyclus(klok).startDate);
+    });
+
+    it(`houdt het venster voor een account van vóór de rollover (startdag ${klok.weekStartDay})`, () => {
+      freezeNow(new Date(nu));
+
+      expect(inCoulanceperiode(klok, OUD_ACCOUNT)).toBe(true);
+      expect(afsluitbareCyclus(klok, OUD_ACCOUNT).startDate).not.toBe(week);
+    });
+  }
 });
 
 describe('rond middernacht in de tijdzone van de gebruiker', () => {

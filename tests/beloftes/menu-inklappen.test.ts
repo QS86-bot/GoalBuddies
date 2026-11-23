@@ -28,7 +28,7 @@ import {
  *   A  `MENU_BEGINSTAND_OPEN` naar `true`       -> rood: 'begint dicht'
  *   B  `toonMenuknoppen` geeft altijd `false`   -> rood: 'opent met een tik' en 'is ongewijzigd'
  *   C  `menuKlaptIn` ook voor 'zijkant'          -> rood: 'is ongewijzigd'
- *   D  `useState(MENU_BEGINSTAND_OPEN)` -> `useState(true)` in Taakbalk -> rood: 'het component leest de beginstand'
+ *   D  `let open = MENU_BEGINSTAND_OPEN` -> `let open = true` in menustand (QS8-795: was `useState` in Taakbalk) -> rood: 'het component leest de beginstand'
  *   E  `aria-expanded` uit MenuKop               -> rood: 'de kop meldt de stand'
  */
 
@@ -77,8 +77,9 @@ describe('de ingeklapte kop', () => {
 describe('de naad tussen de functies en het component', () => {
   const menu = bron('src', 'shared', 'ui', 'Taakbalk.tsx');
 
-  it('het component leest de beginstand uit de export', () => {
-    expect(menu).toMatch(/useState\(MENU_BEGINSTAND_OPEN\)/);
+  it('het component leest de beginstand uit de export, via de gedeelde stand (QS8-795)', () => {
+    expect(menu).toMatch(/\(\)\s*=>\s*MENU_BEGINSTAND_OPEN\)/);
+    expect(bron('src', 'shared', 'ui', 'menustand.ts')).toMatch(/let open = MENU_BEGINSTAND_OPEN/);
   });
 
   it('het component beslist met menuKlaptIn en toonMenuknoppen, niet met een eigen vergelijking', () => {

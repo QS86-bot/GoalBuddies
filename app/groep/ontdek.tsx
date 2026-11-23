@@ -27,6 +27,7 @@ import {
   Screen,
   useAsync,
 } from '@/shared/ui';
+import { useVolgTaal } from '@/shared/i18n/react';
 
 /**
  * Groepen ontdekken — QS8-231, migratie 0144.
@@ -47,6 +48,7 @@ import {
  *    "je hoort snel iets" zou de app iets laten toezeggen wat een mens moet doen.
  */
 export default function GroepenOntdekken() {
+  useVolgTaal();
   const router = useRouter();
 
   const [categorie, setCategorie] = useState<Categorie | 'alles'>('alles');

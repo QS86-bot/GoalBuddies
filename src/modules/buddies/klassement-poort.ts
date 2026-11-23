@@ -54,13 +54,19 @@ export type KlassementUitkomstVorm =
 
 export type KlassementPlek = 'lijst' | 'fout' | 'uitnodiging' | 'niets';
 
+/**
+ * ⚠️ `weggeklikt` (QS8-784) is de eigen rij in `klassement_uitnodiging_weg`. Hij verbergt alleen de uitnodiging: een
+ *    lijst of een fout gaat altijd voor. Verplicht en zonder standaardwaarde, zodat een aanroeper hem niet vergeet.
+ */
 export function klassementPlek(
   uitkomst: KlassementUitkomstVorm,
   groep: KlassementGroep | null,
   beheerder: boolean,
+  weggeklikt: boolean,
 ): KlassementPlek {
   if (uitkomst.staat === 'ok' && uitkomst.pagina.rijen.length > 0) return 'lijst';
   if (uitkomst.staat === 'fout') return 'fout';
+  if (weggeklikt) return 'niets';
   if (groep !== null && toonKlassementUitnodiging(groep, beheerder)) return 'uitnodiging';
   return 'niets';
 }

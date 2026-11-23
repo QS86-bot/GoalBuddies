@@ -120,6 +120,33 @@ export function leesZichtbaarheid(waarde: unknown): Zichtbaarheid {
   return waarde === 'open' ? 'open' : 'beschermd';
 }
 
+/**
+ * Staat het klassement in deze groep aan? Uit `invite_preview()` sinds 0341 (QS8-801).
+ *
+ * ⚠️ Alleen een echte boolean telt. Een oudere server stuurt het veld niet, en dan
+ *    is het `null`: het scherm zegt dan wat de standaard is (QS8-798) en verzint
+ *    geen stand.
+ */
+export function leesKlassementAan(waarde: unknown): boolean | null {
+  return typeof waarde === 'boolean' ? waarde : null;
+}
+
+/**
+ * De zin over het klassement op de uitnodiging: de echte stand, of de standaard
+ * als de server hem niet noemt (QS8-801).
+ *
+ * ⚠️ Een teamgroep heeft nooit een klassement (CHECK `groups_team_geen_klassement`),
+ *    dus daar zegt de kaart dat en niet "gaat het later aan" (besluit Quinten
+ *    23-11-2026). `teamgroep` is alleen `true` voor een actief organisatielid
+ *    (0341); ieder ander leest de gewone tekst.
+ */
+export function uitnodigingKlassementTekst(klassementAan: boolean | null, teamgroep: boolean): string {
+  if (teamgroep) return t('uitnodiging.klassement_team');
+  if (klassementAan === true) return t('uitnodiging.klassement_aan');
+  if (klassementAan === false) return t('uitnodiging.klassement_uit');
+  return t('uitnodiging.klassement_standaard');
+}
+
 /** Zie `meldingen()` in `api.ts`: een functie, want de taal ligt niet vast op importtijd. */
 export function zichtbaarheidLabels(): Readonly<Record<Zichtbaarheid, string>> {
   return {

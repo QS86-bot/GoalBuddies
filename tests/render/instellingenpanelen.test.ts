@@ -75,7 +75,7 @@ vi.mock('@/shared/ui/Button', async (orig) => {
 
 const { Instellingenscherm } = await import('@/schermen/instellingen/Instellingenscherm');
 const { UiterlijkProvider } = await import('@/modules/uiterlijk/react');
-const { ONDERDEEL_IDS } = await import('@/schermen/instellingen/onderdelen');
+const { ONDERDEEL_IDS, ONDERDELEN, paneelNaastLijst } = await import('@/schermen/instellingen/onderdelen');
 
 const PROFIEL = {
   id: 'u1',
@@ -173,5 +173,44 @@ describe('Instellingen: één primaire handeling waar bewaard wordt (QS8-754 AC5
     await toon(id);
     const bewaar = BEWAARKNOP[id];
     expect(primairen().map((e) => e.textContent)).toEqual(bewaar === null ? [] : [bewaar]);
+  });
+});
+
+/**
+ * De rij van het getoonde onderdeel zegt het tegen een schermlezer — QS8-803.
+ *
+ * ⚠️ **`aria-current="page"`, niet `aria-selected` en niet `aria-pressed`.** Elk onderdeel is een eigen route
+ *    (`/instellingen/[onderdeel]`), net als een tabblad van de Taakbalk: de lijst zegt wáár je bent, niet wat
+ *    je gekozen hebt. react-native-web zet `accessibilityState` niet in de DOM, dus dit leest de DOM.
+ *
+ * IJKING — met de hand, 23-11-2026: `aria-current` weg uit `Lijstrij` -> 5 rood; `aria-current="page"` op elke
+ *    rij -> 5 rood; `aria-selected={actief}` erbij -> 5 rood (en de bronscan in `stand-aria.test.ts`).
+ */
+describe('Instellingen: de lijst zegt welk onderdeel getoond wordt (QS8-803)', () => {
+  // ⚠️ react-native-web leest de breedte uit `documentElement.clientWidth`, en die is onder jsdom 0: zonder dit
+  //    rendert het smalle scherm, zonder lijst naast het paneel, en is er niets te toetsen.
+  const BREED = 1280;
+  beforeEach(() => {
+    Object.defineProperty(document.documentElement, 'clientWidth', { value: BREED, configurable: true });
+    window.dispatchEvent(new Event('resize'));
+  });
+  afterEach(() => {
+    delete (document.documentElement as { clientWidth?: number }).clientWidth;
+    window.dispatchEvent(new Event('resize'));
+  });
+
+  it('de breedte is breed genoeg voor de lijst naast het paneel', () => {
+    expect(paneelNaastLijst(BREED)).toBe(true);
+  });
+
+  it.each(ONDERDEEL_IDS)('%s: precies die rij is aria-current=page, de andere rijen niet', async (id) => {
+    await toon(id);
+    const rijen = ONDERDELEN.map((o) => {
+      const e = document.querySelector(`[role="button"][aria-label="${t(o.titel)}"]`);
+      expect(e, o.id).not.toBeNull();
+      return [o.id, e!.getAttribute('aria-current')] as const;
+    });
+    expect(rijen).toStrictEqual(ONDERDELEN.map((o) => [o.id, o.id === id ? 'page' : null]));
+    expect(document.querySelector('[aria-selected]')).toBeNull();
   });
 });

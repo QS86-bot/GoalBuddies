@@ -104,10 +104,13 @@ export { useAutomatischToetreden } from './useAutomatischToetreden';
 
 export {
   bewaarOpenstaandeUitnodiging,
+  bewaarToegetredenGroep,
   openstaandeUitnodiging,
   routeVoorUitnodiging,
+  toegetredenGroep,
   UITNODIGING_GELDIG_UREN,
   vergeetOpenstaandeUitnodiging,
+  vergeetToegetredenGroep,
   type OpenstaandeUitnodiging,
   type UitnodigingsRoute,
 } from './pending';
@@ -167,7 +170,9 @@ export { fetchKettingStand } from './ketting';
 export {
   fetchGroepsteller,
   fetchKlassement,
+  fetchUitnodigingWeg,
   kanKlassementZetten,
+  klikKlassementUitnodigingWeg,
   toonKlassementUitnodiging,
   klassementPlek,
   type KlassementPlek,
@@ -259,6 +264,8 @@ export {
   leesGoedkeuringsregel,
   leesVoertaal,
   leesZichtbaarheid,
+  leesKlassementAan,
+  uitnodigingKlassementTekst,
   normaliseerCode,
   leesSeizoenscadans,
   QUORUM_MAX,

@@ -28,6 +28,7 @@ import {
   Subheading,
   useTerug,
 } from '@/shared/ui';
+import { useVolgTaal } from '@/shared/i18n/react';
 
 /**
  * Beoordelen — QS8-62 en QS8-63.
@@ -49,6 +50,7 @@ import {
  *    wat hij níét gedaan heeft (domeinregel 7).
  */
 export default function Beoordelen() {
+  useVolgTaal();
   const naarVandaag = useTerug('/');
   const { userId } = useSession();
 

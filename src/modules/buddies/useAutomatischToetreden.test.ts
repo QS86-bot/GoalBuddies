@@ -43,6 +43,7 @@ function nieuweUitvoer(): { uit: ToetredenUitvoer; gebeurd: string[] } {
     gemount: () => true,
     onboarded: () => true,
     vergeetCode: () => gebeurd.push('vergeet'),
+    onthoudGroep: (id) => gebeurd.push(`onthoud:${id}`),
     zetFout: (m) => gebeurd.push(`fout:${m}`),
     zetBinnen: (id) => gebeurd.push(`binnen:${id}`),
     naarGroep: (id) => gebeurd.push(`groep:${id}`),

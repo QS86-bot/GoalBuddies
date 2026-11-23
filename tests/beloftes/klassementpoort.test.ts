@@ -4,6 +4,9 @@ import { fileURLToPath } from 'node:url';
 
 import { describe, expect, it } from 'vitest';
 
+// ⚠️ Een `.mjs` zonder eigen typings — zelfde patroon als `tests/scripts/zichtbaarheid-controle.test.ts`.
+import { KLASSEMENTPOORT, klassementpoort } from '../../scripts/zichtbaarheid-controle.mjs';
+
 /**
  * `mijn_klassementen()` en `groep_klassement()` houden dezelfde poort en dezelfde volgorde — QS8-666 (A57), deel 3c-db.
  *
@@ -41,6 +44,21 @@ const mijn = laatsteDefinitie('mijn_klassementen');
 const zonderCommentaar = (s: string): string => s.replace(/--[^\n]*/g, '');
 
 describe('mijn_klassementen() en groep_klassement() delen één poort en één volgorde', () => {
+  /**
+   * ⚠️ **Eén lijst, twee bronnen (QS8-802).** `KLASSEMENTPOORT` in `scripts/zichtbaarheid-controle.mjs` is de lijst
+   *    met verplichte en verboden poortdelen; `npm run zichtbaarheid:controle` legt hem naast de gedéployde definitie
+   *    (`pg_get_functiondef()`), deze toets naast de migratiebestanden. Wie een poortdeel toevoegt, doet dat daar en
+   *    beide nemen het over. De toetsen hieronder zijn strenger en blijven hier: de vaste vorm van de teamgrens, de
+   *    volgorde en de knip zijn eigenschappen van de bron en niet van een lijst met termen.
+   */
+  it.each([
+    ['groep_klassement', groep],
+    ['mijn_klassementen', mijn],
+  ])('%s: de gedeelde poortlijst van de zichtbaarheidscontrole', (naam, d) => {
+    expect(Object.keys(KLASSEMENTPOORT.functies)).toContain(naam);
+    expect(klassementpoort(naam, d.lichaam)).toEqual([]);
+  });
+
   it.each([
     ['groep_klassement', groep],
     ['mijn_klassementen', mijn],

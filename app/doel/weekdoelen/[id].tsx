@@ -28,6 +28,7 @@ import {
   useAsync,
   Wachtbalk,
 } from '@/shared/ui';
+import { useVolgTaal } from '@/shared/i18n/react';
 
 /**
  * Weekstappen laten genereren onder één mijlpaal — QS8-41, PRD 3.4.
@@ -63,6 +64,7 @@ import {
  *    dit is een andere knop.
  */
 export default function Weekdoelcoach() {
+  useVolgTaal();
   const { id, mijlpaal: mijlpaalId } = useLocalSearchParams<{ id: string; mijlpaal?: string }>();
   const router = useRouter();
 

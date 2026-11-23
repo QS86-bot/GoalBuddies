@@ -184,6 +184,11 @@ const REGISTER: Readonly<Record<string, string>> = {
     '19-11-2026 (QS8-752, 0305): een tweede insert van hetzelfde paar weigerde met 23505, ' +
     'een insert namens een ander met de policy, een niet-lid met 42501. ⚠️ Verdwijnt de FK ' +
     'of de PK, dan heeft deze tabel een dagplafond nodig.',
+  klassement_uitnodiging_weg:
+    'PRIMARY KEY (user_id, group_id) en een composite FK naar `group_members`: hoogstens één rij per ' +
+    'lidmaatschap; alleen een actieve beheerder schrijft, voor zichzelf, bij een klassement dat uit staat (42501 vóór de FK). ' +
+    '📏 Gemeten op 22-11-2026 (QS8-784): een tweede insert van hetzelfde paar weigerde met 23505, een gewoon lid, ' +
+    'een vreemde en een insert namens een ander met 42501. ⚠️ Verdwijnt de FK of de PK, dan heeft deze tabel een dagplafond nodig.',
   gebruikersvoorkeuren:
     'PRIMARY KEY (user_id) én een insert-policy die `user_id` aan `auth.uid()` ' +
     'vastzet — samen hoogstens één rij per gebruiker. 📏 Gemeten op 19-11-2026 ' +
@@ -338,6 +343,8 @@ describe.skipIf(!beschikbaar)('elke groeibare tabel heeft een plafond of een red
     //    INSERT-kolomgrant op. Dat verschil is de hele opzet van die migratie —
     //    de ene tabel schrijf je zelf, de andere schrijft de server — en dat het
     //    hier als één in plaats van twee telt, is de meting die dat bevestigt.
+    // ⚠️ En veertig werd eenenveertig met `klassement_uitnodiging_weg` (QS8-784): primaire sleutel plus composite FK
+    //    op het lidmaatschap, de vorm van `groep_demping`. Botst dit getal bij een merge, tel dan beide tabellen mee.
     // ⚠️ En vierendertig werd vijfendertig met `groep_demping` (QS8-752, 0305): primaire
     //    sleutel plus composite FK op het lidmaatschap, de vorm van `gebruikersvoorkeuren`.
     // ⚠️ En drieëndertig werd vierendertig met `gebruikersvoorkeuren` (QS8-729,
@@ -357,7 +364,7 @@ describe.skipIf(!beschikbaar)('elke groeibare tabel heeft een plafond of een red
     //    (QS8-695, 0318): het spoor van rolwijzigingen, met de grens in de RPC.
     // ⚠️ En achtendertig werd veertig met `team_goals` en `team_goal_shares`
     //    (QS8-654, 0319), om dezelfde reden.
-    expect(gevonden.length, 'het aantal groeibare tabellen is veranderd').toBe(40);
+    expect(gevonden.length, 'het aantal groeibare tabellen is veranderd').toBe(41);
     // ⚠️ En zeventien werd achttien met `user_blocks` (QS8-496, 0276). Die tabel
     //    stond hierboven in REGISTER met de reden *"begrensd door het aantal
     //    mensen dat je kunt noemen"* — en die reden verviel toen `zoek_mensen()`

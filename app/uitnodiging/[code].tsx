@@ -5,6 +5,7 @@ import { StyleSheet, View } from 'react-native';
 import { ROUTE_AANMELDEN, useProfiel, useSession } from '@/modules/auth';
 import {
   bewaarOpenstaandeUitnodiging,
+  bewaarToegetredenGroep,
   fetchMijnLidmaatschap,
   fetchUitnodiging,
   huddledagLabel,
@@ -20,6 +21,7 @@ import {
   useAutomatischToetreden,
   vergeetOpenstaandeUitnodiging,
   zichtbaarheidLabels,
+  uitnodigingKlassementTekst,
   zichtbaarheidUitleg,
 } from '@/modules/buddies';
 import { t } from '@/shared/i18n';
@@ -36,6 +38,7 @@ import {
   Subheading,
   useAsync,
 } from '@/shared/ui';
+import { useVolgTaal } from '@/shared/i18n/react';
 
 /**
  * De gastvrije uitnodigingslink — QS8-59.
@@ -59,6 +62,7 @@ import {
  *    "account maken en meedoen".
  */
 export default function UitnodigingScherm() {
+  useVolgTaal();
   const { code } = useLocalSearchParams<{ code: string }>();
   const router = useRouter();
   const { session, loading: sessieLaadt } = useSession();
@@ -131,12 +135,21 @@ export default function UitnodigingScherm() {
   useEffect(() => {
     profielRef.current = profiel;
   }, [profiel]);
+  // QS8-805: zelfde reden als `profielRef` — de sessie kan binnenkomen terwijl `neemDeel` loopt.
+  const userIdRef = useRef(userId);
+  useEffect(() => {
+    userIdRef.current = userId;
+  }, [userId]);
 
   const uitvoer = useMemo<ToetredenUitvoer>(
     () => ({
       gemount: () => gemount.current,
       onboarded: () => Boolean(profielRef.current?.onboarded_at),
       vergeetCode: () => void vergeetOpenstaandeUitnodiging(),
+      // QS8-805: de wacht stuurt na de onboarding naar deze groep.
+      onthoudGroep: (groupId) => {
+        if (userIdRef.current) void bewaarToegetredenGroep(userIdRef.current, groupId);
+      },
       zetFout: setFout,
       zetBinnen: setBinnen,
       naarGroep: (groupId) => router.replace(`/groep/${groupId}`),
@@ -234,6 +247,7 @@ export default function UitnodigingScherm() {
                 <Card nested>
                   <Subheading>{zichtbaarheidLabels()[u.zichtbaarheid]}</Subheading>
                   <Body muted>{zichtbaarheidUitleg()[u.zichtbaarheid]}</Body>
+                  <Caption>{uitnodigingKlassementTekst(u.klassement_aan, u.teamgroep)}</Caption>
                   {u.zichtbaarheid === 'open' ? (
                     <Caption danger>{t('uitnodiging.open_waarschuwing')}</Caption>
                   ) : null}

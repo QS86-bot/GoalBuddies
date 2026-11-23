@@ -1,11 +1,12 @@
 import { Link, usePathname } from 'expo-router';
-import { useState, useSyncExternalStore } from 'react';
+import { useLayoutEffect, useState, useSyncExternalStore } from 'react';
 import { Dimensions, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { t, type Sleutel } from '../i18n';
 import { afstand, radius, useTheme } from '../theme';
 
 import { focusRing } from './a11y';
+import { abonneerMenu, leesMenuOpen, menuBijNavigatie, wisselMenu } from './menustand';
 import { useMeldingWacht } from './meldingstip';
 import {
   actiefTabblad,
@@ -82,7 +83,12 @@ export function Taakbalk() {
   const theme = useTheme();
   const pad = usePathname();
   const vorm = useTaakbalkVorm();
-  const [open, setOpen] = useState(MENU_BEGINSTAND_OPEN);
+  const open = useSyncExternalStore(abonneerMenu, leesMenuOpen, () => MENU_BEGINSTAND_OPEN);
+  // QS8-795: elke navigatie begint dicht, ook op een tabblad dat al gemount was.
+  //    `useLayoutEffect`: vóór het tekenen, zodat het open menu van het vorige scherm niet even zichtbaar is.
+  useLayoutEffect(() => {
+    menuBijNavigatie();
+  }, [pad]);
   const meldingWacht = useMeldingWacht();
 
   if (!toontTaakbalk(pad)) return null;
@@ -110,7 +116,7 @@ export function Taakbalk() {
           actief={actief}
           open={open}
           stip={meldingWacht}
-          onWissel={() => setOpen((o) => !o)}
+          onWissel={wisselMenu}
         />
       ) : null}
       {toonMenuknoppen(vorm, open)

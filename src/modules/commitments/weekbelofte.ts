@@ -1,4 +1,4 @@
-import { userCycle, userCycleOn, type IsoDate, type UserClock } from '../../shared/time';
+import { userCycle, userCycleEndsWithin, userCycleOn, type IsoDate, type UserClock } from '../../shared/time';
 import type { Sleutel } from '../../shared/i18n';
 
 import { isDoelstraf, isWeekbelofte } from './stand';
@@ -31,6 +31,22 @@ export interface Belofteperiode {
 export function belofteperiode(klok: UserClock, nu: Date): Belofteperiode {
   const cyclus = userCycle(klok, nu);
   return { start: cyclus.startDate, laatsteDag: cyclus.endDate };
+}
+
+/** Minder dan zoveel uur over in de lopende week, en de bevestigstap zegt het — QS8-799. */
+export const KORTE_WEEK_UREN = 24;
+
+/**
+ * Loopt de week van een belofte die nu aangaat nog minder dan één dag? — QS8-799.
+ *
+ * ⚠️ Dit verandert niets aan wat er mag: "alleen in de lopende week" (0314) blijft
+ *    staan, en de belofte gaat ook met een paar uur over gewoon aan. Het is een
+ *    waarschuwing in de bevestigstap, zodat niemand op zondagavond een week belooft
+ *    waarvan alleen de laatste uren over zijn. De grens rekent `shared/time` uit,
+ *    in de tijdzone en op de week-startdag van de gebruiker (regel 7).
+ */
+export function isKorteWeek(klok: UserClock, nu: Date): boolean {
+  return userCycleEndsWithin(klok, nu, KORTE_WEEK_UREN);
 }
 
 /**

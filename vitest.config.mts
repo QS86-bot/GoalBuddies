@@ -95,7 +95,15 @@ export default defineConfig({
           ...gedeeld,
           name: 'unit',
           include: ['src/**/*.test.ts', 'tests/**/*.test.ts'],
-          exclude: [...configDefaults.exclude, 'tests/rls/**'],
+          /**
+           * ⚠️ **`tests/browser/` hoort hier niet in, en dat is sinds QS8-808 nodig en geen smaak.**
+           *    Sinds `playwright` in `package.json` staat, laadt de `require` ook in de push-CI. Daar
+           *    installeert niemand een browser, dus `chromium.launch()` valt om en `npm test` wordt rood.
+           *    Die bestanden draaien in de groep `browser` hieronder: 's nachts en via
+           *    `workflow_dispatch` in `.github/workflows/browsertest.yml`, en met de hand via
+           *    `npm run test:browser`.
+           */
+          exclude: [...configDefaults.exclude, 'tests/rls/**', 'tests/browser/**'],
           sequence: { concurrent: false },
         },
         resolve: {
@@ -137,6 +145,21 @@ export default defineConfig({
           //    globale schrijvers zijn die alleen door een aanname over de
           //    fixtures worden tegengehouden. `tests/rls/nevenschade.test.ts`
           //    somt ze op en noemt per stuk wanneer die aanname vervalt.
+          fileParallelism: false,
+          sequence: { concurrent: false },
+        },
+        resolve: { alias: { '@': resolve(here, './src') } },
+      },
+      {
+        test: {
+          ...gedeeld,
+          name: 'browser',
+          include: ['tests/browser/**/*.test.ts'],
+          /**
+           * ⚠️ **Eén Chromium tegelijk.** Elk bestand start zijn eigen browser. Parallel kost dat
+           *    geheugen op een runner met twee cores, en het levert niets op voor een suite van
+           *    seconden. Zie `docs/decisions/2026-11-23-de-echte-browsertest-draait-s-nachts.md`.
+           */
           fileParallelism: false,
           sequence: { concurrent: false },
         },

@@ -20,7 +20,7 @@
  *      3. een ingang waarvan het bestand de bewering niet meer draagt is rood (het register
  *         is verouderd; de ingang hoort weg).
  *
- * `BRUGGEN` is leeg: elke brug is weg. Een ingang is `{ pad, sleutel, reden }`, en de sleutel
+ * `BRUGGEN` draagt één brug (QS8-784, tot de uitrol). Een ingang is `{ pad, sleutel, reden }`, en de sleutel
  * is een naam (functie, tabel of kolom) die de typen nog NIET kennen.
  *
  * Draait mee in `npm test` (`tests/beloftes/geen-verouderde-typebrug.test.ts`), en bewust niet
@@ -53,7 +53,13 @@ export interface Vondst {
   readonly tekst: string;
 }
 
-export const BRUGGEN: readonly Brug[] = [];
+export const BRUGGEN: readonly Brug[] = [
+  {
+    pad: 'src/modules/buddies/klassement-weg.ts',
+    sleutel: 'klassement_uitnodiging_weg',
+    reden: 'QS8-784: de tabel komt in de gegenereerde typen na de uitrol van zijn migratie en `npm run types:db`',
+  },
+];
 
 const BEWERINGEN = [
   /\bNogNietInTypes\b/,

@@ -1,0 +1,5 @@
+{
+  "ios": {
+    "NSPhotoLibraryUsageDescription": "GoalBuddies vraagt toegang tot je foto's zodat je er een profielfoto uit kunt kiezen."
+  }
+}

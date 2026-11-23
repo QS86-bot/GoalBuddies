@@ -112,6 +112,11 @@ const SLEUTELS_VOOR_DE_SPLITSING: readonly string[] = [
   'tellers.label_vangnet_een',
   'tellers.label_vangnet_nul',
   'tellers.label_reeks_een',
+  // QS8-805, bewust erbij: de kaart die de vragenlijst aanbiedt aan wie hem oversloeg.
+  'vandaag.vragenlijst_kaart_titel',
+  'vandaag.vragenlijst_kaart_tekst',
+  'vandaag.vragenlijst_kaart_knop',
+  'vandaag.vragenlijst_kaart_niet_nu',
 ];
 
 const WORTEL = join(__dirname, '..', '..');
