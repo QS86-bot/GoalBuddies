@@ -346,7 +346,7 @@ function Routewacht() {
   //    voedt in `useRoutebestemming()`, niet hier: er is geen enkele test in `app/`,
   //    en deze wacht heeft op 28-08 en op 22-11 (QS8-793) aantoonbaar een belofte
   //    gebroken zonder dat er iets rood werd. Buiten dit bestand is hij te toetsen
-  //    — zie `routewacht.test.ts` en `src/modules/auth/routewacht-afronden.test.tsx`.
+  //    — zie `routewacht.test.ts` en `src/modules/auth/routewacht-afronden.test.ts`.
   const bestemming = useRoutebestemming(segments as readonly string[]);
 
   useEffect(() => {

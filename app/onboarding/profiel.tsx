@@ -179,7 +179,7 @@ function OnboardingProfielFormulier() {
     //    `/`, en die replace won — 3 van 3 keer, een nieuw account zag de
     //    vragenlijst nooit. `zetAfgerondProfiel()` zet profiel en vlag in één
     //    batch, en de wacht stuurt zelf naar de vragenlijst. Eén navigator.
-    //    `src/modules/auth/routewacht-afronden.test.tsx` rendert die naad.
+    //    `src/modules/auth/routewacht-afronden.test.ts` rendert die naad.
     zetAfgerondProfiel(afgerond.profiel);
   }
 

@@ -28,8 +28,11 @@ met een kleine lokale nabootsing van de auth (zelfgetekende tokens, geen GoTrue)
    apparaat, en hij leeft alleen in het geheugen: een herlaad of een nieuwe sessie kent hem niet.
 3. **De vlag geldt alleen binnen `onboarding/` en buiten `NA_ONBOARDING_BEREIKBAAR`.** Hij neemt nooit een andere route
    over; dat staat onder test in `routewacht.test.ts`.
-4. **`useRoutebestemming()` ruimt de vlag op zodra de vragenlijst in beeld is.** Anders stuurt een latere diepe link naar
-   `/onboarding/profiel` in dezelfde sessie opnieuw naar de vragenlijst in plaats van naar `/` (criterium 2).
+4. **`useRoutebestemming()` ruimt de vlag op zodra de vragenlijst in beeld is, of de route de onboarding uit is.** Anders
+   stuurt een latere diepe link naar `/onboarding/profiel` in dezelfde sessie opnieuw naar de vragenlijst in plaats van
+   naar `/` (criterium 2). Het tweede geval kwam uit de code-critic: `Werkcodewacht` en `Uitnodigingswacht` starten op
+   dezelfde overgang en navigeren later, dus wie met een openstaande uitnodiging of werkcode afrondt, landt daar en niet
+   op de vragenlijst. Dat was vóór deze wijziging ook zo (gelezen, niet gemeten).
 5. **De standsamenstelling van de wacht verhuisde van `app/_layout.tsx` naar `useRoutebestemming()`.** `_layout` laadt
    niet onder de render-opstelling; zo is de naad met de échte provider te renderen.
 
@@ -61,6 +64,9 @@ met een kleine lokale nabootsing van de auth (zelfgetekende tokens, geen GoTrue)
   routetabel gelegd.
 
 ## Aannames en wat niet gemeten is
+
+- **Open productvraag, niet in dit issue:** hoort iemand die via een uitnodigingslink of werkcode binnenkomt de vragenlijst
+  te zien? Vandaag niet, vóór en na deze wijziging.
 
 - **Native is niet gemeten** (iOS/Android). De reparatie hangt niet af van het platform — er is één navigator — maar
   dat het op een toestel zo loopt, is niet gezien.

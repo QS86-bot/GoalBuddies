@@ -42,12 +42,17 @@ const GEBRUIKER = '00000000-0000-4000-8000-000000000793';
 const { RN_WEB } = vi.hoisted(() => ({ RN_WEB: 'react-native-web' }));
 vi.mock('react-native', async () => await import(/* @vite-ignore */ RN_WEB));
 
-const mocks = vi.hoisted(() => ({ profiel: null as unknown }));
+const ANDER = '00000000-0000-4000-8000-000000000794';
+
+const mocks = vi.hoisted(() => ({
+  profiel: null as unknown,
+  gebruiker: '00000000-0000-4000-8000-000000000793',
+}));
 
 vi.mock('./SessionProvider', () => ({
   useSession: () => ({
-    session: { user: { id: '00000000-0000-4000-8000-000000000793' } },
-    userId: '00000000-0000-4000-8000-000000000793',
+    session: { user: { id: mocks.gebruiker } },
+    userId: mocks.gebruiker,
     loading: false,
   }),
 }));
@@ -59,9 +64,9 @@ vi.mock('./profile', async () => {
 
 vi.mock('../../lib/observability', () => ({ reportError: () => undefined }));
 
-function profiel(onboarded: boolean): Profiel {
+function profiel(onboarded: boolean, id = GEBRUIKER): Profiel {
   return {
-    id: GEBRUIKER,
+    id,
     display_name: 'Nina',
     onboarded_at: onboarded ? '2026-11-23T05:00:00Z' : null,
     locale: null,
@@ -100,6 +105,7 @@ const laatste = () => bestemmingen[bestemmingen.length - 1];
 
 beforeEach(() => {
   (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
+  mocks.gebruiker = GEBRUIKER;
   bestemmingen = [];
   root = createRoot(document.createElement('div'));
 });
@@ -154,6 +160,31 @@ describe('een nieuw account na Klaar op het profiel', () => {
   });
 
   /**
+   * ⚠️ Wie met een openstaande uitnodiging of werkcode afrondt, wordt door een andere
+   *    wacht de onboarding uit gestuurd en ziet de vragenlijst niet. Dan mag de vlag
+   *    niet blijven hangen (code-critic QS8-793).
+   */
+  it('ruimt de vlag op als een andere wacht de gebruiker de onboarding uit stuurt', async () => {
+    await act(async () => gezien.context.zetAfgerondProfiel(profiel(true)));
+    await naar('organisatie', 'deelnemen');
+    expect(gezien.context.netAfgerond).toBe(false);
+
+    await naar('onboarding', 'profiel');
+    expect(laatste()).toBe('/');
+  });
+
+  /** De kop van `ProfielProvider` belooft dat de vlag niet naar een volgend account lekt. */
+  it('geeft de vlag niet door aan een ander account op hetzelfde apparaat', async () => {
+    await act(async () => gezien.context.zetAfgerondProfiel(profiel(true)));
+    mocks.gebruiker = ANDER;
+    mocks.profiel = profiel(true, ANDER);
+    await render();
+
+    expect(gezien.context.netAfgerond).toBe(false);
+    expect(laatste()).toBe('/');
+  });
+
+  /**
    * ⚠️ **De oude volgorde, en waarom die stuk was.** `zetProfiel()` alleen zet geen
    *    vlag; met de route nog op `profiel` stuurt de wacht dan naar `/`. Dat is
    *    precies wat de web-export liet zien. Dit geval staat er zodat de reden voor
@@ -200,11 +231,21 @@ describe('de schermen gebruiken deze naad', () => {
       .replace(/\/\*[\s\S]*?\*\//g, '')
       .replace(/^\s*\/\/.*$/gm, '');
 
-  it('het profielscherm rondt af met zetAfgerondProfiel() en navigeert niet zelf', () => {
+  /**
+   * ⚠️ Alleen het stuk ná `rondOnboardingAf()` tot het einde van `bewaar()`: daar
+   *    racete de oude navigatie. Een terechte link elders op het scherm hoort deze
+   *    toets niet rood te maken.
+   */
+  it('het profielscherm rondt af met zetAfgerondProfiel() en navigeert daarna niet zelf', () => {
     const bron = code('app/onboarding/profiel.tsx');
-    expect(bron).toContain('zetAfgerondProfiel(afgerond.profiel)');
-    expect(bron).not.toContain('zetProfiel(afgerond.profiel)');
-    expect(bron).not.toMatch(/router\.(replace|push)\(/);
+    const begin = bron.indexOf('await rondOnboardingAf(');
+    const eind = bron.indexOf('return (', begin);
+    expect(begin, 'rondOnboardingAf() niet gevonden in het profielscherm').toBeGreaterThan(-1);
+    const naAfronden = bron.slice(begin, eind);
+
+    expect(naAfronden).toContain('zetAfgerondProfiel(afgerond.profiel)');
+    expect(naAfronden).not.toContain('zetProfiel(afgerond.profiel)');
+    expect(naAfronden).not.toMatch(/router\.(replace|push|navigate)\(/);
   });
 
   it('de routewacht in de layout leest useRoutebestemming()', () => {

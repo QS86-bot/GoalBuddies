@@ -41,8 +41,8 @@ interface ProfielContextWaarde {
    *    het ander niet. De wacht stuurt daarna zelf naar de vragenlijst.
    */
   readonly zetAfgerondProfiel: (profiel: Profiel) => void;
-  /** De vragenlijst is in beeld: de vlag is gedaan. Roept de routewacht aan. */
-  readonly vragenlijstBereikt: () => void;
+  /** De vragenlijst is in beeld, of de gebruiker is de onboarding uit: de vlag is gedaan. Roept de routewacht aan. */
+  readonly afrondenVoorbij: () => void;
 }
 
 const ProfielContext = createContext<ProfielContextWaarde>({
@@ -53,7 +53,7 @@ const ProfielContext = createContext<ProfielContextWaarde>({
   zetProfiel: () => undefined,
   netAfgerond: false,
   zetAfgerondProfiel: () => undefined,
-  vragenlijstBereikt: () => undefined,
+  afrondenVoorbij: () => undefined,
 });
 
 export function ProfielProvider({ children }: { readonly children: React.ReactNode }) {
@@ -115,7 +115,7 @@ export function ProfielProvider({ children }: { readonly children: React.ReactNo
     setProfiel(afgerond);
     setNetAfgerondVoor(afgerond.id);
   }, []);
-  const vragenlijstBereikt = useCallback(() => setNetAfgerondVoor(null), []);
+  const afrondenVoorbij = useCallback(() => setNetAfgerondVoor(null), []);
 
   const waarde = useMemo<ProfielContextWaarde>(
     () => ({
@@ -127,9 +127,9 @@ export function ProfielProvider({ children }: { readonly children: React.ReactNo
       zetProfiel: setProfiel,
       netAfgerond: userId !== null && netAfgerondVoor === userId,
       zetAfgerondProfiel,
-      vragenlijstBereikt,
+      afrondenVoorbij,
     }),
-    [userId, profiel, loading, sessieLaadt, error, herlaad, netAfgerondVoor, zetAfgerondProfiel, vragenlijstBereikt],
+    [userId, profiel, loading, sessieLaadt, error, herlaad, netAfgerondVoor, zetAfgerondProfiel, afrondenVoorbij],
   );
 
   return <ProfielContext.Provider value={waarde}>{children}</ProfielContext.Provider>;
