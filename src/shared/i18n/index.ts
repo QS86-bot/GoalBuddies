@@ -66,13 +66,24 @@ export function abonneerOpTaal(luisteraar: () => void): () => void {
 }
 
 /**
+ * De taal én de notatie als één waarde: wat een route moet volgen.
+ *
+ * ⚠️ **Allebei, en niet alleen de taal** (code-critic QS8-796). `zetTaal('en')`
+ *    op een Britse telefoon laat de taal staan maar zet de notatie van `en-GB`
+ *    naar `en`; een route die alleen de taal volgde, hield dan zijn oude datums.
+ */
+export function taalstand(): string {
+  return `${huidig} ${opmaaktaal()}`;
+}
+
+/**
  * Meldt een wissel aan de abonnees, en alleen een wíssel.
  *
  * ⚠️ Het profiel zet bij elke lading dezelfde taal nog eens. Zou dat elke keer
  *    melden, dan rendert elke route opnieuw voor niets.
  */
-function meldWissel(vorige: Taal): void {
-  if (vorige === huidig) return;
+function meldWissel(vorige: string): void {
+  if (vorige === taalstand()) return;
   for (const luisteraar of luisteraars) luisteraar();
 }
 
@@ -89,7 +100,7 @@ export function taal(): Taal {
  * Nederlandse app te krijgen en geen wit scherm.
  */
 export function zetTaal(nieuw: string | null | undefined): Taal {
-  const vorige = huidig;
+  const vorige = taalstand();
   huidig = isTaal(nieuw) ? nieuw : STANDAARDTAAL;
   // ⚠️ QS8-741: het `lang`-attribuut van het document beweegt mee, zodat een
   //    schermlezer de goede stem kiest. Zie `documenttaal.ts`.
@@ -137,7 +148,7 @@ export function opmaaktaal(): string {
  *    de eerste voorkeur kan een taal zijn die deze app niet spreekt.
  */
 export function zetTaalUitApparaat(voorkeuren: readonly string[]): Taal {
-  const vorige = huidig;
+  const vorige = taalstand();
   huidig = taalUitApparaat(voorkeuren);
   zetDocumentTaal(huidig);
   opmaakTag = apparaatOpmaaktaal();

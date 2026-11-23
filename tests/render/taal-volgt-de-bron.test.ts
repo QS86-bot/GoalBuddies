@@ -62,7 +62,7 @@ vi.mock('@/modules/auth/useAvatarKeuze', () => ({
 const { StaticContainer } = (await import(
   // De échte muur van de navigator, niet een nagebouwde.
   'expo-router/build/react-navigation/core/StaticContainer'
-)) as { StaticContainer: ComponentType<{ name: string; children: ReactNode }> };
+)) as { StaticContainer: ComponentType<{ name: string; children?: ReactNode }> };
 const { ProfielProvider } = await import('@/modules/auth/ProfielProvider');
 const { UiterlijkProvider } = await import('@/modules/uiterlijk/react');
 

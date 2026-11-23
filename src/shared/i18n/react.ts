@@ -1,6 +1,6 @@
 import { useSyncExternalStore } from 'react';
 
-import { abonneerOpTaal, taal, type Taal } from './index';
+import { abonneerOpTaal, taal, taalstand, type Taal } from './index';
 
 /**
  * Laat een route opnieuw renderen zodra de taal wisselt — QS8-796.
@@ -17,9 +17,13 @@ import { abonneerOpTaal, taal, type Taal } from './index';
  * ⚠️ **Hier en niet in `index.ts`.** `t()` en de rest van `shared/i18n` draaien
  *    ook buiten React (datalaag, schema's); die module importeert React niet.
  *
+ * ⚠️ De snapshot is `taalstand()` (taal én datumnotatie) en niet `taal()`: een
+ *    wissel van alleen de notatie hoort ook een nieuwe render te geven.
+ *
  * ⚠️ De server-snapshot is dezelfde lezer. Vóór de hydratie tekent `Shell` niets
  *    wat van de taal afhangt (QS8-740), dus deze waarde bepaalt daar geen tekst.
  */
 export function useVolgTaal(): Taal {
-  return useSyncExternalStore(abonneerOpTaal, taal, taal);
+  useSyncExternalStore(abonneerOpTaal, taalstand, taalstand);
+  return taal();
 }

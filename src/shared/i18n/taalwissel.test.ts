@@ -10,7 +10,8 @@ import { abonneerOpTaal, STANDAARDTAAL, zetTaal, zetTaalUitApparaat } from './in
  *
  * IJKING — met de hand, 23-11-2026: de `return` bij gelijke taal uit
  *    `meldWissel()` halen → "dezelfde taal meldt niets" rood; de aanroep uit
- *    `zetTaalUitApparaat()` halen → "ook het apparaat meldt" rood.
+ *    `zetTaalUitApparaat()` halen → "ook het apparaat meldt" rood; `taalstand()`
+ *    alleen `huidig` laten geven → "alleen de datumnotatie" rood.
  */
 
 afterEach(() => {
@@ -42,6 +43,19 @@ describe('abonneerOpTaal()', () => {
     const opzeggen = abonneerOpTaal(luisteraar);
     zetTaalUitApparaat(['en-GB']);
     expect(luisteraar).toHaveBeenCalledTimes(1);
+    opzeggen();
+  });
+
+  it('een wissel van alleen de datumnotatie meldt ook', () => {
+    zetTaalUitApparaat(['en-GB']);
+    const luisteraar = vi.fn();
+    const opzeggen = abonneerOpTaal(luisteraar);
+    // Dezelfde taal, maar de notatie van het toestel valt weg (`opmaaktaal()`).
+    zetTaal('en');
+    // Alleen zinvol als het toestel hier een andere notatie dan `en` geeft.
+    if (Intl.DateTimeFormat().resolvedOptions().locale !== 'en') {
+      expect(luisteraar).toHaveBeenCalledTimes(1);
+    }
     opzeggen();
   });
 

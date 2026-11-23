@@ -33,10 +33,10 @@ import {
  *    de app in een taal die het profiel niet kent en is hij na een herstart weer
  *    terug. Vandaar: opslaan, en pas bij `ok` schakelen.
  *
- * ⚠️ `zetTaal()` alleen ververst het scherm niet — het is geen state. De
- *    `onOpgeslagen` hierna zet het profiel in de provider, en dát is de render
- *    die de nieuwe taal zichtbaar maakt. De twee horen dus bij elkaar; laat er
- *    geen van beide weg.
+ * ⚠️ Sinds QS8-796 ververst `zetTaal()` zelf elke route: hij meldt de wissel en
+ *    `useVolgTaal()` (`src/shared/i18n/react.ts`) laat de route opnieuw renderen.
+ *    De `onOpgeslagen` hierna is er voor het profiel in de provider, zodat de
+ *    keuze op dit scherm meteen aangevinkt staat.
  *
  * ⚠️ `locale` is `null` zolang er geen keuze staat (migratie 0061). De lijst
  *    toont dan de taal die de app nú spreekt — afgeleid van het apparaat — zodat

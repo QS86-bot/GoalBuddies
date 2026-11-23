@@ -56,10 +56,18 @@ De prijs is één regel per route. `tests/beloftes/route-volgt-de-taal.test.ts`
 maakt van die regel een eis, ook voor een route die er later bij komt. De
 uitzondering is `app/+html.tsx`, en die staat met haar reden in het register.
 
-⚠️ **Wat dit niet dekt.** Een component dat een vertaalde tekst in `useState` of
-`useMemo` vastzet, blijft staan. 📏 Bij dit issue staat dat nergens in `app/` of
-`src/` (gegrept op `useState(t(`, `useState(() => t(` en `useMemo` met `t(`).
-Ook een `React.memo` blokkeert de render; dat komt in `app/` en `src/` niet voor.
+⚠️ **Taal én datumnotatie** (code-critic). `zetTaal('en')` op een Britse
+telefoon laat de taal staan en zet de notatie van `en-GB` naar `en`. Een
+abonnement op alleen de taal liet die datums staan. Een abonnee volgt daarom
+`taalstand()`: de taal en `opmaaktaal()` samen.
+
+⚠️ **Wat dit niet dekt.** Een tekst die al vertaald in state staat, blijft in de
+oude taal. Dat is vooral een foutmelding die met `setFout(t(…))` is gezet:
+📏 code-critic vond er 14, onder meer in `app/doel/[id].tsx` en
+`app/beoordelen.tsx`. Zo'n melding verdwijnt bij de volgende handeling, en een
+taalwissel midden in een foutstaat is zeldzaam, dus dat blijft hier liggen.
+Een beginwaarde als `useState(t(…))` of een `useMemo` met tekst komt in `app/`
+en `src/` niet voor (gegrept), en een `React.memo` ook niet.
 
 ## 3. Wat de prerender en `html lang` doen
 
