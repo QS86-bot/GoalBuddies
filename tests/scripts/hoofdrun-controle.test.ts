@@ -12,6 +12,7 @@ import {
   concurrencyBlok,
   deeltGroepOpMain,
   draaitOpMain,
+  pushTakken,
   evalueerGroep,
   groepRegel,
   samenvattendeJobs,
@@ -68,6 +69,29 @@ describe('hoofdrun-controle — de ijking', () => {
       expect(draaitOpMain("on:\n  schedule:\n    - cron: '0 * * * *'\n  workflow_dispatch:\n")).toBe(
         false,
       );
+    });
+  });
+
+  describe('pushTakken: op welke tak start een push deze workflow', () => {
+    it('leest een inline lijst, met en zonder aanhalingstekens', () => {
+      expect(pushTakken("on:\n  push:\n    branches: ['**']\n")).toEqual(['**']);
+      expect(pushTakken('on:\n  push:\n    branches: [main]\n  pull_request:\n')).toEqual(['main']);
+      expect(pushTakken('on:\n  push:\n    branches: ["main", \'release/**\']\n')).toEqual(['main', 'release/**']);
+    });
+
+    it('geeft ** voor een push zonder takfilter — die draait overal', () => {
+      expect(pushTakken('on:\n  push:\n  workflow_dispatch:\n')).toEqual(['**']);
+    });
+
+    it('geeft niets zonder push-trigger', () => {
+      expect(pushTakken('on:\n  pull_request:\n    branches: [main]\n')).toEqual([]);
+      expect(pushTakken("on:\n  schedule:\n    - cron: '0 * * * *'\n")).toEqual([]);
+    });
+
+    // ⚠️ De veilige kant: een vorm die hij niet leest, telt als "overal", en
+    //    dan toetst hoofdrun:controle de workflow in plaats van hem over te slaan.
+    it('valt bij een blok-lijst terug op ** en niet op niets', () => {
+      expect(pushTakken('on:\n  push:\n    branches:\n      - main\n')).toEqual(['**']);
     });
   });
 
@@ -431,6 +455,20 @@ describe('hoofdrun-controle — de ijking', () => {
         samenvattendeJobs(ci).map((j) => j.naam),
         'ci.yml heeft geen samenvattende job meer die hier gelezen wordt',
       ).toContain('poort');
+    });
+
+    // ⚠️⚠️ **QS8-819: CI draait op een push alleen nog op `main`.** Dit is de
+    //    kostenbelofte voor de privérepo, en hij staat hier en niet in een eigen
+    //    bestand omdat hij op dezelfde regel leunt als de kanarie hierboven: zet
+    //    iemand `'**'` terug, dan blijft hoofdrun:controle groen (want `**` dekt
+    //    `main`) en verdubbelt CI stil. 📏 Met de hand teruggezet op 23-11-2026:
+    //    alleen deze toets wordt rood.
+    it('ci.yml start op een push alleen op main, en draait op een PR naar main', () => {
+      const ci = readCi();
+      expect(pushTakken(ci), 'ci.yml draait weer op een push naar elke tak').toEqual(['main']);
+      expect(ci, 'ci.yml draait niet meer op een PR naar main').toMatch(
+        /\n {2}pull_request:\n {4}branches: \[main\]\n/,
+      );
     });
   });
 });

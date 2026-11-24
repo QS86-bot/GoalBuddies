@@ -644,7 +644,7 @@ Orchestrator en batchsessie tellen niet als baan in §1: ze hebben geen eigen bo
 | Status Tracker | hier | reden |
 | --- | --- | --- |
 | Gedeelde tak `integratie`, elke sessie mergt er lokaal in | Geen gedeelde tak: elke bouwsessie levert op haar eigen tak, de batchsessie voegt samen | Een tak waar meerdere sessies in schrijven is het conflictpunt dat §4 en §5 al beschrijven. Een bouwsessie werkt bovendien op de tak die het platform haar geeft; of een cloudsessie naar een derde tak mag pushen is hier **niet gemeten** (§12f). `npm run claim` blijft kloppen omdat de afgeleverde tak blijft staan. |
-| Nachtworkflow met drie commit-statussen | Geen nieuwe workflow: de CI van de batch-PR is de toets | `.github/workflows/ci.yml` draait op elke push (`branches: ['**']`) en op elke PR naar `main`. Een nachtrun zou dezelfde set nogmaals draaien. Een wijziging aan `.github/` vraagt Quinten en de volledige reviewset. |
+| Nachtworkflow met drie commit-statussen | Geen nieuwe workflow: de CI van de batch-PR is de toets | `.github/workflows/ci.yml` draait op elke PR naar `main` en op elke push naar `main` (sinds QS8-819 niet meer op een push naar een tak). Een nachtrun zou dezelfde set nogmaals draaien. Een wijziging aan `.github/` vraagt Quinten en de volledige reviewset. |
 | Minutenschaarste als aanleiding | **Niet gemeten voor dit project** | Hier is geen meting van verbruikte Actions-minuten. Zijn ze hier ook schaars, dan is de eerste maatregel `push` in `ci.yml` beperken. Dat is een eigen besluit van Quinten. |
 | Quinten merget altijd | Voor werk via de batch: ja. Daarbuiten: §9 | §9 zegt dat een sessie haar PR zelf merget na vier controles. Dat blijft gelden voor werk dat niet via de batch loopt. |
 
