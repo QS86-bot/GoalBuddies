@@ -1,9 +1,12 @@
 # CI alleen op PR's en op `main` — QS8-819
 
 Datum: 23-11-2026. Uitwerking van keuze A op QS8-126 (de repository gaat privé).
-**Deze wijziging landt pas op de dag dat de repo privé gaat, en alleen op het sein
-van Quinten.** Tot dan kost CI op een publieke repo niets, en dan wint "op elke tak
-meten".
+**Herzien op 24-11-2026, besluit van Quinten (meerkeuze via de hoofdorchestrator):
+nu al mergen.** Oorspronkelijk stond hier dat de wijziging pas op de dag dat de repo
+privé gaat zou landen, omdat CI op een publieke repo niets kost en dan "op elke tak
+meten" wint. Dat wachten is vervallen: de wijziging landt nu, terwijl de repo nog
+publiek is. Wat een tak zonder PR daardoor vanaf nu al mist, staat hieronder; de
+betaalmethode en het budget blijven stappen voor de privé-dag (zie het klikpad).
 
 ## Besluit van Quinten (23-11-2026, meerkeuze via de hoofdorchestrator)
 
@@ -43,7 +46,7 @@ QS8-126; dit is de kern.
 | **Deze wijziging** | **±9.900 min, ±$47** | **±34.600 min, ±$196** |
 
 ⚠️ Geen enkel scenario past in de gratis tier, ook dit niet. Daarom hoort de
-betaalmethode met plafond bij dezelfde dag als deze merge, en niet later.
+betaalmethode met plafond bij dezelfde dag als het privé zetten, en niet later.
 
 ## Wat er verandert
 
@@ -204,9 +207,10 @@ rollover en de notificaties, tot de volgende maand of tot je het budget verhoogt
 dit plafond kies je dus ook hoe vroeg in de maand dat kan gebeuren. Bij het tempo van de
 laatste week (±$196 per maand boven de $12 na deze wijziging) is $75 rond dag 12 op; dat is een extrapolatie, geen meting.
 
-**3. Deze PR mergen**
+**3. ~~Deze PR mergen~~ — al gedaan**
 
-Op het sein van Quinten, met een merge-commit. Daarna `npm run hoofdrun:stand`.
+Vervallen: op 24-11-2026 besloot Quinten om deze PR meteen te mergen, en niet pas op de
+privé-dag. Op de privé-dag zijn het dus alleen stap 1, 2 en 4, in die volgorde.
 
 **4. Zichtbaarheid**
 
