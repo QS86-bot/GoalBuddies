@@ -66,18 +66,39 @@ const WORTEL = fileURLToPath(new URL('..', import.meta.url));
 const WORKFLOWS = join(WORTEL, '.github', 'workflows');
 
 /**
+ * De takpatronen waarop een `push` deze workflow start: `[]` zonder push-trigger,
+ * `['**']` voor een push zonder takfilter.
+ *
+ * ⚠️ **Een eigen functie sinds 23-11-2026 (QS8-819)**, omdat er twee beloftes op
+ *    dezelfde regel leunen: `main` moet erin staan (anders slaat deze controle
+ *    de workflow over), en voor `ci.yml` moet er ook niets anders in staan
+ *    (anders draait CI weer op elke tak en kost een privérepo geld). Die tweede
+ *    toetst `tests/scripts/hoofdrun-controle.test.ts` tegen het echte bestand.
+ *
+ * ⚠️ Leest alleen de inline lijst (`branches: [a, b]`). Een blok-lijst eronder
+ *    valt terug op `['**']`, en dat is de veilige kant: dan telt de workflow als
+ *    "draait op main" en wordt hij getoetst.
+ */
+export function pushTakken(inhoud) {
+  const pushBlok = /(^|\n)\s{2}push:\s*\n([\s\S]*?)(?=\n\s{2}\S|\n\S|$)/.exec(inhoud);
+  if (!pushBlok) return [];
+  const branches = /branches:\s*\[([^\]]*)\]/.exec(pushBlok[2] ?? '');
+  if (!branches) return ['**'];
+  return (branches[1] ?? '')
+    .split(',')
+    .map((t) => t.trim().replace(/^['"]|['"]$/g, ''))
+    .filter((t) => t !== '');
+}
+
+/**
  * Draait deze workflow ooit op `main`?
  *
- * ⚠️ Bewust ruim: `branches: ['**']` dekt `main` óók, en dat is precies het
- *    geval dat `ci.yml` had. Een workflow die alleen op `pull_request` draait
- *    raakt `main` niet — daar is afbreken juist goed.
+ * ⚠️ Bewust ruim: `branches: ['**']` dekt `main` óók, en dat was de vorm van
+ *    `ci.yml` tot QS8-819. Een workflow die alleen op `pull_request` draait raakt
+ *    `main` niet — daar is afbreken juist goed.
  */
 export function draaitOpMain(inhoud) {
-  const pushBlok = /(^|\n)\s{2}push:\s*\n([\s\S]*?)(?=\n\s{2}\S|\n\S|$)/.exec(inhoud);
-  if (!pushBlok) return false;
-  const branches = /branches:\s*\[([^\]]*)\]/.exec(pushBlok[2]);
-  if (!branches) return true; // `push:` zonder branchfilter draait overal, dus ook op main
-  return /(^|,)\s*'?"?(\*\*|main)'?"?\s*(,|$)/.test(branches[1]);
+  return pushTakken(inhoud).some((t) => t === '**' || t === 'main');
 }
 
 /**

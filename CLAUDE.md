@@ -1182,7 +1182,7 @@ was de inschatting van een mens over zijn eigen werk.
 in geen enkele workflow, waaronder `schermingang:`, `registerdrift:`, `exports:`
 en `hoofdrun:controle`. Dat liep de verkeerde kant op — een nieuwe grendel stond
 automatisch in de poort (een commando dat een mens typt) en automatisch niet in
-CI (dat bij elke push draait). `scripts/ci-controles.mjs --baan repo|database`
+CI (dat op elke PR en op `main` draait; sinds QS8-819 niet meer op elke push). `scripts/ci-controles.mjs --baan repo|database`
 deelt ze nu in vanuit `package.json` en `HEEFT_DATABASE_NODIG`; wat CI niet kan
 draaien staat mét reden in `ZONDER_CI`, en `cidekking:controle` wordt rood zodra
 er weer een handmatige stap naast komt.
