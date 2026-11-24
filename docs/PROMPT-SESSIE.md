@@ -639,6 +639,8 @@ Orchestrator en batchsessie tellen niet als baan in §1: ze hebben geen eigen bo
 
 ⚠️ **De bouwsessie raakt de drie gedeelde documenten niet** (§4 blijft de regel voor wie buiten dit model werkt). Wat een bouwsessie anders in `docs/ENGINEER-REVIEW.md` zou zetten, gaat als regel "ER-rij:" in haar afleverregel; de batchsessie vouwt ze in één commit in. Dat is de uitwerking van §1c voor een extra baan.
 
+⚠️ **Sinds QS8-819 (24-11-2026) start een push naar een tak geen CI meer.** `.github/workflows/ci.yml` draait alleen op een PR naar `main` en op een push naar `main`. Een afgeleverde bouwtak, een batchtak en een slotrondetak krijgen dus pas een CI-uitslag zodra er een PR open is (een draft-PR telt ook). Een afleverregel noemt daarom geen "CI groen op de tak": tot de PR is `npm run poort` de toets, en wat die *ongemeten* laat (de RLS-suite, de database-controles) blijft ongemeten tot de CI van de PR. Of een bouwsessie een draft-PR mag openen om CI te krijgen, is hiermee niet besloten; tot dan geldt punt 2 (geen PR). Afweging en meting in `docs/decisions/2026-11-23-ci-alleen-op-prs-en-main.md`.
+
 ### 12c. Waar dit afwijkt van de Status Tracker, en waarom
 
 | Status Tracker | hier | reden |

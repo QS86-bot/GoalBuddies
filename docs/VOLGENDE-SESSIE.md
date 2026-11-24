@@ -2479,6 +2479,8 @@ Quinten is Linear QS8-785. Hieronder alleen wat de volgende sessie moet weten om
 - ⚠️ **"Done" volgt de uitrol, niet de merge.** Acht issues van deze week (666 3c-db, 784, 787, 789, 801, 806, 807 en 820)
   zijn gemerged en blijven In Review tot hun migratie of Edge Function op productie staat. Zet ze niet op Done op
   grond van een groene `main`.
+- ⚠️ **Een tak zonder PR heeft sinds 24-11-2026 geen CI (QS8-819, PR #824).** Verwacht na een push geen run meer;
+  de regel en wat er ongemeten blijft staan in `docs/PROMPT-SESSIE.md` §12b.
 
 ### 05-11-2026 — de eerste orchestratorronde, en wat er open bleef
 
