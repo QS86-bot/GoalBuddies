@@ -15,11 +15,12 @@ export {
   fetchMogelijkeBegunstigden,
   fetchBelofteBegunstigden,
   fetchBelofteStand,
+  fetchIntrekspoor,
   fetchStrafDoelen,
   gaWeekbelofteAan,
   herstelStuurlozeStraf,
   trekBelofteIn,
-  trekIn,
+  trekStrafIn,
   zetBeloning,
   zetStraf,
   type Begunstigde,
@@ -33,7 +34,7 @@ export {
 } from './api';
 
 export { fetchBegunstigdeNaam, type BegunstigdeNaam } from './begunstigde';
-export { begunstigdeVan, BEGUNSTIGDE_BRON } from './begunstigde-bron';
+export { begunstigdeVan, BEGUNSTIGDE_BRON, stuurlozeReden, type StuurlozeReden } from './begunstigde-bron';
 
 export {
   COMMITMENT_STANDEN,
@@ -55,14 +56,18 @@ export {
 export {
   belofteaanbod,
   belofteperiode,
+  belofteuitslag,
   belofteweek,
   heeftOpenDoelstraf,
   isKorteWeek,
   KORTE_WEEK_UREN,
+  nieuwsteBeslist,
   vorigeVerschuldigd,
   wachtOpBeslissing,
   type Belofteaanbod,
   type Belofteperiode,
+  type Belofteuitslag,
+  type Intrekspoor,
 } from './weekbelofte';
 
 export { fetchStrafKeuzes, GEEN_STRAFKEUZES } from './strafkeuzes';

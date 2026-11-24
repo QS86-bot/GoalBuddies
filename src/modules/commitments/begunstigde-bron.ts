@@ -28,3 +28,32 @@ export function begunstigdeVan(
   if (straf.beneficiary_user_id !== null) return { soort: 'persoon', id: straf.beneficiary_user_id };
   return null;
 }
+
+/**
+ * Waarom een straf stuurloos is, of `null` als hij dat niet is — QS8-333 en QS8-820.
+ *
+ * ⚠️ **Dezelfde toets als `herstel_stuurloze_straf()` doet (0343)**, zodat de kaart
+ *    nooit een knop toont die de server met `heeft_nog_een_begunstigde` afwijst:
+ *
+ *    - `verdwenen`: verschuldigd en zonder begunstigde. De getuige heeft zijn
+ *      account opgezegd (0212).
+ *    - `groep_verlaten`: verschuldigd, met een groep als begunstigde waar de
+ *      eigenaar geen actief lid meer van is. De eigenaar leest de naam van die
+ *      groep dan niet: `groups_select` is `mag_groep_lezen()`, en dat is dezelfde
+ *      grens als `straf_groepsband_klopt()` trekt (`status <> 'inactive'`, een
+ *      archief telt mee).
+ *
+ * ⚠️ Een storing bij het ophalen van de naam (`fout`) is géén stuurloze straf.
+ *    Bij twijfel geen knop.
+ */
+export type StuurlozeReden = 'verdwenen' | 'groep_verlaten';
+
+export function stuurlozeReden(
+  straf: StrafBegunstigde & { readonly status: string },
+  wie: { readonly soort: 'groep' | 'persoon'; readonly naam: string | null; readonly fout: boolean } | null,
+): StuurlozeReden | null {
+  if (straf.status !== 'due') return null;
+  if (begunstigdeVan(straf) === null) return 'verdwenen';
+  if (wie !== null && wie.soort === 'groep' && wie.naam === null && !wie.fout) return 'groep_verlaten';
+  return null;
+}
