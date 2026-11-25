@@ -2481,6 +2481,9 @@ Quinten is Linear QS8-785. Hieronder alleen wat de volgende sessie moet weten om
   grond van een groene `main`.
 - ⚠️ **Een tak zonder PR heeft sinds 24-11-2026 geen CI (QS8-819, PR #824).** Verwacht na een push geen run meer;
   de regel en wat er ongemeten blijft staan in `docs/PROMPT-SESSIE.md` §12b.
+- ⚠️ **Een draft-PR mag vroeg open, mergen niet (besluit Quinten 24-11-2026).** Wil je CI op je tak, open dan een
+  draft-PR zodra `npm run poort` lokaal geen rood meer geeft. Gemerged wordt alleen op het sein van de orchestrator,
+  bij UI pas na Quintens akkoord op de afdrukken. De regel staat in `docs/PROMPT-SESSIE.md` §12b.
 
 ### 05-11-2026 — de eerste orchestratorronde, en wat er open bleef
 

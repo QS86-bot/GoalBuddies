@@ -619,7 +619,7 @@ De uitvoerbare stappen staan in `.claude/commands/orkestrator.md` en `.claude/co
 | rol | aantal | schrijft | doet nooit |
 | --- | --- | --- | --- |
 | **Orchestrator** | 1 | Linear (logboek-issue, beslispakket, klikpad), bouwprompts | code, mergen, migraties, sessies starten zonder Quintens woord |
-| **Bouwsessie** | hoogstens twee tegelijk (§1) | code en tests op de eigen tak, een afleverregel in het issue | een PR openen, naar `main` pushen of mergen, op productie schrijven, de drie gedeelde documenten aanraken |
+| **Bouwsessie** | hoogstens twee tegelijk (§1) | code en tests op de eigen tak, een afleverregel in het issue | een PR openen die geen draft is (een draft-PR mag sinds 24-11-2026, zie §12b), naar `main` pushen of mergen, op productie schrijven, de drie gedeelde documenten aanraken |
 | **Batchsessie** | 1 per ronde | de batchtak, één PR, daarna één keer de stand in `docs/WERKVOORRAAD.md` | features, migraties zonder Quintens "backup gedaan", mergen |
 
 Orchestrator en batchsessie tellen niet als baan in §1: ze hebben geen eigen boom en leveren geen broncode. Het plafond van §1 en de voorwaarden van §1c gelden voor de bouwsessies.
@@ -631,7 +631,7 @@ Orchestrator en batchsessie tellen niet als baan in §1: ze hebben geen eigen bo
 
    > AFGELEVERD · tak `<naam>` · sha `<40 tekens>` · lokaal gedraaid: … · ongemeten: … · migratie wacht: ja/nee (+ `git hash-object` van beide bestanden)
 
-   Er komt **geen PR**. De tak blijft op de remote staan tot de batch gemerged is: `npm run claim` leest hem dan als bezet, en dat is waar.
+   Er komt **geen PR om te mergen**; een draft-PR voor CI mag wel (zie de ⚠️-alinea onder deze lijst, besluit 24-11-2026). De tak blijft op de remote staan tot de batch gemerged is: `npm run claim` leest hem dan als bezet, en dat is waar.
 3. **Batchsessie.** Leest de afleverregels, controleert per tak dat de sha klopt, en bouwt de batchtak vanaf `origin/main` met één `git merge --no-ff` per tak (onderwerp: `Merge QS8-nnn: titel`, zodat `npm run claim` de gelande PR herkent, §2). Voor elke tak eerst `git merge-tree --write-tree`; een conflict wordt gemeld en niet opgelost buiten de conflictzone. Push, PR, CI-groen op de exacte head-sha (§9, punt 1), één ronde `code-critic` op de PR als geheel — plus `security-reviewer` als de batch auth, RLS, punten, goedkeuring, commitments of een groepszichtbaar oppervlak raakt. Daarna is het aan Quinten.
 4. **Quinten.** Merget de batch-PR met een merge-commit, laat acht minuten tussen twee merges (§1b), draait `npm run deploy` (zijn machine; het token staat niet in een cloudsessie) en reviewt. De batchsessie draait na de merge `npm run hoofdrun:stand` en vouwt de stand één keer in `docs/WERKVOORRAAD.md` en `docs/VOLGENDE-SESSIE.md`.
 
@@ -639,7 +639,7 @@ Orchestrator en batchsessie tellen niet als baan in §1: ze hebben geen eigen bo
 
 ⚠️ **De bouwsessie raakt de drie gedeelde documenten niet** (§4 blijft de regel voor wie buiten dit model werkt). Wat een bouwsessie anders in `docs/ENGINEER-REVIEW.md` zou zetten, gaat als regel "ER-rij:" in haar afleverregel; de batchsessie vouwt ze in één commit in. Dat is de uitwerking van §1c voor een extra baan.
 
-⚠️ **Sinds QS8-819 (24-11-2026) start een push naar een tak geen CI meer.** `.github/workflows/ci.yml` draait alleen op een PR naar `main` en op een push naar `main`. Een afgeleverde bouwtak, een batchtak en een slotrondetak krijgen dus pas een CI-uitslag zodra er een PR open is (een draft-PR telt ook). Een afleverregel noemt daarom geen "CI groen op de tak": tot de PR is `npm run poort` de toets, en wat die *ongemeten* laat (de RLS-suite, de database-controles) blijft ongemeten tot de CI van de PR. Of een bouwsessie een draft-PR mag openen om CI te krijgen, is hiermee niet besloten; tot dan geldt punt 2 (geen PR). Afweging en meting in `docs/decisions/2026-11-23-ci-alleen-op-prs-en-main.md`.
+⚠️ **Sinds QS8-819 (24-11-2026) start een push naar een tak geen CI meer.** `.github/workflows/ci.yml` draait alleen op een PR naar `main` en op een push naar `main`. Een afgeleverde bouwtak, een batchtak en een slotrondetak krijgen dus pas een CI-uitslag zodra er een PR open is (een draft-PR telt ook). Een afleverregel noemt daarom geen "CI groen op de tak": tot de PR is `npm run poort` de toets, en wat die *ongemeten* laat (de RLS-suite, de database-controles) blijft ongemeten tot de CI van de PR. **Besluit Quinten 24-11-2026, bevestigd in de slotrondesessie op 25-11-2026: een draft-PR mag vroeg open.** Een bouw-, batch- of slotrondesessie mag een draft-PR naar `main` openen zodra `npm run poort` lokaal geen rood meer geeft, zodat CI meedraait. Mergen gebeurt alleen op het sein van de orchestrator, en bij een UI-wijziging pas na Quintens akkoord op de afdrukken. De draft-PR vervangt de afleverregel niet. Afweging en meting in `docs/decisions/2026-11-23-ci-alleen-op-prs-en-main.md`.
 
 ### 12c. Waar dit afwijkt van de Status Tracker, en waarom
 
